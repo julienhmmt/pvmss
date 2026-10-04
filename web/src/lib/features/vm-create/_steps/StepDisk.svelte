@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { getVmCreateContext } from '../create.svelte';
+	import { getVmCreateContext, gabaritCeiling } from '../create.svelte';
 	import { m } from '$lib/paraglide/messages.js';
 	import FormField from '$lib/shared/ui/FormField.svelte';
 	import TextField from '$lib/shared/ui/TextField.svelte';
@@ -25,7 +25,7 @@
 	const showProfilePicker = $derived(form.sourceType === 'image' && form.hasProfiles());
 	const selectedProfile = $derived((form.catalog?.profiles ?? []).find((profile) => profile.id === form.profileId));
 
-	const maxDiskGB = $derived(form.catalog?.gabarit?.maxDiskPerVMGB ?? 2048);
+	const maxDiskGB = $derived(gabaritCeiling(form.catalog?.gabarit?.maxDiskPerVMGB, 2048));
 	// The effective floor: the template's disk for clones (issue 04), the
 	// cloud image's size for image mode (server code "disk_below_image").
 	const minDiskGB = $derived(

@@ -8,7 +8,6 @@ export interface AdminCluster {
 	tlsInsecureSkipVerify: boolean;
 	tokenId: string;
 	tokenSet: boolean;
-	oidcEnabled: boolean;
 	removedAt: string | null;
 	lastTestStatus: 'ok' | 'unreachable' | 'error' | null;
 	lastTestAt: string | null;
@@ -94,14 +93,6 @@ export class AdminClustersStore {
 			this.announce = m['admin.clusters.tested']({ name, status: result?.status ?? 'tested' });
 		});
 		return result;
-	}
-
-	async toggleOIDC(name: string, enabled: boolean): Promise<boolean> {
-		return this.run(`oidc:${name}`, async () => {
-			await post<{ name: string; oidcEnabled: boolean }>(`/api/v1/admin/clusters/${encodeURIComponent(name)}/oidc`, { enabled });
-			this.clusters = this.clusters.map((cluster) => (cluster.name === name ? { ...cluster, oidcEnabled: enabled } : cluster));
-			this.announce = enabled ? m['admin.clusters.oidcEnabled']({ name }) : m['admin.clusters.oidcDisabled']({ name });
-		});
 	}
 
 	async remove(name: string): Promise<boolean> {

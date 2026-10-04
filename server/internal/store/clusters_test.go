@@ -177,6 +177,87 @@ func TestSetClusterSnippetStorage_RoundTrip(t *testing.T) {
 // show the raw internal name "default" on a fresh deployment.
 //
 //nolint:paralleltest // migration fixtures are intentionally serial
+func openProxmoxStore(t *testing.T, dbPath, url, tokenID, tokenSecret string) *store.Store {
+	t.Helper()
+
+	st, err := store.Open(config.Configuration{
+		DBPath:               dbPath,
+		ClusterSource:        "proxmox",
+		SessionSecret:        clusterTestSecret,
+		ProxmoxURL:           url,
+		ProxmoxAPITokenName:  tokenID,
+		ProxmoxAPITokenValue: tokenSecret,
+	})
+	if err != nil {
+		t.Fatalf("store.Open: %v", err)
+	}
+	t.Cleanup(func() { _ = st.Close() })
+
+	return st
+}
+
+//nolint:paralleltest // SQLite fixtures are intentionally serial
+func TestEnsureEnvCluster_SeedsDefaultWhenEmpty(t *testing.T) {
+	st := openProxmoxStore(t, filepath.Join(t.TempDir(), "envseed.db"),
+		"https://env-seed.invalid/api2/json", "pvmss@pve!env", "env-token-secret")
+	ctx := context.Background()
+
+	rows, err := st.ListClusters(ctx)
+	if err != nil {
+		t.Fatalf("ListClusters: %v", err)
+	}
+	if len(rows) != 1 || rows[0].Name != "default" {
+		t.Fatalf("ListClusters = %+v, want a single row named %q", rows, "default")
+	}
+
+	row, err := st.GetCluster(ctx, "default")
+	if err != nil {
+		t.Fatalf("GetCluster: %v", err)
+	}
+	if row.URL != "https://env-seed.invalid/api2/json" {
+		t.Errorf("URL = %q, want %q", row.URL, "https://env-seed.invalid/api2/json")
+	}
+	if row.TokenSecret != "env-token-secret" {
+		t.Errorf("TokenSecret = %q, want the decrypted env value", row.TokenSecret)
+	}
+}
+
+//nolint:paralleltest // SQLite fixtures are intentionally serial
+func TestEnsureEnvCluster_SkipsWhenClusterExists(t *testing.T) {
+	dbPath := filepath.Join(t.TempDir(), "keep.db")
+	ctx := context.Background()
+
+	st := openProxmoxStore(t, dbPath,
+		"https://first.invalid/api2/json", "pvmss@pve!first", "first-secret")
+	if err := st.Close(); err != nil {
+		t.Fatalf("close: %v", err)
+	}
+
+	st = openProxmoxStore(t, dbPath,
+		"https://second.invalid/api2/json", "pvmss@pve!second", "second-secret")
+
+	row, err := st.GetCluster(ctx, "default")
+	if err != nil {
+		t.Fatalf("GetCluster: %v", err)
+	}
+	if row.URL != "https://first.invalid/api2/json" || row.TokenSecret != "first-secret" {
+		t.Errorf("env re-seed overwrote the existing row: URL=%q TokenSecret=%q", row.URL, row.TokenSecret)
+	}
+}
+
+//nolint:paralleltest // SQLite fixtures are intentionally serial
+func TestEnsureEnvCluster_SkipsWhenCredentialsMissing(t *testing.T) {
+	st := openProxmoxStore(t, filepath.Join(t.TempDir(), "nocreds.db"), "", "", "")
+
+	rows, err := st.ListClusters(context.Background())
+	if err != nil {
+		t.Fatalf("ListClusters: %v", err)
+	}
+	if len(rows) != 0 {
+		t.Errorf("ListClusters = %+v, want no seeded rows without credentials", rows)
+	}
+}
+
 func TestEnsureSeedClusters_SetsDisplayNames(t *testing.T) {
 	st := openClusterStore(t)
 	ctx := context.Background()
@@ -201,5 +282,58 @@ func TestEnsureSeedClusters_SetsDisplayNames(t *testing.T) {
 		if row.DisplayName != expected {
 			t.Errorf("cluster %q DisplayName = %q, want %q", row.Name, row.DisplayName, expected)
 		}
+	}
+}
+
+//nolint:paralleltest // serial: shared database fixture
+func TestCreateCluster_SeedsPolicyRow(t *testing.T) {
+	st := openClusterStore(t)
+	ctx := context.Background()
+
+	row := store.ClusterRow{
+		Name:        "seeded-policy",
+		URL:         "https://seeded-policy.invalid/api2/json",
+		TokenID:     "tok",
+		TokenSecret: "secret",
+	}
+	if err := st.CreateCluster(ctx, row); err != nil {
+		t.Fatalf("CreateCluster: %v", err)
+	}
+
+	got, err := st.PolicyRow(ctx, "seeded-policy")
+	if err != nil {
+		t.Fatalf("PolicyRow: %v", err)
+	}
+	want := store.PolicyRow{
+		Cluster: "seeded-policy", MaxSockets: 4, MaxCores: 8, MaxMemoryMB: 16384,
+		MaxDiskPerVMGB: 500, MaxNetworkCards: 4, MaxSnapshots: 5,
+		MaxVMPerUser: -1,
+	}
+	if got != want {
+		t.Errorf("PolicyRow = %+v, want %+v", got, want)
+	}
+
+	// The fake-mode secondary cluster previously had no policy row at all.
+	if _, err := st.PolicyRow(ctx, "secondary"); err != nil {
+		t.Errorf("secondary cluster policy row: %v", err)
+	}
+
+	// Reactivating a soft-deleted cluster must not reset an edited policy row.
+	got.MaxCores = 99
+	if err := st.UpsertPolicyRow(ctx, got); err != nil {
+		t.Fatalf("UpsertPolicyRow: %v", err)
+	}
+	if err := st.SoftDeleteCluster(ctx, "seeded-policy"); err != nil {
+		t.Fatalf("SoftDeleteCluster: %v", err)
+	}
+	if err := st.CreateCluster(ctx, row); err != nil {
+		t.Fatalf("CreateCluster reactivation: %v", err)
+	}
+	preserved, err := st.PolicyRow(ctx, "seeded-policy")
+	if err != nil {
+		t.Fatalf("PolicyRow after reactivation: %v", err)
+	}
+	if preserved.MaxCores != 99 {
+		t.Errorf("reactivation reset MaxCores to %d, want preserved 99", preserved.MaxCores)
 	}
 }

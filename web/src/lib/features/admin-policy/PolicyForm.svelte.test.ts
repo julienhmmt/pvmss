@@ -13,7 +13,6 @@ function buildPolicy(overrides: Partial<AdminPolicy['gabarit']> = {}): AdminPoli
 			maxDiskPerVmGb: 500,
 			maxNetworkCards: 4,
 			maxSnapshots: 5,
-			allowCustomYaml: false,
 			isolationVlanTag: 0,
 			...overrides
 		},
@@ -126,6 +125,14 @@ describe('PolicyForm', () => {
 			gabarit: expect.objectContaining({ maxSockets: 6 }) as { maxSockets: number },
 			quota: { maxVmPerUser: -1 }
 		});
+		document.body.innerHTML = '';
+	});
+
+	it('disables the save button when a field is cleared', async () => {
+		mount(PolicyForm, buildProps(buildPolicy()));
+		setInputValue(getFirstInput(), '');
+		await tick();
+		expect(getSubmitButton().disabled).toBe(true);
 		document.body.innerHTML = '';
 	});
 

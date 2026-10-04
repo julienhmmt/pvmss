@@ -63,6 +63,7 @@ func (h *VMDetail) writeEntity(w http.ResponseWriter, r *http.Request, entity vm
 		Cores:             entity.Cores,
 		Disks:             entity.Disks,
 		CDROM:             entity.CDROM,
+		BootOrder:         entity.BootOrder,
 		NetworkInterfaces: entity.NetworkInterfaces,
 		HasSerial:         entity.HasSerial,
 		Description:       entity.Description,

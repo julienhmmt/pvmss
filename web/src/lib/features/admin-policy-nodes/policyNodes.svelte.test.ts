@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { AdminPolicyNodesStore, type NodeCapacity } from './policyNodes.svelte';
+import { AdminPolicyNodesStore, translateNodeCapacityError, type NodeCapacity } from './policyNodes.svelte';
 
 function jsonResponse(status: number, body: unknown): Response {
 	return new Response(JSON.stringify(body), { status, headers: { 'Content-Type': 'application/json' } });
@@ -24,6 +24,7 @@ function fixture(overrides: Partial<NodeCapacity>): NodeCapacity {
 		nodeStorageUsedGb: 0,
 		nodeStorageTotalGb: 0,
 		totalVms: 0,
+		approved: true,
 		...overrides
 	};
 }
@@ -111,6 +112,38 @@ describe('AdminPolicyNodesStore', () => {
 			store.setSort('vcpus');
 			expect(store.sortBy).toBe('vcpus');
 			expect(store.sortDir).toBe('asc');
+		});
+	});
+
+	describe('translateNodeCapacityError', () => {
+		// Locale-independent assertions: the tests run under the base locale
+		// (fr), so only interpolated values and pass-through are checked.
+		it('localizes node_limit_above_capacity with dimension, requested, node, and physical', () => {
+			const message = "vcpu cap (3133) exceeds miniquarium's physical capacity (12)";
+			const translated = translateNodeCapacityError('node_limit_above_capacity', message);
+			expect(translated).not.toBe(message);
+			expect(translated).toContain('3133');
+			expect(translated).toContain('12');
+			expect(translated).toContain('miniquarium');
+		});
+
+		it('localizes node_limit_below_usage with dimension, requested, node, and used', () => {
+			const message = "ram cap (4) is below pve-node-01's current usage (8)";
+			const translated = translateNodeCapacityError('node_limit_below_usage', message);
+			expect(translated).not.toBe(message);
+			expect(translated).toContain('4');
+			expect(translated).toContain('8');
+			expect(translated).toContain('pve-node-01');
+		});
+
+		it('localizes invalid_policy "must not be negative" without echoing the server field name', () => {
+			const translated = translateNodeCapacityError('invalid_policy', 'maxVcpus must not be negative');
+			expect(translated).not.toContain('maxVcpus');
+		});
+
+		it('passes unparseable messages through unchanged', () => {
+			expect(translateNodeCapacityError('node_limit_above_capacity', 'something unexpected')).toBe('something unexpected');
+			expect(translateNodeCapacityError('other_code', "vcpu cap (3133) exceeds n's physical capacity (12)")).toBe("vcpu cap (3133) exceeds n's physical capacity (12)");
 		});
 	});
 });

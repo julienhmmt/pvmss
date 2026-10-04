@@ -297,50 +297,6 @@ func TestAuthCoverage_ServeClusters_WithStore(t *testing.T) {
 }
 
 //nolint:paralleltest // serial: shared fake auth and session fixtures
-func TestAuthCoverage_OIDC_InvalidJSON(t *testing.T) {
-	handler := newAuthHandler(t)
-	req := httptest.NewRequest(http.MethodPost, "/api/v1/auth/oidc", strings.NewReader("{bad"))
-	req.Header.Set("Content-Type", "application/json")
-
-	rec := httptest.NewRecorder()
-	handler.OIDC(rec, req)
-
-	if rec.Code != http.StatusBadRequest {
-		t.Fatalf("status = %d, want %d", rec.Code, http.StatusBadRequest)
-	}
-}
-
-//nolint:paralleltest // serial: shared fake auth and session fixtures
-func TestAuthCoverage_OIDC_NoStoreReturns501(t *testing.T) {
-	handler := newAuthHandler(t)
-
-	rec := serveJSON(handler.OIDC, "/api/v1/auth/oidc", `{"cluster":"default"}`)
-	if rec.Code != http.StatusNotImplemented {
-		t.Fatalf("status = %d, want %d", rec.Code, http.StatusNotImplemented)
-	}
-
-	code, _ := authErrorResponse(t, rec)
-	if code != "not_implemented" {
-		t.Errorf("code = %q, want not_implemented", code)
-	}
-}
-
-//nolint:paralleltest // serial: shared fake auth and session fixtures
-func TestAuthCoverage_OIDC_WithStoreDisabledClusterReturns404(t *testing.T) {
-	handler, _ := newAuthHandlerWithStore(t)
-
-	rec := serveJSON(handler.OIDC, "/api/v1/auth/oidc", `{"cluster":"default"}`)
-	if rec.Code != http.StatusNotFound {
-		t.Fatalf("status = %d, want %d", rec.Code, http.StatusNotFound)
-	}
-
-	code, _ := authErrorResponse(t, rec)
-	if code != apiCodeNotFound {
-		t.Errorf("code = %q, want not_found", code)
-	}
-}
-
-//nolint:paralleltest // serial: shared fake auth and session fixtures
 func TestAuthCoverage_Principal_MalformedCookie(t *testing.T) {
 	handler := newAuthHandler(t)
 	req := httptest.NewRequest(http.MethodGet, "/api/v1/auth/me", nil)

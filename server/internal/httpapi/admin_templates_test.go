@@ -208,7 +208,7 @@ func assertDiscoveredTemplateValues(t *testing.T, tmpl adminTemplateDTO) {
 }
 
 // TestAdminTemplates_UpdateOverridesDiscovery - PUT /admin/templates/{cluster}/{vmid}
-// pins the stored field values against discovery-wins write-back (schemaV26).
+// pins the stored field values against discovery-wins write-back.
 // After the PUT, the list shows the overridden values, not the discovered ones.
 //
 //nolint:paralleltest // serial: shared fake dataset and database fixture

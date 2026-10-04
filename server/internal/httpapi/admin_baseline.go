@@ -64,8 +64,8 @@ func (h *AdminBaseline) ServeBaseline(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// The generated baseline is the same document the create path builds
-	// with no override and no user document.
-	generated, err := cloudinit.BuildVendorData(cloudinit.BaselineInputs{})
+	// with no user document.
+	generated, err := cloudinit.BuildVendorData("")
 	if err != nil {
 		// The generated baseline is built from constants - a failure here
 		// is a programmer error, not an operator condition.

@@ -155,15 +155,17 @@ func effectiveHardware(entity Entity, patch HardwarePatch, gabarit policy.Gabari
 		memoryMB = *patch.MemoryMB
 	}
 
-	if sockets < 1 || sockets > gabarit.MaxSockets {
+	// A zero gabarit field means no cap (same rule as CheckGabarit and the
+	// node capacités); a negative one stays a deny-all ceiling.
+	if sockets < 1 || (gabarit.MaxSockets != 0 && sockets > gabarit.MaxSockets) {
 		return 0, 0, 0, nil, fmt.Errorf("%w: sockets exceeds maxSockets", ErrHardwareExceedsLimit)
 	}
 
-	if cores < 1 || cores > gabarit.MaxCores {
+	if cores < 1 || (gabarit.MaxCores != 0 && cores > gabarit.MaxCores) {
 		return 0, 0, 0, nil, fmt.Errorf("%w: cores exceeds maxCores", ErrHardwareExceedsLimit)
 	}
 
-	if memoryMB < 1 || memoryMB > gabarit.MaxMemoryMB {
+	if memoryMB < 1 || (gabarit.MaxMemoryMB != 0 && memoryMB > gabarit.MaxMemoryMB) {
 		return 0, 0, 0, nil, fmt.Errorf("%w: memory exceeds maxMemoryMB", ErrHardwareExceedsLimit)
 	}
 

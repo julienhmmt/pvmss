@@ -74,7 +74,7 @@ func buildCraftedDB(t *testing.T, path string, rowsByTable map[string][]string) 
 		"catalog_isos":      `CREATE TABLE catalog_isos (cluster TEXT NOT NULL, node TEXT NOT NULL, storage TEXT NOT NULL, file TEXT NOT NULL, enabled BOOLEAN NOT NULL DEFAULT 1, PRIMARY KEY (cluster, node, storage, file))`,
 		"catalog_profiles":  `CREATE TABLE catalog_profiles (cluster TEXT NOT NULL, id TEXT NOT NULL, label TEXT NOT NULL, cpu_cores INTEGER NOT NULL, memory_mb INTEGER NOT NULL, disk_gb INTEGER NOT NULL, bus TEXT NOT NULL, enabled BOOLEAN NOT NULL DEFAULT 1, PRIMARY KEY (cluster, id))`,
 		tblCatalogTags:      `CREATE TABLE catalog_tags (cluster TEXT NOT NULL, name TEXT NOT NULL, color TEXT NOT NULL, created_at TEXT NOT NULL, PRIMARY KEY (cluster, name))`,
-		"vm_limits":         `CREATE TABLE vm_limits (cluster TEXT PRIMARY KEY, max_sockets INTEGER NOT NULL, max_cores INTEGER NOT NULL, max_memory_mb INTEGER NOT NULL, max_disk_per_vm_gb INTEGER NOT NULL, max_network_cards INTEGER NOT NULL, max_snapshots INTEGER NOT NULL, max_vm_per_user INTEGER NOT NULL, allow_custom_yaml BOOLEAN NOT NULL, isolation_vlan_tag INTEGER NOT NULL DEFAULT 0)`,
+		"vm_limits":         `CREATE TABLE vm_limits (cluster TEXT PRIMARY KEY, max_sockets INTEGER NOT NULL, max_cores INTEGER NOT NULL, max_memory_mb INTEGER NOT NULL, max_disk_per_vm_gb INTEGER NOT NULL, max_network_cards INTEGER NOT NULL, max_snapshots INTEGER NOT NULL, max_vm_per_user INTEGER NOT NULL, isolation_vlan_tag INTEGER NOT NULL DEFAULT 0)`,
 		"node_limits":       `CREATE TABLE node_limits (cluster TEXT NOT NULL, node TEXT NOT NULL, max_vms INTEGER NOT NULL, max_vcpus INTEGER NOT NULL, max_ram_gb INTEGER NOT NULL, max_disk_gb INTEGER NOT NULL, PRIMARY KEY (cluster, node))`,
 		tblAuditLog:         `CREATE TABLE audit_log (id INTEGER PRIMARY KEY AUTOINCREMENT, actor TEXT NOT NULL, cluster TEXT NOT NULL, vmid INTEGER NOT NULL, action TEXT NOT NULL, timestamp TEXT NOT NULL)`,
 		tblSessions:         `CREATE TABLE sessions (token_hash BLOB PRIMARY KEY, username TEXT NOT NULL, is_admin INTEGER NOT NULL, expires_at TEXT NOT NULL, created_at TEXT NOT NULL, pool TEXT NOT NULL DEFAULT '')`,
@@ -386,8 +386,9 @@ func TestConfirmImport_ReplacesPreviewedTables(t *testing.T) {
 
 // TestImportAllowlist_Sc005_ExcludesAuthSystemHistoryTables
 // a crafted upload with rows for catalog_tags (allowlisted) alongside
-// sessions, api_tokens, schema_migrations, and audit_log (all excluded);
-// after confirm, only catalog_tags changed, the four excluded tables are
+// sessions, api_tokens, schema_migrations, and audit_log (all excluded -
+// api_tokens only exists in old backups since V37 dropped it live);
+// after confirm, only catalog_tags changed, the live excluded tables are
 // byte-identical before/after.
 //
 //nolint:paralleltest // serial: shared staging map
@@ -401,7 +402,7 @@ func TestImportAllowlist_Sc005_ExcludesAuthSystemHistoryTables(t *testing.T) {
 
 	livePath := liveDBPath(ctx, t, st)
 	beforeRows := snapshotAllTables(t, livePath, []string{
-		tblSessions, tblAPITokens, tblSchemaMigrations, tblAuditLog, tblCatalogTags,
+		tblSessions, tblSchemaMigrations, tblAuditLog, tblCatalogTags,
 	})
 
 	// Craft an upload with catalog_tags rows (allowlisted) plus rows for each
@@ -457,12 +458,12 @@ func TestImportAllowlist_Sc005_ExcludesAuthSystemHistoryTables(t *testing.T) {
 	}
 
 	// After confirm: catalog_tags changed (replaced with the crafted rows),
-	// the four excluded tables are byte-identical to before.
+	// the live excluded tables are byte-identical to before.
 	afterRows := snapshotAllTables(t, livePath, []string{
-		tblSessions, tblAPITokens, tblSchemaMigrations, tblAuditLog, tblCatalogTags,
+		tblSessions, tblSchemaMigrations, tblAuditLog, tblCatalogTags,
 	})
 
-	for _, table := range []string{tblSessions, tblAPITokens, tblSchemaMigrations, tblAuditLog} {
+	for _, table := range []string{tblSessions, tblSchemaMigrations, tblAuditLog} {
 		if !equalStringSlices(beforeRows[table], afterRows[table]) {
 			t.Errorf("excluded table %s changed: before=%v after=%v", table, beforeRows[table], afterRows[table])
 		}
@@ -549,11 +550,10 @@ func seedExcludedTables(ctx context.Context, t *testing.T, st *store.Store) {
 	if err := st.RecordAction(ctx, "alice@pve", "default", 101, "start"); err != nil {
 		t.Fatalf("seed audit: %v", err)
 	}
-	// Seed sessions, api_tokens, schema_migrations directly via the Store's
-	// underlying connection through ExecContext on the exported helper.
-	// schema_migrations is already populated by migrations; we just verify it.
-	// sessions and api_tokens are seeded with a known row so the before/after
-	// comparison is meaningful.
+	// Seed sessions directly via the Store's underlying connection through
+	// ExecContext on the exported helper. schema_migrations is already
+	// populated by migrations; sessions is seeded with a known row so the
+	// before/after comparison is meaningful.
 	livePath := liveDBPath(ctx, t, st)
 
 	db, err := sql.Open("sqlite", "file:"+livePath)
@@ -566,11 +566,6 @@ func seedExcludedTables(ctx context.Context, t *testing.T, st *store.Store) {
 	_, err = db.ExecContext(ctx, `INSERT INTO sessions (token_hash, username, is_admin, expires_at, created_at, pool) VALUES (X'aaaa', 'admin', 1, '2099-01-01T00:00:00Z', '2026-01-01T00:00:00Z', '')`)
 	if err != nil {
 		t.Fatalf("seed sessions: %v", err)
-	}
-
-	_, err = db.ExecContext(ctx, `INSERT INTO api_tokens (id, token_hash, username, is_admin, scope, label, expires_at, created_at, last_used_at, pool) VALUES ('seed-id', X'bbbb', 'admin', 1, 'admin', 'seed', NULL, '2026-01-01T00:00:00Z', NULL, '')`)
-	if err != nil {
-		t.Fatalf("seed api_tokens: %v", err)
 	}
 }
 

@@ -33,6 +33,9 @@ const (
 
 // sharedStoragePlugins are Proxmox storage types that every node of a cluster
 // sees as one datastore. The dashboard lists them once, not once per node.
+// This is the fallback for sources that do not report the storage.cfg
+// `shared` flag (cluster.Storage.Shared); when the flag is present it is
+// authoritative and also covers non-listed plugins marked shared (e.g. dir).
 var sharedStoragePlugins = map[string]struct{}{
 	"rbd": {}, "cephfs": {}, "nfs": {}, "cifs": {}, "glusterfs": {},
 	"iscsi": {}, "iscsidirect": {}, "pbs": {},
@@ -312,34 +315,46 @@ func clusterStorages(clusterName string, idx *inventory.Index) []dashboardStorag
 
 	for _, node := range idx.Nodes {
 		for _, s := range idx.StoragesByNode[node.Name] {
-			if s.Total <= 0 {
-				continue
+			if dto, ok := dashboardStorage(clusterName, s, seenShared); ok {
+				out = append(out, dto)
 			}
-
-			kind := cmp.Or(s.PluginType, s.Type)
-			_, shared := sharedStoragePlugins[kind]
-
-			if shared {
-				if _, dup := seenShared[s.Name]; dup {
-					continue
-				}
-
-				seenShared[s.Name] = struct{}{}
-			}
-
-			dto := dashboardStorageDTO{
-				Cluster: clusterName, Name: s.Name, Node: s.Node, Type: kind, Shared: shared,
-				UsedBytes: s.Used, TotalBytes: s.Total, Percent: percentOf(s.Used, s.Total),
-			}
-			if shared {
-				dto.Node = ""
-			}
-
-			out = append(out, dto)
 		}
 	}
 
 	return out
+}
+
+// dashboardStorage maps one datastore to its row, skipping empty storages and
+// repeat sightings of a shared one (a shared datastore is listed once, with
+// no node attached).
+func dashboardStorage(clusterName string, s cluster.Storage, seenShared map[string]struct{}) (dashboardStorageDTO, bool) {
+	if s.Total <= 0 {
+		return dashboardStorageDTO{}, false
+	}
+
+	kind := cmp.Or(s.PluginType, s.Type)
+	_, pluginShared := sharedStoragePlugins[kind]
+	// The Proxmox `shared` flag is authoritative (a `dir` can be marked
+	// shared); the plugin list covers sources that do not report the flag.
+	shared := s.Shared || pluginShared
+
+	if shared {
+		if _, dup := seenShared[s.Name]; dup {
+			return dashboardStorageDTO{}, false
+		}
+
+		seenShared[s.Name] = struct{}{}
+	}
+
+	dto := dashboardStorageDTO{
+		Cluster: clusterName, Name: s.Name, Node: s.Node, Type: kind, Shared: shared,
+		UsedBytes: s.Used, TotalBytes: s.Total, Percent: percentOf(s.Used, s.Total),
+	}
+	if shared {
+		dto.Node = ""
+	}
+
+	return dto, true
 }
 
 func appendStorageAlert(alerts []dashboardAlertDTO, clusterKey string, s dashboardStorageDTO) []dashboardAlertDTO {

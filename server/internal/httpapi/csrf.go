@@ -25,7 +25,7 @@ type csrfMiddleware struct {
 // pvmss_csrf cookie and the X-CSRF-Token header; both must match the token
 // stored in the server-side session row.
 //
-// Public unauthenticated routes (login, admin-login, clusters, OIDC) and
+// Public unauthenticated routes (login, admin-login, clusters) and
 // requests with no session cookie are not subject to the cookie-based check.
 func newCSRFMiddleware(authHandler *Auth, st *store.Store, trustedProxyHops int) func(http.Handler) http.Handler {
 	m := &csrfMiddleware{auth: authHandler, store: st, trustedProxyHops: trustedProxyHops}
@@ -119,7 +119,7 @@ func csrfRequired(r *http.Request) bool {
 	}
 
 	switch r.URL.Path {
-	case "/api/v1/auth/login", "/api/v1/auth/admin-login", "/api/v1/auth/clusters", "/api/v1/auth/oidc":
+	case "/api/v1/auth/login", "/api/v1/auth/admin-login", "/api/v1/auth/clusters":
 		return false
 	}
 

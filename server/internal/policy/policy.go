@@ -15,7 +15,7 @@ import (
 )
 
 var (
-	// ErrQuotaExceeded reports a user at or above the configured quota.
+	// ErrQuotaExceeded reports a pool at or above the configured quota.
 	ErrQuotaExceeded = errors.New("quota exceeded")
 	// ErrGabaritExceeded reports a VM value above the configured gabarit.
 	ErrGabaritExceeded = errors.New("gabarit exceeded")
@@ -27,6 +27,9 @@ var (
 	ErrAboveNodeCapacity = errors.New("node capacity above physical capacity")
 	// ErrInvalidPolicy reports malformed policy values.
 	ErrInvalidPolicy = errors.New("invalid policy")
+	// ErrConcurrentUpdate reports a policy row still changing after the
+	// optimistic-concurrency retries of UpdatePolicy.
+	ErrConcurrentUpdate = errors.New("policy updated concurrently")
 	// ErrUnavailable reports a VM domain without its required policy service.
 	ErrUnavailable = errors.New("policy service unavailable")
 )
@@ -50,7 +53,8 @@ const (
 	dimensionDisk  = "disk"
 )
 
-// Gabarit is the administrator-editable size ceiling for one VM.
+// Gabarit is the administrator-editable size ceiling for one VM. A zero
+// field imposes no cap - the same convention as the node capacités.
 // IsolationVLANTag is the per-cluster imposed VLAN:
 // 0 means no tag imposed; a positive value is stamped on every created NIC.
 type Gabarit struct {
@@ -60,11 +64,10 @@ type Gabarit struct {
 	MaxDiskPerVMGB   int
 	MaxNetworkCards  int
 	MaxSnapshots     int
-	AllowCustomYAML  bool
 	IsolationVLANTag int
 }
 
-// Quota is the current VM count and per-user allowance.
+// Quota is the actor's pool VM count and the pool allowance.
 type Quota struct {
 	Used    int
 	Allowed int
@@ -94,6 +97,10 @@ type Capacity struct {
 	StorageUsedGB  int
 	StorageTotalGB int
 	TotalVMs       int
+
+	// Approved reports the node's catalog_nodes.enabled state: an unapproved
+	// node is excluded from placement entirely, so its caps never apply.
+	Approved bool
 }
 
 // CapacityDelta is the incremental VM footprint a capacity check is asked to
@@ -127,36 +134,103 @@ func DefaultGabarit() Gabarit {
 	return Gabarit{
 		MaxSockets: defaultMaxSockets, MaxCores: defaultMaxCores, MaxMemoryMB: defaultMaxMemoryMB,
 		MaxDiskPerVMGB: defaultMaxDiskPerVMGB, MaxNetworkCards: defaultMaxNetworkCards,
-		MaxSnapshots: defaultMaxSnapshots, AllowCustomYAML: true,
+		MaxSnapshots: defaultMaxSnapshots,
 	}
 }
 
-// Gabarit reads the current cluster gabarit from SQLite.
+// Settings is the stored administrator-edited policy for a cluster: the
+// gabarit plus the pool quota allowance, without usage data.
+type Settings struct {
+	Gabarit Gabarit
+	// Allowed is the pool VM allowance. -1 means unlimited.
+	Allowed int
+}
+
+// Settings reads the cluster's stored policy row in one query, falling back
+// to the shipped defaults when the cluster has none. Unlike Quota it reports
+// the stored allowance verbatim, with no identity-dependent adjustment.
+func (service *Policy) Settings(ctx context.Context, clusterName string) (Settings, error) {
+	row, err := service.policyRowOrDefault(ctx, clusterName)
+	if err != nil {
+		return Settings{}, err
+	}
+
+	return Settings{Gabarit: gabaritFromRow(row), Allowed: row.MaxVMPerUser}, nil
+}
+
+// Gabarit reads the current cluster gabarit from SQLite, falling back to the
+// shipped defaults when the cluster has no stored row.
 func (service *Policy) Gabarit(ctx context.Context, clusterName string) (Gabarit, error) {
-	row, err := service.store.PolicyRow(ctx, clusterName)
+	row, err := service.policyRowOrDefault(ctx, clusterName)
 	if err != nil {
 		return Gabarit{}, err
 	}
 
+	return gabaritFromRow(row), nil
+}
+
+func gabaritFromRow(row store.PolicyRow) Gabarit {
 	return Gabarit{
 		MaxSockets: row.MaxSockets, MaxCores: row.MaxCores, MaxMemoryMB: row.MaxMemoryMB,
 		MaxDiskPerVMGB: row.MaxDiskPerVMGB, MaxNetworkCards: row.MaxNetworkCards,
-		MaxSnapshots: row.MaxSnapshots, AllowCustomYAML: row.AllowCustomYAML,
+		MaxSnapshots:     row.MaxSnapshots,
 		IsolationVLANTag: row.IsolationVLANTag,
-	}, nil
+	}
 }
 
-// Quota reads the cluster allowance and calculates the actor's current pool
-// usage from the immutable inventory projection. Administrators have no pool
-// and therefore always receive the unlimited allowance.
-func (service *Policy) Quota(ctx context.Context, clusterName string, actor auth.Identity) (Quota, error) {
+// policyRowOrDefault reads the persisted policy row, substituting the shipped
+// defaults when the cluster has none yet: clusters created before
+// CreateCluster seeded a row, and pseudo-cluster names such as the
+// all-clusters view, which has no single cluster and must not fail the whole
+// request with a 500.
+func (service *Policy) policyRowOrDefault(ctx context.Context, clusterName string) (store.PolicyRow, error) {
 	row, err := service.store.PolicyRow(ctx, clusterName)
 	if errors.Is(err, sql.ErrNoRows) {
-		// A cluster with no stored limits - one added but never configured, or
-		// the all-clusters list, which has no single cluster - uses the
-		// defaults. Returning the error failed the whole list with a 500.
-		row = store.PolicyRow{Cluster: clusterName, MaxVMPerUser: defaultMaxVMPerUser}
-	} else if err != nil {
+		return defaultPolicyRow(clusterName), nil
+	}
+
+	return row, err
+}
+
+// defaultPolicyRow is the shipped policy row for a cluster that has none yet.
+func defaultPolicyRow(clusterName string) store.PolicyRow {
+	defaults := DefaultGabarit()
+
+	return store.PolicyRow{
+		Cluster:          clusterName,
+		MaxSockets:       defaults.MaxSockets,
+		MaxCores:         defaults.MaxCores,
+		MaxMemoryMB:      defaults.MaxMemoryMB,
+		MaxDiskPerVMGB:   defaults.MaxDiskPerVMGB,
+		MaxNetworkCards:  defaults.MaxNetworkCards,
+		MaxSnapshots:     defaults.MaxSnapshots,
+		MaxVMPerUser:     defaultMaxVMPerUser,
+		IsolationVLANTag: defaults.IsolationVLANTag,
+	}
+}
+
+// policyRowFrom flattens Settings back into its persisted row form.
+func policyRowFrom(clusterName string, settings Settings) store.PolicyRow {
+	return store.PolicyRow{
+		Cluster:          clusterName,
+		MaxSockets:       settings.Gabarit.MaxSockets,
+		MaxCores:         settings.Gabarit.MaxCores,
+		MaxMemoryMB:      settings.Gabarit.MaxMemoryMB,
+		MaxDiskPerVMGB:   settings.Gabarit.MaxDiskPerVMGB,
+		MaxNetworkCards:  settings.Gabarit.MaxNetworkCards,
+		MaxSnapshots:     settings.Gabarit.MaxSnapshots,
+		MaxVMPerUser:     settings.Allowed,
+		IsolationVLANTag: settings.Gabarit.IsolationVLANTag,
+	}
+}
+
+// Quota reads the cluster allowance and calculates the actor's pool usage
+// from the immutable inventory projection. The allowance applies to the
+// whole pool: accounts sharing one share its budget. Administrators have no
+// pool and therefore always receive the unlimited allowance.
+func (service *Policy) Quota(ctx context.Context, clusterName string, actor auth.Identity) (Quota, error) {
+	row, err := service.policyRowOrDefault(ctx, clusterName)
+	if err != nil {
 		return Quota{}, err
 	}
 

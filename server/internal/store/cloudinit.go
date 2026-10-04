@@ -8,17 +8,6 @@ import (
 	"time"
 )
 
-const schemaV8 = `CREATE TABLE vm_cloudinit_snippets (
-	cluster    TEXT NOT NULL,
-	vmid       INTEGER NOT NULL,
-	content    TEXT NOT NULL,
-	storage    TEXT NOT NULL,
-	filename   TEXT NOT NULL,
-	updated_at TEXT NOT NULL,
-	updated_by TEXT NOT NULL,
-	PRIMARY KEY (cluster, vmid)
-)`
-
 // CloudInitSnippet is the persisted custom cloud-init document and its server-owned target.
 type CloudInitSnippet struct {
 	Cluster   string

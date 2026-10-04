@@ -7,7 +7,7 @@
 	 * rules upfront: cap >= current usage, cap <= physical for vCPU/RAM.
 	 * Server rejections map back to the offending field by dimension word.
 	 */
-	import type { NodeCapacity, NodeCapacityPatch } from './policyNodes.svelte';
+	import { translateNodeCapacityError, type NodeCapacity, type NodeCapacityPatch } from './policyNodes.svelte';
 	import { m } from '$lib/paraglide/messages.js';
 	import Alert from '$lib/shared/ui/Alert.svelte';
 	import Button from '$lib/shared/ui/Button.svelte';
@@ -87,10 +87,13 @@
 	const errorField = $derived(
 		error != null && error !== '' && validationCodes.includes(errorCode ?? '') ? errorDimension(error) : null
 	);
-	const formError = $derived(error != null && error !== '' && errorField === null ? error : null);
+	const displayError = $derived(
+		error != null && error !== '' ? translateNodeCapacityError(errorCode, error) : null
+	);
+	const formError = $derived(displayError !== null && errorField === null ? displayError : null);
 
 	function fieldError(dimension: Dimension): string | null {
-		return errorField === dimension ? error : null;
+		return errorField === dimension ? displayError : null;
 	}
 
 	function submit(): void {

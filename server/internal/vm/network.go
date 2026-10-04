@@ -49,7 +49,8 @@ func UpdateNetwork(ctx context.Context, deps NetworkDependencies, requested []cl
 		return nil, err
 	}
 
-	if len(requested) > gabarit.MaxNetworkCards {
+	// A zero gabarit field means no cap.
+	if gabarit.MaxNetworkCards != 0 && len(requested) > gabarit.MaxNetworkCards {
 		return nil, ErrNetworkCardsExceedLimit
 	}
 

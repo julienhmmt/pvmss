@@ -232,14 +232,19 @@ type vmDetailDTO struct {
 	Status  string   `json:"status"`
 	Tags    []string `json:"tags"`
 	// OSType is Proxmox's kernel family ("l26", "win11"), not a distribution.
-	OSType            string                     `json:"ostype"`
-	CPUCores          int                        `json:"cpuCores"`
-	MemoryTotal       int64                      `json:"memoryTotal"`
-	DiskTotal         int64                      `json:"diskTotal"`
-	Sockets           int                        `json:"sockets"`
-	Cores             int                        `json:"cores"`
-	Disks             []cluster.Disk             `json:"disks"`
-	CDROM             cluster.CDROMState         `json:"cdrom"`
+	OSType      string             `json:"ostype"`
+	CPUCores    int                `json:"cpuCores"`
+	MemoryTotal int64              `json:"memoryTotal"`
+	DiskTotal   int64              `json:"diskTotal"`
+	Sockets     int                `json:"sockets"`
+	Cores       int                `json:"cores"`
+	Disks       []cluster.Disk     `json:"disks"`
+	CDROM       cluster.CDROMState `json:"cdrom"`
+	// BootOrder mirrors the VM's persistent boot=order=... key ("ide2",
+	// "scsi0", ...). The Connect tab reads it to tell an ISO-first boot
+	// (installation still in progress) from a disk-first boot even while an
+	// ISO remains attached.
+	BootOrder         []string                   `json:"bootOrder,omitempty"`
 	NetworkInterfaces []cluster.NetworkInterface `json:"networkInterfaces"`
 	HasSerial         bool                       `json:"hasSerial"`
 	UptimeSeconds     int64                      `json:"uptimeSeconds,omitempty"`

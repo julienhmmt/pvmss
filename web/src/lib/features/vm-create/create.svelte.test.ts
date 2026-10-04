@@ -240,7 +240,7 @@ describe('VmCreateStore.submit error translation', () => {
 	});
 
 	it('parses quota_exceeded into a localized message with used/allowed counts', async () => {
-		const err = new ApiRequestError(400, 'quota_exceeded', 'alice already owns 5 of 5 allowed VMs');
+		const err = new ApiRequestError(400, 'quota_exceeded', 'pool "team-a" already holds 5 of 5 allowed VMs');
 		const msg = await submitWithError(err);
 		expect(msg).not.toBeNull();
 		expect(msg).toContain('5');

@@ -49,6 +49,13 @@ handler attached a cause. Every audit-log row is also logged (`message` =
 The response header `X-Request-Id` carries the request ID, so a user can quote
 it. A valid inbound `X-Request-Id` (1-64 characters of `A-Za-z0-9._-`) is kept.
 
+Browser-side failures are logged too: the SPA posts uncaught errors, unhandled
+rejections and SvelteKit errors to `POST /api/v1/client-errors`, which logs
+them at `warn` as `client error reported` with `event` = `client_error`, the
+error `message`, the SPA `path`, and the `stack` when present. The endpoint is
+unauthenticated (a pre-login error must still report) and per-IP rate limited
+at 60/min, so a loop of errors cannot lock out logins or flood the log.
+
 The startup banner (`pvmss starting`) states the version, commit, Go version,
 cluster source and names, log level and format, listen address, whether OTel is
 on (and the collector host only), and the metrics address.

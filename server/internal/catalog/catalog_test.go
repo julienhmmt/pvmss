@@ -6,11 +6,12 @@ import (
 	"pvmss/server/internal/catalog"
 	"pvmss/server/internal/config"
 	"pvmss/server/internal/store"
+	"pvmss/server/internal/testfixture"
 	"testing"
 )
 
-// openCatalogStore opens a migrated store in a temp dir - the catalog fixture
-// is seeded by migration version 7, so a fresh DB carries it.
+// openCatalogStore opens a migrated store in a temp dir seeded with the demo
+// catalog fixture for cluster "default".
 func openCatalogStore(t *testing.T) *store.Store {
 	t.Helper()
 
@@ -25,6 +26,8 @@ func openCatalogStore(t *testing.T) *store.Store {
 	}
 
 	t.Cleanup(func() { _ = st.Close() })
+
+	testfixture.SeedDemoFixtures(t, st)
 
 	return st
 }

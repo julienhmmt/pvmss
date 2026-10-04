@@ -68,7 +68,6 @@ func TestRegisterAdminRoutes_AllGroupsRegistered(t *testing.T) {
 		"POST /api/v1/admin/clusters",
 		"PUT /api/v1/admin/clusters/{name}",
 		"POST /api/v1/admin/clusters/{name}/test",
-		"POST /api/v1/admin/clusters/{name}/oidc",
 		"DELETE /api/v1/admin/clusters/{name}",
 		"GET /api/v1/admin/docs",
 		"POST /api/v1/admin/docs",

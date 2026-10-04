@@ -10,7 +10,6 @@ export interface Gabarit {
 	maxDiskPerVmGb: number;
 	maxNetworkCards: number;
 	maxSnapshots: number;
-	allowCustomYaml: boolean;
 	isolationVlanTag: number;
 }
 
@@ -31,7 +30,6 @@ export interface GabaritPatch {
 	maxDiskPerVmGb?: number;
 	maxNetworkCards?: number;
 	maxSnapshots?: number;
-	allowCustomYaml?: boolean;
 	isolationVlanTag?: number;
 }
 

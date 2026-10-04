@@ -8,13 +8,15 @@ import (
 	"path/filepath"
 	"pvmss/server/internal/config"
 	"pvmss/server/internal/store"
+	"pvmss/server/internal/testfixture"
 	"testing"
 
 	_ "modernc.org/sqlite"
 )
 
-// newExportStore opens a fully-migrated Store with a couple of audit rows so
-// the exported snapshot has non-empty tables to verify against.
+// newExportStore opens a fully-migrated Store with the demo catalog fixture
+// and a couple of audit rows so the exported snapshot has non-empty tables
+// to verify against.
 func newExportStore(t *testing.T) *store.Store {
 	t.Helper()
 	cfg := config.Configuration{
@@ -31,6 +33,8 @@ func newExportStore(t *testing.T) *store.Store {
 	}
 
 	t.Cleanup(func() { _ = st.Close() })
+
+	testfixture.SeedDemoFixtures(t, st)
 
 	ctx := context.Background()
 	if err := st.RecordAction(ctx, "alice@pve", "default", 101, "start"); err != nil {

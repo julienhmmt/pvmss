@@ -8,13 +8,14 @@ import (
 	"pvmss/server/internal/cluster"
 	"pvmss/server/internal/config"
 	"pvmss/server/internal/store"
+	"pvmss/server/internal/testfixture"
 	"testing"
 )
 
 const storageLocalLVM = "local-lvm"
 
-// openAdminStore opens a fully-migrated store (V9) with the seed and the
-// pvmss tag, ready for admin catalog operations.
+// openAdminStore opens a fully-migrated store seeded with the demo catalog
+// fixture and the pvmss tag, ready for admin catalog operations.
 func openAdminStore(t *testing.T) *store.Store {
 	t.Helper()
 
@@ -29,6 +30,8 @@ func openAdminStore(t *testing.T) *store.Store {
 	}
 
 	t.Cleanup(func() { _ = st.Close() })
+
+	testfixture.SeedDemoFixtures(t, st)
 
 	return st
 }

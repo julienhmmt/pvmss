@@ -15,6 +15,7 @@ import (
 	"pvmss/server/internal/httpapi"
 	"pvmss/server/internal/inventory"
 	"pvmss/server/internal/store"
+	"pvmss/server/internal/testfixture"
 	"strings"
 	"testing"
 	"time"
@@ -80,6 +81,8 @@ func newVMCreateHandlerWithClient(t *testing.T, client cluster.Client) (*httpapi
 	}
 
 	t.Cleanup(func() { _ = st.Close() })
+
+	testfixture.SeedDemoFixtures(t, st)
 	seedBridgeApprovals(t, st)
 	seedISOApprovals(t, st)
 	seedTagApprovals(t, st)

@@ -370,17 +370,24 @@ type documentTemplateDTO struct {
 	DocumentError string `json:"documentError"`
 }
 
-// TestAdminCloudInitTemplates_DocumentCommandAndPresence - saving a template
-// returns the file, the command to paste and where it is (read live); an
-// edit yields a new file; the list carries the same; a disabled template
-// is not checked.
-//
-//nolint:gocyclo,paralleltest // serial: shared fake snippet state
-func TestAdminCloudInitTemplates_DocumentCommandAndPresence(t *testing.T) {
-	handler, authHandler, _ := newAdminHandler(t)
-	cookie := adminCookie(t, authHandler)
+// citTemplateList GETs the template list and decodes it.
+func citTemplateList(t *testing.T, handler *httpapi.AdminCatalog, auth *httpapi.Auth, cookie *http.Cookie) []documentTemplateDTO {
+	t.Helper()
 
-	create := citPost(t, handler, authHandler, cookie, "/api/v1/admin/cloudinit-templates",
+	var list []documentTemplateDTO
+	if err := json.Unmarshal(citGet(t, handler, auth, cookie, "/api/v1/admin/cloudinit-templates?cluster=default").Body.Bytes(), &list); err != nil {
+		t.Fatalf("decode list: %v", err)
+	}
+
+	return list
+}
+
+// createDocumentedTemplate saves the "Web server" template and wants the
+// response to carry its content-addressed document, present on every node.
+func createDocumentedTemplate(t *testing.T, handler *httpapi.AdminCatalog, auth *httpapi.Auth, cookie *http.Cookie) documentTemplateDTO {
+	t.Helper()
+
+	create := citPost(t, handler, auth, cookie, "/api/v1/admin/cloudinit-templates",
 		`{"cluster":"default","label":"Web server","content":"#cloud-config\npackages:\n  - nginx\n"}`)
 	if create.Code != http.StatusCreated {
 		t.Fatalf("create status = %d: %s", create.Code, create.Body.String())
@@ -405,7 +412,15 @@ func TestAdminCloudInitTemplates_DocumentCommandAndPresence(t *testing.T) {
 		}
 	}
 
-	update := citPut(t, handler, authHandler, cookie, "/api/v1/admin/cloudinit-templates/web-server",
+	return created
+}
+
+// updateDocumentedTemplate swaps nginx for apache2 and wants the updated
+// document back.
+func updateDocumentedTemplate(t *testing.T, handler *httpapi.AdminCatalog, auth *httpapi.Auth, cookie *http.Cookie) documentTemplateDTO {
+	t.Helper()
+
+	update := citPut(t, handler, auth, cookie, "/api/v1/admin/cloudinit-templates/web-server",
 		`{"cluster":"default","label":"Web server","content":"#cloud-config\npackages:\n  - apache2\n"}`)
 
 	var updated documentTemplateDTO
@@ -413,24 +428,51 @@ func TestAdminCloudInitTemplates_DocumentCommandAndPresence(t *testing.T) {
 		t.Fatalf("update = %s", update.Body.String())
 	}
 
+	return updated
+}
+
+// assertListedDocument wants the template list to carry exactly the current
+// document file.
+func assertListedDocument(t *testing.T, handler *httpapi.AdminCatalog, auth *httpapi.Auth, cookie *http.Cookie, filename string) {
+	t.Helper()
+
+	list := citTemplateList(t, handler, auth, cookie)
+	if len(list) != 1 || list[0].Document == nil || list[0].Document.Filename != filename {
+		t.Fatalf("list = %+v, want the current document", list)
+	}
+}
+
+// assertDisabledHasNoDocument disables the template and wants the list to
+// stop checking it (no document).
+func assertDisabledHasNoDocument(t *testing.T, handler *httpapi.AdminCatalog, auth *httpapi.Auth, cookie *http.Cookie) {
+	t.Helper()
+
+	if rec := citPost(t, handler, auth, cookie, "/api/v1/admin/cloudinit-templates/web-server/toggle", `{"cluster":"default","enabled":false}`); rec.Code != http.StatusOK {
+		t.Fatalf("toggle = %d %s", rec.Code, rec.Body.String())
+	}
+
+	if list := citTemplateList(t, handler, auth, cookie); len(list) != 1 || list[0].Document != nil {
+		t.Fatalf("disabled template list = %+v, want no document", list)
+	}
+}
+
+// TestAdminCloudInitTemplates_DocumentCommandAndPresence - saving a template
+// returns the file, the command to paste and where it is (read live); an
+// edit yields a new file; the list carries the same; a disabled template
+// is not checked.
+//
+//nolint:paralleltest // serial: shared fake snippet state
+func TestAdminCloudInitTemplates_DocumentCommandAndPresence(t *testing.T) {
+	handler, authHandler, _ := newAdminHandler(t)
+	cookie := adminCookie(t, authHandler)
+
+	created := createDocumentedTemplate(t, handler, authHandler, cookie)
+	updated := updateDocumentedTemplate(t, handler, authHandler, cookie)
+
 	if updated.Document.Filename == created.Document.Filename {
 		t.Error("an edit must yield a new immutable file")
 	}
 
-	var list []documentTemplateDTO
-	if err := json.Unmarshal(citGet(t, handler, authHandler, cookie, "/api/v1/admin/cloudinit-templates?cluster=default").Body.Bytes(), &list); err != nil {
-		t.Fatalf("decode list: %v", err)
-	}
-
-	if len(list) != 1 || list[0].Document == nil || list[0].Document.Filename != updated.Document.Filename {
-		t.Fatalf("list = %+v, want the current document", list)
-	}
-
-	if rec := citPost(t, handler, authHandler, cookie, "/api/v1/admin/cloudinit-templates/web-server/toggle", `{"cluster":"default","enabled":false}`); rec.Code != http.StatusOK {
-		t.Fatalf("toggle = %d %s", rec.Code, rec.Body.String())
-	}
-
-	if err := json.Unmarshal(citGet(t, handler, authHandler, cookie, "/api/v1/admin/cloudinit-templates?cluster=default").Body.Bytes(), &list); err != nil || list[0].Document != nil {
-		t.Fatalf("disabled template list = %+v/%v, want no document", list, err)
-	}
+	assertListedDocument(t, handler, authHandler, cookie, updated.Document.Filename)
+	assertDisabledHasNoDocument(t, handler, authHandler, cookie)
 }

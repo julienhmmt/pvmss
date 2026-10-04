@@ -80,8 +80,8 @@ type TemplateApproval struct {
 	// DiskUnreadable is true when the template's config read failed: the row is shown greyed out
 	// and enabling is refused.
 	DiskUnreadable bool
-	// OverrideDiscovery is true when an admin pinned the editable fields
-	// (schemaV26). The list then shows the stored (overridden) values
+	// OverrideDiscovery is true when an admin pinned the editable fields.
+	// The list then shows the stored (overridden) values
 	// instead of the discovered ones and skips the drift write-back.
 	OverrideDiscovery bool
 }

@@ -120,7 +120,8 @@ func CreateSnapshot(ctx context.Context, deps SnapshotDependencies, name, descri
 		return "", err
 	}
 	maxSnapshots := gabarit.MaxSnapshots
-	if countRealSnapshots(snapshots) >= maxSnapshots {
+	// A zero gabarit field means no cap.
+	if maxSnapshots != 0 && countRealSnapshots(snapshots) >= maxSnapshots {
 		return "", fmt.Errorf("%w: this VM already holds the maximum of %d snapshots", ErrMaxSnapshotsReached, maxSnapshots)
 	}
 	if err := validateVMState(entity, deps.Index, vmstate); err != nil {

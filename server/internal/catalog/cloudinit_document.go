@@ -21,7 +21,7 @@ const publishedHashLen = 12
 // baseline with the template merged on top. An empty template is the
 // standalone baseline.
 func PublishedContent(templateContent string) (string, error) {
-	return cloudinit.BuildVendorData(cloudinit.BaselineInputs{UserDocument: templateContent})
+	return cloudinit.BuildVendorData(templateContent)
 }
 
 // IsBaseline reports whether key is the standalone baseline document key.

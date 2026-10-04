@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { getVmCreateContext } from '../create.svelte';
+	import { getVmCreateContext, gabaritCeiling } from '../create.svelte';
 	import { m } from '$lib/paraglide/messages.js';
 	import Checkbox from '$lib/shared/ui/Checkbox.svelte';
 	import FormField from '$lib/shared/ui/FormField.svelte';
@@ -27,9 +27,9 @@
 			: null
 	);
 
-	const maxSockets = $derived(form.catalog?.gabarit?.maxSockets ?? 4);
-	const maxCores = $derived(form.catalog?.gabarit?.maxCores ?? 32);
-	const maxMemoryMB = $derived(form.catalog?.gabarit?.maxMemoryMB ?? 65536);
+	const maxSockets = $derived(gabaritCeiling(form.catalog?.gabarit?.maxSockets, 4));
+	const maxCores = $derived(gabaritCeiling(form.catalog?.gabarit?.maxCores, 32));
+	const maxMemoryMB = $derived(gabaritCeiling(form.catalog?.gabarit?.maxMemoryMB, 65536));
 
 	const socketsError = $derived(
 		Number.isInteger(form.sockets) && form.sockets >= 1 && form.sockets <= maxSockets

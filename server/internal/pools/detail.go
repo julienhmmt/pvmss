@@ -34,19 +34,9 @@ type PoolDetail struct {
 // ErrProjectionNotReady when the inventory has not completed its first
 // refresh.
 func Detail(ctx context.Context, client cluster.Client, projection *inventory.Projection, checker *store.Store, clusterName, name string) (PoolDetail, error) {
-	poolList, err := client.ListPools(ctx)
+	pool, err := findPool(ctx, client, name)
 	if err != nil {
 		return PoolDetail{}, err
-	}
-	var pool *cluster.Pool
-	for i := range poolList {
-		if poolList[i].Name == name {
-			pool = &poolList[i]
-			break
-		}
-	}
-	if pool == nil {
-		return PoolDetail{}, fmt.Errorf("%w: %q", ErrNotFound, name)
 	}
 	index := projection.Load()
 	if index == nil {
@@ -61,18 +51,43 @@ func Detail(ctx context.Context, client cluster.Client, projection *inventory.Pr
 	if detail.Members == nil {
 		detail.Members = []cluster.VM{}
 	}
-	if checker != nil && clusterName != "" {
-		managed, err := checker.ManagedPools(ctx, clusterName)
-		if err != nil {
-			return PoolDetail{}, err
-		}
-		for _, entry := range managed {
-			if entry.Name == name {
-				detail.Managed = true
-				detail.CreatedAt = entry.CreatedAt
-				break
-			}
-		}
+	if err := detail.markManaged(ctx, checker, clusterName); err != nil {
+		return PoolDetail{}, err
 	}
 	return detail, nil
+}
+
+// findPool resolves name against the cluster's pool list, or returns
+// ErrNotFound when no pool with that name exists.
+func findPool(ctx context.Context, client cluster.Client, name string) (cluster.Pool, error) {
+	poolList, err := client.ListPools(ctx)
+	if err != nil {
+		return cluster.Pool{}, err
+	}
+	for _, pool := range poolList {
+		if pool.Name == name {
+			return pool, nil
+		}
+	}
+	return cluster.Pool{}, fmt.Errorf("%w: %q", ErrNotFound, name)
+}
+
+// markManaged joins the managed-pool registration (marker and creation
+// timestamp) into the detail when PVMSS provisioned the pool.
+func (detail *PoolDetail) markManaged(ctx context.Context, checker *store.Store, clusterName string) error {
+	if checker == nil || clusterName == "" {
+		return nil
+	}
+	managed, err := checker.ManagedPools(ctx, clusterName)
+	if err != nil {
+		return err
+	}
+	for _, entry := range managed {
+		if entry.Name == detail.Name {
+			detail.Managed = true
+			detail.CreatedAt = entry.CreatedAt
+			break
+		}
+	}
+	return nil
 }

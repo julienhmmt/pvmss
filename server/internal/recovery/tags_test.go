@@ -85,16 +85,16 @@ func TestMapTags_EmptyTable(t *testing.T) {
 	}
 }
 
-// Pvmss row upsert is a no-op when it already exists (v0.4 seeds it).
+// Pvmss row upsert is a no-op when the row already exists.
 func TestUpsertTag_PvmssNoop(t *testing.T) {
 	t.Parallel()
 
 	v04DB := openV04DB(t)
 	ctx := context.Background()
 
-	// v0.4 already has the pvmss seed row - verify it exists
-	if count := countRows(t, v04DB, `SELECT COUNT(*) FROM catalog_tags WHERE cluster = ? AND name = ?`, "default", "pvmss"); count != 1 {
-		t.Fatalf("pvmss seed row missing: count = %d", count)
+	// Insert the pvmss row the runtime ensure path would have created.
+	if _, err := v04DB.ExecContext(ctx, `INSERT INTO catalog_tags (cluster, name, color, created_at) VALUES ('default', 'pvmss', '#4f46e5', '2026-08-12T12:00:00Z')`); err != nil {
+		t.Fatalf("insert pvmss tag: %v", err)
 	}
 
 	// Upsert pvmss with a different color - should update, not duplicate

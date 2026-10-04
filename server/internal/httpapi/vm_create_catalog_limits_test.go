@@ -13,6 +13,7 @@ import (
 	"pvmss/server/internal/inventory"
 	"pvmss/server/internal/policy"
 	"pvmss/server/internal/store"
+	"pvmss/server/internal/testfixture"
 	"testing"
 )
 
@@ -33,6 +34,8 @@ func newVMCreateHandlerWithPolicy(t *testing.T) (*httpapi.VMCreate, *httpapi.Aut
 	}
 
 	t.Cleanup(func() { _ = st.Close() })
+
+	testfixture.SeedDemoFixtures(t, st)
 	seedBridgeApprovals(t, st)
 	seedISOApprovals(t, st)
 	seedTagApprovals(t, st)

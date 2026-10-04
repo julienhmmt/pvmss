@@ -79,7 +79,25 @@ func parseLines(t *testing.T, buf *bytes.Buffer) []map[string]any {
 	return out
 }
 
-//nolint:gocyclo // one linear scenario asserting log, trace and metric output
+// checkRetryWarn asserts the retry WARN line carries the attempt and error.
+func checkRetryWarn(t *testing.T, l map[string]any) {
+	t.Helper()
+
+	if l["msg"] != "proxmox request retrying" || l["attempt"] != float64(1) || l["error"] != "HTTP 503" {
+		t.Errorf("warn line = %v", l)
+	}
+}
+
+// checkTemplatedDebug asserts the DEBUG line carries the templated path and
+// cluster, never the raw path or the token.
+func checkTemplatedDebug(t *testing.T, l map[string]any) {
+	t.Helper()
+
+	if l["path"] != "/nodes/{node}/qemu/{vmid}/status/current" || l["cluster"] != "lab" || l["method"] != "GET" || l["durationMs"] == nil {
+		t.Errorf("debug line = %v", l)
+	}
+}
+
 func TestProxmoxREST_RetryWarnsAndDebugLogsTemplatedPath(t *testing.T) {
 	t.Parallel()
 
@@ -104,15 +122,11 @@ func TestProxmoxREST_RetryWarnsAndDebugLogsTemplatedPath(t *testing.T) {
 		case "WARN":
 			warns++
 
-			if l["msg"] != "proxmox request retrying" || l["attempt"] != float64(1) || l["error"] != "HTTP 503" {
-				t.Errorf("warn line = %v", l)
-			}
+			checkRetryWarn(t, l)
 		case "DEBUG":
 			debugs++
 
-			if l["path"] != "/nodes/{node}/qemu/{vmid}/status/current" || l["cluster"] != "lab" || l["method"] != "GET" || l["durationMs"] == nil {
-				t.Errorf("debug line = %v", l)
-			}
+			checkTemplatedDebug(t, l)
 		default:
 			t.Errorf("unexpected level: %v", l)
 		}
