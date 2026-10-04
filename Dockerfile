@@ -21,6 +21,11 @@ RUN --mount=type=cache,target=/root/.cache/go-build \
     CGO_ENABLED=0 GOOS=linux \
     go build -trimpath -ldflags='-w -s' -tags netgo -o pvmss ./cmd/pvmss
 
+# Empty /data directory carried into the final image. Without it the image has
+# no /data, and a fresh named Docker volume mounted there is initialized
+# root:root 0755 - unwritable by the nonroot runtime uid (SQLITE_CANTOPEN).
+RUN mkdir /data
+
 # Build SvelteKit SPA (v0.4 web)
 FROM oven/bun:1-alpine AS svelte-builder
 WORKDIR /app/web
@@ -43,6 +48,8 @@ WORKDIR /app
 COPY --from=builder --chown=nonroot:nonroot /app/pvmss /app/pvmss
 # SvelteKit build output (v0.4 web)
 COPY --from=svelte-builder --chown=nonroot:nonroot /app/web/build/ /app/web/build/
+# Database directory owned by the runtime user (see builder stage).
+COPY --from=builder --chown=nonroot:nonroot /data /data
 
 # Default database path (override at runtime with -e PVMSS_DB_PATH=...)
 ENV PVMSS_DB_PATH=/data/pvmss.db
