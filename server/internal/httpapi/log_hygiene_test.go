@@ -28,26 +28,34 @@ func TestHandlersDoNotLogErrorThenFailTheRequest(t *testing.T) {
 			continue
 		}
 
-		src, err := os.ReadFile(f) //nolint:gosec // reads repo source files
-		if err != nil {
-			t.Fatal(err)
+		checkLogHygiene(t, f, logErr, failing)
+	}
+}
+
+// checkLogHygiene reports each Error log in file f that a failing status
+// write follows within six lines.
+func checkLogHygiene(t *testing.T, f string, logErr, failing *regexp.Regexp) {
+	t.Helper()
+
+	src, err := os.ReadFile(f) //nolint:gosec // reads repo source files
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	lines := strings.Split(string(src), "\n")
+	for i, l := range lines {
+		if !logErr.MatchString(l) {
+			continue
 		}
 
-		lines := strings.Split(string(src), "\n")
-		for i, l := range lines {
-			if !logErr.MatchString(l) {
-				continue
+		for _, next := range lines[i+1 : min(i+7, len(lines))] {
+			trimmed := strings.TrimSpace(next)
+			if failing.MatchString(next) {
+				t.Errorf("%s:%d logs at Error then writes a failing status; use SetErrorMsg", f, i+1)
 			}
 
-			for _, next := range lines[i+1 : min(i+7, len(lines))] {
-				trimmed := strings.TrimSpace(next)
-				if failing.MatchString(next) {
-					t.Errorf("%s:%d logs at Error then writes a failing status; use SetErrorMsg", f, i+1)
-				}
-
-				if strings.HasPrefix(trimmed, "return") || trimmed == "}" {
-					break
-				}
+			if strings.HasPrefix(trimmed, "return") || trimmed == "}" {
+				break
 			}
 		}
 	}
