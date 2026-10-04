@@ -80,7 +80,8 @@ func AddDisk(ctx context.Context, deps DiskDependencies, bus cluster.DiskBus, st
 		return cluster.Disk{}, err
 	}
 
-	if sizeGB > gabarit.MaxDiskPerVMGB {
+	// A zero gabarit field means no cap.
+	if gabarit.MaxDiskPerVMGB != 0 && sizeGB > gabarit.MaxDiskPerVMGB {
 		return cluster.Disk{}, ErrDiskSizeExceedsLimit
 	}
 
@@ -132,7 +133,8 @@ func ResizeDisk(ctx context.Context, deps DiskDependencies, diskKey string, size
 		return policy.ErrUnavailable
 	}
 
-	if sizeGB > gabarit.MaxDiskPerVMGB {
+	// A zero gabarit field means no cap.
+	if gabarit.MaxDiskPerVMGB != 0 && sizeGB > gabarit.MaxDiskPerVMGB {
 		return ErrDiskSizeExceedsLimit
 	}
 

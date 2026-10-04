@@ -85,6 +85,13 @@ export interface CatalogGabarit {
 	isolationVlanTag: number;
 }
 
+/** The effective UI ceiling for a gabarit field: 0 means no cap (the server
+ *  enforces the same rule), so the fallback rail applies for the input's
+ *  max attribute. */
+export function gabaritCeiling(value: number | undefined, fallback: number): number {
+	return value != null && value > 0 ? value : fallback;
+}
+
 /** The caller's own VM count against the cluster's per-user allowance.
  *  allowed is -1 for unlimited. */
 export interface CatalogQuota {
@@ -627,7 +634,7 @@ export class VmCreateStore {
 	/** Adds a NIC row in detailed mode, up to gabarit.maxNetworkCards (US2/D3a). */
 	addNIC(): void {
 		const max = this.catalog?.gabarit?.maxNetworkCards ?? 4;
-		if (this.nics.length >= max) return;
+		if (max !== 0 && this.nics.length >= max) return;
 		this.nics.push({ bridge: '', model: 'virtio' });
 	}
 
