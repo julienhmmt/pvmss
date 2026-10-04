@@ -130,3 +130,21 @@ func newPolicyService(t *testing.T) (*policy.Policy, *inventory.Projection) {
 
 	return policy.New(st, projection, fake), projection
 }
+
+func TestPolicyReads_MissingRow_ReturnsDefaults(t *testing.T) {
+	t.Parallel()
+
+	service, _ := newPolicyService(t)
+	ctx := context.Background()
+
+	// "ghost" has no vm_limits row: reads fall back to the shipped defaults
+	// instead of failing the whole request.
+	gabarit, err := service.Gabarit(ctx, "ghost")
+	if err != nil {
+		t.Fatalf("Gabarit: %v", err)
+	}
+
+	if gabarit != policy.DefaultGabarit() {
+		t.Fatalf("gabarit = %+v, want %+v", gabarit, policy.DefaultGabarit())
+	}
+}

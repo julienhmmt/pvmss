@@ -25,7 +25,7 @@ func (service *Policy) SetGabarit(ctx context.Context, clusterName string, gabar
 		return err
 	}
 
-	row, err := service.store.PolicyRow(ctx, clusterName)
+	row, err := service.policyRowOrDefault(ctx, clusterName)
 	if err != nil {
 		return err
 	}
@@ -52,7 +52,7 @@ func (service *Policy) SetPolicy(ctx context.Context, clusterName string, gabari
 		return fmt.Errorf("%w: maxVmPerUser must be between -1 and %d", ErrInvalidPolicy, maxVMPerUserLimit)
 	}
 
-	row, err := service.store.PolicyRow(ctx, clusterName)
+	row, err := service.policyRowOrDefault(ctx, clusterName)
 	if err != nil {
 		return err
 	}
@@ -71,7 +71,7 @@ func (service *Policy) SetQuota(ctx context.Context, clusterName string, allowed
 		return fmt.Errorf("%w: maxVmPerUser must be between -1 and %d", ErrInvalidPolicy, maxVMPerUserLimit)
 	}
 
-	row, err := service.store.PolicyRow(ctx, clusterName)
+	row, err := service.policyRowOrDefault(ctx, clusterName)
 	if err != nil {
 		return err
 	}

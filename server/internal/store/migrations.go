@@ -374,6 +374,18 @@ const schemaV33 = `CREATE TABLE profile_ssh_keys (
 	UNIQUE (cluster, username, public_key)
 )`
 
+// schemaV34 backfills vm_limits rows for clusters created before
+// CreateCluster started seeding one. Without a row, GET/PUT /admin/policy and
+// the VM-creation gabarit check failed with a 500 for the whole cluster.
+// The values are the same shipped defaults as the schemaV10 'default' seed.
+const schemaV34 = `INSERT INTO vm_limits (
+	cluster, max_sockets, max_cores, max_memory_mb, max_disk_per_vm_gb,
+	max_network_cards, max_snapshots, max_vm_per_user, allow_custom_yaml, isolation_vlan_tag
+)
+SELECT name, 4, 8, 16384, 500, 4, 5, -1, 1, 0
+FROM clusters
+WHERE NOT EXISTS (SELECT 1 FROM vm_limits WHERE vm_limits.cluster = clusters.name)`
+
 // Migration is a single schema version and its forward-only DDL.
 type Migration struct {
 	Version int
@@ -416,4 +428,5 @@ var Migrations = []Migration{
 	{Version: 31, DDL: schemaV31},
 	{Version: 32, DDL: schemaV32},
 	{Version: 33, DDL: schemaV33},
+	{Version: 34, DDL: schemaV34},
 }

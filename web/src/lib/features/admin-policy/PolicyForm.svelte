@@ -71,43 +71,50 @@
 		return m['policy.errorOutOfRange']({ field, min: String(min), max: String(max) });
 	}
 
+	// An emptied number input binds null, which both range comparisons would
+	// pass - the JSON null then reads as "not patched" and the save silently
+	// keeps the old value. Treat empty as out of range instead.
+	function outOfRange(value: number | null | undefined, min: number, max: number): boolean {
+		return value == null || value < min || value > max;
+	}
+
 	const maxSocketsError = $derived(
-		form.gabarit.maxSockets < 0 || form.gabarit.maxSockets > MAX_SOCKETS
+		outOfRange(form.gabarit.maxSockets, 0, MAX_SOCKETS)
 			? outOfRangeMessage(m['policy.maxSockets'](), 0, MAX_SOCKETS)
 			: null
 	);
 	const maxCoresError = $derived(
-		form.gabarit.maxCores < 0 || form.gabarit.maxCores > MAX_CORES
+		outOfRange(form.gabarit.maxCores, 0, MAX_CORES)
 			? outOfRangeMessage(m['policy.maxCores'](), 0, MAX_CORES)
 			: null
 	);
 	const maxMemoryError = $derived(
-		form.gabarit.maxMemoryMB < 0 || form.gabarit.maxMemoryMB > MAX_MEMORY_MB
+		outOfRange(form.gabarit.maxMemoryMB, 0, MAX_MEMORY_MB)
 			? outOfRangeMessage(m['policy.maxMemory'](), 0, MAX_MEMORY_MB)
 			: null
 	);
 	const maxDiskError = $derived(
-		form.gabarit.maxDiskPerVmGb < 0 || form.gabarit.maxDiskPerVmGb > MAX_DISK_GB
+		outOfRange(form.gabarit.maxDiskPerVmGb, 0, MAX_DISK_GB)
 			? outOfRangeMessage(m['policy.maxDisk'](), 0, MAX_DISK_GB)
 			: null
 	);
 	const maxNetworkCardsError = $derived(
-		form.gabarit.maxNetworkCards < 0 || form.gabarit.maxNetworkCards > MAX_NETWORK_CARDS
+		outOfRange(form.gabarit.maxNetworkCards, 0, MAX_NETWORK_CARDS)
 			? outOfRangeMessage(m['policy.maxNetworkCards'](), 0, MAX_NETWORK_CARDS)
 			: null
 	);
 	const maxSnapshotsError = $derived(
-		form.gabarit.maxSnapshots < 0 || form.gabarit.maxSnapshots > MAX_SNAPSHOTS
+		outOfRange(form.gabarit.maxSnapshots, 0, MAX_SNAPSHOTS)
 			? outOfRangeMessage(m['policy.maxSnapshots'](), 0, MAX_SNAPSHOTS)
 			: null
 	);
 	const maxVmPerUserError = $derived(
-		form.maxVmPerUser < -1 || form.maxVmPerUser > MAX_VM_PER_USER
+		outOfRange(form.maxVmPerUser, -1, MAX_VM_PER_USER)
 			? outOfRangeMessage(m['policy.maxVmPerUser'](), -1, MAX_VM_PER_USER)
 			: null
 	);
 	const isolationVlanError = $derived(
-		form.gabarit.isolationVlanTag < 0 || form.gabarit.isolationVlanTag > 4094
+		outOfRange(form.gabarit.isolationVlanTag, 0, 4094)
 			? outOfRangeMessage(m['policy.isolationVlanTag'](), 0, 4094)
 			: null
 	);

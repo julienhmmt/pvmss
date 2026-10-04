@@ -470,3 +470,28 @@ func TestAboveNodeCapacityError_Unwrap(t *testing.T) {
 		t.Fatalf("errors.Is(ErrAboveNodeCapacity) = false, want true")
 	}
 }
+
+func TestSetPolicy_MissingPolicyRow_SeedsFromDefaults(t *testing.T) {
+	t.Parallel()
+
+	service, _ := newPolicyService(t)
+	ctx := context.Background()
+
+	// "ghost" has no vm_limits row (a cluster added before rows were seeded):
+	// the write must upsert instead of failing with a 500.
+	want := policy.Gabarit{
+		MaxSockets: 2, MaxCores: 6, MaxMemoryMB: 8192,
+		MaxDiskPerVMGB: 80, MaxNetworkCards: 2, MaxSnapshots: 3,
+	}
+	if err := service.SetPolicy(ctx, "ghost", want, 3); err != nil {
+		t.Fatalf("SetPolicy: %v", err)
+	}
+
+	got, err := service.Gabarit(ctx, "ghost")
+	if err != nil {
+		t.Fatalf("Gabarit: %v", err)
+	}
+	if got != want {
+		t.Fatalf("gabarit = %+v, want %+v", got, want)
+	}
+}

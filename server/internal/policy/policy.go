@@ -135,9 +135,10 @@ func DefaultGabarit() Gabarit {
 	}
 }
 
-// Gabarit reads the current cluster gabarit from SQLite.
+// Gabarit reads the current cluster gabarit from SQLite, falling back to the
+// shipped defaults when the cluster has no stored row.
 func (service *Policy) Gabarit(ctx context.Context, clusterName string) (Gabarit, error) {
-	row, err := service.store.PolicyRow(ctx, clusterName)
+	row, err := service.policyRowOrDefault(ctx, clusterName)
 	if err != nil {
 		return Gabarit{}, err
 	}
@@ -150,17 +151,38 @@ func (service *Policy) Gabarit(ctx context.Context, clusterName string) (Gabarit
 	}, nil
 }
 
+// policyRowOrDefault reads the persisted policy row, substituting the shipped
+// defaults when the cluster has none yet: clusters created before
+// CreateCluster seeded a row, and pseudo-cluster names such as the
+// all-clusters view, which has no single cluster and must not fail the whole
+// request with a 500.
+func (service *Policy) policyRowOrDefault(ctx context.Context, clusterName string) (store.PolicyRow, error) {
+	row, err := service.store.PolicyRow(ctx, clusterName)
+	if errors.Is(err, sql.ErrNoRows) {
+		defaults := DefaultGabarit()
+		return store.PolicyRow{
+			Cluster:          clusterName,
+			MaxSockets:       defaults.MaxSockets,
+			MaxCores:         defaults.MaxCores,
+			MaxMemoryMB:      defaults.MaxMemoryMB,
+			MaxDiskPerVMGB:   defaults.MaxDiskPerVMGB,
+			MaxNetworkCards:  defaults.MaxNetworkCards,
+			MaxSnapshots:     defaults.MaxSnapshots,
+			MaxVMPerUser:     defaultMaxVMPerUser,
+			AllowCustomYAML:  defaults.AllowCustomYAML,
+			IsolationVLANTag: defaults.IsolationVLANTag,
+		}, nil
+	}
+
+	return row, err
+}
+
 // Quota reads the cluster allowance and calculates the actor's current pool
 // usage from the immutable inventory projection. Administrators have no pool
 // and therefore always receive the unlimited allowance.
 func (service *Policy) Quota(ctx context.Context, clusterName string, actor auth.Identity) (Quota, error) {
-	row, err := service.store.PolicyRow(ctx, clusterName)
-	if errors.Is(err, sql.ErrNoRows) {
-		// A cluster with no stored limits - one added but never configured, or
-		// the all-clusters list, which has no single cluster - uses the
-		// defaults. Returning the error failed the whole list with a 500.
-		row = store.PolicyRow{Cluster: clusterName, MaxVMPerUser: defaultMaxVMPerUser}
-	} else if err != nil {
+	row, err := service.policyRowOrDefault(ctx, clusterName)
+	if err != nil {
 		return Quota{}, err
 	}
 

@@ -85,6 +85,11 @@ func (s *Store) CreateCluster(ctx context.Context, row ClusterRow) error {
 	if err != nil {
 		return fmt.Errorf("write cluster: %w", err)
 	}
+	// Every cluster needs a policy row: without one the policy admin page and
+	// the VM-creation gabarit check fail with a 500 for the whole cluster.
+	if _, err := tx.ExecContext(ctx, defaultPolicySeed, row.Name); err != nil {
+		return fmt.Errorf("seed policy row: %w", err)
+	}
 	if err := tx.Commit(); err != nil {
 		return fmt.Errorf("commit cluster: %w", err)
 	}

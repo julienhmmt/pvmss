@@ -432,3 +432,32 @@ func TestRunMigrations_V16AddsDisplayName(t *testing.T) {
 		t.Fatalf("DisplayName = %q, want empty", row.DisplayName)
 	}
 }
+
+//nolint:paralleltest // serial: shared database fixture
+func TestRunMigrations_V34BackfillsPolicyRow(t *testing.T) {
+	db := openTestDB(t)
+	ctx := context.Background()
+
+	// Apply everything before V34, then add a cluster row the pre-seed way -
+	// raw SQL, so no vm_limits row exists - then apply the rest.
+	if err := store.RunMigrations(ctx, db, store.Migrations[:33]); err != nil {
+		t.Fatalf("RunMigrations up to V33: %v", err)
+	}
+
+	if _, err := db.ExecContext(ctx, `INSERT INTO clusters (name, url, token_id, created_at) VALUES ('orphan', 'https://orphan.invalid', 'tok', '2025-01-01T00:00:00Z')`); err != nil {
+		t.Fatalf("insert orphan cluster: %v", err)
+	}
+
+	if err := store.RunMigrations(ctx, db, store.Migrations); err != nil {
+		t.Fatalf("RunMigrations full list: %v", err)
+	}
+
+	var sockets, cores, quota int
+	err := db.QueryRowContext(ctx, `SELECT max_sockets, max_cores, max_vm_per_user FROM vm_limits WHERE cluster = 'orphan'`).Scan(&sockets, &cores, &quota)
+	if err != nil {
+		t.Fatalf("vm_limits row for orphan cluster: %v", err)
+	}
+	if sockets != 4 || cores != 8 || quota != -1 {
+		t.Errorf("backfilled values = (%d,%d,%d), want (4,8,-1)", sockets, cores, quota)
+	}
+}
