@@ -12,12 +12,13 @@ import (
 	"pvmss/server/internal/httpapi"
 	"pvmss/server/internal/inventory"
 	"pvmss/server/internal/store"
+	"pvmss/server/internal/testfixture"
 	"strings"
 	"testing"
 )
 
-// newAdminStore opens a fully-migrated store (V9) with the seed and pvmss
-// tag, ready for admin catalog handler tests.
+// newAdminStore opens a fully-migrated store seeded with the demo catalog
+// fixture and pvmss tag, ready for admin catalog handler tests.
 func newAdminStore(t *testing.T) *store.Store {
 	t.Helper()
 
@@ -32,6 +33,8 @@ func newAdminStore(t *testing.T) *store.Store {
 	}
 
 	t.Cleanup(func() { _ = st.Close() })
+
+	testfixture.SeedDemoFixtures(t, st)
 
 	return st
 }

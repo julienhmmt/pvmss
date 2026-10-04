@@ -165,7 +165,7 @@ func (h *AdminCatalog) ServeTemplateDelete(w http.ResponseWriter, r *http.Reques
 }
 
 // templateUpdateRequest is the body of PUT /api/v1/admin/templates/{cluster}/{vmid}
-// (schemaV26 override). The cluster is taken from the path to match the
+// (override_discovery flag). The cluster is taken from the path to match the
 // delete handler's convention; the body carries the editable field values.
 type templateUpdateRequest struct {
 	Node             string `json:"node"`
@@ -178,7 +178,7 @@ type templateUpdateRequest struct {
 
 // ServeTemplateUpdate handles PUT /api/v1/admin/templates/{cluster}/{vmid}.
 // Overrides the discovered template field values and pins the row against
-// discovery-wins write-back (schemaV26). The create path still enforces the
+// discovery-wins write-back. The create path still enforces the
 // gabarit on clones, so an override above the gabarit simply means clones
 // from this template are rejected at create time - the admin owns that.
 func (h *AdminCatalog) ServeTemplateUpdate(w http.ResponseWriter, r *http.Request) {

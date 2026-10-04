@@ -135,8 +135,8 @@ func (s *Store) UpsertPolicyRow(ctx context.Context, row PolicyRow) error {
 	return nil
 }
 
-// defaultPolicySeed inserts the shipped gabarit/quota values - the same
-// values as the schemaV10 'default' row - for a cluster that has no policy
+// defaultPolicySeed inserts the shipped gabarit/quota values for a cluster
+// that has no policy
 // row yet. ON CONFLICT DO NOTHING preserves an existing row when a
 // soft-deleted cluster is reactivated.
 const defaultPolicySeed = `INSERT INTO vm_limits (
