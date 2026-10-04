@@ -136,6 +136,26 @@ func DefaultGabarit() Gabarit {
 	}
 }
 
+// Settings is the stored administrator-edited policy for a cluster: the
+// gabarit plus the pool quota allowance, without usage data.
+type Settings struct {
+	Gabarit Gabarit
+	// Allowed is the pool VM allowance. -1 means unlimited.
+	Allowed int
+}
+
+// Settings reads the cluster's stored policy row in one query, falling back
+// to the shipped defaults when the cluster has none. Unlike Quota it reports
+// the stored allowance verbatim, with no identity-dependent adjustment.
+func (service *Policy) Settings(ctx context.Context, clusterName string) (Settings, error) {
+	row, err := service.policyRowOrDefault(ctx, clusterName)
+	if err != nil {
+		return Settings{}, err
+	}
+
+	return Settings{Gabarit: gabaritFromRow(row), Allowed: row.MaxVMPerUser}, nil
+}
+
 // Gabarit reads the current cluster gabarit from SQLite, falling back to the
 // shipped defaults when the cluster has no stored row.
 func (service *Policy) Gabarit(ctx context.Context, clusterName string) (Gabarit, error) {
@@ -144,12 +164,16 @@ func (service *Policy) Gabarit(ctx context.Context, clusterName string) (Gabarit
 		return Gabarit{}, err
 	}
 
+	return gabaritFromRow(row), nil
+}
+
+func gabaritFromRow(row store.PolicyRow) Gabarit {
 	return Gabarit{
 		MaxSockets: row.MaxSockets, MaxCores: row.MaxCores, MaxMemoryMB: row.MaxMemoryMB,
 		MaxDiskPerVMGB: row.MaxDiskPerVMGB, MaxNetworkCards: row.MaxNetworkCards,
 		MaxSnapshots: row.MaxSnapshots, AllowCustomYAML: row.AllowCustomYAML,
 		IsolationVLANTag: row.IsolationVLANTag,
-	}, nil
+	}
 }
 
 // policyRowOrDefault reads the persisted policy row, substituting the shipped
