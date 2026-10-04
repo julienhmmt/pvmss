@@ -312,34 +312,43 @@ func clusterStorages(clusterName string, idx *inventory.Index) []dashboardStorag
 
 	for _, node := range idx.Nodes {
 		for _, s := range idx.StoragesByNode[node.Name] {
-			if s.Total <= 0 {
-				continue
+			if dto, ok := dashboardStorage(clusterName, s, seenShared); ok {
+				out = append(out, dto)
 			}
-
-			kind := cmp.Or(s.PluginType, s.Type)
-			_, shared := sharedStoragePlugins[kind]
-
-			if shared {
-				if _, dup := seenShared[s.Name]; dup {
-					continue
-				}
-
-				seenShared[s.Name] = struct{}{}
-			}
-
-			dto := dashboardStorageDTO{
-				Cluster: clusterName, Name: s.Name, Node: s.Node, Type: kind, Shared: shared,
-				UsedBytes: s.Used, TotalBytes: s.Total, Percent: percentOf(s.Used, s.Total),
-			}
-			if shared {
-				dto.Node = ""
-			}
-
-			out = append(out, dto)
 		}
 	}
 
 	return out
+}
+
+// dashboardStorage maps one datastore to its row, skipping empty storages and
+// repeat sightings of a shared one (a shared datastore is listed once, with
+// no node attached).
+func dashboardStorage(clusterName string, s cluster.Storage, seenShared map[string]struct{}) (dashboardStorageDTO, bool) {
+	if s.Total <= 0 {
+		return dashboardStorageDTO{}, false
+	}
+
+	kind := cmp.Or(s.PluginType, s.Type)
+	_, shared := sharedStoragePlugins[kind]
+
+	if shared {
+		if _, dup := seenShared[s.Name]; dup {
+			return dashboardStorageDTO{}, false
+		}
+
+		seenShared[s.Name] = struct{}{}
+	}
+
+	dto := dashboardStorageDTO{
+		Cluster: clusterName, Name: s.Name, Node: s.Node, Type: kind, Shared: shared,
+		UsedBytes: s.Used, TotalBytes: s.Total, Percent: percentOf(s.Used, s.Total),
+	}
+	if shared {
+		dto.Node = ""
+	}
+
+	return dto, true
 }
 
 func appendStorageAlert(alerts []dashboardAlertDTO, clusterKey string, s dashboardStorageDTO) []dashboardAlertDTO {
