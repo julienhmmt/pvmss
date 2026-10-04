@@ -10,7 +10,7 @@
 	import { resolve } from '$app/paths';
 	import { getVmDetailContext } from './detail.svelte';
 	import { canConnect, type MachineDisplayStatus } from './display-status';
-	import { connectState, primaryAddress, sshCommand } from './connection';
+	import { connectState, isWindowsOs, primaryAddress, sshCommand } from './connection';
 	import { compactBytes } from './machine-row';
 	import { get } from '$lib/shared/api/client';
 	import Button from '$lib/shared/ui/Button.svelte';
@@ -29,13 +29,15 @@
 	const address = $derived(primaryAddress(store.entity?.networkInterfaces));
 	const connect = $derived(connectState(status, store.entity ?? {}));
 	const connectable = $derived(canConnect(status, address?.address) && connect === 'ready');
+	const windows = $derived(isWindowsOs(store.entity?.ostype));
 
 	// The cloud-init user is the account SSH lands on. Fetched once the
 	// machine is connectable; unknown (template/ISO machines) stays unknown.
+	// Windows guests log in with their own accounts - no fetch at all.
 	let sshUser = $state<string | null>(null);
 	let userLoaded = false;
 	$effect(() => {
-		if (!connectable || userLoaded) return;
+		if (!connectable || userLoaded || windows) return;
 		userLoaded = true;
 		void get<{ user?: string }>(`/api/v1/vms/${encodeURIComponent(store.cluster)}/${store.vmid}/cloudinit`)
 			.then((config) => {
@@ -69,6 +71,32 @@
 				</div>
 				{#if store.writeError}<p class="mt-2 text-xs text-destructive" role="alert">{store.writeError}</p>{/if}
 			{:else if connectable && address}
+				{#if windows}
+					<h2 id="connect-ssh-title" class="mt-1 text-lg font-semibold" data-testid="vm-rdp">{m['vms.detail.connect.rdpTitle']()}</h2>
+					<p class="mt-1 text-sm text-muted-foreground">{m['vms.detail.connect.rdpBody']()}</p>
+					<div class="mt-4 flex items-center gap-2 rounded-lg border border-border bg-muted/50 py-1.5 pl-3 pr-1.5">
+						<code class="min-w-0 flex-1 overflow-x-auto whitespace-nowrap font-mono text-sm" data-testid="vm-rdp-address">
+							{address.address}
+						</code>
+						<CopyButton value={address.address} />
+					</div>
+					<p class="mt-2 text-xs text-muted-foreground">{m['vms.detail.connect.addressNote']()}</p>
+					<dl class="mt-5 grid gap-x-6 gap-y-3 text-sm sm:grid-cols-3">
+						<div>
+							<dt class="text-xs text-muted-foreground">{m['vms.detail.connect.factPort']()}</dt>
+							<dd class="mt-0.5 font-mono">3389</dd>
+						</div>
+						<div>
+							<dt class="text-xs text-muted-foreground">{m['vms.detail.connect.factAddress']()}</dt>
+							<dd class="mt-0.5 font-mono" data-testid="vm-ssh-address">{address.address}</dd>
+						</div>
+						<div>
+							<dt class="text-xs text-muted-foreground">{m['vms.detail.connect.factNetwork']()}</dt>
+							<dd class="mt-0.5 font-mono">{address.bridge}</dd>
+						</div>
+					</dl>
+					<p class="mt-5 border-t border-border pt-4 text-xs text-muted-foreground">{m['vms.detail.connect.rdpHelpNote']()}</p>
+				{:else}
 				<h2 id="connect-ssh-title" class="mt-1 text-lg font-semibold">{m['vms.detail.connect.title']()}</h2>
 				<p class="mt-1 text-sm text-muted-foreground">{m['vms.detail.connect.body']()}</p>
 				<div class="mt-4 flex items-center gap-2 rounded-lg border border-border bg-muted/50 py-1.5 pl-3 pr-1.5">
@@ -96,18 +124,19 @@
 					</div>
 				</dl>
 				<p class="mt-5 border-t border-border pt-4 text-xs text-muted-foreground">{m['vms.detail.connect.helpNote']()}</p>
+				{/if}
 			{:else if running}
 				<h2 id="connect-ssh-title" class="mt-1 text-lg font-semibold" data-testid="vm-address-unavailable">{m['vms.detail.connect.addressUnavailableTitle']()}</h2>
 				<p class="mt-1 text-sm text-muted-foreground">{m['vms.detail.connect.addressUnavailableBody']()}</p>
 				{#if connect === 'agentDisabled'}
 					<p class="mt-2 text-xs text-muted-foreground">{m['vms.detail.connect.agentDisabled']()}</p>
 				{:else if connect === 'agentUnreachable'}
-					<p class="mt-2 text-xs text-muted-foreground" data-testid="vm-agent-unreachable">{m['vms.detail.connect.agentUnreachable']()}</p>
+					<p class="mt-2 text-xs text-muted-foreground" data-testid="vm-agent-unreachable">{windows ? m['vms.detail.connect.agentUnreachableWindows']() : m['vms.detail.connect.agentUnreachable']()}</p>
 				{:else}
 					<p class="mt-2 text-xs text-muted-foreground">{m['vms.detail.connect.networkPending']()}</p>
 				{/if}
 			{:else}
-				<h2 id="connect-ssh-title" class="mt-1 text-lg font-semibold" data-testid="vm-ssh-unavailable">{m['vms.detail.connect.notRunningTitle']()}</h2>
+				<h2 id="connect-ssh-title" class="mt-1 text-lg font-semibold" data-testid="vm-ssh-unavailable">{windows ? m['vms.detail.connect.rdpNotRunningTitle']() : m['vms.detail.connect.notRunningTitle']()}</h2>
 				<p class="mt-1 text-sm text-muted-foreground">{m['vms.detail.connect.notRunningBody']()}</p>
 			{/if}
 		</section>

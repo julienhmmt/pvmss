@@ -31,6 +31,10 @@ export interface VmDetailEntity {
 	cores?: number;
 	disks?: VmDisk[];
 	cdrom?: VmCdrom;
+	/** Persistent boot=order=... key ("ide2", "scsi0", ...). An ISO-first order
+	 *  means the machine boots the installer; a disk-first order means the
+	 *  install is done even while an ISO remains attached. */
+	bootOrder?: string[];
 	networkInterfaces?: VmNetworkInterface[];
 	hasSerial?: boolean;
 	/** Why live per-NIC IPs are present or absent on a running VM: the

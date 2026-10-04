@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { connectState, primaryAddress, sshCommand } from './connection';
+import { connectState, isWindowsOs, primaryAddress, sshCommand } from './connection';
 import type { VmNetworkInterface } from './detail.svelte';
 
 function nic(bridge: string, ipAddresses: string[]): VmNetworkInterface {
@@ -45,6 +45,15 @@ describe('connectState', () => {
 		expect(connectState('running', { ...base, cdrom: { state: 'mounted', isoVolId: 'local:iso/a.iso' } })).toBe('installing');
 	});
 
+	it('stays installing while the boot order still leads with the CD-ROM', () => {
+		expect(connectState('running', { ...base, cdrom: { state: 'mounted' }, bootOrder: ['ide2', 'scsi0'] })).toBe('installing');
+	});
+
+	it('detects install completion when the boot order leads with a disk, ISO still mounted', () => {
+		expect(connectState('running', { ...base, cdrom: { state: 'mounted' }, bootOrder: ['scsi0', 'ide2'] })).toBe('ready');
+		expect(connectState('running', { ...base, cdrom: { state: 'mounted' }, bootOrder: ['scsi0'], networkInterfaces: [] })).toBe('noAddress');
+	});
+
 	it('maps the agent channel when no ISO is mounted', () => {
 		expect(connectState('running', { ...base, guestAgent: 'disabled', networkInterfaces: [] })).toBe('agentDisabled');
 		expect(connectState('running', { ...base, guestAgent: 'unreachable', networkInterfaces: [] })).toBe('agentUnreachable');
@@ -57,5 +66,17 @@ describe('connectState', () => {
 
 	it('treats an entity without cdrom info as having no ISO', () => {
 		expect(connectState('running', { networkInterfaces: withIp, guestAgent: 'ok' })).toBe('ready');
+	});
+});
+
+describe('isWindowsOs', () => {
+	it('matches every Proxmox Windows ostype and nothing else', () => {
+		expect(isWindowsOs('w11')).toBe(true);
+		expect(isWindowsOs('win10')).toBe(true);
+		expect(isWindowsOs('w2k22')).toBe(true);
+		expect(isWindowsOs('wxp')).toBe(true);
+		expect(isWindowsOs('l26')).toBe(false);
+		expect(isWindowsOs('solaris')).toBe(false);
+		expect(isWindowsOs(undefined)).toBe(false);
 	});
 });
