@@ -78,6 +78,117 @@ func TestSetPolicy_RejectsOutOfRangeMaxVmPerUser(t *testing.T) {
 	}
 }
 
+func TestUpdatePolicy_AppliesMutationAndReportsBeforeAfter(t *testing.T) {
+	t.Parallel()
+	service, _ := newPolicyService(t)
+	ctx := context.Background()
+
+	update, err := service.UpdatePolicy(ctx, "default", func(current policy.Settings) policy.Settings {
+		next := current
+		next.Gabarit.MaxSockets = 3
+		next.Allowed = 7
+
+		return next
+	})
+	if err != nil {
+		t.Fatalf("UpdatePolicy: %v", err)
+	}
+
+	if !update.Changed {
+		t.Fatal("Changed = false, want true")
+	}
+
+	if update.Before.Gabarit.MaxSockets != 4 || update.Before.Allowed != -1 {
+		t.Fatalf("Before = %+v, want seeded defaults", update.Before)
+	}
+
+	if update.After.Gabarit.MaxSockets != 3 || update.After.Allowed != 7 {
+		t.Fatalf("After = %+v, want mutated values", update.After)
+	}
+
+	stored, err := service.Settings(ctx, "default")
+	if err != nil {
+		t.Fatalf("Settings: %v", err)
+	}
+
+	if stored != update.After {
+		t.Fatalf("stored = %+v, want %+v", stored, update.After)
+	}
+}
+
+func TestUpdatePolicy_NoChangeSkipsWrite(t *testing.T) {
+	t.Parallel()
+	service, _ := newPolicyService(t)
+	ctx := context.Background()
+
+	update, err := service.UpdatePolicy(ctx, "default", func(current policy.Settings) policy.Settings {
+		return current
+	})
+	if err != nil {
+		t.Fatalf("UpdatePolicy: %v", err)
+	}
+
+	if update.Changed {
+		t.Fatal("Changed = true for an identity mutation, want false")
+	}
+}
+
+func TestUpdatePolicy_InvalidMutation_ReturnsErrInvalidPolicy(t *testing.T) {
+	t.Parallel()
+	service, _ := newPolicyService(t)
+	ctx := context.Background()
+
+	_, err := service.UpdatePolicy(ctx, "default", func(current policy.Settings) policy.Settings {
+		next := current
+		next.Allowed = -2
+
+		return next
+	})
+	if !errors.Is(err, policy.ErrInvalidPolicy) {
+		t.Fatalf("error = %v, want ErrInvalidPolicy", err)
+	}
+}
+
+func TestUpdatePolicy_ConcurrentWriteRetriesWithoutLosingIt(t *testing.T) {
+	t.Parallel()
+	service, _ := newPolicyService(t)
+	ctx := context.Background()
+
+	calls := 0
+
+	update, err := service.UpdatePolicy(ctx, "default", func(current policy.Settings) policy.Settings {
+		calls++
+		if calls == 1 {
+			// Simulate a competing write landing between this UpdatePolicy's
+			// read and its compare-and-swap: the first CAS must fail and the
+			// retry must preserve the competing change.
+			if err := service.SetPolicy(ctx, "default", policy.DefaultGabarit(), 42); err != nil {
+				t.Fatalf("seed concurrent write: %v", err)
+			}
+		}
+
+		next := current
+		next.Gabarit.MaxSockets = 3
+
+		return next
+	})
+	if err != nil {
+		t.Fatalf("UpdatePolicy: %v", err)
+	}
+
+	if calls != 2 {
+		t.Fatalf("mutate calls = %d, want 2 (one conflict, one retry)", calls)
+	}
+
+	if !update.Changed || update.After.Gabarit.MaxSockets != 3 {
+		t.Fatalf("update = %+v, want a changed update with MaxSockets 3", update)
+	}
+
+	if update.After.Allowed != 42 {
+		t.Fatalf("Allowed = %d, want 42 - the concurrent write was lost", update.After.Allowed)
+	}
+}
+
 func TestSetNodeCapacity_RejectsUsagePhysicalAndAcceptsZero(t *testing.T) {
 	t.Parallel()
 	service, _ := newPolicyService(t)

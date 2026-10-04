@@ -104,6 +104,66 @@ func TestAdminPolicy_PutPartialUpdateAndRejectsInvalid(t *testing.T) {
 	}
 }
 
+//nolint:paralleltest // serial: shared database fixture
+func TestAdminPolicy_PutNoChangeSkipsWriteAndAudit(t *testing.T) {
+	st := newAdminStore(t)
+	authHandler := newAuthHandler(t)
+	fake := cluster.Fake{}
+
+	snapshot, err := fake.Snapshot(context.Background())
+	if err != nil {
+		t.Fatalf("Snapshot: %v", err)
+	}
+
+	index := inventory.BuildIndex(snapshot)
+	service := policy.New(st, inventory.NewProjectionFromIndex(&index), fake)
+	handler := httpapi.NewAdminPolicy(authHandler, service, slog.New(slog.DiscardHandler))
+	handler.SetStore(st)
+	mux := policyMux(handler, authHandler)
+	cookie := adminCookie(t, authHandler)
+
+	auditRows := func() int {
+		var count int
+		if err := st.DB().QueryRowContext(context.Background(),
+			`SELECT COUNT(*) FROM audit_log WHERE action = 'admin.policy.update'`).Scan(&count); err != nil {
+			t.Fatalf("count audit rows: %v", err)
+		}
+
+		return count
+	}
+
+	put := func(body string) *httptest.ResponseRecorder {
+		request := httptest.NewRequestWithContext(context.Background(), http.MethodPut, "/api/v1/admin/policy", strings.NewReader(body))
+		request.Header.Set("Content-Type", "application/json")
+		request.AddCookie(cookie)
+		recorder := httptest.NewRecorder()
+		mux.ServeHTTP(recorder, request)
+
+		return recorder
+	}
+
+	// A patch that only restates the stored values produces no write and no
+	// audit entry.
+	recorder := put(`{"cluster":"default","gabarit":{"maxSockets":4},"quota":{"maxVmPerUser":-1}}`)
+	if recorder.Code != http.StatusOK {
+		t.Fatalf("no-op put status = %d: %s", recorder.Code, recorder.Body.String())
+	}
+
+	if got := auditRows(); got != 0 {
+		t.Fatalf("audit rows after no-op put = %d, want 0", got)
+	}
+
+	// A real change is still written and audited.
+	recorder = put(`{"cluster":"default","quota":{"maxVmPerUser":3}}`)
+	if recorder.Code != http.StatusOK {
+		t.Fatalf("put status = %d: %s", recorder.Code, recorder.Body.String())
+	}
+
+	if got := auditRows(); got != 1 {
+		t.Fatalf("audit rows after real put = %d, want 1", got)
+	}
+}
+
 func TestAdminPolicyNodes_ListsUsageAndValidatesWrites(t *testing.T) { //nolint:gocyclo // node policy test covers permission, usage, and physical bounds in sequence
 	t.Parallel()
 	policyHandler, authHandler := newPolicyHandler(t)

@@ -53,6 +53,61 @@ func (s *Store) PolicyRow(ctx context.Context, cluster string) (PolicyRow, error
 	return row, nil
 }
 
+// ErrPolicyConflict reports a policy row that changed between the caller's
+// read and its conditional write - a concurrent update landed in between.
+var ErrPolicyConflict = errors.New("policy row changed concurrently")
+
+// ReplacePolicyRow writes next only when the stored row still equals
+// expected. A nil expected means the row must not exist yet: the write is an
+// insert guarded by ON CONFLICT DO NOTHING. Either guard failing returns
+// ErrPolicyConflict so callers can retry the read-modify-write cycle.
+func (s *Store) ReplacePolicyRow(ctx context.Context, expected *PolicyRow, next PolicyRow) error {
+	if expected == nil {
+		res, err := s.db.ExecContext(ctx, `
+			INSERT INTO vm_limits (
+				cluster, max_sockets, max_cores, max_memory_mb, max_disk_per_vm_gb,
+				max_network_cards, max_snapshots, max_vm_per_user, isolation_vlan_tag
+			) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+			ON CONFLICT(cluster) DO NOTHING`,
+			next.Cluster, next.MaxSockets, next.MaxCores, next.MaxMemoryMB,
+			next.MaxDiskPerVMGB, next.MaxNetworkCards, next.MaxSnapshots,
+			next.MaxVMPerUser, next.IsolationVLANTag,
+		)
+		if err != nil {
+			return fmt.Errorf("insert policy row: %w", err)
+		}
+
+		if n, _ := res.RowsAffected(); n == 0 {
+			return ErrPolicyConflict
+		}
+
+		return nil
+	}
+
+	res, err := s.db.ExecContext(ctx, `
+		UPDATE vm_limits SET
+			max_sockets = ?, max_cores = ?, max_memory_mb = ?, max_disk_per_vm_gb = ?,
+			max_network_cards = ?, max_snapshots = ?, max_vm_per_user = ?, isolation_vlan_tag = ?
+		WHERE cluster = ? AND max_sockets = ? AND max_cores = ? AND max_memory_mb = ?
+		  AND max_disk_per_vm_gb = ? AND max_network_cards = ? AND max_snapshots = ?
+		  AND max_vm_per_user = ? AND isolation_vlan_tag = ?`,
+		next.MaxSockets, next.MaxCores, next.MaxMemoryMB, next.MaxDiskPerVMGB,
+		next.MaxNetworkCards, next.MaxSnapshots, next.MaxVMPerUser, next.IsolationVLANTag,
+		expected.Cluster, expected.MaxSockets, expected.MaxCores, expected.MaxMemoryMB,
+		expected.MaxDiskPerVMGB, expected.MaxNetworkCards, expected.MaxSnapshots,
+		expected.MaxVMPerUser, expected.IsolationVLANTag,
+	)
+	if err != nil {
+		return fmt.Errorf("replace policy row: %w", err)
+	}
+
+	if n, _ := res.RowsAffected(); n == 0 {
+		return ErrPolicyConflict
+	}
+
+	return nil
+}
+
 // UpsertPolicyRow persists the complete gabarit and quota row atomically.
 func (s *Store) UpsertPolicyRow(ctx context.Context, row PolicyRow) error {
 	_, err := s.db.ExecContext(ctx, `
