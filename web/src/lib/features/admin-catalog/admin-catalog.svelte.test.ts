@@ -315,7 +315,7 @@ describe('AdminCatalogStore', () => {
 		it('loadImages fetches only the image list (separate from loadAll)', async () => {
 			const fetchMock = vi.fn().mockImplementation((url: string) => {
 				if (url.includes('/auth/clusters')) {
-					return Promise.resolve(jsonResponse(200, [{ name: 'default', displayName: 'Default', oidcEnabled: false }]));
+					return Promise.resolve(jsonResponse(200, [{ name: 'default', displayName: 'Default' }]));
 				}
 				return Promise.resolve(jsonResponse(200, images));
 			});
@@ -692,7 +692,7 @@ describe('AdminCatalogStore', () => {
 		it('loadTemplates fetches and maps the DTO for the selected cluster', async () => {
 			const fetchMock = vi.fn().mockImplementation((url: string) => {
 				if (url.includes('/auth/clusters')) {
-					return Promise.resolve(jsonResponse(200, [{ name: 'default', displayName: 'Default', oidcEnabled: false }]));
+					return Promise.resolve(jsonResponse(200, [{ name: 'default', displayName: 'Default' }]));
 				}
 				return Promise.resolve(jsonResponse(200, templates));
 			});
@@ -712,7 +712,7 @@ describe('AdminCatalogStore', () => {
 				'fetch',
 				vi.fn().mockImplementation((url: string) => {
 					if (url.includes('/auth/clusters')) {
-						return Promise.resolve(jsonResponse(200, [{ name: 'default', displayName: 'Default', oidcEnabled: false }]));
+						return Promise.resolve(jsonResponse(200, [{ name: 'default', displayName: 'Default' }]));
 					}
 					return Promise.resolve(jsonResponse(200, templates));
 				})
@@ -812,7 +812,7 @@ describe('AdminCatalogStore', () => {
 		it('removeTemplate deletes the approval row and drops it from the list', async () => {
 			const fetchMock = vi.fn().mockImplementation((url: string) => {
 				if (url.includes('/auth/clusters')) {
-					return Promise.resolve(jsonResponse(200, [{ name: 'default', displayName: 'Default', oidcEnabled: false }]));
+					return Promise.resolve(jsonResponse(200, [{ name: 'default', displayName: 'Default' }]));
 				}
 				return Promise.resolve(new Response(null, { status: 204 }));
 			});
@@ -835,7 +835,7 @@ describe('AdminCatalogStore', () => {
 				'fetch',
 				vi.fn().mockImplementation((url: string) => {
 					if (url.includes('/auth/clusters')) {
-						return Promise.resolve(jsonResponse(200, [{ name: 'default', displayName: 'Default', oidcEnabled: false }]));
+						return Promise.resolve(jsonResponse(200, [{ name: 'default', displayName: 'Default' }]));
 					}
 					return Promise.resolve(jsonResponse(500, { message: 'boom' }));
 				})
@@ -852,7 +852,7 @@ describe('AdminCatalogStore', () => {
 		it('updateTemplate PUTs the patch and marks the row as overrideDiscovery', async () => {
 			const fetchMock = vi.fn().mockImplementation((url: string) => {
 				if (url.includes('/auth/clusters')) {
-					return Promise.resolve(jsonResponse(200, [{ name: 'default', displayName: 'Default', oidcEnabled: false }]));
+					return Promise.resolve(jsonResponse(200, [{ name: 'default', displayName: 'Default' }]));
 				}
 				return Promise.resolve(jsonResponse(200, {
 					vmid: 9000, node: 'pve-node-02', name: 'debian-12-cloud', cloudInitCapable: true,
@@ -887,7 +887,7 @@ describe('AdminCatalogStore', () => {
 				'fetch',
 				vi.fn().mockImplementation((url: string) => {
 					if (url.includes('/auth/clusters')) {
-						return Promise.resolve(jsonResponse(200, [{ name: 'default', displayName: 'Default', oidcEnabled: false }]));
+						return Promise.resolve(jsonResponse(200, [{ name: 'default', displayName: 'Default' }]));
 					}
 					return Promise.resolve(jsonResponse(500, { message: 'boom' }));
 				})

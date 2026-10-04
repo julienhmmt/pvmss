@@ -64,7 +64,6 @@ func MapCluster(env Environ, clusterName string, flags ProxmoxCreds, sessionSecr
 		TLSInsecureSkipVerify: false,
 		TokenID:               tokenID,
 		TokenSecretCiphertext: ciphertext,
-		OIDCEnabled:           false,
 		CreatedAt:             time.Now().UTC().Format(time.RFC3339Nano),
 	}
 
@@ -77,17 +76,16 @@ func MapCluster(env Environ, clusterName string, flags ProxmoxCreds, sessionSecr
 // so re-running the tool is safe.
 func upsertCluster(ctx context.Context, v04DB *sql.DB, row ClusterRow) error {
 	_, err := v04DB.ExecContext(ctx, `
-		INSERT INTO clusters (name, url, tls_insecure_skip_verify, token_id, token_secret_ciphertext, oidc_enabled, created_at)
-		VALUES (?, ?, ?, ?, ?, ?, ?)
+		INSERT INTO clusters (name, url, tls_insecure_skip_verify, token_id, token_secret_ciphertext, created_at)
+		VALUES (?, ?, ?, ?, ?, ?)
 		ON CONFLICT(name) DO UPDATE SET
 			url = excluded.url,
 			tls_insecure_skip_verify = excluded.tls_insecure_skip_verify,
 			token_id = excluded.token_id,
 			token_secret_ciphertext = excluded.token_secret_ciphertext,
-			oidc_enabled = excluded.oidc_enabled,
 			removed_at = NULL`,
 		row.Name, row.URL, row.TLSInsecureSkipVerify, row.TokenID,
-		row.TokenSecretCiphertext, row.OIDCEnabled, row.CreatedAt,
+		row.TokenSecretCiphertext, row.CreatedAt,
 	)
 	if err != nil {
 		return fmt.Errorf("upsert cluster: %w", err)

@@ -253,14 +253,13 @@ func registerVMRoutes(mux *http.ServeMux, cfg RouterConfig, protect protectFunc,
 func registerAuthRoutes(mux *http.ServeMux, cfg RouterConfig, protect protectFunc, authWriteLimiter *userRateLimiter, hops int) {
 	// Unauthenticated credential-check endpoints get a per-IP rate limit -
 	// nothing else gates repeated guesses against them. The pre-login cluster
-	// list and OIDC trigger are also unauthenticated and disclose cluster
+	// list is also unauthenticated and discloses cluster
 	// names, so they share the same limiter to bound enumeration/abuse.
 	authLimiter := newIPRateLimiter(cfg.limitMax(authRateLimitMaxRequests), authRateLimitWindow, hops, cfg.Store)
 	mux.Handle("POST /api/v1/auth/login", authLimiter.middleware(http.HandlerFunc(cfg.Auth.Login)))
 	mux.Handle("POST /api/v1/auth/admin-login", authLimiter.middleware(http.HandlerFunc(cfg.Auth.AdminLogin)))
 	mux.HandleFunc("GET /api/v1/auth/me", cfg.Auth.Me)
 	mux.Handle("GET /api/v1/auth/clusters", authLimiter.middleware(http.HandlerFunc(cfg.Auth.ServeClusters)))
-	mux.Handle("POST /api/v1/auth/oidc", authLimiter.middleware(http.HandlerFunc(cfg.Auth.OIDC)))
 	mux.Handle("POST /api/v1/auth/logout", protect(http.HandlerFunc(cfg.Auth.Logout), authWriteLimiter))
 	mux.Handle("POST /api/v1/auth/password", protect(http.HandlerFunc(cfg.Auth.ChangePassword), authWriteLimiter))
 

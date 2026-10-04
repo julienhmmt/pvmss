@@ -27,12 +27,10 @@ const (
 	testNodePVE01              = "pve-node-01"
 	adminPoolsPath             = "/api/v1/admin/pools"
 	adminClustersSecondaryPath = "/api/v1/admin/clusters/secondary"
-	adminClustersOIDCPath      = "/api/v1/admin/clusters/secondary/oidc"
 	testOpList                 = "list"
 	testOpCreate               = "create"
 	testOpUpdate               = "update"
 	testOpTest                 = "test"
-	testOpOIDC                 = "oidc"
 )
 
 // auditAdminStore opens a fully-migrated store and seeds it with two audit
