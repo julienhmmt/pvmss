@@ -33,6 +33,9 @@ const (
 
 // sharedStoragePlugins are Proxmox storage types that every node of a cluster
 // sees as one datastore. The dashboard lists them once, not once per node.
+// This is the fallback for sources that do not report the storage.cfg
+// `shared` flag (cluster.Storage.Shared); when the flag is present it is
+// authoritative and also covers non-listed plugins marked shared (e.g. dir).
 var sharedStoragePlugins = map[string]struct{}{
 	"rbd": {}, "cephfs": {}, "nfs": {}, "cifs": {}, "glusterfs": {},
 	"iscsi": {}, "iscsidirect": {}, "pbs": {},
@@ -330,7 +333,10 @@ func dashboardStorage(clusterName string, s cluster.Storage, seenShared map[stri
 	}
 
 	kind := cmp.Or(s.PluginType, s.Type)
-	_, shared := sharedStoragePlugins[kind]
+	_, pluginShared := sharedStoragePlugins[kind]
+	// The Proxmox `shared` flag is authoritative (a `dir` can be marked
+	// shared); the plugin list covers sources that do not report the flag.
+	shared := s.Shared || pluginShared
 
 	if shared {
 		if _, dup := seenShared[s.Name]; dup {
