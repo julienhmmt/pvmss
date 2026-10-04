@@ -941,8 +941,8 @@ func TestCreate_Sockets_BeyondMaxSockets(t *testing.T) {
 	}
 
 	gabarit.MaxSockets = 1
-	if err := service.SetGabarit(context.Background(), testClusterName, gabarit); err != nil {
-		t.Fatalf("SetGabarit: %v", err)
+	if err := service.SetPolicy(context.Background(), testClusterName, gabarit, -1); err != nil {
+		t.Fatalf("SetPolicy: %v", err)
 	}
 
 	req := detailedRequest()
@@ -1095,8 +1095,8 @@ func TestCreate_MultiNIC_BeyondMaxNetworkCards(t *testing.T) {
 	}
 
 	gabarit.MaxNetworkCards = 2
-	if err := service.SetGabarit(context.Background(), testClusterName, gabarit); err != nil {
-		t.Fatalf("SetGabarit: %v", err)
+	if err := service.SetPolicy(context.Background(), testClusterName, gabarit, -1); err != nil {
+		t.Fatalf("SetPolicy: %v", err)
 	}
 
 	req := detailedRequest()
@@ -1214,8 +1214,8 @@ func TestCreate_IsolationVLAN_StampsTagOnEveryNIC(t *testing.T) {
 	gabarit := mustGabarit(t, fixture.store)
 	gabarit.IsolationVLANTag = 110
 
-	if err := mustPolicyService(fixture.store).SetGabarit(context.Background(), testClusterName, gabarit); err != nil {
-		t.Fatalf("SetGabarit: %v", err)
+	if err := mustPolicyService(fixture.store).SetPolicy(context.Background(), testClusterName, gabarit, -1); err != nil {
+		t.Fatalf("SetPolicy: %v", err)
 	}
 
 	req := detailedRequest()

@@ -19,12 +19,8 @@ func TestCheckQuota_UsesCurrentPoolAndAdminBypass(t *testing.T) {
 		t.Fatalf("Quota: %v", err)
 	}
 
-	if err := service.SetGabarit(ctx, "default", policy.Gabarit{}); err != nil {
-		t.Fatalf("SetGabarit: %v", err)
-	}
-
-	if err := service.SetQuota(ctx, "default", quota.Used); err != nil {
-		t.Fatalf("SetQuota: %v", err)
+	if err := service.SetPolicy(ctx, "default", policy.Gabarit{}, quota.Used); err != nil {
+		t.Fatalf("SetPolicy: %v", err)
 	}
 
 	if err := service.CheckQuota(ctx, "default", auth.Identity{Username: "admin", IsAdmin: true}); err != nil {
@@ -64,8 +60,8 @@ func TestCheckGabarit_ReportsFirstOffendingField(t *testing.T) {
 			// store, and a zero field is now uncapped - a clobbered write can
 			// no longer fail closed by accident.
 			clusterName := "ghost-" + testCase.name
-			if err := service.SetGabarit(ctx, clusterName, testCase.value); err != nil {
-				t.Fatalf("SetGabarit: %v", err)
+			if err := service.SetPolicy(ctx, clusterName, testCase.value, -1); err != nil {
+				t.Fatalf("SetPolicy: %v", err)
 			}
 
 			if err := service.CheckGabarit(ctx, clusterName, testCase.sockets, testCase.cores, testCase.memoryMB, testCase.diskGB, testCase.nics); !errors.Is(err, policy.ErrGabaritExceeded) {
@@ -80,8 +76,8 @@ func TestCheckGabarit_ZeroFieldsAreUncapped(t *testing.T) {
 	service, _ := newPolicyService(t)
 	ctx := context.Background()
 
-	if err := service.SetGabarit(ctx, "ghost-uncapped", policy.Gabarit{}); err != nil {
-		t.Fatalf("SetGabarit: %v", err)
+	if err := service.SetPolicy(ctx, "ghost-uncapped", policy.Gabarit{}, -1); err != nil {
+		t.Fatalf("SetPolicy: %v", err)
 	}
 
 	if err := service.CheckGabarit(ctx, "ghost-uncapped", 16, 64, 1<<20, 4096, 8); err != nil {

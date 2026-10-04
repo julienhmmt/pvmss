@@ -16,8 +16,8 @@ func uncappedPolicy(t *testing.T, index *inventory.Index) *policy.Policy {
 	t.Helper()
 
 	service := policy.New(cloudInitStore(t), inventory.NewProjectionFromIndex(index), cluster.Fake{})
-	if err := service.SetGabarit(context.Background(), testClusterName, policy.Gabarit{}); err != nil {
-		t.Fatalf("SetGabarit: %v", err)
+	if err := service.SetPolicy(context.Background(), testClusterName, policy.Gabarit{}, -1); err != nil {
+		t.Fatalf("SetPolicy: %v", err)
 	}
 
 	return service
