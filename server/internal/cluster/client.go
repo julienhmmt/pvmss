@@ -420,6 +420,11 @@ type Storage struct {
 	Total           int64
 	Used            int64
 	SupportsVMState bool
+	// Shared is the storage.cfg `shared` flag as Proxmox reports it: every
+	// node of the cluster sees the same datastore (any plugin, not only the
+	// inherently-shared ones). Sources that cannot read the flag leave it
+	// false; the inherently-shared plugin types still dedupe elsewhere.
+	Shared bool
 }
 
 // IsVMCapableStorage reports whether a storage can hold VM disk images.

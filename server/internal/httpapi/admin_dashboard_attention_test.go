@@ -215,6 +215,55 @@ func TestAdminDashboard_SharedStorageCountedOnce(t *testing.T) {
 }
 
 //nolint:paralleltest // serial: shared fake dataset
+func TestAdminDashboard_SharedFlagDedupesNonListedPlugin(t *testing.T) {
+	// A `dir` storage is not in sharedStoragePlugins; only the storage.cfg
+	// `shared` flag (cluster.Storage.Shared) can mark it shared.
+	authHandler := newAuthHandler(t)
+	st := auditAdminStore(t)
+
+	idx := inventory.BuildIndexForCluster(dashCluster, cluster.Snapshot{
+		Nodes: []cluster.Node{
+			{Name: "n1", Status: cluster.NodeOnline},
+			{Name: "n2", Status: cluster.NodeOnline},
+		},
+		Storages: []cluster.Storage{
+			{Name: "iso-share", Node: "n1", PluginType: "dir", Total: 100 * gib, Used: 10 * gib, Shared: true},
+			{Name: "iso-share", Node: "n2", PluginType: "dir", Total: 100 * gib, Used: 10 * gib, Shared: true},
+		},
+	})
+	idx.RefreshedAt = time.Now()
+
+	ops := httpapi.NewAdminOps(authHandler, st, cluster.Fake{}, inventory.NewProjection(), "test", slog.New(slog.DiscardHandler))
+	ops.SetInventorySource(inventory.NewRegistryFromIndexes(map[string]*inventory.Index{dashCluster: &idx}), time.Minute)
+
+	rec := opsGet(t, ops, authHandler, adminCookie(t, authHandler), "/api/v1/admin/dashboard")
+	if rec.Code != http.StatusOK {
+		t.Fatalf("status = %d: %s", rec.Code, rec.Body.String())
+	}
+
+	var dash attentionDashboardDTO
+	if err := json.Unmarshal(rec.Body.Bytes(), &dash); err != nil {
+		t.Fatalf("decode: %v", err)
+	}
+
+	var rows []dashboardStorageDTO
+
+	for _, s := range dash.Storages {
+		if s.Name == "iso-share" {
+			rows = append(rows, s)
+		}
+	}
+
+	if len(rows) != 1 {
+		t.Fatalf("iso-share rows = %d, want 1 (shared flag dedupes): %+v", len(rows), rows)
+	}
+
+	if !rows[0].Shared || rows[0].Node != "" {
+		t.Errorf("iso-share = %+v, want shared with no node", rows[0])
+	}
+}
+
+//nolint:paralleltest // serial: shared fake dataset
 func TestAdminDashboard_NodesCarryRunningCountAndRecentChanges(t *testing.T) {
 	dash := getAttentionDashboard(t)
 

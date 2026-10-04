@@ -62,6 +62,7 @@ type proxmoxResourceRow struct {
 	Storage    string  `json:"storage"`
 	PluginType string  `json:"plugintype"`
 	Content    string  `json:"content"`
+	Shared     int     `json:"shared"`   // 1 when storage.cfg marks the storage shared
 	Template   int     `json:"template"` // 1 when the qemu VM is a template
 }
 
@@ -247,6 +248,7 @@ func proxmoxStorageFromRow(row proxmoxResourceRow) Storage {
 		Total:           row.MaxDisk,
 		Used:            row.Disk,
 		SupportsVMState: pluginSupportsVMState(row.PluginType),
+		Shared:          row.Shared == 1,
 	}
 }
 
