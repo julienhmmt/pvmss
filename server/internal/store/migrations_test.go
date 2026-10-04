@@ -3,7 +3,6 @@ package store_test
 import (
 	"context"
 	"database/sql"
-	"fmt"
 	"path/filepath"
 	"pvmss/server/internal/store"
 	"testing"
@@ -242,143 +241,6 @@ func appliedVersions(t *testing.T, db *sql.DB) map[int]struct{} {
 }
 
 //nolint:paralleltest // serial: shared database fixture
-func TestRunMigrations_V14RebuildsBridgeIdentity(t *testing.T) {
-	db := openTestDB(t)
-
-	ctx := context.Background()
-	if _, err := db.ExecContext(ctx, `CREATE TABLE schema_migrations (version INTEGER PRIMARY KEY, applied_at TEXT NOT NULL)`); err != nil {
-		t.Fatalf("create migrations table: %v", err)
-	}
-
-	for version := 1; version <= 13; version++ {
-		if _, err := db.ExecContext(ctx, `INSERT INTO schema_migrations (version, applied_at) VALUES (?, '2026-01-01T00:00:00Z')`, version); err != nil {
-			t.Fatalf("mark migration %d applied: %v", version, err)
-		}
-	}
-
-	if _, err := db.ExecContext(ctx, `CREATE TABLE catalog_bridges (cluster TEXT NOT NULL, name TEXT NOT NULL, enabled BOOLEAN NOT NULL DEFAULT 1, PRIMARY KEY (cluster, name)); INSERT INTO catalog_bridges (cluster, name) VALUES ('default', 'vmbr0')`); err != nil {
-		t.Fatalf("create legacy bridge table: %v", err)
-	}
-
-	createMigrationStandInTables(ctx, t, db)
-
-	if err := store.RunMigrations(ctx, db, store.Migrations); err != nil {
-		t.Fatalf("RunMigrations: %v", err)
-	}
-
-	var legacyCount int
-	if err := db.QueryRowContext(ctx, `SELECT COUNT(*) FROM catalog_bridges`).Scan(&legacyCount); err != nil {
-		t.Fatalf("count migrated bridges: %v", err)
-	}
-
-	if legacyCount != 0 {
-		t.Fatalf("ambiguous legacy bridge count = %d, want 0", legacyCount)
-	}
-
-	if _, err := db.ExecContext(ctx, `INSERT INTO catalog_bridges (cluster, node, name) VALUES ('default', NULL, 'vmbr0')`); err == nil {
-		t.Fatal("insert bridge without node succeeded, want NOT NULL failure")
-	}
-
-	if _, err := db.ExecContext(ctx, `INSERT INTO catalog_bridges (cluster, node, name) VALUES ('default', 'node-a', 'vmbr0'), ('default', 'node-b', 'vmbr0')`); err != nil {
-		t.Fatalf("insert node-scoped bridges: %v", err)
-	}
-
-	var count int
-	if err := db.QueryRowContext(ctx, `SELECT COUNT(*) FROM catalog_bridges WHERE cluster = 'default' AND name = 'vmbr0'`).Scan(&count); err != nil {
-		t.Fatalf("count bridges: %v", err)
-	}
-
-	if count != 2 {
-		t.Fatalf("bridge count = %d, want 2", count)
-	}
-}
-
-// createMigrationStandInTables creates minimal stand-in tables for migrations
-// that ALTER or DROP tables created by earlier migrations, so a focused test
-// that marks versions 1-13 as applied (without replaying V7's full seed) can
-// still run the full migration list. V16 alters clusters; V17 drops
-// catalog_isos; V19 rebuilds audit_log; V21 alters catalog_profiles; V36
-// drops clusters.oidc_enabled (created by V11); V37 drops api_tokens
-// (created by V2).
-func createMigrationStandInTables(ctx context.Context, t *testing.T, db *sql.DB) {
-	t.Helper()
-
-	standins := []string{
-		`CREATE TABLE IF NOT EXISTS clusters (name TEXT PRIMARY KEY, oidc_enabled INTEGER NOT NULL DEFAULT 0)`,
-		`CREATE TABLE IF NOT EXISTS api_tokens (id TEXT PRIMARY KEY)`,
-		`CREATE TABLE IF NOT EXISTS catalog_nodes (cluster TEXT NOT NULL, name TEXT NOT NULL, PRIMARY KEY (cluster, name))`,
-		`CREATE TABLE IF NOT EXISTS catalog_storages (cluster TEXT NOT NULL, name TEXT NOT NULL, node TEXT NOT NULL, PRIMARY KEY (cluster, name, node))`,
-		`CREATE TABLE IF NOT EXISTS catalog_isos (cluster TEXT NOT NULL, storage TEXT NOT NULL, file TEXT NOT NULL, enabled BOOLEAN NOT NULL DEFAULT 1, PRIMARY KEY (cluster, storage, file))`,
-		`CREATE TABLE IF NOT EXISTS catalog_tags (cluster TEXT NOT NULL, name TEXT NOT NULL, color TEXT NOT NULL, created_at TEXT NOT NULL, PRIMARY KEY (cluster, name))`,
-		`CREATE TABLE IF NOT EXISTS catalog_cloudinit_templates (cluster TEXT NOT NULL, name TEXT NOT NULL, enabled BOOLEAN NOT NULL DEFAULT 1, PRIMARY KEY (cluster, name))`,
-		`CREATE TABLE IF NOT EXISTS vm_cloudinit_snippets (cluster TEXT NOT NULL, vmid INTEGER NOT NULL, content TEXT NOT NULL, storage TEXT NOT NULL, filename TEXT NOT NULL, updated_at TEXT NOT NULL, updated_by TEXT NOT NULL, PRIMARY KEY (cluster, vmid))`,
-		`CREATE TABLE IF NOT EXISTS sessions (token_hash BLOB PRIMARY KEY, cluster TEXT NOT NULL DEFAULT '')`,
-		`CREATE TABLE IF NOT EXISTS audit_log (id INTEGER PRIMARY KEY AUTOINCREMENT, actor TEXT NOT NULL, cluster TEXT NOT NULL, vmid INTEGER NOT NULL, action TEXT NOT NULL, timestamp TEXT NOT NULL)`,
-		`CREATE TABLE IF NOT EXISTS catalog_profiles (cluster TEXT NOT NULL, id TEXT NOT NULL, label TEXT NOT NULL, cpu_cores INTEGER NOT NULL, memory_mb INTEGER NOT NULL, disk_gb INTEGER NOT NULL, bus TEXT NOT NULL, enabled BOOLEAN NOT NULL DEFAULT 1, PRIMARY KEY (cluster, id))`,
-		`CREATE TABLE IF NOT EXISTS vm_limits (cluster TEXT PRIMARY KEY, max_sockets INTEGER NOT NULL, max_cores INTEGER NOT NULL, max_memory_mb INTEGER NOT NULL, max_disk_per_vm_gb INTEGER NOT NULL, max_network_cards INTEGER NOT NULL, max_snapshots INTEGER NOT NULL, max_vm_per_user INTEGER NOT NULL, allow_custom_yaml BOOLEAN NOT NULL)`,
-		`CREATE TABLE IF NOT EXISTS node_limits (cluster TEXT NOT NULL, node TEXT NOT NULL, max_vms INTEGER NOT NULL, max_vcpus INTEGER NOT NULL, max_ram_gb INTEGER NOT NULL, max_disk_gb INTEGER NOT NULL, PRIMARY KEY (cluster, node))`,
-		`CREATE TABLE IF NOT EXISTS documentation_pages (id TEXT NOT NULL, lang TEXT NOT NULL DEFAULT 'en', is_system BOOLEAN NOT NULL DEFAULT 0, PRIMARY KEY (id, lang))`,
-	}
-	for _, ddl := range standins {
-		if _, err := db.ExecContext(ctx, ddl); err != nil {
-			t.Fatalf("create stand-in table: %v", err)
-		}
-	}
-}
-
-//nolint:paralleltest // serial: shared database fixture
-func TestRunMigrations_V24RemovesDemoTemplateRows(t *testing.T) {
-	db := openTestDB(t)
-	ctx := context.Background()
-
-	// Build the pre-V24 schema (V1..V23) so rows can be inserted the way the
-	// old V22 seed used to ship them.
-	if err := store.RunMigrations(ctx, db, store.Migrations[:23]); err != nil {
-		t.Fatalf("RunMigrations to V23: %v", err)
-	}
-
-	demo := `INSERT INTO catalog_templates (cluster, node, vmid, name, cloud_init_capable, disk_storage, disk_size_gb, disk_bus) VALUES
-		('default', 'pve-node-02', 9000, 'debian-12-cloud', 1, 'local-lvm', 8, 'scsi'),
-		('default', 'pve-node-02', 9001, 'alpine-appliance', 0, 'local', 2, 'scsi'),
-		('default', 'pve-node-02', 9100, 'my-real-template', 1, 'local-lvm', 8, 'scsi')`
-	if _, err := db.ExecContext(ctx, demo); err != nil {
-		t.Fatalf("insert demo rows: %v", err)
-	}
-
-	if err := store.RunMigrations(ctx, db, store.Migrations); err != nil {
-		t.Fatalf("RunMigrations to V24: %v", err)
-	}
-
-	rows, err := db.QueryContext(ctx, `SELECT vmid, name FROM catalog_templates ORDER BY vmid`)
-	if err != nil {
-		t.Fatalf("query catalog_templates: %v", err)
-	}
-	defer func() { _ = rows.Close() }()
-
-	var remaining []string
-
-	for rows.Next() {
-		var vmid int
-
-		var name string
-
-		if err := rows.Scan(&vmid, &name); err != nil {
-			t.Fatalf("scan row: %v", err)
-		}
-
-		remaining = append(remaining, fmt.Sprintf("%d/%s", vmid, name))
-	}
-
-	if err := rows.Err(); err != nil {
-		t.Fatalf("rows: %v", err)
-	}
-
-	if len(remaining) != 1 || remaining[0] != "9100/my-real-template" {
-		t.Fatalf("catalog_templates after V24 = %v, want only the legitimate approval 9100/my-real-template", remaining)
-	}
-}
-
-//nolint:paralleltest // serial: shared database fixture
 func TestRunMigrations_InvalidDDL_ReturnsError(t *testing.T) {
 	db := openTestDB(t)
 	migrations := []store.Migration{
@@ -392,7 +254,63 @@ func TestRunMigrations_InvalidDDL_ReturnsError(t *testing.T) {
 }
 
 //nolint:paralleltest // serial: shared database fixture
-func TestRunMigrations_V16AddsDisplayName(t *testing.T) {
+func TestRunMigrations_UnknownAppliedVersion_ReturnsError(t *testing.T) {
+	db := openTestDB(t)
+	ctx := context.Background()
+
+	// Simulate a database created by a pre-release development build: its
+	// schema_migrations rows reference versions the squashed baseline no
+	// longer carries. Applying nothing would leave a stale schema silently,
+	// so the runner must refuse.
+	if _, err := db.ExecContext(ctx, `CREATE TABLE schema_migrations (version INTEGER PRIMARY KEY, applied_at TEXT NOT NULL)`); err != nil {
+		t.Fatalf("create migrations table: %v", err)
+	}
+
+	for version := 1; version <= 3; version++ {
+		if _, err := db.ExecContext(ctx, `INSERT INTO schema_migrations (version, applied_at) VALUES (?, '2026-01-01T00:00:00Z')`, version); err != nil {
+			t.Fatalf("mark migration %d applied: %v", version, err)
+		}
+	}
+
+	migrations := []store.Migration{
+		{Version: 1, DDL: testMigrationDDL},
+	}
+
+	err := store.RunMigrations(ctx, db, migrations)
+	if err == nil {
+		t.Fatalf("expected error for unknown applied versions, got nil")
+	}
+}
+
+// baselineTables is every table the v0.4 baseline must create - the final
+// form of the collapsed migration chain. Tables dropped during development
+// (api_tokens, user_cloudinit_files, cloudinit_publications) are absent.
+var baselineTables = []string{
+	"sessions",
+	"audit_log",
+	"clusters",
+	"catalog_nodes",
+	"catalog_storages",
+	"catalog_bridges",
+	"catalog_isos",
+	"catalog_images",
+	"catalog_templates",
+	"catalog_profiles",
+	"catalog_tags",
+	"catalog_cloudinit_templates",
+	"documentation_pages",
+	"managed_pools",
+	"vm_limits",
+	"node_limits",
+	"audit_config",
+	"vm_baseline_state",
+	"vm_cloudinit_documents",
+	"vm_cloudinit_snippets",
+	"profile_ssh_keys",
+}
+
+//nolint:paralleltest // serial: shared database fixture
+func TestMigrations_BaselineCreatesFinalSchema(t *testing.T) {
 	db := openTestDB(t)
 	ctx := context.Background()
 
@@ -400,67 +318,32 @@ func TestRunMigrations_V16AddsDisplayName(t *testing.T) {
 		t.Fatalf("RunMigrations: %v", err)
 	}
 
-	st, err := store.NewFromDBWithSecret(db, "test-session-secret-at-least-32-bytes-long!!")
-	if err != nil {
-		t.Fatalf("NewFromDBWithSecret: %v", err)
+	for _, table := range baselineTables {
+		var name string
+
+		err := db.QueryRowContext(ctx,
+			`SELECT name FROM sqlite_master WHERE type = 'table' AND name = ?`, table).Scan(&name)
+		if err != nil {
+			t.Fatalf("table %q missing from baseline schema: %v", table, err)
+		}
 	}
 
-	if err := st.CreateCluster(ctx, store.ClusterRow{Name: testStoreCluster, URL: "https://example.com:8006", TokenID: "tok", TokenSecret: testClusterTokenSecret}); err != nil {
-		t.Fatalf("CreateCluster: %v", err)
-	}
+	// The baseline carries no demo data: only the structural audit_config
+	// singleton is seeded. vm_limits and catalog_tags rows arrive at runtime
+	// (CreateCluster, catalog.ListTags).
+	for table, want := range map[string]int{
+		"catalog_nodes": 0,
+		"vm_limits":     0,
+		"catalog_tags":  0,
+		"audit_config":  1,
+	} {
+		var got int
+		if err := db.QueryRowContext(ctx, `SELECT COUNT(*) FROM `+table).Scan(&got); err != nil {
+			t.Fatalf("count %s: %v", table, err)
+		}
 
-	if err := st.SetClusterDisplayName(ctx, testStoreCluster, "prod-cluster"); err != nil {
-		t.Fatalf("SetClusterDisplayName: %v", err)
-	}
-
-	row, err := st.GetCluster(ctx, testStoreCluster)
-	if err != nil {
-		t.Fatalf("GetCluster: %v", err)
-	}
-
-	if row.DisplayName != "prod-cluster" {
-		t.Fatalf("DisplayName = %q, want prod-cluster", row.DisplayName)
-	}
-
-	if err := st.SetClusterDisplayName(ctx, testStoreCluster, ""); err != nil {
-		t.Fatalf("clear display name: %v", err)
-	}
-
-	row, err = st.GetCluster(ctx, testStoreCluster)
-	if err != nil {
-		t.Fatalf("GetCluster after clear: %v", err)
-	}
-
-	if row.DisplayName != "" {
-		t.Fatalf("DisplayName = %q, want empty", row.DisplayName)
-	}
-}
-
-//nolint:paralleltest // serial: shared database fixture
-func TestRunMigrations_V34BackfillsPolicyRow(t *testing.T) {
-	db := openTestDB(t)
-	ctx := context.Background()
-
-	// Apply everything before V34, then add a cluster row the pre-seed way -
-	// raw SQL, so no vm_limits row exists - then apply the rest.
-	if err := store.RunMigrations(ctx, db, store.Migrations[:33]); err != nil {
-		t.Fatalf("RunMigrations up to V33: %v", err)
-	}
-
-	if _, err := db.ExecContext(ctx, `INSERT INTO clusters (name, url, token_id, created_at) VALUES ('orphan', 'https://orphan.invalid', 'tok', '2025-01-01T00:00:00Z')`); err != nil {
-		t.Fatalf("insert orphan cluster: %v", err)
-	}
-
-	if err := store.RunMigrations(ctx, db, store.Migrations); err != nil {
-		t.Fatalf("RunMigrations full list: %v", err)
-	}
-
-	var sockets, cores, quota int
-	err := db.QueryRowContext(ctx, `SELECT max_sockets, max_cores, max_vm_per_user FROM vm_limits WHERE cluster = 'orphan'`).Scan(&sockets, &cores, &quota)
-	if err != nil {
-		t.Fatalf("vm_limits row for orphan cluster: %v", err)
-	}
-	if sockets != 4 || cores != 8 || quota != -1 {
-		t.Errorf("backfilled values = (%d,%d,%d), want (4,8,-1)", sockets, cores, quota)
+		if got != want {
+			t.Errorf("%s rows = %d, want %d", table, got, want)
+		}
 	}
 }

@@ -75,6 +75,10 @@ func Open(cfg config.Configuration) (*Store, error) {
 			_ = db.Close()
 			return nil, fmt.Errorf("seed clusters: %w", err)
 		}
+		if err := st.SeedDemoCatalog(ctx); err != nil {
+			_ = db.Close()
+			return nil, fmt.Errorf("seed demo catalog: %w", err)
+		}
 	case "proxmox":
 		if err := st.ensureEnvCluster(ctx, cfg.ProxmoxURL, cfg.ProxmoxAPITokenName, cfg.ProxmoxAPITokenValue); err != nil {
 			_ = db.Close()

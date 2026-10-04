@@ -12,6 +12,7 @@ import (
 	"pvmss/server/internal/inventory"
 	"pvmss/server/internal/policy"
 	"pvmss/server/internal/store"
+	"pvmss/server/internal/testfixture"
 	"pvmss/server/internal/vm"
 	"slices"
 	"strings"
@@ -50,6 +51,8 @@ func newCreateFixture(t *testing.T) createFixture {
 	}
 
 	t.Cleanup(func() { _ = st.Close() })
+
+	testfixture.SeedDemoFixtures(t, st)
 
 	ctx := context.Background()
 	for _, bridge := range []catalog.Bridge{

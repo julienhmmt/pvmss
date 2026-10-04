@@ -1,98 +1,146 @@
 // Package store provides SQLite-backed persistence and schema migrations.
 package store
 
-// schemaV1 creates the schema_migrations tracking table.
-const schemaV1 = `CREATE TABLE IF NOT EXISTS schema_migrations (
-	version    INTEGER PRIMARY KEY,
-	applied_at TEXT NOT NULL
-)`
-
-const schemaV2 = `CREATE TABLE api_tokens (
-	id TEXT PRIMARY KEY,
-	token_hash BLOB NOT NULL UNIQUE,
-	username TEXT NOT NULL,
-	is_admin INTEGER NOT NULL,
-	scope TEXT NOT NULL,
-	label TEXT NOT NULL,
-	expires_at TEXT NOT NULL,
-	created_at TEXT NOT NULL,
-	last_used_at TEXT
-)`
-
-const schemaV3 = `CREATE TABLE sessions (
+// schemaV1 is the v0.4 baseline: the full schema in its final form. The
+// incremental chain accumulated during development (37 versions) was
+// collapsed before the first tagged release - no v0.4 database exists in
+// the field to upgrade. Databases created by pre-release builds carry
+// schema_migrations versions that are absent from this list; RunMigrations
+// rejects them with a clear error instead of silently skipping the baseline.
+//
+// Only the structural audit_config singleton is seeded here. Everything else
+// is runtime-seeded: vm_limits by CreateCluster, the pvmss tag lazily by
+// catalog.ListTags, documentation_pages by docs/seed at startup, and the demo
+// catalog by SeedDemoCatalog when the cluster source is "fake".
+const schemaV1 = `
+CREATE TABLE sessions (
 	token_hash BLOB PRIMARY KEY,
-	username TEXT NOT NULL,
-	is_admin INTEGER NOT NULL,
+	username   TEXT NOT NULL,
+	is_admin   INTEGER NOT NULL,
 	expires_at TEXT NOT NULL,
-	created_at TEXT NOT NULL
-)`
-
-// schemaV4 drops the NOT NULL constraint on api_tokens.expires_at: creation
-// tokens no longer take an expiry input, so the
-// column must accept NULL. SQLite has no ALTER COLUMN, so the table is rebuilt.
-const schemaV4 = `
-ALTER TABLE api_tokens RENAME TO api_tokens_v2;
-CREATE TABLE api_tokens (
-	id TEXT PRIMARY KEY,
-	token_hash BLOB NOT NULL UNIQUE,
-	username TEXT NOT NULL,
-	is_admin INTEGER NOT NULL,
-	scope TEXT NOT NULL,
-	label TEXT NOT NULL,
-	expires_at TEXT,
 	created_at TEXT NOT NULL,
-	last_used_at TEXT
+	pool       TEXT NOT NULL DEFAULT '',
+	cluster    TEXT NOT NULL DEFAULT '',
+	csrf_token TEXT NOT NULL DEFAULT ''
 );
-INSERT INTO api_tokens (id, token_hash, username, is_admin, scope, label, expires_at, created_at, last_used_at)
-	SELECT id, token_hash, username, is_admin, scope, label, expires_at, created_at, last_used_at FROM api_tokens_v2;
-DROP TABLE api_tokens_v2;
-`
 
-// schemaV5 adds the tenancy anchor (one pool per user) to
-// both identity stores, so the scoped reads can resolve ByPool[identity.Pool].
-const schemaV5 = `
-ALTER TABLE sessions ADD COLUMN pool TEXT NOT NULL DEFAULT '';
-ALTER TABLE api_tokens ADD COLUMN pool TEXT NOT NULL DEFAULT '';
-`
+-- vmid is nullable: admin actions (cluster credentials, policy, catalog
+-- toggles, db import/export) have no VM scope but are still recorded.
+CREATE TABLE audit_log (
+	id          INTEGER PRIMARY KEY AUTOINCREMENT,
+	actor       TEXT NOT NULL,
+	cluster     TEXT NOT NULL,
+	vmid        INTEGER,
+	action      TEXT NOT NULL,
+	timestamp   TEXT NOT NULL,
+	target_type TEXT,
+	target_id   TEXT,
+	detail      TEXT,
+	ip_address  TEXT,
+	severity    TEXT NOT NULL DEFAULT 'info'
+);
 
-// schemaV6 adds the audit_log table. Every VM write flows through
-// Resolve() and is recorded here with the real acting user - closing the
-// traceability gap the document names as the reason the flaw went undetected.
-// Write-only by design; a read endpoint lives elsewhere.
-const schemaV6 = `CREATE TABLE audit_log (
-	id        INTEGER PRIMARY KEY AUTOINCREMENT,
-	actor     TEXT NOT NULL,
-	cluster   TEXT NOT NULL,
-	vmid      INTEGER NOT NULL,
-	action    TEXT NOT NULL,
-	timestamp TEXT NOT NULL
-)`
-
-// schemaV11 adds runtime-managed cluster records and records the cluster used
-// by browser sessions. The exact version follows the latest migration.
-const schemaV11 = `
 CREATE TABLE clusters (
-	name                       TEXT PRIMARY KEY,
-	url                        TEXT NOT NULL,
-	tls_insecure_skip_verify   INTEGER NOT NULL DEFAULT 0,
-	token_id                   TEXT NOT NULL,
-	token_secret_ciphertext    BLOB,
-	oidc_enabled               INTEGER NOT NULL DEFAULT 0,
-	created_at                 TEXT NOT NULL,
-	removed_at                 TEXT,
-	last_test_status           TEXT,
-	last_test_at               TEXT,
-	last_test_message          TEXT,
-	proxmox_version            TEXT
+	name                     TEXT PRIMARY KEY,
+	url                      TEXT NOT NULL,
+	tls_insecure_skip_verify INTEGER NOT NULL DEFAULT 0,
+	token_id                 TEXT NOT NULL,
+	token_secret_ciphertext  BLOB,
+	created_at               TEXT NOT NULL,
+	removed_at               TEXT,
+	last_test_status         TEXT,
+	last_test_at             TEXT,
+	last_test_message        TEXT,
+	proxmox_version          TEXT,
+	display_name             TEXT,
+	snippet_storage          TEXT NOT NULL DEFAULT ''
 );
-ALTER TABLE sessions ADD COLUMN cluster TEXT NOT NULL DEFAULT '';
-`
 
-// schemaV12 adds the admin-curated cloud-init template catalog: a sibling
-// to the catalog_profiles, full CRUD with no Proxmox-side discovery source.
-// The version is provisional - the exact integer is fixed
-// by actual merge order, not spec-writing order.
-const schemaV12 = `CREATE TABLE catalog_cloudinit_templates (
+CREATE TABLE catalog_nodes (
+	cluster TEXT NOT NULL,
+	name    TEXT NOT NULL,
+	enabled BOOLEAN NOT NULL DEFAULT 1,
+	PRIMARY KEY (cluster, name)
+);
+
+CREATE TABLE catalog_storages (
+	cluster TEXT NOT NULL,
+	name    TEXT NOT NULL,
+	node    TEXT NOT NULL,
+	enabled BOOLEAN NOT NULL DEFAULT 1,
+	PRIMARY KEY (cluster, name, node)
+);
+
+CREATE TABLE catalog_bridges (
+	cluster TEXT NOT NULL,
+	node    TEXT NOT NULL,
+	name    TEXT NOT NULL,
+	enabled BOOLEAN NOT NULL DEFAULT 1,
+	PRIMARY KEY (cluster, node, name)
+);
+
+CREATE TABLE catalog_isos (
+	cluster TEXT NOT NULL,
+	node    TEXT NOT NULL,
+	storage TEXT NOT NULL,
+	file    TEXT NOT NULL,
+	enabled BOOLEAN NOT NULL DEFAULT 1,
+	PRIMARY KEY (cluster, node, storage, file)
+);
+
+-- Approved cloud images: bootable disk images an admin placed on a Proxmox
+-- storage's import/ directory - PVMSS never fetches images from the
+-- internet. size_bytes lets the create path reject a disk size below the
+-- image before a VMID is spent.
+CREATE TABLE catalog_images (
+	cluster    TEXT NOT NULL,
+	node       TEXT NOT NULL,
+	storage    TEXT NOT NULL,
+	file       TEXT NOT NULL,
+	size_bytes INTEGER NOT NULL DEFAULT 0,
+	enabled    BOOLEAN NOT NULL DEFAULT 1,
+	PRIMARY KEY (cluster, node, storage, file)
+);
+
+-- Approved Proxmox templates, keyed by (cluster, vmid) since VMIDs are
+-- cluster-unique. cloud_init_capable drives the full/linked clone decision;
+-- override_discovery pins the stored fields against discovery write-back.
+CREATE TABLE catalog_templates (
+	cluster            TEXT NOT NULL,
+	node               TEXT NOT NULL,
+	vmid               INTEGER NOT NULL,
+	name               TEXT NOT NULL DEFAULT '',
+	cloud_init_capable BOOLEAN NOT NULL DEFAULT 0,
+	disk_storage       TEXT NOT NULL DEFAULT '',
+	disk_size_gb       INTEGER NOT NULL DEFAULT 0,
+	disk_bus           TEXT NOT NULL DEFAULT 'scsi',
+	enabled            BOOLEAN NOT NULL DEFAULT 1,
+	override_discovery BOOLEAN NOT NULL DEFAULT 0,
+	PRIMARY KEY (cluster, vmid)
+);
+
+CREATE TABLE catalog_profiles (
+	cluster   TEXT NOT NULL,
+	id        TEXT NOT NULL,
+	label     TEXT NOT NULL,
+	cpu_cores INTEGER NOT NULL,
+	memory_mb INTEGER NOT NULL,
+	disk_gb   INTEGER NOT NULL,
+	bus       TEXT NOT NULL,
+	enabled   BOOLEAN NOT NULL DEFAULT 1,
+	sockets   INTEGER NOT NULL DEFAULT 1,
+	PRIMARY KEY (cluster, id)
+);
+
+CREATE TABLE catalog_tags (
+	cluster    TEXT NOT NULL,
+	name       TEXT NOT NULL,
+	color      TEXT NOT NULL,
+	created_at TEXT NOT NULL,
+	PRIMARY KEY (cluster, name)
+);
+
+CREATE TABLE catalog_cloudinit_templates (
 	cluster    TEXT NOT NULL,
 	id         TEXT NOT NULL,
 	label      TEXT NOT NULL,
@@ -101,14 +149,9 @@ const schemaV12 = `CREATE TABLE catalog_cloudinit_templates (
 	created_at TEXT NOT NULL,
 	updated_at TEXT NOT NULL,
 	PRIMARY KEY (cluster, id)
-)`
+);
 
-// schemaV13 adds admin-authored documentation pages: Markdown
-// pages with a user/admin audience, an enabled toggle, and a built-in
-// is_system flag that protects seeded pages from delete or id/lang change.
-// The composite PK (id, lang) lets the same page exist in multiple languages;
-// the en row is the fallback when a requested lang is absent.
-const schemaV13 = `CREATE TABLE documentation_pages (
+CREATE TABLE documentation_pages (
 	id         TEXT NOT NULL,
 	lang       TEXT NOT NULL DEFAULT 'en',
 	title      TEXT NOT NULL,
@@ -122,220 +165,60 @@ const schemaV13 = `CREATE TABLE documentation_pages (
 	updated_at TEXT,
 	PRIMARY KEY (id, lang),
 	CHECK (audience IN ('user','admin'))
-)`
-
-const schemaV14 = `
-DROP TABLE catalog_bridges;
-CREATE TABLE catalog_bridges (
-	cluster TEXT NOT NULL,
-	node    TEXT NOT NULL,
-	name    TEXT NOT NULL,
-	enabled BOOLEAN NOT NULL DEFAULT 1,
-	PRIMARY KEY (cluster, node, name)
 );
-`
 
-// schemaV15 records the pools PVMSS has provisioned so deletion can be scoped
-// to managed pools only. A row is written only after pools.Create succeeds
-// end-to-end; pre-existing Proxmox pools are intentionally not adopted because
-// the legacy schema stored no reliable PVMSS-origin marker.
-const schemaV15 = `CREATE TABLE managed_pools (
+-- Pools PVMSS provisioned, so deletion can be scoped to managed pools only.
+-- A row is written only after pools.Create succeeds end-to-end; pre-existing
+-- Proxmox pools are intentionally not adopted.
+CREATE TABLE managed_pools (
 	cluster    TEXT NOT NULL,
 	name       TEXT NOT NULL,
 	created_at TEXT NOT NULL,
 	PRIMARY KEY (cluster, name)
-)`
+);
 
-// schemaV16 adds a display_name column to clusters so the UI can show the real
-// Proxmox cluster name (from /cluster/status) alongside the immutable internal
-// key. Existing rows get NULL - callers fall back to the logical name.
-const schemaV16 = `ALTER TABLE clusters ADD COLUMN display_name TEXT`
+CREATE TABLE vm_limits (
+	cluster            TEXT PRIMARY KEY,
+	max_sockets        INTEGER NOT NULL,
+	max_cores          INTEGER NOT NULL,
+	max_memory_mb      INTEGER NOT NULL,
+	max_disk_per_vm_gb INTEGER NOT NULL,
+	max_network_cards  INTEGER NOT NULL,
+	max_snapshots      INTEGER NOT NULL,
+	max_vm_per_user    INTEGER NOT NULL,
+	isolation_vlan_tag INTEGER NOT NULL DEFAULT 0
+);
 
-// schemaV17 rebuilds catalog_isos with node in the primary key. The previous
-// schema keyed on (cluster, storage, file), which collapsed duplicate ISO files
-// discovered on the same storage name across multiple nodes - the toggle could
-// not be attributed to a single node and the UI showed duplicate Svelte keys.
-// Node is now part of the identity, mirroring catalog_bridges' (cluster, node,
-// name) key. Existing rows are dropped (they are repopulated by discovery +
-// admin approval; the recovery tool writes node="" for legacy entries).
-const schemaV17 = `
-DROP TABLE catalog_isos;
-CREATE TABLE catalog_isos (
-	cluster TEXT NOT NULL,
-	node    TEXT NOT NULL,
-	storage TEXT NOT NULL,
-	file    TEXT NOT NULL,
-	enabled BOOLEAN NOT NULL DEFAULT 1,
-	PRIMARY KEY (cluster, node, storage, file)
-);`
+CREATE TABLE node_limits (
+	cluster     TEXT NOT NULL,
+	node        TEXT NOT NULL,
+	max_vms     INTEGER NOT NULL,
+	max_vcpus   INTEGER NOT NULL,
+	max_ram_gb  INTEGER NOT NULL,
+	max_disk_gb INTEGER NOT NULL,
+	PRIMARY KEY (cluster, node)
+);
 
-// schemaV18 adds a server-side CSRF token to each session. The cookie value
-// is duplicated in the row so the middleware can validate the X-CSRF-Token
-// header against both the cookie and the persisted session state.
-const schemaV18 = `ALTER TABLE sessions ADD COLUMN csrf_token TEXT NOT NULL DEFAULT ''`
-
-// schemaV20 adds the audit retention configuration. A single-row
-// table seeded with the default 365-day retention; the floor of 30 days is
-// enforced by SetAuditConfig, not by the schema, so a future floor change is
-// a code edit rather than a migration.
-const schemaV20 = `CREATE TABLE audit_config (
+CREATE TABLE audit_config (
 	id             INTEGER PRIMARY KEY CHECK (id = 1),
 	retention_days INTEGER NOT NULL
 );
-INSERT INTO audit_config (id, retention_days) VALUES (1, 365);`
+INSERT INTO audit_config (id, retention_days) VALUES (1, 365);
 
-// schemaV21 adds a sockets column to catalog_profiles so the admin can set a
-// profile's socket count. Existing rows default to 1, preserving the
-// previous hardcoded behaviour.
-const schemaV21 = `ALTER TABLE catalog_profiles ADD COLUMN sockets INTEGER NOT NULL DEFAULT 1`
-
-// schemaV22 adds the approved Proxmox template catalog: a
-// sibling to catalog_isos, keyed by (cluster, vmid) since Proxmox VMIDs are
-// cluster-unique. The node determines where the clone lands (cross-node clone is forbidden).
-// cloud_init_capable drives the full/linked decision.
-// disk_storage and disk_size_gb drive the resize decision
-// (enlarge after clone, reject reduction before VMID).
-//
-// No seed: a real deployment starts with zero approved templates - admins
-// approve whatever their cluster actually reports (the fake demo source
-// discovers its own template set for demo mode).
-const schemaV22 = `CREATE TABLE catalog_templates (
-	cluster            TEXT NOT NULL,
-	node               TEXT NOT NULL,
-	vmid               INTEGER NOT NULL,
-	name               TEXT NOT NULL DEFAULT '',
-	cloud_init_capable BOOLEAN NOT NULL DEFAULT 0,
-	disk_storage       TEXT NOT NULL DEFAULT '',
-	disk_size_gb       INTEGER NOT NULL DEFAULT 0,
-	disk_bus           TEXT NOT NULL DEFAULT 'scsi',
-	enabled            BOOLEAN NOT NULL DEFAULT 1,
-	PRIMARY KEY (cluster, vmid)
-);`
-
-// schemaV23 adds an optional per-cluster isolation VLAN tag to vm_limits
-// (one VLAN per cluster, imposed - the admin sets it alongside the gabarit; empty/0 = no tag
-// imposed). Tenants never choose the
-// segmentation; the create path stamps the tag on every NIC.
-const schemaV23 = `ALTER TABLE vm_limits ADD COLUMN isolation_vlan_tag INTEGER NOT NULL DEFAULT 0`
-
-// schemaV24 removes the demo template rows the V22 seed used to insert
-// (debian-12-cloud and alpine-appliance on cluster "default"). Databases
-// created before the seed was dropped must not keep offering templates that
-// do not exist in Proxmox. The delete matches the exact seed signature so a
-// legitimately approved template is never touched.
-const schemaV24 = `DELETE FROM catalog_templates
-	 WHERE cluster = 'default'
-	   AND vmid IN (9000, 9001)
-	   AND node = 'pve-node-02'
-	   AND name IN ('debian-12-cloud', 'alpine-appliance')
-	   AND disk_storage IN ('local-lvm', 'local')
-	   AND disk_bus = 'scsi'`
-
-// schemaV25 renames the cluster "default" to its display_name (the real
-// Proxmox cluster name discovered via /cluster/status). The internal name
-// "default" was a placeholder from the initial setup; the display_name is
-// the authoritative name the user sees and expects. Cascades to every table
-// with a cluster column. Only runs when display_name is set, non-empty, and
-// differs from "default". The clusters table is updated last so the subquery
-// in the child-table updates still finds the old name.
-const schemaV25 = `
-UPDATE audit_log               SET cluster = (SELECT display_name FROM clusters WHERE name = 'default') WHERE cluster = 'default' AND (SELECT display_name FROM clusters WHERE name = 'default') IS NOT NULL AND (SELECT display_name FROM clusters WHERE name = 'default') != '';
-UPDATE catalog_bridges         SET cluster = (SELECT display_name FROM clusters WHERE name = 'default') WHERE cluster = 'default' AND (SELECT display_name FROM clusters WHERE name = 'default') IS NOT NULL AND (SELECT display_name FROM clusters WHERE name = 'default') != '';
-UPDATE catalog_cloudinit_templates SET cluster = (SELECT display_name FROM clusters WHERE name = 'default') WHERE cluster = 'default' AND (SELECT display_name FROM clusters WHERE name = 'default') IS NOT NULL AND (SELECT display_name FROM clusters WHERE name = 'default') != '';
-UPDATE catalog_isos            SET cluster = (SELECT display_name FROM clusters WHERE name = 'default') WHERE cluster = 'default' AND (SELECT display_name FROM clusters WHERE name = 'default') IS NOT NULL AND (SELECT display_name FROM clusters WHERE name = 'default') != '';
-UPDATE catalog_nodes           SET cluster = (SELECT display_name FROM clusters WHERE name = 'default') WHERE cluster = 'default' AND (SELECT display_name FROM clusters WHERE name = 'default') IS NOT NULL AND (SELECT display_name FROM clusters WHERE name = 'default') != '';
-UPDATE catalog_profiles        SET cluster = (SELECT display_name FROM clusters WHERE name = 'default') WHERE cluster = 'default' AND (SELECT display_name FROM clusters WHERE name = 'default') IS NOT NULL AND (SELECT display_name FROM clusters WHERE name = 'default') != '';
-UPDATE catalog_storages        SET cluster = (SELECT display_name FROM clusters WHERE name = 'default') WHERE cluster = 'default' AND (SELECT display_name FROM clusters WHERE name = 'default') IS NOT NULL AND (SELECT display_name FROM clusters WHERE name = 'default') != '';
-UPDATE catalog_tags            SET cluster = (SELECT display_name FROM clusters WHERE name = 'default') WHERE cluster = 'default' AND (SELECT display_name FROM clusters WHERE name = 'default') IS NOT NULL AND (SELECT display_name FROM clusters WHERE name = 'default') != '';
-UPDATE catalog_templates       SET cluster = (SELECT display_name FROM clusters WHERE name = 'default') WHERE cluster = 'default' AND (SELECT display_name FROM clusters WHERE name = 'default') IS NOT NULL AND (SELECT display_name FROM clusters WHERE name = 'default') != '';
-UPDATE managed_pools           SET cluster = (SELECT display_name FROM clusters WHERE name = 'default') WHERE cluster = 'default' AND (SELECT display_name FROM clusters WHERE name = 'default') IS NOT NULL AND (SELECT display_name FROM clusters WHERE name = 'default') != '';
-UPDATE node_limits             SET cluster = (SELECT display_name FROM clusters WHERE name = 'default') WHERE cluster = 'default' AND (SELECT display_name FROM clusters WHERE name = 'default') IS NOT NULL AND (SELECT display_name FROM clusters WHERE name = 'default') != '';
-UPDATE sessions                SET cluster = (SELECT display_name FROM clusters WHERE name = 'default') WHERE cluster = 'default' AND (SELECT display_name FROM clusters WHERE name = 'default') IS NOT NULL AND (SELECT display_name FROM clusters WHERE name = 'default') != '';
-UPDATE vm_cloudinit_snippets   SET cluster = (SELECT display_name FROM clusters WHERE name = 'default') WHERE cluster = 'default' AND (SELECT display_name FROM clusters WHERE name = 'default') IS NOT NULL AND (SELECT display_name FROM clusters WHERE name = 'default') != '';
-UPDATE vm_limits               SET cluster = (SELECT display_name FROM clusters WHERE name = 'default') WHERE cluster = 'default' AND (SELECT display_name FROM clusters WHERE name = 'default') IS NOT NULL AND (SELECT display_name FROM clusters WHERE name = 'default') != '';
-UPDATE clusters                SET name = display_name WHERE name = 'default' AND display_name IS NOT NULL AND display_name != '';
-`
-
-// schemaV26 adds an admin override flag to catalog_templates. When set, the
-// catalog admin list stops overwriting the stored field values with the
-// Proxmox-discovered ones (catalog/admin.go: templateDrift write-back). This
-// lets an administrator pin a template's editable fields (name, node, disk
-// storage, disk size, disk bus, cloud-init flag) to values that differ from
-// what Proxmox reports - e.g. to correct a misnamed template or to cap a
-// template's disk size below what discovery claims. The flag defaults to 0
-// (discovery wins, the existing behavior).
-const schemaV26 = `ALTER TABLE catalog_templates ADD COLUMN override_discovery BOOLEAN NOT NULL DEFAULT 0`
-
-// schemaV27 adds the approved cloud-image catalog (catalog_images): a sibling
-// to catalog_isos keyed by (cluster, node, storage, file). A cloud image is a
-// bootable disk image (.qcow2/.raw/.vmdk) an admin placed on a Proxmox
-// storage's import/ directory themselves - PVMSS never fetches images from the
-// internet. size_bytes carries the discovered image size so the create path
-// can reject a disk size below it before a VMID is spent.
-const schemaV27 = `CREATE TABLE catalog_images (
-	cluster    TEXT NOT NULL,
-	node       TEXT NOT NULL,
-	storage    TEXT NOT NULL,
-	file       TEXT NOT NULL,
-	size_bytes INTEGER NOT NULL DEFAULT 0,
-	enabled    BOOLEAN NOT NULL DEFAULT 1,
-	PRIMARY KEY (cluster, node, storage, file)
-);
-INSERT INTO catalog_images (cluster, node, storage, file, size_bytes) VALUES
-	('default', 'pve-node-01', 'local', 'ubuntu-24.04-server-cloudimg-amd64.qcow2', 644245094);`
-
-// schemaV28 adds the per-cluster cloud-init snippet write target
-// snippet_dir is an absolute path inside
-// the PVMSS process's filesystem that IS <storage path>/snippets/ of the
-// Proxmox storage named by snippet_storage. Both empty = documents disabled.
-const schemaV28 = `ALTER TABLE clusters ADD COLUMN snippet_dir TEXT NOT NULL DEFAULT '';
-ALTER TABLE clusters ADD COLUMN snippet_storage TEXT NOT NULL DEFAULT '';`
-
-// schemaV29 adds user-owned cloud-init documents. Owner is the session username; there is no
-// cluster column - a file is
-// text the user reuses on any cluster. Every query filters on owner.
-const schemaV29 = `CREATE TABLE user_cloudinit_files (
-	owner      TEXT NOT NULL,
-	id         TEXT NOT NULL,
-	label      TEXT NOT NULL,
-	content    TEXT NOT NULL,
-	created_at TEXT NOT NULL,
+-- Per-VM baseline delivery state for image-mode VMs. state is "applied",
+-- "override", or "not_delivered"; error carries the reason when
+-- state = 'not_delivered'.
+CREATE TABLE vm_baseline_state (
+	cluster   TEXT NOT NULL,
+	vmid      INTEGER NOT NULL,
+	state     TEXT NOT NULL,
+	error     TEXT NOT NULL DEFAULT '',
 	updated_at TEXT NOT NULL,
-	PRIMARY KEY (owner, id)
-)`
-
-// schemaV30 adds per-VM baseline delivery state for image-mode VMs.
-// state is "applied", "override", or "not_delivered"; error carries the reason when state is
-// "not_delivered".
-const schemaV30 = `CREATE TABLE vm_baseline_state (
-	cluster     TEXT NOT NULL,
-	vmid         INTEGER NOT NULL,
-	state        TEXT NOT NULL,
-	error        TEXT NOT NULL DEFAULT '',
-	updated_at   TEXT NOT NULL,
 	PRIMARY KEY (cluster, vmid)
-)`
-
-// schemaV31 moves cloud-init documents to admin-published, SSH-delivered
-// files. clusters gains the per-cluster SSH settings (snippet_dir is no
-// longer read: the node-side helper owns the directory).
-// cloudinit_publications records the latest published file per template
-// ('__baseline__' for the standalone baseline) and the per-node outcome.
-// vm_cloudinit_documents records which published (shared) file a VM uses;
-// unlike the legacy vm_cloudinit_snippets rows, its file is never deleted
-// with the VM. User-authored files are dropped.
-const schemaV31 = `ALTER TABLE clusters ADD COLUMN ssh_user TEXT NOT NULL DEFAULT '';
-ALTER TABLE clusters ADD COLUMN ssh_port INTEGER NOT NULL DEFAULT 22;
-ALTER TABLE clusters ADD COLUMN ssh_known_hosts TEXT NOT NULL DEFAULT '';
-CREATE TABLE cloudinit_publications (
-	cluster      TEXT NOT NULL,
-	template_id  TEXT NOT NULL,
-	filename     TEXT NOT NULL,
-	content_hash TEXT NOT NULL,
-	published_at TEXT NOT NULL,
-	nodes_json   TEXT NOT NULL DEFAULT '[]',
-	PRIMARY KEY (cluster, template_id)
 );
+
+-- Which admin-published cloud-init file a VM uses. Unlike the legacy
+-- vm_cloudinit_snippets rows, its file is never deleted with the VM.
 CREATE TABLE vm_cloudinit_documents (
 	cluster     TEXT NOT NULL,
 	vmid        INTEGER NOT NULL,
@@ -345,25 +228,21 @@ CREATE TABLE vm_cloudinit_documents (
 	updated_by  TEXT NOT NULL,
 	PRIMARY KEY (cluster, vmid)
 );
-DROP TABLE user_cloudinit_files;`
 
-// schemaV32 drops SSH publishing: PVMSS no longer writes on the nodes (the
-// admin pastes each document; presence is read live through the API), so
-// the per-cluster SSH settings and the publication records go. The three
-// built-in pages that described the SSH setup are deleted so the startup
-// seed reinserts their current text (admin edits of them are lost: they
-// documented a removed feature).
-const schemaV32 = `DROP TABLE cloudinit_publications;
-ALTER TABLE clusters DROP COLUMN ssh_user;
-ALTER TABLE clusters DROP COLUMN ssh_port;
-ALTER TABLE clusters DROP COLUMN ssh_known_hosts;
-DELETE FROM documentation_pages WHERE is_system = 1 AND id IN ('admin', 'admin-guide', 'cloud-init-setup');`
+-- Legacy per-VM cloud-init files. Forgotten, never deleted: the rows record
+-- snippets that exist on Proxmox storage and PVMSS cannot remove.
+CREATE TABLE vm_cloudinit_snippets (
+	cluster    TEXT NOT NULL,
+	vmid       INTEGER NOT NULL,
+	content    TEXT NOT NULL,
+	storage    TEXT NOT NULL,
+	filename   TEXT NOT NULL,
+	updated_at TEXT NOT NULL,
+	updated_by TEXT NOT NULL,
+	PRIMARY KEY (cluster, vmid)
+);
 
-// schemaV33 adds per-user SSH public keys for the profile page. Scope is
-// (cluster, username): the label is unique inside a profile and the public
-// key cannot be stored twice. Fingerprint-based dedupe happens in the store
-// layer (the fingerprint is computed, never persisted).
-const schemaV33 = `CREATE TABLE profile_ssh_keys (
+CREATE TABLE profile_ssh_keys (
 	id         TEXT PRIMARY KEY,
 	cluster    TEXT NOT NULL,
 	username   TEXT NOT NULL,
@@ -372,36 +251,8 @@ const schemaV33 = `CREATE TABLE profile_ssh_keys (
 	created_at TEXT NOT NULL,
 	UNIQUE (cluster, username, label),
 	UNIQUE (cluster, username, public_key)
-)`
-
-// schemaV34 backfills vm_limits rows for clusters created before
-// CreateCluster started seeding one. Without a row, GET/PUT /admin/policy and
-// the VM-creation gabarit check failed with a 500 for the whole cluster.
-// The values are the same shipped defaults as the schemaV10 'default' seed.
-const schemaV34 = `INSERT INTO vm_limits (
-	cluster, max_sockets, max_cores, max_memory_mb, max_disk_per_vm_gb,
-	max_network_cards, max_snapshots, max_vm_per_user, allow_custom_yaml, isolation_vlan_tag
-)
-SELECT name, 4, 8, 16384, 500, 4, 5, -1, 1, 0
-FROM clusters
-WHERE NOT EXISTS (SELECT 1 FROM vm_limits WHERE vm_limits.cluster = clusters.name)`
-
-// schemaV35 drops the dead allow_custom_yaml column. Custom cloud-init YAML
-// is no longer a policy gate - the flag round-tripped through the API but was
-// enforced nowhere. Backups exported before this version still import: the
-// import path intersects upload columns with the live table.
-const schemaV35 = `ALTER TABLE vm_limits DROP COLUMN allow_custom_yaml`
-
-// schemaV36 drops the oidc_enabled column. OIDC sign-in was stubbed (501)
-// and never implemented; the toggle was the column's only writer.
-const schemaV36 = `ALTER TABLE clusters DROP COLUMN oidc_enabled`
-
-// schemaV37 drops two leftovers: api_tokens (personal API tokens were removed
-// with the v0.4 rewrite; the table survived only as an import exclusion) and
-// clusters.snippet_dir (dead since V31 moved snippet delivery off the PVMSS
-// filesystem - snippet_storage is the only path that remains).
-const schemaV37 = `DROP TABLE api_tokens;
-ALTER TABLE clusters DROP COLUMN snippet_dir`
+);
+`
 
 // Migration is a single schema version and its forward-only DDL.
 type Migration struct {
@@ -413,40 +264,4 @@ type Migration struct {
 // Versions must be consecutive integers starting at 1.
 var Migrations = []Migration{
 	{Version: 1, DDL: schemaV1},
-	{Version: 2, DDL: schemaV2},
-	{Version: 3, DDL: schemaV3},
-	{Version: 4, DDL: schemaV4},
-	{Version: 5, DDL: schemaV5},
-	{Version: 6, DDL: schemaV6},
-	{Version: 7, DDL: schemaV7},
-	{Version: 8, DDL: schemaV8},
-	{Version: 9, DDL: schemaV9},
-	{Version: 10, DDL: schemaV10},
-	{Version: 11, DDL: schemaV11},
-	{Version: 12, DDL: schemaV12},
-	{Version: 13, DDL: schemaV13},
-	{Version: 14, DDL: schemaV14},
-	{Version: 15, DDL: schemaV15},
-	{Version: 16, DDL: schemaV16},
-	{Version: 17, DDL: schemaV17},
-	{Version: 18, DDL: schemaV18},
-	{Version: 19, DDL: schemaV19},
-	{Version: 20, DDL: schemaV20},
-	{Version: 21, DDL: schemaV21},
-	{Version: 22, DDL: schemaV22},
-	{Version: 23, DDL: schemaV23},
-	{Version: 24, DDL: schemaV24},
-	{Version: 25, DDL: schemaV25},
-	{Version: 26, DDL: schemaV26},
-	{Version: 27, DDL: schemaV27},
-	{Version: 28, DDL: schemaV28},
-	{Version: 29, DDL: schemaV29},
-	{Version: 30, DDL: schemaV30},
-	{Version: 31, DDL: schemaV31},
-	{Version: 32, DDL: schemaV32},
-	{Version: 33, DDL: schemaV33},
-	{Version: 34, DDL: schemaV34},
-	{Version: 35, DDL: schemaV35},
-	{Version: 36, DDL: schemaV36},
-	{Version: 37, DDL: schemaV37},
 }

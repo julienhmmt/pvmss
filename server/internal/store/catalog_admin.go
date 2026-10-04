@@ -73,7 +73,7 @@ type CatalogTemplateEnabled struct {
 	Enabled          bool
 	// OverrideDiscovery is true when an admin pinned the editable fields;
 	// the catalog admin list then skips the discovery-wins write-back for
-	// this row (schemaV26).
+	// this row.
 	OverrideDiscovery bool
 }
 
@@ -292,7 +292,7 @@ func (s *Store) CatalogTemplatesEnabled(ctx context.Context, cluster string) ([]
 }
 
 // TemplateValues is the editable field set of a catalog_templates row.
-// OverrideDiscovery pins the row against discovery-wins write-back (schemaV26).
+// OverrideDiscovery pins the row against discovery-wins write-back.
 type TemplateValues struct {
 	Node              string
 	Name              string

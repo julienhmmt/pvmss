@@ -25,6 +25,10 @@ func RunMigrations(ctx context.Context, db *sql.DB, migrations []Migration) erro
 		return fmt.Errorf("query applied migrations: %w", err)
 	}
 
+	if err := checkAppliedKnown(applied, migrations); err != nil {
+		return err
+	}
+
 	for _, m := range migrations {
 		if _, ok := applied[m.Version]; ok {
 			continue
@@ -81,6 +85,26 @@ func validateMigrationEntry(m Migration, index, previous int) error {
 
 	if strings.TrimSpace(m.DDL) == "" {
 		return fmt.Errorf("migration %d has no ddl", m.Version)
+	}
+
+	return nil
+}
+
+// checkAppliedKnown rejects databases whose applied versions are absent from
+// the migration list. That happens when the schema history was squashed into
+// a baseline (pre-release development builds): skipping the baseline would
+// silently leave a stale schema, so the error tells the operator to recreate
+// the database instead.
+func checkAppliedKnown(applied map[int]struct{}, migrations []Migration) error {
+	known := make(map[int]struct{}, len(migrations))
+	for _, m := range migrations {
+		known[m.Version] = struct{}{}
+	}
+
+	for v := range applied {
+		if _, ok := known[v]; !ok {
+			return fmt.Errorf("applied schema version %d is unknown to this build: the database was created by a different (development) build - delete the database file and restart", v)
+		}
 	}
 
 	return nil

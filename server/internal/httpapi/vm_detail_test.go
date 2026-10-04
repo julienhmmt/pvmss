@@ -15,6 +15,7 @@ import (
 	"pvmss/server/internal/httpapi"
 	"pvmss/server/internal/inventory"
 	"pvmss/server/internal/store"
+	"pvmss/server/internal/testfixture"
 	"pvmss/server/internal/vm"
 	"strings"
 	"testing"
@@ -99,6 +100,8 @@ func newVMDetailHandler(t *testing.T) (*httpapi.VMDetail, *httpapi.Auth, *invent
 	}
 
 	t.Cleanup(func() { _ = st.Close() })
+
+	testfixture.SeedDemoFixtures(t, st)
 	seedBridgeApprovals(t, st)
 
 	worker := inventory.NewWorker(cluster.Fake{}, projection, time.Hour, logger)

@@ -31,7 +31,7 @@ func reconcileTemplateApproval(
 	approval.Enabled = stored.Enabled
 	approval.OverrideDiscovery = stored.OverrideDiscovery
 
-	// When the admin pinned the row (schemaV26), the stored values
+	// When the admin pinned the row, the stored values
 	// are authoritative - show them instead of the discovered ones
 	// and skip the drift write-back so the pin survives the next
 	// list. An unreadable discovery reports empty disk fields
@@ -108,7 +108,7 @@ func DeleteTemplate(ctx context.Context, st *store.Store, cluster string, vmid i
 }
 
 // UpdateTemplate overrides an approved template's editable fields and pins the
-// row against discovery-wins write-back (schemaV26). Returns
+// row against discovery-wins write-back. Returns
 // ErrTemplateNotFound when the cluster has no approval for the vmid. The
 // override is a human mutation, so the caller (HTTP handler) audits it; this
 // function only persists. DiskSizeGB must be >= 0; the HTTP handler validates

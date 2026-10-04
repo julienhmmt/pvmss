@@ -13,6 +13,7 @@ import (
 	"pvmss/server/internal/httpapi"
 	"pvmss/server/internal/inventory"
 	"pvmss/server/internal/store"
+	"pvmss/server/internal/testfixture"
 	"testing"
 
 	"golang.org/x/crypto/bcrypt"
@@ -292,6 +293,8 @@ func newMultiClusterAdminCatalogHandler(t *testing.T) (*httpapi.AdminCatalog, *h
 		t.Fatalf("store.Open: %v", err)
 	}
 	t.Cleanup(func() { _ = st.Close() })
+
+	testfixture.SeedDemoFixtures(t, st)
 
 	rows, err := st.ListClusters(context.Background())
 	if err != nil {

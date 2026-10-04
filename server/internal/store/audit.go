@@ -27,34 +27,6 @@ type AuditEntry struct {
 	Severity   string
 }
 
-// schemaV19 rebuilds audit_log to support admin-action auditing.
-// The original schema (V6) had only VM-scoped columns and a NOT NULL vmid,
-// which made it impossible to record admin mutations (cluster credentials,
-// policy, catalog toggles, db import/export) that have no vmid. The rebuild
-// makes vmid nullable and adds target_type, target_id, detail (JSON),
-// ip_address, and severity (derived from the action verb, default 'info').
-// Existing rows keep their vmid and receive severity='info'. SQLite cannot
-// drop a NOT NULL constraint in place, so the table is rebuilt like schemaV4.
-const schemaV19 = `
-ALTER TABLE audit_log RENAME TO audit_log_v18;
-CREATE TABLE audit_log (
-	id         INTEGER PRIMARY KEY AUTOINCREMENT,
-	actor      TEXT NOT NULL,
-	cluster    TEXT NOT NULL,
-	vmid       INTEGER,
-	action     TEXT NOT NULL,
-	timestamp  TEXT NOT NULL,
-	target_type TEXT,
-	target_id   TEXT,
-	detail      TEXT,
-	ip_address  TEXT,
-	severity    TEXT NOT NULL DEFAULT 'info'
-);
-INSERT INTO audit_log (id, actor, cluster, vmid, action, timestamp, severity)
-	SELECT id, actor, cluster, vmid, action, timestamp, 'info' FROM audit_log_v18;
-DROP TABLE audit_log_v18;
-`
-
 // RecordAction inserts one audit_log row carrying the real acting username -
 // never a service-account name (closes traceability gap). The
 // timestamp is server-side; a caller cannot supply it. The 15 existing VM
@@ -412,7 +384,7 @@ type AuditConfig struct {
 }
 
 // GetAuditConfig returns the current audit retention in days. The audit_config
-// table is seeded by schemaV20 with 365 days, so this always returns a value
+// table is seeded by the baseline migration with 365 days, so this always returns a value
 // after migrations have run.
 func (s *Store) GetAuditConfig(ctx context.Context) (AuditConfig, error) {
 	var days int
