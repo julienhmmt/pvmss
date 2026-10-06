@@ -215,6 +215,9 @@ func loadConfig(stderr *slog.Logger) (config.Configuration, *slog.Logger, *slog.
 // documentation pages (idempotent: only inserts missing rows).
 func openStore(cfg config.Configuration, logger *slog.Logger) (*store.Store, error) {
 	st, err := store.Open(cfg)
+	if err != nil && cfg.DBResetOnIncompatible && errors.Is(err, store.ErrIncompatibleSchema) {
+		st, err = reopenAfterQuarantine(cfg, logger, err)
+	}
 	if err != nil {
 		logger.Error("failed to open database", "component", "main", "error", err)
 		return nil, err
@@ -228,6 +231,18 @@ func openStore(cfg config.Configuration, logger *slog.Logger) (*store.Store, err
 	}
 
 	return st, nil
+}
+
+// reopenAfterQuarantine moves the incompatible database aside and opens a fresh
+// one. The old file is kept, so nothing is ever lost to this recovery path.
+func reopenAfterQuarantine(cfg config.Configuration, logger *slog.Logger, cause error) (*store.Store, error) {
+	moved, err := store.QuarantineDatabase(cfg.DBPath, time.Now())
+	if err != nil {
+		return nil, errors.Join(cause, err)
+	}
+	logger.Warn("incompatible database moved aside, starting fresh", "component", "main", "path", cfg.DBPath, "movedTo", moved, "error", cause)
+
+	return store.Open(cfg)
 }
 
 // initCluster builds the cluster registry from configured rows and resolves the

@@ -272,6 +272,7 @@ the values are ignored and the admin UI owns cluster management.
 | `PVMSS_INVENTORY_MANUAL_REFRESH_MIN_INTERVAL` | `5s`                               |
 | `PVMSS_INVENTORY_REFRESH_TIMEOUT`             | `15s`                              |
 | `PVMSS_MAX_LIST_PAGE_SIZE`                    | `100`                              |
+| `PVMSS_DB_RESET_ON_INCOMPATIBLE`              | `false` (dev compose sets `true`: a DB with an unknown schema is renamed to `<db>.incompatible-<time>` and recreated, never deleted) |
 | `PVMSS_TRUSTED_PROXY_HOPS`                    | `1`                                |
 | `PVMSS_RATE_LIMIT_MAX`                        | `0` (keep each limiter's built-in ceiling; a positive value raises them all, used by e2e) |
 | `PVMSS_METRICS_PORT`                          | empty (no metrics listener); 1-65535 and different from `PVMSS_PORT` enables `GET /metrics` on `PVMSS_HOST:<port>` |

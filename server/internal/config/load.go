@@ -171,7 +171,9 @@ func loadSecuritySettings(cfg *Configuration) error {
 
 	cfg.CookieSecure = cookieSecure
 
-	return nil
+	cfg.DBResetOnIncompatible, err = loadBool("PVMSS_DB_RESET_ON_INCOMPATIBLE", false)
+
+	return err
 }
 
 // loadClusterSettings reads the cluster source selection and Proxmox credentials.

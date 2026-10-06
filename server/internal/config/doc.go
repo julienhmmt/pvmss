@@ -31,6 +31,7 @@
 //	PVMSS_WEB_DIR resolved relative to the executable
 //	ADMIN_PASSWORD_HASH empty; if set, must be bcrypt ($2…)
 //	PVMSS_COOKIE_SECURE default true
+//	PVMSS_DB_RESET_ON_INCOMPATIBLE default false (dev: quarantine a DB with an unknown schema)
 //	PVMSS_INVENTORY_REFRESH_INTERVAL default 30s
 //
 // PVMSS_INVENTORY_MANUAL_REFRESH_MIN_INTERVAL default 5s
