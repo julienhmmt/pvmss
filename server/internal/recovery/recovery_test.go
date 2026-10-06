@@ -217,9 +217,7 @@ func assertRecoveredDB(ctx context.Context, t *testing.T, v04Path string) {
 		t.Errorf("catalog_nodes count = %d, want 2", n)
 	}
 
-	var (
-		sockets, cores, memMB, diskGB, netCards, snapshots, vmPerUser int
-	)
+	var sockets, cores, memMB, diskGB, netCards, snapshots, vmPerUser int
 
 	err = db.QueryRowContext(ctx, `
 		SELECT max_sockets, max_cores, max_memory_mb, max_disk_per_vm_gb,
