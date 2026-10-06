@@ -42,6 +42,11 @@ func registerAdminRoutes(mux *http.ServeMux, cfg RouterConfig, adminProtect admi
 	if cfg.AdminBaseline != nil {
 		registerAdminBaselineRoutes(mux, adminProtect, cfg.AdminBaseline)
 	}
+
+	if cfg.AdminMigration != nil {
+		mux.Handle("GET /api/v1/admin/vms/{cluster}/{vmid}/migrate", adminProtect(http.MethodGet, http.HandlerFunc(cfg.AdminMigration.ServePreflight)))
+		mux.Handle("POST /api/v1/admin/vms/{cluster}/{vmid}/migrate", adminProtect(http.MethodPost, http.HandlerFunc(cfg.AdminMigration.ServeStart)))
+	}
 }
 
 // registerAdminCatalogRoutes wires the admin catalog endpoints (nodes,

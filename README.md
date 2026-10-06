@@ -53,6 +53,7 @@ The complete, route-by-route inventory lives in [docs/FEATURES.md](docs/FEATURES
 - **Clusters**: connect several Proxmox environments, test connectivity, per-cluster snippet storage for cloud-init templates.
 - **Catalog**: approve nodes, storages, ISOs, cloud images, VM templates, bridges; CRUD for hardware profiles, tags, cloud-init templates (published to every node, per-node status, "publish all"); stale approvals reconciled against live discovery.
 - **Pools**: create a self-service user = Proxmox user + pool + ACL in one step; cascade delete.
+- **Migration**: move a PVMSS-managed VM to another approved, online node of the same cluster from the node page (preflight, explicit confirmation, progress in the task tray).
 - **Policy**: per-cluster gabarit (sockets, cores, memory, disk per VM, NICs, snapshots, isolation VLAN) and quota (VMs per user); per-node capacity caps with live usage.
 - **System**: dashboard, app info, audit log with retention + prune preview, SQLite export and two-phase import, in-app documentation CMS (EN/FR, audience-scoped).
 
@@ -79,7 +80,7 @@ In your Proxmox cluster, you can create the roles and ACLs using the `pveum` com
 
 ```bash
 # PVMSS_Service
-pveum roleadd PVMSS_Service -privs "Sys.Audit VM.Audit VM.Allocate VM.PowerMgmt VM.Console VM.Config.CDROM VM.Config.CPU VM.Config.HWType VM.Config.Memory VM.Config.Disk VM.Config.Network VM.Config.Options VM.Config.Cloudinit VM.Snapshot VM.Snapshot.Rollback Datastore.Audit Datastore.AllocateSpace Datastore.AllocateTemplate Pool.Allocate Pool.Audit User.Modify Permissions.Modify Realm.AllocateUser SDN.Allocate SDN.Audit SDN.Use"
+pveum roleadd PVMSS_Service -privs "Sys.Audit VM.Audit VM.Allocate VM.PowerMgmt VM.Console VM.Config.CDROM VM.Config.CPU VM.Config.HWType VM.Config.Memory VM.Config.Disk VM.Config.Network VM.Config.Options VM.Config.Cloudinit VM.Snapshot VM.Snapshot.Rollback VM.Migrate Datastore.Audit Datastore.AllocateSpace Datastore.AllocateTemplate Pool.Allocate Pool.Audit User.Modify Permissions.Modify Realm.AllocateUser SDN.Allocate SDN.Audit SDN.Use"
 
 pveum useradd pvmss-svc@pve -comment "PVMSS service account" \
   -enable 1

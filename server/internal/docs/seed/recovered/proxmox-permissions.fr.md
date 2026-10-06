@@ -33,7 +33,7 @@ l'utilisateur et son jeton API. Le secret du jeton doit être stocké dans
 `PROXMOX_API_TOKEN_VALUE`.
 
 ```bash
-pveum roleadd PVMSS_Service -privs "Sys.Audit VM.Audit VM.Allocate VM.PowerMgmt VM.Console VM.Config.CDROM VM.Config.CPU VM.Config.HWType VM.Config.Memory VM.Config.Disk VM.Config.Network VM.Config.Options VM.Config.Cloudinit VM.Snapshot VM.Snapshot.Rollback Datastore.Audit Datastore.AllocateSpace Datastore.AllocateTemplate Pool.Allocate Pool.Audit User.Modify Permissions.Modify Realm.AllocateUser SDN.Allocate SDN.Audit SDN.Use"
+pveum roleadd PVMSS_Service -privs "Sys.Audit VM.Audit VM.Allocate VM.PowerMgmt VM.Console VM.Config.CDROM VM.Config.CPU VM.Config.HWType VM.Config.Memory VM.Config.Disk VM.Config.Network VM.Config.Options VM.Config.Cloudinit VM.Snapshot VM.Snapshot.Rollback VM.Migrate Datastore.Audit Datastore.AllocateSpace Datastore.AllocateTemplate Pool.Allocate Pool.Audit User.Modify Permissions.Modify Realm.AllocateUser SDN.Allocate SDN.Audit SDN.Use"
 
 pveum useradd pvmss-svc@pve \
   -comment "PVMSS service account" \
@@ -55,6 +55,10 @@ pveum useradd pvmss-admin1@pve \
 
 pveum aclmod / -user pvmss-admin1@pve -role PVMSS_Admin -propagate 1
 ```
+
+`VM.Migrate` fait partie de ce rôle, ainsi que de `PVMSS_Service` : PVMSS
+lance une migration avec le jeton du compte de service, qui doit donc avoir
+`VM.Migrate`. Il ne fait pas partie du rôle par utilisateur `PVMSSUser`.
 
 ## Pools par utilisateur (PVMSSUser)
 

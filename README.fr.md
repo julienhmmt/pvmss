@@ -53,6 +53,7 @@ L'inventaire complet, route par route, est dans [docs/FEATURES.md](docs/FEATURES
 - **Clusters** : connexion à plusieurs environnements Proxmox, test de connectivité, stockage de snippets par cluster pour les modèles cloud-init.
 - **Catalogue** : approbation des nœuds, stockages, ISO, images cloud, templates de VM, bridges ; CRUD des profils matériels, tags, modèles cloud-init (publiés sur chaque nœud, état par nœud, « publier partout ») ; approbations obsolètes réconciliées avec la découverte en direct.
 - **Pools** : création d'un utilisateur self-service = utilisateur Proxmox + pool + ACL en une étape ; suppression en cascade.
+- **Migration** : déplacement d'une VM gérée par PVMSS vers un autre nœud approuvé et en ligne du même cluster depuis la page du nœud (contrôle préalable, confirmation explicite, progression dans le tiroir des tâches).
 - **Politique** : gabarit par cluster (sockets, cœurs, mémoire, disque par VM, NIC, snapshots, VLAN d'isolation) et quota (VM par utilisateur) ; plafonds de capacité par nœud avec usage en direct.
 - **Système** : tableau de bord, informations applicatives, journal d'audit avec rétention + aperçu de purge, export SQLite et import en deux temps, CMS de documentation intégrée (FR/EN, par audience).
 
@@ -81,7 +82,7 @@ Vous pouvez créer les rôles et les ACLs en utilisant le `pveum` en ligne de co
 
 ```bash
 # PVMSS_Service
-pveum roleadd PVMSS_Service -privs "Sys.Audit VM.Audit VM.Allocate VM.PowerMgmt VM.Console VM.Config.CPU VM.Config.Memory VM.Config.Disk VM.Config.Network VM.Config.Options VM.Config.Cloudinit VM.Snapshot VM.Snapshot.Rollback Datastore.Audit Datastore.AllocateSpace Datastore.AllocateTemplate Pool.Allocate Pool.Audit User.Modify Permissions.Modify Realm.AllocateUser SDN.Allocate SDN.Audit SDN.Use"
+pveum roleadd PVMSS_Service -privs "Sys.Audit VM.Audit VM.Allocate VM.PowerMgmt VM.Console VM.Config.CPU VM.Config.Memory VM.Config.Disk VM.Config.Network VM.Config.Options VM.Config.Cloudinit VM.Snapshot VM.Snapshot.Rollback VM.Migrate Datastore.Audit Datastore.AllocateSpace Datastore.AllocateTemplate Pool.Allocate Pool.Audit User.Modify Permissions.Modify Realm.AllocateUser SDN.Allocate SDN.Audit SDN.Use"
 
 pveum useradd pvmss-svc@pve -comment "PVMSS service account" \
   -enable 1

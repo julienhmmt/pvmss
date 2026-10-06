@@ -43,6 +43,7 @@ type FakeCall struct {
 	Name          string
 	Pool          string
 	Full          bool
+	Online        bool
 	DiskKey       string
 	Bus           string
 	Storage       string

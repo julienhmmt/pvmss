@@ -29,7 +29,11 @@ type Configuration struct {
 	// CookieSecure gates the Secure attribute on the session cookie. Defaults
 	// to true (production behind TLS-terminating ingress); set
 	// PVMSS_COOKIE_SECURE=false only for local plain-HTTP development.
-	CookieSecure                      bool
+	CookieSecure bool
+	// DBResetOnIncompatible makes startup move a database with an unknown
+	// schema aside (never deleting it) and start fresh. Development only:
+	// PVMSS_DB_RESET_ON_INCOMPATIBLE, default false.
+	DBResetOnIncompatible             bool
 	ProxmoxURL                        string
 	ProxmoxAPITokenName               string
 	ProxmoxAPITokenValue              string

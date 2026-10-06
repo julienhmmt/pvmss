@@ -5,9 +5,14 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"slices"
 	"strings"
 	"time"
 )
+
+// ErrIncompatibleSchema marks a database whose applied schema versions this
+// build does not know, typically one created before the baseline squash.
+var ErrIncompatibleSchema = errors.New("incompatible database schema")
 
 // RunMigrations applies every pending migration in order.
 // Already-applied versions are skipped. The list must be ordered by version.
@@ -101,13 +106,21 @@ func checkAppliedKnown(applied map[int]struct{}, migrations []Migration) error {
 		known[m.Version] = struct{}{}
 	}
 
+	var unknown []int
+
 	for v := range applied {
 		if _, ok := known[v]; !ok {
-			return fmt.Errorf("applied schema version %d is unknown to this build: the database was created by a different (development) build - delete the database file and restart", v)
+			unknown = append(unknown, v)
 		}
 	}
 
-	return nil
+	if len(unknown) == 0 {
+		return nil
+	}
+
+	slices.Sort(unknown)
+
+	return fmt.Errorf("%w: versions %v are unknown to this build (database created by a different development build); delete the database file, or set PVMSS_DB_RESET_ON_INCOMPATIBLE=true to move it aside and start fresh", ErrIncompatibleSchema, unknown)
 }
 
 func ensureMigrationsTable(ctx context.Context, db *sql.DB) error {

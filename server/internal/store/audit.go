@@ -43,6 +43,21 @@ func (s *Store) RecordAction(ctx context.Context, actor, cluster string, vmid in
 	})
 }
 
+// RecordVMActionDetail is RecordAction plus a structured JSON detail
+// ({"summary": "...", "changes": [...]}) and the VM as the audit target.
+func (s *Store) RecordVMActionDetail(ctx context.Context, actor, cluster string, vmid int, action, detail string) error {
+	return s.insertAuditRow(ctx, auditRow{
+		Actor:      actor,
+		Cluster:    cluster,
+		VMID:       &vmid,
+		Action:     action,
+		TargetType: "vm",
+		TargetID:   fmt.Sprintf("%s:%d", cluster, vmid),
+		Detail:     detail,
+		Severity:   deriveSeverity(action),
+	})
+}
+
 // RecordAdminAction inserts one audit_log row for an admin mutation that has
 // no VM scope (cluster="", vmid=nil). The detail string must be structured
 // JSON: {"summary": "...", "changes": [...]}. Like RecordAction, an insert

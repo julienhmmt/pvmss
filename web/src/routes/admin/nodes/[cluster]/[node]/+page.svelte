@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { page } from '$app/state';
-	import { afterNavigate } from '$app/navigation';
+	import { onDestroy, onMount } from 'svelte';
 	import { resolve } from '$app/paths';
 	import { get } from '$lib/shared/api/client';
 	import { formatBytes } from '$lib/shared/format-bytes';
@@ -10,6 +10,8 @@
 	import PageHeader from '$lib/shared/ui/PageHeader.svelte';
 	import Pill from '$lib/shared/ui/Pill.svelte';
 	import Skeleton from '$lib/shared/ui/Skeleton.svelte';
+	import MigrateDialog from '$lib/features/admin-migration/MigrateDialog.svelte';
+	import { getTaskTrayContext } from '$lib/features/tasks/tasks.svelte';
 	import { usageTone } from '$lib/features/admin-dashboard/dashboard-alerts';
 	import { m } from '$lib/paraglide/messages.js';
 
@@ -96,6 +98,7 @@
 		status: string;
 		cpuCores: number;
 		memoryTotalBytes: number;
+		managed: boolean;
 	}
 
 	interface NodeStorage {
@@ -117,7 +120,11 @@
 		inventory: { refreshedAt: string; vms: NodeVM[]; storages: NodeStorage[] };
 	}
 
-	afterNavigate(() => {
+	let migrating = $state<NodeVM | null>(null);
+	const stopListening = getTaskTrayContext().onTaskOk(() => void loadNode(clusterKey, nodeName));
+	onDestroy(stopListening);
+
+	onMount(() => {
 		void loadNode(clusterKey, nodeName);
 	});
 
@@ -319,8 +326,8 @@
 						<p class="text-sm text-muted-foreground">{m['admin.nodeDetails.vmsEmpty']()}</p>
 					{:else}
 					<div class="overflow-x-auto"><table class="w-full min-w-[500px] text-left text-sm">
-						<thead class="text-xs text-muted-foreground"><tr><th class="pb-2 font-medium">{m['admin.nodeDetails.vmid']()}</th><th class="pb-2 font-medium">{m['admin.nodeDetails.name']()}</th><th class="pb-2 font-medium">{m['admin.nodeDetails.status']()}</th><th class="pb-2 font-medium">{m['admin.nodeDetails.vcpu']()}</th><th class="pb-2 text-right font-medium">{m['admin.nodeDetails.memory']()}</th></tr></thead>
-						<tbody class="divide-y divide-border">{#each detail.inventory.vms as vm (vm.vmid)}<tr><td class="py-2 font-mono">{vm.vmid}</td><td class="py-2">{vm.name || m['admin.nodeDetails.notReported']()}</td><td class="py-2">{guestStatusLabel(vm.status)}</td><td class="py-2 font-mono tabular-nums">{vm.cpuCores}</td><td class="py-2 text-right font-mono tabular-nums">{formatBytes(vm.memoryTotalBytes)}</td></tr>{/each}</tbody>
+						<thead class="text-xs text-muted-foreground"><tr><th class="pb-2 font-medium">{m['admin.nodeDetails.vmid']()}</th><th class="pb-2 font-medium">{m['admin.nodeDetails.name']()}</th><th class="pb-2 font-medium">{m['admin.nodeDetails.status']()}</th><th class="pb-2 font-medium">{m['admin.nodeDetails.vcpu']()}</th><th class="pb-2 text-right font-medium">{m['admin.nodeDetails.memory']()}</th><th class="pb-2 text-right font-medium">{m['admin.nodeDetails.actions']()}</th></tr></thead>
+						<tbody class="divide-y divide-border">{#each detail.inventory.vms as vm (vm.vmid)}<tr><td class="py-2 font-mono">{vm.vmid}</td><td class="py-2">{vm.name || m['admin.nodeDetails.notReported']()}</td><td class="py-2">{guestStatusLabel(vm.status)}</td><td class="py-2 font-mono tabular-nums">{vm.cpuCores}</td><td class="py-2 text-right font-mono tabular-nums">{formatBytes(vm.memoryTotalBytes)}</td><td class="py-2 text-right">{#if vm.managed}<Button variant="secondary" size="sm" label={m['admin.nodeDetails.migrateActionLabel']({ vmid: vm.vmid, name: vm.name })} onclick={() => (migrating = vm)} data-testid="node-vm-migrate-{vm.vmid}">{m['admin.nodeDetails.migrateAction']()}</Button>{/if}</td></tr>{/each}</tbody>
 					</table></div>
 					{/if}
 				</section>
@@ -354,6 +361,10 @@
 			{/if}
 		</Card>
 	</div>
+{/if}
+
+{#if migrating !== null}
+	<MigrateDialog cluster={clusterKey} vmid={migrating.vmid} name={migrating.name} onClose={() => (migrating = null)} />
 {/if}
 
 {#snippet usageMeter(label: string, value: string, percent: number)}

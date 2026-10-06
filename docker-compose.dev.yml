@@ -16,6 +16,9 @@ services:
       # SQLite runs in WAL mode (-wal/-shm next to the file), so persist the
       # whole /data directory, never a single file. Overrides .env.
       PVMSS_DB_PATH: /data/pvmss.db
+      # Dev DBs outlive schema squashes: move an incompatible one aside
+      # (pvmss.db.incompatible-<time>) and start fresh instead of crash-looping.
+      PVMSS_DB_RESET_ON_INCOMPATIBLE: "true"
     ports:
       - "50000:50000/tcp"
     volumes:
