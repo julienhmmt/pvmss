@@ -175,8 +175,6 @@ func TestSetClusterSnippetStorage_RoundTrip(t *testing.T) {
 // TestEnsureSeedClusters_SetsDisplayNames - the fake cluster seed now sets a
 // human-readable DisplayName for each demo cluster so the sidebar doesn't
 // show the raw internal name "default" on a fresh deployment.
-//
-//nolint:paralleltest // migration fixtures are intentionally serial
 func openProxmoxStore(t *testing.T, dbPath, url, tokenID, tokenSecret string) *store.Store {
 	t.Helper()
 
@@ -206,8 +204,8 @@ func TestEnsureEnvCluster_SeedsDefaultWhenEmpty(t *testing.T) {
 	if err != nil {
 		t.Fatalf("ListClusters: %v", err)
 	}
-	if len(rows) != 1 || rows[0].Name != "default" {
-		t.Fatalf("ListClusters = %+v, want a single row named %q", rows, "default")
+	if len(rows) != 1 || rows[0].Name != testStoreCluster {
+		t.Fatalf("ListClusters = %+v, want a single row named %q", rows, testStoreCluster)
 	}
 
 	row, err := st.GetCluster(ctx, "default")
@@ -259,6 +257,8 @@ func TestEnsureEnvCluster_SkipsWhenCredentialsMissing(t *testing.T) {
 }
 
 func TestEnsureSeedClusters_SetsDisplayNames(t *testing.T) {
+	t.Parallel()
+
 	st := openClusterStore(t)
 	ctx := context.Background()
 

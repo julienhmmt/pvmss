@@ -18,6 +18,10 @@ const (
 	clientErrorMaxPath      = 256
 	clientErrorEventAttr    = "client_error"
 	clientErrorEmptyMessage = "(empty message)"
+
+	// errorLabel is the literal "error" shared by log attrs, JSON error bodies,
+	// cluster test statuses and the log-level name.
+	errorLabel = "error"
 )
 
 // clientErrorRequest is what the SPA posts: the error it caught, trimmed to
@@ -47,6 +51,7 @@ func ServeClientError(w http.ResponseWriter, r *http.Request) {
 		writeAuthError(w, http.StatusBadRequest, "invalid_request", "invalid client error payload")
 		return
 	}
+
 	if err := decoder.Decode(&struct{}{}); !errors.Is(err, io.EOF) {
 		writeAuthError(w, http.StatusBadRequest, "invalid_request", "invalid client error payload")
 		return
@@ -60,11 +65,12 @@ func ServeClientError(w http.ResponseWriter, r *http.Request) {
 	attrs := []any{
 		"component", "httpapi",
 		"event", clientErrorEventAttr,
-		"error", message,
+		errorLabel, message,
 	}
 	if path := truncateRunes(req.Path, clientErrorMaxPath); path != "" {
 		attrs = append(attrs, "path", path)
 	}
+
 	if stack := truncateRunes(req.Stack, clientErrorMaxStack); stack != "" {
 		attrs = append(attrs, "stack", stack)
 	}
@@ -74,13 +80,13 @@ func ServeClientError(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusNoContent)
 }
 
-// truncateRunes cuts s at max runes so a hostile or buggy client cannot
+// truncateRunes cuts s at limit runes so a hostile or buggy client cannot
 // smuggle oversized values into a log line.
-func truncateRunes(s string, max int) string {
+func truncateRunes(s string, limit int) string {
 	runes := []rune(s)
-	if len(runes) <= max {
+	if len(runes) <= limit {
 		return s
 	}
 
-	return string(runes[:max])
+	return string(runes[:limit])
 }

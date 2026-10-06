@@ -227,7 +227,7 @@ func (handler *AdminClusters) ServeTest(w http.ResponseWriter, r *http.Request) 
 	if err != nil {
 		status := "unreachable"
 		if !errors.Is(err, cluster.ErrUnreachable) {
-			status = "error"
+			status = errorLabel
 		}
 		message := shortClusterError(err)
 		if saveErr := handler.store.SetClusterTestResult(r.Context(), name, status, "", message, testedAt); saveErr != nil {

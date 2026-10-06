@@ -15,6 +15,9 @@ import (
 	"time"
 )
 
+// storageTypeDir is the Proxmox "dir" storage plugin type used by fixtures.
+const storageTypeDir = "dir"
+
 const (
 	gib             = int64(1) << 30
 	dashCluster     = "east"
@@ -227,8 +230,8 @@ func TestAdminDashboard_SharedFlagDedupesNonListedPlugin(t *testing.T) {
 			{Name: "n2", Status: cluster.NodeOnline},
 		},
 		Storages: []cluster.Storage{
-			{Name: "iso-share", Node: "n1", PluginType: "dir", Total: 100 * gib, Used: 10 * gib, Shared: true},
-			{Name: "iso-share", Node: "n2", PluginType: "dir", Total: 100 * gib, Used: 10 * gib, Shared: true},
+			{Name: "iso-share", Node: "n1", PluginType: storageTypeDir, Total: 100 * gib, Used: 10 * gib, Shared: true},
+			{Name: "iso-share", Node: "n2", PluginType: storageTypeDir, Total: 100 * gib, Used: 10 * gib, Shared: true},
 		},
 	})
 	idx.RefreshedAt = time.Now()

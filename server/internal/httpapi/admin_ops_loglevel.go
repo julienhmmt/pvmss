@@ -36,7 +36,7 @@ func parseLevelName(name string) (slog.Level, bool) {
 		return slog.LevelInfo, true
 	case "warn":
 		return slog.LevelWarn, true
-	case "error":
+	case errorLabel:
 		return slog.LevelError, true
 	}
 
