@@ -28,7 +28,7 @@ Run as `root` on the Proxmox node. Create the role, then the user and its API
 token. The token secret must be stored in `PROXMOX_API_TOKEN_VALUE`.
 
 ```bash
-pveum roleadd PVMSS_Service -privs "Sys.Audit VM.Audit VM.Allocate VM.PowerMgmt VM.Console VM.Config.CDROM VM.Config.CPU VM.Config.HWType VM.Config.Memory VM.Config.Disk VM.Config.Network VM.Config.Options VM.Config.Cloudinit VM.Snapshot VM.Snapshot.Rollback Datastore.Audit Datastore.AllocateSpace Datastore.AllocateTemplate Pool.Allocate Pool.Audit User.Modify Permissions.Modify Realm.AllocateUser SDN.Allocate SDN.Audit SDN.Use"
+pveum roleadd PVMSS_Service -privs "Sys.Audit VM.Audit VM.Allocate VM.PowerMgmt VM.Console VM.Config.CDROM VM.Config.CPU VM.Config.HWType VM.Config.Memory VM.Config.Disk VM.Config.Network VM.Config.Options VM.Config.Cloudinit VM.Snapshot VM.Snapshot.Rollback VM.Migrate Datastore.Audit Datastore.AllocateSpace Datastore.AllocateTemplate Pool.Allocate Pool.Audit User.Modify Permissions.Modify Realm.AllocateUser SDN.Allocate SDN.Audit SDN.Use"
 
 pveum useradd pvmss-svc@pve \
   -comment "PVMSS service account" \
@@ -50,6 +50,10 @@ pveum useradd pvmss-admin1@pve \
 
 pveum aclmod / -user pvmss-admin1@pve -role PVMSS_Admin -propagate 1
 ```
+
+`VM.Migrate` is part of this role, and also of `PVMSS_Service`: PVMSS starts a
+migration with the service token, so that token needs `VM.Migrate`. It is not
+part of the per-user `PVMSSUser` role.
 
 ## Per-user pools (PVMSSUser)
 

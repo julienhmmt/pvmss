@@ -33,7 +33,8 @@
 		vm_create: () => m['activity.kind.vm_create'](),
 		vm_snapshot_create: () => m['activity.kind.vm_snapshot_create'](),
 		vm_snapshot_rollback: () => m['activity.kind.vm_snapshot_rollback'](),
-		vm_snapshot_delete: () => m['activity.kind.vm_snapshot_delete']()
+		vm_snapshot_delete: () => m['activity.kind.vm_snapshot_delete'](),
+		vm_migrate: () => m['activity.kind.vm_migrate']()
 	};
 
 	const POWER_LABELS: Record<VmAction, () => string> = {

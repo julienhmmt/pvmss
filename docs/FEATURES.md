@@ -130,7 +130,8 @@ All routes behind `RequireAdmin`.
 | Dashboard                     | `/admin`                     | needs-attention block (unreachable cluster, offline node (informational only when disabled in PVMSS and hosting no PVMSS VM), CPU/RAM >= 90%, storage >= 85%/95%, pool at quota, each linked), VM status split, nodes across clusters, storage (shared counted once), last 8 audit entries  | ✅     |
 | Clusters                      | `/admin/clusters`            | add / edit / remove connections (URL, token, TLS skip-verify), **Test** connectivity (version, node & VM count), **snippet storage** for cloud-init templates (badge "cloud-init: on") | ✅     |
 | Nodes                         | `/admin/nodes`               | approve/disable per cluster; confirm when disabling a node with running VMs; search/filter/sort; orphan cleanup                                                                                                                                                                           | ✅     |
-| Node details                  | `/admin/nodes/[cluster]/[node]` | Read-only live health, network and PCI hardware; cached QEMU/storage inventory and live LXC inventory                                                                                                                   | ✅     |
+| Node details                  | `/admin/nodes/[cluster]/[node]` | Live health, network and PCI hardware; cached QEMU/storage inventory and live LXC inventory. Each PVMSS-managed VM has a **Migrate...** action (see the next row)                                                       | ✅     |
+| VM migration                  | `/admin/nodes/[cluster]/[node]` | Admin only, same cluster, PVMSS-managed (`pvmss`-tagged) VMs. A preflight lists approved, online target nodes; a locked VM, or a running VM with local resources (PCI/USB passthrough), is refused; per-node capacity caps are warnings, not blocks; Proxmox carries local disks when needed (no target-storage picker); one VM at a time, confirmed explicitly, followed in the task tray. API: `GET`/`POST /api/v1/admin/vms/{cluster}/{vmid}/migrate`, progress via `GET /api/v1/tasks/{upid}?cluster=`. HA-managed VMs and cross-cluster migration stay in Proxmox | ✅     |
 | Storages                      | `/admin/storages`            | approve per node/cluster; usage bars; orphan cleanup                                                                                                                                                                                                                                      | ✅     |
 | ISOs                          | `/admin/isos`                | approve discovered ISOs; orphan cleanup                                                                                                                                                                                                                                                   | ✅     |
 | Cloud images                  | `/admin/images`              | approve `.qcow2`/`.raw`/`.vmdk` images discovered under a storage's `import/` content (`.ova` skipped); orphan cleanup. Building a golden template from an image is done in the Proxmox UI (`qm template`), not in PVMSS                                                                  | ✅     |
@@ -169,5 +170,6 @@ All routes behind `RequireAdmin`.
 
 ## Not in scope (done in Proxmox)
 
-LXC containers · backups · live migration / HA · SDN and firewall rules ·
-Proxmox user management beyond `/admin/pools`.
+LXC containers · backups · HA (HA-managed VMs are left to Proxmox) ·
+cross-cluster migration · SDN and firewall rules · Proxmox user management
+beyond `/admin/pools`.

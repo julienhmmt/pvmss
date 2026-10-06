@@ -3,7 +3,7 @@ import { SvelteMap } from 'svelte/reactivity';
 import { get, post, ApiRequestError } from '$lib/shared/api/client';
 import { m } from '$lib/paraglide/messages.js';
 
-export type TaskKind = 'vm_create' | 'vm_snapshot_create' | 'vm_snapshot_rollback' | 'vm_snapshot_delete';
+export type TaskKind = 'vm_create' | 'vm_snapshot_create' | 'vm_snapshot_rollback' | 'vm_snapshot_delete' | 'vm_migrate';
 
 export interface TrackedTask {
 	upid: string;
@@ -44,7 +44,8 @@ export const TASK_BUDGET_MS: Record<TaskKind, number> = {
 	vm_create: 600_000,
 	vm_snapshot_create: 300_000,
 	vm_snapshot_rollback: 600_000,
-	vm_snapshot_delete: 300_000
+	vm_snapshot_delete: 300_000,
+	vm_migrate: 1_800_000
 };
 
 /** Non-404 poll errors must repeat this many times before the task is
@@ -69,6 +70,8 @@ export class TaskTrayStore {
 	/** Per-task consecutive non-404 poll error count - reset on any successful
 	 *  poll, and on finish. */
 	#consecutiveErrors = new SvelteMap<string, number>();
+	/** Per-task completion callbacks, called once with the final toast. */
+	#settledCallbacks = new SvelteMap<string, (toast: TaskToast) => void>();
 	/** Guards against overlapping poll cycles - a slow task (real VM creates
 	 *  can take longer than POLL_INTERVAL_MS) must not let two intervals
 	 *  race and finish the same task twice, which used to fire a duplicate
@@ -97,7 +100,8 @@ export class TaskTrayStore {
 
 	/** Registers a freshly accepted task and starts polling. The per-kind
 	 *  budget sets the deadline at which the tray stops following it. */
-	track(task: Omit<TrackedTask, 'deadline'>): void {
+	track(task: Omit<TrackedTask, 'deadline'>, onSettled?: (toast: TaskToast) => void): void {
+		if (onSettled) this.#settledCallbacks.set(task.upid, onSettled);
 		this.tasks = [...this.tasks, { ...task, deadline: Date.now() + TASK_BUDGET_MS[task.kind] }];
 		this.#startPolling();
 	}
@@ -189,6 +193,8 @@ export class TaskTrayStore {
 
 	#finish(task: TrackedTask, toast: TaskToast): void {
 		this.#consecutiveErrors.delete(task.upid);
+		const settled = this.#settledCallbacks.get(task.upid);
+		this.#settledCallbacks.delete(task.upid);
 		this.tasks = this.tasks.filter((pending) => pending.upid !== task.upid);
 		this.toast = toast;
 		if (toast.kind === 'success') {
@@ -197,6 +203,7 @@ export class TaskTrayStore {
 		if (toast.kind === 'error') {
 			for (const listener of [...this.#errorListeners]) listener(task);
 		}
+		settled?.(toast);
 		if (this.tasks.length === 0) this.#stopPolling();
 	}
 }
@@ -219,7 +226,8 @@ function taskToast(task: TrackedTask, status: TaskStatusResponse): TaskToast {
 		vm_create: { subject: () => m['task.subjectVm'](), success: () => m['task.successCreated'](), failure: () => m['task.failureCreationFailed']() },
 		vm_snapshot_create: { subject: () => m['task.subjectSnapshot'](), success: () => m['task.successCreated'](), failure: () => m['task.failureCreationFailed']() },
 		vm_snapshot_rollback: { subject: () => m['task.subjectVm'](), success: () => m['task.successRolledBack'](), failure: () => m['task.failureRollbackFailed']() },
-		vm_snapshot_delete: { subject: () => m['task.subjectSnapshot'](), success: () => m['task.successDeleted'](), failure: () => m['task.failureDeletionFailed']() }
+		vm_snapshot_delete: { subject: () => m['task.subjectSnapshot'](), success: () => m['task.successDeleted'](), failure: () => m['task.failureDeletionFailed']() },
+		vm_migrate: { subject: () => m['task.subjectVm'](), success: () => m['task.successMigrated'](), failure: () => m['task.failureMigrationFailed']() }
 	};
 	const label = labels[task.kind];
 	if (status.state === 'ok') {
