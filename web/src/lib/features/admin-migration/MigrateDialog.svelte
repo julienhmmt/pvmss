@@ -54,10 +54,13 @@
 	let failure = $state<string>('');
 	let result = $state<TaskToast | null>(null);
 	let heading = $state<HTMLElement | null>(null);
+	let startedUpid = $state<string>('');
 
 	const modeShort: string = $derived(
 		preflight?.running ? m['admin.migrate.modeLiveShort']() : m['admin.migrate.modeOfflineShort']()
 	);
+
+	const lastStatus = $derived(tray.statusFor(startedUpid));
 
 	onMount(() => {
 		void load();
@@ -101,6 +104,7 @@
 		try {
 			const started = await startMigration(cluster, vmid, target);
 			phase = 'running';
+			startedUpid = started.upid;
 			tray.track({ upid: started.upid, kind: 'vm_migrate', vmid, name, cluster }, (toast) => {
 				result = toast;
 				phase = 'done';
@@ -216,6 +220,11 @@
 		<p role="status" aria-live="polite" class="text-sm" data-testid="migrate-progress">
 			{m['admin.migrate.progress']()}
 		</p>
+		{#if lastStatus && lastStatus.log.length > 0}
+			<p class="mt-2 font-mono text-xs text-muted-foreground" data-testid="migrate-log">
+				{lastStatus.log.at(-1)}
+			</p>
+		{/if}
 	{:else if phase === 'done' && result !== null}
 		<Alert
 			tone={result.kind === 'success' ? 'info' : 'error'}

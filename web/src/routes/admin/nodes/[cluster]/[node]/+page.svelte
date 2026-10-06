@@ -1,7 +1,6 @@
 <script lang="ts">
 	import { page } from '$app/state';
-	import { afterNavigate } from '$app/navigation';
-	import { onDestroy } from 'svelte';
+	import { onDestroy, onMount } from 'svelte';
 	import { resolve } from '$app/paths';
 	import { get } from '$lib/shared/api/client';
 	import { formatBytes } from '$lib/shared/format-bytes';
@@ -125,7 +124,7 @@
 	const stopListening = getTaskTrayContext().onTaskOk(() => void loadNode(clusterKey, nodeName));
 	onDestroy(stopListening);
 
-	afterNavigate(() => {
+	onMount(() => {
 		void loadNode(clusterKey, nodeName);
 	});
 
