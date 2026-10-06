@@ -2070,7 +2070,6 @@
   "admin.migrate.modeLiveShort": "live",
   "admin.migrate.modeOfflineShort": "offline",
   "admin.migrate.confirm": "Confirm migration",
-  "admin.migrate.starting": "Starting migration...",
   "admin.migrate.progress": "Migration in progress. You can close this dialog; the task keeps running and is followed in the task tray.",
   "admin.migrate.startError": "Could not start the migration.",
   "admin.migrate.done": "Done",

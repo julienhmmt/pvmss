@@ -2070,7 +2070,6 @@
   "admin.migrate.modeLiveShort": "à chaud",
   "admin.migrate.modeOfflineShort": "à froid",
   "admin.migrate.confirm": "Confirmer la migration",
-  "admin.migrate.starting": "Démarrage de la migration...",
   "admin.migrate.progress": "Migration en cours. Vous pouvez fermer cette fenêtre ; la tâche continue et reste suivie dans la zone des tâches.",
   "admin.migrate.startError": "Impossible de démarrer la migration.",
   "admin.migrate.done": "Terminé",
