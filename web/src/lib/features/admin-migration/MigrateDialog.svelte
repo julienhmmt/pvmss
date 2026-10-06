@@ -100,12 +100,12 @@
 		failure = '';
 		try {
 			const started = await startMigration(cluster, vmid, target);
+			phase = 'running';
 			tray.track({ upid: started.upid, kind: 'vm_migrate', vmid, name, cluster }, (toast) => {
 				result = toast;
 				phase = 'done';
 				void focusHeading();
 			});
-			phase = result === null ? 'running' : 'done';
 		} catch (error: unknown) {
 			failure = error instanceof ApiRequestError ? error.message : m['admin.migrate.startError']();
 			phase = 'confirm';
