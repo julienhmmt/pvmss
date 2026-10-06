@@ -136,6 +136,7 @@ func TestAdminPolicy_PutNoChangeSkipsWriteAndAudit(t *testing.T) {
 		request := httptest.NewRequestWithContext(context.Background(), http.MethodPut, "/api/v1/admin/policy", strings.NewReader(body))
 		request.Header.Set("Content-Type", "application/json")
 		request.AddCookie(cookie)
+
 		recorder := httptest.NewRecorder()
 		mux.ServeHTTP(recorder, request)
 

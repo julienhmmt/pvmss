@@ -436,6 +436,7 @@ func TestSetPolicy_MissingPolicyRow_SeedsFromDefaults(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Gabarit: %v", err)
 	}
+
 	if got != want {
 		t.Fatalf("gabarit = %+v, want %+v", got, want)
 	}
