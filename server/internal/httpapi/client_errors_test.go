@@ -1,18 +1,18 @@
 package httpapi_test
 
 import (
+	"context"
 	"net/http"
 	"net/http/httptest"
+	"pvmss/server/internal/httpapi"
 	"strings"
 	"testing"
-
-	"pvmss/server/internal/httpapi"
 )
 
 func TestServeClientError_AcceptsAReport(t *testing.T) {
 	t.Parallel()
 
-	req := httptest.NewRequest(http.MethodPost, "/api/v1/client-errors", strings.NewReader(`{"message":"boom","path":"/vms","stack":"Error: boom\n at x"}`))
+	req := httptest.NewRequestWithContext(context.Background(), http.MethodPost, "/api/v1/client-errors", strings.NewReader(`{"message":"boom","path":"/vms","stack":"Error: boom\n at x"}`))
 	rec := httptest.NewRecorder()
 	httpapi.ServeClientError(rec, req)
 
@@ -25,7 +25,7 @@ func TestServeClientError_RejectsMalformedBody(t *testing.T) {
 	t.Parallel()
 
 	for _, body := range []string{`{bad`, `{"message":"a"} trailing`, ``} {
-		req := httptest.NewRequest(http.MethodPost, "/api/v1/client-errors", strings.NewReader(body))
+		req := httptest.NewRequestWithContext(context.Background(), http.MethodPost, "/api/v1/client-errors", strings.NewReader(body))
 		rec := httptest.NewRecorder()
 		httpapi.ServeClientError(rec, req)
 
@@ -38,7 +38,7 @@ func TestServeClientError_RejectsMalformedBody(t *testing.T) {
 func TestServeClientError_ToleratesUnknownFields(t *testing.T) {
 	t.Parallel()
 
-	req := httptest.NewRequest(http.MethodPost, "/api/v1/client-errors", strings.NewReader(`{"message":"boom","futureField":{"nested":true}}`))
+	req := httptest.NewRequestWithContext(context.Background(), http.MethodPost, "/api/v1/client-errors", strings.NewReader(`{"message":"boom","futureField":{"nested":true}}`))
 	rec := httptest.NewRecorder()
 	httpapi.ServeClientError(rec, req)
 

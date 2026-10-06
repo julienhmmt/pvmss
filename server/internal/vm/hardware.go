@@ -155,31 +155,49 @@ func effectiveHardware(entity Entity, patch HardwarePatch, gabarit policy.Gabari
 		memoryMB = *patch.MemoryMB
 	}
 
+	if err := checkHardwareLimits(sockets, cores, memoryMB, gabarit); err != nil {
+		return 0, 0, 0, nil, err
+	}
+
+	tags := patchedTags(entity.Tags, patch.Tags)
+
+	return sockets, cores, memoryMB, tags, nil
+}
+
+// checkHardwareLimits rejects a hardware shape outside the gabarit.
+func checkHardwareLimits(sockets, cores, memoryMB int, gabarit policy.Gabarit) error {
 	// A zero gabarit field means no cap (same rule as CheckGabarit and the
 	// node capacités); a negative one stays a deny-all ceiling.
 	if sockets < 1 || (gabarit.MaxSockets != 0 && sockets > gabarit.MaxSockets) {
-		return 0, 0, 0, nil, fmt.Errorf("%w: sockets exceeds maxSockets", ErrHardwareExceedsLimit)
+		return fmt.Errorf("%w: sockets exceeds maxSockets", ErrHardwareExceedsLimit)
 	}
 
 	if cores < 1 || (gabarit.MaxCores != 0 && cores > gabarit.MaxCores) {
-		return 0, 0, 0, nil, fmt.Errorf("%w: cores exceeds maxCores", ErrHardwareExceedsLimit)
+		return fmt.Errorf("%w: cores exceeds maxCores", ErrHardwareExceedsLimit)
 	}
 
 	if memoryMB < 1 || (gabarit.MaxMemoryMB != 0 && memoryMB > gabarit.MaxMemoryMB) {
-		return 0, 0, 0, nil, fmt.Errorf("%w: memory exceeds maxMemoryMB", ErrHardwareExceedsLimit)
+		return fmt.Errorf("%w: memory exceeds maxMemoryMB", ErrHardwareExceedsLimit)
 	}
 
-	tags := append([]string(nil), entity.Tags...)
-	if patch.Tags != nil {
-		tags = append([]string(nil), (*patch.Tags)...)
-		// pvmss is mandatory: a VM without it is invisible to every
-		// PVMSS endpoint, so a user tag patch can never strip it.
-		if !slices.Contains(tags, pvmssTag) {
-			tags = append(tags, pvmssTag)
-		}
+	return nil
+}
+
+// patchedTags returns the entity tags with the patch applied. pvmss is
+// mandatory: a VM without it is invisible to every PVMSS endpoint, so a user
+// tag patch can never strip it.
+func patchedTags(current []string, patch *[]string) []string {
+	tags := append([]string(nil), current...)
+	if patch == nil {
+		return tags
 	}
 
-	return sockets, cores, memoryMB, tags, nil
+	tags = append([]string(nil), (*patch)...)
+	if !slices.Contains(tags, pvmssTag) {
+		tags = append(tags, pvmssTag)
+	}
+
+	return tags
 }
 
 // validatePatchTags rejects tag patches referencing names outside the

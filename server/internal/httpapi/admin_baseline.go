@@ -94,7 +94,7 @@ func (h *AdminBaseline) ServeBaseline(w http.ResponseWriter, r *http.Request) {
 func (h *AdminBaseline) writeError(w http.ResponseWriter, status int, code, message string) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(status)
-	if err := json.NewEncoder(w).Encode(map[string]string{"error": code, "message": message}); err != nil {
+	if err := json.NewEncoder(w).Encode(map[string]string{errorLabel: code, "message": message}); err != nil {
 		h.log.Warn("encode error response failed", "component", "httpapi", "error", errors.New(code))
 	}
 }

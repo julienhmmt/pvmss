@@ -58,6 +58,7 @@ func TestUpdateNetwork_ZeroGabaritIsUncapped(t *testing.T) {
 	if err != nil {
 		t.Fatalf("UpdateNetwork: %v", err)
 	}
+
 	if len(result) != len(interfaces) {
 		t.Fatalf("interfaces = %d, want %d", len(result), len(interfaces))
 	}
@@ -105,6 +106,7 @@ func TestDiskWrites_ZeroGabaritIsUncapped(t *testing.T) {
 	if _, err := vm.AddDisk(context.Background(), deps, cluster.DiskBusSCSI, "local-lvm", sizeGB); err != nil {
 		t.Fatalf("AddDisk: %v", err)
 	}
+
 	if err := vm.ResizeDisk(context.Background(), deps, "scsi1", sizeGB); err != nil {
 		t.Fatalf("ResizeDisk: %v", err)
 	}

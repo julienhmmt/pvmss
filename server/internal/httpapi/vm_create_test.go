@@ -417,7 +417,7 @@ func TestVMCreateCatalog_SelectsStorageClientByCluster(t *testing.T) {
 			Name: secondaryStorage, Node: cluster.FakeNode02, Type: "nfs", PluginType: "nfs", Content: "backup",
 		}}}},
 		crossSecondaryCluster: vmCreateSnapshotClient{snapshot: cluster.Snapshot{Storages: []cluster.Storage{{
-			Name: secondaryStorage, Node: cluster.FakeNode02, Type: "dir", PluginType: "dir", Content: "images",
+			Name: secondaryStorage, Node: cluster.FakeNode02, Type: storageTypeDir, PluginType: storageTypeDir, Content: "images",
 		}}}},
 	}}
 
