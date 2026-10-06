@@ -21,10 +21,10 @@ const (
 	maxVMPerUserLimit    = 100000
 )
 
-// PolicyUpdate is the outcome of UpdatePolicy: the policy state before and
+// Update is the outcome of UpdatePolicy: the policy state before and
 // after the mutation. Changed is false when the mutation produced no
 // difference - nothing was written and nothing is worth auditing.
-type PolicyUpdate struct {
+type Update struct {
 	Before  Settings
 	After   Settings
 	Changed bool
@@ -40,13 +40,13 @@ const maxPolicyUpdateAttempts = 3
 // what mutate saw (compare-and-swap), so a concurrent update between the read
 // and the write is retried rather than silently overwritten. A mutation that
 // changes nothing skips the write and reports Changed=false.
-func (service *Policy) UpdatePolicy(ctx context.Context, clusterName string, mutate func(current Settings) Settings) (PolicyUpdate, error) {
-	for attempt := 0; attempt < maxPolicyUpdateAttempts; attempt++ {
+func (service *Policy) UpdatePolicy(ctx context.Context, clusterName string, mutate func(current Settings) Settings) (Update, error) {
+	for range maxPolicyUpdateAttempts {
 		row, err := service.store.PolicyRow(ctx, clusterName)
 
 		missing := errors.Is(err, sql.ErrNoRows)
 		if err != nil && !missing {
-			return PolicyUpdate{}, err
+			return Update{}, err
 		}
 
 		if missing {
@@ -57,11 +57,11 @@ func (service *Policy) UpdatePolicy(ctx context.Context, clusterName string, mut
 		after := mutate(before)
 
 		if err := validateSettings(after); err != nil {
-			return PolicyUpdate{}, err
+			return Update{}, err
 		}
 
 		if after == before {
-			return PolicyUpdate{Before: before, After: after}, nil
+			return Update{Before: before, After: after}, nil
 		}
 
 		var expected *store.PolicyRow
@@ -75,13 +75,13 @@ func (service *Policy) UpdatePolicy(ctx context.Context, clusterName string, mut
 		}
 
 		if err != nil {
-			return PolicyUpdate{}, err
+			return Update{}, err
 		}
 
-		return PolicyUpdate{Before: before, After: after, Changed: true}, nil
+		return Update{Before: before, After: after, Changed: true}, nil
 	}
 
-	return PolicyUpdate{}, ErrConcurrentUpdate
+	return Update{}, ErrConcurrentUpdate
 }
 
 // SetPolicy replaces the global gabarit and quota in one atomic update.

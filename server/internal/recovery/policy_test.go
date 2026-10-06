@@ -149,9 +149,7 @@ func TestUpsertVMLimits_PreservesShippedDefaults(t *testing.T) {
 		t.Fatalf("UpsertVMLimits: %v", err)
 	}
 
-	var (
-		sockets, cores, memoryMB, diskPerVM, netCards, snapshots, vmPerUser int
-	)
+	var sockets, cores, memoryMB, diskPerVM, netCards, snapshots, vmPerUser int
 
 	err := v04DB.QueryRowContext(ctx,
 		`SELECT max_sockets, max_cores, max_memory_mb, max_disk_per_vm_gb, max_network_cards, max_snapshots, max_vm_per_user FROM vm_limits WHERE cluster = ?`,
@@ -187,7 +185,6 @@ func TestUpsertVMLimits_PreservesShippedDefaults(t *testing.T) {
 	if vmPerUser != 5 {
 		t.Errorf("max_vm_per_user = %d, want 5", vmPerUser)
 	}
-
 }
 
 func TestUpsertNodeLimits_WritesAndIsIdempotent(t *testing.T) {
