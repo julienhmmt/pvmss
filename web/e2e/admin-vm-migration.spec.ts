@@ -38,8 +38,8 @@ async function migrateBack(request: APIRequestContext): Promise<void> {
 	}
 }
 
-// Reaches the node page through the node list: a hard load of the node page
-// does not fetch its details (afterNavigate does not fire on first load).
+// Reaches the node page through the node list link (client-side navigation);
+// the detail page also loads on direct URL entry - it fetches in onMount.
 async function openNode(page: Page, node: string): Promise<void> {
 	await page.goto('/admin/nodes');
 	await page.getByRole('link', { name: node, exact: true }).click();
@@ -78,6 +78,13 @@ test.describe('admin VM migration', () => {
 
 		await expect(dialog.getByTestId('migrate-summary')).toContainText(`from ${SOURCE} to ${TARGET}`);
 		await dialog.getByTestId('migrate-confirm').click();
+
+		// The fake's migrate task reports running for its first two polls and
+		// seeds its log with "starting snapshot task..." (newSnapshotTask), so
+		// the dialog shows the live task log while the tray follows the UPID.
+		await expect(dialog.getByTestId('migrate-progress')).toBeVisible();
+		await expect(dialog.getByTestId('migrate-log')).toBeVisible({ timeout: LOAD_TIMEOUT_MS });
+		await expect(dialog.getByTestId('migrate-log')).toContainText('starting snapshot task');
 
 		await expect(dialog.getByTestId('migrate-result')).toContainText('migrated', { timeout: SUCCESS_TIMEOUT_MS });
 		await dialog.getByRole('button', { name: 'Done' }).click();

@@ -70,6 +70,9 @@ export class TaskTrayStore {
 	/** Per-task consecutive non-404 poll error count - reset on any successful
 	 *  poll, and on finish. */
 	#consecutiveErrors = new SvelteMap<string, number>();
+	/** Per-task last-seen status - recorded on every successful poll so
+	 *  observers (the migrate dialog) can render live task log lines. */
+	#lastStatuses = new SvelteMap<string, TaskStatusResponse>();
 	/** Per-task completion callbacks, called once with the final toast. */
 	#settledCallbacks = new SvelteMap<string, (toast: TaskToast) => void>();
 	/** Guards against overlapping poll cycles - a slow task (real VM creates
@@ -121,6 +124,12 @@ export class TaskTrayStore {
 		this.#stopPolling();
 	}
 
+	/** Last-seen task status for in-flight tasks (running phase only;
+	 *  cleared when the task finishes). */
+	statusFor(upid: string): TaskStatusResponse | undefined {
+		return this.#lastStatuses.get(upid);
+	}
+
 	#startPolling(): void {
 		if (this.#timer !== null) return;
 		this.#timer = setInterval(() => void this.#pollAll(), POLL_INTERVAL_MS);
@@ -161,6 +170,7 @@ export class TaskTrayStore {
 			);
 			// Any successful poll (still running or terminal) resets the error counter.
 			this.#consecutiveErrors.delete(task.upid);
+			this.#lastStatuses.set(task.upid, status);
 			if (status.state === 'running') return;
 			if (status.state === 'ok') await refreshInventory();
 			this.#finish(task, taskToast(task, status));
@@ -193,6 +203,7 @@ export class TaskTrayStore {
 
 	#finish(task: TrackedTask, toast: TaskToast): void {
 		this.#consecutiveErrors.delete(task.upid);
+		this.#lastStatuses.delete(task.upid);
 		const settled = this.#settledCallbacks.get(task.upid);
 		this.#settledCallbacks.delete(task.upid);
 		this.tasks = this.tasks.filter((pending) => pending.upid !== task.upid);
