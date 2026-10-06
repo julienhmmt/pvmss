@@ -42,6 +42,10 @@ type fakeState struct {
 	// (create/rollback/delete) instead of dispatching (tests inject a cluster rejection to
 	// exercise the handler's error mapping).
 	snapshotWriteErr error
+	// migrateErr, when set, is returned by every Migrate dispatch.
+	migrateErr error
+	// migrationPrechecks overrides the computed precheck per vmid.
+	migrationPrechecks map[int]*MigrationPrecheck
 	// createErr, when set, is returned by the next CreateVM call instead of
 	// dispatching (tests inject cluster.ErrVMIDTaken to exercise the retry loop, or a generic
 	// error to exercise the failure path).
@@ -159,6 +163,8 @@ func (s *fakeState) reset(clusterName string) {
 	s.createErr = nil
 	s.createErrCount = 0
 	s.taskErr = ""
+	s.migrateErr = nil
+	s.migrationPrechecks = nil
 	s.vmLocks = make(map[int]string)
 
 	s.snippetMu.Lock()

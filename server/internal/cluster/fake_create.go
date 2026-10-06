@@ -16,6 +16,7 @@ type fakeTask struct {
 	upid       string
 	polls      int
 	onComplete func()
+	onError    func()
 	log        []string
 }
 
@@ -181,7 +182,13 @@ func (fake Fake) TaskStatus(_ context.Context, upid string) (TaskStatus, error) 
 		log := append([]string(nil), task.log...)
 		log = append(log, "TASK ERROR: "+exitMsg)
 
+		onError := task.onError
+		task.onError = nil
 		state.createMu.Unlock()
+
+		if onError != nil {
+			onError()
+		}
 
 		return TaskStatus{UPID: upid, State: TaskError, ExitMessage: exitMsg, Log: log}, nil
 	}

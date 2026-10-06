@@ -565,6 +565,30 @@ type SnapshotWriter interface {
 	DeleteSnapshot(ctx context.Context, node string, vmid int, name string) (string, error)
 }
 
+// Migrator moves a VM between nodes of the same cluster.
+type Migrator interface {
+	MigrationPrecheck(ctx context.Context, node string, vmid int) (MigrationPrecheck, error)
+	Migrate(ctx context.Context, node string, vmid int, spec MigrateSpec) (upid string, err error)
+}
+
+// MigrationPrecheck is Proxmox's answer to "where can this VM go".
+type MigrationPrecheck struct {
+	AllowedNodes []string
+	// NotAllowed maps a node to Proxmox's reason, e.g. "unavailable storages: local-lvm".
+	NotAllowed map[string]string
+	// LocalDisks lists the volids that live on node-local storage.
+	LocalDisks []string
+	// LocalResources lists node-bound devices such as "hostpci0".
+	LocalResources []string
+}
+
+// MigrateSpec is the dispatch form of one migration.
+type MigrateSpec struct {
+	Target         string
+	Online         bool
+	WithLocalDisks bool
+}
+
 // SnapshotConfigReader reads one snapshot's stored config as a flat key→value
 // map. "current" maps to the live config - the pre-rollback diff
 // needs both sides.

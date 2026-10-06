@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"pvmss/server/internal/cluster"
 	"pvmss/server/internal/inventory"
+	"slices"
 	"sync"
 	"time"
 )
@@ -54,6 +55,7 @@ type nodeVMDTO struct {
 	Status           string `json:"status"`
 	CPUCores         int    `json:"cpuCores"`
 	MemoryTotalBytes int64  `json:"memoryTotalBytes"`
+	Managed          bool   `json:"managed"`
 }
 
 type nodeStorageDTO struct {
@@ -223,7 +225,7 @@ func nodeInventory(index *inventory.Index, node string) nodeInventoryDTO {
 	for _, vm := range vms {
 		vmDTOs = append(vmDTOs, nodeVMDTO{
 			VMID: vm.VMID, Name: vm.Name, Status: string(vm.Status), CPUCores: vm.CPUCores,
-			MemoryTotalBytes: vm.MemoryTotal,
+			MemoryTotalBytes: vm.MemoryTotal, Managed: slices.Contains(vm.Tags, "pvmss"),
 		})
 	}
 	storages := index.StoragesByNode[node]

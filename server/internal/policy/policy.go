@@ -258,26 +258,12 @@ func (service *Policy) NodeCapacity(ctx context.Context, clusterName, node strin
 
 	index := service.projection.Load()
 
-	var (
-		usedRAMBytes  int64
-		usedDiskBytes int64
-	)
-
+	usage := pvmssUsage(index, node)
 	capacity.TotalVMs = len(index.ByNode[node])
-
-	for _, machine := range index.ByNode[node] {
-		if !slices.Contains(machine.Tags, "pvmss") {
-			continue
-		}
-
-		capacity.UsedVMs++
-		capacity.UsedVCPUs += vmVCPUs(machine)
-		usedRAMBytes += machine.MemoryTotal
-		usedDiskBytes += machine.DiskTotal
-	}
-
-	capacity.UsedRAMGB = int(usedRAMBytes / bytesPerGB)
-	capacity.UsedDiskGB = int(usedDiskBytes / bytesPerGB)
+	capacity.UsedVMs = usage.vms
+	capacity.UsedVCPUs = usage.vcpus
+	capacity.UsedRAMGB = int(usage.ramBytes / bytesPerGB)
+	capacity.UsedDiskGB = int(usage.diskBytes / bytesPerGB)
 
 	for _, machine := range index.Nodes {
 		if machine.Name != node {
@@ -299,6 +285,54 @@ func (service *Policy) NodeCapacity(ctx context.Context, clusterName, node strin
 }
 
 const bytesPerGB int64 = 1024 * 1024 * 1024
+
+type nodeUsage struct {
+	vms, vcpus          int
+	ramBytes, diskBytes int64
+}
+
+// pvmssUsage totals the pvmss-tagged VMs the index places on node.
+func pvmssUsage(index *inventory.Index, node string) nodeUsage {
+	var usage nodeUsage
+
+	for _, machine := range index.ByNode[node] {
+		if !slices.Contains(machine.Tags, "pvmss") {
+			continue
+		}
+
+		usage.vms++
+		usage.vcpus += vmVCPUs(machine)
+		usage.ramBytes += machine.MemoryTotal
+		usage.diskBytes += machine.DiskTotal
+	}
+
+	return usage
+}
+
+// NodeOverflow returns the cap dimensions ("vms","vcpus","ram","disk") the
+// node would exceed if machine were added to it. Zero caps mean uncapped.
+func NodeOverflow(index *inventory.Index, caps store.NodePolicyRow, node string, machine cluster.VM) []string {
+	usage := pvmssUsage(index, node)
+	overflow := []string{}
+
+	if caps.MaxVMs > 0 && usage.vms+1 > caps.MaxVMs {
+		overflow = append(overflow, dimensionVMs)
+	}
+
+	if caps.MaxVCPUs > 0 && usage.vcpus+vmVCPUs(machine) > caps.MaxVCPUs {
+		overflow = append(overflow, dimensionVCPUs)
+	}
+
+	if caps.MaxRAMGB > 0 && int((usage.ramBytes+machine.MemoryTotal)/bytesPerGB) > caps.MaxRAMGB {
+		overflow = append(overflow, dimensionRAM)
+	}
+
+	if caps.MaxDiskGB > 0 && int((usage.diskBytes+machine.DiskTotal)/bytesPerGB) > caps.MaxDiskGB {
+		overflow = append(overflow, dimensionDisk)
+	}
+
+	return overflow
+}
 
 func (service *Policy) poolVMCount(pool string) int {
 	if service.projection == nil || service.projection.Load() == nil {

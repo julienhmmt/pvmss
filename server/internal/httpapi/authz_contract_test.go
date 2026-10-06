@@ -557,6 +557,7 @@ func newAuthzContractRouter(t *testing.T) (http.Handler, *httpapi.Auth) {
 	docs := httpapi.NewDocsAPIHandler(authHandler, st, logger)
 	adminDocs := httpapi.NewAdminDocs(authHandler, st, docs, logger)
 	profileSSHKeys := httpapi.NewProfileSSHKeys(authHandler, st, logger)
+	adminMigration := httpapi.NewAdminMigrationWithRegistry(httpapi.AdminMigrationRegistryDeps{Projection: projection, Auth: authHandler, Migrator: cluster.Fake{}, Status: cluster.Fake{}, Store: st, Log: logger})
 
 	mux := httpapi.NewRouter(httpapi.RouterConfig{
 		Health:           health,
@@ -580,6 +581,7 @@ func newAuthzContractRouter(t *testing.T) (http.Handler, *httpapi.Auth) {
 		AdminClusters:    adminClusters,
 		AdminDocs:        adminDocs,
 		AdminBaseline:    adminBaseline,
+		AdminMigration:   adminMigration,
 		ProfileSSHKeys:   profileSSHKeys,
 		Log:              logger,
 		Store:            st,
