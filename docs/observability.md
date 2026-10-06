@@ -46,6 +46,17 @@ handler attached a cause. Every audit-log row is also logged (`message` =
 `audit event`, `event` = `audit`) with `actor`, `action`, `cluster`, `vmid`,
 `targetType`, `targetId`. Request bodies, headers and secrets are never logged.
 
+VM migration (admin) adds two lines. `vm.migrate` is an audited action: one
+`audit event` line at `info` (`actor`, `cluster`, `vmid`, `targetType` = `vm`,
+`targetId` = `<cluster>:<vmid>`), written only after Proxmox accepts the
+dispatch; the audit row's `detail` JSON carries the source and target node
+(`{"summary":"migrate <source> -> <target>","changes":[{"field":"node",...}]}`).
+It is counted in `pvmss_vm_actions_total` under `action="vm.migrate"`, with no
+new label. A migration PVMSS refuses before dispatching (invalid target,
+locked VM, live-migration blocker) logs one `vm migration refused` line at
+`warn` with `component`, `cluster`, `vmid` and `reason` (`invalid_target`,
+`vm_locked` or `migration_blocked`) and writes no audit row.
+
 The response header `X-Request-Id` carries the request ID, so a user can quote
 it. A valid inbound `X-Request-Id` (1-64 characters of `A-Za-z0-9._-`) is kept.
 

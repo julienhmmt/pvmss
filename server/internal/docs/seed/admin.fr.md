@@ -42,6 +42,33 @@ Les ressources découvertes apparaissent automatiquement ; l'interrupteur
 disparaît de Proxmox, son approbation obsolète est signalée pour que vous
 puissiez la retirer.
 
+## Migrer une VM
+
+Dans **Infrastructure > Nœuds**, ouvrez un nœud : chaque VM gérée par PVMSS a
+un bouton **Migrer...**. La fenêtre vérifie où la VM peut aller, vous choisissez
+un nœud cible, relisez le résumé puis confirmez. La migration s'exécute comme
+une tâche Proxmox, suivie dans le tiroir des tâches (vous pouvez fermer la
+fenêtre entre-temps), et la VM quitte la liste du nœud source une fois
+terminée. Une VM en marche migre à chaud, une VM arrêtée à froid.
+
+Limites :
+
+- Réservé aux administrateurs, une VM à la fois, au sein d'un seul cluster.
+- Uniquement les VM gérées par PVMSS (étiquette `pvmss`).
+- Les cibles sont les nœuds approuvés, en ligne et acceptés par Proxmox pour
+  cette VM.
+- Il n'y a pas de choix du stockage cible : les disques locaux sont emportés
+  par Proxmox (`with-local-disks`) quand la VM en a.
+- Les plafonds de capacité par nœud sont des avertissements, pas des blocages :
+  une cible au-dessus de son plafond affiche un badge et reste sélectionnable.
+- Une VM verrouillée, ou en marche avec des ressources locales (passthrough
+  PCI ou USB), est refusée ; arrêtez la VM ou attendez la fin du verrou.
+- Les VM gérées par HA et la migration entre clusters sont laissées à Proxmox.
+
+La migration est consignée dans le journal d'audit (`vm.migrate`, avec le nœud
+source et le nœud cible). Le jeton du compte de service Proxmox doit disposer de `VM.Migrate`
+(voir les [permissions Proxmox](/docs/proxmox-permissions)).
+
 ## Politique
 
 **Limites** définit le gabarit par cluster (sockets, cœurs, mémoire, disque

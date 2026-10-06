@@ -28,5 +28,10 @@ Filters are kept in the URL, so a filtered view can be bookmarked.
    administrator).
 5. Submit - the portal provisions the VM and shows progress in the task tray.
 
+## Moving a VM
+
+Users cannot move a VM between nodes. If a VM needs to be moved, ask your PVMSS
+administrator.
+
 For more, see the [VM creation guidelines](/docs/vm-creation-guidelines) and
 the [user guide](/docs/user-guide).

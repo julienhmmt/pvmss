@@ -38,6 +38,32 @@ automatically; toggle the enabled switch to control what users see. When a
 resource disappears from Proxmox, its stale approval is flagged so you can
 remove it.
 
+## Migrating a VM
+
+On **Infrastructure > Nodes**, open a node: every PVMSS-managed VM has a
+**Migrate...** button. The dialog checks where the VM can go, you pick a
+target node, review the summary and confirm. The migration runs as a Proxmox
+task, followed in the task tray (you can close the dialog meanwhile), and the
+VM leaves the source node's list when it completes. A running VM migrates
+live, a stopped one offline.
+
+Limits:
+
+- Administrators only, one VM at a time, within one cluster.
+- Only PVMSS-managed VMs (tagged `pvmss`).
+- Targets are approved, online nodes that Proxmox accepts for that VM.
+- There is no target-storage picker: local disks are carried by Proxmox
+  (`with-local-disks`) when the VM has any.
+- The per-node capacity caps are warnings, not blocks: a target above its cap
+  shows a badge and stays selectable.
+- A locked VM, or a running VM with local resources (PCI or USB passthrough),
+  is refused; stop the VM or wait for the lock to clear.
+- HA-managed VMs and cross-cluster migration are left to Proxmox.
+
+The migration is recorded in the audit log (`vm.migrate`, with the source and
+target node). The Proxmox service token needs `VM.Migrate` (see the
+[Proxmox permissions](/docs/proxmox-permissions)).
+
 ## Policy
 
 **Limits** sets the per-cluster gabarit (max sockets, cores, memory, disk per

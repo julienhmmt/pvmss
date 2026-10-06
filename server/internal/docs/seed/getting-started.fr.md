@@ -30,5 +30,10 @@ une vue filtrée peut être mise en favori.
 5. Validez - le portail provisionne la VM et affiche la progression dans le
    tiroir des tâches.
 
+## Déplacer une VM
+
+Les utilisateurs ne peuvent pas déplacer une VM d'un nœud à un autre. Pour
+déplacer une VM, demandez à votre administrateur PVMSS.
+
 Pour aller plus loin, consultez les [règles de création de VM](/docs/vm-creation-guidelines)
 et le [guide utilisateur](/docs/user-guide).
