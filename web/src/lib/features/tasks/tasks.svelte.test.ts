@@ -160,4 +160,42 @@ describe('TaskTrayStore timeout and error handling', () => {
 		expect(fetchMock).toHaveBeenCalledTimes(2);
 		tray.destroy();
 	});
+
+	it('exposes the last-seen status while running and clears it when the task finishes', async () => {
+		const fetchMock = vi.fn()
+			.mockResolvedValueOnce(jsonResponse(200, { upid: 'UPID:h', state: 'running', log: ['starting snapshot task...'] }))
+			.mockResolvedValue(jsonResponse(200, { upid: 'UPID:h', state: 'ok', log: ['starting snapshot task...', 'TASK OK'] }));
+		vi.stubGlobal('fetch', fetchMock);
+		const tray = new TaskTrayStore();
+		trackSnapshot(tray, 'UPID:h');
+
+		// Nothing recorded before the first successful poll.
+		expect(tray.statusFor('UPID:h')).toBeUndefined();
+
+		await vi.advanceTimersByTimeAsync(POLL_INTERVAL_MS);
+		expect(tray.statusFor('UPID:h')?.state).toBe('running');
+		expect(tray.statusFor('UPID:h')?.log).toEqual(['starting snapshot task...']);
+
+		await vi.advanceTimersByTimeAsync(POLL_INTERVAL_MS);
+		expect(tray.tasks).toHaveLength(0);
+		expect(tray.statusFor('UPID:h')).toBeUndefined();
+		tray.destroy();
+	});
+
+	it('calls the onSettled callback once with the final toast and labels a migration', async () => {
+		vi.stubGlobal('fetch', vi.fn(always(() => jsonResponse(200, { upid: 'UPID:m', state: 'error', log: [], exitMessage: 'target unreachable' }))));
+		const tray = new TaskTrayStore();
+		const settled = vi.fn();
+		tray.track({ upid: 'UPID:m', kind: 'vm_migrate', vmid: 100, name: 'web-01', cluster: 'default' }, settled);
+
+		await vi.advanceTimersByTimeAsync(POLL_INTERVAL_MS * 3);
+
+		expect(settled).toHaveBeenCalledTimes(1);
+		expect(settled).toHaveBeenCalledWith({
+			kind: 'error',
+			message: `${m['task.subjectVm']()} "web-01" ${m['task.failureMigrationFailed']()}: target unreachable`
+		});
+		expect(TASK_BUDGET_MS.vm_migrate).toBe(1_800_000);
+		tray.destroy();
+	});
 });

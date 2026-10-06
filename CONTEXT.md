@@ -52,6 +52,25 @@ signature. PVMSS reads it (`LiveStatus.Lock`, error parsing via
 `qm unlock <vmid>` on the node.
 _Avoid_: treating the lock as a VM power state
 
+**Migration**:
+Moving a PVMSS-managed VM to another node of the same cluster, started by an
+administrator (`POST /api/v1/admin/vms/{cluster}/{vmid}/migrate`) and run as a
+Proxmox task tracked by its UPID. A running VM migrates live, a stopped one
+offline; local disks travel with Proxmox's `with-local-disks`. Cross-cluster
+migration and HA-managed VMs are out of scope. Recorded as the `vm.migrate`
+audit event once Proxmox accepts the dispatch.
+_Avoid_: move, relocate, vMotion
+
+**Migration preflight**:
+The read-only check behind the Migrate dialog
+(`GET /api/v1/admin/vms/{cluster}/{vmid}/migrate`): live status and lock,
+Proxmox's migration precheck, and the approved nodes, split into candidates
+(online and allowed, each with non-blocking capacity warnings) and excluded
+nodes (offline, or refused by Proxmox with its reason). It also reports
+blockers (local resources on a running VM). Start-migration runs the same
+check again, so the UI holds no rules of its own.
+_Avoid_: dry run, validation
+
 **Rollback**:
 Restoring a VM to a snapshot. Proxmox stops the VM, reverts the disks, and
 starts it again - with RAM state the VM resumes live at the snapshot point,
