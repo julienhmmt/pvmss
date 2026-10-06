@@ -478,6 +478,7 @@ func buildRouter(deps routerDeps) (http.Handler, error) {
 	vmCreate.SetInventoryRefreshers(httpapi.NewRegistryRefresherResolver(inventoryRegistry))
 	tasks := httpapi.NewTasksWithRegistry(authHandler, clusterRegistry, clients.creator, worker, httpapi.NewRegistryRefresherResolver(inventoryRegistry), logger)
 	snapshots := httpapi.NewVMSnapshotsWithRegistry(httpapi.VMSnapshotsRegistryDeps{Source: inventoryRegistry, Projection: projection, Auth: authHandler, Reader: clients.snapshotReader, Writer: clients.snapshotWriter, Clients: clusterRegistry, Store: st, Log: logger, Services: []*policy.Policy{policyService}})
+	adminMigration := httpapi.NewAdminMigrationWithRegistry(httpapi.AdminMigrationRegistryDeps{Source: inventoryRegistry, Projection: projection, Auth: authHandler, Migrator: clients.migrator, Status: clients.statusReader, Clients: clusterRegistry, Store: st, Log: logger})
 	vmConsole := httpapi.NewVMConsoleWithRegistry(httpapi.VMConsoleRegistryDeps{Source: inventoryRegistry, Projection: projection, Auth: authHandler, Relay: clients.consoleRelay, Clients: clusterRegistry, Tickets: consoleTickets, Store: st, Log: logger})
 	vmSerialConsole := httpapi.NewVMSerialConsoleWithRegistry(httpapi.VMSerialConsoleRegistryDeps{Source: inventoryRegistry, Projection: projection, Auth: authHandler, Relay: clients.serialRelay, Clients: clusterRegistry, Tickets: consoleTickets, Store: st, Log: logger})
 	vmMetrics := httpapi.NewVMMetricsWithRegistry(inventoryRegistry, projection, authHandler, clients.metricsReader, clients.metricsCurrentReader, clusterRegistry, logger)
@@ -533,6 +534,7 @@ func buildRouter(deps routerDeps) (http.Handler, error) {
 		AdminDocs:        adminDocs,
 		ProfileSSHKeys:   profileSSHKeys,
 		AdminBaseline:    adminBaseline,
+		AdminMigration:   adminMigration,
 		TrustedProxyHops: cfg.TrustedProxyHops,
 		RateLimitMax:     cfg.RateLimitMax,
 	}), nil
@@ -546,6 +548,7 @@ type clusterClientInterfaces struct {
 	cloudInitReader      cluster.CloudInitReader
 	snapshotReader       cluster.SnapshotReader
 	snapshotWriter       cluster.SnapshotWriter
+	migrator             cluster.Migrator
 	consoleRelay         cluster.ConsoleRelay
 	serialRelay          cluster.TerminalRelay
 	metricsReader        cluster.MetricsHistoryReader
@@ -576,6 +579,9 @@ func resolveClusterClientInterfaces(clusterClient cluster.Client) (clusterClient
 	}
 	if c.snapshotWriter, ok = clusterClient.(cluster.SnapshotWriter); !ok {
 		return c, errors.New("cluster client does not implement SnapshotWriter")
+	}
+	if c.migrator, ok = clusterClient.(cluster.Migrator); !ok {
+		return c, errors.New("cluster client does not implement Migrator")
 	}
 	if c.consoleRelay, ok = clusterClient.(cluster.ConsoleRelay); !ok {
 		return c, errors.New("cluster client does not implement ConsoleRelay")
