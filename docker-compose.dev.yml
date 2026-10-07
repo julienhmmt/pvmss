@@ -49,6 +49,9 @@ services:
       # For OrbStack TLS access via https://web-dev.pvmss.orb.local (standard port),
       # set ORIGIN=https://web-dev.pvmss.orb.local (no port) in your local .env
       # (or shell). This makes the HMR client connect via wss://... without :5173.
+      # With ORIGIN set, open the app on that URL only: asset URLs and HMR are
+      # built from it, so another host (localhost, 127.0.0.1) gets CORS-blocked
+      # fonts and a failing HMR socket.
       ORIGIN: ${ORIGIN:-http://localhost:5173}
       NODE_ENV: development
     ports:

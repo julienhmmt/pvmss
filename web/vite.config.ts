@@ -72,7 +72,9 @@ export default defineConfig({
 			'/api': {
 				target: backendUrl,
 				ws: true
-			}
+			},
+			// The app polls /health for its "service unreachable" banner.
+			'/health': backendUrl
 		}
 	}
 });
