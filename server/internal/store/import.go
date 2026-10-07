@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"maps"
 	"os"
 	"path/filepath"
 	"sort"
@@ -57,12 +58,7 @@ var excludedImportTables = map[string]string{
 
 // ExcludedImportTables returns a copy of the excluded tables and reasons.
 func ExcludedImportTables() map[string]string {
-	out := make(map[string]string, len(excludedImportTables))
-	for name, reason := range excludedImportTables {
-		out[name] = reason
-	}
-
-	return out
+	return maps.Clone(excludedImportTables)
 }
 
 // ImportableTables returns a copy of the import allowlist. Tests use this to

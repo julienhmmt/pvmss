@@ -536,6 +536,7 @@ func TestImportAllowlist_ListMatchesCurrentSchema(t *testing.T) {
 	// Every live table is either imported or excluded with a reason - a new
 	// table must be classified, or a restore silently drops it.
 	excluded := store.ExcludedImportTables()
+
 	for name := range liveTables {
 		if strings.HasPrefix(name, "sqlite_") {
 			continue
