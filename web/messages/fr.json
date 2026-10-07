@@ -1250,7 +1250,7 @@
   "admin.tags.noFilterMatches": "Aucune étiquette ne correspond à vos filtres.",
   "admin.tags.resetFilters": "Réinitialiser les filtres",
   "admin.tags.newTagForm": "Nouvelle étiquette",
-  "admin.tags.nameField": "Nom (1-50 alphanumérique)",
+  "admin.tags.nameField": "Nom (1-50 : minuscules, chiffres, - _ . +)",
   "admin.tags.colorField": "Couleur",
   "admin.tags.loadError": "échec du chargement des étiquettes",
   "admin.tags.createError": "échec de la création de l'étiquette",
