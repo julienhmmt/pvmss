@@ -1,24 +1,47 @@
 @import "tailwindcss";
 @import "tw-animate-css";
-@import "@fontsource-variable/noto-sans";
+@import "@fontsource-variable/archivo";
 
 @custom-variant dark (&:is(.dark *));
 
 :root {
-  --background: oklch(100% 0 0deg);
-  --foreground: oklch(14.7% 0.004 49.25deg);
-  --card: oklch(100% 0 0deg);
-  --card-foreground: oklch(14.7% 0.004 49.25deg);
-  --popover: oklch(100% 0 0deg);
-  --popover-foreground: oklch(14.7% 0.004 49.25deg);
-  --primary: oklch(68% 0.19 45deg);
-  --primary-foreground: oklch(98.7% 0.022 95.277deg);
+  /* Layer B - PVMSS App mockup (specs/002-design-import/contracts/visual-language.md).
+     Warm paper ground, white surfaces, orange accent, 12px radius, two mute steps. */
+  --background: #f7f6f4;
+  --foreground: #1c1a19;
+  --card: #ffffff;
+  --card-foreground: #1c1a19;
+  --popover: #ffffff;
+  --popover-foreground: #1c1a19;
+  /* Deepened from oklch(66% 0.185 44deg) (#ea6314) so the label can be white.
+     At 66% lightness white text sat at 3.24:1, under the 4.5:1 AA floor for
+     14px semibold button labels, which is why the label used to be dark ink.
+     At 56% white clears AA (4.70:1) while the hue stays the documented brand
+     orange (51deg - the old token had drifted to 44deg, visibly redder than
+     DESIGN.md's #d9742e). Side benefit: --primary is also used as link/accent
+     text, and it now clears AA there too (4.56:1 on the paper ground, was
+     3.09:1). */
+  --primary: oklch(56% 0.16 51deg);
+  /* The fill under a label, as opposed to the accent. Light mode happens to
+     need the same value for both, but dark mode does not (see .dark below) - 
+     so the two roles get their own token instead of sharing one and forcing
+     one theme to lose. Label-bearing fills use this; tints, dots, meters,
+     charts, focus rings and accent text use --primary. */
+  --primary-solid: oklch(56% 0.16 51deg);
+  --primary-foreground: oklch(98.5% 0.012 80deg);
   --secondary: oklch(96.7% 0.001 286.375deg);
   --secondary-foreground: oklch(21% 0.006 285.885deg);
-  --muted: oklch(97% 0.001 106.424deg);
-  --muted-foreground: oklch(55.3% 0.013 58.071deg);
-  --accent: oklch(97% 0.001 106.424deg);
-  --accent-foreground: oklch(21.6% 0.006 56.043deg);
+  --muted: #f1eeeb;
+  --muted-foreground: #5f5854;
+  /* Was #8d8681 - 3.32:1 on this background, under the 4.5:1 AA floor for
+     normal text (16 of its 25 call sites are text: labels, char counters,
+     " - " placeholders, footer text - the other 9 are borders/dots, not
+     subject to that floor). This keeps a visible step below
+     --muted-foreground (6.46:1) while clearing AA itself (4.57:1 on
+     --background, 4.94:1 on --card). */
+  --muted-foreground-subtle: #766f6a;
+  --accent: #f1eeeb;
+  --accent-foreground: #1c1a19;
   --destructive: oklch(57.7% 0.245 27.325deg);
   --destructive-foreground: oklch(98.5% 0.001 106.423deg);
   --destructive-soft: oklch(96% 0.03 27.325deg);
@@ -39,23 +62,24 @@
   --info-soft: oklch(96% 0.04 245deg);
   --info-soft-foreground: oklch(40% 0.14 245deg);
   --info-soft-border: oklch(85% 0.08 245deg);
-  --border: oklch(92.3% 0.003 48.717deg);
-  --input: oklch(92.3% 0.003 48.717deg);
-  --ring: oklch(70.9% 0.01 56.259deg);
+  --border: #e8e4e0;
+  --border-subtle: #f1eeeb;
+  --input: #e8e4e0;
+  --ring: oklch(56% 0.16 51deg);
   --chart-1: oklch(87.9% 0.169 91.605deg);
   --chart-2: oklch(76.9% 0.188 70.08deg);
   --chart-3: oklch(66.6% 0.179 58.318deg);
   --chart-4: oklch(55.5% 0.163 48.998deg);
   --chart-5: oklch(47.3% 0.137 46.201deg);
-  --radius: 0.45rem;
-  --sidebar: oklch(98.5% 0.001 106.423deg);
-  --sidebar-foreground: oklch(14.7% 0.004 49.25deg);
-  --sidebar-primary: oklch(68% 0.19 45deg);
-  --sidebar-primary-foreground: oklch(98.7% 0.022 95.277deg);
-  --sidebar-accent: oklch(97% 0.001 106.424deg);
-  --sidebar-accent-foreground: oklch(21.6% 0.006 56.043deg);
-  --sidebar-border: oklch(92.3% 0.003 48.717deg);
-  --sidebar-ring: oklch(70.9% 0.01 56.259deg);
+  --radius: 0.75rem;
+  --sidebar: #ffffff;
+  --sidebar-foreground: #1c1a19;
+  --sidebar-primary: oklch(56% 0.16 51deg);
+  --sidebar-primary-foreground: oklch(98.5% 0.012 80deg);
+  --sidebar-accent: oklch(96.5% 0.022 44deg);
+  --sidebar-accent-foreground: oklch(51% 0.15 44deg);
+  --sidebar-border: #e8e4e0;
+  --sidebar-ring: oklch(66% 0.185 44deg);
   --blaze-orange-50: 34 100% 97%;
   --blaze-orange-100: 28 100% 95%;
   --blaze-orange-200: 23 100% 92%;
@@ -67,26 +91,62 @@
   --blaze-orange-800: 20 100% 37%;
   --blaze-orange-900: 17 100% 28%;
   --blaze-orange-950: 12 100% 21%;
-  --content-max-width: 87.5rem;
   --navbar-height: 3.5rem;
+  /* Single control radius. Every interactive control (button, input, select,
+     icon button, tab) uses this; cards use --radius. Two values, no drift. */
+  --radius-control: 0.625rem;
+  /* Elevation ramp. Warm-tinted, three steps only: rest / raised / overlay. */
+  --elev-rest:
+    0 1px 2px oklch(28% 0.01 56deg / 0.04),
+    0 1px 3px oklch(28% 0.01 56deg / 0.06);
+  --elev-raised:
+    0 2px 4px oklch(28% 0.01 56deg / 0.05),
+    0 6px 16px oklch(28% 0.01 56deg / 0.08);
+  --elev-overlay:
+    0 8px 24px oklch(28% 0.01 56deg / 0.12),
+    0 2px 6px oklch(28% 0.01 56deg / 0.08);
+  --font-mono: ui-monospace, "SF Mono", "JetBrains Mono", "Menlo", monospace;
 }
 
 .dark {
-  --background: oklch(14.7% 0.004 49.25deg);
-  --foreground: oklch(98.5% 0.001 106.423deg);
-  --card: oklch(21.6% 0.006 56.043deg);
-  --card-foreground: oklch(98.5% 0.001 106.423deg);
-  --popover: oklch(21.6% 0.006 56.043deg);
-  --popover-foreground: oklch(98.5% 0.001 106.423deg);
-  --primary: oklch(68% 0.19 45deg);
-  --primary-foreground: oklch(98.7% 0.022 95.277deg);
-  --secondary: oklch(27.4% 0.006 286.033deg);
-  --secondary-foreground: oklch(98.5% 0 0deg);
-  --muted: oklch(26.8% 0.007 34.298deg);
-  --muted-foreground: oklch(70.9% 0.01 56.259deg);
-  --accent: oklch(26.8% 0.007 34.298deg);
-  --accent-foreground: oklch(98.5% 0.001 106.423deg);
-  --destructive: oklch(70.4% 0.191 22.216deg);
+  /* Hand-derived from the Layer B light ramp (research.md R3, tokens.md §2).
+     Warm near-black ground, lifted orange accent, two distinct mute steps. */
+  --background: oklch(17% 0.006 49deg);
+  --foreground: oklch(90% 0.004 95deg);
+  --card: oklch(21% 0.006 56deg);
+  --card-foreground: oklch(90% 0.004 95deg);
+  --popover: oklch(21% 0.006 56deg);
+  --popover-foreground: oklch(90% 0.004 95deg);
+  /* --primary stays the lifted accent here: on a near-black ground it is what
+     accent text, tints, dots and focus rings need (7.21:1 on the background,
+     6.67:1 on a card). It is NOT used as a label-bearing fill, because a fill
+     dark enough for a white label (4.5:1) is too dark to read as accent text
+     (3.88:1) - one value cannot do both, which is why the roles are split. */
+  --primary: oklch(72% 0.17 44deg);
+  /* Same deep orange as light mode, so a primary button is the same button in
+     both themes and the label stays warm white instead of flipping to dark ink.
+     Checked against the dark surfaces: 3.88:1 on --background, 3.59:1 on
+     --card, both over the 3:1 non-text floor, so the fill still reads as a
+     control without needing a border. */
+  --primary-solid: oklch(56% 0.16 51deg);
+  --primary-foreground: oklch(98.5% 0.012 80deg);
+  --secondary: oklch(25% 0.006 56deg);
+  --secondary-foreground: oklch(90% 0.004 95deg);
+  --muted: oklch(25% 0.006 56deg);
+  --muted-foreground: oklch(65% 0.01 56deg);
+  /* Was 55% - 3.92:1 on this background, same AA gap as light mode's fix
+     above. 62% clears AA (5.20:1 on --background, 4.81:1 on --card) while
+     staying below --muted-foreground's 65%. */
+  --muted-foreground-subtle: oklch(62% 0.012 56deg);
+  --accent: oklch(25% 0.006 56deg);
+  --accent-foreground: oklch(90% 0.004 95deg);
+  /* Kept at the Layer B spec red (DESIGN.md §Semantic) rather than the lifted
+     oklch(70.4% ...) red used before: white foreground on that light red was
+     2.75:1, under AA, which is why it had been paired with dark ink. The spec
+     red carries white at 4.71:1 - matching light mode and DESIGN.md's
+     "destructive background, white foreground" - so the delete buttons read
+     as white text in dark mode without dropping below AA. */
+  --destructive: oklch(57.7% 0.245 27.325deg);
   --destructive-foreground: oklch(98.5% 0.001 106.423deg);
   --destructive-soft: oklch(28% 0.07 27.325deg);
   --destructive-soft-foreground: oklch(85% 0.12 22deg);
@@ -106,26 +166,40 @@
   --info-soft: oklch(28% 0.06 245deg);
   --info-soft-foreground: oklch(85% 0.12 245deg);
   --info-soft-border: oklch(40% 0.1 245deg);
-  --border: oklch(100% 0 0deg / 10%);
-  --input: oklch(100% 0 0deg / 15%);
-  --ring: oklch(55.3% 0.013 58.071deg);
+  --border: oklch(100% 0 0deg / 0.08);
+  --border-subtle: oklch(100% 0 0deg / 0.06);
+  --input: oklch(100% 0 0deg / 0.12);
+  --ring: oklch(72% 0.17 44deg);
   --chart-1: oklch(87.9% 0.169 91.605deg);
   --chart-2: oklch(76.9% 0.188 70.08deg);
   --chart-3: oklch(66.6% 0.179 58.318deg);
   --chart-4: oklch(55.5% 0.163 48.998deg);
   --chart-5: oklch(47.3% 0.137 46.201deg);
-  --sidebar: oklch(21.6% 0.006 56.043deg);
-  --sidebar-foreground: oklch(98.5% 0.001 106.423deg);
-  --sidebar-primary: oklch(68% 0.19 45deg);
-  --sidebar-primary-foreground: oklch(27.9% 0.077 45.635deg);
-  --sidebar-accent: oklch(26.8% 0.007 34.298deg);
-  --sidebar-accent-foreground: oklch(98.5% 0.001 106.423deg);
-  --sidebar-border: oklch(100% 0 0deg / 10%);
-  --sidebar-ring: oklch(55.3% 0.013 58.071deg);
+  --sidebar: oklch(21% 0.006 56deg);
+  --sidebar-foreground: oklch(90% 0.004 95deg);
+  --sidebar-primary: oklch(72% 0.17 44deg);
+  --sidebar-primary-foreground: oklch(98.5% 0.012 80deg);
+  --sidebar-accent: oklch(26% 0.03 44deg);
+  --sidebar-accent-foreground: oklch(82% 0.13 44deg);
+  --sidebar-border: oklch(100% 0 0deg / 0.1);
+  --sidebar-ring: oklch(72% 0.17 44deg);
+  --elev-rest:
+    0 1px 2px oklch(0% 0 0deg / 0.2), 0 1px 3px oklch(0% 0 0deg / 0.28);
+  --elev-raised:
+    0 2px 4px oklch(0% 0 0deg / 0.28), 0 6px 16px oklch(0% 0 0deg / 0.36);
+  --elev-overlay:
+    0 8px 24px oklch(0% 0 0deg / 0.5), 0 2px 6px oklch(0% 0 0deg / 0.3);
 }
 
 @theme inline {
-  --font-sans: 'Noto Sans Variable', sans-serif;
+  /* Page widths: collections (lists, admin) use the wide cap, forms and
+     reading pages the narrow one. The shell caps at --container-collection. */
+  --container-collection: 100rem;
+  --container-reading: 60rem;
+  /* Smallest step of the type scale: eyebrows, count chips, captions. */
+  --text-2xs: 0.6875rem;
+  --font-sans: "Archivo Variable", sans-serif;
+  --font-mono: ui-monospace, "SF Mono", "JetBrains Mono", "Menlo", monospace;
   --color-background: var(--background);
   --color-foreground: var(--foreground);
   --color-card: var(--card);
@@ -133,11 +207,13 @@
   --color-popover: var(--popover);
   --color-popover-foreground: var(--popover-foreground);
   --color-primary: var(--primary);
+  --color-primary-solid: var(--primary-solid);
   --color-primary-foreground: var(--primary-foreground);
   --color-secondary: var(--secondary);
   --color-secondary-foreground: var(--secondary-foreground);
   --color-muted: var(--muted);
   --color-muted-foreground: var(--muted-foreground);
+  --color-muted-foreground-subtle: var(--muted-foreground-subtle);
   --color-accent: var(--accent);
   --color-accent-foreground: var(--accent-foreground);
   --color-destructive: var(--destructive);
@@ -161,6 +237,7 @@
   --color-info-soft-foreground: var(--info-soft-foreground);
   --color-info-soft-border: var(--info-soft-border);
   --color-border: var(--border);
+  --color-border-subtle: var(--border-subtle);
   --color-input: var(--input);
   --color-ring: var(--ring);
   --color-chart-1: var(--chart-1);
@@ -176,10 +253,10 @@
   --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
   --color-sidebar-border: var(--sidebar-border);
   --color-sidebar-ring: var(--sidebar-ring);
-  --radius-sm: calc(var(--radius) * 0.6);
+  --radius-sm: 0.5rem;
   --radius-md: calc(var(--radius) * 0.8);
   --radius-lg: var(--radius);
-  --radius-xl: calc(var(--radius) * 1.4);
+  --radius-xl: 1.125rem;
   --radius-2xl: calc(var(--radius) * 1.8);
   --radius-3xl: calc(var(--radius) * 2.2);
   --radius-4xl: calc(var(--radius) * 2.6);
@@ -209,10 +286,146 @@
   }
 }
 
-.pv-content-width {
-  max-width: var(--content-max-width);
-  margin-left: auto;
-  margin-right: auto;
+/* Layer B - mono run for technical values (vmid, node, sizes, UPID).
+   Mirrors the mockup's `.m` class. Use via the `.mono` utility or the
+   `font-mono` Tailwind token. */
+.mono {
+  font-family: var(--font-mono);
+  font-feature-settings: "tnum" 1;
+}
+
+/* Elevation utilities. Three steps, driven by the --elev-* tokens so light
+   and dark stay in sync. `.shadow-card` is the rest step and keeps its name
+   because ~40 call sites use it. */
+.shadow-card {
+  box-shadow: var(--elev-rest);
+}
+
+.shadow-raised {
+  box-shadow: var(--elev-raised);
+}
+
+.shadow-overlay {
+  box-shadow: var(--elev-overlay);
+}
+
+/* Shared form-control base. One source of truth for input styling so every
+   form (wizard, admin dialogs, login) shares one vocabulary with the Button
+   primitive: same radius (0.625rem), same focus ring, same disabled state,
+   same invalid state. Apply via the .pv-input class on <input>, <select>,
+   and <textarea>. The focus ring mirrors Button's focus-visible:ring-2
+   ring-ring ring-offset-2 ring-offset-background.
+   In the `components` layer (not plain CSS) so Tailwind utilities like
+   `pl-9`/`pr-9` (leading/trailing icon padding) always win regardless of
+   source order - same-specificity plain CSS here would otherwise clobber
+   them since this block loads after Tailwind's utilities. */
+@layer components {
+  /* One focus recipe for the whole app: a 2px ring separated from the control
+     by a 2px background gap. Every interactive element uses `.pv-focus` (or
+     the Tailwind equivalent it mirrors) so focus never looks hand-rolled.
+
+     Edge-flush controls are the deliberate exception: sidebar nav rows and
+     "Machines" popovers (Sidebar.svelte), table sort links (SortButton.svelte),
+     a toggle's own track (Switch.svelte), the toast dismiss control
+     (Toaster.svelte), and the mobile header's icon buttons (AppHeader.svelte,
+     HeaderLite.svelte, LanguageSwitcher.svelte, ThemeToggle.svelte) stay on
+     the shorter `focus-visible:ring-2 focus-visible:ring-ring`, no offset - 
+     a control that spans its container edge to edge (a 236px sidebar column,
+     a table header cell) would have that offset ring clipped by the
+     container's own edge or overflow. Don't "fix" those into `.pv-focus`. */
+  .pv-focus:focus-visible {
+    outline: none;
+    box-shadow:
+      0 0 0 2px var(--background),
+      0 0 0 4px var(--ring);
+  }
+
+  .pv-input {
+    display: block;
+    width: 100%;
+    border-radius: var(--radius-control);
+    border: 1px solid var(--input);
+    background: var(--background);
+    padding: 0.5rem 0.75rem;
+    font-size: 0.875rem;
+    line-height: 1.25rem;
+    color: var(--foreground);
+    transition:
+      border-color 150ms ease,
+      box-shadow 150ms ease,
+      background-color 150ms ease;
+  }
+
+  /* Inputs answer the pointer before it is clicked: the border darkens on
+     hover so a form reads as a set of controls, not a set of outlines. */
+  .pv-input:hover:not(:disabled, :focus-visible) {
+    border-color: var(--muted-foreground-subtle);
+  }
+
+  .pv-input::placeholder {
+    color: var(--muted-foreground);
+  }
+
+  .pv-input:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+
+  .pv-input:focus-visible {
+    outline: none;
+    border-color: var(--ring);
+    box-shadow:
+      0 0 0 2px var(--background),
+      0 0 0 4px var(--ring);
+  }
+
+  .pv-input[aria-invalid="true"] {
+    border-color: var(--destructive);
+  }
+
+  .pv-input[aria-invalid="true"]:focus-visible {
+    border-color: var(--destructive);
+    box-shadow:
+      0 0 0 2px var(--background),
+      0 0 0 4px var(--destructive);
+  }
+
+  /* Native <select> affordance: drop the UA chrome and reserve room for the
+     chevron icon rendered by Select.svelte. */
+  .pv-select {
+    appearance: none;
+    -webkit-appearance: none;
+    padding-right: 2rem;
+    cursor: pointer;
+  }
+
+  .pv-select:disabled {
+    cursor: not-allowed;
+  }
+
+  /* Dark-mode autofill: override the browser's bright yellow fill color with
+     the warm dark ground and matching text. */
+  .pv-input:-webkit-autofill,
+  .pv-input:-webkit-autofill:hover,
+  .pv-input:-webkit-autofill:focus,
+  .pv-input:-webkit-autofill:active {
+    -webkit-text-fill-color: var(--foreground);
+    -webkit-box-shadow: 0 0 0 1000px var(--background) inset;
+    box-shadow: 0 0 0 1000px var(--background) inset;
+  }
+
+  .pv-input:-webkit-autofill:focus-visible {
+    outline: none;
+    border-color: var(--ring);
+    -webkit-box-shadow:
+      0 0 0 1000px var(--background) inset,
+      0 0 0 2px var(--background),
+      0 0 0 4px var(--ring);
+    box-shadow:
+      0 0 0 1000px var(--background) inset,
+      0 0 0 2px var(--background),
+      0 0 0 4px var(--ring);
+  }
 }
 
 /* Offset the fixed sidebar below the navbar */
@@ -229,5 +442,249 @@
     animation-iteration-count: 1 !important;
     transition-duration: 0.01ms !important;
     scroll-behavior: auto !important;
+  }
+}
+
+/* Layer B - responsive table pattern. On viewports < 640px each row
+   collapses into a stacked card of label/value pairs driven by the
+   `data-label` attribute on each data cell. On >= 640px the element is a
+   normal table. The <thead> is hidden on mobile (labels move inline). */
+.pv-responsive-table {
+  width: 100%;
+  border-collapse: collapse;
+  text-align: left;
+}
+
+@media (width <= 639px) {
+  .pv-responsive-table thead {
+    display: none;
+  }
+
+  .pv-responsive-table,
+  .pv-responsive-table tbody,
+  .pv-responsive-table tr,
+  .pv-responsive-table td,
+  .pv-responsive-table th {
+    display: block;
+    width: 100%;
+  }
+
+  .pv-responsive-table tr {
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 0.5rem 0.75rem;
+    margin-bottom: 0.75rem;
+    background: var(--card);
+    box-shadow: 0 1px 2px oklch(28% 0.01 56deg / 0.04);
+  }
+
+  .pv-responsive-table tr:last-child {
+    margin-bottom: 0;
+  }
+
+  .pv-responsive-table td,
+  .pv-responsive-table th {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.375rem 0;
+    border: none;
+    text-align: right;
+  }
+
+  .pv-responsive-table td::before,
+  .pv-responsive-table th::before {
+    content: attr(data-label);
+    font-weight: 500;
+    color: var(--muted-foreground);
+    text-align: left;
+    flex-shrink: 0;
+  }
+
+  /* Cells opted out of the label/value layout (checkboxes, actions). */
+  .pv-responsive-table td[data-nolabel="true"] {
+    justify-content: flex-start;
+    padding-top: 0.5rem;
+    border-bottom: 1px solid var(--border-subtle);
+    margin-bottom: 0.25rem;
+  }
+
+  .pv-responsive-table td[data-nolabel="true"]::before {
+    content: none;
+  }
+}
+
+/* Layer B - subtle micro-interaction animations. All durations stay at or
+   below 200ms and are zeroed out by the prefers-reduced-motion rule above. */
+.drawer-slide-in-left {
+  animation: drawer-slide-in-left 180ms ease-out;
+}
+
+@keyframes drawer-slide-in-left {
+  from {
+    transform: translateX(-100%);
+    opacity: 0.6;
+  }
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+
+.dialog-fade-in {
+  animation: dialog-fade-in 160ms ease-out;
+}
+
+@keyframes dialog-fade-in {
+  from {
+    opacity: 0;
+    transform: translateY(0.5rem) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+.dialog-backdrop-in {
+  animation: dialog-backdrop-in 160ms ease-out;
+}
+
+@keyframes dialog-backdrop-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+.fade-in {
+  animation: fade-in 180ms ease-out;
+}
+
+@keyframes fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+/* ---------------------------------------------------------------------------
+   Data table vocabulary. Every list in the app (VMs, nodes, admin tables)
+   renders the same table: a sticky header band, a hover row with a left
+   accent rail, tabular numerics in numeric columns. Defined once here so a
+   new table cannot drift by hand-rolling its own padding scale.
+   --------------------------------------------------------------------------- */
+.pv-table {
+  width: 100%;
+  border-collapse: separate;
+  border-spacing: 0;
+  text-align: left;
+  font-size: 0.875rem;
+}
+
+.pv-table thead th {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  background: var(--muted);
+  border-bottom: 1px solid var(--border);
+  padding: 0.625rem 1rem;
+  font-size: 0.6875rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--muted-foreground);
+  white-space: nowrap;
+}
+
+.pv-table tbody td,
+.pv-table tbody th {
+  padding: 0.75rem 1rem;
+  border-bottom: 1px solid var(--border-subtle);
+  vertical-align: middle;
+}
+
+.pv-table tbody tr:last-child td,
+.pv-table tbody tr:last-child th {
+  border-bottom: 0;
+}
+
+/* The rail is drawn on the first cell so it does not need a wrapper element
+   and does not shift the row when it appears. */
+.pv-table tbody tr {
+  transition: background-color 120ms ease;
+}
+
+.pv-table tbody tr:hover {
+  background: var(--muted);
+}
+
+.pv-table tbody tr td:first-child,
+.pv-table tbody tr th:first-child {
+  box-shadow: inset 2px 0 0 transparent;
+  transition: box-shadow 120ms ease;
+}
+
+.pv-table tbody tr:hover td:first-child,
+.pv-table tbody tr:hover th:first-child {
+  box-shadow: inset 2px 0 0 var(--primary);
+}
+
+/* Numeric / identifier columns: tabular figures, right-aligned so digits
+   line up down the column. Headers keep the sans face - only the cells are
+   mono - so the header band stays one typographic voice. */
+.pv-table thead th.num {
+  text-align: right;
+}
+
+.pv-table tbody td.num,
+.pv-table .num {
+  font-family: var(--font-mono);
+  font-feature-settings: "tnum" 1;
+  text-align: right;
+  white-space: nowrap;
+}
+
+/* Below 640px `.pv-responsive-table` turns rows into stacked cards; hand the
+   layout back to it so the desktop cell metrics do not leak into the cards. */
+@media (width <= 639px) {
+  .pv-responsive-table.pv-table thead th {
+    position: static;
+  }
+
+  .pv-responsive-table.pv-table tbody td,
+  .pv-responsive-table.pv-table tbody th {
+    padding: 0.375rem 0;
+    border-bottom: 0;
+  }
+
+  .pv-responsive-table.pv-table tbody tr:hover {
+    background: var(--card);
+  }
+
+  .pv-responsive-table.pv-table tbody tr td:first-child,
+  .pv-responsive-table.pv-table tbody tr th:first-child,
+  .pv-responsive-table.pv-table tbody tr:hover td:first-child,
+  .pv-responsive-table.pv-table tbody tr:hover th:first-child {
+    box-shadow: none;
+  }
+}
+
+/* Tablet gap (640–899px): the sidebar is still a drawer here (it only goes
+   inline at >=900px, see routes/+layout.svelte), so the content column is
+   full-width but still narrow. At that width a full desktop column set
+   wraps long values across 2–3 lines and can push the Actions column off
+   the visible area. Columns marked with this class drop out only in that
+   band - below 640px .pv-responsive-table has already turned every field
+   into a label/value row, where this does not apply, and at >=900px the
+   desktop column set is restored. */
+@media (640px <= width <= 899px) {
+  .pv-table-tablet-hide {
+    display: none;
   }
 }

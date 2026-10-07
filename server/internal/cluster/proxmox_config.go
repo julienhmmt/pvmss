@@ -1,0 +1,517 @@
+package cluster
+
+import (
+	"context"
+	"fmt"
+	"net/http"
+	"net/url"
+	"strconv"
+	"strings"
+	"time"
+)
+
+// proxmoxVMConfig is a decoded /nodes/{node}/qemu/{vmid}/config response.
+// Proxmox mixes types across keys - cores/sockets/memory are numbers, disk
+// and network entries are strings - so it is decoded loosely and read through
+// the str/int helpers below rather than a fixed struct.
+type proxmoxVMConfig map[string]any
+
+func (c proxmoxVMConfig) str(key string) string {
+	v, ok := c[key]
+	if !ok {
+		return ""
+	}
+
+	if s, ok := v.(string); ok {
+		return s
+	}
+
+	return fmt.Sprintf("%v", v)
+}
+
+func (c proxmoxVMConfig) int(key string) int {
+	v, ok := c[key]
+	if !ok {
+		return 0
+	}
+
+	switch t := v.(type) {
+	case float64:
+		return int(t)
+	case string:
+		n, _ := strconv.Atoi(t)
+		return n
+	default:
+		return 0
+	}
+}
+
+// fetchVMConfig reads a VM's full configuration.
+func fetchVMConfig(ctx context.Context, rest proxmoxRESTClient, node string, vmid int) (proxmoxVMConfig, error) {
+	raw, err := rest.do(ctx, http.MethodGet, fmt.Sprintf("/nodes/%s/qemu/%d/config", url.PathEscape(node), vmid), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	var cfg proxmoxVMConfig
+	if err := decodeData(raw, &cfg); err != nil {
+		return nil, fmt.Errorf("decode vm config: %w", err)
+	}
+
+	return cfg, nil
+}
+
+// proxmoxBusRange is the real hardware slot range per bus (virtio 0-15, scsi
+// 0-30, sata 0-5, ide 0-3), mirroring the usable-slot counts vm/disks.go
+// enforces on write (maxDisksForBus) - kept as a separate table because
+// package vm already imports package cluster, so the reverse import is not
+// available here. Keep the two in sync if Proxmox's own limits ever change.
+var proxmoxBusRange = map[DiskBus]int{
+	DiskBusVirtio: 15,
+	DiskBusSCSI:   30,
+	DiskBusSATA:   5,
+	DiskBusIDE:    3,
+}
+
+// cdromDiskKey is the fixed slot PVMSS always uses for the CD-ROM drive
+// (client.go: "CDROMState describes the fixed ide2 CD-ROM drive").
+const cdromDiskKey = "ide2"
+
+// diskKeySCSI0 is the first SCSI disk slot, used in fixtures and assertions.
+const diskKeySCSI0 = "scsi0"
+
+// scsiController is the SCSI controller PVMSS sets when the primary disk uses
+// the scsi bus. Deliberately virtio-scsi-single, not virtio-scsi-pci: only
+// single gives each disk its own controller with a dedicated iothread, so the
+// iothread=1 PVMSS emits on SCSI disks is honored. With virtio-scsi-pci
+// Proxmox logs "iothread is only valid with virtio disk or virtio-scsi-single
+// controller, ignoring" and silently drops the option.
+const scsiController = "virtio-scsi-single"
+
+// cdromMountedValue is the Proxmox netN/ideN value form for a mounted ISO,
+// used in fixtures and assertions across config and writer tests.
+const cdromMountedValue = "local:iso/debian-12.iso,media=cdrom"
+
+// cloudInitDiskKey is the fixed slot PVMSS always uses for the cloud-init
+// drive (see EnsureCloudInitDrive in proxmox_cloudinit.go). Deliberately not
+// ide2: that slot is reserved for the CD-ROM feature above, and the two would
+// otherwise silently overwrite each other on the same VM. vm/disks.go's
+// maxDisksForBus[IDE] is 2, not the hardware's 3 non-cdrom slots, to keep the
+// regular-disk allocator (nextProxmoxDiskKey below) from ever offering this
+// slot to a caller.
+const cloudInitDiskKey = "ide3"
+
+// proxmoxEmptyVolume is the sentinel Proxmox writes in a drive slot that
+// holds no volume (an ejected CD-ROM, a detached disk).
+const proxmoxEmptyVolume = "none"
+
+// cfgHasSerial reports whether the VM config carries a serial port (serial0,
+// serial1, …). The PVMSS Text/serial console needs at least one.
+func cfgHasSerial(cfg proxmoxVMConfig) bool {
+	for index := range 4 {
+		if _, ok := cfg[fmt.Sprintf("serial%d", index)].(string); ok {
+			return true
+		}
+	}
+
+	return false
+}
+
+// parseDisks reads every attached data disk from cfg in a deterministic
+// order (bus, then index) - map iteration order is random and callers (the
+// disk tab, the create wizard) expect a stable listing.
+func parseDisks(cfg proxmoxVMConfig) ([]Disk, int64) {
+	var disks []Disk
+
+	var total int64
+
+	for _, bus := range []DiskBus{DiskBusVirtio, DiskBusSCSI, DiskBusSATA, DiskBusIDE} {
+		for index := 0; index <= proxmoxBusRange[bus]; index++ {
+			key := fmt.Sprintf("%s%d", bus, index)
+			if key == cdromDiskKey || key == cloudInitDiskKey {
+				continue
+			}
+
+			value, ok := cfg[key].(string)
+			if !ok || value == "" || value == proxmoxEmptyVolume {
+				continue
+			}
+
+			storage, sizeGB, format := parseDiskValue(value)
+			if storage == "" {
+				continue
+			}
+
+			disks = append(disks, Disk{Key: key, Bus: bus, BusIndex: index, Storage: storage, SizeGB: sizeGB, Format: format})
+			total += int64(sizeGB) * 1024 * 1024 * 1024
+		}
+	}
+
+	return disks, total
+}
+
+// parseDiskValue splits a Proxmox disk config value ("local-lvm:vm-101-disk-0,size=32G"
+// or "local:vm-101-disk-0.qcow2,size=32G") into its storage, size in whole GB,
+// and image format.
+func parseDiskValue(value string) (storage string, sizeGB int, format string) {
+	volume, options, _ := strings.Cut(value, ",")
+
+	storage, _, ok := strings.Cut(volume, ":")
+	if !ok {
+		return "", 0, ""
+	}
+
+	for opt := range strings.SplitSeq(options, ",") {
+		key, val, ok := strings.Cut(opt, "=")
+		if !ok {
+			continue
+		}
+
+		switch key {
+		case "size":
+			sizeGB = parseProxmoxSizeGB(val)
+		case "format":
+			format = val
+		}
+	}
+
+	if format == "" {
+		format = parseDiskFormatFromVolume(volume)
+	}
+
+	return storage, sizeGB, format
+}
+
+// parseDiskFormatFromVolume derives a disk's format from its volume filename
+// when no explicit format= option was given. PVE appends the format to the
+// volume name on file-based storages ("local:vm-100-disk-0.qcow2"); block
+// storages carry a bare name and return "" - the plugin decides there.
+func parseDiskFormatFromVolume(volume string) string {
+	_, filePart, ok := strings.Cut(volume, ":")
+	if !ok {
+		filePart = volume
+	}
+
+	dot := strings.LastIndexByte(filePart, '.')
+	if dot < 0 || dot == len(filePart)-1 {
+		return ""
+	}
+
+	return filePart[dot+1:]
+}
+
+// parseProxmoxSizeGB converts a Proxmox size value (a trailing-unit string
+// like "32G"/"512M", or a bare byte count) to whole GB.
+func parseProxmoxSizeGB(raw string) int {
+	raw = strings.TrimSpace(raw)
+	if raw == "" {
+		return 0
+	}
+
+	unit := raw[len(raw)-1]
+
+	var multiplier float64
+
+	var numPart string
+
+	switch unit {
+	case 'T', 't':
+		multiplier, numPart = 1024, raw[:len(raw)-1]
+	case 'G', 'g':
+		multiplier, numPart = 1, raw[:len(raw)-1]
+	case 'M', 'm':
+		multiplier, numPart = 1.0/1024, raw[:len(raw)-1]
+	case 'K', 'k':
+		multiplier, numPart = 1.0/(1024*1024), raw[:len(raw)-1]
+	default:
+		if n, err := strconv.ParseFloat(raw, 64); err == nil {
+			return int(n / (1024 * 1024 * 1024))
+		}
+
+		return 0
+	}
+
+	n, err := strconv.ParseFloat(numPart, 64)
+	if err != nil {
+		return 0
+	}
+
+	return int(n * multiplier)
+}
+
+// occupiedByNonISO reports whether the CD-ROM slot holds a real volume that is
+// not an ISO (Proxmox's default cloud-init drive lands there).
+func occupiedByNonISO(cfg proxmoxVMConfig) bool {
+	value, _ := cfg[cdromDiskKey].(string)
+	volume, _, _ := strings.Cut(value, ",")
+
+	return volume != "" && volume != proxmoxEmptyVolume && !strings.Contains(volume, ":iso/")
+}
+
+// parseCDROM reads the fixed ide2 slot's state.
+func parseCDROM(cfg proxmoxVMConfig) CDROMState {
+	value, ok := cfg[cdromDiskKey].(string)
+	if !ok || value == "" {
+		return CDROMState{State: CDROMAbsent}
+	}
+
+	volume, _, _ := strings.Cut(value, ",")
+	if volume == "" || volume == proxmoxEmptyVolume {
+		return CDROMState{State: CDROMEmpty}
+	}
+
+	// Proxmox parks the cloud-init drive on ide2 by default (a template clone
+	// keeps it). Only "storage:iso/file" volumes are ISOs.
+	if !strings.Contains(volume, ":iso/") {
+		return CDROMState{State: CDROMOccupied}
+	}
+
+	return CDROMState{State: CDROMMounted, ISOVolID: volume}
+}
+
+// proxmoxNICModels are the network card models Proxmox accepts as the
+// key-less first segment of a netN value.
+var proxmoxNICModels = map[string]bool{
+	string(DiskBusVirtio): true, "e1000": true, "e1000e": true, "rtl8139": true, "vmxnet3": true,
+}
+
+// parseNetworkInterfaces reads every attached NIC from cfg (net0..net31 -
+// Proxmox's own hardware limit). IPAddresses is deliberately left empty:
+// populating it needs a live QEMU guest agent call correlated by MAC against
+// each NIC, a per-VM extra round trip this reader does not make - the VM
+// detail endpoint fills it lazily through GuestNetworkReader instead.
+func parseNetworkInterfaces(cfg proxmoxVMConfig) []NetworkInterface {
+	var nics []NetworkInterface
+
+	for index := range 32 {
+		value, ok := cfg[fmt.Sprintf("net%d", index)].(string)
+		if !ok || value == "" {
+			continue
+		}
+
+		nics = append(nics, parseNetValue(index, value))
+	}
+
+	return nics
+}
+
+func parseNetValue(index int, value string) NetworkInterface {
+	nic := NetworkInterface{Index: index}
+
+	for opt := range strings.SplitSeq(value, ",") {
+		key, val, hasEquals := strings.Cut(opt, "=")
+
+		switch {
+		case !hasEquals:
+			// A bare model with no MAC ("virtio" alone, auto-assigned by Proxmox).
+			if proxmoxNICModels[key] {
+				nic.Model = key
+			}
+		case key == "bridge":
+			nic.Bridge = val
+		case key == "tag":
+			if n, err := strconv.Atoi(val); err == nil {
+				nic.VLAN = &n
+			}
+		case key == "rate":
+			if n, err := strconv.ParseFloat(val, 64); err == nil {
+				r := int(n)
+				nic.RateMbps = &r
+			}
+		case key == "firewall":
+			nic.Firewall = val == "1"
+		case key == "mtu":
+			if n, err := strconv.Atoi(val); err == nil {
+				nic.MTU = n
+			}
+		case proxmoxNICModels[key]:
+			nic.Model = key
+			nic.MAC = val
+		}
+	}
+
+	return nic
+}
+
+// parseBootOrder reads the modern "order=scsi0;ide2;net0" boot form. Older
+// Proxmox installs may still carry the legacy "bootdisk"/flag-string form;
+// this reader does not translate it, matching the fake's own scope (no boot
+// order fixture beyond the order list itself).
+func parseBootOrder(cfg proxmoxVMConfig) []string {
+	raw := cfg.str("boot")
+
+	_, order, ok := strings.Cut(raw, "order=")
+	if !ok {
+		return nil
+	}
+
+	var result []string
+
+	for entry := range strings.SplitSeq(order, ";") {
+		if entry = strings.TrimSpace(entry); entry != "" {
+			result = append(result, entry)
+		}
+	}
+
+	return result
+}
+
+// splitProxmoxTags splits Proxmox's semicolon-joined tag string.
+func splitProxmoxTags(raw string) []string {
+	if raw == "" {
+		return nil
+	}
+
+	var result []string
+
+	for tag := range strings.SplitSeq(raw, ";") {
+		if tag = strings.TrimSpace(tag); tag != "" {
+			result = append(result, tag)
+		}
+	}
+
+	return result
+}
+
+// hydrateVM fills in the config-level fields Snapshot's /cluster/resources
+// call cannot provide (Sockets, Cores, Disks, CDROM, NetworkInterfaces,
+// BootOrder, Description) and, for a running VM, its live uptime.
+//
+// ponytail: one config fetch (plus one status fetch for running VMs) per VM,
+// sequential. Fine for a lab-sized cluster; a large fleet would want bounded
+// concurrency here - add it if inventory refresh starts taking noticeably
+// long.
+func hydrateVM(ctx context.Context, rest proxmoxRESTClient, vm *VM) error {
+	cfg, err := fetchVMConfig(ctx, rest, vm.Node, vm.VMID)
+	if err != nil {
+		return err
+	}
+
+	vm.Sockets = cfg.int("sockets")
+	if vm.Sockets == 0 {
+		vm.Sockets = 1
+	}
+
+	vm.Cores = cfg.int("cores")
+	if vm.Cores == 0 {
+		vm.Cores = 1
+	}
+
+	vm.Disks, vm.DiskTotal = parseDisks(cfg)
+	vm.CDROM = parseCDROM(cfg)
+	vm.NetworkInterfaces = parseNetworkInterfaces(cfg)
+	vm.BootOrder = parseBootOrder(cfg)
+	vm.Description = cfg.str("description")
+	vm.HasSerial = cfgHasSerial(cfg)
+	vm.Agent = agentEnabled(cfg.str("agent"))
+	vm.OSType = cfg.str("ostype")
+
+	if len(vm.Tags) == 0 {
+		vm.Tags = splitProxmoxTags(cfg.str("tags"))
+	}
+
+	if vm.Status != VMRunning {
+		return nil
+	}
+
+	uptime, err := fetchUptime(ctx, rest, vm.Node, vm.VMID)
+	if err != nil {
+		return nil //nolint:nilerr // best-effort: a stale/racing status read should not fail the whole snapshot
+	}
+
+	vm.Uptime = uptime
+
+	return nil
+}
+
+func fetchUptime(ctx context.Context, rest proxmoxRESTClient, node string, vmid int) (time.Duration, error) {
+	raw, err := rest.do(ctx, http.MethodGet, fmt.Sprintf("/nodes/%s/qemu/%d/status/current", url.PathEscape(node), vmid), nil)
+	if err != nil {
+		return 0, err
+	}
+
+	var status struct {
+		Uptime int64 `json:"uptime"`
+	}
+	if err := decodeData(raw, &status); err != nil {
+		return 0, fmt.Errorf("decode vm status: %w", err)
+	}
+
+	return time.Duration(status.Uptime) * time.Second, nil
+}
+
+// VMStatus implements VMStatusReader via GET /nodes/{node}/qemu/{vmid}/status/current.
+// It reads the live power state, lock, and uptime in a single call - the same
+// endpoint fetchUptime already used, now exposed as the domain-level live-status
+// read (ADR 0001).
+func (p Proxmox) VMStatus(ctx context.Context, node string, vmid int) (VMLiveStatus, error) {
+	raw, err := p.rest().do(ctx, http.MethodGet,
+		fmt.Sprintf("/nodes/%s/qemu/%d/status/current", url.PathEscape(node), vmid), nil)
+	if err != nil {
+		return VMLiveStatus{}, err
+	}
+
+	var status struct {
+		Status string `json:"status"`
+		Lock   string `json:"lock"`
+		Uptime int64  `json:"uptime"`
+	}
+	if err := decodeData(raw, &status); err != nil {
+		return VMLiveStatus{}, fmt.Errorf("decode vm status: %w", err)
+	}
+
+	return VMLiveStatus{
+		Status: parseVMStatus(status.Status),
+		Lock:   status.Lock,
+		Uptime: time.Duration(status.Uptime) * time.Second,
+	}, nil
+}
+
+// parseVMStatus maps Proxmox's status string to the VMStatus enum. Proxmox
+// reports "running", "stopped", "paused" - matching the enum directly. An
+// unexpected value defaults to stopped rather than failing the read, matching
+// the best-effort posture of the snapshot path.
+func parseVMStatus(s string) VMStatus {
+	switch VMStatus(s) {
+	case VMRunning, VMStopped, VMPaused:
+		return VMStatus(s)
+	default:
+		return VMStopped
+	}
+}
+
+// encodeNetValue renders a NetworkInterface back to Proxmox's netN grammar.
+func encodeNetValue(iface NetworkInterface) string {
+	model := iface.Model
+	if model == "" {
+		model = "virtio"
+	}
+
+	parts := []string{model}
+	if iface.MAC != "" {
+		parts[0] = model + "=" + iface.MAC
+	}
+
+	if iface.Bridge != "" {
+		parts = append(parts, "bridge="+iface.Bridge)
+	}
+
+	if iface.VLAN != nil {
+		parts = append(parts, fmt.Sprintf("tag=%d", *iface.VLAN))
+	}
+
+	if iface.RateMbps != nil {
+		parts = append(parts, fmt.Sprintf("rate=%d", *iface.RateMbps))
+	}
+
+	// The Proxmox per-VM firewall is armed on every
+	// PVMSS-created NIC - the base isolation brick for a multi-tenant
+	// portal, imposed not user-exposed.
+	parts = append(parts, "firewall=1")
+
+	if iface.MTU > 0 {
+		parts = append(parts, fmt.Sprintf("mtu=%d", iface.MTU))
+	}
+
+	return strings.Join(parts, ",")
+}

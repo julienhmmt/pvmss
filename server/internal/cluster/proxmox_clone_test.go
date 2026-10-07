@@ -1,0 +1,484 @@
+package cluster
+
+import (
+	"context"
+	"errors"
+	"net/http"
+	"net/url"
+	"strings"
+	"testing"
+)
+
+const (
+	cloneTestName      = "test-vm"
+	cloneTestUPID      = `{"data":"UPID:pve-node-02:00000001:00000002:00000003:qmclone:9001:pvmss@pve:"}`
+	cloneTestNewVMID   = "9001"
+	cloneTestVMID9000  = 9000
+	cloneTestVMID9001  = 9001
+	cloneTestNewID     = 9001
+	cloneTestPoolCarol = "pool-carol"
+	cloneTestPoolBob   = "pool-bob"
+)
+
+// TestProxmox_CloneVM_LinkedClone verifies the clone form sends full=0 and
+// no storage when a linked clone is requested (cloud-init not required,
+// same storage).
+func TestProxmox_CloneVM_LinkedClone(t *testing.T) {
+	t.Parallel()
+
+	var capturedForm url.Values
+
+	srv := newProxmoxTestServer(t, func(mux *http.ServeMux) {
+		mux.HandleFunc("POST /api2/json/nodes/pve-node-02/qemu/9000/clone", func(w http.ResponseWriter, r *http.Request) {
+			if err := r.ParseForm(); err != nil {
+				t.Fatalf("ParseForm: %v", err)
+			}
+
+			capturedForm = r.PostForm
+
+			writeJSONFixture(t, w, cloneTestUPID)
+		})
+	})
+
+	p := Proxmox{BaseURL: srv.URL, APITokenName: testTokenName, APITokenValue: testTokenVal}
+
+	upid, err := p.CloneVM(context.Background(), CloneSpec{
+		SourceVMID: cloneTestVMID9000,
+		SourceNode: FakeNode02,
+		NewVMID:    cloneTestNewID,
+		Name:       cloneTestName,
+		Full:       false,
+		Pool:       FakePoolAlice,
+		DiskBus:    string(DiskBusSCSI),
+	})
+	if err != nil {
+		t.Fatalf("CloneVM: %v", err)
+	}
+
+	if upid == "" {
+		t.Fatal("expected non-empty UPID")
+	}
+
+	if capturedForm.Get("full") != "0" {
+		t.Errorf("full = %q, want 0", capturedForm.Get("full"))
+	}
+
+	if capturedForm.Has("storage") {
+		t.Errorf("linked clone should not send storage, got %q", capturedForm.Get("storage"))
+	}
+
+	if capturedForm.Get("pool") != FakePoolAlice {
+		t.Errorf("pool = %q, want %q", capturedForm.Get("pool"), FakePoolAlice)
+	}
+
+	if capturedForm.Get("newid") != cloneTestNewVMID {
+		t.Errorf("newid = %q, want %q", capturedForm.Get("newid"), cloneTestNewVMID)
+	}
+
+	if capturedForm.Get("name") != cloneTestName {
+		t.Errorf("name = %q, want %q", capturedForm.Get("name"), cloneTestName)
+	}
+}
+
+// TestProxmox_CloneVM_FullClone verifies the clone form sends full=1 and
+// the target storage when a full clone is requested (cloud-init capable
+// template, different storage).
+func TestProxmox_CloneVM_FullClone(t *testing.T) {
+	t.Parallel()
+
+	var capturedForm url.Values
+
+	srv := newProxmoxTestServer(t, func(mux *http.ServeMux) {
+		mux.HandleFunc("POST /api2/json/nodes/pve-node-02/qemu/9000/clone", func(w http.ResponseWriter, r *http.Request) {
+			if err := r.ParseForm(); err != nil {
+				t.Fatalf("ParseForm: %v", err)
+			}
+
+			capturedForm = r.PostForm
+
+			writeJSONFixture(t, w, cloneTestUPID)
+		})
+	})
+
+	p := Proxmox{BaseURL: srv.URL, APITokenName: testTokenName, APITokenValue: testTokenVal}
+
+	_, err := p.CloneVM(context.Background(), CloneSpec{
+		SourceVMID: cloneTestVMID9000,
+		SourceNode: FakeNode02,
+		NewVMID:    cloneTestNewID,
+		Name:       cloneTestName,
+		Full:       true,
+		Storage:    FakeStorageLocal,
+		Pool:       FakePoolAlice,
+		DiskBus:    string(DiskBusSCSI),
+	})
+	if err != nil {
+		t.Fatalf("CloneVM: %v", err)
+	}
+
+	if capturedForm.Get("full") != "1" {
+		t.Errorf("full = %q, want 1", capturedForm.Get("full"))
+	}
+
+	if capturedForm.Get("storage") != FakeStorageLocal {
+		t.Errorf("storage = %q, want %q", capturedForm.Get("storage"), FakeStorageLocal)
+	}
+
+	if capturedForm.Get("pool") != FakePoolAlice {
+		t.Errorf("pool = %q, want %q", capturedForm.Get("pool"), FakePoolAlice)
+	}
+}
+
+// TestProxmox_CloneVM_FullCloneSameStorage verifies that a full clone
+// without a different storage does not send the storage field.
+func TestProxmox_CloneVM_FullCloneSameStorage(t *testing.T) {
+	t.Parallel()
+
+	var capturedForm url.Values
+
+	srv := newProxmoxTestServer(t, func(mux *http.ServeMux) {
+		mux.HandleFunc("POST /api2/json/nodes/pve-node-02/qemu/9000/clone", func(w http.ResponseWriter, r *http.Request) {
+			if err := r.ParseForm(); err != nil {
+				t.Fatalf("ParseForm: %v", err)
+			}
+
+			capturedForm = r.PostForm
+
+			writeJSONFixture(t, w, cloneTestUPID)
+		})
+	})
+
+	p := Proxmox{BaseURL: srv.URL, APITokenName: testTokenName, APITokenValue: testTokenVal}
+
+	_, err := p.CloneVM(context.Background(), CloneSpec{
+		SourceVMID: cloneTestVMID9000,
+		SourceNode: FakeNode02,
+		NewVMID:    cloneTestNewID,
+		Name:       cloneTestName,
+		Full:       true,
+		Pool:       FakePoolAlice,
+		DiskBus:    string(DiskBusVirtio),
+	})
+	if err != nil {
+		t.Fatalf("CloneVM: %v", err)
+	}
+
+	if capturedForm.Get("full") != "1" {
+		t.Errorf("full = %q, want 1", capturedForm.Get("full"))
+	}
+
+	if capturedForm.Has("storage") {
+		t.Errorf("full clone with no storage should not send storage, got %q", capturedForm.Get("storage"))
+	}
+}
+
+// TestProxmox_ListTemplates verifies template discovery via
+// /cluster/resources?type=vm, filtering to template=1 rows and reading
+// disk config from /nodes/{node}/qemu/{vmid}/config. Disk config uses the
+// real Proxmox form "storage:volid,size=NG" (not "storage:size,format=…"),
+// and CloudInitCapable is detected by a cloud-init drive in the fixed ide3
+// slot (cloudInitDiskKey).
+func TestProxmox_ListTemplates(t *testing.T) {
+	t.Parallel()
+
+	srv := newProxmoxTestServer(t, func(mux *http.ServeMux) {
+		mux.HandleFunc("GET /api2/json/cluster/resources", func(w http.ResponseWriter, r *http.Request) {
+			if r.URL.Query().Get("type") != "vm" {
+				t.Errorf("type query = %q, want vm", r.URL.Query().Get("type"))
+			}
+
+			writeJSONFixture(t, w, `{"data":[
+				{"type":"qemu","node":"pve-node-02","vmid":9000,"name":"debian-12-cloud","template":1},
+				{"type":"qemu","node":"pve-node-02","vmid":9001,"name":"alpine-appliance","template":1},
+				{"type":"qemu","node":"pve-node-01","vmid":100,"name":"regular-vm","template":0}
+			]}`)
+		})
+
+		// debian-12-cloud: cloud-init capable (ide3 holds a cloudinit drive),
+		// scsi0 is the primary disk.
+		mux.HandleFunc("GET /api2/json/nodes/pve-node-02/qemu/9000/config", func(w http.ResponseWriter, _ *http.Request) {
+			writeJSONFixture(t, w, `{"data":{"scsi0":"local-lvm:vm-9000-disk-0,size=8G","ide3":"local-lvm:cloudinit"}}`)
+		})
+
+		// alpine-appliance: no cloud-init drive, virtio0 is the primary disk.
+		mux.HandleFunc("GET /api2/json/nodes/pve-node-02/qemu/9001/config", func(w http.ResponseWriter, _ *http.Request) {
+			writeJSONFixture(t, w, `{"data":{"virtio0":"local:vm-9001-disk-0,size=2G"}}`)
+		})
+	})
+
+	p := Proxmox{BaseURL: srv.URL, APITokenName: testTokenName, APITokenValue: testTokenVal}
+
+	templates, err := p.ListTemplates(context.Background())
+	if err != nil {
+		t.Fatalf("ListTemplates: %v", err)
+	}
+
+	if len(templates) != 2 {
+		t.Fatalf("expected 2 templates, got %d: %+v", len(templates), templates)
+	}
+
+	assertTemplateEquals(t, templates[0], templateExpectation{
+		VMID: cloneTestVMID9000, Node: "pve-node-02", Name: "debian-12-cloud",
+		Storage: "local-lvm", SizeGB: 8, Bus: string(DiskBusSCSI), CloudInitCapable: true,
+	})
+	assertTemplateEquals(t, templates[1], templateExpectation{
+		VMID: cloneTestVMID9001, Node: "pve-node-02", Name: "alpine-appliance",
+		Storage: FakeStorageLocal, SizeGB: 2, Bus: string(DiskBusVirtio), CloudInitCapable: false,
+	})
+}
+
+// templateExpectation groups the expected fields of a discovered template,
+// keeping assertTemplateEquals under the parameter-count ceiling.
+type templateExpectation struct {
+	VMID             int
+	Node             string
+	Name             string
+	Storage          string
+	SizeGB           int
+	Bus              string
+	CloudInitCapable bool
+}
+
+// assertTemplateEquals checks the key fields of a discovered template.
+func assertTemplateEquals(t *testing.T, tmpl TemplateVM, want templateExpectation) {
+	t.Helper()
+
+	if tmpl.VMID != want.VMID || tmpl.Node != want.Node || tmpl.Name != want.Name {
+		t.Errorf("template = %+v, want vmid=%d node=%s name=%s", tmpl, want.VMID, want.Node, want.Name)
+	}
+
+	if tmpl.DiskStorage != want.Storage || tmpl.DiskSizeGB != want.SizeGB || tmpl.DiskBus != want.Bus {
+		t.Errorf("template disk = %+v, want storage=%s size=%d bus=%s", tmpl, want.Storage, want.SizeGB, want.Bus)
+	}
+
+	if tmpl.CloudInitCapable != want.CloudInitCapable {
+		t.Errorf("template %d cloudInitCapable = %v, want %v", tmpl.VMID, tmpl.CloudInitCapable, want.CloudInitCapable)
+	}
+}
+
+// TestProxmox_ListTemplates_NoTemplates verifies that a cluster with no
+// templates returns an empty slice, not an error.
+func TestProxmox_ListTemplates_NoTemplates(t *testing.T) {
+	t.Parallel()
+
+	srv := newProxmoxTestServer(t, func(mux *http.ServeMux) {
+		mux.HandleFunc("GET /api2/json/cluster/resources", func(w http.ResponseWriter, _ *http.Request) {
+			writeJSONFixture(t, w, `{"data":[{"type":"qemu","node":"pve1","vmid":100,"name":"vm","template":0}]}`)
+		})
+	})
+
+	p := Proxmox{BaseURL: srv.URL, APITokenName: testTokenName, APITokenValue: testTokenVal}
+
+	templates, err := p.ListTemplates(context.Background())
+	if err != nil {
+		t.Fatalf("ListTemplates: %v", err)
+	}
+
+	if len(templates) != 0 {
+		t.Fatalf("expected 0 templates, got %d", len(templates))
+	}
+}
+
+// TestProxmox_ListTemplates_DiskOptionsBeforeSize verifies the disk parser
+// handles the real Proxmox form where options may precede size= (e.g.
+// "local-lvm:vm-100-disk-0,cache=writeback,size=64G"). The original
+// parseProxmoxDiskValue misparsed this format; the fixed code reuses
+// parseDiskValue which handles it correctly.
+func TestProxmox_ListTemplates_DiskOptionsBeforeSize(t *testing.T) {
+	t.Parallel()
+
+	srv := newProxmoxTestServer(t, func(mux *http.ServeMux) {
+		mux.HandleFunc("GET /api2/json/cluster/resources", func(w http.ResponseWriter, _ *http.Request) {
+			writeJSONFixture(t, w, `{"data":[
+				{"type":"qemu","node":"pve-node-01","vmid":9100,"name":"big-template","template":1}
+			]}`)
+		})
+
+		mux.HandleFunc("GET /api2/json/nodes/pve-node-01/qemu/9100/config", func(w http.ResponseWriter, _ *http.Request) {
+			writeJSONFixture(t, w, `{"data":{"scsi0":"local-lvm:vm-9100-disk-0,cache=writeback,size=64G"}}`)
+		})
+	})
+
+	p := Proxmox{BaseURL: srv.URL, APITokenName: testTokenName, APITokenValue: testTokenVal}
+
+	templates, err := p.ListTemplates(context.Background())
+	if err != nil {
+		t.Fatalf("ListTemplates: %v", err)
+	}
+
+	if len(templates) != 1 {
+		t.Fatalf("expected 1 template, got %d", len(templates))
+	}
+
+	assertTemplateEquals(t, templates[0], templateExpectation{
+		VMID: 9100, Node: "pve-node-01", Name: "big-template",
+		Storage: "local-lvm", SizeGB: 64, Bus: string(DiskBusSCSI), CloudInitCapable: false,
+	})
+}
+
+// TestProxmox_CloneVM_URLEncoding verifies that the source node is properly
+// URL-escaped in the clone path.
+func TestProxmox_CloneVM_URLEncoding(t *testing.T) {
+	t.Parallel()
+
+	var requestPath string
+
+	srv := newProxmoxTestServer(t, func(mux *http.ServeMux) {
+		mux.HandleFunc("POST /api2/json/nodes/pve-node-02/qemu/9000/clone", func(w http.ResponseWriter, r *http.Request) {
+			requestPath = r.URL.Path
+
+			writeJSONFixture(t, w, `{"data":"UPID:test"}`)
+		})
+	})
+
+	p := Proxmox{BaseURL: srv.URL, APITokenName: testTokenName, APITokenValue: testTokenVal}
+
+	_, err := p.CloneVM(context.Background(), CloneSpec{
+		SourceVMID: cloneTestVMID9000,
+		SourceNode: FakeNode02,
+		NewVMID:    cloneTestNewID,
+		Name:       cloneTestName,
+		Full:       false,
+		Pool:       FakePoolAlice,
+	})
+	if err != nil {
+		t.Fatalf("CloneVM: %v", err)
+	}
+
+	if !strings.Contains(requestPath, "/nodes/pve-node-02/qemu/9000/clone") {
+		t.Errorf("request path = %q, expected clone path", requestPath)
+	}
+}
+
+// TestProxmox_ListTemplates_DegradesOnConfigError - one template whose config
+// read fails must not abort the whole list: the failing row stays,
+// flagged DiskUnreadable, and the others keep their disk fields.
+func TestProxmox_ListTemplates_DegradesOnConfigError(t *testing.T) {
+	t.Parallel()
+
+	srv := newProxmoxTestServer(t, func(mux *http.ServeMux) {
+		mux.HandleFunc("GET /api2/json/cluster/resources", func(w http.ResponseWriter, _ *http.Request) {
+			writeJSONFixture(t, w, `{"data":[
+				{"type":"qemu","node":"pve-node-02","vmid":9000,"name":"debian-12-cloud","template":1},
+				{"type":"qemu","node":"pve-node-02","vmid":9001,"name":"broken","template":1}
+			]}`)
+		})
+
+		mux.HandleFunc("GET /api2/json/nodes/pve-node-02/qemu/9000/config", func(w http.ResponseWriter, _ *http.Request) {
+			writeJSONFixture(t, w, `{"data":{"scsi0":"local-lvm:vm-9000-disk-0,size=8G","ide3":"local-lvm:cloudinit"}}`)
+		})
+
+		mux.HandleFunc("GET /api2/json/nodes/pve-node-02/qemu/9001/config", func(w http.ResponseWriter, _ *http.Request) {
+			w.WriteHeader(http.StatusInternalServerError)
+		})
+	})
+
+	p := Proxmox{BaseURL: srv.URL, APITokenName: testTokenName, APITokenValue: testTokenVal}
+
+	templates, err := p.ListTemplates(context.Background())
+	if err != nil {
+		t.Fatalf("ListTemplates: %v", err)
+	}
+
+	if len(templates) != 2 {
+		t.Fatalf("expected 2 templates (degraded, not aborted), got %d", len(templates))
+	}
+
+	for _, tmpl := range templates {
+		if tmpl.VMID == 9001 && !tmpl.DiskUnreadable {
+			t.Error("template 9001 should be flagged DiskUnreadable")
+		}
+
+		if tmpl.VMID == 9000 && tmpl.DiskUnreadable {
+			t.Error("template 9000 should not be flagged DiskUnreadable")
+		}
+	}
+}
+
+// TestProxmox_TemplateByVMID - a single-template lookup costs one
+// /cluster/resources call plus one config read (no full re-hydration per toggle).
+func TestProxmox_TemplateByVMID(t *testing.T) {
+	t.Parallel()
+
+	resourcesCalls := 0
+	configCalls := 0
+
+	srv := newProxmoxTestServer(t, func(mux *http.ServeMux) {
+		mux.HandleFunc("GET /api2/json/cluster/resources", func(w http.ResponseWriter, _ *http.Request) {
+			resourcesCalls++
+
+			writeJSONFixture(t, w, `{"data":[
+				{"type":"qemu","node":"pve-node-02","vmid":9000,"name":"debian-12-cloud","template":1}
+			]}`)
+		})
+
+		mux.HandleFunc("GET /api2/json/nodes/pve-node-02/qemu/9000/config", func(w http.ResponseWriter, _ *http.Request) {
+			configCalls++
+
+			writeJSONFixture(t, w, `{"data":{"scsi0":"local-lvm:vm-9000-disk-0,size=8G","ide3":"local-lvm:cloudinit"}}`)
+		})
+	})
+
+	p := Proxmox{BaseURL: srv.URL, APITokenName: testTokenName, APITokenValue: testTokenVal}
+
+	tmpl, err := p.TemplateByVMID(context.Background(), 9000)
+	if err != nil {
+		t.Fatalf("TemplateByVMID: %v", err)
+	}
+
+	if tmpl.VMID != 9000 || tmpl.DiskStorage != "local-lvm" || tmpl.DiskSizeGB != 8 || !tmpl.CloudInitCapable {
+		t.Errorf("TemplateByVMID = %+v, want the hydrated debian-12-cloud row", tmpl)
+	}
+
+	if resourcesCalls != 1 || configCalls != 1 {
+		t.Errorf("calls = resources:%d config:%d, want 1/1", resourcesCalls, configCalls)
+	}
+}
+
+// TestProxmox_TemplateByVMID_Unknown - a VMID absent from discovery is
+// cluster.ErrNotFound.
+func TestProxmox_TemplateByVMID_Unknown(t *testing.T) {
+	t.Parallel()
+
+	srv := newProxmoxTestServer(t, func(mux *http.ServeMux) {
+		mux.HandleFunc("GET /api2/json/cluster/resources", func(w http.ResponseWriter, _ *http.Request) {
+			writeJSONFixture(t, w, `{"data":[]}`)
+		})
+	})
+
+	p := Proxmox{BaseURL: srv.URL, APITokenName: testTokenName, APITokenValue: testTokenVal}
+
+	if _, err := p.TemplateByVMID(context.Background(), 9000); !errors.Is(err, ErrNotFound) {
+		t.Errorf("err = %v, want ErrNotFound", err)
+	}
+}
+
+// TestProxmox_TemplateByVMID_Unreadable - an unreadable config degrades to a
+// DiskUnreadable row (the caller decides: approve is refused, clone falls
+// back to stored fields), not an error.
+func TestProxmox_TemplateByVMID_Unreadable(t *testing.T) {
+	t.Parallel()
+
+	srv := newProxmoxTestServer(t, func(mux *http.ServeMux) {
+		mux.HandleFunc("GET /api2/json/cluster/resources", func(w http.ResponseWriter, _ *http.Request) {
+			writeJSONFixture(t, w, `{"data":[
+				{"type":"qemu","node":"pve-node-02","vmid":9001,"name":"broken","template":1}
+			]}`)
+		})
+
+		mux.HandleFunc("GET /api2/json/nodes/pve-node-02/qemu/9001/config", func(w http.ResponseWriter, _ *http.Request) {
+			w.WriteHeader(http.StatusInternalServerError)
+		})
+	})
+
+	p := Proxmox{BaseURL: srv.URL, APITokenName: testTokenName, APITokenValue: testTokenVal}
+
+	tmpl, err := p.TemplateByVMID(context.Background(), 9001)
+	if err != nil {
+		t.Fatalf("TemplateByVMID: %v", err)
+	}
+
+	if !tmpl.DiskUnreadable || tmpl.Node != FakeNode02 {
+		t.Errorf("TemplateByVMID = %+v, want node kept and DiskUnreadable", tmpl)
+	}
+}

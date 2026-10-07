@@ -1,0 +1,177 @@
+# PVMSS feature inventory
+
+Every user-facing capability of PVMSS v0.4, grouped by audience. Each line
+names the SPA route and the API it relies on so the list can be checked
+against `server/internal/httpapi/router.go` / `router_admin.go`.
+
+Legend: ✅ shipped · 🧪 partial / behind a toggle · 🚧 planned (toggle
+exists, backend not implemented).
+
+---
+
+## 1. Authentication & identity
+
+| Feature                                                                                          | Route                                               | API                                                    | Status                                                                                          |
+| ------------------------------------------------------------------------------------------------ | --------------------------------------------------- | ------------------------------------------------------ | ----------------------------------------------------------------------------------------------- |
+| Sign in with Proxmox credentials, per cluster                                                    | `/login`                                            | `GET /api/v1/auth/clusters`, `POST /api/v1/auth/login` | ✅                                                                                              |
+| Local administrator sign-in (`ADMIN_PASSWORD_HASH`, bcrypt)                                      | `/login`                                            | `POST /api/v1/auth/admin-login`                        | ✅                                                                                              |
+| Session cookie (`SESSION_SECRET`), CSRF token, secure cookie flag                                | -                                                   | all writes                                             | ✅                                                                                              |
+| Sign out                                                                                         | header menu                                         | `POST /api/v1/auth/logout`                             | ✅                                                                                              |
+| Change own Proxmox password                                                                      | API only (no page yet)                              | `POST /api/v1/auth/password`                           | 🧪                                                                                              |
+| Proxmox sign-in blocked while the selected cluster is unreachable; admin sign-in stays available | `/login`                                            | `cluster_unavailable` error                            | ✅                                                                                              |
+| Per-IP rate limit on auth endpoints (10 req/min)                                                 | -                                                   | `router.go`                                            | ✅                                                                                              |
+
+## 2. My VMs
+
+| Feature                                                                                                                                                                | Route               | API                                                         | Status |
+| ---------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------- | ----------------------------------------------------------- | ------ |
+| Signed-in landing is the machine list (`/` redirects pool users to `/vms`, admins to `/admin`)                                                                         | `/`                 | -                                                           | ✅     |
+| Calm workspace shell: My machines / Activity / Help & guides with count chips, context header, account link                                                            | all signed-in pages | `GET /api/v1/vms?pageSize=1` (count)                        | ✅     |
+| Card-row machine list: 7 display states (running, stopped, provisioning, starting, stopping, failed, partial), hint lines, allowance meter, teaching first-visit state | `/vms`              | `GET /api/v1/vms`                                           | ✅     |
+| VM list across all clusters or scoped to one (`ClusterSelector`)                                                                                                       | `/vms`              | `GET /api/v1/vms`                                           | ✅     |
+| Search and status filter mirrored into the URL (linkable views)                                                                                                        | `/vms`, `/search`   | `GET /api/v1/vms`                                           | ✅     |
+| Live status refresh for the visible rows                                                                                                                               | `/vms`              | `POST /api/v1/vms/status`                                   | ✅     |
+| Bulk power actions with per-VM result (`start`, `stop`, `shutdown`, `reboot`, `reset`, `pause`, `resume`), behind the Select toggle                                    | `/vms`              | `POST /api/v1/vms/bulk-action`                              | ✅     |
+| Activity: operations in progress + merged recent audit of my machines                                                                                                  | `/activity`         | `GET /api/v1/vms`, `GET /api/v1/vms/{cluster}/{vmid}/audit` | ✅     |
+| Account: identity, appearance, language                                                                                                                                | `/profile`          | - (session, localStorage)                                   | ✅     |
+| Profile SSH keys: save up to 10 public keys (scoped per cluster + username), reused by the create wizard and the VM cloud-init picker - copied into VMs, never linked | `/profile`          | `GET/POST/DELETE /api/v1/profile/ssh-keys`                  | ✅     |
+| Just-deleted VM hidden until inventory catches up                                                                                                                      | `/vms`              | client side                                                 | ✅     |
+| Ownership enforced server-side (`vm.Resolve()`), not by the list filter                                                                                                | -                   | every VM route                                              | ✅     |
+
+## 3. Create a VM
+
+Page at `/vms/create` - **Simple** mode is a single page with a live summary
+rail (starting point, size, name and access); **Detailed** mode keeps five
+steps (Base, Disk, Hardware, Network, Review). A name already used by one of
+the user's machines is refused before submit. Catalog from
+`GET /api/v1/vm-create/catalog`, submit with `POST /api/v1/vms`, progress via
+`GET /api/v1/tasks/{upid}` in the task tray.
+
+| Feature                                                                                                                                                                                         | Status |
+| ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------ |
+| Three sources: **ISO** (admin-approved), **Proxmox template** clone (linked or full - the wizard says which), **cloud image** import (`import-from`, requires cloud-init user/SSH keys/network) | ✅     |
+| Hardware profiles (admin-curated CPU/RAM/disk shapes) or custom values                                                                                                                          | ✅     |
+| Node auto-placement with capacity scoring + live storage free-space check; node fixed to the template's node for clones                                                                         | ✅     |
+| Disk: storage + size; minimum raised to the template/image size                                                                                                                                 | ✅     |
+| Network: one or more NICs, bridge + model (VirtIO, E1000, E1000E, RTL8139, VMXNet3); Proxmox firewall always on; optional admin-wide isolation VLAN tag                                         | ✅     |
+| Firmware: UEFI (default on, empty EFI key store - no Secure Boot), TPM 2.0                                                                                                                      | ✅     |
+| Cloud-init template picker: admin templates present on the VM's node only (hidden when the cluster has no snippet storage)                                                                                   | ✅     |
+| SSH-key picker (image source): saved profile keys as checkboxes - all picked at 3 or fewer, none beyond - plus a one-off paste area; exactly one unknown pasted key offers a save-to-profile checkbox, saved only after the create succeeds (best-effort, warning toast on failure) | ✅     |
+| Boot from CD-ROM first when an ISO is selected                                                                                                                                                  | ✅     |
+| Tags from the admin-curated list (`pvmss` tag always added)                                                                                                                                     | ✅     |
+| Start after create (image source: starts only after cloud-init is applied)                                                                                                                      | ✅     |
+| VM name validated as a hostname and unique in the pool; VMID collision retry; rollback on failure                                                                                               | ✅     |
+| Quotas and gabarit limits checked server-side before any Proxmox call                                                                                                                           | ✅     |
+
+## 4. Operate a VM - `/vms/[cluster]/[vmid]`
+
+Connection-first: the header carries the status pill and one power action
+(Start machine, or Shut down with an inline graceful-shutdown confirmation);
+state banners cover provisioning, failed / partial and starting / stopping.
+Tabs: Connect (default), Configuration (Summary + the sub-tabs below),
+Activity.
+
+| Tab        | Actions                                                                                                                                                                     | API                                                                                                                      | Status |
+| ---------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------ | ------ |
+| Connect    | SSH command from the address the guest agent reports (never guessed, never port-probed) - an RDP card (address + port 3389) on Windows ostypes; "Installation in progress" only while the boot order still leads with the mounted ISO, with console and "Eject the ISO"; agent-specific hints; browser console; allocated resources                                                                  | `GET …/{vmid}`, `GET …/cloudinit`                                                                                        | ✅     |
+| Summary    | 7 power actions (shutdown = guest/ACPI only, stop = hard), rename, Markdown description, delete (dialog), one-time boot from CD-ROM                                         | `POST …/actions`, `PATCH …/{vmid}`, `DELETE …/{vmid}`, `POST …/boot-cdrom`                                               | ✅     |
+| Summary    | Metrics history (hour / day / week, CPU/RAM/disk/net SVG charts) and live stream                                                                                            | `GET …/metrics/history`, `GET …/metrics/stream`                                                                          | ✅     |
+| Disks      | add, resize (grow), detach                                                                                                                                                  | `POST …/disks`, `PUT …/disks/{key}/resize`, `DELETE …/disks/{key}`                                                       | ✅     |
+| Network    | edit each NIC: bridge, model, VLAN tag, rate limit (Mbps)                                                                                                                   | `PUT …/network`                                                                                                          | ✅     |
+| Hardware   | sockets/cores, memory, tags (curated picker), CD-ROM load/eject                                                                                                             | `GET …/hardware-options`, `PUT …/hardware`, `PATCH …/cdrom`                                                              | ✅     |
+| Cloud-init | native form (user, password via guest agent, SSH keys, IP/gateway/DNS); "Add key now" injection; add-only SSH-key picker for saved profile keys (keys already on the VM stay editable in the list and are not offered again); switch the VM to another admin template present on its node (users never write YAML) | `GET/PUT …/cloudinit`, `POST …/cloudinit/ssh-keys`, `GET/PUT …/cloudinit/document`, `GET /api/v1/profile/ssh-keys` | ✅     |
+| Snapshots  | create (with/without RAM), rollback, delete, view a snapshot's config; per-VM max enforced by policy                                                                        | `GET/POST …/snapshots`, `POST …/snapshots/{name}/rollback`, `DELETE …/snapshots/{name}`, `GET …/snapshots/{name}/config` | ✅     |
+| Activity   | per-VM audit trail (who did what, when)                                                                                                                                     | `GET …/audit`                                                                                                            | ✅     |
+| Status     | polled status/lock/uptime                                                                                                                                                   | `GET …/status`                                                                                                           | ✅     |
+
+## 5. Consoles
+
+| Feature                                                                      | Route                           | API                                                               | Status |
+| ---------------------------------------------------------------------------- | ------------------------------- | ----------------------------------------------------------------- | ------ |
+| noVNC graphical console, WebSocket proxied by PVMSS with a single-use ticket | `/vms/[cluster]/[vmid]/console` | `POST …/vnc-ticket`, `GET …/console/websocket`                    | ✅     |
+| Power actions on the console page                                            | same                            | `POST …/actions`                                                  | ✅     |
+| Serial (xterm.js) console; enable a serial port on a VM that has none        | same page                       | `POST …/serial`, `POST …/serial-ticket`, `GET …/serial/websocket` | ✅     |
+| Console password: set a generated password for the cloud-init user through the guest agent, to log in on the console (owner) | same page | `POST …/console-password` | ✅ |
+| Switch a UEFI VM to SeaBIOS so its graphical console is readable; refuses TPM / Secure Boot, a running VM needs confirmation (admin only) | same page | `POST …/retrofit-seabios` | ✅ |
+
+## 6. Cloud-init documents
+
+| Feature                                                                                                                                                                                | Route                                                                                                                                  | API                                   | Status                                           |
+| -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------- | ------------------------------------------------ |
+| Admin cloud-init templates, per cluster, enable/disable; users only pick among them                                                                                                    | `/admin/cloudinit-templates`                                                                                                           | `/api/v1/admin/cloudinit-templates`   | ✅                                               |
+| Placement by hand: per template, the file name and a command the admin pastes as root on the chosen nodes ([cloud-init.md](cloud-init.md)); per-node presence read live through the API; "Verify" reloads | `/admin/cloudinit-templates` | `GET /api/v1/admin/cloudinit-templates` | ✅ |
+| Immutable content-addressed files (`pvmss-tpl-<id>-<hash>.yml`, PVMSS baseline merged in): an edit yields a new file and command, VMs keep theirs                                               | -                                                                                                                                      | -                                     | ✅                                               |
+| VM creation never writes: the template must be on the VM's node (live `HasSnippet`), else 409 `cloudinit_not_published` before any VMID                                                | at creation                                                                                                                            | `POST /api/v1/vms`                    | ✅                                               |
+| Standalone baseline `pvmss-baseline-<hash>.yml` for image VMs without a template; missing on the node → VM boots on the native keys, baseline "not delivered"                          | -                                                                                                                                      | -                                     | ✅                                               |
+| Feature off = loud: cluster without a snippet storage → picker hidden, create with a template → 409 `cloudinit_write_unavailable`                                                         | -                                                                                                                                      | -                                     | ✅                                               |
+| Legacy per-VM files (`pvmss-<vmid>.yml`): row forgotten when the VM is deleted or switched to a template; the file is logged and left on the node (removed by hand) | - | `DELETE /api/v1/vms/{cluster}/{vmid}` | ✅ |
+
+## 7. Cluster visibility
+
+| Feature                                                                                      | Route      | API                                                         | Status |
+| -------------------------------------------------------------------------------------------- | ---------- | ----------------------------------------------------------- | ------ |
+| Node list with capacity/status from the inventory cache; manual refresh throttled            | `/nodes`   | `GET /api/v1/cluster/nodes`, `POST /api/v1/cluster/refresh` | ✅     |
+| Graceful degradation when a cluster is down (banner, actions disabled, no crash)             | everywhere | -                                                           | ✅     |
+| Multi-cluster: every VM addressed by `cluster` + `vmid`; same VMID may exist on two clusters | everywhere | -                                                           | ✅     |
+
+## 8. Documentation (in-app CMS)
+
+| Feature                                                                                                                                                                              | Route                 | API                                         | Status |
+| ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | --------------------- | ------------------------------------------- | ------ |
+| Public docs index + reader, Markdown rendered server-side, EN + FR per page                                                                                                          | `/docs`, `/docs/[id]` | `GET /api/v1/docs`, `GET /api/v1/docs/{id}` | ✅     |
+| Admin-audience pages hidden from users and 401/403 on direct access                                                                                                                  | -                     | -                                           | ✅     |
+| Seeded system pages (getting-started, user guide, VM guidelines, cloud-init how-to, admin guide, cloud-init setup, Proxmox permissions) - inserted once, admin edits never clobbered | `/admin/docs`         | `/api/v1/admin/docs`                        | ✅     |
+| About page                                                                                                                                                                           | `/about`              | `GET /api/v1/public/version`                | ✅     |
+
+## 9. Administration - `/admin`
+
+All routes behind `RequireAdmin`.
+
+| Area                          | Route                        | What it does                                                                                                                                                                                                                                                                              | Status |
+| ----------------------------- | ---------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------ |
+| Dashboard                     | `/admin`                     | needs-attention block (unreachable cluster, offline node (informational only when disabled in PVMSS and hosting no PVMSS VM), CPU/RAM >= 90%, storage >= 85%/95%, pool at quota, each linked), VM status split, nodes across clusters, storage (shared counted once), last 8 audit entries  | ✅     |
+| Clusters                      | `/admin/clusters`            | add / edit / remove connections (URL, token, TLS skip-verify), **Test** connectivity (version, node & VM count), **snippet storage** for cloud-init templates (badge "cloud-init: on") | ✅     |
+| Nodes                         | `/admin/nodes`               | approve/disable per cluster; confirm when disabling a node with running VMs; search/filter/sort; orphan cleanup                                                                                                                                                                           | ✅     |
+| Node details                  | `/admin/nodes/[cluster]/[node]` | Live health, network and PCI hardware; cached QEMU/storage inventory and live LXC inventory. Each PVMSS-managed VM has a **Migrate...** action (see the next row)                                                       | ✅     |
+| VM migration                  | `/admin/nodes/[cluster]/[node]` | Admin only, same cluster, PVMSS-managed (`pvmss`-tagged) VMs. A preflight lists approved, online target nodes; a locked VM, or a running VM with local resources (PCI/USB passthrough), is refused; per-node capacity caps are warnings, not blocks; Proxmox carries local disks when needed (no target-storage picker); one VM at a time, confirmed explicitly, followed in the task tray. API: `GET`/`POST /api/v1/admin/vms/{cluster}/{vmid}/migrate`, progress via `GET /api/v1/tasks/{upid}?cluster=`. HA-managed VMs and cross-cluster migration stay in Proxmox | ✅     |
+| Storages                      | `/admin/storages`            | approve per node/cluster; usage bars; orphan cleanup                                                                                                                                                                                                                                      | ✅     |
+| ISOs                          | `/admin/isos`                | approve discovered ISOs; orphan cleanup                                                                                                                                                                                                                                                   | ✅     |
+| Cloud images                  | `/admin/images`              | approve `.qcow2`/`.raw`/`.vmdk` images discovered under a storage's `import/` content (`.ova` skipped); orphan cleanup. Building a golden template from an image is done in the Proxmox UI (`qm template`), not in PVMSS                                                                  | ✅     |
+| VM templates                  | `/admin/templates`           | approve Proxmox templates for cloning, per-template overrides; orphan cleanup                                                                                                                                                                                                             | ✅     |
+| Bridges                       | `/admin/bridges`             | approve VMBRs (OVS not listed); orphan cleanup                                                                                                                                                                                                                                            | ✅     |
+| Cloud-init templates          | `/admin/cloudinit-templates` | CRUD + enable/disable `#cloud-config` documents (header + YAML validated), with the file, the command to paste on the nodes and live per-node presence                                                                                                                                                                   | ✅     |
+| Cloud-init baseline           | `/admin/baseline`            | Read-only view of the generated PVMSS baseline (installs `qemu-guest-agent`), merged under every template and placed alone (same copy-paste command) for image VMs without a template | ✅     |
+| Profiles                      | `/admin/profiles`            | CRUD + enable/disable hardware profiles (label, sockets, cores, memory, disk, bus); no default profile shipped                                                                                                                                                                                                       | ✅     |
+| Tags                          | `/admin/tags`                | create / delete / recolor; `pvmss` reserved                                                                                                                                                                                                                                               | ✅     |
+| Pools                         | `/admin/pools`               | create a self-service user = Proxmox user + pool + ACL; cascade delete                                                                                                                                                                                                                    | ✅     |
+| Pool details                  | `/admin/pools/[name]?cluster=` | read-only pool/user aggregate: account card, VM allowance meter, member VMs linked to their pages, recent activity (user + admin audit), delete for managed pools only                                                                                                                | ✅     |
+| Policy                        | `/admin/policy`              | per-cluster gabarit (max sockets, cores, memory, disk/VM, NICs, snapshots, isolation VLAN) + quota (max VMs per pool)                                                                                                                                                                     | ✅     |
+| Node capacity                 | `/admin/policy/nodes`        | per-node PVMSS ceilings (VMs, vCPUs, RAM, disk) as usage/cap meters, live all-VMs node load (CPU/RAM/storage), node status, catalog-approval badge, inline cap editing                                                                                                                                                | ✅     |
+| Documentation                 | `/admin/docs`                | CMS for the in-app docs (EN/FR, audience, toggle, system pages protected)                                                                                                                                                                                                                 | ✅     |
+| App info                      | `/admin/appinfo`             | build, runtime, safe env subset, cluster status                                                                                                                                                                                                                                           | ✅     |
+| Settings                      | `/admin/settings`            | audit log (paged, filterable, severity), retention days + prune preview, **log level** (debug/info/warn/error, live, audited, reset to the startup default), DB export, **two-phase** DB import (upload → preview → confirm)                                                                                                                                                  | ✅     |
+| Live discovery reconciliation | all catalog pages            | stale approvals flagged and removable when the resource vanished from Proxmox                                                                                                                                                                                                             | ✅     |
+
+## 10. Platform & operations
+
+| Feature                                                                                                         | Detail                                                                       | Status |
+| --------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------- | ------ |
+| Single static binary + SPA, distroless non-root image, port 50000                                               | `Dockerfile`                                                                 | ✅     |
+| Env-only configuration validated at boot (fail fast)                                                            | `server/internal/config`                                                     | ✅     |
+| SQLite (pure Go, CGO-free) with migrations; one file to back up                                                 | `PVMSS_DB_PATH`                                                              | ✅     |
+| Structured `slog` logging, console or JSON, stdout/stderr/file                                                  | `LOG_*`                                                                      | ✅     |
+| Health endpoint                                                                                                 | `GET /health`                                                                | ✅     |
+| Public version endpoint                                                                                         | `GET /api/v1/public/version`                                                 | ✅     |
+| SPA error reporting (uncaught errors, unhandled rejections, SvelteKit `handleError`)                              | `POST /api/v1/client-errors`                                                 | ✅     |
+| Background inventory refresh with configurable interval/timeout                                                 | `PVMSS_INVENTORY_*`                                                          | ✅     |
+| Security headers (CSP, HSTS, frame/content-type options), CSRF, rate limiting, trusted proxy hops for client IP | `security_headers.go`, `csrf.go`, `ratelimit.go`, `PVMSS_TRUSTED_PROXY_HOPS` | ✅     |
+| `fake` cluster source for demos/tests (no Proxmox needed)                                                       | `PVMSS_CLUSTER_SOURCE=fake`                                                  | ✅     |
+| Docker, Docker Compose, Kubernetes manifest, Helm chart                                                         | repo root, `helm/`                                                           | ✅     |
+| `pvmss-recover` one-shot v0.3 → v0.4 DB migration CLI                                                           | `server/cmd/pvmss-recover`                                                   | ✅     |
+| i18n EN + FR, WCAG 2.1 AA target, keyboard-first, reduced-motion                                                | `web/messages`                                                               | ✅     |
+
+## Not in scope (done in Proxmox)
+
+LXC containers · backups · HA (HA-managed VMs are left to Proxmox) ·
+cross-cluster migration · SDN and firewall rules · Proxmox user management
+beyond `/admin/pools`.

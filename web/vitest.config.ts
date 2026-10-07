@@ -8,17 +8,27 @@ export default defineConfig({
 	test: {
 		include: ['src/**/*.test.ts'],
 		environment: 'happy-dom',
+		setupFiles: ['./src/test/setup.ts'],
 		globals: true,
 		coverage: {
 			provider: 'v8',
-			reporter: ['text', 'json', 'html'],
-			exclude: ['node_modules/', 'src/**/*.test.ts', 'src/**/*.spec.ts']
+			reporter: ['text', 'json', 'lcov', 'html'],
+			exclude: [
+				'node_modules/',
+				'src/**/*.test.ts',
+				'src/**/*.spec.ts',
+				'src/test/**',
+				'src/lib/paraglide/**'
+			]
 		}
 	},
 	resolve: {
 		conditions: ['browser', 'svelte'],
 		alias: {
-			$lib: path.resolve('./src/lib')
+			$lib: path.resolve('./src/lib'),
+			'$app/paths': path.resolve('./src/test/app-paths.ts'),
+			'$app/navigation': path.resolve('./src/test/app-navigation.ts'),
+			'$app/state': path.resolve('./src/test/app-state.ts')
 		}
 	}
 });

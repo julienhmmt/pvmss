@@ -1,0 +1,38 @@
+<script lang="ts">
+	import { onMount } from 'svelte';
+	import { setAdminProfilesContext } from '$lib/features/admin-profiles/profiles.svelte';
+	import ProfilesPage from '$lib/features/admin-profiles/ProfilesPage.svelte';
+
+	const store = setAdminProfilesContext();
+
+	onMount(() => {
+		void store.load();
+	});
+</script>
+
+<ProfilesPage
+	profiles={store.profiles}
+	filteredProfiles={store.filteredProfiles}
+	loading={store.loading}
+	error={store.error}
+	saving={store.saving}
+	saveError={store.saveError}
+	clusterOptions={store.clusterOptions}
+	cluster={store.cluster}
+	onClusterChange={(v) => store.setCluster(v)}
+	search={store.search}
+	busFilter={store.busFilter}
+	enabledFilter={store.enabledFilter}
+	busOptions={store.busOptions}
+	sortBy={store.sortBy}
+	sortDir={store.sortDir}
+	onSearchChange={(v) => (store.search = v)}
+	onBusFilterChange={(v) => (store.busFilter = v)}
+	onEnabledFilterChange={(v) => (store.enabledFilter = v)}
+	onSort={(column) => store.setSort(column)}
+	onResetFilters={() => store.resetFilters()}
+	onCreate={(label, cpuCores, memoryMB, diskGB, bus, sockets) => void store.create(label, cpuCores, memoryMB, diskGB, bus, sockets)}
+	onUpdate={(id, label, cpuCores, memoryMB, diskGB, bus, sockets) => void store.update(id, label, cpuCores, memoryMB, diskGB, bus, sockets)}
+	onDelete={(id) => void store.remove(id)}
+	onToggle={(id, enabled) => void store.toggle(id, enabled)}
+/>

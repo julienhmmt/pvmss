@@ -8,65 +8,60 @@ services:
     container_name: pvmss-dev
     env_file:
       - .env
+    environment:
+      # Verbose logs (override .env). Lowercase only.
+      LOG_LEVEL: debug
+      LOG_FORMAT: console
+      LOG_OUTPUT: stdout
+      # SQLite runs in WAL mode (-wal/-shm next to the file), so persist the
+      # whole /data directory, never a single file. Overrides .env.
+      PVMSS_DB_PATH: /data/pvmss.db
+      # Dev DBs outlive schema squashes: move an incompatible one aside
+      # (pvmss.db.incompatible-<time>) and start fresh instead of crash-looping.
+      PVMSS_DB_RESET_ON_INCOMPATIBLE: "true"
     ports:
       - "50000:50000/tcp"
     volumes:
-      # - ./backend/settings.dev.json:/app/settings.json
-      - ./app.log:/app/debug.log
-      - ./pvmss.db:/app/pvmss.db
-      - ./pvmss_snippets_ed25519:/app/pvmss_snippets_ed25519:ro
+      - pvmss_dev_data:/data
     deploy:
       resources:
         limits:
           cpus: '1'
           memory: 256M
 
-  # pvmss-legacy:
-  #   image: jhmmt/pvmss:0.3.0
-  #   restart: unless-stopped
-  #   container_name: pvmss-legacy
-  #   env_file:
-  #     - .env
-  #   ports:
-  #     - "50001:50000/tcp"
-  #   volumes:
-  #     - ./backend/settings.dev.json:/app/settings.json
-  #     - ./app-legacy.log:/app/debug.log
-  #     - ./pvmss_snippets_ed25519:/app/pvmss_snippets_ed25519:ro
-  #   deploy:
-  #     resources:
-  #       limits:
-  #         cpus: '1'
-  #         memory: 256M
-
-  frontend-dev:
+  web-dev:
     # Bun installs deps; Node runs the Vite dev server. Bun cannot run Vite's
     # WebSocket dev-proxy (its http.request emits 'response' instead of
     # 'upgrade' for 101), which breaks the VNC console WebSocket. See
-    # Dockerfile.frontend-dev.
+    # Dockerfile.web-dev.
     build:
       context: .
-      dockerfile: Dockerfile.frontend-dev
+      dockerfile: Dockerfile.web-dev
     working_dir: /app
     restart: unless-stopped
-    container_name: frontend-dev
+    container_name: web-dev
     env_file:
       - .env
     environment:
-      PUBLIC_API_BASE_URL: ${PUBLIC_API_BASE_URL:-http://localhost:50000}
-      INTERNAL_API_BASE_URL: http://pvmss-dev:50000
-      # ORIGIN controls the public base for Vite asset URLs and HMR.
-      # For OrbStack TLS access via https://frontend-dev.pvmss.orb.local (standard port),
-      # set ORIGIN=https://frontend-dev.pvmss.orb.local (no port) in your local .env
-      # (or shell). This makes the HMR client connect via wss://... without :5173.
-      ORIGIN: ${ORIGIN:-http://localhost:5173}
+      # Vite proxy target - the Go backend on the docker network.
       VITE_BACKEND_URL: http://pvmss-dev:50000
+      # ORIGIN controls the public base for Vite asset URLs and HMR.
+      # For OrbStack TLS access via https://web-dev.pvmss.orb.local (standard port),
+      # set ORIGIN=https://web-dev.pvmss.orb.local (no port) in your local .env
+      # (or shell). This makes the HMR client connect via wss://... without :5173.
+      # With ORIGIN set, open the app on that URL only: asset URLs and HMR are
+      # built from it, so another host (localhost, 127.0.0.1) gets CORS-blocked
+      # fonts and a failing HMR socket.
+      ORIGIN: ${ORIGIN:-http://localhost:5173}
       NODE_ENV: development
     ports:
       - "5173:5173"
     volumes:
-      - ./frontend:/app
+      - ./web:/app
       - /app/node_modules
     command: sh -c "bun install && node node_modules/vite/bin/vite.js dev --host 0.0.0.0 --port 5173"
     depends_on:
       - pvmss-dev
+
+volumes:
+  pvmss_dev_data: {}

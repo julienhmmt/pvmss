@@ -1,0 +1,624 @@
+package cluster
+
+import (
+	"context"
+	"errors"
+	"net/http"
+	"net/http/httptest"
+	"testing"
+)
+
+// newProxmoxTestServer builds an httptest.Server driven by a ServeMux (Go
+// 1.22+ method+path patterns), the same shape a real Proxmox VE API exposes
+// under /api2/json.
+func newProxmoxTestServer(t *testing.T, routes func(mux *http.ServeMux)) *httptest.Server {
+	t.Helper()
+
+	mux := http.NewServeMux()
+	routes(mux)
+	srv := httptest.NewServer(mux)
+	t.Cleanup(srv.Close)
+
+	return srv
+}
+
+func writeJSONFixture(t *testing.T, w http.ResponseWriter, body string) {
+	t.Helper()
+	w.Header().Set("Content-Type", "application/json")
+
+	if _, err := w.Write([]byte(body)); err != nil {
+		t.Fatalf("write fixture: %v", err)
+	}
+}
+
+//nolint:dupl,gocyclo,wsl_v5 // one fake server covers the live node-read contract
+//nolint:dupl,gocyclo,wsl_v5 // covers all four live node API response shapes
+func TestProxmox_NodeDetailReads(t *testing.T) {
+	t.Parallel()
+	srv := newProxmoxTestServer(t, func(mux *http.ServeMux) {
+		mux.HandleFunc("GET /api2/json/nodes/pve1/status", func(w http.ResponseWriter, _ *http.Request) {
+			writeJSONFixture(t, w, `{"data":{"cpu":0.18,"cpuinfo":{"cores":8,"cpus":16,"model":"Xeon Gold","sockets":2},"loadavg":["1.00","0.50","0.25"],"memory":{"total":8589934592,"used":4294967296,"free":4294967296},"swap":{"total":1073741824,"used":268435456,"free":805306368},"rootfs":{"total":20000000000,"used":10000000000,"free":10000000000,"avail":9000000000},"uptime":86400,"pveversion":"8.4.0","kversion":"Linux 6.8.12"}}`)
+		})
+		mux.HandleFunc("GET /api2/json/nodes/pve1/network", func(w http.ResponseWriter, _ *http.Request) {
+			writeJSONFixture(t, w, `{"data":[{"iface":"vmbr0","type":"bridge","active":1,"address":"10.1.0.2","cidr":"10.1.0.2/24","gateway":"10.1.0.1","bridge_ports":"eno1","bridge_vlan_aware":true,"mtu":1500}]}`)
+		})
+		mux.HandleFunc("GET /api2/json/nodes/pve1/hardware/pci", func(w http.ResponseWriter, _ *http.Request) {
+			writeJSONFixture(t, w, `{"data":[{"id":"0000:03:00.0","class":"0x020000","vendor":"0x8086","vendor_name":"Intel Corporation","device":"0x1572","device_name":"X550","iommugroup":14,"mdev":false}]}`)
+		})
+		mux.HandleFunc("GET /api2/json/nodes/pve1/lxc", func(w http.ResponseWriter, _ *http.Request) {
+			writeJSONFixture(t, w, `{"data":[{"vmid":210,"name":"dns","status":"running","maxcpu":2,"cpu":0.01,"maxmem":2147483648,"mem":536870912,"maxdisk":8589934592,"disk":2147483648}]}`)
+		})
+	})
+	client := Proxmox{BaseURL: srv.URL, APITokenName: testTokenName, APITokenValue: testTokenVal}
+
+	health, err := client.ReadNodeHealth(context.Background(), "pve1")
+	if err != nil || health.CPUModel != "Xeon Gold" || health.UptimeSeconds != 86400 || health.ProxmoxVersion != "8.4.0" {
+		t.Fatalf("ReadNodeHealth = %+v, %v", health, err)
+	}
+	network, err := client.ReadNodeNetwork(context.Background(), "pve1")
+	if err != nil || len(network) != 1 || network[0].BridgePorts != "eno1" || network[0].CIDR != "10.1.0.2/24" {
+		t.Fatalf("ReadNodeNetwork = %+v, %v", network, err)
+	}
+	devices, err := client.ReadNodePCI(context.Background(), "pve1")
+	if err != nil || len(devices) != 1 || devices[0].DeviceName != "X550" || devices[0].IOMMUGroup != 14 {
+		t.Fatalf("ReadNodePCI = %+v, %v", devices, err)
+	}
+	containers, err := client.ListNodeContainers(context.Background(), "pve1")
+	if err != nil || len(containers) != 1 || containers[0].Name != "dns" || containers[0].MemoryUsed != 536870912 {
+		t.Fatalf("ListNodeContainers = %+v, %v", containers, err)
+	}
+}
+
+//nolint:dupl // snapshot retains its separate aggregate-discovery contract
+func TestProxmox_Snapshot(t *testing.T) {
+	t.Parallel()
+
+	srv := newProxmoxTestServer(t, func(mux *http.ServeMux) {
+		mux.HandleFunc("GET /api2/json/cluster/resources", func(w http.ResponseWriter, _ *http.Request) {
+			writeJSONFixture(t, w, `{"data":[
+				{"type":"node","node":"pve1","status":"online","maxcpu":32,"cpu":0.1,"maxmem":1000,"mem":500,"maxdisk":2000,"disk":1000},
+				{"type":"qemu","node":"pve1","vmid":101,"name":"web-1","status":"running","pool":"alice","tags":"pvmss;prod","maxcpu":2,"maxmem":2147483648},
+				{"type":"storage","node":"pve1","storage":"local-lvm","plugintype":"lvmthin","content":"images,rootdir","maxdisk":500,"disk":100}
+			]}`)
+		})
+		mux.HandleFunc("GET /api2/json/version", func(w http.ResponseWriter, _ *http.Request) {
+			writeJSONFixture(t, w, `{"data":{"version":"8.2.4"}}`)
+		})
+		mux.HandleFunc("GET /api2/json/nodes/pve1/qemu/101/config", func(w http.ResponseWriter, _ *http.Request) {
+			writeJSONFixture(t, w, `{"data":{
+				"sockets":1,"cores":2,"scsi0":"local-lvm:vm-101-disk-0,size=32G",
+				"net0":"virtio=AA:BB:CC:DD:EE:01,bridge=vmbr0","description":"demo box"
+			}}`)
+		})
+		mux.HandleFunc("GET /api2/json/nodes/pve1/qemu/101/status/current", func(w http.ResponseWriter, _ *http.Request) {
+			writeJSONFixture(t, w, `{"data":{"uptime":3600}}`)
+		})
+	})
+
+	p := Proxmox{BaseURL: srv.URL, APITokenName: testTokenName, APITokenValue: testTokenVal}
+
+	snap, err := p.Snapshot(context.Background())
+	if err != nil {
+		t.Fatalf("Snapshot: %v", err)
+	}
+
+	assertProxmoxSnapshot(t, snap)
+}
+
+// assertProxmoxSnapshot asserts every field of a snapshot produced by the
+// TestProxmox_Snapshot fixture. Extracted from TestProxmox_Snapshot to satisfy
+// the cognitive-complexity ceiling (go:S3776); assertion logic is unchanged.
+// It delegates the nodes/storages and VM field assertions to sub-helpers so
+// each function stays under the cognitive-complexity ceiling.
+func assertProxmoxSnapshot(t *testing.T, snap Snapshot) {
+	t.Helper()
+
+	if snap.ProxmoxVersion != "8.2.4" {
+		t.Errorf("version = %q, want 8.2.4", snap.ProxmoxVersion)
+	}
+
+	if len(snap.VMs) != 1 {
+		t.Fatalf("vms = %+v", snap.VMs)
+	}
+
+	assertSnapshotNodesStorages(t, snap)
+	assertSnapshotVM(t, snap.VMs[0])
+}
+
+// assertSnapshotNodesStorages asserts the nodes and storages fields of a
+// snapshot produced by the TestProxmox_Snapshot fixture. Extracted from
+// assertProxmoxSnapshot to satisfy the cognitive-complexity ceiling
+// (go:S3776); assertion logic is unchanged.
+func assertSnapshotNodesStorages(t *testing.T, snap Snapshot) {
+	t.Helper()
+
+	if len(snap.Nodes) != 1 || snap.Nodes[0].Name != "pve1" || snap.Nodes[0].Status != NodeOnline {
+		t.Fatalf("nodes = %+v", snap.Nodes)
+	}
+
+	if len(snap.Storages) != 1 || !snap.Storages[0].SupportsVMState {
+		t.Fatalf("storages = %+v, want lvmthin marked SupportsVMState", snap.Storages)
+	}
+
+	storage := snap.Storages[0]
+	if storage.PluginType != "lvmthin" || storage.Content != "images,rootdir" {
+		t.Errorf("storage capabilities = %+v, want lvmthin with images,rootdir", storage)
+	}
+}
+
+// assertSnapshotVM asserts every field of the single VM produced by the
+// TestProxmox_Snapshot fixture. Extracted from assertProxmoxSnapshot to
+// satisfy the cognitive-complexity ceiling (go:S3776); assertion logic is
+// unchanged. It delegates the identity and hardware field assertions to
+// sub-helpers so each function stays under the cognitive-complexity ceiling.
+func assertSnapshotVM(t *testing.T, vm VM) {
+	t.Helper()
+
+	assertSnapshotVMIdentity(t, vm)
+	assertSnapshotVMHardware(t, vm)
+}
+
+// assertSnapshotVMIdentity asserts the identity fields (vmid/status/pool,
+// tags, sockets/cores) of the single VM produced by the TestProxmox_Snapshot
+// fixture. Extracted from assertProxmoxSnapshot to satisfy the
+// cognitive-complexity ceiling (go:S3776); assertion logic is unchanged.
+func assertSnapshotVMIdentity(t *testing.T, vm VM) {
+	t.Helper()
+
+	if vm.VMID != 101 || vm.Status != VMRunning || vm.Pool != FakePoolAliceShort {
+		t.Fatalf("vm = %+v", vm)
+	}
+
+	if len(vm.Tags) != 2 || vm.Tags[0] != FakeTagPvmss {
+		t.Fatalf("vm.Tags = %v", vm.Tags)
+	}
+
+	if vm.Sockets != 1 || vm.Cores != 2 {
+		t.Fatalf("vm sockets/cores = %d/%d", vm.Sockets, vm.Cores)
+	}
+}
+
+// assertSnapshotVMHardware asserts the hardware fields (disks, network
+// interfaces, description, uptime) of the single VM produced by the
+// TestProxmox_Snapshot fixture. Extracted from assertProxmoxSnapshot to
+// satisfy the cognitive-complexity ceiling (go:S3776); assertion logic is
+// unchanged.
+func assertSnapshotVMHardware(t *testing.T, vm VM) {
+	t.Helper()
+
+	if len(vm.Disks) != 1 || vm.Disks[0].Storage != FakeStorageLocalLVM || vm.Disks[0].SizeGB != 32 {
+		t.Fatalf("vm.Disks = %+v", vm.Disks)
+	}
+
+	if len(vm.NetworkInterfaces) != 1 || vm.NetworkInterfaces[0].Bridge != FakeBridgeVMbr0 {
+		t.Fatalf("vm.NetworkInterfaces = %+v", vm.NetworkInterfaces)
+	}
+
+	if vm.Description != "demo box" {
+		t.Errorf("vm.Description = %q", vm.Description)
+	}
+
+	if vm.Uptime.Seconds() != 3600 {
+		t.Errorf("vm.Uptime = %v, want 1h", vm.Uptime)
+	}
+}
+
+//nolint:paralleltest // serial: httptest server fixture
+func TestProxmox_DisplayName_Cluster(t *testing.T) {
+	runDisplayNameCase(t, displayNameCase{
+		fixture: `{"data":[
+			{"type":"cluster","name":"prod-pve"},
+			{"type":"node","name":"pve1"}
+		]}`,
+		want: "prod-pve",
+	})
+}
+
+//nolint:paralleltest // serial: httptest server fixture
+func TestProxmox_DisplayName_StandaloneNode(t *testing.T) {
+	runDisplayNameCase(t, displayNameCase{
+		fixture: `{"data":[
+			{"type":"node","name":"standalone-pve"}
+		]}`,
+		want: "standalone-pve",
+	})
+}
+
+type displayNameCase struct {
+	fixture string
+	want    string
+}
+
+// runDisplayNameCase exercises Proxmox.DisplayName against a single-shot
+// cluster/status fixture. Extracted from the two DisplayName tests to satisfy dupl.
+//
+//nolint:dupl // structural similarity to TestProxmox_NextVMID is incidental (shared test-server pattern)
+func runDisplayNameCase(t *testing.T, tc displayNameCase) {
+	t.Helper()
+
+	srv := newProxmoxTestServer(t, func(mux *http.ServeMux) {
+		mux.HandleFunc("GET /api2/json/cluster/status", func(w http.ResponseWriter, _ *http.Request) {
+			writeJSONFixture(t, w, tc.fixture)
+		})
+	})
+
+	p := Proxmox{BaseURL: srv.URL, APITokenName: testTokenName, APITokenValue: testTokenVal}
+
+	name, err := p.DisplayName(context.Background())
+	if err != nil {
+		t.Fatalf("DisplayName: %v", err)
+	}
+
+	if name != tc.want {
+		t.Fatalf("DisplayName = %q, want %q", name, tc.want)
+	}
+}
+
+// proxmoxAuthFixture wires the three calls a login exercises: the ticket
+// exchange, the caller's own permission check at "/", and (for non-admins)
+// the pool listing used to derive their personal pool.
+func proxmoxAuthFixture(t *testing.T, isAdmin bool, username, password string) *httptest.Server {
+	t.Helper()
+
+	return newProxmoxTestServer(t, func(mux *http.ServeMux) {
+		mux.HandleFunc("POST /api2/json/access/ticket", func(w http.ResponseWriter, r *http.Request) {
+			if err := r.ParseForm(); err != nil {
+				t.Fatalf("parse form: %v", err)
+			}
+
+			if r.FormValue("username") != username || r.FormValue("password") != password {
+				w.WriteHeader(http.StatusUnauthorized)
+				return
+			}
+
+			writeJSONFixture(t, w, `{"data":{"ticket":"tix-123","CSRFPreventionToken":"csrf-123"}}`)
+		})
+		mux.HandleFunc("GET /api2/json/access/permissions", func(w http.ResponseWriter, r *http.Request) {
+			if cookie, err := r.Cookie("PVEAuthCookie"); err != nil || cookie.Value != "tix-123" {
+				w.WriteHeader(http.StatusUnauthorized)
+				return
+			}
+
+			if isAdmin {
+				writeJSONFixture(t, w, `{"data":{"/":{"Permissions.Modify":1,"Sys.Audit":1}}}`)
+			} else {
+				writeJSONFixture(t, w, `{"data":{"/":{"Sys.Audit":1}}}`)
+			}
+		})
+		mux.HandleFunc("GET /api2/json/pools", func(w http.ResponseWriter, _ *http.Request) {
+			writeJSONFixture(t, w, `{"data":[{"poolid":"alice","comment":"Alice's pool"}]}`)
+		})
+	})
+}
+
+func TestProxmox_Authenticate_Admin(t *testing.T) {
+	t.Parallel()
+
+	srv := proxmoxAuthFixture(t, true, "admin1@pve", "s3cret")
+	p := Proxmox{BaseURL: srv.URL, APITokenName: testTokenName, APITokenValue: testTokenVal}
+
+	identity, err := p.Authenticate(context.Background(), "admin1@pve", "s3cret")
+	if err != nil {
+		t.Fatalf("Authenticate: %v", err)
+	}
+
+	if !identity.IsAdmin || identity.Pool != "" {
+		t.Fatalf("identity = %+v, want admin with no pool", identity)
+	}
+}
+
+func TestProxmox_Authenticate_NonAdminOwnsPool(t *testing.T) {
+	t.Parallel()
+
+	srv := proxmoxAuthFixture(t, false, FakeUserAlice, "pvmss-alice")
+	p := Proxmox{BaseURL: srv.URL, APITokenName: testTokenName, APITokenValue: testTokenVal}
+
+	identity, err := p.Authenticate(context.Background(), FakeUserAlice, "pvmss-alice")
+	if err != nil {
+		t.Fatalf("Authenticate: %v", err)
+	}
+
+	if identity.IsAdmin || identity.Pool != FakePoolAliceShort {
+		t.Fatalf("identity = %+v, want non-admin pool=alice", identity)
+	}
+}
+
+func TestProxmox_Authenticate_WrongPassword(t *testing.T) {
+	t.Parallel()
+
+	srv := proxmoxAuthFixture(t, false, FakeUserAlice, "pvmss-alice")
+	p := Proxmox{BaseURL: srv.URL, APITokenName: testTokenName, APITokenValue: testTokenVal}
+
+	_, err := p.Authenticate(context.Background(), FakeUserAlice, "wrong-password")
+	if !errors.Is(err, ErrNotFound) {
+		t.Fatalf("err = %v, want ErrNotFound", err)
+	}
+}
+
+func TestProxmox_ChangePassword(t *testing.T) {
+	t.Parallel()
+
+	var gotNewPassword string
+
+	srv := newProxmoxTestServer(t, func(mux *http.ServeMux) {
+		mux.HandleFunc("POST /api2/json/access/ticket", func(w http.ResponseWriter, r *http.Request) {
+			if err := r.ParseForm(); err != nil {
+				t.Fatalf("parse form: %v", err)
+			}
+
+			if r.FormValue("username") != FakeUserAlice || r.FormValue("password") != "old-pass" {
+				w.WriteHeader(http.StatusUnauthorized)
+				return
+			}
+
+			writeJSONFixture(t, w, `{"data":{"ticket":"tix-123","CSRFPreventionToken":"csrf-123"}}`)
+		})
+		mux.HandleFunc("PUT /api2/json/access/password", func(w http.ResponseWriter, r *http.Request) {
+			if r.Header.Get("CSRFPreventionToken") != "csrf-123" {
+				w.WriteHeader(http.StatusForbidden)
+				return
+			}
+
+			if err := r.ParseForm(); err != nil {
+				t.Fatalf("parse form: %v", err)
+			}
+
+			gotNewPassword = r.FormValue("password")
+
+			writeJSONFixture(t, w, `{"data":null}`)
+		})
+	})
+
+	p := Proxmox{BaseURL: srv.URL, APITokenName: testTokenName, APITokenValue: testTokenVal}
+
+	if err := p.ChangePassword(context.Background(), FakeUserAlice, "old-pass", "new-pass"); err != nil {
+		t.Fatalf("ChangePassword: %v", err)
+	}
+
+	if gotNewPassword != "new-pass" {
+		t.Errorf("new password sent = %q, want %q", gotNewPassword, "new-pass")
+	}
+}
+
+func TestProxmox_ChangePassword_WrongOldPassword(t *testing.T) {
+	t.Parallel()
+
+	srv := newProxmoxTestServer(t, func(mux *http.ServeMux) {
+		mux.HandleFunc("POST /api2/json/access/ticket", func(w http.ResponseWriter, _ *http.Request) {
+			w.WriteHeader(http.StatusUnauthorized)
+		})
+	})
+
+	p := Proxmox{BaseURL: srv.URL, APITokenName: testTokenName, APITokenValue: testTokenVal}
+
+	err := p.ChangePassword(context.Background(), FakeUserAlice, "wrong-old", "new-pass")
+	if !errors.Is(err, ErrNotFound) {
+		t.Fatalf("err = %v, want ErrNotFound", err)
+	}
+}
+
+func TestProxmox_ListBridges(t *testing.T) {
+	t.Parallel()
+
+	srv := newProxmoxTestServer(t, func(mux *http.ServeMux) {
+		mux.HandleFunc("GET /api2/json/nodes", func(w http.ResponseWriter, _ *http.Request) {
+			writeJSONFixture(t, w, `{"data":[{"node":"pve1"}]}`)
+		})
+		mux.HandleFunc("GET /api2/json/nodes/pve1/network", func(w http.ResponseWriter, _ *http.Request) {
+			writeJSONFixture(t, w, `{"data":[
+				{"iface":"vmbr0","type":"bridge","active":1,"comments":""},
+				{"iface":"eth0","type":"eth","active":1},
+				{"iface":"vmbr1","type":"bridge","active":0,"comments":"guest VLAN"}
+			]}`)
+		})
+	})
+
+	p := Proxmox{BaseURL: srv.URL, APITokenName: testTokenName, APITokenValue: testTokenVal}
+
+	bridges, err := p.ListBridges(context.Background())
+	if err != nil {
+		t.Fatalf("ListBridges: %v", err)
+	}
+
+	if len(bridges) != 2 {
+		t.Fatalf("bridges = %+v, want 2 (eth0 excluded)", bridges)
+	}
+
+	if bridges[0].Name != FakeBridgeVMbr0 || !bridges[0].Active {
+		t.Errorf("bridges[0] = %+v", bridges[0])
+	}
+
+	if bridges[1].Name != FakeBridgeVMbr1 || bridges[1].Active || bridges[1].Comment != "guest VLAN" {
+		t.Errorf("bridges[1] = %+v", bridges[1])
+	}
+}
+
+func TestProxmox_ListISOs(t *testing.T) {
+	t.Parallel()
+
+	srv := newProxmoxTestServer(t, func(mux *http.ServeMux) {
+		mux.HandleFunc("GET /api2/json/cluster/resources", func(w http.ResponseWriter, _ *http.Request) {
+			writeJSONFixture(t, w, `{"data":[{"type":"storage","node":"pve1","storage":"local"}]}`)
+		})
+		mux.HandleFunc("GET /api2/json/nodes/pve1/storage/local/content", func(w http.ResponseWriter, r *http.Request) {
+			if r.URL.Query().Get("content") != "iso" {
+				t.Errorf("content query = %q, want iso", r.URL.Query().Get("content"))
+			}
+
+			writeJSONFixture(t, w, `{"data":[{"volid":"local:iso/debian-12.iso","size":691945472}]}`)
+		})
+	})
+
+	p := Proxmox{BaseURL: srv.URL, APITokenName: testTokenName, APITokenValue: testTokenVal}
+
+	isos, err := p.ListISOs(context.Background())
+	if err != nil {
+		t.Fatalf("ListISOs: %v", err)
+	}
+
+	if len(isos) != 1 || isos[0].File != "debian-12.iso" || isos[0].Storage != FakeStorageLocal || isos[0].SizeBytes != 691945472 {
+		t.Fatalf("isos = %+v", isos)
+	}
+}
+
+// Proxmox answers HTTP 595 when the API node cannot reach a target node's
+// pveproxy - in practice, the node is offline. One offline node must not
+// poison the whole listing: resources on the healthy nodes are still
+// returned (regression: admin ISO/bridge pages 500'd when any node was down).
+const (
+	testProxmoxNodeName = "pve1"
+	testISOFile         = "debian-12.iso"
+)
+
+//nolint:dupl // intentionally parallel to TestProxmox_ListISOs_OfflineNodeSkipped (same 595 fixture shape, different resource)
+func TestProxmox_ListBridges_OfflineNodeSkipped(t *testing.T) {
+	t.Parallel()
+
+	srv := newProxmoxTestServer(t, func(mux *http.ServeMux) {
+		mux.HandleFunc("GET /api2/json/nodes", func(w http.ResponseWriter, _ *http.Request) {
+			writeJSONFixture(t, w, `{"data":[{"node":"pve1"},{"node":"pve2"}]}`)
+		})
+		mux.HandleFunc("GET /api2/json/nodes/pve1/network", func(w http.ResponseWriter, _ *http.Request) {
+			writeJSONFixture(t, w, `{"data":[{"iface":"vmbr0","type":"bridge","active":1,"comments":""}]}`)
+		})
+		mux.HandleFunc("GET /api2/json/nodes/pve2/network", func(w http.ResponseWriter, _ *http.Request) {
+			w.WriteHeader(595) // pveproxy: cannot connect to the remote node
+			writeJSONFixture(t, w, `{"data":null}`)
+		})
+	})
+
+	p := Proxmox{BaseURL: srv.URL, APITokenName: testTokenName, APITokenValue: testTokenVal}
+
+	bridges, err := p.ListBridges(context.Background())
+	if err != nil {
+		t.Fatalf("ListBridges: %v", err)
+	}
+
+	if len(bridges) != 1 || bridges[0].Name != FakeBridgeVMbr0 || bridges[0].Node != testProxmoxNodeName {
+		t.Fatalf("bridges = %+v, want vmbr0 on pve1 only", bridges)
+	}
+}
+
+//nolint:dupl // intentionally parallel to TestProxmox_ListBridges_OfflineNodeSkipped (same 595 fixture shape, different resource)
+func TestProxmox_ListISOs_OfflineNodeSkipped(t *testing.T) {
+	t.Parallel()
+
+	srv := newProxmoxTestServer(t, func(mux *http.ServeMux) {
+		mux.HandleFunc("GET /api2/json/cluster/resources", func(w http.ResponseWriter, _ *http.Request) {
+			writeJSONFixture(t, w, `{"data":[
+				{"type":"storage","node":"pve1","storage":"local"},
+				{"type":"storage","node":"pve2","storage":"durango_temp"}
+			]}`)
+		})
+		mux.HandleFunc("GET /api2/json/nodes/pve1/storage/local/content", func(w http.ResponseWriter, _ *http.Request) {
+			writeJSONFixture(t, w, `{"data":[{"volid":"local:iso/debian-12.iso","size":691945472}]}`)
+		})
+		mux.HandleFunc("GET /api2/json/nodes/pve2/storage/durango_temp/content", func(w http.ResponseWriter, _ *http.Request) {
+			w.WriteHeader(595) // pveproxy: cannot connect to the remote node
+			writeJSONFixture(t, w, `{"data":null}`)
+		})
+	})
+
+	p := Proxmox{BaseURL: srv.URL, APITokenName: testTokenName, APITokenValue: testTokenVal}
+
+	isos, err := p.ListISOs(context.Background())
+	if err != nil {
+		t.Fatalf("ListISOs: %v", err)
+	}
+
+	if len(isos) != 1 || isos[0].File != testISOFile || isos[0].Node != testProxmoxNodeName {
+		t.Fatalf("isos = %+v, want debian-12.iso on pve1 only", isos)
+	}
+}
+
+// A storage whose /cluster/resources status is not "available" ("unknown" =
+// node offline, "inactive" = Proxmox cannot read it) must not be asked for
+// content at all: each wasted call costs seconds against a dead node and was
+// timing the admin ISO page out (regression: 4 unavailable storages × 3
+// retries × ~4s per attempt).
+func TestProxmox_ListISOs_SkipsUnavailableStorages(t *testing.T) {
+	t.Parallel()
+
+	var unavailableCalls int
+
+	srv := newProxmoxTestServer(t, func(mux *http.ServeMux) {
+		mux.HandleFunc("GET /api2/json/cluster/resources", func(w http.ResponseWriter, _ *http.Request) {
+			writeJSONFixture(t, w, `{"data":[
+				{"type":"storage","node":"pve1","storage":"local","status":"available"},
+				{"type":"storage","node":"pve2","storage":"durango_temp","status":"unknown"},
+				{"type":"storage","node":"pve3","storage":"dead_nfs","status":"inactive"}
+			]}`)
+		})
+		mux.HandleFunc("GET /api2/json/nodes/pve1/storage/local/content", func(w http.ResponseWriter, _ *http.Request) {
+			writeJSONFixture(t, w, `{"data":[{"volid":"local:iso/debian-12.iso","size":691945472}]}`)
+		})
+		mux.HandleFunc("GET /api2/json/nodes/pve2/storage/durango_temp/content", func(w http.ResponseWriter, _ *http.Request) {
+			unavailableCalls++
+
+			w.WriteHeader(595)
+			writeJSONFixture(t, w, `{"data":null}`)
+		})
+		mux.HandleFunc("GET /api2/json/nodes/pve3/storage/dead_nfs/content", func(w http.ResponseWriter, _ *http.Request) {
+			unavailableCalls++
+
+			w.WriteHeader(http.StatusInternalServerError)
+			writeJSONFixture(t, w, `{"data":null}`)
+		})
+	})
+
+	p := Proxmox{BaseURL: srv.URL, APITokenName: testTokenName, APITokenValue: testTokenVal}
+
+	isos, err := p.ListISOs(context.Background())
+	if err != nil {
+		t.Fatalf("ListISOs: %v", err)
+	}
+
+	if unavailableCalls != 0 {
+		t.Errorf("unavailable storages were asked for content %d times, want 0", unavailableCalls)
+	}
+
+	if len(isos) != 1 || isos[0].File != testISOFile || isos[0].Node != testProxmoxNodeName {
+		t.Fatalf("isos = %+v, want debian-12.iso on pve1 only", isos)
+	}
+}
+
+// A node whose /nodes status is not "online" must not be asked for its
+// network interfaces at all - same wasted-call regression as the ISO listing.
+func TestProxmox_ListBridges_SkipsOfflineNodes(t *testing.T) {
+	t.Parallel()
+
+	var offlineCalls int
+
+	srv := newProxmoxTestServer(t, func(mux *http.ServeMux) {
+		mux.HandleFunc("GET /api2/json/nodes", func(w http.ResponseWriter, _ *http.Request) {
+			writeJSONFixture(t, w, `{"data":[
+				{"node":"pve1","status":"online"},
+				{"node":"pve2","status":"offline"}
+			]}`)
+		})
+		mux.HandleFunc("GET /api2/json/nodes/pve1/network", func(w http.ResponseWriter, _ *http.Request) {
+			writeJSONFixture(t, w, `{"data":[{"iface":"vmbr0","type":"bridge","active":1,"comments":""}]}`)
+		})
+		mux.HandleFunc("GET /api2/json/nodes/pve2/network", func(w http.ResponseWriter, _ *http.Request) {
+			offlineCalls++
+
+			w.WriteHeader(595)
+			writeJSONFixture(t, w, `{"data":null}`)
+		})
+	})
+
+	p := Proxmox{BaseURL: srv.URL, APITokenName: testTokenName, APITokenValue: testTokenVal}
+
+	bridges, err := p.ListBridges(context.Background())
+	if err != nil {
+		t.Fatalf("ListBridges: %v", err)
+	}
+
+	if offlineCalls != 0 {
+		t.Errorf("offline node was asked for network interfaces %d times, want 0", offlineCalls)
+	}
+
+	if len(bridges) != 1 || bridges[0].Name != FakeBridgeVMbr0 || bridges[0].Node != testProxmoxNodeName {
+		t.Fatalf("bridges = %+v, want vmbr0 on pve1 only", bridges)
+	}
+}

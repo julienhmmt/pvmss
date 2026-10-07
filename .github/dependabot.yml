@@ -6,12 +6,12 @@ updates:
     schedule:
       interval: "weekly"
   - package-ecosystem: "gomod"
-    directory: "/backend"
+    directory: "/server"
     schedule:
       interval: "weekly"
     open-pull-requests-limit: 10
   - package-ecosystem: "npm"
-    directory: "/frontend"
+    directory: "/web"
     schedule:
       interval: "weekly"
     open-pull-requests-limit: 10

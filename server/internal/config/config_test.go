@@ -1,12 +1,31 @@
+//nolint:goconst // env var names are repeated across table-driven config test cases
 package config_test
 
 import (
+	"pvmss/server/internal/config"
+	"reflect"
 	"strings"
 	"testing"
-
-	"pvmss/server/internal/config"
+	"time"
 )
 
+const (
+	envPort          = "PVMSS_PORT"
+	envDBPath        = "PVMSS_DB_PATH"
+	envLogLevel      = "LOG_LEVEL"
+	envLogFormat     = "LOG_FORMAT"
+	envLogOutput     = "LOG_OUTPUT"
+	envClusterSource = "PVMSS_CLUSTER_SOURCE"
+	testDBPath       = "./tmp/pvmss.db"
+	testMemoryDB     = ":memory:"
+	testHost         = "127.0.0.1"
+	testLogLevel     = "info"
+	testLogFormat    = "json"
+	testLogOutput    = "stdout"
+	testCluster      = "fake"
+)
+
+//nolint:funlen,paralleltest // comprehensive table-driven test; uses t.Setenv which is incompatible with t.Parallel
 func TestLoad(t *testing.T) {
 	tests := []struct {
 		name    string
@@ -17,172 +36,548 @@ func TestLoad(t *testing.T) {
 		{
 			name: "valid config",
 			env: map[string]string{
-				"PVMSS_PORT":    "50001",
-				"PVMSS_DB_PATH": "./tmp/pvmss.db",
-				"LOG_LEVEL":     "info",
-				"LOG_FORMAT":    "json",
-				"LOG_OUTPUT":    "stdout",
+				envPort:          "50001",
+				envDBPath:        testDBPath,
+				envLogLevel:      testLogLevel,
+				envLogFormat:     testLogFormat,
+				envLogOutput:     testLogOutput,
+				envClusterSource: testCluster,
 			},
 			want: config.Configuration{
-				Host:      "127.0.0.1",
-				Port:      50001,
-				DBPath:    "./tmp/pvmss.db",
-				LogLevel:  "info",
-				LogFormat: "json",
-				LogOutput: "stdout",
+				Host:                              testHost,
+				Port:                              50001,
+				DBPath:                            testDBPath,
+				LogLevel:                          testLogLevel,
+				LogFormat:                         testLogFormat,
+				LogOutput:                         testLogOutput,
+				ClusterSource:                     testCluster,
+				InventoryRefreshInterval:          30 * time.Second,
+				InventoryManualRefreshMinInterval: 5 * time.Second,
+				InventoryRefreshTimeout:           15 * time.Second,
+				MaxListPageSize:                   100,
+				TrustedProxyHops:                  1,
 			},
 		},
 		{
 			name: "explicit host",
 			env: map[string]string{
-				"PVMSS_HOST":    "0.0.0.0",
-				"PVMSS_PORT":    "50001",
-				"PVMSS_DB_PATH": "./tmp/pvmss.db",
-				"LOG_LEVEL":     "info",
-				"LOG_FORMAT":    "json",
-				"LOG_OUTPUT":    "stdout",
+				"PVMSS_HOST":     "0.0.0.0",
+				envPort:          "50001",
+				envDBPath:        testDBPath,
+				envLogLevel:      testLogLevel,
+				envLogFormat:     testLogFormat,
+				envLogOutput:     testLogOutput,
+				envClusterSource: testCluster,
 			},
 			want: config.Configuration{
-				Host:      "0.0.0.0",
-				Port:      50001,
-				DBPath:    "./tmp/pvmss.db",
-				LogLevel:  "info",
-				LogFormat: "json",
-				LogOutput: "stdout",
+				Host:                              "0.0.0.0",
+				Port:                              50001,
+				DBPath:                            testDBPath,
+				LogLevel:                          testLogLevel,
+				LogFormat:                         testLogFormat,
+				LogOutput:                         testLogOutput,
+				ClusterSource:                     testCluster,
+				InventoryRefreshInterval:          30 * time.Second,
+				InventoryManualRefreshMinInterval: 5 * time.Second,
+				InventoryRefreshTimeout:           15 * time.Second,
+				MaxListPageSize:                   100,
+				TrustedProxyHops:                  1,
 			},
 		},
 		{
 			name: "missing port",
 			env: map[string]string{
-				"PVMSS_DB_PATH": "./tmp/pvmss.db",
-				"LOG_LEVEL":     "info",
-				"LOG_FORMAT":    "json",
-				"LOG_OUTPUT":    "stdout",
+				envDBPath:    testDBPath,
+				envLogLevel:  testLogLevel,
+				envLogFormat: testLogFormat,
+				envLogOutput: testLogOutput,
 			},
 			wantErr: "PVMSS_PORT is required",
 		},
 		{
 			name: "missing db path",
 			env: map[string]string{
-				"PVMSS_PORT": "50001",
-				"LOG_LEVEL":  "info",
-				"LOG_FORMAT": "json",
-				"LOG_OUTPUT": "stdout",
+				envPort:      "50001",
+				envLogLevel:  testLogLevel,
+				envLogFormat: testLogFormat,
+				envLogOutput: testLogOutput,
 			},
 			wantErr: "PVMSS_DB_PATH is required",
 		},
 		{
 			name: "missing log level",
 			env: map[string]string{
-				"PVMSS_PORT":    "50001",
-				"PVMSS_DB_PATH": "./tmp/pvmss.db",
-				"LOG_FORMAT":    "json",
-				"LOG_OUTPUT":    "stdout",
+				envPort:      "50001",
+				envDBPath:    testDBPath,
+				envLogFormat: testLogFormat,
+				envLogOutput: testLogOutput,
 			},
 			wantErr: "LOG_LEVEL is required",
 		},
 		{
 			name: "missing log format",
 			env: map[string]string{
-				"PVMSS_PORT":    "50001",
-				"PVMSS_DB_PATH": "./tmp/pvmss.db",
-				"LOG_LEVEL":     "info",
-				"LOG_OUTPUT":    "stdout",
+				envPort:      "50001",
+				envDBPath:    testDBPath,
+				envLogLevel:  testLogLevel,
+				envLogOutput: testLogOutput,
 			},
 			wantErr: "LOG_FORMAT is required",
 		},
 		{
 			name: "missing log output",
 			env: map[string]string{
-				"PVMSS_PORT":    "50001",
-				"PVMSS_DB_PATH": "./tmp/pvmss.db",
-				"LOG_LEVEL":     "info",
-				"LOG_FORMAT":    "json",
+				envPort:      "50001",
+				envDBPath:    testDBPath,
+				envLogLevel:  testLogLevel,
+				envLogFormat: testLogFormat,
 			},
 			wantErr: "LOG_OUTPUT is required",
 		},
 		{
 			name: "port not a number",
 			env: map[string]string{
-				"PVMSS_PORT":    "abc",
-				"PVMSS_DB_PATH": "./tmp/pvmss.db",
-				"LOG_LEVEL":     "info",
-				"LOG_FORMAT":    "json",
-				"LOG_OUTPUT":    "stdout",
+				envPort:      "abc",
+				envDBPath:    testDBPath,
+				envLogLevel:  testLogLevel,
+				envLogFormat: testLogFormat,
+				envLogOutput: testLogOutput,
 			},
 			wantErr: "PVMSS_PORT must be an integer",
 		},
 		{
 			name: "port too low",
 			env: map[string]string{
-				"PVMSS_PORT":    "0",
-				"PVMSS_DB_PATH": "./tmp/pvmss.db",
-				"LOG_LEVEL":     "info",
-				"LOG_FORMAT":    "json",
-				"LOG_OUTPUT":    "stdout",
+				envPort:      "0",
+				envDBPath:    testDBPath,
+				envLogLevel:  testLogLevel,
+				envLogFormat: testLogFormat,
+				envLogOutput: testLogOutput,
 			},
 			wantErr: "PVMSS_PORT must be between 1 and 65535",
 		},
 		{
 			name: "port too high",
 			env: map[string]string{
-				"PVMSS_PORT":    "65536",
-				"PVMSS_DB_PATH": "./tmp/pvmss.db",
-				"LOG_LEVEL":     "info",
-				"LOG_FORMAT":    "json",
-				"LOG_OUTPUT":    "stdout",
+				envPort:      "65536",
+				envDBPath:    testDBPath,
+				envLogLevel:  testLogLevel,
+				envLogFormat: testLogFormat,
+				envLogOutput: testLogOutput,
 			},
 			wantErr: "PVMSS_PORT must be between 1 and 65535",
 		},
 		{
 			name: "invalid log level",
 			env: map[string]string{
-				"PVMSS_PORT":    "50001",
-				"PVMSS_DB_PATH": "./tmp/pvmss.db",
-				"LOG_LEVEL":     "verbose",
-				"LOG_FORMAT":    "json",
-				"LOG_OUTPUT":    "stdout",
+				envPort:      "50001",
+				envDBPath:    testDBPath,
+				envLogLevel:  "verbose",
+				envLogFormat: testLogFormat,
+				envLogOutput: testLogOutput,
 			},
 			wantErr: "LOG_LEVEL must be one of",
 		},
 		{
 			name: "invalid log format",
 			env: map[string]string{
-				"PVMSS_PORT":    "50001",
-				"PVMSS_DB_PATH": "./tmp/pvmss.db",
-				"LOG_LEVEL":     "info",
-				"LOG_FORMAT":    "xml",
-				"LOG_OUTPUT":    "stdout",
+				envPort:      "50001",
+				envDBPath:    testDBPath,
+				envLogLevel:  testLogLevel,
+				envLogFormat: "xml",
+				envLogOutput: testLogOutput,
 			},
 			wantErr: "LOG_FORMAT must be one of",
 		},
+		{
+			name: "explicit cluster source proxmox",
+			env: map[string]string{ //nolint:gosec // test-only fake Proxmox credentials
+				envPort:                   "50001",
+				envDBPath:                 testDBPath,
+				envLogLevel:               testLogLevel,
+				envLogFormat:              testLogFormat,
+				envLogOutput:              testLogOutput,
+				envClusterSource:          "proxmox",
+				"PROXMOX_URL":             "https://proxmox.example.com",
+				"PROXMOX_API_TOKEN_NAME":  "root@pam!pvmss",
+				"PROXMOX_API_TOKEN_VALUE": "token-value",
+			},
+			want: config.Configuration{ //nolint:gosec // test-only fake Proxmox credentials
+				Host:                              testHost,
+				Port:                              50001,
+				DBPath:                            testDBPath,
+				LogLevel:                          testLogLevel,
+				LogFormat:                         testLogFormat,
+				LogOutput:                         testLogOutput,
+				ClusterSource:                     "proxmox",
+				ProxmoxURL:                        "https://proxmox.example.com",
+				ProxmoxAPITokenName:               "root@pam!pvmss",
+				ProxmoxAPITokenValue:              "token-value",
+				InventoryRefreshInterval:          30 * time.Second,
+				InventoryManualRefreshMinInterval: 5 * time.Second,
+				InventoryRefreshTimeout:           15 * time.Second,
+				MaxListPageSize:                   100,
+				TrustedProxyHops:                  1,
+			},
+		},
+		{
+			name: "missing cluster source",
+			env: map[string]string{
+				envPort:      "50001",
+				envDBPath:    testDBPath,
+				envLogLevel:  testLogLevel,
+				envLogFormat: testLogFormat,
+				envLogOutput: testLogOutput,
+			},
+			wantErr: "PVMSS_CLUSTER_SOURCE is required",
+		},
+		{
+			name: "explicit cluster source vmware",
+			env: map[string]string{
+				envPort:          "50001",
+				envDBPath:        testDBPath,
+				envLogLevel:      testLogLevel,
+				envLogFormat:     testLogFormat,
+				envLogOutput:     testLogOutput,
+				envClusterSource: "vmware",
+			},
+			wantErr: "PVMSS_CLUSTER_SOURCE must be one of",
+		},
+		{
+			name: "explicit inventory intervals",
+			env: map[string]string{
+				envPort:                            "50001",
+				envDBPath:                          testDBPath,
+				envLogLevel:                        testLogLevel,
+				envLogFormat:                       testLogFormat,
+				envLogOutput:                       testLogOutput,
+				envClusterSource:                   testCluster,
+				"PVMSS_INVENTORY_REFRESH_INTERVAL": "10s",
+				"PVMSS_INVENTORY_MANUAL_REFRESH_MIN_INTERVAL": "2s",
+			},
+			want: config.Configuration{
+				Host:                              testHost,
+				Port:                              50001,
+				DBPath:                            testDBPath,
+				LogLevel:                          testLogLevel,
+				LogFormat:                         testLogFormat,
+				LogOutput:                         testLogOutput,
+				ClusterSource:                     testCluster,
+				InventoryRefreshInterval:          10 * time.Second,
+				InventoryManualRefreshMinInterval: 2 * time.Second,
+				InventoryRefreshTimeout:           15 * time.Second,
+				MaxListPageSize:                   100,
+				TrustedProxyHops:                  1,
+			},
+		},
+		{
+			name: "invalid inventory refresh interval",
+			env: map[string]string{
+				envPort:                            "50001",
+				envDBPath:                          testDBPath,
+				envLogLevel:                        testLogLevel,
+				envLogFormat:                       testLogFormat,
+				envLogOutput:                       testLogOutput,
+				envClusterSource:                   testCluster,
+				"PVMSS_INVENTORY_REFRESH_INTERVAL": "not-a-duration",
+			},
+			wantErr: "PVMSS_INVENTORY_REFRESH_INTERVAL must be a duration",
+		},
+		{
+			name: "non-positive inventory refresh interval",
+			env: map[string]string{
+				envPort:                            "50001",
+				envDBPath:                          testDBPath,
+				envLogLevel:                        testLogLevel,
+				envLogFormat:                       testLogFormat,
+				envLogOutput:                       testLogOutput,
+				envClusterSource:                   testCluster,
+				"PVMSS_INVENTORY_REFRESH_INTERVAL": "0s",
+			},
+			wantErr: "PVMSS_INVENTORY_REFRESH_INTERVAL must be a positive duration",
+		},
+		{
+			name: "non-positive manual refresh min interval",
+			env: map[string]string{
+				envPort:          "50001",
+				envDBPath:        testDBPath,
+				envLogLevel:      testLogLevel,
+				envLogFormat:     testLogFormat,
+				envLogOutput:     testLogOutput,
+				envClusterSource: testCluster,
+				"PVMSS_INVENTORY_MANUAL_REFRESH_MIN_INTERVAL": "-1s",
+			},
+			wantErr: "PVMSS_INVENTORY_MANUAL_REFRESH_MIN_INTERVAL must be a positive duration",
+		},
+		{
+			name: "explicit inventory refresh timeout",
+			env: map[string]string{
+				envPort:                           "50001",
+				envDBPath:                         testDBPath,
+				envLogLevel:                       testLogLevel,
+				envLogFormat:                      testLogFormat,
+				envLogOutput:                      testLogOutput,
+				envClusterSource:                  testCluster,
+				"PVMSS_INVENTORY_REFRESH_TIMEOUT": "45s",
+			},
+			want: config.Configuration{
+				Host:                              testHost,
+				Port:                              50001,
+				DBPath:                            testDBPath,
+				LogLevel:                          testLogLevel,
+				LogFormat:                         testLogFormat,
+				LogOutput:                         testLogOutput,
+				ClusterSource:                     testCluster,
+				InventoryRefreshInterval:          30 * time.Second,
+				InventoryManualRefreshMinInterval: 5 * time.Second,
+				InventoryRefreshTimeout:           45 * time.Second,
+				MaxListPageSize:                   100,
+				TrustedProxyHops:                  1,
+			},
+		},
+		{
+			name: "invalid inventory refresh timeout",
+			env: map[string]string{
+				envPort:                           "50001",
+				envDBPath:                         testDBPath,
+				envLogLevel:                       testLogLevel,
+				envLogFormat:                      testLogFormat,
+				envLogOutput:                      testLogOutput,
+				envClusterSource:                  testCluster,
+				"PVMSS_INVENTORY_REFRESH_TIMEOUT": "not-a-duration",
+			},
+			wantErr: "PVMSS_INVENTORY_REFRESH_TIMEOUT must be a duration",
+		},
+		{
+			name: "non-positive inventory refresh timeout",
+			env: map[string]string{
+				envPort:                           "50001",
+				envDBPath:                         testDBPath,
+				envLogLevel:                       testLogLevel,
+				envLogFormat:                      testLogFormat,
+				envLogOutput:                      testLogOutput,
+				envClusterSource:                  testCluster,
+				"PVMSS_INVENTORY_REFRESH_TIMEOUT": "0s",
+			},
+			wantErr: "PVMSS_INVENTORY_REFRESH_TIMEOUT must be a positive duration",
+		},
+		{
+			name: "explicit trusted proxy hops",
+			env: map[string]string{
+				envPort:                    "50001",
+				envDBPath:                  testDBPath,
+				envLogLevel:                testLogLevel,
+				envLogFormat:               testLogFormat,
+				envLogOutput:               testLogOutput,
+				envClusterSource:           testCluster,
+				"PVMSS_TRUSTED_PROXY_HOPS": "2",
+			},
+			want: config.Configuration{
+				Host:                              testHost,
+				Port:                              50001,
+				DBPath:                            testDBPath,
+				LogLevel:                          testLogLevel,
+				LogFormat:                         testLogFormat,
+				LogOutput:                         testLogOutput,
+				ClusterSource:                     testCluster,
+				InventoryRefreshInterval:          30 * time.Second,
+				InventoryManualRefreshMinInterval: 5 * time.Second,
+				InventoryRefreshTimeout:           15 * time.Second,
+				MaxListPageSize:                   100,
+				TrustedProxyHops:                  2,
+			},
+		},
+		{
+			name: "explicit rate limit max",
+			env: map[string]string{
+				envPort:                "50001",
+				envDBPath:              testDBPath,
+				envLogLevel:            testLogLevel,
+				envLogFormat:           testLogFormat,
+				envLogOutput:           testLogOutput,
+				envClusterSource:       testCluster,
+				"PVMSS_RATE_LIMIT_MAX": "500",
+			},
+			want: config.Configuration{
+				Host:                              testHost,
+				Port:                              50001,
+				DBPath:                            testDBPath,
+				LogLevel:                          testLogLevel,
+				LogFormat:                         testLogFormat,
+				LogOutput:                         testLogOutput,
+				ClusterSource:                     testCluster,
+				InventoryRefreshInterval:          30 * time.Second,
+				InventoryManualRefreshMinInterval: 5 * time.Second,
+				InventoryRefreshTimeout:           15 * time.Second,
+				MaxListPageSize:                   100,
+				TrustedProxyHops:                  1,
+				RateLimitMax:                      500,
+			},
+		},
+		{
+			name: "negative rate limit max rejected",
+			env: map[string]string{
+				envPort:                "50001",
+				envDBPath:              testDBPath,
+				envLogLevel:            testLogLevel,
+				envLogFormat:           testLogFormat,
+				envLogOutput:           testLogOutput,
+				envClusterSource:       testCluster,
+				"PVMSS_RATE_LIMIT_MAX": "-1",
+			},
+			wantErr: "PVMSS_RATE_LIMIT_MAX must be >= 0",
+		},
+		{
+			name: "trusted proxy hops zero disables xff",
+			env: map[string]string{
+				envPort:                    "50001",
+				envDBPath:                  testDBPath,
+				envLogLevel:                testLogLevel,
+				envLogFormat:               testLogFormat,
+				envLogOutput:               testLogOutput,
+				envClusterSource:           testCluster,
+				"PVMSS_TRUSTED_PROXY_HOPS": "0",
+			},
+			want: config.Configuration{
+				Host:                              testHost,
+				Port:                              50001,
+				DBPath:                            testDBPath,
+				LogLevel:                          testLogLevel,
+				LogFormat:                         testLogFormat,
+				LogOutput:                         testLogOutput,
+				ClusterSource:                     testCluster,
+				InventoryRefreshInterval:          30 * time.Second,
+				InventoryManualRefreshMinInterval: 5 * time.Second,
+				InventoryRefreshTimeout:           15 * time.Second,
+				MaxListPageSize:                   100,
+				TrustedProxyHops:                  0,
+			},
+		},
+		{
+			name: "negative trusted proxy hops rejected",
+			env: map[string]string{
+				envPort:                    "50001",
+				envDBPath:                  testDBPath,
+				envLogLevel:                testLogLevel,
+				envLogFormat:               testLogFormat,
+				envLogOutput:               testLogOutput,
+				envClusterSource:           testCluster,
+				"PVMSS_TRUSTED_PROXY_HOPS": "-1",
+			},
+			wantErr: "PVMSS_TRUSTED_PROXY_HOPS must be >= 0",
+		},
+		{
+			name: "non-integer trusted proxy hops rejected",
+			env: map[string]string{
+				envPort:                    "50001",
+				envDBPath:                  testDBPath,
+				envLogLevel:                testLogLevel,
+				envLogFormat:               testLogFormat,
+				envLogOutput:               testLogOutput,
+				envClusterSource:           testCluster,
+				"PVMSS_TRUSTED_PROXY_HOPS": "abc",
+			},
+			wantErr: "PVMSS_TRUSTED_PROXY_HOPS must be an integer",
+		},
+	}
+
+	//nolint:paralleltest // uses t.Setenv via runLoadCase, incompatible with t.Parallel
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			runLoadCase(t, tt.env, tt.want, tt.wantErr)
+		})
+	}
+}
+
+// runLoadCase sets up the environment for a single TestLoad case, calls
+// config.Load, and asserts the expected error or configuration. Extracted
+// from TestLoad to keep its Cognitive Complexity under the SonarQube go:S3776
+// threshold.
+func runLoadCase(t *testing.T, env map[string]string, want config.Configuration, wantErr string) {
+	t.Helper()
+
+	t.Setenv(envPort, env[envPort])
+	t.Setenv(envDBPath, env[envDBPath])
+	t.Setenv(envLogLevel, env[envLogLevel])
+	t.Setenv(envLogFormat, env[envLogFormat])
+	t.Setenv(envLogOutput, env[envLogOutput])
+	t.Setenv("PVMSS_HOST", env["PVMSS_HOST"])
+	t.Setenv("PVMSS_WEB_DIR", env["PVMSS_WEB_DIR"])
+	t.Setenv(envClusterSource, env[envClusterSource])
+	t.Setenv("PVMSS_INVENTORY_REFRESH_INTERVAL", env["PVMSS_INVENTORY_REFRESH_INTERVAL"])
+	t.Setenv("PVMSS_INVENTORY_MANUAL_REFRESH_MIN_INTERVAL", env["PVMSS_INVENTORY_MANUAL_REFRESH_MIN_INTERVAL"])
+	t.Setenv("PVMSS_INVENTORY_REFRESH_TIMEOUT", env["PVMSS_INVENTORY_REFRESH_TIMEOUT"])
+	t.Setenv("PVMSS_TRUSTED_PROXY_HOPS", env["PVMSS_TRUSTED_PROXY_HOPS"])
+	t.Setenv("PVMSS_RATE_LIMIT_MAX", env["PVMSS_RATE_LIMIT_MAX"])
+	t.Setenv("PROXMOX_URL", env["PROXMOX_URL"])
+	t.Setenv("PROXMOX_API_TOKEN_NAME", env["PROXMOX_API_TOKEN_NAME"])
+	t.Setenv("PROXMOX_API_TOKEN_VALUE", env["PROXMOX_API_TOKEN_VALUE"])
+	t.Setenv("PVMSS_SSH_KEY_FILE", env["PVMSS_SSH_KEY_FILE"])
+	t.Setenv("PVMSS_SSH_USER", env["PVMSS_SSH_USER"])
+	t.Setenv("PVMSS_SSH_PORT", env["PVMSS_SSH_PORT"])
+	t.Setenv("SESSION_SECRET", strings.Repeat("s", 32))
+
+	want.SessionSecret = strings.Repeat("s", 32)
+	want.CookieSecure = true
+
+	got, err := config.Load()
+	if wantErr != "" {
+		if err == nil {
+			t.Fatalf("expected error containing %q, got nil", wantErr)
+		}
+
+		if !strings.Contains(err.Error(), wantErr) {
+			t.Fatalf("expected error containing %q, got %q", wantErr, err.Error())
+		}
+
+		return
+	}
+
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	if !reflect.DeepEqual(got, want) {
+		t.Fatalf("config mismatch: got %+v, want %+v", got, want)
+	}
+}
+
+// TestLoad_DeprecatedSSHEnv checks that the retired PVMSS_SSH_KEY_FILE /
+// PVMSS_SSH_USER / PVMSS_SSH_PORT variables are recorded (so startup can warn) without
+// affecting the rest of the configuration.
+func TestLoad_DeprecatedSSHEnv(t *testing.T) {
+	tests := []struct {
+		name string
+		key  string
+		user string
+		port string
+		want []string
+	}{
+		{name: "none set", want: nil},
+		{name: "user only", user: "pvmss", want: []string{"PVMSS_SSH_USER"}},
+		{name: "all set", key: "/k", user: "pvmss", port: "2222", want: []string{"PVMSS_SSH_KEY_FILE", "PVMSS_SSH_USER", "PVMSS_SSH_PORT"}},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			t.Setenv("PVMSS_PORT", tt.env["PVMSS_PORT"])
-			t.Setenv("PVMSS_DB_PATH", tt.env["PVMSS_DB_PATH"])
-			t.Setenv("LOG_LEVEL", tt.env["LOG_LEVEL"])
-			t.Setenv("LOG_FORMAT", tt.env["LOG_FORMAT"])
-			t.Setenv("LOG_OUTPUT", tt.env["LOG_OUTPUT"])
-			t.Setenv("PVMSS_HOST", tt.env["PVMSS_HOST"])
-			t.Setenv("PVMSS_WEB_DIR", tt.env["PVMSS_WEB_DIR"])
+			t.Setenv(envPort, "50001")
+			t.Setenv(envDBPath, testDBPath)
+			t.Setenv(envLogLevel, testLogLevel)
+			t.Setenv(envLogFormat, testLogFormat)
+			t.Setenv(envLogOutput, testLogOutput)
+			t.Setenv(envClusterSource, testCluster)
+			t.Setenv("SESSION_SECRET", strings.Repeat("s", 32))
+			t.Setenv("PVMSS_SSH_KEY_FILE", tt.key)
+			t.Setenv("PVMSS_SSH_USER", tt.user)
+			t.Setenv("PVMSS_SSH_PORT", tt.port)
 
-			got, err := config.Load()
-			if tt.wantErr != "" {
-				if err == nil {
-					t.Fatalf("expected error containing %q, got nil", tt.wantErr)
-				}
-				if !strings.Contains(err.Error(), tt.wantErr) {
-					t.Fatalf("expected error containing %q, got %q", tt.wantErr, err.Error())
-				}
-				return
-			}
+			cfg, err := config.Load()
 			if err != nil {
-				t.Fatalf("unexpected error: %v", err)
+				t.Fatalf("config.Load: %v", err)
 			}
-			if got != tt.want {
-				t.Fatalf("config mismatch: got %+v, want %+v", got, tt.want)
+
+			if !reflect.DeepEqual(cfg.DeprecatedSSHEnv, tt.want) {
+				t.Fatalf("DeprecatedSSHEnv = %v, want %v", cfg.DeprecatedSSHEnv, tt.want)
 			}
 		})
 	}

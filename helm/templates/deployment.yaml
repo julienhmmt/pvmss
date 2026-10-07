@@ -39,6 +39,11 @@ spec:
             - name: backend
               containerPort: {{ .Values.service.port }}
               protocol: TCP
+            {{- if .Values.metrics.enabled }}
+            - name: metrics
+              containerPort: {{ .Values.metrics.port }}
+              protocol: TCP
+            {{- end }}
           env:
             # Secrets
             - name: ADMIN_PASSWORD_HASH
@@ -51,17 +56,16 @@ spec:
                 secretKeyRef:
                   name: {{ include "pvmss.fullname" . }}-secrets
                   key: {{ .Values.deployment.secretEnv.PROXMOX_API_TOKEN_VALUE }}
-            - name: JWT_SECRET
-              valueFrom:
-                secretKeyRef:
-                  name: {{ include "pvmss.fullname" . }}-secrets
-                  key: {{ .Values.deployment.secretEnv.JWT_SECRET }}
             - name: SESSION_SECRET
               valueFrom:
                 secretKeyRef:
                   name: {{ include "pvmss.fullname" . }}-secrets
                   key: {{ .Values.deployment.secretEnv.SESSION_SECRET }}
-            # Variables simples
+            {{- if .Values.metrics.enabled }}
+            - name: PVMSS_METRICS_PORT
+              value: "{{ .Values.metrics.port }}"
+            {{- end }}
+            # Plain variables
             {{- range $k, $v := .Values.deployment.env }}
             - name: {{ $k }}
               value: "{{ $v }}"

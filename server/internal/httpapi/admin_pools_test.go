@@ -1,0 +1,388 @@
+//nolint:noctx,paralleltest,wsl_v5 // HTTP tests use shared fake and session fixtures
+package httpapi_test
+
+import (
+	"context"
+	"encoding/json"
+	"log/slog"
+	"net/http"
+	"net/http/httptest"
+	"pvmss/server/internal/cluster"
+	"pvmss/server/internal/httpapi"
+	"pvmss/server/internal/inventory"
+	"slices"
+	"strings"
+	"testing"
+	"time"
+)
+
+type adminPoolSummary struct {
+	Name    string `json:"name"`
+	Comment string `json:"comment"`
+	Total   int    `json:"total"`
+	Running int    `json:"running"`
+	Stopped int    `json:"stopped"`
+	Managed bool   `json:"managed"`
+}
+
+type adminCreatePoolResponse struct {
+	Name     string `json:"name"`
+	Username string `json:"username"`
+	Password string `json:"password"`
+	Comment  string `json:"comment"`
+	Managed  bool   `json:"managed"`
+}
+
+func TestAdminPools_CreateAndListAsAdmin(t *testing.T) {
+	handler, authHandler := newAdminPoolsHandler(t)
+	cookie := adminCookie(t, authHandler)
+
+	create := adminPoolsRequest(t, handler.ServeCreate, http.MethodPost, "/api/v1/admin/pools", cookie, `{"name":"newteam","comment":""}`)
+	if create.Code != http.StatusCreated {
+		t.Fatalf("create status = %d: %s", create.Code, create.Body.String())
+	}
+
+	var created adminCreatePoolResponse
+	if err := json.Unmarshal(create.Body.Bytes(), &created); err != nil {
+		t.Fatalf("decode create: %v", err)
+	}
+	if created.Name != "pvmss-newteam" || created.Username != "pvmss-newteam" || created.Password == "" || len(created.Password) < 8 || !created.Managed {
+		t.Fatalf("created = %+v", created)
+	}
+
+	list := adminPoolsRequest(t, handler.ServeList, http.MethodGet, "/api/v1/admin/pools?cluster=default&search=pvmss-new", cookie, "")
+	if list.Code != http.StatusOK {
+		t.Fatalf("list status = %d: %s", list.Code, list.Body.String())
+	}
+	var rows []adminPoolSummary
+	if err := json.Unmarshal(list.Body.Bytes(), &rows); err != nil {
+		t.Fatalf("decode list: %v", err)
+	}
+	if len(rows) != 1 || rows[0].Name != "pvmss-newteam" {
+		t.Fatalf("rows = %+v", rows)
+	}
+}
+
+func TestAdminPools_ListCountsForEveryPool(t *testing.T) {
+	handler, authHandler := newAdminPoolsHandler(t)
+	recorder := adminPoolsRequest(t, handler.ServeList, http.MethodGet, "/api/v1/admin/pools?cluster=default", adminCookie(t, authHandler), "")
+	if recorder.Code != http.StatusOK {
+		t.Fatalf("list status = %d: %s", recorder.Code, recorder.Body.String())
+	}
+	var rows []adminPoolSummary
+	if err := json.Unmarshal(recorder.Body.Bytes(), &rows); err != nil {
+		t.Fatalf("decode list: %v", err)
+	}
+	for _, row := range rows {
+		if row.Name == cluster.FakePoolAlice {
+			if row.Total != 7 || row.Running != 3 || row.Stopped != 4 {
+				t.Fatalf("alice summary = %+v", row)
+			}
+			return
+		}
+	}
+	t.Fatalf("%q was not listed: %+v", cluster.FakePoolAlice, rows)
+}
+
+func TestAdminPools_DeleteZeroVmPool(t *testing.T) {
+	handler, authHandler := newAdminPoolsHandler(t)
+	cookie := adminCookie(t, authHandler)
+	create := adminPoolsRequest(t, handler.ServeCreate, http.MethodPost, "/api/v1/admin/pools", cookie, `{"name":"newteam"}`)
+	if create.Code != http.StatusCreated {
+		t.Fatalf("create status = %d: %s", create.Code, create.Body.String())
+	}
+	deleted := adminPoolsRequest(t, handler.ServeDelete, http.MethodDelete, "/api/v1/admin/pools/pvmss-newteam", cookie, "")
+	if deleted.Code != http.StatusOK {
+		t.Fatalf("delete status = %d: %s", deleted.Code, deleted.Body.String())
+	}
+	var result map[string]any
+	if err := json.Unmarshal(deleted.Body.Bytes(), &result); err != nil {
+		t.Fatalf("decode delete: %v", err)
+	}
+	status, hasStatus := result["status"].(string)
+	userDeleted, hasUserDeleted := result["userDeleted"].(bool)
+	if !hasStatus || !hasUserDeleted || status != testStatusDeleted || !userDeleted {
+		t.Fatalf("result = %+v (want exact lowercase keys status/userDeleted)", result)
+	}
+	if _, wrongCase := result["UserDeleted"]; wrongCase {
+		t.Fatalf("result carries uppercase UserDeleted key: %+v", result)
+	}
+	unknown := adminPoolsRequest(t, handler.ServeDelete, http.MethodDelete, "/api/v1/admin/pools/pvmss-newteam", cookie, "")
+	if unknown.Code != http.StatusNotFound {
+		t.Fatalf("unknown status = %d, want 404", unknown.Code)
+	}
+}
+
+func TestAdminPools_RejectsNonAdminAndInvalidRequests(t *testing.T) {
+	handler, authHandler := newAdminPoolsHandler(t)
+	alice := loginCookie(t, authHandler, `{"username":"alice","password":"pvmss-alice"}`)
+
+	for _, tc := range []struct {
+		name   string
+		method string
+		path   string
+		body   string
+		want   int
+	}{
+		{name: testOpList, method: http.MethodGet, path: adminPoolsPath, want: http.StatusForbidden},
+		{name: testOpCreate, method: http.MethodPost, path: adminPoolsPath, body: `{"name":"carol"}`, want: http.StatusForbidden},
+		{name: testActionDelete, method: http.MethodDelete, path: adminPoolsPath + "/carol", want: http.StatusForbidden},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			rec := adminPoolsRequest(t, handlerForMethod(handler, tc.method), tc.method, tc.path, alice, tc.body)
+			if rec.Code != tc.want {
+				t.Fatalf("status = %d, want %d: %s", rec.Code, tc.want, rec.Body.String())
+			}
+		})
+	}
+
+	admin := adminCookie(t, authHandler)
+	invalid := adminPoolsRequest(t, handler.ServeCreate, http.MethodPost, "/api/v1/admin/pools", admin, `{"name":"BAD_NAME"}`)
+	if invalid.Code != http.StatusBadRequest {
+		t.Fatalf("invalid status = %d, want 400", invalid.Code)
+	}
+	first := adminPoolsRequest(t, handler.ServeCreate, http.MethodPost, "/api/v1/admin/pools", admin, `{"name":"dup-pool"}`)
+	if first.Code != http.StatusCreated {
+		t.Fatalf("first create status = %d: %s", first.Code, first.Body.String())
+	}
+	duplicate := adminPoolsRequest(t, handler.ServeCreate, http.MethodPost, "/api/v1/admin/pools", admin, `{"name":"dup-pool"}`)
+	if duplicate.Code != http.StatusConflict {
+		t.Fatalf("duplicate status = %d, want 409: %s", duplicate.Code, duplicate.Body.String())
+	}
+}
+
+// TestAdminPools_DeleteUnmanagedProxmoxPoolIsRejected verifies the API refuses
+// to cascade-delete a Proxmox pool that PVMSS did not provision.
+//
+//nolint:paralleltest // serial: shared fake fixtures
+func TestAdminPools_DeleteUnmanagedProxmoxPoolIsRejected(t *testing.T) {
+	handler, authHandler := newAdminPoolsHandler(t)
+	cookie := adminCookie(t, authHandler)
+
+	rec := adminPoolsRequest(t, handler.ServeDelete, http.MethodDelete, "/api/v1/admin/pools/"+cluster.FakePoolAlice, cookie, "")
+	if rec.Code != http.StatusConflict {
+		t.Fatalf("status = %d, want 409: %s", rec.Code, rec.Body.String())
+	}
+	var body map[string]any
+	if err := json.Unmarshal(rec.Body.Bytes(), &body); err != nil {
+		t.Fatalf("decode: %v", err)
+	}
+	if code, _ := body["code"].(string); code != "not_managed" {
+		t.Fatalf("code = %q, want not_managed", code)
+	}
+	remaining, err := cluster.Fake{}.ListPools(context.Background())
+	if err != nil {
+		t.Fatalf("ListPools: %v", err)
+	}
+	for _, pool := range remaining {
+		if pool.Name == cluster.FakePoolAlice {
+			return
+		}
+	}
+	t.Fatalf("unmanaged pool was deleted: %+v", remaining)
+}
+
+// TestAdminPools_ListExposesManagedFlag verifies the list payload carries the
+// managed flag and that a freshly created pool is reported as managed.
+//
+//nolint:paralleltest // serial: shared fake fixtures
+func TestAdminPools_ListExposesManagedFlag(t *testing.T) {
+	handler, authHandler := newAdminPoolsHandler(t)
+	cookie := adminCookie(t, authHandler)
+
+	if rec := adminPoolsRequest(t, handler.ServeCreate, http.MethodPost, "/api/v1/admin/pools", cookie, `{"name":"team-z"}`); rec.Code != http.StatusCreated {
+		t.Fatalf("create status = %d: %s", rec.Code, rec.Body.String())
+	}
+
+	rows := listAdminPools(t, handler, cookie, "/api/v1/admin/pools?cluster=default&search=pvmss-team")
+	if len(rows) != 1 || rows[0].Name != "pvmss-team-z" || !rows[0].Managed {
+		t.Fatalf("rows = %+v, want one managed pvmss-team-z", rows)
+	}
+
+	allRows := listAdminPools(t, handler, cookie, "/api/v1/admin/pools?cluster=default")
+	for _, row := range allRows {
+		if row.Name == cluster.FakePoolAlice && row.Managed {
+			t.Fatalf("alice should not be managed: %+v", row)
+		}
+		if row.Name == "pvmss-team-z" && !row.Managed {
+			t.Fatalf("pvmss-team-z should be managed: %+v", row)
+		}
+	}
+}
+
+type adminPoolDetail struct {
+	Name      string `json:"name"`
+	Username  string `json:"username"`
+	Comment   string `json:"comment"`
+	Cluster   string `json:"cluster"`
+	Managed   bool   `json:"managed"`
+	CreatedAt string `json:"createdAt"`
+	Quota     struct {
+		Used    int `json:"used"`
+		Allowed int `json:"allowed"`
+	} `json:"quota"`
+	VMs []struct {
+		VMID   int    `json:"vmid"`
+		Name   string `json:"name"`
+		Status string `json:"status"`
+	} `json:"vms"`
+	Activity []adminPoolActivityEntry `json:"activity"`
+}
+
+type adminPoolActivityEntry struct {
+	Actor  string `json:"actor"`
+	Action string `json:"action"`
+}
+
+// TestAdminPools_DetailManagedPool verifies the detail endpoint aggregates
+// identity, managed marker, quota, members, and the admin-action audit trail
+// for a PVMSS-provisioned pool.
+//
+//nolint:paralleltest // serial: shared fake fixtures
+func TestAdminPools_DetailManagedPool(t *testing.T) {
+	handler, authHandler := newAdminPoolsHandler(t)
+	cookie := adminCookie(t, authHandler)
+
+	create := adminPoolsRequest(t, handler.ServeCreate, http.MethodPost, "/api/v1/admin/pools", cookie, `{"name":"team-d","comment":"detail test"}`)
+	if create.Code != http.StatusCreated {
+		t.Fatalf("create status = %d: %s", create.Code, create.Body.String())
+	}
+
+	rec := adminPoolsRequest(t, handler.ServeDetail, http.MethodGet, "/api/v1/admin/pools/pvmss-team-d?cluster=default", cookie, "")
+	if rec.Code != http.StatusOK {
+		t.Fatalf("detail status = %d: %s", rec.Code, rec.Body.String())
+	}
+	var detail adminPoolDetail
+	if err := json.Unmarshal(rec.Body.Bytes(), &detail); err != nil {
+		t.Fatalf("decode detail: %v", err)
+	}
+	if detail.Name != "pvmss-team-d" || detail.Username != "pvmss-team-d@pve" || detail.Comment != "detail test" {
+		t.Fatalf("identity = %+v", detail)
+	}
+	if !detail.Managed || detail.CreatedAt == "" {
+		t.Fatalf("managed marker = %+v", detail)
+	}
+	if detail.Cluster != auditTestCluster {
+		t.Fatalf("cluster = %q", detail.Cluster)
+	}
+	if len(detail.VMs) != 0 || detail.Quota.Used != 0 {
+		t.Fatalf("new pool should be empty: %+v", detail)
+	}
+	created := slices.ContainsFunc(detail.Activity, func(entry adminPoolActivityEntry) bool {
+		return entry.Action == "admin.pools.create"
+	})
+	if !created {
+		t.Fatalf("activity should include the pool creation: %+v", detail.Activity)
+	}
+}
+
+// TestAdminPools_DetailUnmanagedPool verifies a Proxmox pool PVMSS did not
+// provision is still served, flagged unmanaged, with its members listed.
+//
+//nolint:paralleltest // serial: shared fake fixtures
+func TestAdminPools_DetailUnmanagedPool(t *testing.T) {
+	handler, authHandler := newAdminPoolsHandler(t)
+	cookie := adminCookie(t, authHandler)
+
+	rec := adminPoolsRequest(t, handler.ServeDetail, http.MethodGet, "/api/v1/admin/pools/"+cluster.FakePoolAlice+"?cluster=default", cookie, "")
+	if rec.Code != http.StatusOK {
+		t.Fatalf("detail status = %d: %s", rec.Code, rec.Body.String())
+	}
+	var detail adminPoolDetail
+	if err := json.Unmarshal(rec.Body.Bytes(), &detail); err != nil {
+		t.Fatalf("decode detail: %v", err)
+	}
+	if detail.Managed {
+		t.Fatalf("alice pool should be unmanaged: %+v", detail)
+	}
+	if len(detail.VMs) != 7 {
+		t.Fatalf("members = %d, want 7", len(detail.VMs))
+	}
+	if detail.Quota.Used != 7 {
+		t.Fatalf("quota used = %d, want 7", detail.Quota.Used)
+	}
+}
+
+// TestAdminPools_DetailNotFound verifies unknown pools return 404.
+//
+//nolint:paralleltest // serial: shared fake fixtures
+func TestAdminPools_DetailNotFound(t *testing.T) {
+	handler, authHandler := newAdminPoolsHandler(t)
+	cookie := adminCookie(t, authHandler)
+
+	rec := adminPoolsRequest(t, handler.ServeDetail, http.MethodGet, "/api/v1/admin/pools/pool-nope?cluster=default", cookie, "")
+	if rec.Code != http.StatusNotFound {
+		t.Fatalf("status = %d, want 404: %s", rec.Code, rec.Body.String())
+	}
+}
+
+// listAdminPools issues a GET to the admin pools list endpoint and decodes the
+// response. Extracted from TestAdminPools_ListExposesManagedFlag to keep its
+// cyclomatic complexity under the gocyclo threshold.
+func listAdminPools(t *testing.T, handler *httpapi.AdminPools, cookie *http.Cookie, path string) []adminPoolSummary {
+	t.Helper()
+
+	rec := adminPoolsRequest(t, handler.ServeList, http.MethodGet, path, cookie, "")
+	if rec.Code != http.StatusOK {
+		t.Fatalf("list status = %d: %s", rec.Code, rec.Body.String())
+	}
+
+	var rows []adminPoolSummary
+	if err := json.Unmarshal(rec.Body.Bytes(), &rows); err != nil {
+		t.Fatalf("decode list: %v", err)
+	}
+
+	return rows
+}
+
+func newAdminPoolsHandler(t *testing.T) (*httpapi.AdminPools, *httpapi.Auth) {
+	t.Helper()
+	t.Cleanup(cluster.ResetFake)
+	authHandler := newAuthHandler(t)
+	client := cluster.Fake{}
+	snapshot, err := client.Snapshot(context.Background())
+	if err != nil {
+		t.Fatalf("Snapshot: %v", err)
+	}
+	index := inventory.BuildIndex(snapshot)
+	projection := inventory.NewProjectionFromIndex(&index)
+	worker := inventory.NewWorker(client, projection, time.Hour, slog.Default())
+	st := newAdminStore(t)
+	provider := vmCreateClientProvider{clients: map[string]cluster.Client{auditTestCluster: client}}
+	registry := inventory.NewRegistryFromIndexes(map[string]*inventory.Index{"default": &index})
+	handler := httpapi.NewAdminPoolsWithRegistry(httpapi.AdminPoolsRegistryDeps{Auth: authHandler, Clients: provider, Source: registry, Projection: projection, Writer: client, Audit: st, Refresher: worker, Store: st, Log: slog.Default()})
+	return handler, authHandler
+}
+
+func adminPoolsRequest(t *testing.T, handler http.HandlerFunc, method, path string, cookie *http.Cookie, body string) *httptest.ResponseRecorder {
+	t.Helper()
+	request := httptest.NewRequest(method, path, strings.NewReader(body))
+	if body != "" {
+		request.Header.Set("Content-Type", "application/json")
+	}
+	parts := strings.Split(strings.Trim(path, "/"), "/")
+	if len(parts) >= 2 && parts[len(parts)-2] == "pools" {
+		last := parts[len(parts)-1]
+		if idx := strings.IndexByte(last, '?'); idx >= 0 {
+			last = last[:idx]
+		}
+		request.SetPathValue("name", last)
+	}
+	if cookie != nil {
+		request.AddCookie(cookie)
+	}
+	recorder := httptest.NewRecorder()
+	handler(recorder, request)
+	return recorder
+}
+
+func handlerForMethod(handler *httpapi.AdminPools, method string) http.HandlerFunc {
+	switch method {
+	case http.MethodGet:
+		return handler.ServeList
+	case http.MethodPost:
+		return handler.ServeCreate
+	default:
+		return handler.ServeDelete
+	}
+}

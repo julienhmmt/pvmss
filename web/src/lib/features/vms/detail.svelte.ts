@@ -1,0 +1,614 @@
+import { getContext, setContext } from 'svelte';
+import { get, post, del, patch, put, ApiRequestError } from '$lib/shared/api/client';
+import { STALE_REFRESH_MS } from '$lib/shared/visibility-refresh';
+import { m } from '$lib/paraglide/messages.js';
+import type { VmStatus } from './list.svelte';
+import { convergeSingle } from './converge';
+import { markVmDeleted } from './recently-deleted';
+
+export type VmAction = 'start' | 'stop' | 'shutdown' | 'reboot' | 'reset' | 'pause' | 'resume';
+
+export interface VmDetailEntity {
+	cluster: string;
+	vmid: number;
+	name: string;
+	node: string;
+	pool: string;
+	status: VmStatus;
+	tags: string[];
+	/** Proxmox kernel family ("l26", "win11"), not a distribution. */
+	ostype: string;
+	cpuCores: number;
+	memoryTotal: number;
+	diskTotal: number;
+	uptimeSeconds?: number;
+	description?: string;
+	descriptionHtml?: string;
+	/** Proxmox lock name (e.g. "snapshot-delete", "backup") from the live
+	 *  status - non-empty means the VM rejects most operations. */
+	lock?: string;
+	sockets?: number;
+	cores?: number;
+	disks?: VmDisk[];
+	cdrom?: VmCdrom;
+	/** Persistent boot=order=... key ("ide2", "scsi0", ...). An ISO-first order
+	 *  means the machine boots the installer; a disk-first order means the
+	 *  install is done even while an ISO remains attached. */
+	bootOrder?: string[];
+	networkInterfaces?: VmNetworkInterface[];
+	hasSerial?: boolean;
+	/** Why live per-NIC IPs are present or absent on a running VM: the
+	 *  guest-agent channel is "disabled" in the VM config, "unreachable"
+	 *  (enabled but the agent did not answer), or "ok" (answered - IPs may
+	 *  still be empty while DHCP is pending). Absent when the VM is not
+	 *  running. */
+	guestAgent?: 'ok' | 'disabled' | 'unreachable';
+	/** Cloud-init baseline delivery state for image-mode VMs (issue 03):
+	 *  "applied" (generated baseline pushed+attached), "override" (a
+	 *  cluster-wide pvmss-baseline.yml replaced the generated baseline),
+	 *  "not_delivered" (baseline could not be delivered - see baselineError).
+	 *  Absent for non-image VMs. */
+	baselineState?: 'applied' | 'override' | 'not_delivered';
+	/** Reason the baseline could not be delivered, when baselineState is
+	 *  "not_delivered". */
+	baselineError?: string;
+	/** Stable reason: cloudinit_write_unavailable | no_document | delivery_failed. */
+	baselineErrorCode?: string;
+}
+
+export interface VmDisk {
+	key: string;
+	bus: 'virtio' | 'scsi' | 'sata' | 'ide';
+	busIndex: number;
+	storage: string;
+	sizeGB: number;
+	isBoot: boolean;
+}
+
+export interface VmCdrom {
+	state: 'absent' | 'empty' | 'mounted' | 'occupied';
+	isoVolId?: string;
+}
+
+export interface VmNetworkInterface {
+	index: number;
+	bridge: string;
+	model: string;
+	mac: string;
+	vlan: number | null;
+	rateMbps: number | null;
+	ipAddresses: string[];
+}
+
+export interface HardwareOptions {
+	storages: { node: string; storage: string; type: string }[];
+	bridges: { node: string; bridge: string }[];
+	isos: { volId: string; node: string; storage: string; name: string; sizeBytes: number }[];
+	/** Admin-curated tags users may toggle (the protected pvmss tag is excluded). */
+	tags: { name: string; color: string }[];
+	limits: {
+		maxSockets: number;
+		maxCores: number;
+		maxMemoryMB: number;
+		maxDiskPerVMGB: number;
+		maxNetworkCards: number;
+		remainingBusSlots: Record<string, number>;
+	};
+}
+
+interface ActionResponse {
+	status: string;
+}
+
+interface DeleteResponse {
+	status: string;
+}
+
+/** A single row from GET /api/v1/vms/:cluster/:vmid/audit. */
+export interface VmAuditEntry {
+	id: number;
+	actor: string;
+	cluster: string;
+	vmid: number;
+	action: string;
+	timestamp: string;
+}
+
+interface AuditPage {
+	items: VmAuditEntry[];
+	total: number;
+	page: number;
+	pageSize: number;
+}
+
+/**
+ * State for the single-VM detail view (V15). One store instance per consuming
+ * screen (constitution VII: no module singletons). The entity is `$state.raw`
+ * because it is replaced wholesale on load/reload, not mutated field-by-field
+ * - except for the optimistic status flip during a power action (V12), which
+ * is a deliberate local mutation reconciled by reload().
+ */
+export class VmDetailStore {
+	readonly cluster: string;
+	readonly vmid: number;
+
+	entity = $state.raw<VmDetailEntity | null>(null);
+	loading = $state.raw(false);
+	error = $state.raw<string | null>(null);
+	/** `Date.now()` of the last completed `load()` - `refreshIfStale()` uses
+	 *  it to skip refreshes younger than one server inventory tick. */
+	lastLoadedAt = 0;
+
+	/** True while a power action is in flight; the UI shows an optimistic status. */
+	actionInFlight = $state.raw(false);
+	/** The kind of the in-flight power action, or null. Feeds `displayStatus`
+	 *  (issue 09) so the detail header can show `starting` / `stopping`. */
+	inFlightActionKind = $state.raw<VmAction | null>(null);
+	actionError = $state.raw<string | null>(null);
+
+	/** True while a delete is in flight; the UI disables the button. */
+	deleteInFlight = $state.raw(false);
+	deleteError = $state.raw<string | null>(null);
+	/** Stable error code from the last delete attempt (e.g. "vm_running") so the
+	 * dialog can branch on it without string-matching the message. */
+	deleteErrorCode = $state.raw<string | null>(null);
+
+	/** True while a patch (rename/description) is in flight. */
+	patchInFlight = $state.raw(false);
+	patchError = $state.raw<string | null>(null);
+
+	hardwareOptions = $state.raw<HardwareOptions | null>(null);
+	hardwareLoading = $state.raw(false);
+	hardwareError = $state.raw<string | null>(null);
+	diskInFlight = $state.raw(false);
+	diskError = $state.raw<string | null>(null);
+	cdromInFlight = $state.raw(false);
+	/** True while the boot-from-CDROM flow is in flight. */
+	bootCdromInFlight = $state.raw(false);
+	bootCdromError = $state.raw<string | null>(null);
+	networkInFlight = $state.raw(false);
+	hardwareInFlight = $state.raw(false);
+	writeError = $state.raw<string | null>(null);
+
+	/** True while the serial-console retrofit is in flight. */
+	serialEnabling = $state.raw(false);
+	serialEnableError = $state.raw<string | null>(null);
+
+	/** True while the SeaBIOS firmware retrofit is in flight (admin-only). */
+	retrofitInFlight = $state.raw(false);
+	retrofitError = $state.raw<string | null>(null);
+
+	/** Per-VM audit log (activity tab). Loaded lazily when the tab opens. */
+	auditItems = $state.raw<VmAuditEntry[] | null>(null);
+	auditLoading = $state.raw(false);
+	auditError = $state.raw<string | null>(null);
+	auditPage = $state.raw(1);
+	auditTotal = $state.raw(0);
+	auditPageSize = $state.raw(0);
+
+	/** Retrofits a serial port (serial0) onto an existing VM so the Text
+	 * console works, then reloads so the entity's hasSerial flips. */
+	async enableSerialConsole(): Promise<boolean> {
+		if (this.serialEnabling || this.entity === null) return false;
+		this.serialEnabling = true;
+		this.serialEnableError = null;
+		try {
+			await post<VmDetailEntity>(`${this.#basePath}/serial`, {});
+			await this.load();
+			return true;
+		} catch (err) {
+			this.serialEnableError = errorMessage(err, () => m['vms.console.serial.enableError']());
+			return false;
+		} finally {
+			this.serialEnabling = false;
+		}
+	}
+
+	/** Switches an existing UEFI VM to SeaBIOS (admin-only, issue 08). Stops
+	 * the VM if running (confirm=true), removes the UEFI firmware keys, and
+	 * starts it again. A refused VM (TPM/Secure Boot) or a failed restart
+	 * surfaces a clear error; a successful call reloads the entity. */
+	async retrofitSeaBIOS(confirm: boolean): Promise<boolean> {
+		if (this.retrofitInFlight || this.entity === null) return false;
+		this.retrofitInFlight = true;
+		this.retrofitError = null;
+		try {
+			await post<VmDetailEntity>(`${this.#basePath}/retrofit-seabios`, { confirm });
+			await this.load();
+			return true;
+		} catch (err) {
+			this.retrofitError = errorMessage(err, () => m['vms.detail.errorRetrofit']());
+			return false;
+		} finally {
+			this.retrofitInFlight = false;
+		}
+	}
+
+	/** Set after a successful delete so the page can navigate away. */
+	deleted = $state.raw(false);
+
+	/** In-flight flag for the console-password action (issue 05). */
+	consolePasswordInFlight = $state(false);
+
+	/** Error from the last console-password attempt (issue 05). */
+	consolePasswordError = $state<string | null>(null);
+
+	/** The generated password, shown once after a successful call (issue 05).
+	 *  Not persisted - cleared on the next action or on navigation. */
+	generatedPassword = $state<string | null>(null);
+
+	/** Generates a random console password server-side, applies it via the
+	 *  QEMU guest agent to the VM's ciuser, and returns it once for display
+	 *  (issue 05). The password is not persisted anywhere in the portal. */
+	async setConsolePassword(): Promise<boolean> {
+		if (this.consolePasswordInFlight) return false;
+		this.consolePasswordInFlight = true;
+		this.consolePasswordError = null;
+		this.generatedPassword = null;
+		try {
+			const result = await post<{ password: string }>(`${this.#basePath}/console-password`, {});
+			this.generatedPassword = result.password;
+			return true;
+		} catch (err) {
+			this.consolePasswordError = errorMessage(err, () => m['vms.detail.errorConsolePassword']());
+			return false;
+		} finally {
+			this.consolePasswordInFlight = false;
+		}
+	}
+
+	#basePath: string;
+
+	constructor(cluster: string, vmid: number) {
+		this.cluster = cluster;
+		this.vmid = vmid;
+		this.#basePath = `/api/v1/vms/${encodeURIComponent(cluster)}/${vmid}`;
+	}
+
+	async load(): Promise<void> {
+		this.loading = true;
+		this.error = null;
+		try {
+			this.entity = await get<VmDetailEntity>(this.#basePath);
+			if (this.hardwareOptions === null) await this.loadHardwareOptions();
+		} catch (err) {
+			this.error = errorMessage(err, () => m['vms.detail.errorLoading']());
+		} finally {
+			this.loading = false;
+			this.lastLoadedAt = Date.now();
+		}
+	}
+
+	/**
+	 * Reloads the entity when the last load is older than `minIntervalMs`
+	 * (default: one server inventory tick). Called when the tab regains
+	 * visibility via `onVisibleRefresh`. Skips while a load, a power action,
+	 * or a CD-ROM boot is in flight - those paths converge through live-status
+	 * polling, which a mid-flight reload would overwrite - and while a delete
+	 * is in flight, since the page is about to navigate away anyway.
+	 */
+	async refreshIfStale(minIntervalMs: number = STALE_REFRESH_MS): Promise<void> {
+		if (this.loading || this.actionInFlight || this.bootCdromInFlight || this.deleteInFlight) return;
+		if (Date.now() - this.lastLoadedAt <= minIntervalMs) return;
+		await this.load();
+	}
+
+	/**
+	 * Reads the live status (bypassing the up-to-30s-old projection) and patches
+	 * the entity. For pages that must show the true power state right away, e.g.
+	 * the console opened right after a start. Skips while a power action is in
+	 * flight (its convergence loop owns the status); read errors are ignored.
+	 */
+	async refreshLiveStatus(): Promise<void> {
+		if (this.entity === null || this.actionInFlight) return;
+		try {
+			const live = await get<{ status: VmStatus; lock?: string }>(`${this.#basePath}/status`);
+			if (this.entity === null || this.actionInFlight) return;
+			this.entity = live.lock === undefined
+				? { ...this.entity, status: live.status }
+				: { ...this.entity, status: live.status, lock: live.lock };
+		} catch {
+			// Keep the last known status; the next tick retries.
+		}
+	}
+
+	async loadHardwareOptions(): Promise<void> {
+		this.hardwareLoading = true;
+		this.hardwareError = null;
+		try {
+			this.hardwareOptions = await get<HardwareOptions>(`${this.#basePath}/hardware-options`);
+		} catch (err) {
+			this.hardwareError = errorMessage(err, () => m['vms.detail.errorHardwareOptions']());
+		} finally {
+			this.hardwareLoading = false;
+		}
+	}
+
+	async addDisk(bus: VmDisk['bus'], storage: string, sizeGB: number): Promise<boolean> {
+		if (this.diskInFlight) return false;
+		this.diskInFlight = true;
+		this.diskError = null;
+		try {
+			await post<VmDisk>(`${this.#basePath}/disks`, { bus, storage, sizeGB });
+			await this.load();
+			return true;
+		} catch (err) {
+			this.diskError = errorMessage(err, () => m['vms.detail.errorAddDisk']());
+			return false;
+		} finally {
+			this.diskInFlight = false;
+		}
+	}
+
+	async resizeDisk(diskKey: string, sizeGB: number): Promise<boolean> {
+		if (this.diskInFlight) return false;
+		this.diskInFlight = true;
+		this.diskError = null;
+		try {
+			await put<VmDisk>(`${this.#basePath}/disks/${encodeURIComponent(diskKey)}/resize`, { sizeGB });
+			await this.load();
+			return true;
+		} catch (err) {
+			this.diskError = errorMessage(err, () => m['vms.detail.errorResizeDisk']());
+			return false;
+		} finally {
+			this.diskInFlight = false;
+		}
+	}
+
+	async deleteDisk(diskKey: string): Promise<boolean> {
+		if (this.diskInFlight) return false;
+		this.diskInFlight = true;
+		this.diskError = null;
+		try {
+			await del<DeleteResponse>(`${this.#basePath}/disks/${encodeURIComponent(diskKey)}`);
+			await this.load();
+			return true;
+		} catch (err) {
+			this.diskError = errorMessage(err, () => m['vms.detail.errorDeleteDisk']());
+			return false;
+		} finally {
+			this.diskInFlight = false;
+		}
+	}
+
+	async setCdrom(action: 'mount' | 'disconnect' | 'remove', isoVolId?: string): Promise<void> {
+		if (this.cdromInFlight) return;
+		this.cdromInFlight = true;
+		this.writeError = null;
+		try {
+			await patch<VmCdrom>(`${this.#basePath}/cdrom`, { action, ...(isoVolId ? { isoVolId } : {}) });
+			await this.load();
+		} catch (err) {
+			this.writeError = errorMessage(err, () => m['vms.detail.errorUpdateCdrom']());
+		} finally {
+			this.cdromInFlight = false;
+		}
+	}
+
+	/**
+	 * One-time boot from the mounted CD-ROM. A running VM is shut down first
+	 * (the server endpoint requires a stopped VM), then the boot starts and the
+	 * status converges to running. The boot order is restored by the server
+	 * once the guest is up, so the next reboot boots from disk again.
+	 *
+	 * The HTTP request only returns once the guest is up - the server waits
+	 * for the boot before restoring the boot order - so callers must give
+	 * feedback optimistically (toast on click), not on response.
+	 */
+	async bootFromCdrom(): Promise<boolean> {
+		if (this.bootCdromInFlight || this.entity === null) return false;
+		this.bootCdromError = null;
+		this.bootCdromInFlight = true;
+
+		try {
+			if (this.entity.status !== 'stopped') {
+				// Reboot into CD-ROM: shut down first, then boot from the ISO.
+				await this.action('shutdown');
+				const statusAfter: string = this.entity?.status ?? 'running';
+				if (this.actionError || statusAfter !== 'stopped') {
+					this.bootCdromError = this.actionError ?? m['vms.detail.errorBootCdrom']();
+					return false;
+				}
+			}
+
+			await post<ActionResponse>(`${this.#basePath}/boot-cdrom`, {});
+			const target = optimisticStatus('start');
+			this.entity = { ...this.entity, status: target };
+			await convergeSingle(
+				{ cluster: this.cluster, vmid: this.entity.vmid },
+				target,
+				(status, lock) => {
+					if (this.entity !== null) {
+						this.entity = lock === undefined
+							? { ...this.entity, status }
+							: { ...this.entity, status, lock };
+					}
+				},
+			);
+			return true;
+		} catch (err) {
+			this.bootCdromError = errorMessage(err, () => m['vms.detail.errorBootCdrom']());
+			return false;
+		} finally {
+			this.bootCdromInFlight = false;
+		}
+	}
+
+	async updateNetwork(interfaces: Omit<VmNetworkInterface, 'mac' | 'ipAddresses'>[]): Promise<void> {
+		if (this.networkInFlight) return;
+		this.networkInFlight = true;
+		this.writeError = null;
+		try {
+			await put<VmNetworkInterface[]>(`${this.#basePath}/network`, { interfaces });
+			await this.load();
+		} catch (err) {
+			this.writeError = errorMessage(err, () => m['vms.detail.errorUpdateNetwork']());
+		} finally {
+			this.networkInFlight = false;
+		}
+	}
+
+	async updateHardware(patch: { sockets?: number; cores?: number; memoryMB?: number; tags?: string[] }): Promise<void> {
+		if (this.hardwareInFlight) return;
+		this.hardwareInFlight = true;
+		this.writeError = null;
+		try {
+			await put<VmDetailEntity>(`${this.#basePath}/hardware`, patch);
+			await this.load();
+		} catch (err) {
+			this.writeError = errorMessage(err, () => m['vms.detail.errorUpdateHardware']());
+		} finally {
+			this.hardwareInFlight = false;
+		}
+	}
+
+	/**
+	 * Triggers a power action (V12). The status flips optimistically before the
+	 * server responds, then a convergence loop polls the live-status endpoint
+	 * (ADR 0001) until the real state matches - replacing the old `load()` call
+	 * that overwrote the optimistic flip with a stale projection read.
+	 * `aria-live` on the status element (constitution XII) announces the flip.
+	 */
+	async action(kind: VmAction): Promise<void> {
+		if (this.actionInFlight || this.entity === null) return;
+		this.actionError = null;
+		this.actionInFlight = true;
+		this.inFlightActionKind = kind;
+
+		const previousStatus = this.entity.status;
+		const target = optimisticStatus(kind);
+		this.entity = { ...this.entity, status: target };
+
+		try {
+			await post<ActionResponse>(`${this.#basePath}/actions`, { action: kind });
+			// Converge: poll live status until it matches the optimistic target.
+			// No load() - the projection is stale until the 30s inventory tick.
+			await convergeSingle(
+				{ cluster: this.cluster, vmid: this.entity.vmid },
+				target,
+				(status, lock) => {
+					if (this.entity !== null) {
+						// The live read also carries the Proxmox lock name - 
+						// keep the badge honest while the page stays open.
+						this.entity = lock === undefined
+							? { ...this.entity, status }
+							: { ...this.entity, status, lock };
+					}
+				},
+			);
+		} catch (err) {
+			// Revert the optimistic flip on failure.
+			if (this.entity !== null) {
+				this.entity = { ...this.entity, status: previousStatus };
+			}
+			this.actionError = errorMessage(err, () => m['vms.detail.errorAction']());
+		} finally {
+			this.actionInFlight = false;
+			this.inFlightActionKind = null;
+		}
+	}
+
+	/**
+	 * Permanently deletes the VM (V14: no soft-delete, no undo). When force is
+	 * true, the server force-stops a running VM before destroying it - the UI
+	 * only sets this after the user confirms the force-stop in the delete dialog.
+	 * A running VM without force is rejected with 409 (code "vm_running") so the
+	 * dialog can prompt for confirmation.
+	 */
+	async delete(force = false): Promise<void> {
+		if (this.deleteInFlight || this.entity === null) return;
+		this.deleteError = null;
+		this.deleteErrorCode = null;
+		this.deleteInFlight = true;
+		try {
+			const path = force ? `${this.#basePath}?force=true` : this.#basePath;
+			await del<DeleteResponse>(path);
+			markVmDeleted(this.cluster, this.vmid);
+			this.deleted = true;
+		} catch (err) {
+			this.deleteError = errorMessage(err, () => m['vms.detail.errorDelete']());
+			this.deleteErrorCode = err instanceof ApiRequestError ? err.code : null;
+		} finally {
+			this.deleteInFlight = false;
+		}
+	}
+
+	/**
+	 * Renames and/or updates the description (V16/V17). Returns true on success
+	 * so the caller can exit inline-edit mode. A null field is omitted (no
+	 * change); an empty description clears it.
+	 */
+	async patch(name: string | null, description: string | null): Promise<boolean> {
+		if (this.patchInFlight || this.entity === null) return false;
+		this.patchError = null;
+		this.patchInFlight = true;
+		try {
+			const body: Record<string, string> = {};
+			if (name !== null) body.name = name;
+			if (description !== null) body.description = description;
+			this.entity = await patch<VmDetailEntity>(this.#basePath, body);
+			return true;
+		} catch (err) {
+			this.patchError = errorMessage(err, () => m['vms.detail.errorUpdate']());
+			return false;
+		} finally {
+			this.patchInFlight = false;
+		}
+	}
+
+	/**
+	 * Loads one page of the per-VM audit log (activity tab). The server enforces
+	 * the same ownership gate as the detail endpoint, so no admin scope is
+	 * needed. `page` is 1-indexed.
+	 */
+	async audit(page = 1): Promise<void> {
+		if (this.auditLoading) return;
+		this.auditLoading = true;
+		this.auditError = null;
+		try {
+			const result = await get<AuditPage>(`${this.#basePath}/audit?page=${page}`);
+			this.auditItems = result.items;
+			this.auditTotal = result.total;
+			this.auditPage = result.page;
+			this.auditPageSize = result.pageSize;
+		} catch (err) {
+			this.auditError = errorMessage(err, () => m['vm.activity.loaderror']());
+		} finally {
+			this.auditLoading = false;
+		}
+	}
+}
+
+/** optimisticStatus returns the status a VM is expected to show after kind. */
+export function optimisticStatus(kind: VmAction): VmStatus {
+	switch (kind) {
+		case 'start':
+		case 'reboot':
+		case 'reset':
+		case 'resume':
+			return 'running';
+		case 'stop':
+		case 'shutdown':
+			return 'stopped';
+		case 'pause':
+			return 'paused';
+	}
+}
+
+function errorMessage(err: unknown, fallback: () => string): string {
+	return err instanceof ApiRequestError ? err.message : fallback();
+}
+
+const VM_DETAIL_CONTEXT_KEY = Symbol('vm-detail');
+
+/** Called once, by the route that owns this state (constitution VII). */
+export function setVmDetailContext(cluster: string, vmid: number): VmDetailStore {
+	const store = new VmDetailStore(cluster, vmid);
+	setContext(VM_DETAIL_CONTEXT_KEY, store);
+	return store;
+}
+
+export function getVmDetailContext(): VmDetailStore {
+	return getContext<VmDetailStore>(VM_DETAIL_CONTEXT_KEY);
+}

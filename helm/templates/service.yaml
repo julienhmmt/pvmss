@@ -16,6 +16,12 @@ spec:
       protocol: TCP
       port: {{ .Values.service.port }}
       targetPort: {{ .Values.service.targetPort }}
+    {{- if .Values.metrics.enabled }}
+    - name: metrics
+      protocol: TCP
+      port: {{ .Values.metrics.port }}
+      targetPort: metrics
+    {{- end }}
   type: {{ .Values.service.type }}
   {{- if eq .Values.service.type "NodePort" }}
   nodePort: {{ .Values.service.nodePort }}

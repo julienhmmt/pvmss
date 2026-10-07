@@ -1,0 +1,304 @@
+<script lang="ts">
+	import type { AdminPool, CreatedPoolCredentials } from './pools.svelte';
+	import { resolve } from '$app/paths';
+	import type { ClusterOption } from '$lib/shared/clusters';
+	import CreatePoolDialog from './CreatePoolDialog.svelte';
+	import DeletePoolConfirm from './DeletePoolConfirm.svelte';
+	import PoolVmBar from './PoolVmBar.svelte';
+	import PoolCredentialsBanner from './PoolCredentialsBanner.svelte';
+	import Alert from '$lib/shared/ui/Alert.svelte';
+	import PageHeader from '$lib/shared/ui/PageHeader.svelte';
+	import Button from '$lib/shared/ui/Button.svelte';
+	import TableCard from '$lib/shared/ui/TableCard.svelte';
+	import TableSkeleton from '$lib/shared/ui/TableSkeleton.svelte';
+	import EmptyState from '$lib/shared/ui/EmptyState.svelte';
+	import TableHeader from '$lib/shared/ui/TableHeader.svelte';
+	import ClusterSelector from '$lib/shared/ui/ClusterSelector.svelte';
+	import SearchIcon from '$lib/shared/ui/icons/SearchIcon.svelte';
+	import TextField from '$lib/shared/ui/TextField.svelte';
+	import TrashIcon from '$lib/shared/ui/icons/TrashIcon.svelte';
+	import { m } from '$lib/paraglide/messages.js';
+
+	type PoolSortColumn = 'name' | 'total' | 'running' | 'stopped';
+
+	interface Props {
+		pools: AdminPool[];
+		loading: boolean;
+		error: string | null;
+		saving: boolean;
+		saveError: string | null;
+		deleting: string | null;
+		deleteError: string | null;
+		announce: string | null;
+		credentials: CreatedPoolCredentials | null;
+		clusterOptions: ClusterOption[];
+		cluster: string;
+		onClusterChange: (value: string) => void;
+		onSearch: (value: string) => void;
+		onCreate: (name: string, comment: string) => Promise<void>;
+		onDelete: (name: string) => Promise<void>;
+		onDismissCredentials: () => void;
+	}
+
+	let {
+		pools,
+		loading,
+		error,
+		saving,
+		saveError,
+		deleteError,
+		deleting,
+		announce,
+		credentials,
+		clusterOptions,
+		cluster,
+		onClusterChange,
+		onSearch,
+		onCreate,
+		onDelete,
+		onDismissCredentials
+	}: Props = $props();
+	let search = $state('');
+	let showCreate = $state(false);
+	let deleteName = $state<string | null>(null);
+	let sortBy = $state<PoolSortColumn>('name');
+	let sortDir = $state<'asc' | 'desc'>('asc');
+
+	function openCreate(): void {
+		showCreate = true;
+	}
+
+	function closeCreate(): void {
+		showCreate = false;
+	}
+
+	function openDelete(name: string): void {
+		deleteName = name;
+	}
+
+	function closeDelete(): void {
+		deleteName = null;
+	}
+
+	async function confirmDelete(): Promise<void> {
+		if (deleteName) {
+			try {
+				await onDelete(deleteName);
+				deleteName = null;
+			} catch {
+				// error is set on the store; dialog stays open
+			}
+		}
+	}
+
+	function handleSort(column: PoolSortColumn): void {
+		if (sortBy === column) {
+			sortDir = sortDir === 'asc' ? 'desc' : 'asc';
+		} else {
+			sortBy = column;
+			sortDir = 'asc';
+		}
+	}
+
+	function sortPools(list: AdminPool[], by: PoolSortColumn, dir: 'asc' | 'desc'): AdminPool[] {
+		const sorted = [...list];
+		sorted.sort((a, b) => {
+			let cmp = 0;
+			switch (by) {
+				case 'name':
+					cmp = a.name.localeCompare(b.name);
+					break;
+				case 'total':
+					cmp = a.total - b.total;
+					break;
+				case 'running':
+					cmp = a.running - b.running;
+					break;
+				case 'stopped':
+					cmp = a.stopped - b.stopped;
+					break;
+			}
+			if (cmp !== 0) return cmp;
+			return a.name.localeCompare(b.name);
+		});
+		return dir === 'desc' ? sorted.reverse() : sorted;
+	}
+
+	function resetFilters(): void {
+		search = '';
+		onSearch('');
+		sortBy = 'name';
+		sortDir = 'asc';
+	}
+
+	const filteredPools = $derived(
+		sortPools(
+			pools.filter((pool) => pool.managed),
+			sortBy,
+			sortDir
+		)
+	);
+
+	const resultCountText = $derived(
+		filteredPools.length === 1
+			? m['admin.pools.resultCountSingular']({ count: 1 })
+			: m['admin.pools.resultCount']({ count: filteredPools.length })
+	);
+
+	const hasFilters = $derived(search !== '' || sortBy !== 'name' || sortDir !== 'asc');
+
+	function emptyTitle(): string {
+		return search !== '' ? m['admin.pools.noSearchResults']() : m['admin.pools.noPools']();
+	}
+
+	function updateSearch(event: Event & { currentTarget: HTMLInputElement }): void {
+		const value = event.currentTarget.value;
+		search = value;
+		onSearch(value);
+	}
+</script>
+
+<svelte:head>
+	<title>{m['admin.pools.pageTitle']()}</title>
+</svelte:head>
+
+<div class="sr-only" role="status" aria-live="polite">{announce ?? ''}</div>
+
+<PageHeader title={m['admin.pools.heading']()} description={m['admin.pools.description']()}>
+	{#snippet actions()}
+		<ClusterSelector options={clusterOptions} value={cluster} onChange={onClusterChange} id="pools-cluster" />
+		<Button onclick={openCreate}>{m['admin.pools.newPool']()}</Button>
+	{/snippet}
+</PageHeader>
+
+{#if credentials}
+	<PoolCredentialsBanner {credentials} onDismiss={onDismissCredentials} />
+{/if}
+
+{#if loading}
+	<div role="status" aria-live="polite" class="sr-only">{m['common.loading']()}</div>
+	<TableSkeleton columns={7} />
+{:else if error}
+	<Alert>{error}</Alert>
+{:else}
+	{#if saveError}
+		<Alert class="mb-4">{saveError}</Alert>
+	{/if}
+	{#if deleteError}
+		<Alert class="mb-4">{deleteError}</Alert>
+	{/if}
+
+	<TableCard>
+		{#snippet toolbar()}
+			<TextField
+				type="search"
+				class="w-full max-w-xs"
+				placeholder={m['admin.pools.searchPlaceholder']()}
+				aria-label={m['admin.pools.search']()}
+				bind:value={search}
+				oninput={updateSearch}
+			>
+				{#snippet leading()}
+					<SearchIcon class="h-4 w-4" />
+				{/snippet}
+			</TextField>
+			{#if hasFilters}
+				<Button variant="ghost" size="sm" onclick={resetFilters}>{m['admin.pools.resetFilters']()}</Button>
+			{/if}
+			<span class="ml-auto text-sm text-muted-foreground">{resultCountText}</span>
+		{/snippet}
+		<table class="pv-table pv-responsive-table">
+			<caption class="sr-only">{m['admin.pools.heading']()}</caption>
+			<thead>
+				<tr>
+					<TableHeader text={m['admin.pools.accountColumn']()} column="name" activeColumn={sortBy} {sortDir} onSort={handleSort} />
+					<th class="font-medium">{m['admin.pools.comment']()}</th>
+					<TableHeader text={m['admin.pools.vmsColumn']()} tooltip={m['admin.pools.vmsTooltip']()} class="text-center" />
+					<TableHeader text={m['common.total']()} column="total" activeColumn={sortBy} {sortDir} onSort={handleSort} class="text-center" />
+					<TableHeader text={m['common.running']()} column="running" activeColumn={sortBy} {sortDir} onSort={handleSort} class="text-center" />
+					<TableHeader text={m['common.stopped']()} column="stopped" activeColumn={sortBy} {sortDir} onSort={handleSort} class="text-center" />
+					<th class="text-right font-medium">{m['common.actions']()}</th>
+				</tr>
+			</thead>
+			<tbody>
+				{#each filteredPools as pool (pool.name)}
+					<tr class="group transition-colors hover:bg-muted/40">
+						<td data-label={m['admin.pools.accountColumn']()}>
+							<div class="min-w-0">
+								<a
+									href="{resolve('/admin/pools/[name]', { name: pool.name })}?cluster={encodeURIComponent(cluster)}"
+									class="block break-words font-mono font-medium text-primary hover:underline"
+								>{pool.name}@pve</a>
+								<span class="mt-1 block text-xs text-muted-foreground">
+									{m['admin.pools.vmPoolName']({ name: pool.name })}
+								</span>
+							</div>
+						</td>
+						<td class="text-muted-foreground" data-label={m['admin.pools.comment']()}>
+							{#if pool.comment}
+								<span class="block max-w-xs truncate" title={pool.comment}>{pool.comment}</span>
+							{:else}
+								<span class="text-muted-foreground-subtle"> - </span>
+							{/if}
+						</td>
+						<td class="text-center" data-label={m['admin.pools.vmsColumn']()}>
+							<PoolVmBar running={pool.running} stopped={pool.stopped} total={pool.total} />
+						</td>
+						<td class="text-center font-mono tabular-nums" data-label={m['common.total']()}>{pool.total}</td>
+						<td class="text-center font-mono tabular-nums" data-label={m['common.running']()}>{pool.running}</td>
+						<td class="text-center font-mono tabular-nums" data-label={m['common.stopped']()}>{pool.stopped}</td>
+						<td class="text-right" data-label={m['common.actions']()} data-nolabel="true">
+							<Button
+								variant="ghost"
+								size="sm"
+								label={m['admin.pools.deletePoolLabel']({ name: pool.name })}
+								onclick={() => openDelete(pool.name)}
+							>
+								<TrashIcon class="h-4 w-4 text-destructive" />
+							</Button>
+						</td>
+					</tr>
+				{:else}
+					<tr>
+						<td colspan={7} class="p-0">
+							{#if filteredPools.length === 0 && search === ''}
+								<EmptyState title={emptyTitle()}>
+									{#snippet actions()}
+										<Button onclick={openCreate}>{m['admin.pools.newPool']()}</Button>
+									{/snippet}
+								</EmptyState>
+							{:else}
+								<EmptyState title={emptyTitle()} />
+							{/if}
+						</td>
+					</tr>
+				{/each}
+			</tbody>
+		</table>
+	</TableCard>
+{/if}
+
+<CreatePoolDialog
+	bind:open={showCreate}
+	saving={saving}
+	error={saveError}
+	onClose={closeCreate}
+	onCreate={async (name, comment) => {
+		try {
+			await onCreate(name, comment);
+			closeCreate();
+		} catch {
+			/* error shown via saveError */
+		}
+	}}
+/>
+{#if deleteName}
+	<DeletePoolConfirm
+		open={true}
+		poolName={deleteName}
+		deleting={deleting === deleteName}
+		error={deleteError}
+		onClose={closeDelete}
+		onConfirm={confirmDelete}
+	/>
+{/if}

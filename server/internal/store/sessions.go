@@ -1,0 +1,92 @@
+package store
+
+import (
+	"context"
+	"database/sql"
+	"errors"
+	"fmt"
+	"pvmss/server/internal/auth"
+	"time"
+)
+
+// CreateSession persists an already-hashed browser session. Timestamps are
+// stored in UTC so the purge below can compare them as strings. Issuing a
+// session also sweeps expired ones (sessions are otherwise only deleted on
+// logout); a failed sweep is logged, never fatal to the login.
+func (s *Store) CreateSession(ctx context.Context, session auth.SessionRecord) error {
+	s.purgeDeadSessions(ctx)
+
+	_, err := s.db.ExecContext(ctx, `INSERT INTO sessions (token_hash, username, pool, cluster, is_admin, expires_at, created_at, csrf_token) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+		session.Hash, session.Identity.Username, session.Identity.Pool, session.Identity.Cluster, session.Identity.IsAdmin, session.ExpiresAt.UTC().Format(time.RFC3339), session.CreatedAt.UTC().Format(time.RFC3339), session.CSRFToken)
+	if err != nil {
+		return fmt.Errorf("insert session: %w", err)
+	}
+
+	return nil
+}
+
+func (s *Store) purgeDeadSessions(ctx context.Context) {
+	now := time.Now().UTC()
+
+	_, err := s.db.ExecContext(ctx, `DELETE FROM sessions WHERE expires_at < ? OR created_at < ?`,
+		now.Format(time.RFC3339), now.Add(-auth.MaxSessionAge).Format(time.RFC3339))
+	if err != nil {
+		s.log().WarnContext(ctx, "expired session purge failed", "component", "store", "error", err)
+	}
+}
+
+// FindSession resolves a session hash without ever querying by its plaintext value.
+func (s *Store) FindSession(ctx context.Context, hash []byte) (auth.SessionRecord, error) {
+	row := s.db.QueryRowContext(ctx, `SELECT token_hash, username, pool, cluster, is_admin, expires_at, created_at, csrf_token FROM sessions WHERE token_hash = ?`, hash)
+
+	var (
+		session                         auth.SessionRecord
+		isAdmin                         bool
+		expiresAt, createdAt, csrfToken string
+	)
+	if err := row.Scan(&session.Hash, &session.Identity.Username, &session.Identity.Pool, &session.Identity.Cluster, &isAdmin, &expiresAt, &createdAt, &csrfToken); err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return auth.SessionRecord{}, sql.ErrNoRows
+		}
+
+		return auth.SessionRecord{}, fmt.Errorf("scan session: %w", err)
+	}
+
+	session.Identity.IsAdmin = isAdmin
+
+	var err error
+
+	session.ExpiresAt, err = time.Parse(time.RFC3339, expiresAt)
+	if err != nil {
+		return auth.SessionRecord{}, fmt.Errorf("parse session expiry: %w", err)
+	}
+
+	session.CreatedAt, err = time.Parse(time.RFC3339, createdAt)
+	if err != nil {
+		return auth.SessionRecord{}, fmt.Errorf("parse session creation: %w", err)
+	}
+
+	session.CSRFToken = csrfToken
+
+	return session, nil
+}
+
+// TouchSession slides a session's expiry forward.
+func (s *Store) TouchSession(ctx context.Context, hash []byte, expiresAt time.Time) error {
+	_, err := s.db.ExecContext(ctx, `UPDATE sessions SET expires_at = ? WHERE token_hash = ?`, expiresAt.UTC().Format(time.RFC3339), hash)
+	if err != nil {
+		return fmt.Errorf("slide session expiry: %w", err)
+	}
+
+	return nil
+}
+
+// DeleteSession revokes a session. Deleting an already-absent session is not an error.
+func (s *Store) DeleteSession(ctx context.Context, hash []byte) error {
+	_, err := s.db.ExecContext(ctx, `DELETE FROM sessions WHERE token_hash = ?`, hash)
+	if err != nil {
+		return fmt.Errorf("delete session: %w", err)
+	}
+
+	return nil
+}

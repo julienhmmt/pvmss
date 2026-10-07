@@ -1,6 +1,6 @@
 # Proxmox VM Self-Service (PVMSS)
 
-[![Lint](https://github.com/julienhmmt/pvmss/actions/workflows/lint.yml/badge.svg?branch=main&event=push)](https://github.com/julienhmmt/pvmss/actions/workflows/lint.yml) [![Go](https://github.com/julienhmmt/pvmss/actions/workflows/go.yml/badge.svg?branch=main&event=push)](https://github.com/julienhmmt/pvmss/actions/workflows/go.yml)
+[![Lint](https://github.com/julienhmmt/pvmss/actions/workflows/lint.yml/badge.svg?branch=main&event=push)](https://github.com/julienhmmt/pvmss/actions/workflows/lint.yml) [![CI](https://github.com/julienhmmt/pvmss/actions/workflows/v0.4.yml/badge.svg?branch=main&event=push)](https://github.com/julienhmmt/pvmss/actions/workflows/v0.4.yml)
 
 > A lightweight, self-service portal for Proxmox VE that lets users create, operate, and troubleshoot virtual machines without exposing the Proxmox UI.
 
@@ -26,7 +26,7 @@ French version: [README.fr.md](README.fr.md)
 
 ## Overview
 
-PVMSS runs as a stateless web application (Go backend + HTML/CSS frontend) and relies on Proxmox APIs for every action. It is designed to be:
+PVMSS runs as a stateless web application (Go REST API + SvelteKit SPA) and relies on Proxmox APIs for every action. It is designed to be:
 
 - **Secure by default**: per-user sessions.
 - **Operations-friendly**: ready-to-use container image, configurable resource limits, cluster-aware storage selection.
@@ -36,28 +36,32 @@ PVMSS runs as a stateless web application (Go backend + HTML/CSS frontend) and r
 
 ## Feature highlights
 
+The complete, route-by-route inventory lives in [docs/FEATURES.md](docs/FEATURES.md).
+
 ### End users
 
-- Create VMs with custom CPU/RAM/disk/ISO/network/tag options (EFI, TPM, multi-NIC, disk bus selection, network card model, etc.).
-- Launch the Proxmox noVNC console straight from the portal (websocket proxy with session cookies).
-- Start, stop, reboot, delete, and resize existing VMs.
-- Search VMs by VMID or name and inspect live metrics (CPU, memory, disk, network, uptime).
-- Self-service profile: list personal VMs, reset password, view quotas.
-- Interface localized in **English** and **French**.
+- Sign in with Proxmox credentials on the cluster of your choice.
+- **My VMs**: cross-cluster list, search/filter/sort mirrored in the URL, live status, bulk power actions with per-VM results, console button in every row.
+- **Create a VM** wizard (Simple / Detailed) from three sources: an approved **ISO**, a Proxmox **template** (linked or full clone), or a **cloud image** (`import-from` + cloud-init). Hardware profiles or custom CPU/RAM/disk, auto-placement with capacity scoring, multi-NIC (bridge + model), UEFI (no Secure Boot) / TPM 2.0, curated tags, boot from CD-ROM.
+- **Operate a VM**: 7 power actions, rename, Markdown description, delete; disks (add / grow / detach); NIC edit (bridge, model, VLAN, rate); CPU/RAM/tags/CD-ROM; snapshots (create / rollback / delete, RAM optional); metrics history (hour/day/week) and live stream; per-VM activity log.
+- **Consoles**: noVNC and serial (xterm.js), both proxied through PVMSS with single-use tickets; power actions from the console page.
+- **Cloud-init**: native form (user, password via guest agent, SSH keys, IP/DNS), "add key now" injection, administrator **cloud-init templates** picked at creation or switched later on the VM (users never write YAML).
+- Nodes page with live capacity, in-app documentation, EN + FR, keyboard-first and WCAG 2.1 AA target.
 
 ### Administrators
 
-- Approve Proxmox nodes, storages, VMBRs, and ISO repositories shown to users.
-- Manage tags and user pools.
-- Define global VM limits plus per-node caps (CPU, RAM, disk, number of NICs/disks).
-- Admin documentation and application insights page (runtime, environment, cluster status).
-- **Unified Settings Panel**: A single interface to manage all configuration (VM limits, node limits, inventory items, cloud-init templates, VM profiles, SFTP configuration) with audit trail and import/export functionality.
+- **Clusters**: connect several Proxmox environments, test connectivity, per-cluster snippet storage for cloud-init templates.
+- **Catalog**: approve nodes, storages, ISOs, cloud images, VM templates, bridges; CRUD for hardware profiles, tags, cloud-init templates (published to every node, per-node status, "publish all"); stale approvals reconciled against live discovery.
+- **Pools**: create a self-service user = Proxmox user + pool + ACL in one step; cascade delete.
+- **Migration**: move a PVMSS-managed VM to another approved, online node of the same cluster from the node page (preflight, explicit confirmation, progress in the task tray).
+- **Policy**: per-cluster gabarit (sockets, cores, memory, disk per VM, NICs, snapshots, isolation VLAN) and quota (VMs per user); per-node capacity caps with live usage.
+- **System**: dashboard, app info, audit log with retention + prune preview, SQLite export and two-phase import, in-app documentation CMS (EN/FR, audience-scoped).
 
 ## Architecture at a glance
 
-- **Backend**: Go 1.25+, RESTy client for Proxmox APIs, basic HTML templates.
-- **Frontend**: SvelteKit SPA (Svelte 5 runes, TypeScript, Tailwind CSS).
-- **Authentication**: Proxmox API token for backend actions, user sessions for UI.
+- **Server** (`server/`): Go 1.26, stdlib `net/http` routing, SQLite via `modernc.org/sqlite` (CGO-free). Serves `/api/v1/*` and the SPA.
+- **Web** (`web/`): SvelteKit SPA (Svelte 5 runes, TypeScript, Tailwind CSS v4, `adapter-static`).
+- **Authentication**: Proxmox API token for cluster actions, user sessions for the UI.
 
 ## Configuration
 
@@ -76,7 +80,7 @@ In your Proxmox cluster, you can create the roles and ACLs using the `pveum` com
 
 ```bash
 # PVMSS_Service
-pveum roleadd PVMSS_Service -privs "Sys.Audit VM.Audit VM.Allocate VM.PowerMgmt VM.Console VM.Config.CDROM VM.Config.CPU VM.Config.HWType VM.Config.Memory VM.Config.Disk VM.Config.Network VM.Config.Options VM.Config.Cloudinit VM.Snapshot VM.Snapshot.Rollback Datastore.Audit Datastore.AllocateSpace Pool.Allocate Pool.Audit User.Modify Permissions.Modify Realm.AllocateUser SDN.Allocate SDN.Audit SDN.Use"
+pveum roleadd PVMSS_Service -privs "Sys.Audit VM.Audit VM.Allocate VM.PowerMgmt VM.Console VM.Config.CDROM VM.Config.CPU VM.Config.HWType VM.Config.Memory VM.Config.Disk VM.Config.Network VM.Config.Options VM.Config.Cloudinit VM.Snapshot VM.Snapshot.Rollback VM.Migrate VM.GuestAgent.Audit VM.GuestAgent.Unrestricted Datastore.Audit Datastore.AllocateSpace Datastore.AllocateTemplate Pool.Allocate Pool.Audit User.Modify Permissions.Modify Realm.AllocateUser SDN.Allocate SDN.Audit SDN.Use"
 
 pveum useradd pvmss-svc@pve -comment "PVMSS service account" \
   -enable 1
@@ -95,7 +99,6 @@ pveum aclmod / -user pvmss-admin1@pve -role PVMSS_Admin -propagate 1
 
 The `pveum` commands and information related to roles and required privileges are detailed in:
 
-- `backend/docs/proxmox-permissions.en.md` (in this repository)
 - The in-app admin page `/docs/proxmox-permissions` (once PVMSS is running and you are logged in as admin)
 
 ### Create an API token for the user root@pam
@@ -113,8 +116,8 @@ PVMSS uses an embedded SQLite database to store all configuration. The database 
 - Approved Proxmox nodes, storages, VMBRs, and ISO repositories
 - VM resource limits (global and per-node)
 - Tags and user pools
-- Cloud-init templates and SFTP configuration
-- VM profiles
+- Cloud-init templates and their publications on the nodes
+- VM profiles, cluster connections, audit log
 
 All configuration is managed through the **Admin** section of the web UI, which provides:
 
@@ -122,76 +125,91 @@ All configuration is managed through the **Admin** section of the web UI, which 
 - Audit trail of all changes
 - Import/export functionality for backup/restore
 
-The database file must be persisted on a volume to survive container restarts.
+Persist the whole `/data` directory (a volume), not the single `pvmss.db` file: SQLite runs in WAL mode and keeps `-wal`/`-shm` files next to it. For a backup, use **Admin > Settings > Export Database**.
 
 #### Tags
 
 The tag `pvmss` is used by default for VMs created via PVMSS, it cannot and should not be removed. Only PVMSS tags created by the admin from this app can be used.
 
-#### VM Profiles
+#### VM profiles
 
-VM profiles are pre-configured templates that simplify VM creation by providing common resource configurations. Users can select a profile when creating a VM, which automatically sets CPU, RAM, disk, and other parameters.
+VM profiles are hardware shapes (sockets, cores, memory, disk, disk bus) that
+administrators curate in **Admin > Profiles**. Users pick a profile in the
+create wizard instead of typing CPU/RAM/disk values. PVMSS ships no default
+profile: create the ones your users need. Each profile has a label, the
+resource values above, and an enabled flag (only enabled profiles are offered).
+Per-cluster limits (gabarit) in **Admin > Policy** still cap every value.
 
-PVMSS provides built-in default profiles:
+### Cloud-init templates (optional)
 
-- **Web Server**: 1 vCPU, 2 GB RAM, 24 GB disk
-- **Lightweight API**: 2 vCPU, 2 GB RAM, 24 GB disk
-- **Light App Server**: 4 vCPU, 4 GB RAM, 32 GB disk
-- **Medium App Server**: 4 vCPU, 6 GB RAM, 32 GB disk
-- **Test Environment**: 2 vCPU, 4 GB RAM, 24 GB disk
+Administrators write cloud-init templates in **Admin › Cloud-init**; users
+pick one when they create a VM (or switch later on the VM's cloud-init tab).
+Users never write YAML. The Proxmox REST API cannot write `snippets` files,
+so **PVMSS never writes on the nodes**: for each template it shows a command
+that you paste, as root, on the nodes that must offer it. No key, no SSH.
 
-Admins can manage custom profiles via the **Admin > Profiles** page, where they can:
+1. Enable the Snippets content type on a storage (one node, once; or GUI:
+   Datacenter > Storage):
 
-- Create new profiles with custom resource specifications
-- Edit existing profiles
-- Enable or disable profiles
-- Delete profiles
-- Set optional node and storage overrides per profile
+   ```sh
+   STORAGE=local
+   CUR=$(pvesh get /storage/$STORAGE --output-format json | perl -MJSON -0ne 'print decode_json($_)->{content}')
+   case ",$CUR," in *,snippets,*) ;; *) pvesm set "$STORAGE" --content "$CUR,snippets" ;; esac
+   ```
 
-Each profile includes:
+2. **Infrastructure › Clusters › Edit**: select that snippet storage.
+3. **Admin › Cloud-init**: write the template, copy its **Command to paste**,
+   run it on the chosen nodes, click **Verify**.
 
-- `id`: Unique identifier
-- `name`: Display name
-- `description`: User-friendly description
-- `sockets`, `cores`, `ram_gb`, `disk_gb`: Resource specifications
-- `disk_bus`: Disk bus type (virtio, scsi, sata, ide)
-- `node`, `storage`: Optional node/storage overrides (empty = auto-select)
-- `icon`, `color`: Visual customization
-- `enabled`: Whether the profile is visible to users
+A template is offered only on the nodes that have its file. Each file is
+immutable (`pvmss-tpl-<id>-<hash>.yml`, the PVMSS baseline merged in):
+editing a template yields a new file and a new command, existing VMs keep
+theirs. Full procedure and troubleshooting: [docs/cloud-init.md](docs/cloud-init.md).
 
 ### Environment variables
 
 You can rely on `.env` + `env_file` or inline `environment:` entries, but **not both**. The needed variables are listed below:
 
-| Variable                  | Description                                                                  | Required | Default              |
-| ------------------------- | ---------------------------------------------------------------------------- | :------: | -------------------- |
-| `ADMIN_PASSWORD_HASH`     | Bcrypt hash for the admin UI login                                           |    ✅    | —                    |
-| `SESSION_SECRET`          | 32+ byte secret to encrypt sessions/cookies                                  |    ✅    | —                    |
-| `JWT_SECRET`              | HS256 signing key for `/api/v1/` JWTs (≥ 32 bytes)                           |    ✅    | —                    |
-| `PROXMOX_API_TOKEN_NAME`  | Proxmox token name (`user@pve!token`) used by the backend                    |    ✅    | —                    |
-| `PROXMOX_API_TOKEN_VALUE` | Token secret that matches the name above                                     |    ✅    | —                    |
-| `PROXMOX_URL`             | Full API URL (`https://host:8006/api2/json`)                                 |    ✅    | —                    |
-| `PROXMOX_VERIFY_SSL`      | `true` for trusted certs, `false` for self-signed labs                       |    ❌    | `true`               |
-| `PVMSS_ENV`               | `production/prod` (secure cookies + HSTS) or `development/dev/developpement` |    ❌    | `production`         |
-| `PVMSS_OFFLINE`           | `true` disables all Proxmox calls (demo mode)                                |    ❌    | `false`              |
-| `PVMSS_DB_PATH`          | Path to SQLite database file (must be on persistent volume)                 |    ✅    | `/data/pvmss.db`     |
-| `LOG_LEVEL`               | Log verbosity (`debug`, `info`, `warn`, `error`)                             |    ❌    | `INFO`               |
-| `LOG_OUTPUT`              | Log destination: `stdout`, `file`, or `both`                                 |    ❌    | `stdout`             |
-| `LOG_FILE_PATH`           | File path when `LOG_OUTPUT` is `file` or `both`                              |    ❌    | —                    |
-| `LOG_FORMAT`              | `console` (human readable) or `json` (machine/SIEM)                          |    ❌    | `console`            |
-| `PORT`                    | TCP port the HTTP server listens on                                          |    ❌    | `50000`              |
-| `TZ`                      | Container timezone                                                           |    ❌    | `UTC`                |
+| Variable                                      | Description                                                                | Required                 | Default                |
+| --------------------------------------------- | -------------------------------------------------------------------------- | ------------------------ | ---------------------- |
+| `PVMSS_PORT`                                  | TCP port the HTTP server listens on (1–65535)                              | ✅                       | - |
+| `PVMSS_DB_PATH`                               | Path to the SQLite database file (must be on a persistent volume)          | ✅                       | - |
+| `SESSION_SECRET`                              | 32+ byte secret to encrypt sessions/cookies                                | ✅                       | - |
+| `PVMSS_CLUSTER_SOURCE`                        | `proxmox` for a real cluster, `fake` for demo data (no default, on purpose) | ✅                       | - |
+| `LOG_LEVEL`                                   | `debug`, `info`, `warn`, `error` - lowercase only                          | ✅                       | - |
+| `LOG_FORMAT`                                  | `console` (human readable) or `json` (machine/SIEM)                        | ✅                       | - |
+| `LOG_OUTPUT`                                  | `stdout`, `stderr`, or a writable file path                                | ✅                       | - |
+| `PROXMOX_URL`                                 | Full API URL (`https://host:8006/api2/json`)                               | when source is `proxmox` | - |
+| `PROXMOX_API_TOKEN_NAME`                      | Proxmox token name (`user@pve!token`)                                      | when source is `proxmox` | - |
+| `PROXMOX_API_TOKEN_VALUE`                     | Token secret that matches the name above                                   | when source is `proxmox` | - |
+| `ADMIN_PASSWORD_HASH`                         | Bcrypt hash for the local admin login; disabled when empty                 | ❌                       | - |
+| `PVMSS_HOST`                                  | Address to bind (`0.0.0.0` for all interfaces)                             | ❌                       | `127.0.0.1`            |
+| `PVMSS_WEB_DIR`                               | Directory holding the built SPA                                            | ❌                       | relative to the binary |
+| `PVMSS_COOKIE_SECURE`                         | `Secure` flag on auth cookies (keep `true` in production)                  | ❌                       | `true`                 |
+| `PVMSS_INVENTORY_REFRESH_INTERVAL`            | Background inventory refresh period                                        | ❌                       | `30s`                  |
+| `PVMSS_INVENTORY_MANUAL_REFRESH_MIN_INTERVAL` | Minimum delay between user-triggered refreshes                             | ❌                       | `5s`                   |
+| `PVMSS_INVENTORY_REFRESH_TIMEOUT`             | Timeout for a single inventory refresh                                     | ❌                       | `15s`                  |
+| `PVMSS_MAX_LIST_PAGE_SIZE`                    | Upper bound on list endpoint page size                                     | ❌                       | `100`                  |
+| `PVMSS_TRUSTED_PROXY_HOPS`                    | Number of reverse proxies in front of PVMSS (for client IP / rate limits)  | ❌                       | `1`                    |
+| `PVMSS_RATE_LIMIT_MAX`                        | Raises every built-in rate-limit ceiling (per-IP auth, per-user writes); `0` keeps the defaults | ❌                       | `0`                    |
+| `TZ`                                          | Container timezone                                                         | ❌                       | `UTC`                  |
 
-> Tip: `ADMIN_PASSWORD_HASH` can be generated locally with `htpasswd -bnBC 10 "admin" "StrongPassword" | cut -d: -f2`.
+The Docker image presets `PVMSS_DB_PATH=/data/pvmss.db`, `PVMSS_HOST=0.0.0.0`
+and `PVMSS_WEB_DIR=/app/web/build`, so those three can be left unset in a
+container deployment.
+
+> Tip: generate `ADMIN_PASSWORD_HASH` with `htpasswd -bnBC 10 "" "StrongPassword" | tr -d ':\n'`. In a Compose file or a `.env` used by Compose, escape every `$` as `$$`.
 
 #### Logging configuration
 
-PVMSS uses structured logging with [zerolog](https://github.com/rs/zerolog). Typical setups:
+PVMSS uses structured logging with the standard library's `log/slog`. All three
+variables are required; `LOG_LEVEL` is matched case-sensitively and only accepts
+lowercase values. Typical setups:
 
 - Human-readable logs on stdout (development):
 
   ```bash
-  LOG_LEVEL=DEBUG
+  LOG_LEVEL=debug
   LOG_OUTPUT=stdout
   LOG_FORMAT=console
   ```
@@ -199,21 +217,23 @@ PVMSS uses structured logging with [zerolog](https://github.com/rs/zerolog). Typ
 - JSON logs on stdout for log aggregation / SIEM:
 
   ```bash
-  LOG_LEVEL=INFO
+  LOG_LEVEL=info
   LOG_OUTPUT=stdout
   LOG_FORMAT=json
   ```
 
-- JSON logs on stdout **and** in a file inside the container:
+- JSON logs into a file inside the container:
 
   ```bash
-  LOG_LEVEL=INFO
-  LOG_OUTPUT=both
+  LOG_LEVEL=info
+  LOG_OUTPUT=/app/pvmss.log
   LOG_FORMAT=json
-  LOG_FILE_PATH=/app/pvmss.log
   ```
 
-The JSON format is line-delimited and includes fields such as `component`, `operation`, `reason`, and `event_category` (for auth, VM, admin, security, console, Proxmox events), making it easy to consume with Fluent Bit, Filebeat, or any SIEM.
+`LOG_OUTPUT` takes `stdout`, `stderr`, or a writable file path - there is no
+"both" mode. The JSON format is line-delimited and includes a `component` field
+(main, cluster, inventory, ...), making it easy to consume with Fluent Bit,
+Filebeat, or any SIEM.
 
 ## Deployment options
 
@@ -230,33 +250,31 @@ docker run -d \
   --name pvmss \
   --restart unless-stopped \
   -p 50000:50000 \
-  -v $(pwd)/pvmss.db:/data/pvmss.db \
+  -v pvmss_data:/data \
   -e ADMIN_PASSWORD_HASH='$2y$10$Ppg7Wl3sNYrmxZmWgcq4reOyznt7AeqMrQucaH4HY.dBrzavhPP1e' \
-  -e LOG_LEVEL=INFO \
+  -e LOG_LEVEL=info \
   -e LOG_OUTPUT=stdout \
   -e LOG_FORMAT=console \
   -e PROXMOX_API_TOKEN_NAME='tokenName@changeMe!value' \
   -e PROXMOX_API_TOKEN_VALUE="aaaaaaaa-0000-44aa-1111-aaaaaaaaaaa" \
   -e PROXMOX_URL=https://ip-or-name:8006/api2/json \
-  -e PROXMOX_VERIFY_SSL=false \
-  -e PVMSS_ENV="prod" \
-  -e PVMSS_OFFLINE="false" \
+  -e PVMSS_CLUSTER_SOURCE=proxmox \
+  -e PVMSS_PORT=50000 \
   -e PVMSS_DB_PATH="/data/pvmss.db" \
   -e SESSION_SECRET="$(openssl rand -hex 32)" \
   -e TZ=Europe/Paris \
-  jhmmt/pvmss:0.3.0
+  jhmmt/pvmss:latest
 ```
 
-To also write JSON logs to a file inside the container (and keep stdout), override:
+To write JSON logs to a file inside the container instead of stdout, override:
 
 ```bash
--e LOG_OUTPUT=both \
 -e LOG_FORMAT=json \
--e LOG_FILE_PATH=/app/pvmss.log \
+-e LOG_OUTPUT=/app/pvmss.log \
 -v $(pwd)/pvmss.log:/app/pvmss.log \
 ```
 
-The application will be available at <http://localhost:50000>.
+The application will be available at <http://localhost:50000>. Over plain HTTP on anything other than `localhost`, add `-e PVMSS_COOKIE_SECURE=false` (keep the default behind HTTPS).
 
 ## Start with Docker compose
 
@@ -265,7 +283,7 @@ The application will be available at <http://localhost:50000>.
 ```yaml
 services:
   pvmss:
-    image: jhmmt/pvmss:0.3.0
+    image: jhmmt/pvmss:latest
     container_name: pvmss
     restart: unless-stopped
     ports:
@@ -274,32 +292,36 @@ services:
       PROXMOX_API_TOKEN_NAME: "tokenName@changeMe!value"
       PROXMOX_API_TOKEN_VALUE: "aaaaaaaa-0000-44aa-1111-aaaaaaaaaaa"
       PROXMOX_URL: "https://ip-or-name:8006/api2/json"
-      PROXMOX_VERIFY_SSL: "false"
-      ADMIN_PASSWORD_HASH: "$2y$10$Ppg7Wl3sNYrmxZmWgcq4reOyznt7AeqMrQucaH4HY.dBrzavhPP1e"
-      LOG_LEVEL: "INFO"
+      PVMSS_CLUSTER_SOURCE: "proxmox"
+      # Every "$" of the bcrypt hash is doubled for Compose
+      ADMIN_PASSWORD_HASH: "$$2y$$10$$Ppg7Wl3sNYrmxZmWgcq4reOyznt7AeqMrQucaH4HY.dBrzavhPP1e"
+      # Plain HTTP with no TLS in front: drop the Secure cookie flag (keep it on behind HTTPS)
+      PVMSS_COOKIE_SECURE: "false"
+      LOG_LEVEL: "info"
       LOG_OUTPUT: "stdout"
       LOG_FORMAT: "console"
-      SESSION_SECRET: "changeMeWithSomethingElseUnique"
-      PVMSS_ENV: "production"
-      PVMSS_OFFLINE: "false"
+      SESSION_SECRET: "changeMeWithSomethingElseUniqueMinimum32Chars"
+      PVMSS_PORT: "50000"
       PVMSS_DB_PATH: "/data/pvmss.db"
       TZ: "Europe/Paris"
     volumes:
-      - ./pvmss.db:/data/pvmss.db
+      - pvmss_data:/data
       # - ./pvmss.log:/app/pvmss.log # Uncomment to persist logs to a file inside the container
     deploy:
       resources:
         limits:
           cpus: "1"
-          memory: 64M
+          memory: 128M
+
+volumes:
+  pvmss_data: {}
 ```
 
 To persist logs to a file inside the container, you can change the environment section to use JSON + file output, for example:
 
 ```yaml
-LOG_OUTPUT: "both"
 LOG_FORMAT: "json"
-LOG_FILE_PATH: "/app/pvmss.log"
+LOG_OUTPUT: "/app/pvmss.log"
 # Add this volume to the volumes section
 - ./pvmss.log:/app/pvmss.log
 ```
@@ -319,20 +341,28 @@ Use the file [`pvmss-deployment.yaml`](pvmss-deployment.yaml) to create namespac
 
 Apply with `kubectl apply -f pvmss-deployment.yaml`. Provide your own ingress/HTTPRoute, an example is provided in `pvmss-httproute.yml` (Gateway API).
 
+A Helm chart lives in [`helm/`](helm/): `helm install pvmss ./helm -f my-values.yaml`.
+`values.yaml` documents every variable; `cloudInit.sshKeySecret` mounts
+PVMSS's SSH key from an existing Secret to publish cloud-init templates.
+
 ## Operations
 
-- **Logs**: `docker logs -f pvmss` or `kubectl -n pvmss logs -f deploy/pvmss`. Switch `LOG_LEVEL=DEBUG` for verbose traces. Use `LOG_FORMAT=json` and `LOG_OUTPUT=stdout` or `file` to emit JSON logs that can be shipped to a SIEM or log aggregator.
-- **Health**: startup logs include Proxmox connectivity, offline-mode status, and runtime metrics. The admin "Application Info" page shows runtime metrics, environment variables, and Proxmox cluster status.
+- **Logs**: `docker logs -f pvmss` or `kubectl -n pvmss logs -f deploy/pvmss`. Switch `LOG_LEVEL=debug` for verbose traces. Use `LOG_FORMAT=json` with `LOG_OUTPUT=stdout` or a file path to emit JSON logs that can be shipped to a SIEM or log aggregator.
+- **Health**: startup logs include cluster connectivity and inventory refresh status. The admin "Application Info" page shows runtime metrics, environment variables, and Proxmox cluster status.
 - **Upgrades**: pull the desired image tag and restart the container. Configuration is stored in the SQLite database and persists automatically.
+- **Built-in documentation**: the in-app pages (`/docs`) are seeded once into the database and never overwritten, so admin edits survive upgrades. To pick up a newer built-in text after an upgrade, delete the page in **Admin › Documentation** and restart, or paste the new content from `server/internal/docs/seed/`.
+- **Static analysis (SonarQube)**: run `make sonar` to start a local SonarQube container, provision tokens, generate Go coverage, and scan the two projects - `pvmss-server` (Go) and `pvmss-web` (SvelteKit TS). Results are at `http://localhost:9000/projects`. Stop with `make sonar-down` and clean data with `make sonar-clean`.
 
 ## Limitations
 
 - Security hardening is ongoing; no formal penetration test yet.
-- App is not as dynamic as I'd like to. It is a work in progress.
+- OIDC: the per-cluster toggle exists but sign-in is not implemented (the endpoint returns 501).
+- Password change is API-only (`POST /api/v1/auth/password`); no page yet.
+- LXC containers, backups, live migration / HA, SDN and firewall rules stay in Proxmox.
 
 ### Next major features
 
-- OpenID Connect / SSO integration.
+- OpenID Connect / SSO sign-in.
 - Migration of VMs between Proxmox nodes.
 
 Feedback and contributions are welcome through issues or pull requests. Next versions and features will be documented here: <https://github.com/julienhmmt/pvmss/projects?query=is%3Aopen>.

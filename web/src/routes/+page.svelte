@@ -1,4 +1,41 @@
-<section class="flex flex-col items-center gap-4 text-center">
-	<h1 class="text-4xl font-semibold tracking-tight">PVMSS v0.4</h1>
-	<p class="text-lg text-muted-foreground">Minimal SvelteKit web shell</p>
-</section>
+<script lang="ts">
+	import { onMount } from 'svelte';
+	import { goto } from '$app/navigation';
+	import { resolve } from '$app/paths';
+	import HomeCapabilities from '$lib/features/home/HomeCapabilities.svelte';
+	import HomeCta from '$lib/features/home/HomeCta.svelte';
+	import HomeHowItWorks from '$lib/features/home/HomeHowItWorks.svelte';
+	import Logo from '$lib/shared/ui/Logo.svelte';
+	import { getSessionContext } from '$lib/features/auth/session.svelte';
+	import { m } from '$lib/paraglide/messages.js';
+
+	const session = getSessionContext();
+
+	// Signed-in users never land on the pitch: admins go to their dashboard,
+	// pool users to their machines - the list is the workspace landing page
+	// (DESIGN.md §5, "The machine list is the landing page").
+	onMount(() => {
+		if (session.principal?.isAdmin) {
+			void goto(resolve('/admin'));
+		} else if (session.principal) {
+			void goto(resolve('/vms'), { replaceState: true });
+		}
+	});
+</script>
+
+{#if !session.principal}
+	<section class="flex flex-col items-center gap-10 py-12">
+		<!-- The product pitch: name, tagline, "how it works", capabilities.
+		     Anonymous visitors only - a signed-in user is sent to the workspace. -->
+		<div class="text-center">
+			<div class="mb-4 inline-flex items-center justify-center rounded-2xl bg-primary/10 p-4 text-primary">
+				<Logo variant="color" showText={false} size="xl" />
+			</div>
+			<h1 class="text-4xl font-semibold tracking-tight">{m['shell.title']()}</h1>
+			<p class="mt-2 text-lg text-muted-foreground">{m['shell.subtitle']()}</p>
+		</div>
+		<HomeCta />
+		<HomeHowItWorks />
+		<HomeCapabilities />
+	</section>
+{/if}

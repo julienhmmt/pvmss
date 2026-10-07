@@ -1,0 +1,39 @@
+import { test, expect } from '@playwright/test';
+import { csrfHeaders } from './support/csrf';
+
+test.describe('T02 authentication', () => {
+	test('signs in with the fake PVE account and ends the browser session', async ({ page }) => {
+		await page.goto('/login');
+		// US3: the sign-in route has no signed-in sidebar landmark.
+		await expect(page.getByRole('complementary')).toHaveCount(0);
+		await expect(page.getByTestId('app-sidebar')).toHaveCount(0);
+
+		await page.locator('input[autocomplete="username"]').fill('alice');
+		await page.locator('input[autocomplete="current-password"]').fill('pvmss-alice');
+		await page.locator('#login-cluster').selectOption('default');
+		await page.locator('button[type="submit"]').click();
+		// A signed-in pool user lands on the machine list (calm workspace).
+		await expect(page).toHaveURL(/\/vms$/);
+
+		const me = await page.request.get('/api/v1/auth/me');
+		expect(me.status()).toBe(200);
+		// toMatchObject, not toEqual: /auth/me also carries the display name and
+		// cluster display name, which this test does not assert on.
+		expect(await me.json()).toMatchObject({ username: 'alice@pve', pool: 'pool-alice', isAdmin: false, cluster: 'default' });
+
+		const logout = await page.request.post('/api/v1/auth/logout', {
+			headers: await csrfHeaders(page.request)
+		});
+		expect(logout.status()).toBe(204);
+		const signedOut = await page.request.get('/api/v1/auth/me');
+		expect(signedOut.status()).toBe(401);
+	});
+
+	test('redirects the local administrator to the admin dashboard', async ({ page }) => {
+		await page.goto('/login');
+		await page.getByRole('button', { name: /administrat/i }).click();
+		await page.locator('input[autocomplete="current-password"]').fill('pvmss-e2e-admin');
+		await page.locator('button[type="submit"]').click();
+		await expect(page).toHaveURL(/\/admin$/);
+	});
+});
