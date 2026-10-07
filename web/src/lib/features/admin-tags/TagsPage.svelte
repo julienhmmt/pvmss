@@ -1,4 +1,6 @@
 <script lang="ts">
+	// Proxmox pve-tag charset; the HTML pattern uses the v flag, where - must be escaped.
+	const TAG_NAME_PATTERN = String.raw`[a-z0-9_][a-z0-9_+.\-]{0,49}`;
 	import type { AdminTag } from './tags.svelte';
 	import type { ClusterOption } from '$lib/shared/clusters';
 	import Alert from '$lib/shared/ui/Alert.svelte';
@@ -215,7 +217,7 @@
 					{describedBy}
 					{invalid}
 					type="text"
-					pattern={'[a-z0-9_][a-z0-9_+.\-]{0,49}'}
+					pattern={TAG_NAME_PATTERN}
 					bind:value={newName}
 					required
 				/>
