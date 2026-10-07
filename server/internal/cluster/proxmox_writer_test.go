@@ -49,6 +49,40 @@ func TestProxmox_Action_Valid(t *testing.T) {
 	}
 }
 
+// TestProxmox_Action_PVEVerb verifies the PVMSS action name maps to the
+// Proxmox status endpoint. Proxmox has no status/pause: pause is suspend.
+func TestProxmox_Action_PVEVerb(t *testing.T) {
+	t.Parallel()
+
+	cases := map[string]string{"pause": "suspend", "resume": "resume", "stop": "stop"}
+
+	for action, verb := range cases {
+		t.Run(action, func(t *testing.T) {
+			t.Parallel()
+
+			var gotVerb string
+
+			srv := newProxmoxTestServer(t, func(mux *http.ServeMux) {
+				mux.HandleFunc("POST /api2/json/nodes/node01/qemu/101/status/{verb}", func(w http.ResponseWriter, r *http.Request) {
+					gotVerb = r.PathValue("verb")
+
+					writeJSONFixture(t, w, `{"data":"UPID:node01:...:qmaction:101:pvmss@pve:"}`)
+				})
+			})
+
+			p := Proxmox{BaseURL: srv.URL, APITokenName: testTokenName, APITokenValue: testTokenVal}
+
+			if err := p.Action(context.Background(), testNodeName, testVMID, action); err != nil {
+				t.Fatalf("Action: %v", err)
+			}
+
+			if gotVerb != verb {
+				t.Errorf("status verb = %q, want %q", gotVerb, verb)
+			}
+		})
+	}
+}
+
 // TestProxmox_Action_ShutdownSendsTimeout verifies that shutdown sends the
 // timeout parameter and other actions do not.
 func TestProxmox_Action_ShutdownSendsTimeout(t *testing.T) {
@@ -88,7 +122,7 @@ func captureActionForm(t *testing.T, action string) url.Values {
 	var gotForm url.Values
 
 	srv := newProxmoxTestServer(t, func(mux *http.ServeMux) {
-		mux.HandleFunc("POST /api2/json/nodes/node01/qemu/101/status/"+action, func(w http.ResponseWriter, r *http.Request) {
+		mux.HandleFunc("POST /api2/json/nodes/node01/qemu/101/status/{verb}", func(w http.ResponseWriter, r *http.Request) {
 			if err := r.ParseForm(); err != nil {
 				t.Fatalf("parse form: %v", err)
 			}

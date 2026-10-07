@@ -54,8 +54,13 @@ func (p Proxmox) Action(ctx context.Context, node string, vmid int, action strin
 		return ErrInvalidAction
 	}
 
+	verb := action
+	if action == actionPause {
+		verb = "suspend" // Proxmox has no status/pause
+	}
+
 	_, err := p.rest().do(ctx, http.MethodPost,
-		fmt.Sprintf("/nodes/%s/qemu/%d/status/%s", url.PathEscape(node), vmid, action),
+		fmt.Sprintf("/nodes/%s/qemu/%d/status/%s", url.PathEscape(node), vmid, verb),
 		actionForm(action))
 
 	return err
