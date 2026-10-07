@@ -947,6 +947,7 @@
   "admin.cloudinit.contentSyncWarning": "L'enregistrement publie le modèle en SSH sur chaque nœud du cluster, fusionné par-dessus le socle PVMSS. Chaque version est un nouveau fichier : les VM gardent la version avec laquelle elles ont été créées.",
   "admin.cloudinit.contentCounter": "{used} / {max} caractères",
   "admin.cloudinit.loadError": "échec du chargement des modèles",
+  "admin.cloudinit.invalidYaml": "Le contenu n'est pas un YAML valide : {detail}",
   "admin.cloudinit.createError": "échec de la création du modèle",
   "admin.cloudinit.updateError": "échec de la mise à jour du modèle",
   "admin.cloudinit.deleteError": "échec de la suppression du modèle",
