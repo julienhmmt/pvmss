@@ -37,8 +37,7 @@ func (h *AdminCatalog) ServeISOs(w http.ResponseWriter, r *http.Request) {
 	}
 	isos, err := catalog.AdminListISOs(r.Context(), h.store, client, clusterName)
 	if err != nil {
-		SetErrorMsg(w, "admin list isos failed", err)
-		writeAdminError(w, http.StatusInternalServerError, "internal_error", msgInternalServerError)
+		writeAdminFailure(w, "admin list isos failed", err)
 
 		return
 	}
@@ -102,8 +101,7 @@ func (h *AdminCatalog) ServeISOToggle(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err != nil {
-		SetErrorMsg(w, "admin toggle iso failed", err)
-		writeAdminError(w, http.StatusInternalServerError, "internal_error", msgInternalServerError)
+		writeAdminFailure(w, "admin toggle iso failed", err)
 
 		return
 	}

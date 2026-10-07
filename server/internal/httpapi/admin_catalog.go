@@ -70,8 +70,7 @@ func (h *AdminCatalog) ServeNodes(w http.ResponseWriter, r *http.Request) {
 	}
 	nodes, err := catalog.AdminListNodes(r.Context(), h.store, client, clusterName)
 	if err != nil {
-		SetErrorMsg(w, "admin list nodes failed", err)
-		writeAdminError(w, http.StatusInternalServerError, "internal_error", msgInternalServerError)
+		writeAdminFailure(w, "admin list nodes failed", err)
 
 		return
 	}
@@ -127,8 +126,7 @@ func (h *AdminCatalog) ServeNodeToggle(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err != nil {
-		SetErrorMsg(w, "admin toggle node failed", err)
-		writeAdminError(w, http.StatusInternalServerError, "internal_error", msgInternalServerError)
+		writeAdminFailure(w, "admin toggle node failed", err)
 
 		return
 	}

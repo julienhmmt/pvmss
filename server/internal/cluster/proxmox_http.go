@@ -225,8 +225,8 @@ func retryBackoff(attempt int) time.Duration {
 // node is down, and retrying it 250ms later only multiplies an already slow
 // per-node enumeration (observed ~4s per attempt against a dead node).
 func isRetryableStatus(status int, err error) bool {
-	if err == nil {
-		return false
+	if err == nil || errors.Is(err, ErrTLSVerify) {
+		return false // a certificate error fails the same way every time
 	}
 
 	if status == 0 {
