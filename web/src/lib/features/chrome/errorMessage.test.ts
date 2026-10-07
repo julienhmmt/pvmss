@@ -46,6 +46,18 @@ describe('resolveErrorMessage', () => {
 		});
 	});
 
+	it.each(['en', 'fr'] as const)('cluster_permission_denied uses structured fields in %s', async (locale) => {
+		await setLocale(locale, { reload: false });
+		const message = resolveErrorMessage(
+			'cluster_permission_denied',
+			'reworded server message',
+			{ privilege: 'VM.GuestAgent.Unrestricted', path: '/vms/999102' }
+		);
+		expect(message).toContain('VM.GuestAgent.Unrestricted');
+		expect(message).toContain('/vms/999102');
+		expect(message).toBe(m['error.cluster_permission_denied']({ privilege: 'VM.GuestAgent.Unrestricted', path: '/vms/999102' }));
+	});
+
 	it('an unlisted code resolves to the generic localized fallback, never the raw server message', async () => {
 		await setLocale('fr', { reload: false });
 		const result = resolveErrorMessage('some_unknown_code_xyz', 'raw server text');

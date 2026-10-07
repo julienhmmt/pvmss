@@ -49,6 +49,40 @@ func TestProxmox_Action_Valid(t *testing.T) {
 	}
 }
 
+// TestProxmox_Action_PVEVerb verifies the PVMSS action name maps to the
+// Proxmox status endpoint. Proxmox has no status/pause: pause is suspend.
+func TestProxmox_Action_PVEVerb(t *testing.T) {
+	t.Parallel()
+
+	cases := map[string]string{"pause": "suspend", "resume": "resume", "stop": "stop"}
+
+	for action, verb := range cases {
+		t.Run(action, func(t *testing.T) {
+			t.Parallel()
+
+			var gotVerb string
+
+			srv := newProxmoxTestServer(t, func(mux *http.ServeMux) {
+				mux.HandleFunc("POST /api2/json/nodes/node01/qemu/101/status/{verb}", func(w http.ResponseWriter, r *http.Request) {
+					gotVerb = r.PathValue("verb")
+
+					writeJSONFixture(t, w, `{"data":"UPID:node01:...:qmaction:101:pvmss@pve:"}`)
+				})
+			})
+
+			p := Proxmox{BaseURL: srv.URL, APITokenName: testTokenName, APITokenValue: testTokenVal}
+
+			if err := p.Action(context.Background(), testNodeName, testVMID, action); err != nil {
+				t.Fatalf("Action: %v", err)
+			}
+
+			if gotVerb != verb {
+				t.Errorf("status verb = %q, want %q", gotVerb, verb)
+			}
+		})
+	}
+}
+
 // TestProxmox_Action_ShutdownSendsTimeout verifies that shutdown sends the
 // timeout parameter and other actions do not.
 func TestProxmox_Action_ShutdownSendsTimeout(t *testing.T) {
@@ -60,7 +94,7 @@ func TestProxmox_Action_ShutdownSendsTimeout(t *testing.T) {
 		wantForm   string
 		wantNoForm bool
 	}{
-		{"shutdown sends timeout", "shutdown", "timeout=60", false},
+		{"shutdown sends timeout", "shutdown", "forceStop=0&timeout=60", false},
 		{"start sends no params", "start", "", true},
 		{"stop sends no params", "stop", "", true},
 		{"reboot sends no params", "reboot", "", true},
@@ -88,7 +122,7 @@ func captureActionForm(t *testing.T, action string) url.Values {
 	var gotForm url.Values
 
 	srv := newProxmoxTestServer(t, func(mux *http.ServeMux) {
-		mux.HandleFunc("POST /api2/json/nodes/node01/qemu/101/status/"+action, func(w http.ResponseWriter, r *http.Request) {
+		mux.HandleFunc("POST /api2/json/nodes/node01/qemu/101/status/{verb}", func(w http.ResponseWriter, r *http.Request) {
 			if err := r.ParseForm(); err != nil {
 				t.Fatalf("parse form: %v", err)
 			}
@@ -177,6 +211,31 @@ func TestProxmox_Patch_NoFieldsSkipsRequest(t *testing.T) {
 	}
 }
 
+func TestProxmox_ClearDescription(t *testing.T) {
+	t.Parallel()
+
+	var gotForm url.Values
+
+	srv := newProxmoxTestServer(t, func(mux *http.ServeMux) {
+		mux.HandleFunc("PUT /api2/json/nodes/node01/qemu/101/config", func(w http.ResponseWriter, r *http.Request) {
+			_ = r.ParseForm()
+			gotForm = r.PostForm
+
+			writeJSONFixture(t, w, `{"data":null}`)
+		})
+	})
+
+	p := Proxmox{BaseURL: srv.URL, APITokenName: testTokenName, APITokenValue: testTokenVal}
+
+	if err := p.ClearDescription(context.Background(), testNodeName, testVMID); err != nil {
+		t.Fatalf("ClearDescription: %v", err)
+	}
+
+	if gotForm.Get("delete") != "description" {
+		t.Errorf("form = %q, want delete=description", gotForm.Encode())
+	}
+}
+
 func TestProxmox_AddDisk_PicksNextFreeSlot(t *testing.T) {
 	t.Parallel()
 
@@ -260,6 +319,42 @@ func TestProxmox_ResizeDisk(t *testing.T) {
 
 	if gotDisk != diskKeySCSI0 || gotSize != "64G" {
 		t.Errorf("disk=%q size=%q", gotDisk, gotSize)
+	}
+}
+
+// TestProxmox_ResizeDisk_WaitsForTask - PVE 8+ resizes in a task; the call
+// returns only once the task ended, so the next read sees the new size.
+func TestProxmox_ResizeDisk_WaitsForTask(t *testing.T) {
+	t.Parallel()
+
+	polls := 0
+
+	srv := newProxmoxTestServer(t, func(mux *http.ServeMux) {
+		mux.HandleFunc("PUT /api2/json/nodes/node01/qemu/101/resize", func(w http.ResponseWriter, _ *http.Request) {
+			writeJSONFixture(t, w, `{"data":"UPID:node01:0001:0002:0003:resize:101:pvmss@pve:"}`)
+		})
+		mux.HandleFunc("GET /api2/json/nodes/node01/tasks/{upid}/status", func(w http.ResponseWriter, _ *http.Request) {
+			polls++
+			if polls < 2 {
+				writeJSONFixture(t, w, `{"data":{"status":"running"}}`)
+				return
+			}
+
+			writeJSONFixture(t, w, `{"data":{"status":"stopped","exitstatus":"OK"}}`)
+		})
+		mux.HandleFunc("GET /api2/json/nodes/node01/tasks/{upid}/log", func(w http.ResponseWriter, _ *http.Request) {
+			writeJSONFixture(t, w, `{"data":[]}`)
+		})
+	})
+
+	p := Proxmox{BaseURL: srv.URL, APITokenName: testTokenName, APITokenValue: testTokenVal}
+
+	if err := p.ResizeDisk(context.Background(), testNodeName, testVMID, diskKeySCSI0, 64); err != nil {
+		t.Fatalf("ResizeDisk: %v", err)
+	}
+
+	if polls < 2 {
+		t.Errorf("task polled %d times, want until it stopped", polls)
 	}
 }
 

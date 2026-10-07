@@ -48,6 +48,8 @@ func (h *VMDetail) writeHardwareError(w http.ResponseWriter, err error) {
 		h.writeDetailError(w, http.StatusServiceUnavailable, "policy_unavailable", msgPolicyUnavailable)
 	case errors.Is(err, vm.ErrHardwareExceedsLimit):
 		h.writeDetailError(w, http.StatusBadRequest, "hardware_exceeds_limit", err.Error())
+	case errors.Is(err, vm.ErrShutdownTimeout):
+		h.writeDetailError(w, http.StatusConflict, "shutdown_timeout", "the VM did not shut down in time; nothing was changed")
 	default:
 		h.writeUnhandledVMError(w, "vm hardware operation failed", err)
 	}
@@ -69,9 +71,7 @@ func (h *VMDetail) writeCommonVMError(w http.ResponseWriter, err error) bool {
 func (h *VMDetail) writeUnhandledVMError(w http.ResponseWriter, message string, err error) {
 	// A cluster rejection is not an unhandled error: surface Proxmox's own
 	// message with its machine code instead of a generic 500 (ADR 0002).
-	if code, msg, ok := clusterRejectionResponse(err); ok {
-		h.writeDetailError(w, http.StatusBadGateway, code, msg)
-
+	if writeClusterRejection(w, err, h.log) {
 		return
 	}
 
@@ -157,8 +157,7 @@ func (h *VMDetail) writeNetworkError(w http.ResponseWriter, err error) {
 	case errors.Is(err, vm.ErrInvalidNetworkModel), errors.Is(err, vm.ErrDuplicateNetworkIndex):
 		h.writeDetailError(w, http.StatusBadRequest, "invalid_request", err.Error())
 	case errors.Is(err, cluster.ErrClusterRejected):
-		code, message, _ := clusterRejectionResponse(err)
-		h.writeDetailError(w, http.StatusBadGateway, code, message)
+		writeClusterRejection(w, err, h.log)
 	default:
 		SetErrorMsg(w, "vm network operation failed", err)
 		h.writeDetailError(w, http.StatusInternalServerError, "internal_error", msgInternalServerError)
@@ -390,8 +389,7 @@ func (h *VMDetail) writeDiskError(w http.ResponseWriter, err error) {
 	case errors.Is(err, cluster.ErrNotFound):
 		h.writeDetailError(w, http.StatusBadGateway, "cluster_error", msgClusterRejected)
 	case errors.Is(err, cluster.ErrClusterRejected):
-		code, message, _ := clusterRejectionResponse(err)
-		h.writeDetailError(w, http.StatusBadGateway, code, message)
+		writeClusterRejection(w, err, h.log)
 	default:
 		SetErrorMsg(w, "vm disk operation failed", err)
 		h.writeDetailError(w, http.StatusInternalServerError, "internal_error", msgInternalServerError)

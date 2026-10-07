@@ -3,6 +3,7 @@ package httpapi
 
 import (
 	"encoding/json"
+	"errors"
 	"net/http"
 	"pvmss/server/internal/cluster"
 )
@@ -51,6 +52,20 @@ func writeAdminJSON(w http.ResponseWriter, status int, value any) {
 	}
 
 	_ = writeJSON(w, status, body)
+}
+
+// writeAdminFailure answers an admin catalog failure: an unreachable or
+// TLS-failing cluster is 503 cluster_unavailable (the admin can act on it),
+// anything else 500. The cause goes to the access log either way.
+func writeAdminFailure(w http.ResponseWriter, message string, err error) {
+	SetErrorMsg(w, message, err)
+
+	if errors.Is(err, cluster.ErrUnreachable) || errors.Is(err, cluster.ErrTLSVerify) {
+		writeAdminError(w, http.StatusServiceUnavailable, "cluster_unavailable", msgClusterUnavailable)
+		return
+	}
+
+	writeAdminError(w, http.StatusInternalServerError, "internal_error", msgInternalServerError)
 }
 
 func writeAdminError(w http.ResponseWriter, status int, code, message string) {

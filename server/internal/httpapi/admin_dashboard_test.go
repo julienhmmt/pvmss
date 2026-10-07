@@ -142,7 +142,7 @@ func TestAdminDashboard_NodeSummariesIncludeClusterKey(t *testing.T) {
 	snapshot, _ := fake.Snapshot(context.Background())
 	index := inventory.BuildIndexForCluster(nodeSummaryTestCluster, snapshot)
 	projection := inventory.NewProjectionFromIndex(&index)
-	ops := httpapi.NewAdminOps(authHandler, st, fake, projection, "0.4.0-test", slog.New(slog.DiscardHandler))
+	ops := httpapi.NewAdminOps(authHandler, st, projection, "0.4.0-test", slog.New(slog.DiscardHandler))
 	ops.SetInventorySource(inventory.NewRegistryFromIndexes(map[string]*inventory.Index{nodeSummaryTestCluster: &index}), 0)
 	cookie := adminCookie(t, authHandler)
 	rec := opsGet(t, ops, authHandler, cookie, "/api/v1/admin/dashboard")
@@ -201,7 +201,7 @@ func TestAdminDashboard_AlertsCarryClusterKey(t *testing.T) {
 		t.Fatalf("SetNodeEnabled: %v", err)
 	}
 
-	ops := httpapi.NewAdminOps(authHandler, st, cluster.Fake{}, inventory.NewProjection(), "0.4.0-test", slog.New(slog.DiscardHandler))
+	ops := httpapi.NewAdminOps(authHandler, st, inventory.NewProjection(), "0.4.0-test", slog.New(slog.DiscardHandler))
 	ops.SetInventorySource(inventory.NewRegistryFromIndexes(map[string]*inventory.Index{dashCluster: attentionIndex(), dashWestCluster: nil}), time.Minute)
 
 	rec := opsGet(t, ops, authHandler, adminCookie(t, authHandler), "/api/v1/admin/dashboard")
@@ -234,7 +234,7 @@ func TestAdminDashboardVMCounts_SplitsPvmssAndOtherVMs(t *testing.T) {
 	}}
 	idx := inventory.BuildIndex(snap)
 	projection := inventory.NewProjectionFromIndex(&idx)
-	ops := httpapi.NewAdminOps(auth, st, cluster.Fake{}, projection, "0.4.0-test", slog.New(slog.DiscardHandler))
+	ops := httpapi.NewAdminOps(auth, st, projection, "0.4.0-test", slog.New(slog.DiscardHandler))
 	cookie := adminCookie(t, auth)
 
 	rec := opsGet(t, ops, auth, cookie, "/api/v1/admin/dashboard")
@@ -293,7 +293,7 @@ func TestAdminDashboard_Sc003_NoClusterClientCallForVMCount(t *testing.T) {
 	snap, _ := fake.Snapshot(context.Background())
 	idx := inventory.BuildIndex(snap)
 	projection := inventory.NewProjectionFromIndex(&idx)
-	ops := httpapi.NewAdminOps(authHandler, st, countingClient, projection, "0.4.0-test", slog.New(slog.DiscardHandler))
+	ops := httpapi.NewAdminOps(authHandler, st, projection, "0.4.0-test", slog.New(slog.DiscardHandler))
 	cookie := adminCookie(t, authHandler)
 
 	rec := opsGet(t, ops, authHandler, cookie, "/api/v1/admin/dashboard")

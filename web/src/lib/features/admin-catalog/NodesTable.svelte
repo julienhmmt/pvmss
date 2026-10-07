@@ -2,12 +2,12 @@
 	import { resolve } from '$app/paths';
 	import type { AdminNode, NodeSortColumn } from './admin-catalog.svelte';
 	import { formatBytes } from './format';
-	import Switch from '$lib/shared/ui/Switch.svelte';
 	import EmptyState from '$lib/shared/ui/EmptyState.svelte';
+	import Pill from '$lib/shared/ui/Pill.svelte';
 	import StatusDot from '$lib/shared/ui/StatusDot.svelte';
 	import NodeUsageBar from '$lib/shared/ui/NodeUsageBar.svelte';
 	import TableHeader from '$lib/shared/ui/TableHeader.svelte';
-	import Button from '$lib/shared/ui/Button.svelte';
+	import ApprovalCell from './ApprovalCell.svelte';
 	import { m } from '$lib/paraglide/messages.js';
 
 	interface Props {
@@ -60,44 +60,22 @@
 		if (toggling === `node:${node.name}`) return;
 		onToggle(node.name, !node.enabled);
 	}
-
-	function handleSort(column: string): void {
-		onSort(column as NodeSortColumn);
-	}
 </script>
 
 <table class="pv-table pv-responsive-table">
 	<caption class="sr-only">{m['admin.nodes.tableCaption']()}</caption>
 	<thead>
 		<tr>
-			<TableHeader
-				text={m['common.name']()}
-				column="name"
-				activeColumn={sortBy}
-				{sortDir}
-				onSort={handleSort}
-			/>
-			<TableHeader
-				text={m['common.status']()}
-				column="status"
-				activeColumn={sortBy}
-				{sortDir}
-				onSort={handleSort}
-			/>
-			<TableHeader
-				text={m['common.vms']()}
-				column="vmCount"
-				activeColumn={sortBy}
-				{sortDir}
-				onSort={handleSort}
-			/>
+			<TableHeader text={m['common.name']()} column="name" activeColumn={sortBy} {sortDir} {onSort} />
+			<TableHeader text={m['common.status']()} column="status" activeColumn={sortBy} {sortDir} {onSort} />
+			<TableHeader text={m['common.vms']()} column="vmCount" activeColumn={sortBy} {sortDir} {onSort} />
 			<TableHeader
 				text={m['common.cpu']()}
 				tooltip={m['admin.catalog.tooltip.nodeCpu']()}
 				column="cpuUsage"
 				activeColumn={sortBy}
 				{sortDir}
-				onSort={handleSort}
+				{onSort}
 			/>
 			<TableHeader
 				text={m['common.memory']()}
@@ -105,14 +83,14 @@
 				column="memoryUsage"
 				activeColumn={sortBy}
 				{sortDir}
-				onSort={handleSort}
+				{onSort}
 			/>
 			<TableHeader
 				text={m['admin.catalog.statusColumn']()}
 				column="enabled"
 				activeColumn={sortBy}
 				{sortDir}
-				onSort={handleSort}
+				{onSort}
 			/>
 		</tr>
 	</thead>
@@ -134,12 +112,13 @@
 						</a>
 					{/if}
 					{#if node.missing}
-						<span
-							class="ml-2 inline-flex items-center rounded-full border border-destructive/40 bg-destructive/10 px-2 py-0.5 text-xs font-medium text-destructive"
+						<Pill
+							tone="error"
+							dot={false}
+							label={m['admin.catalog.missingBadge']()}
+							class="ml-2"
 							data-testid="node-missing-badge"
-						>
-							{m['admin.catalog.missingBadge']()}
-						</span>
+						/>
 					{/if}
 				</td>
 				<td data-label={m['common.status']()}>
@@ -173,36 +152,16 @@
 					{/if}
 				</td>
 				<td data-label={m['admin.catalog.statusColumn']()}>
-					{#if node.missing}
-						<div class="flex items-center gap-2">
-							<span class="text-xs text-muted-foreground">{m['admin.catalog.missingBadge']()}</span>
-							<Button
-								variant="ghost"
-								size="sm"
-								onclick={() => onRemove(node.name)}
-								data-testid="node-remove"
-							>
-								{m['admin.catalog.remove']()}
-							</Button>
-						</div>
-					{:else}
-						<span class="inline-flex items-center gap-2" aria-busy={toggling === `node:${node.name}`}>
-							<Switch
-								checked={node.enabled}
-								label={node.enabled
-									? m['admin.catalog.revokeApproval']({ name: node.name })
-									: m['admin.catalog.approveName']({ name: node.name })}
-								onToggle={() => handleSwitch(node)}
-							/>
-							<span class="text-xs text-muted-foreground" data-testid="node-enabled-label">
-								{#if toggling === `node:${node.name}`}
-									…
-								{:else}
-									{node.enabled ? m['admin.catalog.approvedStatus']() : m['admin.catalog.approveAction']()}
-								{/if}
-							</span>
-						</span>
-					{/if}
+					<ApprovalCell
+						enabled={node.enabled}
+						name={node.name}
+						pending={toggling === `node:${node.name}`}
+						missing={node.missing}
+						onToggle={() => handleSwitch(node)}
+						onRemove={() => onRemove(node.name)}
+						removeTestId="node-remove"
+						labelTestId="node-enabled-label"
+					/>
 				</td>
 			</tr>
 		{:else}

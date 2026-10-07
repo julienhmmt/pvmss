@@ -4,6 +4,7 @@
 	import { getToastContext } from '$lib/shared/ui/toast.svelte';
 	import MountIsoDialog from './MountIsoDialog.svelte';
 	import Dialog from '$lib/shared/ui/Dialog.svelte';
+	import Card from '$lib/shared/ui/Card.svelte';
 	import DiscIcon from '$lib/shared/ui/icons/DiscIcon.svelte';
 	import SpinnerIcon from '$lib/shared/ui/icons/SpinnerIcon.svelte';
 	import { m } from '$lib/paraglide/messages.js';
@@ -41,7 +42,7 @@
 	}
 </script>
 
-<div class="rounded-xl border border-border bg-card p-6 shadow-card" data-testid="vm-cdrom">
+<Card as="div" pad="lg" data-testid="vm-cdrom">
 	<div class="flex flex-wrap items-start justify-between gap-3">
 		<div>
 			<h2 class="text-lg font-semibold">{m['vms.disks.cdromHeading']()}</h2>
@@ -104,7 +105,7 @@
 	{#if store.writeError}
 		<Alert class="mt-3">{store.writeError}</Alert>
 	{/if}
-</div>
+</Card>
 
 <MountIsoDialog bind:open={mountOpen} />
 

@@ -92,7 +92,7 @@ export class AdminCloudInitTemplatesStore {
 			});
 			this.templates = [...this.templates, created];
 		} catch (err) {
-			this.saveError = err instanceof ApiRequestError ? err.message : m['admin.cloudinit.createError']();
+			this.saveError = saveErrorMessage(err, m['admin.cloudinit.createError']());
 			throw err;
 		} finally {
 			this.saving = false;
@@ -109,7 +109,7 @@ export class AdminCloudInitTemplatesStore {
 			);
 			this.templates = this.templates.map((t) => (t.id === id ? updated : t));
 		} catch (err) {
-			this.saveError = err instanceof ApiRequestError ? err.message : m['admin.cloudinit.updateError']();
+			this.saveError = saveErrorMessage(err, m['admin.cloudinit.updateError']());
 			throw err;
 		} finally {
 			this.saving = false;
@@ -156,3 +156,10 @@ export function getAdminCloudInitTemplatesContext(): AdminCloudInitTemplatesStor
 	return getContext<AdminCloudInitTemplatesStore>(CLOUDINIT_TEMPLATES_CONTEXT_KEY);
 }
 
+
+/** A YAML parse error keeps the parser's line, wrapped in a localized lead. */
+function saveErrorMessage(err: unknown, fallback: string): string {
+	if (!(err instanceof ApiRequestError)) return fallback;
+	if (err.code === 'invalid_yaml') return m['admin.cloudinit.invalidYaml']({ detail: err.message });
+	return err.message;
+}

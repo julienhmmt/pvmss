@@ -153,6 +153,8 @@ type Writer interface {
 	Action(ctx context.Context, node string, vmid int, action string) error
 	Delete(ctx context.Context, node string, vmid int) error
 	Patch(ctx context.Context, node string, vmid int, name, description string) error
+	// ClearDescription removes the VM's description (Patch ignores "").
+	ClearDescription(ctx context.Context, node string, vmid int) error
 	AddDisk(ctx context.Context, node string, vmid int, bus, storage string, sizeGB int) (string, error)
 	ResizeDisk(ctx context.Context, node string, vmid int, diskKey string, sizeGB int) error
 	DeleteDisk(ctx context.Context, node string, vmid int, diskKey string) error

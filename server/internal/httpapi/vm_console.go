@@ -118,7 +118,7 @@ func (h *VMConsole) handleVNCTicket(w http.ResponseWriter, r *http.Request) {
 		consoleTicketParams{
 			kind:           vm.KindVNC,
 			capabilityName: "ConsoleRelay",
-			fetcher:        vncProxyFetcher(h.relay),
+			fetcher:        vncProxyFetcher(h.clients, h.relay),
 			invalidMsg:     "console is not available for this VM",
 			noTokenMsg:     "console ticket has no token",
 			issuedMsg:      "console ticket issued",
@@ -254,8 +254,15 @@ func writeConsoleTicketError(w http.ResponseWriter, _ *slog.Logger, err error, w
 
 // vncProxyFetcher adapts a cluster.ConsoleRelay to the vm.ProxyFetcher
 // function type, extracting just the ticket and port from the VNCProxyTicket.
-func vncProxyFetcher(relay cluster.ConsoleRelay) vm.ProxyFetcher {
+func vncProxyFetcher(clients cluster.ClientProvider, fallback cluster.ConsoleRelay) vm.ProxyFetcher {
 	return func(ctx context.Context, clusterName string, vmid int, node string) (string, int, error) {
+		// Resolved per call: the boot-time relay belongs to the primary
+		// cluster and goes stale after an admin cluster edit.
+		relay, err := resolveCapability(clients, fallback, clusterName, "ConsoleRelay")
+		if err != nil {
+			return "", 0, err
+		}
+
 		proxy, err := relay.GetVNCTicket(ctx, clusterName, vmid, node)
 		if err != nil {
 			return "", 0, err

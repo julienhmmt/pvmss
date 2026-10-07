@@ -25,6 +25,7 @@
 	import EmptyState from '$lib/shared/ui/EmptyState.svelte';
 	import Button from '$lib/shared/ui/Button.svelte';
 	import ButtonLink from '$lib/shared/ui/ButtonLink.svelte';
+	import Card from '$lib/shared/ui/Card.svelte';
 	import Toolbar from '$lib/shared/ui/Toolbar.svelte';
 	import TextField from '$lib/shared/ui/TextField.svelte';
 	import Select from '$lib/shared/ui/Select.svelte';
@@ -70,6 +71,11 @@
 	];
 
 	let selectMode = $state(false);
+	/** True while "select all matching" is fetching every page. */
+	let selectingAll = $state(false);
+
+	/** Page sizes offered in the pagination footer. */
+	const PAGE_SIZES: readonly number[] = [10, 25, 50];
 
 	function statusOf(machine: VmListItem): MachineDisplayStatus {
 		return displayStatus(
@@ -139,6 +145,24 @@
 		else bulk.clearPage(items);
 	}
 
+	// Page selection only covers what is loaded; when the filtered set
+	// spans pages, offer a way to select every match (the attention filter
+	// has already fetched all pages, so it never needs this).
+	const moreToSelect = $derived(
+		!store.attention && bulk.selectedCount < (store.result?.total ?? 0) && items.length < (store.result?.total ?? 0)
+	);
+
+	async function handleSelectAllMatching(): Promise<void> {
+		selectingAll = true;
+		try {
+			bulk.selectPage(await store.fetchAllMatching());
+		} catch {
+			toast.error(m['vms.list.errorLoading']());
+		} finally {
+			selectingAll = false;
+		}
+	}
+
 	const statusFilter = $derived<StatusFilter>(store.attention ? ATTENTION_VALUE : store.status);
 
 	function setStatusFilter(value: string): void {
@@ -175,6 +199,12 @@
 	});
 	const firstVisit = $derived(store.result?.emptyReason === 'no_vms_owned' && !filtered);
 	const unreachable = $derived(store.errorCode === 'inventory_not_ready');
+	// A pageSize arriving via the URL may not be one of the offered choices;
+	// surface it rather than let the select misreport the active size.
+	const pageSizeOptions = $derived.by(() => {
+		const sizes = PAGE_SIZES.includes(store.pageSize) ? PAGE_SIZES : [store.pageSize, ...PAGE_SIZES];
+		return sizes.map((size) => ({ value: String(size), label: m['vms.list.perPage']({ count: size }) }));
+	});
 </script>
 
 {#if quotaFull}
@@ -185,7 +215,7 @@
 {/if}
 
 {#if unreachable}
-	<div class="rounded-xl border border-border bg-card shadow-card">
+	<Card as="div" pad="none">
 		<EmptyState
 			title={m['vms.list.unreachableTitle']()}
 			description={m['vms.list.unreachableBody']()}
@@ -196,9 +226,9 @@
 				<Button onclick={() => void retry()} data-testid="vm-list-cluster-retry">{m['vms.list.unreachableRetry']()}</Button>
 			{/snippet}
 		</EmptyState>
-	</div>
+	</Card>
 {:else if firstVisit}
-	<div class="flex flex-col items-center gap-4 rounded-xl border border-border bg-card px-6 py-14 text-center shadow-card" data-testid="vm-empty-owned">
+	<Card as="div" pad="none" class="flex flex-col items-center gap-4 px-6 py-14 text-center" data-testid="vm-empty-owned">
 		<div class="relative" aria-hidden="true">
 			<span class="flex h-16 w-16 items-center justify-center rounded-lg border border-border bg-muted text-muted-foreground">
 				<svg viewBox="0 0 24 24" class="h-7 w-7" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">
@@ -216,9 +246,9 @@
 		</div>
 		<ButtonLink href={resolve('/vms/create')} data-testid="vm-empty-create">{m['vms.list.emptyFirstAction']()}</ButtonLink>
 		<p class="text-xs text-muted-foreground-subtle">{m['vms.list.emptyFirstReassurance']()}</p>
-	</div>
+	</Card>
 {:else}
-	<section class="machine-collection overflow-hidden rounded-xl border border-border bg-card shadow-card" aria-label={m['vms.list.caption']()}>
+	<Card pad="none" class="machine-collection overflow-hidden" aria-label={m['vms.list.caption']()}>
 		<Toolbar>
 			{#snippet search()}
 				<label for="vm-search" class="sr-only">{m['common.search']()}</label>
@@ -255,7 +285,7 @@
 			{#snippet actions()}
 				{#if items.length > 0}
 					<Button
-						variant="ghost"
+						variant={selectMode ? 'secondary' : 'ghost'}
 						size="sm"
 						aria-pressed={selectMode}
 						title={m['vms.list.selectModeHint']()}
@@ -307,7 +337,32 @@
 					onclick={() => store.setSort('name')}
 					data-testid="vm-sort-name"
 				/>
-				<span>{m['vms.list.columnResources']()}</span>
+				<div class="flex items-center gap-2">
+					<SortButton
+						label={m['vms.list.columnCpu']()}
+						active={store.sortBy === 'cpu'}
+						direction={store.sortDir}
+						aria-label={m['vms.list.sortByCpu']()}
+						onclick={() => store.setSort('cpu')}
+						data-testid="vm-sort-cpu"
+					/>
+					<SortButton
+						label={m['vms.list.columnMemory']()}
+						active={store.sortBy === 'memory'}
+						direction={store.sortDir}
+						aria-label={m['vms.list.sortByMemory']()}
+						onclick={() => store.setSort('memory')}
+						data-testid="vm-sort-memory"
+					/>
+					<SortButton
+						label={m['vms.list.columnId']()}
+						active={store.sortBy === 'vmid'}
+						direction={store.sortDir}
+						aria-label={m['vms.list.sortByVmid']()}
+						onclick={() => store.setSort('vmid')}
+						data-testid="vm-sort-vmid"
+					/>
+				</div>
 				<SortButton
 					label={m['vms.list.columnStatus']()}
 					active={store.sortBy === 'status'}
@@ -319,16 +374,28 @@
 				<span class="sr-only">{m['vms.list.columnActions']()}</span>
 			</div>
 			{#if selectMode}
-				<label class="flex items-center gap-3 border-b border-border px-4 py-2 text-xs text-muted-foreground">
-					<input
-						type="checkbox"
-						class="h-4 w-4 rounded border-border accent-primary"
-						checked={bulk.pageAllSelected(items)}
-						onchange={handleSelectAll}
-						data-testid="vm-bulk-select-all"
-					/>
-					{m['vms.list.selectAll']()}
-				</label>
+				<div class="flex flex-wrap items-center gap-3 border-b border-border px-4 py-2 text-xs text-muted-foreground">
+					<label class="flex items-center gap-3">
+						<input
+							type="checkbox"
+							class="h-4 w-4 rounded border-border accent-primary"
+							checked={bulk.pageAllSelected(items)}
+							onchange={handleSelectAll}
+							data-testid="vm-bulk-select-all"
+						/>
+						{m['vms.list.selectAll']()}
+					</label>
+					{#if moreToSelect}
+						<Button
+							variant="link"
+							loading={selectingAll}
+							onclick={() => void handleSelectAllMatching()}
+							data-testid="vm-bulk-select-all-matching"
+						>
+							{m['vms.list.selectAllMatching']({ total: store.result?.total ?? 0 })}
+						</Button>
+					{/if}
+				</div>
 			{/if}
 			<!-- The enclosing <section> already carries this label; repeating it
 			     here makes assistive tech announce the same region twice. -->
@@ -356,11 +423,11 @@
 							<div class="grid min-w-0 flex-1 grid-cols-[minmax(0,1fr)_auto] items-center gap-x-4 gap-y-2 min-[700px]:grid-cols-[minmax(0,1fr)_11rem_8.5rem_9rem]">
 								<div class="flex min-w-0 items-center gap-3">
 									<span class="max-[369px]:hidden"><OsMark ostype={machine.ostype} /></span>
-									<div class="min-w-0">
+									<div class="min-w-0 flex-1">
 										<div class="flex min-w-0 items-center gap-2">
 											<a
 												href={detailHref(machine)}
-												class="pv-focus block min-w-0 truncate font-medium text-foreground underline-offset-2 after:absolute after:inset-0 after:content-[''] hover:text-primary hover:underline"
+												class="pv-focus block max-w-full shrink-0 truncate font-medium text-foreground underline-offset-2 after:absolute after:inset-0 after:content-[''] hover:text-primary hover:underline"
 												aria-label={spansClusters
 													? m['vms.list.rowLinkLabel']({
 															name: machine.name,
@@ -372,7 +439,8 @@
 												{machine.name}
 											</a>
 											{#if spansClusters}
-												<span class="shrink-0" data-testid="vm-row-cluster">
+												<!-- The chip yields before the name does. -->
+												<span class="min-w-0 shrink overflow-hidden" data-testid="vm-row-cluster">
 													<Pill tone="off" dot={false} label={machine.clusterDisplayName} />
 												</span>
 											{/if}
@@ -382,6 +450,12 @@
 												{visibleTags(machine).join(' · ')}
 											</p>
 										{/if}
+										<!-- The wide resources column hides below 700px; this compact
+										     line keeps size on the row where the list has to answer
+										     "which machine is it / is it big enough" on a phone. -->
+										<p class="mt-0.5 font-mono text-xs tabular-nums text-muted-foreground min-[700px]:hidden">
+											{m['vms.list.resourcesCompute']({ cpu: machine.cpuCores, memory: compactBytes(machine.memoryTotal) })}
+										</p>
 									</div>
 								</div>
 								<p class="text-xs leading-5 text-muted-foreground max-[699px]:hidden">
@@ -431,6 +505,15 @@
 
 			{#if pageCount > 1}
 				<nav class="flex items-center justify-end gap-2 border-t border-border px-4 py-2.5" aria-label={m['vms.list.paginationLabel']()}>
+					<label for="vm-page-size" class="sr-only">{m['vms.list.pageSizeLabel']()}</label>
+					<Select
+						id="vm-page-size"
+						class="w-auto"
+						value={String(store.pageSize)}
+						onchange={(event: Event) => store.setPageSize(Number((event.currentTarget as HTMLSelectElement).value))}
+						options={pageSizeOptions}
+						data-testid="vm-page-size"
+					/>
 					<span class="font-mono text-xs tabular-nums text-muted-foreground" data-testid="vm-page-indicator">
 						{m['common.pageIndicator']({ current: store.result.page, total: pageCount })}
 					</span>
@@ -484,7 +567,7 @@
 				<span class="ml-auto">{m['vms.list.allowanceSource']()}</span>
 			</div>
 		{/if}
-	</section>
+	</Card>
 {/if}
 
 {#if !unreachable}

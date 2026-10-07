@@ -211,6 +211,7 @@ export interface VmCreateAccepted {
 	 *  create summary warns that SSH is the only access until a console
 	 *  password is set. */
 	fromImage?: boolean;
+	expectedStatus?: 'running' | 'stopped';
 }
 
 export type CreateMode = 'simple' | 'detailed';
@@ -897,7 +898,9 @@ export class VmCreateStore {
 		this.submitting = true;
 		this.submitError = null;
 		try {
-			return await post<VmCreateAccepted>('/api/v1/vms', this.buildRequest());
+			const request: VMCreateRequest = this.buildRequest();
+			const accepted: VmCreateAccepted = await post<VmCreateAccepted>('/api/v1/vms', request);
+			return { ...accepted, expectedStatus: request.startAfterCreate ? 'running' : 'stopped' };
 		} catch (error: unknown) {
 			this.submitError = translateSubmitError(error);
 			return null;

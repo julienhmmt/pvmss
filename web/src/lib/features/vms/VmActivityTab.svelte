@@ -3,6 +3,8 @@
 	import { getVmDetailContext } from './detail.svelte';
 	import { m } from '$lib/paraglide/messages.js';
 	import Alert from '$lib/shared/ui/Alert.svelte';
+	import Button from '$lib/shared/ui/Button.svelte';
+	import Card from '$lib/shared/ui/Card.svelte';
 	import EmptyState from '$lib/shared/ui/EmptyState.svelte';
 
 	const store = getVmDetailContext();
@@ -28,7 +30,7 @@
 	}
 </script>
 
-<section class="rounded-xl border border-border bg-card p-6 shadow-card" aria-labelledby="activity-heading" data-testid="vm-activity">
+<Card pad="lg" aria-labelledby="activity-heading" data-testid="vm-activity">
 	<h2 id="activity-heading" class="text-lg font-semibold">{m['vm.activity.tab']()}</h2>
 
 	{#if store.auditLoading && (store.auditItems === null || store.auditItems.length === 0)}
@@ -68,25 +70,25 @@
 		<div class="mt-4 flex items-center justify-between text-sm text-muted-foreground" data-testid="vm-activity-pagination">
 			<span>{m['vm.activity.pagetitle']({ page: store.auditPage, total: totalPages })}</span>
 			<div class="flex gap-2">
-				<button
-					type="button"
-					class="rounded-lg border border-border bg-background px-3 py-1.5 font-medium hover:bg-muted disabled:cursor-not-allowed disabled:opacity-50"
+				<Button
+					variant="secondary"
+					size="sm"
 					disabled={store.auditLoading || store.auditPage <= 1}
 					onclick={goPrev}
 					data-testid="vm-activity-prev"
 				>
 					{m['common.previous']()}
-				</button>
-				<button
-					type="button"
-					class="rounded-lg border border-border bg-background px-3 py-1.5 font-medium hover:bg-muted disabled:cursor-not-allowed disabled:opacity-50"
+				</Button>
+				<Button
+					variant="secondary"
+					size="sm"
 					disabled={store.auditLoading || store.auditPage >= totalPages}
 					onclick={goNext}
 					data-testid="vm-activity-next"
 				>
 					{m['common.next']()}
-				</button>
+				</Button>
 			</div>
 		</div>
 	{/if}
-</section>
+</Card>

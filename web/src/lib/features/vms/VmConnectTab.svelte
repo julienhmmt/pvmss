@@ -15,6 +15,7 @@
 	import { get } from '$lib/shared/api/client';
 	import Button from '$lib/shared/ui/Button.svelte';
 	import ButtonLink from '$lib/shared/ui/ButtonLink.svelte';
+	import Card from '$lib/shared/ui/Card.svelte';
 	import CopyButton from '$lib/shared/ui/CopyButton.svelte';
 	import { m } from '$lib/paraglide/messages.js';
 
@@ -56,7 +57,7 @@
 {#if store.entity}
 	{@const entity = store.entity}
 	<div class="grid gap-5 {connect === 'installing' ? '' : 'min-[900px]:grid-cols-[minmax(0,1fr)_260px]'}">
-		<section class="rounded-xl border border-border bg-card p-6 shadow-card" aria-labelledby="connect-ssh-title" data-testid="vm-connect-ssh">
+		<Card pad="lg" aria-labelledby="connect-ssh-title" data-testid="vm-connect-ssh">
 			<p class="text-2xs font-semibold uppercase tracking-[0.08em] text-muted-foreground-subtle">{m['vms.detail.connect.eyebrow']()}</p>
 			{#if connect === 'installing'}
 				<h2 id="connect-ssh-title" class="mt-1 text-lg font-semibold" data-testid="vm-installing">{m['vms.detail.connect.installingTitle']()}</h2>
@@ -139,7 +140,7 @@
 				<h2 id="connect-ssh-title" class="mt-1 text-lg font-semibold" data-testid="vm-ssh-unavailable">{windows ? m['vms.detail.connect.rdpNotRunningTitle']() : m['vms.detail.connect.notRunningTitle']()}</h2>
 				<p class="mt-1 text-sm text-muted-foreground">{m['vms.detail.connect.notRunningBody']()}</p>
 			{/if}
-		</section>
+		</Card>
 
 		{#if connect !== 'installing'}
 		<aside class="flex flex-col gap-3 rounded-xl border border-border bg-muted/40 p-5" aria-labelledby="connect-console-title">

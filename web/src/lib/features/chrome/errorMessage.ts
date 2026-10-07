@@ -40,8 +40,14 @@ export const KNOWN_ERROR_CODES: readonly string[] = Object.keys(ERROR_CODE_MAP);
  *   not surfaced directly to the user (FR-006).
  * @returns a localized string for display.
  */
-export function resolveErrorMessage(code: string, fallback: string): string {
+export function resolveErrorMessage(code: string, fallback: string, details: { readonly privilege?: string | undefined; readonly path?: string | undefined } = {}): string {
 	if (code === 'cluster_rejected' && fallback.trim() !== '') return fallback;
+	if (code === 'cluster_permission_denied') {
+		// Server fields: privilege and path identify the missing ACL grant.
+		if (typeof details.privilege === 'string' && typeof details.path === 'string' && details.privilege !== '' && details.path !== '') {
+			return m['error.cluster_permission_denied']({ privilege: details.privilege, path: details.path });
+		}
+	}
 	const resolver = ERROR_CODE_MAP[code];
 	if (resolver !== undefined) return resolver();
 	return m['error.generic']();

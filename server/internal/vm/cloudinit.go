@@ -155,7 +155,7 @@ func SetCloudInitConfig(ctx context.Context, deps CloudInitConfigDeps, update cl
 // refusals, the ciuser resolution (patch value first, then the live config -
 // never a fallback to a locked root), and the bounded agent wait.
 func applyCloudInitPasswordFlow(ctx context.Context, deps CloudInitConfigDeps, writer cluster.Writer, entity Entity, current, effective cluster.CloudInitConfig, password string) error {
-	if err := preflightGuestAgent(ctx, deps, entity, current); err != nil {
+	if err := preflightGuestAgent(ctx, deps, writer, entity, current); err != nil {
 		return err
 	}
 
@@ -184,7 +184,7 @@ var (
 // the VM must be running (read live, not from the up-to-30s-stale projection -
 // ADR 0001). Both refusals are immediate and actionable where the raw agent
 // error today is opaque.
-func preflightGuestAgent(ctx context.Context, deps CloudInitConfigDeps, entity Entity, current cluster.CloudInitConfig) error {
+func preflightGuestAgent(ctx context.Context, deps CloudInitConfigDeps, writer cluster.Writer, entity Entity, current cluster.CloudInitConfig) error {
 	if !current.Agent {
 		return ErrGuestAgentDisabled
 	}
@@ -204,8 +204,20 @@ func preflightGuestAgent(ctx context.Context, deps CloudInitConfigDeps, entity E
 		return ErrVMNotRunning
 	}
 
+	// Past the boot grace an agent that does not answer is not coming: one
+	// ping decides, instead of a 30 s wait ending in a 504.
+	if status.Uptime > agentBootGrace {
+		if err := writer.PingGuestAgent(ctx, entity.Node, entity.VMID); err != nil {
+			return fmt.Errorf("%w (is qemu-guest-agent installed and running?): %w", ErrGuestAgentUnreachable, err)
+		}
+	}
+
 	return nil
 }
+
+// agentBootGrace is how long after boot the guest agent may still be coming
+// up; within it the bounded wait in applyCloudInitPassword applies.
+const agentBootGrace = 3 * time.Minute
 
 // applyCloudInitPassword waits for the QEMU guest agent within a bounded
 // window, then applies the password to user, retrying while cloud-init has

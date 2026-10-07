@@ -8,8 +8,10 @@
 	 */
 	import { resolve } from '$app/paths';
 	import type { MachineDisplayStatus } from './display-status';
+	import Alert from '$lib/shared/ui/Alert.svelte';
 	import Button from '$lib/shared/ui/Button.svelte';
 	import ButtonLink from '$lib/shared/ui/ButtonLink.svelte';
+	import Card from '$lib/shared/ui/Card.svelte';
 	import { m } from '$lib/paraglide/messages.js';
 
 	interface Props {
@@ -39,7 +41,7 @@
 </script>
 
 {#if confirmingShutdown}
-	<div class="rounded-xl border border-warning-soft-border bg-warning-soft p-5 text-warning-soft-foreground" role="alert" data-testid="vm-shutdown-confirmation">
+	<Alert tone="warning" pad="lg" data-testid="vm-shutdown-confirmation">
 		<p class="font-semibold">{m['vms.detail.banner.shutdownTitle']()}</p>
 		<p class="mt-1 text-sm">{m['vms.detail.banner.shutdownBody']()}</p>
 		<div class="mt-4 flex flex-wrap gap-2">
@@ -48,11 +50,11 @@
 				{m['vms.detail.banner.confirmShutdown']()}
 			</Button>
 		</div>
-	</div>
+	</Alert>
 {/if}
 
 {#if status === 'provisioning'}
-	<section class="rounded-xl border border-border bg-card p-6 shadow-card" aria-live="polite" data-testid="vm-banner-provisioning">
+	<Card pad="lg" aria-live="polite" data-testid="vm-banner-provisioning">
 		<p class="text-2xs font-semibold uppercase tracking-[0.08em] text-primary">{m['vms.detail.banner.provisioningEyebrow']()}</p>
 		<p class="mt-1 text-lg font-semibold">{m['vms.detail.banner.provisioningTitle']()}</p>
 		<p class="mt-1 text-sm text-muted-foreground">{m['vms.detail.banner.provisioningBody']()}</p>
@@ -75,9 +77,9 @@
 			{/each}
 		</ol>
 		<a href={resolve('/vms')} class="pv-focus mt-4 inline-block rounded text-sm font-medium text-primary underline-offset-2 hover:underline">{m['vms.detail.banner.backToWorkspace']()}</a>
-	</section>
+	</Card>
 {:else if status === 'failed' || status === 'partial'}
-	<section class="rounded-xl border border-destructive-soft-border bg-destructive-soft p-5 text-destructive-soft-foreground" role="alert" data-testid="vm-banner-{status}">
+	<Alert tone="error" pad="lg" data-testid="vm-banner-{status}">
 		<p class="font-semibold">{status === 'failed' ? m['vms.detail.banner.failedTitle']() : m['vms.detail.banner.partialTitle']()}</p>
 		<p class="mt-1 text-sm">{status === 'failed' ? m['vms.detail.banner.failedBody']() : m['vms.detail.banner.partialBody']()}</p>
 		<div class="mt-3">
@@ -93,7 +95,7 @@
 				<code class="mt-2 block whitespace-pre-wrap break-words rounded-md bg-card/60 p-2 font-mono text-xs">{detail}</code>
 			</details>
 		{/if}
-	</section>
+	</Alert>
 {:else if status === 'starting' || status === 'stopping'}
 	<p class="rounded-xl border border-border bg-muted/60 px-5 py-3 text-sm text-muted-foreground" role="status" data-testid="vm-banner-busy">
 		{status === 'starting' ? m['vms.detail.banner.busyStarting']() : m['vms.detail.banner.busyStopping']()}

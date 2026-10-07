@@ -214,38 +214,18 @@ type migrationPreflightCase struct {
 	check func(t *testing.T, got migrationPreflightResponse)
 }
 
-//nolint:funlen,gocyclo // scenario table
 func migrationPreflightCases() []migrationPreflightCase {
 	return []migrationPreflightCase{
 		{
-			name: "candidates are approved online nodes minus current",
-			vmid: migRunningVM,
-			check: func(t *testing.T, got migrationPreflightResponse) {
-				t.Helper()
-
-				if !slices.Equal(migrationNodes(got), []string{migNode02}) || got.Node != migNode01 || !got.Running || got.Blocked {
-					t.Fatalf("got %+v, want only %s as candidate on running VM at %s", got, migNode02, migNode01)
-				}
-
-				if len(got.Excluded) != 0 || len(got.Blockers) != 0 || len(got.LocalDisks) != 0 {
-					t.Fatalf("unapproved node must not appear: %+v", got)
-				}
-			},
+			name:  "candidates are approved online nodes minus current",
+			vmid:  migRunningVM,
+			check: checkApprovedCandidatesOnly,
 		},
 		{
-			name: "approved offline node is excluded as offline",
-			vmid: migRunningVM,
-			setup: func(t *testing.T, f *migrationFixture) {
-				t.Helper()
-				f.approve(t, migNode03)
-			},
-			check: func(t *testing.T, got migrationPreflightResponse) {
-				t.Helper()
-
-				if len(got.Excluded) != 1 || got.Excluded[0].Node != migNode03 || got.Excluded[0].Reason != "offline" {
-					t.Fatalf("excluded = %+v, want %s offline", got.Excluded, migNode03)
-				}
-			},
+			name:  "approved offline node is excluded as offline",
+			vmid:  migRunningVM,
+			setup: approveNode03,
+			check: checkOfflineNodeExcluded,
 		},
 		{
 			name: "node refused by proxmox is excluded with its reason",
@@ -255,37 +235,18 @@ func migrationPreflightCases() []migrationPreflightCase {
 					NotAllowed: map[string]string{migNode02: "unavailable storages: local-lvm"},
 				})
 			},
-			check: func(t *testing.T, got migrationPreflightResponse) {
-				t.Helper()
-
-				if len(got.Candidates) != 0 || len(got.Excluded) != 1 || got.Excluded[0].Reason != "not_allowed" || got.Excluded[0].Detail != "unavailable storages: local-lvm" {
-					t.Fatalf("got %+v, want %s not_allowed with detail", got, migNode02)
-				}
-			},
+			check: checkNotAllowedExcluded,
 		},
 		{
-			name: "local disks are reported",
-			vmid: migStoppedVM,
-			check: func(t *testing.T, got migrationPreflightResponse) {
-				t.Helper()
-
-				want := []string{"local-lvm:vm-101-disk-0", "local-lvm:vm-101-disk-1"}
-				if !slices.Equal(got.LocalDisks, want) || got.Running {
-					t.Fatalf("localDisks = %v running = %v, want %v on a stopped VM", got.LocalDisks, got.Running, want)
-				}
-			},
+			name:  "local disks are reported",
+			vmid:  migStoppedVM,
+			check: checkLocalDisks,
 		},
 		{
 			name:  "locked VM is blocked with the lock name",
 			vmid:  migRunningVM,
 			setup: func(_ *testing.T, _ *migrationFixture) { (cluster.Fake{}).SetVMLock(migRunningVM, "backup") },
-			check: func(t *testing.T, got migrationPreflightResponse) {
-				t.Helper()
-
-				if !got.Blocked || got.Lock != "backup" {
-					t.Fatalf("got blocked=%v lock=%q, want blocked by backup", got.Blocked, got.Lock)
-				}
-			},
+			check: checkLockBlocks,
 		},
 		{
 			name: "local resources block a running VM",
@@ -295,14 +256,7 @@ func migrationPreflightCases() []migrationPreflightCase {
 					AllowedNodes: []string{migNode02}, LocalResources: []string{"hostpci0", "usb0"},
 				})
 			},
-			check: func(t *testing.T, got migrationPreflightResponse) {
-				t.Helper()
-
-				want := "local resources prevent live migration: hostpci0, usb0"
-				if !got.Blocked || len(got.Blockers) != 1 || got.Blockers[0] != want {
-					t.Fatalf("blockers = %v blocked = %v, want %q", got.Blockers, got.Blocked, want)
-				}
-			},
+			check: checkLocalResourcesBlock,
 		},
 		{
 			name: "local resources do not block a stopped VM",
@@ -312,33 +266,93 @@ func migrationPreflightCases() []migrationPreflightCase {
 					AllowedNodes: []string{migNode02}, LocalResources: []string{"hostpci0"},
 				})
 			},
-			check: func(t *testing.T, got migrationPreflightResponse) {
-				t.Helper()
-
-				if got.Blocked || len(got.Blockers) != 0 {
-					t.Fatalf("stopped VM must not be blocked: %+v", got)
-				}
-			},
+			check: checkStoppedVMUnblocked,
 		},
 		{
-			name: "capacity overflow warns but never blocks",
-			vmid: migRunningVM,
-			setup: func(t *testing.T, f *migrationFixture) {
-				t.Helper()
-
-				row := store.NodePolicyRow{Cluster: auditTestCluster, Node: migNode02, MaxRAMGB: 1}
-				if err := f.st.UpsertNodePolicyRow(context.Background(), row); err != nil {
-					t.Fatalf("UpsertNodePolicyRow: %v", err)
-				}
-			},
-			check: func(t *testing.T, got migrationPreflightResponse) {
-				t.Helper()
-
-				if got.Blocked || len(got.Candidates) != 1 || !slices.Contains(got.Candidates[0].Warnings, "ram") {
-					t.Fatalf("got %+v, want unblocked %s candidate warning ram", got, migNode02)
-				}
-			},
+			name:  "capacity overflow warns but never blocks",
+			vmid:  migRunningVM,
+			setup: capNode02RAM,
+			check: checkCapacityWarnsOnly,
 		},
+	}
+}
+
+func capNode02RAM(t *testing.T, f *migrationFixture) {
+	t.Helper()
+
+	row := store.NodePolicyRow{Cluster: auditTestCluster, Node: migNode02, MaxRAMGB: 1}
+	if err := f.st.UpsertNodePolicyRow(context.Background(), row); err != nil {
+		t.Fatalf("UpsertNodePolicyRow: %v", err)
+	}
+}
+
+func checkApprovedCandidatesOnly(t *testing.T, got migrationPreflightResponse) {
+	t.Helper()
+
+	if !slices.Equal(migrationNodes(got), []string{migNode02}) || got.Node != migNode01 || !got.Running || got.Blocked {
+		t.Fatalf("got %+v, want only %s as candidate on running VM at %s", got, migNode02, migNode01)
+	}
+
+	if len(got.Excluded) != 0 || len(got.Blockers) != 0 || len(got.LocalDisks) != 0 {
+		t.Fatalf("unapproved node must not appear: %+v", got)
+	}
+}
+
+func checkOfflineNodeExcluded(t *testing.T, got migrationPreflightResponse) {
+	t.Helper()
+
+	if len(got.Excluded) != 1 || got.Excluded[0].Node != migNode03 || got.Excluded[0].Reason != "offline" {
+		t.Fatalf("excluded = %+v, want %s offline", got.Excluded, migNode03)
+	}
+}
+
+func checkNotAllowedExcluded(t *testing.T, got migrationPreflightResponse) {
+	t.Helper()
+
+	if len(got.Candidates) != 0 || len(got.Excluded) != 1 || got.Excluded[0].Reason != "not_allowed" || got.Excluded[0].Detail != "unavailable storages: local-lvm" {
+		t.Fatalf("got %+v, want %s not_allowed with detail", got, migNode02)
+	}
+}
+
+func checkLocalDisks(t *testing.T, got migrationPreflightResponse) {
+	t.Helper()
+
+	want := []string{"local-lvm:vm-101-disk-0", "local-lvm:vm-101-disk-1"}
+	if !slices.Equal(got.LocalDisks, want) || got.Running {
+		t.Fatalf("localDisks = %v running = %v, want %v on a stopped VM", got.LocalDisks, got.Running, want)
+	}
+}
+
+func checkLockBlocks(t *testing.T, got migrationPreflightResponse) {
+	t.Helper()
+
+	if !got.Blocked || got.Lock != "backup" {
+		t.Fatalf("got blocked=%v lock=%q, want blocked by backup", got.Blocked, got.Lock)
+	}
+}
+
+func checkLocalResourcesBlock(t *testing.T, got migrationPreflightResponse) {
+	t.Helper()
+
+	want := "local resources prevent live migration: hostpci0, usb0"
+	if !got.Blocked || len(got.Blockers) != 1 || got.Blockers[0] != want {
+		t.Fatalf("blockers = %v blocked = %v, want %q", got.Blockers, got.Blocked, want)
+	}
+}
+
+func checkStoppedVMUnblocked(t *testing.T, got migrationPreflightResponse) {
+	t.Helper()
+
+	if got.Blocked || len(got.Blockers) != 0 {
+		t.Fatalf("stopped VM must not be blocked: %+v", got)
+	}
+}
+
+func checkCapacityWarnsOnly(t *testing.T, got migrationPreflightResponse) {
+	t.Helper()
+
+	if got.Blocked || len(got.Candidates) != 1 || !slices.Contains(got.Candidates[0].Warnings, "ram") {
+		t.Fatalf("got %+v, want unblocked %s candidate warning ram", got, migNode02)
 	}
 }
 
@@ -381,7 +395,6 @@ func TestMigrationPreflight_Rejections(t *testing.T) {
 	}
 }
 
-//nolint:gocyclo // one end-to-end flow with sequential assertions
 func TestMigrationStart_MovesVMAndFollowsTask(t *testing.T) {
 	cases := []struct {
 		name       string
@@ -396,52 +409,84 @@ func TestMigrationStart_MovesVMAndFollowsTask(t *testing.T) {
 		t.Run(c.name, func(t *testing.T) {
 			fixture := newMigrationFixture(t)
 
-			rec := fixture.start(c.vmid, `{"target":"`+migNode02+`"}`)
-			if rec.Code != http.StatusAccepted {
-				t.Fatalf("status = %d, want 202; body=%s", rec.Code, rec.Body.String())
-			}
-
-			var started migrationStartResponse
-			if err := json.Unmarshal(rec.Body.Bytes(), &started); err != nil {
-				t.Fatalf("decode: %v", err)
-			}
-
-			if started.Source != migNode01 || started.Target != migNode02 || started.VMID != c.vmid || started.Cluster != auditTestCluster || started.UPID == "" {
-				t.Fatalf("response = %+v", started)
-			}
-
-			calls := cluster.FakeCallsFor(c.vmid)
-			if len(calls) != 1 || calls[0].Action != "migrate" || calls[0].Node != migNode01 || calls[0].Name != migNode02 || calls[0].Online != c.wantOnline {
-				t.Fatalf("fake calls = %+v, want one migrate to %s online=%v", calls, migNode02, c.wantOnline)
-			}
-
-			if locked := fixture.preflight(t, c.vmid); locked.Lock != "migrate" || !locked.Blocked {
-				t.Fatalf("in-flight VM lock = %q blocked = %v, want migrate lock", locked.Lock, locked.Blocked)
-			}
-
-			if task := pollMigrationTask(t, fixture.mux, fixture.cookie, started.UPID, auditTestCluster); task.State != string(cluster.TaskOK) {
-				t.Fatalf("task state = %q, want ok", task.State)
-			}
-
-			if got := fixture.projection.Load().ByVMID[c.vmid].Node; got != migNode02 {
-				t.Fatalf("projection node = %q, want %q", got, migNode02)
-			}
-
-			after := fixture.preflight(t, c.vmid)
-			if after.Node != migNode02 || after.Lock != "" || !slices.Contains(migrationNodes(after), migNode01) {
-				t.Fatalf("after migration: %+v", after)
-			}
-
-			audit := fixture.migrateAudit(t)
-			if len(audit) != 1 {
-				t.Fatalf("audit rows = %d, want 1", len(audit))
-			}
-
-			row := audit[0]
-			if row.Cluster != auditTestCluster || row.VMID == nil || *row.VMID != c.vmid || !strings.Contains(row.Detail.String, migNode01) || !strings.Contains(row.Detail.String, migNode02) {
-				t.Fatalf("audit row = %+v", row)
-			}
+			started := requireMigrationStarted(t, fixture.start(c.vmid, `{"target":"`+migNode02+`"}`), c.vmid)
+			requireMigrateCall(t, c.vmid, c.wantOnline)
+			fixture.requireMigrateLock(t, c.vmid)
+			requireMigrationTaskOK(t, fixture, started.UPID)
+			fixture.requireMovedTo(t, c.vmid, migNode02)
+			fixture.requireMigrationAudit(t, c.vmid)
 		})
+	}
+}
+
+func requireMigrationStarted(t *testing.T, rec *httptest.ResponseRecorder, vmid int) migrationStartResponse {
+	t.Helper()
+
+	if rec.Code != http.StatusAccepted {
+		t.Fatalf("status = %d, want 202; body=%s", rec.Code, rec.Body.String())
+	}
+
+	var started migrationStartResponse
+	if err := json.Unmarshal(rec.Body.Bytes(), &started); err != nil {
+		t.Fatalf("decode: %v", err)
+	}
+
+	if started.Source != migNode01 || started.Target != migNode02 || started.VMID != vmid || started.Cluster != auditTestCluster || started.UPID == "" {
+		t.Fatalf("response = %+v", started)
+	}
+
+	return started
+}
+
+func requireMigrateCall(t *testing.T, vmid int, wantOnline bool) {
+	t.Helper()
+
+	calls := cluster.FakeCallsFor(vmid)
+	if len(calls) != 1 || calls[0].Action != "migrate" || calls[0].Node != migNode01 || calls[0].Name != migNode02 || calls[0].Online != wantOnline {
+		t.Fatalf("fake calls = %+v, want one migrate to %s online=%v", calls, migNode02, wantOnline)
+	}
+}
+
+func (f *migrationFixture) requireMigrateLock(t *testing.T, vmid int) {
+	t.Helper()
+
+	if locked := f.preflight(t, vmid); locked.Lock != "migrate" || !locked.Blocked {
+		t.Fatalf("in-flight VM lock = %q blocked = %v, want migrate lock", locked.Lock, locked.Blocked)
+	}
+}
+
+func requireMigrationTaskOK(t *testing.T, f *migrationFixture, upid string) {
+	t.Helper()
+
+	if task := pollMigrationTask(t, f.mux, f.cookie, upid, auditTestCluster); task.State != string(cluster.TaskOK) {
+		t.Fatalf("task state = %q, want ok", task.State)
+	}
+}
+
+func (f *migrationFixture) requireMovedTo(t *testing.T, vmid int, node string) {
+	t.Helper()
+
+	if got := f.projection.Load().ByVMID[vmid].Node; got != node {
+		t.Fatalf("projection node = %q, want %q", got, node)
+	}
+
+	after := f.preflight(t, vmid)
+	if after.Node != node || after.Lock != "" || !slices.Contains(migrationNodes(after), migNode01) {
+		t.Fatalf("after migration: %+v", after)
+	}
+}
+
+func (f *migrationFixture) requireMigrationAudit(t *testing.T, vmid int) {
+	t.Helper()
+
+	audit := f.migrateAudit(t)
+	if len(audit) != 1 {
+		t.Fatalf("audit rows = %d, want 1", len(audit))
+	}
+
+	row := audit[0]
+	if row.Cluster != auditTestCluster || row.VMID == nil || *row.VMID != vmid || !strings.Contains(row.Detail.String, migNode01) || !strings.Contains(row.Detail.String, migNode02) {
+		t.Fatalf("audit row = %+v", row)
 	}
 }
 
@@ -450,15 +495,48 @@ func approveNode03(t *testing.T, f *migrationFixture) {
 	f.approve(t, migNode03)
 }
 
+type migrationRejectionCase struct {
+	name     string
+	vmid     int
+	body     string
+	setup    func(t *testing.T, f *migrationFixture)
+	wantCode int
+	wantErr  string
+}
+
+func runMigrationRejection(t *testing.T, c migrationRejectionCase) {
+	t.Helper()
+
+	fixture := newMigrationFixture(t)
+
+	if c.setup != nil {
+		c.setup(t, fixture)
+	}
+
+	rec := fixture.start(c.vmid, c.body)
+	if rec.Code != c.wantCode {
+		t.Fatalf("status = %d, want %d; body=%s", rec.Code, c.wantCode, rec.Body.String())
+	}
+
+	var env apiErrorEnvelope
+
+	_ = json.Unmarshal(rec.Body.Bytes(), &env)
+
+	if env.Code != c.wantErr {
+		t.Fatalf("code = %q, want %q", env.Code, c.wantErr)
+	}
+
+	if calls := cluster.FakeCallsFor(c.vmid); len(calls) != 0 {
+		t.Fatalf("fake received %+v, want no dispatch", calls)
+	}
+
+	if audit := fixture.migrateAudit(t); len(audit) != 0 {
+		t.Fatalf("audit rows = %d, want none", len(audit))
+	}
+}
+
 func TestMigrationStart_Rejections(t *testing.T) {
-	cases := []struct {
-		name     string
-		vmid     int
-		body     string
-		setup    func(t *testing.T, f *migrationFixture)
-		wantCode int
-		wantErr  string
-	}{
+	cases := []migrationRejectionCase{
 		{"unapproved target", migRunningVM, `{"target":"` + migNode03 + `"}`, nil, http.StatusBadRequest, codeInvalidTarget},
 		{"unknown target", migRunningVM, `{"target":"nowhere"}`, nil, http.StatusBadRequest, codeInvalidTarget},
 		{"same node", migRunningVM, `{"target":"` + migNode01 + `"}`, nil, http.StatusBadRequest, codeInvalidTarget},
@@ -477,32 +555,7 @@ func TestMigrationStart_Rejections(t *testing.T) {
 
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
-			fixture := newMigrationFixture(t)
-
-			if c.setup != nil {
-				c.setup(t, fixture)
-			}
-
-			rec := fixture.start(c.vmid, c.body)
-			if rec.Code != c.wantCode {
-				t.Fatalf("status = %d, want %d; body=%s", rec.Code, c.wantCode, rec.Body.String())
-			}
-
-			var env apiErrorEnvelope
-
-			_ = json.Unmarshal(rec.Body.Bytes(), &env)
-
-			if env.Code != c.wantErr {
-				t.Fatalf("code = %q, want %q", env.Code, c.wantErr)
-			}
-
-			if calls := cluster.FakeCallsFor(c.vmid); len(calls) != 0 {
-				t.Fatalf("fake received %+v, want no dispatch", calls)
-			}
-
-			if audit := fixture.migrateAudit(t); len(audit) != 0 {
-				t.Fatalf("audit rows = %d, want none", len(audit))
-			}
+			runMigrationRejection(t, c)
 		})
 	}
 }

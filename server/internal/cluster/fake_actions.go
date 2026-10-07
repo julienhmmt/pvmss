@@ -138,6 +138,23 @@ func (fake Fake) Delete(_ context.Context, node string, vmid int) error {
 	return nil
 }
 
+// ClearDescription implements Writer for the fake source.
+func (fake Fake) ClearDescription(_ context.Context, node string, vmid int) error {
+	state := fake.stateOrDefault()
+	state.vmMu.Lock()
+	defer state.vmMu.Unlock()
+
+	idx := slices.IndexFunc(state.vms, func(v VM) bool { return v.VMID == vmid && v.Node == node })
+	if idx < 0 {
+		return ErrNotFound
+	}
+
+	state.vms[idx].Description = ""
+	state.record(FakeCall{Node: node, VMID: vmid, Action: "patch"})
+
+	return nil
+}
+
 // Patch implements Writer - name and/or description update. Empty arguments
 // are ignored; the caller (vm.Patch) decides which fields to send.
 func (fake Fake) Patch(_ context.Context, node string, vmid int, name, description string) error {

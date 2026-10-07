@@ -1,14 +1,12 @@
 <script lang="ts">
-	import type { AdminStorage } from './admin-catalog.svelte';
+	import type { AdminStorage, StorageSortColumn } from './admin-catalog.svelte';
 	import { formatBytes } from './format';
-	import Switch from '$lib/shared/ui/Switch.svelte';
 	import EmptyState from '$lib/shared/ui/EmptyState.svelte';
+	import Pill from '$lib/shared/ui/Pill.svelte';
 	import NodeUsageBar from '$lib/shared/ui/NodeUsageBar.svelte';
 	import TableHeader from '$lib/shared/ui/TableHeader.svelte';
-	import Button from '$lib/shared/ui/Button.svelte';
+	import ApprovalCell from './ApprovalCell.svelte';
 	import { m } from '$lib/paraglide/messages.js';
-
-	type StorageSortColumn = 'name' | 'node' | 'type' | 'usage' | 'enabled';
 
 	interface Props {
 		storages: AdminStorage[];
@@ -26,25 +24,21 @@
 		if (total <= 0) return 0;
 		return Math.min(100, Math.round((used / total) * 100));
 	}
-
-	function handleSort(column: string): void {
-		onSort(column as StorageSortColumn);
-	}
 </script>
 
 <table class="pv-table pv-responsive-table">
 	<caption class="sr-only">{m['admin.storages.heading']()}</caption>
 	<thead>
 		<tr>
-			<TableHeader text={m['common.name']()} column="name" activeColumn={sortBy} {sortDir} onSort={handleSort} />
-			<TableHeader text={m['common.node']()} column="node" activeColumn={sortBy} {sortDir} onSort={handleSort} />
+			<TableHeader text={m['common.name']()} column="name" activeColumn={sortBy} {sortDir} {onSort} />
+			<TableHeader text={m['common.node']()} column="node" activeColumn={sortBy} {sortDir} {onSort} />
 			<TableHeader
 				text={m['common.type']()}
 				tooltip={m['admin.catalog.tooltip.storageType']()}
 				column="type"
 				activeColumn={sortBy}
 				{sortDir}
-				onSort={handleSort}
+				{onSort}
 			/>
 			<TableHeader
 				text={m['admin.catalog.usage']()}
@@ -52,7 +46,7 @@
 				column="usage"
 				activeColumn={sortBy}
 				{sortDir}
-				onSort={handleSort}
+				{onSort}
 			/>
 			<TableHeader
 				text={m['admin.catalog.statusColumn']()}
@@ -60,7 +54,7 @@
 				column="enabled"
 				activeColumn={sortBy}
 				{sortDir}
-				onSort={handleSort}
+				{onSort}
 			/>
 		</tr>
 	</thead>
@@ -78,12 +72,13 @@
 					{:else}
 						<span class="font-mono font-medium">{storage.name}</span>
 						{#if storage.missing}
-							<span
-								class="ml-2 inline-flex items-center rounded-full border border-destructive/40 bg-destructive/10 px-2 py-0.5 text-xs font-medium text-destructive"
+							<Pill
+								tone="error"
+								dot={false}
+								label={m['admin.catalog.missingBadge']()}
+								class="ml-2"
 								data-testid="storage-missing-badge"
-							>
-								{m['admin.catalog.missingBadge']()}
-							</span>
+							/>
 						{/if}
 					{/if}
 				</td>
@@ -107,39 +102,15 @@
 				</td>
 				<td data-label={m['admin.catalog.statusColumn']()}>
 					{#if !storage.noStorage}
-						{#if storage.missing}
-							<div class="flex items-center gap-2">
-								<span class="text-xs text-muted-foreground">{m['admin.catalog.missingBadge']()}</span>
-								<Button
-									variant="ghost"
-									size="sm"
-									onclick={() => onRemove(storage.name, storage.node)}
-									data-testid="storage-remove"
-								>
-									{m['admin.catalog.remove']()}
-								</Button>
-							</div>
-						{:else}
-							<span
-								class="inline-flex items-center gap-2"
-								aria-busy={toggling === `storage:${storage.name}@${storage.node}`}
-							>
-								<Switch
-									checked={storage.enabled}
-									label={storage.enabled
-										? m['admin.catalog.revokeApproval']({ name: storage.name })
-										: m['admin.catalog.approveName']({ name: storage.name })}
-									onToggle={() => onToggle(storage.name, storage.node, !storage.enabled)}
-								/>
-								<span class="text-xs text-muted-foreground">
-									{#if toggling === `storage:${storage.name}@${storage.node}`}
-										…
-									{:else}
-										{storage.enabled ? m['admin.catalog.approvedStatus']() : m['admin.catalog.approveAction']()}
-									{/if}
-								</span>
-							</span>
-						{/if}
+						<ApprovalCell
+							enabled={storage.enabled}
+							name={storage.name}
+							pending={toggling === `storage:${storage.name}@${storage.node}`}
+							missing={storage.missing}
+							onToggle={() => onToggle(storage.name, storage.node, !storage.enabled)}
+							onRemove={() => onRemove(storage.name, storage.node)}
+							removeTestId="storage-remove"
+						/>
 					{/if}
 				</td>
 			</tr>

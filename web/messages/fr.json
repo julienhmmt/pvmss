@@ -86,6 +86,7 @@
   "error.invalid_action": "Action invalide.",
   "error.quota_exceeded": "Quota de VM atteint.",
   "error.gabarit_exceeded": "Gabarit de VM dépassé.",
+  "error.cluster_permission_denied": "Il manque une permission Proxmox à PVMSS : son jeton de service doit avoir {privilege} sur {path}. Demandez à un administrateur de l'accorder.",
   "error.snapshot_storage_unsupported": "Ce stockage ne gère pas les snapshots.",
   "error.vm_locked": "La VM est verrouillée par une autre opération. Réessayez dans un instant.",
   "error.snapshot_name_exists": "Un snapshot de ce nom existe déjà.",
@@ -418,7 +419,7 @@
   "vms.list.paginationLabel": "Pagination de la liste des VMs",
   "vms.list.errorLoading": "Échec du chargement des VMs",
   "vms.detail.breadcrumb": "VM {vmid}",
-  "vms.detail.title": "VM {vmid} - PVMSS",
+  "vms.detail.title": "{name} - PVMSS",
   "vms.detail.loading": "Chargement…",
   "vms.detail.clickToRename": "Cliquez pour renommer",
   "vms.detail.clickToEdit": "Cliquez pour modifier",
@@ -474,6 +475,9 @@
   "vms.detail.baselineApplied": "Baseline cloud-init livrée (qemu-guest-agent installé et activé).",
   "vms.detail.baselineOverride": "Baseline cloud-init livrée (remplacée par un pvmss-baseline.yml global au cluster).",
   "vms.detail.baselineNotDelivered": "Baseline cloud-init non livrée.",
+  "vms.detail.baselineReason.writeUnavailable": "Les documents cloud-init ne sont pas encore activés sur ce cluster.",
+  "vms.detail.baselineReason.noDocument": "Aucun document cloud-init n'était publié pour ce cluster lors de la création.",
+  "vms.detail.baselineReason.deliveryFailed": "Le document n'a pas pu être attaché à cette machine.",
   "vms.detail.baselineNotDeliveredHint": "Cette machine démarre avec ses clés natives (utilisateur, clé SSH, réseau), sans le document qui installe l'agent invité QEMU. Choisissez un document dans Configuration > Cloud-init une fois publié sur le nœud, ou demandez à un administrateur de le publier.",
   "vms.action.start": "Démarrer",
   "vms.action.shutdown": "Éteindre",
@@ -487,7 +491,12 @@
   "vms.confirm.reset.title": "Réinitialiser {name} ?",
   "vms.confirm.reset.message": "La réinitialisation redémarre la machine sans laisser le système invité s'arrêter proprement. Tout ce qui n'est pas enregistré dans le système invité est perdu. Utilisez Redémarrer si la machine répond encore.",
   "vms.confirm.reset.confirm": "Réinitialiser",
-  "vms.console.title": "Console VM {vmid} - PVMSS",
+  "vms.console.state.idle": "Inactive",
+  "vms.console.state.connecting": "Connexion",
+  "vms.console.state.connected": "Connectée",
+  "vms.console.state.disconnected": "Déconnectée",
+  "vms.console.state.error": "Erreur",
+  "vms.console.title": "Console {name} - PVMSS",
   "vms.console.heading": "Console VM {vmid}",
   "vms.console.crashed": "La console a planté de manière inattendue.",
   "vms.console.open": "Ouvrir la console",
@@ -624,9 +633,9 @@
   "vms.hardware.memory": "Mémoire (Mo)",
   "vms.hardware.tags": "Étiquettes",
   "vms.hardware.tagsHint": "Les étiquettes sont définies par les administrateurs - cliquez pour sélectionner ou désélectionner.",
-  "vms.hardware.restartNotice": "Cette VM est en cours d'exécution - l'enregistrement des modifications de sockets, cœurs ou mémoire l'arrêtera et la redémarrera.",
+  "vms.hardware.restartNotice": "Cette VM est en cours d'exécution - l'enregistrement des modifications de sockets, cœurs ou mémoire l'éteindra proprement, appliquera les changements puis la redémarrera. Si elle ne s'éteint pas en une minute environ, rien n'est modifié.",
   "vms.hardware.save": "Enregistrer le matériel",
-  "vms.hardware.applyingRestart": "Application de la modification matérielle - la VM redémarre…",
+  "vms.hardware.applyingRestart": "Application de la modification matérielle - arrêt de la VM puis redémarrage…",
   "vms.hardware.applying": "Application de la modification matérielle…",
   "vms.network.vlan": "VLAN",
   "vms.snapshots.heading": "Instantanés",
@@ -916,7 +925,7 @@
   "admin.bridges.filterActive": "Tous les états",
   "admin.bridges.filterActiveOnly": "Actifs uniquement",
   "admin.bridges.filterInactiveOnly": "Inactifs uniquement",
-  "admin.bridges.filterAllEnabled": "Tous les états",
+  "admin.bridges.filterAllEnabled": "Activés et désactivés",
   "admin.bridges.filterEnabled": "Activé",
   "admin.bridges.filterDisabled": "Désactivé",
   "admin.bridges.resetFilters": "Réinitialiser les filtres",
@@ -946,6 +955,7 @@
   "admin.cloudinit.contentSyncWarning": "L'enregistrement publie le modèle en SSH sur chaque nœud du cluster, fusionné par-dessus le socle PVMSS. Chaque version est un nouveau fichier : les VM gardent la version avec laquelle elles ont été créées.",
   "admin.cloudinit.contentCounter": "{used} / {max} caractères",
   "admin.cloudinit.loadError": "échec du chargement des modèles",
+  "admin.cloudinit.invalidYaml": "Le contenu n'est pas un YAML valide : {detail}",
   "admin.cloudinit.createError": "échec de la création du modèle",
   "admin.cloudinit.updateError": "échec de la mise à jour du modèle",
   "admin.cloudinit.deleteError": "échec de la suppression du modèle",
@@ -1045,7 +1055,6 @@
   "admin.catalog.removeBridgeError": "Échec de la suppression de l'approbation du pont",
   "admin.catalog.removeIsoError": "Échec de la suppression de l'approbation de l'ISO",
   "admin.templates.title": "Admin - Modèles de VM - PVMSS",
-  "admin.templates.missingBadge": "introuvable dans Proxmox",
   "admin.templates.unreadableBadge": "disque illisible",
   "admin.templates.remove": "Supprimer",
   "admin.templates.removeSuccess": "Modèle {vmid} supprimé",
@@ -1085,8 +1094,8 @@
   "admin.nodes.nodesLoaded": "{count} nœuds chargés",
   "admin.nodes.tableCaption": "Nœuds",
   "admin.nodes.searchPlaceholder": "Rechercher par nom",
-  "admin.nodes.filterAllStatuses": "Tous les états",
-  "admin.nodes.filterAllEnabled": "Tous les états",
+  "admin.nodes.filterAllStatuses": "Tous les statuts",
+  "admin.nodes.filterAllEnabled": "Activés et désactivés",
   "admin.nodes.filterEnabled": "Activé",
   "admin.nodes.filterDisabled": "Désactivé",
   "admin.nodes.resetFilters": "Réinitialiser les filtres",
@@ -1195,6 +1204,7 @@
   "admin.profiles.editProfile": "Modifier le profil",
   "admin.profiles.newProfileForm": "Nouveau profil",
   "admin.profiles.labelField": "Libellé",
+  "admin.profiles.sockets": "Sockets",
   "admin.profiles.vcpuCores": "Cœurs vCPU",
   "admin.profiles.pageTitle": "Profils admin - PVMSS",
   "admin.profiles.editLabel": "Modifier {label}",
@@ -1217,7 +1227,7 @@
   "admin.storages.searchPlaceholder": "Rechercher par nom, nœud ou type",
   "admin.storages.filterAllNodes": "Tous les nœuds",
   "admin.storages.filterAllTypes": "Tous les types",
-  "admin.storages.filterAllEnabled": "Tous les états",
+  "admin.storages.filterAllEnabled": "Activés et désactivés",
   "admin.storages.filterEnabled": "Activé",
   "admin.storages.filterDisabled": "Désactivé",
   "admin.storages.resetFilters": "Réinitialiser les filtres",
@@ -1243,7 +1253,7 @@
   "admin.tags.noFilterMatches": "Aucune étiquette ne correspond à vos filtres.",
   "admin.tags.resetFilters": "Réinitialiser les filtres",
   "admin.tags.newTagForm": "Nouvelle étiquette",
-  "admin.tags.nameField": "Nom (1-50 alphanumérique)",
+  "admin.tags.nameField": "Nom (1-50 : minuscules, chiffres, - _ . +)",
   "admin.tags.colorField": "Couleur",
   "admin.tags.loadError": "échec du chargement des étiquettes",
   "admin.tags.createError": "échec de la création de l'étiquette",
@@ -1332,7 +1342,7 @@
   "admin.db.export": "Exporter",
   "admin.db.exportError": "échec de l'export",
   "admin.db.importTitle": "Importer la base de données",
-  "admin.db.importDescription": "Télécharger un fichier de base de données précédemment exporté. Vous verrez un aperçu avant que quoi que ce soit ne soit écrit.",
+  "admin.db.importDescription": "Téléversez un fichier de base de données exporté précédemment. Un aperçu s'affiche avant toute écriture. Les clusters ne sont jamais importés (ils contiennent les secrets des jetons API) : ajoutez-les de nouveau dans Clusters. Les sessions, l'historique d'audit et l'état par VM ne sont pas importés non plus.",
   "admin.db.importSuccess": "Import réussi - {tables} remplacé(s).",
   "admin.db.preview": "Aperçu",
   "admin.db.previewDescription": "Les tables suivantes seront remplacées (lignes existantes supprimées, puis rechargées depuis le téléchargement) :",
@@ -1422,8 +1432,37 @@
   "chrome.sidebar.navAbout": "À propos",
   "chrome.sidebar.newMachine": "Nouvelle machine",
   "chrome.sidebar.quotaHeading": "Votre quota",
-  "chrome.sidebar.quotaUsed": "{used} sur {allowed} machines",
-  "chrome.sidebar.quotaUnlimited": "{used} machines · sans plafond",
+  "chrome.sidebar.quotaUsed": [
+    {
+      "declarations": [
+        "input allowed",
+        "local allowedPlural = allowed: plural",
+        "input used"
+      ],
+      "selectors": [
+        "allowedPlural"
+      ],
+      "match": {
+        "allowedPlural=one": "{used} sur {allowed} machine",
+        "allowedPlural=other": "{used} sur {allowed} machines"
+      }
+    }
+  ],
+  "chrome.sidebar.quotaUnlimited": [
+    {
+      "declarations": [
+        "input used",
+        "local usedPlural = used: plural"
+      ],
+      "selectors": [
+        "usedPlural"
+      ],
+      "match": {
+        "usedPlural=one": "{used} machine · sans plafond",
+        "usedPlural=other": "{used} machines · sans plafond"
+      }
+    }
+  ],
   "chrome.sidebar.quotaExhausted": "Quota atteint",
   "chrome.sidebar.quotaUnavailable": "Quota indisponible",
   "chrome.sidebar.userChip": "Connecté en tant que {username}",
@@ -1646,6 +1685,9 @@
   "machine.status.stopping": "Arrêt en cours",
   "machine.status.failed": "Échec de création",
   "machine.status.partial": "Partiellement prête",
+  "os.family.linux": "Linux",
+  "os.family.windows": "Windows",
+  "os.family.unknown": "OS inconnu",
   "vms.cloudinit.modeDocument": "Modèle",
   "vms.cloudinit.documentHelp": "Les modèles cloud-init sont écrits par votre administrateur et publiés sur chaque nœud. Choisissez-en un pour changer ce que la VM exécute au démarrage.",
   "vms.cloudinit.documentCurrent": "Document actuel :",
@@ -1763,9 +1805,53 @@
   "vms.list.hint.stopped": "Arrêtée. Vos fichiers sont conservés.",
   "vms.list.hint.failed": "La création n'a pas abouti. Rien n'a été décompté de votre quota.",
   "vms.list.hint.partial": "Créée, mais la configuration de l'accès a échoué. Ne créez pas de doublon : ouvrez-la pour obtenir de l'aide.",
-  "vms.list.allowanceUsed": "{used} / {allowed} machines utilisées",
-  "vms.list.allowanceUnlimited": "{used} machines, aucune limite",
-  "vms.list.allowanceMeterLabel": "{used} machines utilisées sur {allowed}",
+  "vms.list.allowanceUsed": [
+    {
+      "declarations": [
+        "input allowed",
+        "local allowedPlural = allowed: plural",
+        "input used"
+      ],
+      "selectors": [
+        "allowedPlural"
+      ],
+      "match": {
+        "allowedPlural=one": "{used} / {allowed} machine utilisée",
+        "allowedPlural=other": "{used} / {allowed} machines utilisées"
+      }
+    }
+  ],
+  "vms.list.allowanceUnlimited": [
+    {
+      "declarations": [
+        "input used",
+        "local usedPlural = used: plural"
+      ],
+      "selectors": [
+        "usedPlural"
+      ],
+      "match": {
+        "usedPlural=one": "{used} machine, aucune limite",
+        "usedPlural=other": "{used} machines, aucune limite"
+      }
+    }
+  ],
+  "vms.list.allowanceMeterLabel": [
+    {
+      "declarations": [
+        "input used",
+        "local usedPlural = used: plural",
+        "input allowed"
+      ],
+      "selectors": [
+        "usedPlural"
+      ],
+      "match": {
+        "usedPlural=one": "{used} machine utilisée sur {allowed}",
+        "usedPlural=other": "{used} machines utilisées sur {allowed}"
+      }
+    }
+  ],
   "vms.list.allowanceSource": "Défini par votre administrateur",
   "vms.list.quietHelpTitle": "Un peu d'aide, si besoin.",
   "vms.list.quietHelpBody": "Comment se connecter, ce que signifient les états, et quoi faire quand quelque chose semble anormal.",
@@ -1780,6 +1866,12 @@
   "vms.list.filterAttention": "À vérifier",
   "vms.list.sortByName": "Trier par nom",
   "vms.list.sortByStatus": "Trier par état",
+  "vms.list.sortByCpu": "Trier par CPU",
+  "vms.list.sortByMemory": "Trier par mémoire",
+  "vms.list.sortByVmid": "Trier par VMID",
+  "vms.list.selectAllMatching": "Sélectionner les {total} machines",
+  "vms.list.pageSizeLabel": "Machines par page",
+  "vms.list.perPage": "{count} par page",
   "vms.list.sortGroupLabel": "Trier les machines",
   "vms.detail.back": "Mes machines",
   "vms.detail.identityLine": "{cpu} vCPU · {memory} de RAM · {disk} de stockage",
@@ -1907,8 +1999,37 @@
   "vms.create.summary.includedNetwork": "Réseau et stockage approuvés",
   "vms.create.summary.includedStart": "Démarre après la préparation",
   "vms.create.summary.includedStopped": "Reste arrêtée après la préparation",
-  "vms.create.summary.quota": "Après création : {used} / {allowed} machines",
-  "vms.create.summary.quotaUnlimited": "Après création : {used} machines",
+  "vms.create.summary.quota": [
+    {
+      "declarations": [
+        "input allowed",
+        "local allowedPlural = allowed: plural",
+        "input used"
+      ],
+      "selectors": [
+        "allowedPlural"
+      ],
+      "match": {
+        "allowedPlural=one": "Après création : {used} / {allowed} machine",
+        "allowedPlural=other": "Après création : {used} / {allowed} machines"
+      }
+    }
+  ],
+  "vms.create.summary.quotaUnlimited": [
+    {
+      "declarations": [
+        "input used",
+        "local usedPlural = used: plural"
+      ],
+      "selectors": [
+        "usedPlural"
+      ],
+      "match": {
+        "usedPlural=one": "Après création : {used} machine",
+        "usedPlural=other": "Après création : {used} machines"
+      }
+    }
+  ],
   "vms.create.summary.submit": "Créer cette machine",
   "vms.create.summary.provisioningNote": "La préparation prend quelques minutes. Vous pouvez la suivre depuis Mes machines ou Activité.",
   "vms.create.blocked.quotaTitle": "Vous avez atteint votre quota de machines.",

@@ -11,6 +11,7 @@
 	import type { Locale } from '$lib/paraglide/runtime.js';
 	import PageHeader from '$lib/shared/ui/PageHeader.svelte';
 	import Button from '$lib/shared/ui/Button.svelte';
+	import Card from '$lib/shared/ui/Card.svelte';
 	import Select from '$lib/shared/ui/Select.svelte';
 	import ProfileSshKeysSection from '$lib/features/profile-ssh-keys/ProfileSshKeysSection.svelte';
 	import { accountInitials } from '$lib/shared/initials';
@@ -42,7 +43,7 @@
 		divider={false}
 	/>
 
-	<div class="rounded-xl border border-border bg-card shadow-card" data-testid="account-panel">
+	<Card as="div" pad="none" data-testid="account-panel">
 		<div class="flex items-center gap-4 p-6">
 			<span class="flex h-14 w-14 shrink-0 items-center justify-center rounded-full bg-sidebar-accent text-lg font-semibold text-sidebar-accent-foreground" aria-hidden="true">
 				{initials}
@@ -86,7 +87,7 @@
 		</div>
 
 		<p class="border-t border-border px-6 py-4 text-xs text-muted-foreground">{m['account.authNote']()}</p>
-	</div>
+	</Card>
 
 	<ProfileSshKeysSection />
 </section>

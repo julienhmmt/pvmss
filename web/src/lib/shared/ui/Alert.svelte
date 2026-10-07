@@ -15,7 +15,10 @@
 	 * `tone` picks the palette and the default icon; pass an `icon` snippet to
 	 * override it. `role="alert"` by default - pass `role="status"` for a
 	 * caution that isn't itself the error (e.g. "this VM is running" before a
-	 * destructive confirm).
+	 * destructive confirm). `pad` selects the density: `sm` is the compact
+	 * inline banner; `lg` is the roomy standalone panel for banners that
+	 * carry a title, body copy, and actions (the class prop cannot override
+	 * padding - directional utilities would win over a `p-*` shorthand).
 	 */
 	import type { Snippet } from 'svelte';
 	import ErrorIcon from './icons/ErrorIcon.svelte';
@@ -29,12 +32,14 @@
 		role?: 'alert' | 'status';
 		/** Overrides the tone's default icon. Pass nothing to hide it entirely. */
 		icon?: Snippet | false;
+		/** Density: `sm` is the compact inline banner, `lg` the roomy standalone panel. */
+		pad?: 'sm' | 'lg';
 		class?: string;
 		children: Snippet;
 		[key: string]: unknown;
 	}
 
-	let { tone = 'error', role = 'alert', icon, class: klass = '', children, ...rest }: Props = $props();
+	let { tone = 'error', role = 'alert', icon, pad = 'sm', class: klass = '', children, ...rest }: Props = $props();
 
 	const tones: Record<Tone, { wrap: string; icon: string }> = {
 		error: {
@@ -61,7 +66,9 @@
 <div
 	{role}
 	aria-live={role === 'alert' ? 'assertive' : 'polite'}
-	class="flex items-start gap-2.5 rounded-[var(--radius-control)] border px-3 py-2.5 text-sm font-medium {tones[tone].wrap} {klass}"
+	class="flex items-start gap-2.5 rounded-[var(--radius-control)] border {pad === 'lg'
+		? 'p-5'
+		: 'px-3 py-2.5'} text-sm font-medium {tones[tone].wrap} {klass}"
 	{...rest}
 >
 	{#if icon !== false}

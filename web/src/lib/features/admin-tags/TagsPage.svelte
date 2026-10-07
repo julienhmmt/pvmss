@@ -1,4 +1,6 @@
 <script lang="ts">
+	// Proxmox pve-tag charset; the HTML pattern uses the v flag, where - must be escaped.
+	const TAG_NAME_PATTERN = String.raw`[a-z0-9_][a-z0-9_+.\-]{0,49}`;
 	import type { AdminTag } from './tags.svelte';
 	import type { ClusterOption } from '$lib/shared/clusters';
 	import Alert from '$lib/shared/ui/Alert.svelte';
@@ -64,10 +66,6 @@
 		onUpdateColor,
 		onDelete
 	}: Props = $props();
-
-	function handleSort(column: string): void {
-		onSort(column as TagSortColumn);
-	}
 
 	let showForm = $state(false);
 	let newName = $state('');
@@ -153,9 +151,9 @@
 				<caption class="sr-only">{m['admin.tags.title']()}</caption>
 				<thead>
 					<tr>
-						<TableHeader text={m['common.name']()} tooltip={m['admin.tags.tooltip.color']()} column="name" activeColumn={sortBy} {sortDir} onSort={handleSort} />
+						<TableHeader text={m['common.name']()} tooltip={m['admin.tags.tooltip.color']()} column="name" activeColumn={sortBy} {sortDir} {onSort} />
 						<TableHeader text={m['admin.tags.color']()} tooltip={m['admin.tags.tooltip.color']()} />
-						<TableHeader text={m['common.vms']()} tooltip={m['admin.tags.tooltip.vmCount']()} column="vmCount" activeColumn={sortBy} {sortDir} onSort={handleSort} />
+						<TableHeader text={m['common.vms']()} tooltip={m['admin.tags.tooltip.vmCount']()} column="vmCount" activeColumn={sortBy} {sortDir} {onSort} />
 						<th class="font-medium">{m['common.actions']()}</th>
 					</tr>
 				</thead>
@@ -219,7 +217,7 @@
 					{describedBy}
 					{invalid}
 					type="text"
-					pattern={'[a-zA-Z0-9]{1,50}'}
+					pattern={TAG_NAME_PATTERN}
 					bind:value={newName}
 					required
 				/>
