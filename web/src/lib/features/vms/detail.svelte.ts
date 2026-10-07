@@ -52,6 +52,8 @@ export interface VmDetailEntity {
 	/** Reason the baseline could not be delivered, when baselineState is
 	 *  "not_delivered". */
 	baselineError?: string;
+	/** Stable reason: cloudinit_write_unavailable | no_document | delivery_failed. */
+	baselineErrorCode?: string;
 }
 
 export interface VmDisk {

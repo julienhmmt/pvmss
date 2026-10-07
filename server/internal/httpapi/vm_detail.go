@@ -268,6 +268,9 @@ type vmDetailDTO struct {
 	BaselineState string `json:"baselineState,omitempty"`
 	// BaselineError is the reason when BaselineState is "not_delivered".
 	BaselineError string `json:"baselineError,omitempty"`
+	// BaselineErrorCode is the stable reason the UI translates:
+	// cloudinit_write_unavailable, no_document or delivery_failed.
+	BaselineErrorCode string `json:"baselineErrorCode,omitempty"`
 }
 
 type diskRequest struct {
