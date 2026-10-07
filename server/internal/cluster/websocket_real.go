@@ -58,7 +58,8 @@ type proxmoxVNCProxyResponse struct {
 // proxmoxTermProxyResponse is the JSON envelope Proxmox returns from
 // POST /nodes/{node}/qemu/{vmid}/termproxy. It mirrors vncproxy's shape:
 // data.{ticket, port, user}. PVMSS uses Ticket and Port (carried in the
-// serial vncwebsocket URL); User is unused.
+// serial vncwebsocket URL); User is unused - for an API token it is the
+// token id, which the relay already holds (apiTokenName).
 type proxmoxTermProxyResponse struct {
 	Data struct {
 		Ticket string `json:"ticket"`
@@ -307,7 +308,15 @@ func proxmoxRelaySerial(ctx context.Context, c proxmoxVNCClient, node string, vm
 	proxmoxNetConn := websocket.NetConn(ctx, proxmoxConn, websocket.MessageText)
 	defer func() { _ = proxmoxNetConn.Close() }()
 
-	// Plain bidirectional byte pipe - no RFB handshake, no DES auth. The
+	// termproxy authenticates the tunnel with "<user>:<ticket>\n" as the very
+	// first frame (what PVE's own xterm.js client sends) and closes it after
+	// 10 s otherwise. The ticket was issued to the API token, so <user> is the
+	// token id. Sent server-side: the ticket never reaches the browser.
+	if _, err := io.WriteString(proxmoxNetConn, c.apiTokenName+":"+proxy.Ticket+"\n"); err != nil {
+		return fmt.Errorf("authenticate serial tunnel: %w", err)
+	}
+
+	// Then a plain bidirectional byte pipe - no RFB handshake. The
 	// browser-side xterm.js layer encodes keystrokes as "0:len:data" and
 	// decodes "0:len:output"; PVMSS never inspects or terminates the framing.
 	errCh := make(chan error, 2)
