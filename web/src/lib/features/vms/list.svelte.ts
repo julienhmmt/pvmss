@@ -221,6 +221,18 @@ export class VmListStore {
 		return { ...first, items, page: 1, pageSize: Math.max(items.length, 1) };
 	}
 
+	/**
+	 * Every machine matching the current filters, across all pages - backs
+	 * the bulk "select all" affordance so a selection is never silently
+	 * scoped to the page on screen. Same fetch and same ceiling as the
+	 * attention filter (MAX_ATTENTION_PAGES); recently-deleted rows are
+	 * dropped, matching what `load()` renders.
+	 */
+	async fetchAllMatching(): Promise<VmListItem[]> {
+		const result = await this.#fetchEveryPage();
+		return result.items.filter((item) => !isRecentlyDeletedVm(item.cluster, item.vmid));
+	}
+
 	/** Debounced search input - one field matches name, tag, or ID (FR-002). */
 	applySearch(value: string): void {
 		this.search = value;

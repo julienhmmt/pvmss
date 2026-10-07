@@ -372,3 +372,47 @@ describe('VmListStore attention filter', () => {
 		expect(store.attention).toBe(true);
 	});
 });
+
+describe('VmListStore fetchAllMatching', () => {
+	afterEach(() => {
+		vi.unstubAllGlobals();
+		sessionStorage.clear();
+	});
+
+	it('returns every page of the filtered set', async () => {
+		const [baseVm] = oneVmResult.items;
+		if (baseVm === undefined) throw new Error('fixture is missing its VM');
+		const pageResult = (page: number, count: number, total: number): VmListResult => ({
+			items: Array.from({ length: count }, (_, i) => ({
+				...baseVm,
+				vmid: page * 100 + i,
+				name: `vm-${page}-${i}`
+			})),
+			total,
+			page,
+			pageSize: 10,
+			availableNodes: []
+		});
+		const fetchMock = vi
+			.fn()
+			.mockResolvedValueOnce(jsonResponse(200, pageResult(1, 10, 15)))
+			.mockResolvedValueOnce(jsonResponse(200, pageResult(2, 5, 15)));
+		vi.stubGlobal('fetch', fetchMock);
+
+		const { store } = makeStore('?status=running');
+		const items = await store.fetchAllMatching();
+
+		expect(fetchMock).toHaveBeenCalledTimes(2);
+		expect(String(fetchMock.mock.calls[1]?.[0])).toContain('status=running');
+		expect(String(fetchMock.mock.calls[1]?.[0])).toContain('page=2');
+		expect(items).toHaveLength(15);
+	});
+
+	it('drops rows this tab just deleted, like load() does', async () => {
+		markVmDeleted('default', 100);
+		vi.stubGlobal('fetch', vi.fn().mockResolvedValue(jsonResponse(200, oneVmResult)));
+		const { store } = makeStore();
+
+		expect(await store.fetchAllMatching()).toEqual([]);
+	});
+});
