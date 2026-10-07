@@ -9,6 +9,7 @@ import (
 	"pvmss/server/internal/inventory"
 	"pvmss/server/internal/policy"
 	"slices"
+	"time"
 )
 
 var (
@@ -16,6 +17,9 @@ var (
 	ErrHardwareExceedsLimit = errors.New("hardware exceeds limit")
 	// ErrEmptyHardwarePatch reports a patch with no fields.
 	ErrEmptyHardwarePatch = errors.New("empty hardware patch")
+	// ErrShutdownTimeout means the guest did not shut down in time for a
+	// hardware change; nothing was changed and the VM keeps running.
+	ErrShutdownTimeout = errors.New("vm did not shut down in time")
 )
 
 // HardwarePatch contains the optional hardware and tag fields accepted by a VM patch.
@@ -111,10 +115,18 @@ type hardwareApply struct {
 	NeedsRestart bool
 }
 
+// Shutdown wait for a hardware change. Proxmox gives the guest 60 s
+// (cluster.shutdownTimeout); the margin covers the task's own overhead.
+// Vars so tests can shorten them.
+var (
+	stopPollInterval = time.Second
+	stopWaitTimeout  = 75 * time.Second
+)
+
 func applyHardware(ctx context.Context, deps HardwareDependencies, entity Entity, apply hardwareApply) error {
 	if apply.NeedsRestart {
-		if err := deps.Writer.Action(ctx, entity.Node, entity.VMID, "stop"); err != nil {
-			return fmt.Errorf("stop vm for hardware update: %w", err)
+		if err := shutdownAndWait(ctx, deps.Writer, entity); err != nil {
+			return err
 		}
 	}
 
@@ -131,6 +143,35 @@ func applyHardware(ctx context.Context, deps HardwareDependencies, entity Entity
 	}
 
 	return nil
+}
+
+// shutdownAndWait asks the guest to shut down (never a power cut) and waits
+// until Proxmox reports it stopped. Config and start must not race the stop.
+func shutdownAndWait(ctx context.Context, writer cluster.Writer, entity Entity) error {
+	reader, ok := writer.(cluster.VMStatusReader)
+	if !ok {
+		return errors.New("cluster client cannot read vm status")
+	}
+
+	if err := writer.Action(ctx, entity.Node, entity.VMID, "shutdown"); err != nil {
+		return fmt.Errorf("shut down vm for hardware update: %w", err)
+	}
+
+	deadline := time.Now().Add(stopWaitTimeout)
+	for time.Now().Before(deadline) {
+		status, err := reader.VMStatus(ctx, entity.Node, entity.VMID)
+		if err == nil && status.Status == cluster.VMStopped {
+			return nil
+		}
+
+		select {
+		case <-ctx.Done():
+			return ctx.Err()
+		case <-time.After(stopPollInterval):
+		}
+	}
+
+	return ErrShutdownTimeout
 }
 
 func resolveHardwareTarget(deps HardwareDependencies) (Entity, error) {

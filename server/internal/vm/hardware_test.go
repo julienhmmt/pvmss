@@ -10,6 +10,7 @@ import (
 	"pvmss/server/internal/vm"
 	"slices"
 	"testing"
+	"time"
 )
 
 //nolint:paralleltest // serial: shared fake cluster dataset
@@ -32,9 +33,78 @@ func TestUpdateHardware_RestartsForResourceChanges(t *testing.T) {
 	}
 
 	calls := cluster.FakeCallsFor(101)
-	// The setup "start" is call 0; UpdateHardware's stop/update/start are 1-3.
-	if len(calls) != 4 || calls[1].Action != "stop" || calls[2].Action != actionUpdateHW || calls[3].Action != actionStart {
-		t.Fatalf("calls = %+v, want setup-start/stop/update_hardware/start", calls)
+	// The setup "start" is call 0; UpdateHardware's shutdown/update/start are 1-3.
+	if len(calls) != 4 || calls[1].Action != "shutdown" || calls[2].Action != actionUpdateHW || calls[3].Action != actionStart {
+		t.Fatalf("calls = %+v, want setup-start/shutdown/update_hardware/start", calls)
+	}
+}
+
+// slowStopWriter is the fake writer whose guest takes a few polls to stop
+// after a shutdown, or never stops when stopAfter < 0.
+type slowStopWriter struct {
+	cluster.Fake
+	stopAfter int
+	polls     *int
+	log       *[]string
+}
+
+func (w slowStopWriter) Action(_ context.Context, _ string, _ int, action string) error {
+	*w.log = append(*w.log, action)
+	return nil
+}
+
+func (w slowStopWriter) UpdateHardware(context.Context, string, int, int, int, int, []string) error {
+	*w.log = append(*w.log, actionUpdateHW)
+	return nil
+}
+
+func (w slowStopWriter) VMStatus(context.Context, string, int) (cluster.VMLiveStatus, error) {
+	*w.polls++
+	if w.stopAfter >= 0 && *w.polls > w.stopAfter {
+		*w.log = append(*w.log, "observed-stopped")
+		return cluster.VMLiveStatus{Status: cluster.VMStopped}, nil
+	}
+
+	return cluster.VMLiveStatus{Status: cluster.VMRunning}, nil
+}
+
+//nolint:paralleltest // mutates the package stop-wait timings
+func TestUpdateHardware_StartsOnlyAfterGuestStopped(t *testing.T) {
+	cluster.ResetFake()
+	vm.SetStopWaitForTest(t, time.Millisecond, time.Second)
+
+	var log []string
+	polls := 0
+	deps := hardwareDependencies(diskTestIndex(t, 101, cluster.VMRunning), aliceIdentity(), 101)
+	deps.Writer = slowStopWriter{stopAfter: 3, polls: &polls, log: &log}
+
+	if err := vm.UpdateHardware(context.Background(), deps, vm.HardwarePatch{Cores: new(4)}); err != nil {
+		t.Fatalf("UpdateHardware: %v", err)
+	}
+
+	want := []string{"shutdown", "observed-stopped", actionUpdateHW, actionStart}
+	if !slices.Equal(log, want) {
+		t.Fatalf("sequence = %v, want %v", log, want)
+	}
+}
+
+//nolint:paralleltest // mutates the package stop-wait timings
+func TestUpdateHardware_GuestNeverStopsChangesNothing(t *testing.T) {
+	cluster.ResetFake()
+	vm.SetStopWaitForTest(t, time.Millisecond, 20*time.Millisecond)
+
+	var log []string
+	polls := 0
+	deps := hardwareDependencies(diskTestIndex(t, 101, cluster.VMRunning), aliceIdentity(), 101)
+	deps.Writer = slowStopWriter{stopAfter: -1, polls: &polls, log: &log}
+
+	err := vm.UpdateHardware(context.Background(), deps, vm.HardwarePatch{Cores: new(4)})
+	if !errors.Is(err, vm.ErrShutdownTimeout) {
+		t.Fatalf("err = %v, want ErrShutdownTimeout", err)
+	}
+
+	if !slices.Equal(log, []string{"shutdown"}) {
+		t.Fatalf("sequence = %v, want only the shutdown request (no power cut, no config)", log)
 	}
 }
 
