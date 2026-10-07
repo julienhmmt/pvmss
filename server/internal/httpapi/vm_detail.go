@@ -363,6 +363,7 @@ type deleteResponse struct {
 }
 
 type patchRequest struct {
-	Name        string `json:"name"`
-	Description string `json:"description"`
+	Name string `json:"name"`
+	// Description is a pointer so "" (clear it) differs from absent.
+	Description *string `json:"description"`
 }

@@ -1,6 +1,7 @@
 package httpapi
 
 import (
+	"context"
 	"fmt"
 	"net/http"
 	"pvmss/server/internal/logctx"
@@ -214,7 +215,10 @@ func (h *VMDetail) handlePatch(w http.ResponseWriter, r *http.Request) {
 	}
 
 	req.Name = strings.TrimSpace(req.Name)
-	req.Description = strings.TrimSpace(req.Description)
+	if req.Description != nil {
+		trimmed := strings.TrimSpace(*req.Description)
+		req.Description = &trimmed
+	}
 
 	index, ok := h.index(w, clusterName)
 	if !ok {
@@ -226,7 +230,7 @@ func (h *VMDetail) handlePatch(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if err := vm.Patch(r.Context(), vm.WriteDeps{Index: index, Actor: identity, ClusterName: clusterName, VMID: vmid, Writer: writer, Audit: h.store, Refresher: h.refresherFor(clusterName)}, req.Name, req.Description); err != nil {
+	if err := patchVM(r.Context(), vm.WriteDeps{Index: index, Actor: identity, ClusterName: clusterName, VMID: vmid, Writer: writer, Audit: h.store, Refresher: h.refresherFor(clusterName)}, req); err != nil {
 		h.writePatchError(w, err)
 		return
 	}
@@ -249,4 +253,26 @@ func (h *VMDetail) handlePatch(w http.ResponseWriter, r *http.Request) {
 	}
 
 	h.writeEntity(w, r, withPatch(entity, req))
+}
+
+// patchVM applies a PATCH: name and a non-empty description through
+// vm.Patch, an explicitly empty description through vm.ClearDescription.
+func patchVM(ctx context.Context, deps vm.WriteDeps, req patchRequest) error {
+	description := ""
+	if req.Description != nil {
+		description = *req.Description
+	}
+
+	clearIt := req.Description != nil && description == ""
+	if req.Name != "" || !clearIt {
+		if err := vm.Patch(ctx, deps, req.Name, description); err != nil {
+			return err
+		}
+	}
+
+	if clearIt {
+		return vm.ClearDescription(ctx, deps)
+	}
+
+	return nil
 }

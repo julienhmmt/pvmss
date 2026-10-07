@@ -534,8 +534,8 @@ export class VmDetailStore {
 
 	/**
 	 * Renames and/or updates the description (V16/V17). Returns true on success
-	 * so the caller can exit inline-edit mode. Empty values are omitted from the
-	 * request body - the server treats an absent field as "no change".
+	 * so the caller can exit inline-edit mode. A null field is omitted (no
+	 * change); an empty description clears it.
 	 */
 	async patch(name: string | null, description: string | null): Promise<boolean> {
 		if (this.patchInFlight || this.entity === null) return false;

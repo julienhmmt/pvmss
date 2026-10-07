@@ -104,6 +104,13 @@ func (p Proxmox) Patch(ctx context.Context, node string, vmid int, name, descrip
 	return err
 }
 
+// ClearDescription implements Writer via PUT config delete=description.
+func (p Proxmox) ClearDescription(ctx context.Context, node string, vmid int) error {
+	_, err := p.rest().do(ctx, http.MethodPut, vmConfigPath(node, vmid), url.Values{"delete": {"description"}})
+
+	return err
+}
+
 // AddDisk implements Writer: finds the next free slot on bus from the VM's
 // live config (not the caller's cached view - vm.AddDisk already checked slot
 // availability against its own cache before calling this, so a live re-check
