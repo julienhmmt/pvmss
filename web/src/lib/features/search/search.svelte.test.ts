@@ -114,3 +114,27 @@ describe('SearchStore', () => {
 		expect(store.result).toBeNull();
 	});
 });
+
+describe('SearchStore URL query (q)', () => {
+	afterEach(() => {
+		vi.unstubAllGlobals();
+		vi.useRealTimers();
+	});
+
+	it('starts from ?q= and writes the debounced query back', async () => {
+		vi.useFakeTimers();
+		vi.stubGlobal('fetch', vi.fn().mockResolvedValue(jsonResponse(200, oneVmResult)));
+		const navigated: string[] = [];
+
+		const store = new SearchStore({ initialQuery: '?q=pvmss-test', navigate: (qs) => navigated.push(qs) });
+		expect(store.query).toBe('pvmss-test');
+
+		store.applySearch('web');
+		await vi.advanceTimersByTimeAsync(400);
+		expect(navigated.at(-1)).toBe('q=web');
+
+		store.applySearch('');
+		await vi.advanceTimersByTimeAsync(400);
+		expect(navigated.at(-1)).toBe('');
+	});
+});
