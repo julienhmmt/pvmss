@@ -40,12 +40,13 @@ export const KNOWN_ERROR_CODES: readonly string[] = Object.keys(ERROR_CODE_MAP);
  *   not surfaced directly to the user (FR-006).
  * @returns a localized string for display.
  */
-export function resolveErrorMessage(code: string, fallback: string): string {
+export function resolveErrorMessage(code: string, fallback: string, details: { readonly privilege?: string | undefined; readonly path?: string | undefined } = {}): string {
 	if (code === 'cluster_rejected' && fallback.trim() !== '') return fallback;
 	if (code === 'cluster_permission_denied') {
-		// Server text: "... lacks the Proxmox privilege <priv> on <path>".
-		const match = /privilege (\S+) on (\S+)/.exec(fallback);
-		if (match) return m['error.cluster_permission_denied']({ privilege: match[1]!, path: match[2]! });
+		// Server fields: privilege and path identify the missing ACL grant.
+		if (typeof details.privilege === 'string' && typeof details.path === 'string' && details.privilege !== '' && details.path !== '') {
+			return m['error.cluster_permission_denied']({ privilege: details.privilege, path: details.path });
+		}
 	}
 	const resolver = ERROR_CODE_MAP[code];
 	if (resolver !== undefined) return resolver();

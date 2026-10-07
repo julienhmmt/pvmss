@@ -1,8 +1,10 @@
 package httpapi
 
 import (
+	"encoding/json"
 	"errors"
 	"fmt"
+	"log/slog"
 	"net/http"
 	"pvmss/server/internal/cluster"
 	"regexp"
@@ -24,25 +26,49 @@ var permissionCheckFailed = regexp.MustCompile(`Permission check failed \(([^,()
 // Proxmox message is the fallback content (ADR 0002). For 401/403 the message
 // is suppressed - a PVE auth error body can name the API token - except a
 // missing privilege, which is named so the admin knows what to grant.
-// It records err on the access-log line (log once, where handled).
-func clusterRejectionResponse(w http.ResponseWriter, err error) (code, message string, ok bool) {
+// The caller records err on the access-log line (log once, where handled).
+func clusterRejectionResponse(err error) (clusterErrorEnvelope, bool) {
 	var rejection *cluster.RejectionError
+
 	if !errors.As(err, &rejection) {
-		return "", "", false
+		return clusterErrorEnvelope{Code: "cluster_rejected", Message: msgClusterRejected}, errors.Is(err, cluster.ErrClusterRejected)
+	}
+
+	if match := permissionCheckFailed.FindStringSubmatch(rejection.Message); rejection.Status == http.StatusForbidden && match != nil {
+		privilege, path := strings.TrimSpace(match[2]), strings.TrimSpace(match[1])
+
+		return clusterErrorEnvelope{
+			Code: "cluster_permission_denied", Privilege: privilege, Path: path,
+			Message: fmt.Sprintf("the PVMSS service token lacks the Proxmox privilege %s on %s", privilege, path),
+		}, true
+	}
+
+	if rejection.Status == http.StatusUnauthorized || rejection.Status == http.StatusForbidden {
+		return clusterErrorEnvelope{Code: "cluster_rejected", Message: msgClusterRejected}, true
+	}
+
+	return clusterErrorEnvelope{Code: clusterRejectionCode(rejection.Message), Message: rejection.Message}, true
+}
+
+func writeClusterRejection(w http.ResponseWriter, err error, log *slog.Logger) bool {
+	response, ok := clusterRejectionResponse(err)
+	if !ok {
+		return false
 	}
 
 	SetError(w, err)
 
-	if match := permissionCheckFailed.FindStringSubmatch(rejection.Message); rejection.Status == http.StatusForbidden && match != nil {
-		return "cluster_permission_denied", fmt.Sprintf(
-			"the PVMSS service token lacks the Proxmox privilege %s on %s", strings.TrimSpace(match[2]), match[1]), true
+	body, marshalErr := json.Marshal(response)
+	if marshalErr != nil {
+		SetErrorMsg(w, "failed to marshal cluster rejection", marshalErr)
+		return true
 	}
 
-	if rejection.Status == http.StatusUnauthorized || rejection.Status == http.StatusForbidden {
-		return "cluster_rejected", msgClusterRejected, true
+	if writeErr := writeJSON(w, http.StatusBadGateway, body); writeErr != nil {
+		log.Warn("failed to write cluster rejection", "component", "httpapi", "error", writeErr)
 	}
 
-	return clusterRejectionCode(rejection.Message), rejection.Message, true
+	return true
 }
 
 // clusterRejectionCode derives a stable machine code from Proxmox's own

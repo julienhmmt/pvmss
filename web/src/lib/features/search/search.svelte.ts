@@ -25,11 +25,14 @@ export class SearchStore {
 
 	#searchTimer: ReturnType<typeof setTimeout> | null = null;
 	#navigate: (queryString: string) => void;
+	#committedQuery: string = '';
+	#requestId: number = 0;
 
 	/** initialQuery is the page's URL search (`?q=`); navigate writes `q` back. */
 	constructor(options: { initialQuery?: string; navigate?: (queryString: string) => void } = {}) {
 		this.query = new SvelteURLSearchParams(options.initialQuery ?? '').get('q') ?? '';
 		this.#navigate = options.navigate ?? (() => {});
+		this.#committedQuery = this.query;
 	}
 
 	/** Updates the query and debounces the server call. */
@@ -38,16 +41,36 @@ export class SearchStore {
 		if (this.#searchTimer !== null) clearTimeout(this.#searchTimer);
 		this.#searchTimer = setTimeout(() => {
 			this.#searchTimer = null;
-			const trimmed = this.query.trim();
-			this.#navigate(trimmed === '' ? '' : new SvelteURLSearchParams({ q: trimmed }).toString());
+			const trimmed: string = this.query.trim();
+			if (trimmed !== this.#committedQuery) {
+				this.#committedQuery = trimmed;
+				this.#navigate(trimmed === '' ? '' : new SvelteURLSearchParams({ q: trimmed }).toString());
+			}
 			void this.load();
 		}, SEARCH_DEBOUNCE_MS);
 	}
 
+	restoreQuery(queryString: string): void {
+		const query: string = new SvelteURLSearchParams(queryString).get('q') ?? '';
+		if (query === this.#committedQuery) return;
+		this.dispose();
+		this.#committedQuery = query;
+		this.query = query;
+		void this.load();
+	}
+
+	dispose(): void {
+		if (this.#searchTimer !== null) clearTimeout(this.#searchTimer);
+		this.#searchTimer = null;
+		this.#requestId += 1;
+	}
+
 	/** Loads matching VMs from the shared VM list endpoint. */
 	async load(): Promise<void> {
-		const trimmed = this.query.trim();
+		const requestId: number = ++this.#requestId;
+		const trimmed: string = this.query.trim();
 		if (trimmed === '') {
+			this.loading = false;
 			this.result = null;
 			this.error = null;
 			return;
@@ -62,11 +85,12 @@ export class SearchStore {
 			params.set('sortBy', DEFAULT_SORT_BY);
 			params.set('sortDir', DEFAULT_SORT_DIR);
 			params.set('pageSize', String(DEFAULT_PAGE_SIZE));
-			this.result = await get<VmListResult>(`/api/v1/vms?${params.toString()}`);
+			const result: VmListResult = await get<VmListResult>(`/api/v1/vms?${params.toString()}`);
+			if (requestId === this.#requestId) this.result = result;
 		} catch (err) {
-			this.error = err instanceof ApiRequestError ? err.message : m['search.error']();
+			if (requestId === this.#requestId) this.error = err instanceof ApiRequestError ? err.message : m['search.error']();
 		} finally {
-			this.loading = false;
+			if (requestId === this.#requestId) this.loading = false;
 		}
 	}
 }

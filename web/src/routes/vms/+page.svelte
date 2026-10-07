@@ -53,8 +53,8 @@
 
 	onMount(() => {
 		void loadPage();
-		offTaskOk = getTaskTrayContext().onTaskOk(() => {
-			void vmListStore.loadUntilComplete();
+		offTaskOk = getTaskTrayContext().onTaskOk((task) => {
+			void vmListStore.loadAfterTask(task);
 			vmBulk.clearResult();
 		});
 		offVisible = onVisibleRefresh(() => void vmListStore.refreshIfStale());

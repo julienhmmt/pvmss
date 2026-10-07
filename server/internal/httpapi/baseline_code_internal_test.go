@@ -5,7 +5,7 @@ import (
 	"testing"
 )
 
-func TestBaselineErrorCode(t *testing.T) {
+func TestBaselineErrorCode_MapsDeliveryStates(t *testing.T) {
 	t.Parallel()
 
 	cases := map[string]string{

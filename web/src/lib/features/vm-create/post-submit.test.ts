@@ -62,6 +62,13 @@ describe('handleAccepted profile-key save', () => {
 		expect(errorSpy.mock.calls[0]?.[0]).not.toContain('dup');
 	});
 
+	it.each(['running', 'stopped'] as const)('passes the expected %s status to task-completion listeners', async (expectedStatus) => {
+		const d: PostSubmitDeps = deps();
+		await handleAccepted({ ...accepted(), expectedStatus }, d);
+		expect(d.tray.tasks[0]?.expectedStatus).toBe(expectedStatus);
+		d.tray.destroy();
+	});
+
 	it('still tracks the task and shows the queued toast alongside the save', async () => {
 		const fetchMock = vi.fn().mockResolvedValue(jsonResponse(201, {}));
 		vi.stubGlobal('fetch', fetchMock);

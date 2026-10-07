@@ -45,6 +45,15 @@ describe('VmCreateStore.submit with a template disk minimum (issue 04)', () => {
 		expect(store.submitError).not.toBeNull();
 	});
 
+	it.each([true, false])('preserves the requested start status after an accepted creation: %s', async (startAfterCreate) => {
+		vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response(JSON.stringify({ upid: 'task' }), {
+			status: 202, headers: { 'Content-Type': 'application/json' }
+		})));
+		const store: VmCreateStore = new VmCreateStore();
+		store.startAfterCreate = startAfterCreate;
+		expect((await store.submit())?.expectedStatus).toBe(startAfterCreate ? 'running' : 'stopped');
+	});
+
 	it('sends the request when the disk meets the template minimum', async () => {
 		vi.stubGlobal(
 			'fetch',

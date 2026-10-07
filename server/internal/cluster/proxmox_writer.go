@@ -39,7 +39,7 @@ func vmConfigPath(node string, vmid int) string {
 // and Proxmox rejects skiplock under token even for root@pam.
 func actionForm(action string) url.Values {
 	if action == actionShutdown {
-		return url.Values{"timeout": {strconv.Itoa(int(shutdownTimeout.Seconds()))}}
+		return url.Values{"timeout": {strconv.Itoa(int(shutdownTimeout.Seconds()))}, "forceStop": {"0"}}
 	}
 
 	return nil

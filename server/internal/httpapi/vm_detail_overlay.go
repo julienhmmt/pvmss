@@ -2,6 +2,8 @@ package httpapi
 
 import "pvmss/server/internal/vm"
 
+const bytesPerMiB int64 = 1024 * 1024
+
 // withPatch returns entity with the just-written name/description applied.
 // The projection reads Proxmox /cluster/resources, which lags a config write
 // by seconds, so the re-resolved entity can still carry the old values.
@@ -33,7 +35,7 @@ func withHardware(entity vm.Entity, req hardwareRequest) vm.Entity {
 	}
 
 	if req.MemoryMB != nil {
-		entity.MemoryTotal = int64(*req.MemoryMB) << 20
+		entity.MemoryTotal = int64(*req.MemoryMB) * bytesPerMiB
 	}
 
 	return entity

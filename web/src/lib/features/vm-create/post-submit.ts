@@ -41,7 +41,8 @@ export async function handleAccepted(accepted: VmCreateAccepted, deps: PostSubmi
 		kind: 'vm_create',
 		vmid: accepted.vmid,
 		name: accepted.name,
-		cluster: accepted.cluster
+		cluster: accepted.cluster,
+		...(accepted.expectedStatus !== undefined && { expectedStatus: accepted.expectedStatus })
 	});
 	if (accepted.cloudInitPushError) {
 		// The VM was created (task queued) but cloud-init could not be
