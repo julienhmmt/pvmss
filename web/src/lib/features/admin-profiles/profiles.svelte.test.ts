@@ -87,7 +87,8 @@ describe('AdminProfilesStore create', () => {
 
 		await new AdminProfilesStore().create('p', 4, 2048, 20, 'scsi', 2);
 
-		const body = JSON.parse(fetchMock.mock.calls[0]![1].body as string);
+		const init = fetchMock.mock.calls[0]![1] as RequestInit;
+		const body = JSON.parse(init.body as string) as { sockets: number };
 		expect(body.sockets).toBe(2);
 		vi.unstubAllGlobals();
 	});
