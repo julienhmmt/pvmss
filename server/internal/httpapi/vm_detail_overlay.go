@@ -10,8 +10,8 @@ func withPatch(entity vm.Entity, req patchRequest) vm.Entity {
 		entity.Name = req.Name
 	}
 
-	if req.Description != "" {
-		entity.Description = req.Description
+	if req.Description != nil {
+		entity.Description = *req.Description
 	}
 
 	return entity

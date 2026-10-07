@@ -393,6 +393,27 @@ func deleteWithRetry(ctx context.Context, deps WriteDeps, entity Entity) error {
 	}
 }
 
+// ClearDescription removes a VM's description after the same ownership
+// check as Patch (which treats "" as "leave unchanged").
+func ClearDescription(ctx context.Context, deps WriteDeps) error {
+	entity, err := Resolve(deps.Index, deps.Actor, deps.ClusterName, deps.VMID)
+	if err != nil {
+		return err
+	}
+
+	if err := deps.Writer.ClearDescription(ctx, entity.Node, entity.VMID); err != nil {
+		return fmt.Errorf("cluster clear description: %w", err)
+	}
+
+	if err := deps.Audit.RecordAction(ctx, deps.Actor.Username, deps.ClusterName, deps.VMID, "edit_description"); err != nil {
+		return fmt.Errorf(auditWrapFmt, err)
+	}
+
+	_, _ = deps.Refresher.Refresh(ctx)
+
+	return nil
+}
+
 // Patch updates a VM's name and/or description. At least one field must be
 // non-empty; name is validated as a hostname. The audit action is
 // "rename" when name changes, "edit_description" when only description changes.

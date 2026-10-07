@@ -211,6 +211,31 @@ func TestProxmox_Patch_NoFieldsSkipsRequest(t *testing.T) {
 	}
 }
 
+func TestProxmox_ClearDescription(t *testing.T) {
+	t.Parallel()
+
+	var gotForm url.Values
+
+	srv := newProxmoxTestServer(t, func(mux *http.ServeMux) {
+		mux.HandleFunc("PUT /api2/json/nodes/node01/qemu/101/config", func(w http.ResponseWriter, r *http.Request) {
+			_ = r.ParseForm()
+			gotForm = r.PostForm
+
+			writeJSONFixture(t, w, `{"data":null}`)
+		})
+	})
+
+	p := Proxmox{BaseURL: srv.URL, APITokenName: testTokenName, APITokenValue: testTokenVal}
+
+	if err := p.ClearDescription(context.Background(), testNodeName, testVMID); err != nil {
+		t.Fatalf("ClearDescription: %v", err)
+	}
+
+	if gotForm.Get("delete") != "description" {
+		t.Errorf("form = %q, want delete=description", gotForm.Encode())
+	}
+}
+
 func TestProxmox_AddDisk_PicksNextFreeSlot(t *testing.T) {
 	t.Parallel()
 

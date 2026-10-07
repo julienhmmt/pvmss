@@ -862,3 +862,25 @@ func TestAction_NonLockError_NotRetried(t *testing.T) {
 		t.Fatalf("err = %v, want ErrInvalidStateTransition", err)
 	}
 }
+
+//nolint:paralleltest // serial: shared fake dataset
+func TestClearDescription_RemovesIt(t *testing.T) {
+	cluster.ResetFake()
+
+	ctx := context.Background()
+	if err := (cluster.Fake{}).Patch(ctx, cluster.FakeNode01, 101, "", "to be removed"); err != nil {
+		t.Fatalf("seed description: %v", err)
+	}
+
+	idx := diskTestIndex(t, 101, cluster.VMStopped)
+	deps := vm.WriteDeps{Index: idx, Actor: aliceIdentity(), ClusterName: testClusterName, VMID: 101, Writer: cluster.Fake{}, Audit: noopAudit{}, Refresher: noopRefresher{}}
+
+	if err := vm.ClearDescription(ctx, deps); err != nil {
+		t.Fatalf("ClearDescription: %v", err)
+	}
+
+	entity, err := vm.Resolve(diskTestIndex(t, 101, cluster.VMStopped), aliceIdentity(), testClusterName, 101)
+	if err != nil || entity.Description != "" {
+		t.Errorf("description = %q (%v), want empty", entity.Description, err)
+	}
+}
