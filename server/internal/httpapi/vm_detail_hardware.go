@@ -94,7 +94,7 @@ func (h *VMDetail) handleHardware(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	h.writeEntity(w, r, entity)
+	h.writeEntity(w, r, withHardware(entity, request))
 }
 
 // handleEnableSerial serves POST /vms/:cluster/:vmid/serial - the serial-

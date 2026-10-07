@@ -297,6 +297,42 @@ func TestProxmox_ResizeDisk(t *testing.T) {
 	}
 }
 
+// TestProxmox_ResizeDisk_WaitsForTask - PVE 8+ resizes in a task; the call
+// returns only once the task ended, so the next read sees the new size.
+func TestProxmox_ResizeDisk_WaitsForTask(t *testing.T) {
+	t.Parallel()
+
+	polls := 0
+
+	srv := newProxmoxTestServer(t, func(mux *http.ServeMux) {
+		mux.HandleFunc("PUT /api2/json/nodes/node01/qemu/101/resize", func(w http.ResponseWriter, _ *http.Request) {
+			writeJSONFixture(t, w, `{"data":"UPID:node01:0001:0002:0003:resize:101:pvmss@pve:"}`)
+		})
+		mux.HandleFunc("GET /api2/json/nodes/node01/tasks/{upid}/status", func(w http.ResponseWriter, _ *http.Request) {
+			polls++
+			if polls < 2 {
+				writeJSONFixture(t, w, `{"data":{"status":"running"}}`)
+				return
+			}
+
+			writeJSONFixture(t, w, `{"data":{"status":"stopped","exitstatus":"OK"}}`)
+		})
+		mux.HandleFunc("GET /api2/json/nodes/node01/tasks/{upid}/log", func(w http.ResponseWriter, _ *http.Request) {
+			writeJSONFixture(t, w, `{"data":[]}`)
+		})
+	})
+
+	p := Proxmox{BaseURL: srv.URL, APITokenName: testTokenName, APITokenValue: testTokenVal}
+
+	if err := p.ResizeDisk(context.Background(), testNodeName, testVMID, diskKeySCSI0, 64); err != nil {
+		t.Fatalf("ResizeDisk: %v", err)
+	}
+
+	if polls < 2 {
+		t.Errorf("task polled %d times, want until it stopped", polls)
+	}
+}
+
 func TestProxmox_DeleteDisk(t *testing.T) {
 	t.Parallel()
 

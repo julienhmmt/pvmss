@@ -248,5 +248,5 @@ func (h *VMDetail) handlePatch(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	h.writeEntity(w, r, entity)
+	h.writeEntity(w, r, withPatch(entity, req))
 }

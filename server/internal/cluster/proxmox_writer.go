@@ -155,12 +155,59 @@ func nextProxmoxDiskKey(cfg proxmoxVMConfig, bus DiskBus) (string, error) {
 // the new absolute size (matching the fake's contract); Proxmox rejects a
 // size smaller than the disk's current size.
 func (p Proxmox) ResizeDisk(ctx context.Context, node string, vmid int, diskKey string, sizeGB int) error {
-	_, err := p.rest().do(ctx, http.MethodPut, fmt.Sprintf("/nodes/%s/qemu/%d/resize", url.PathEscape(node), vmid), url.Values{
+	raw, err := p.rest().do(ctx, http.MethodPut, fmt.Sprintf("/nodes/%s/qemu/%d/resize", url.PathEscape(node), vmid), url.Values{
 		"disk": {diskKey},
 		"size": {fmt.Sprintf("%dG", sizeGB)},
 	})
+	if err != nil {
+		return err
+	}
 
-	return err
+	// PVE 8+ resizes in a task and returns its UPID; older versions return
+	// null after resizing synchronously.
+	if len(raw) == 0 || string(raw) == "null" {
+		return nil
+	}
+
+	var upid string
+	if err := decodeData(raw, &upid); err != nil {
+		return fmt.Errorf("decode resize task: %w", err)
+	}
+
+	return p.waitTask(ctx, upid, resizeTaskTimeout)
+}
+
+// resizeTaskTimeout bounds the wait for a disk resize task.
+const resizeTaskTimeout = 60 * time.Second
+
+// taskPollInterval is how often waitTask re-reads a task; a var for tests.
+var taskPollInterval = 500 * time.Millisecond
+
+// waitTask polls a Proxmox task until it ends; a failed task is an error.
+func (p Proxmox) waitTask(ctx context.Context, upid string, timeout time.Duration) error {
+	ctx, cancel := context.WithTimeout(ctx, timeout)
+	defer cancel()
+
+	for {
+		status, err := p.TaskStatus(ctx, upid)
+		if err != nil {
+			return fmt.Errorf("read task %s: %w", upid, err)
+		}
+
+		switch status.State {
+		case TaskOK:
+			return nil
+		case TaskError:
+			return fmt.Errorf("task %s failed: %s", upid, status.ExitMessage)
+		case TaskRunning:
+		}
+
+		select {
+		case <-ctx.Done():
+			return fmt.Errorf("task %s did not finish: %w", upid, ctx.Err())
+		case <-time.After(taskPollInterval):
+		}
+	}
 }
 
 // DeleteDisk implements Writer via /unlink with force=1, which also purges
