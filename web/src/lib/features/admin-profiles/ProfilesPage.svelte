@@ -40,8 +40,8 @@
 		onEnabledFilterChange: (value: 'all' | 'enabled' | 'disabled') => void;
 		onSort: (column: ProfileSortColumn) => void;
 		onResetFilters: () => void;
-		onCreate: (label: string, cpuCores: number, memoryMB: number, diskGB: number, bus: string) => void;
-		onUpdate: (id: string, label: string, cpuCores: number, memoryMB: number, diskGB: number, bus: string) => void;
+		onCreate: (label: string, cpuCores: number, memoryMB: number, diskGB: number, bus: string, sockets: number) => void;
+		onUpdate: (id: string, label: string, cpuCores: number, memoryMB: number, diskGB: number, bus: string, sockets: number) => void;
 		onDelete: (id: string) => void;
 		onToggle: (id: string, enabled: boolean) => void;
 	}
@@ -77,6 +77,7 @@
 	let editingId = $state<string | null>(null);
 	let pendingDelete = $state<AdminProfile | null>(null);
 	let label = $state('');
+	let sockets = $state(1);
 	let cpuCores = $state(1);
 	let memoryMB = $state(2048);
 	let diskGB = $state(20);
@@ -85,6 +86,7 @@
 	function openCreate(): void {
 		editingId = null;
 		label = '';
+		sockets = 1;
 		cpuCores = 1;
 		memoryMB = 2048;
 		diskGB = 20;
@@ -95,6 +97,7 @@
 	function openEdit(profile: AdminProfile): void {
 		editingId = profile.id;
 		label = profile.label;
+		sockets = profile.sockets ?? 1;
 		cpuCores = profile.cpuCores;
 		memoryMB = profile.memoryMB;
 		diskGB = profile.diskGB;
@@ -104,9 +107,9 @@
 
 	function submitForm(): void {
 		if (editingId) {
-			onUpdate(editingId, label, cpuCores, memoryMB, diskGB, bus);
+			onUpdate(editingId, label, cpuCores, memoryMB, diskGB, bus, sockets);
 		} else {
-			onCreate(label, cpuCores, memoryMB, diskGB, bus);
+			onCreate(label, cpuCores, memoryMB, diskGB, bus, sockets);
 		}
 		showForm = false;
 	}
@@ -238,6 +241,11 @@
 			{/snippet}
 		</FormField>
 		<div class="grid grid-cols-2 gap-4">
+			<FormField label={m['admin.profiles.sockets']()} required>
+				{#snippet children({ id, describedBy, invalid })}
+					<TextField {id} {describedBy} {invalid} type="number" min={1} bind:value={sockets} required />
+				{/snippet}
+			</FormField>
 			<FormField label={m['admin.profiles.vcpuCores']()} required>
 				{#snippet children({ id, describedBy, invalid })}
 					<TextField {id} {describedBy} {invalid} type="number" min={1} bind:value={cpuCores} required />
