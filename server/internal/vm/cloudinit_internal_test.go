@@ -133,3 +133,40 @@ func TestApplyCloudInitPassword_AccountNeverAppears(t *testing.T) {
 		t.Errorf("password calls = %d, want several retries before the deadline", writer.passwordCalls)
 	}
 }
+
+// uptimeReader reports a running VM with a fixed uptime.
+type uptimeReader time.Duration
+
+func (u uptimeReader) VMStatus(context.Context, string, int) (cluster.VMLiveStatus, error) {
+	return cluster.VMLiveStatus{Status: cluster.VMRunning, Uptime: time.Duration(u)}, nil
+}
+
+// A VM up for longer than the boot grace with no agent answer will not grow
+// one: fail at once instead of waiting out the bounded window.
+func TestPreflightGuestAgent_FailsFastOnLongRunningVM(t *testing.T) {
+	t.Parallel()
+
+	writer := &agentWriterStub{pingFailures: 1}
+	deps := CloudInitConfigDeps{StatusReader: uptimeReader(time.Hour)}
+
+	err := preflightGuestAgent(context.Background(), deps, writer, Entity{}, cluster.CloudInitConfig{Agent: true})
+	if !errors.Is(err, ErrGuestAgentUnreachable) {
+		t.Fatalf("err = %v, want ErrGuestAgentUnreachable", err)
+	}
+}
+
+// A freshly booted VM keeps the bounded wait: its agent may still start.
+func TestPreflightGuestAgent_KeepsWaitForFreshVM(t *testing.T) {
+	t.Parallel()
+
+	writer := &agentWriterStub{pingFailures: 1}
+	deps := CloudInitConfigDeps{StatusReader: uptimeReader(10 * time.Second)}
+
+	if err := preflightGuestAgent(context.Background(), deps, writer, Entity{}, cluster.CloudInitConfig{Agent: true}); err != nil {
+		t.Fatalf("err = %v, want nil (bounded wait follows)", err)
+	}
+
+	if writer.pingFailures != 1 {
+		t.Error("fresh VM was pinged in the preflight; the bounded wait owns it")
+	}
+}
