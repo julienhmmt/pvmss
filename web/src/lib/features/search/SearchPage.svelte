@@ -8,6 +8,7 @@
 	import Card from '$lib/shared/ui/Card.svelte';
 	import Pill from '$lib/shared/ui/Pill.svelte';
 	import Skeleton from '$lib/shared/ui/Skeleton.svelte';
+	import TextField from '$lib/shared/ui/TextField.svelte';
 	import SearchIcon from '$lib/shared/ui/icons/SearchIcon.svelte';
 
 	const store = getSearchContext();
@@ -36,21 +37,21 @@
 <section class="w-full px-4 py-8">
 	<h1 class="mb-6 text-2xl font-semibold tracking-tight">{m['search.heading']()}</h1>
 
-	<div class="relative mb-6">
-		<label for="global-search" class="sr-only">{m['search.label']()}</label>
-		<div class="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3.5">
-			<SearchIcon class="h-5 w-5 text-muted-foreground" />
-		</div>
-		<input
-			id="global-search"
-			type="search"
-			placeholder={m['search.placeholder']()}
-			class="pv-input w-full pl-11 text-base"
-			value={store.query}
-			oninput={handleInput}
-			data-testid="global-search-input"
-		/>
-	</div>
+	<label for="global-search" class="sr-only">{m['search.label']()}</label>
+	<TextField
+		id="global-search"
+		type="search"
+		size="lg"
+		class="mb-6"
+		placeholder={m['search.placeholder']()}
+		value={store.query}
+		oninput={handleInput}
+		data-testid="global-search-input"
+	>
+		{#snippet leading()}
+			<SearchIcon class="h-5 w-5" />
+		{/snippet}
+	</TextField>
 
 	{#if store.loading && store.result === null}
 		<div role="status" aria-live="polite" class="sr-only">{m['common.loading']()}</div>

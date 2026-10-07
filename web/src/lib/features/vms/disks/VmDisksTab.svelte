@@ -6,7 +6,9 @@
 	import VmCdromCard from './VmCdromCard.svelte';
 	import { m } from '$lib/paraglide/messages.js';
 	import Alert from '$lib/shared/ui/Alert.svelte';
+	import Card from '$lib/shared/ui/Card.svelte';
 	import EmptyState from '$lib/shared/ui/EmptyState.svelte';
+	import Pill from '$lib/shared/ui/Pill.svelte';
 	import Button from '$lib/shared/ui/Button.svelte';
 
 	const store = getVmDetailContext();
@@ -28,7 +30,7 @@
 	}
 </script>
 
-<section class="rounded-xl border border-border bg-card p-6 shadow-card" aria-labelledby="disks-heading">
+<Card pad="lg" aria-labelledby="disks-heading">
 	<div class="flex flex-wrap items-start justify-between gap-3">
 		<div>
 			<h2 id="disks-heading" class="text-lg font-semibold">{m['vms.disks.heading']()}</h2>
@@ -66,9 +68,7 @@
 							<td class="font-medium" data-label={m['vms.disks.tableDisk']()}>
 								<span class="font-mono">{disk.key}</span>
 								{#if disk.isBoot}
-									<span class="ml-2 rounded-full bg-muted px-2 py-0.5 text-xs font-medium text-muted-foreground">
-										{m['common.boot']()}
-									</span>
+									<Pill tone="off" dot={false} class="ml-2" label={m['common.boot']()} />
 								{/if}
 							</td>
 							<td class="font-mono text-muted-foreground" data-label={m['vms.disks.tableStorage']()}>
@@ -77,24 +77,25 @@
 							<td class="font-mono" data-label={m['vms.disks.tableSize']()}>{disk.sizeGB} GB</td>
 							<td data-label={m['common.actions']()}>
 								<div class="flex flex-wrap items-center gap-2">
-									<button
-										type="button"
-										class="rounded-lg border border-border px-2.5 py-1 text-xs font-medium hover:bg-muted disabled:opacity-50"
+									<Button
+										variant="secondary"
+										size="sm"
 										disabled={store.diskInFlight}
 										onclick={() => openResize(disk)}
 										data-testid={`vm-disk-resize-open-${disk.key}`}
 									>
 										{m['vms.disks.resize']()}
-									</button>
-									<button
-										type="button"
-										class="rounded-lg border border-destructive/30 px-2.5 py-1 text-xs font-medium text-destructive hover:bg-destructive/10 disabled:opacity-50"
+									</Button>
+									<Button
+										variant="outline"
+										size="sm"
+										class="border-destructive/30 text-destructive hover:border-destructive/50 hover:bg-destructive/10 hover:text-destructive"
 										disabled={store.diskInFlight || disk.isBoot}
 										onclick={() => openDelete(disk)}
 										data-testid={`vm-disk-delete-open-${disk.key}`}
 									>
 										{disk.isBoot ? m['common.protected']() : m['common.delete']()}
-									</button>
+									</Button>
 								</div>
 							</td>
 						</tr>
@@ -115,7 +116,7 @@
 	{#if store.diskError}
 		<Alert class="mt-3">{store.diskError}</Alert>
 	{/if}
-</section>
+</Card>
 
 <section class="mt-4" aria-label={m['vms.disks.cdromSection']()}>
 	<VmCdromCard />

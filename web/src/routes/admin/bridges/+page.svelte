@@ -1,20 +1,12 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
-	import { goto } from '$app/navigation';
-	import { resolve } from '$app/paths';
-	import {
-		setAdminCatalogContext,
-		type BridgeSortColumn
-	} from '$lib/features/admin-catalog/admin-catalog.svelte';
+	import { setAdminCatalogContext } from '$lib/features/admin-catalog/admin-catalog.svelte';
 	import BridgesTable from '$lib/features/admin-catalog/BridgesTable.svelte';
-	import BridgesTableToolbar from '$lib/features/admin-catalog/BridgesTableToolbar.svelte';
-	import Alert from '$lib/shared/ui/Alert.svelte';
+	import CatalogListStates from '$lib/features/admin-catalog/CatalogListStates.svelte';
+	import CatalogToolbar from '$lib/features/admin-catalog/CatalogToolbar.svelte';
 	import ClusterSelector from '$lib/shared/ui/ClusterSelector.svelte';
 	import PageHeader from '$lib/shared/ui/PageHeader.svelte';
 	import TableCard from '$lib/shared/ui/TableCard.svelte';
-	import TableSkeleton from '$lib/shared/ui/TableSkeleton.svelte';
-	import EmptyState from '$lib/shared/ui/EmptyState.svelte';
-	import Button from '$lib/shared/ui/Button.svelte';
 	import { getToastContext } from '$lib/shared/ui/toast.svelte';
 	import { m } from '$lib/paraglide/messages.js';
 
@@ -25,11 +17,7 @@
 		void store.loadAll();
 	});
 
-	function handleToggle(node: string, name: string, enabled: boolean): void {
-		void performToggle(node, name, enabled);
-	}
-
-	async function performToggle(node: string, name: string, enabled: boolean): Promise<void> {
+	async function handleToggle(node: string, name: string, enabled: boolean): Promise<void> {
 		try {
 			await store.toggleBridge(node, name, enabled);
 			toast.success(
@@ -40,15 +28,7 @@
 		}
 	}
 
-	function handleSort(column: BridgeSortColumn): void {
-		store.setBridgeSort(column);
-	}
-
-	function handleRemove(node: string, name: string): void {
-		void performRemove(node, name);
-	}
-
-	async function performRemove(node: string, name: string): Promise<void> {
+	async function handleRemove(node: string, name: string): Promise<void> {
 		try {
 			await store.removeBridge(node, name);
 			toast.success(m['admin.bridges.removeSuccess']({ name, node }));
@@ -73,64 +53,34 @@
 	{/snippet}
 </PageHeader>
 
-{#if store.loading}
-	<div role="status" aria-live="polite" class="sr-only">{m['common.loading']()}</div>
-	<TableSkeleton columns={5} />
-{:else if store.error}
-	<Alert>{store.error}</Alert>
-{:else}
-	<div role="status" aria-live="polite" class="sr-only">
-		{m['admin.bridges.bridgesLoaded']({ count: store.filteredBridges.length })}
-	</div>
-
-	{#if store.toggleError}
-		<Alert class="mb-4">{store.toggleError}</Alert>
-	{/if}
-
-	{#if store.bridges.length === 0}
-		<EmptyState
-			title={m['admin.bridges.emptyTitle']()}
-			description={m['admin.bridges.emptyDescription']()}
-		>
-			{#snippet actions()}
-				<Button
-					variant="secondary"
-					size="sm"
-					onclick={() => goto(resolve('/admin/clusters'))}
-				>
-					{m['admin.bridges.emptyAction']()}
-				</Button>
-			{/snippet}
-		</EmptyState>
-	{:else if store.filteredBridges.length === 0}
-		<EmptyState
-			title={m['admin.bridges.noMatchTitle']()}
-			description={m['admin.bridges.noMatchDescription']()}
-		>
-			{#snippet actions()}
-				<Button
-					variant="secondary"
-					size="sm"
-					onclick={() => store.resetBridgeFilters()}
-				>
-					{m['admin.bridges.resetFilters']()}
-				</Button>
-			{/snippet}
-		</EmptyState>
-	{:else}
-		<TableCard>
-			{#snippet toolbar()}
-				<BridgesTableToolbar {store} />
-			{/snippet}
-			<BridgesTable
-				bridges={store.filteredBridges}
-				toggling={store.toggling}
-				onToggle={handleToggle}
-				onRemove={handleRemove}
-				sortBy={store.bridgeSortBy}
-				sortDir={store.bridgeSortDir}
-				onSort={handleSort}
-			/>
-		</TableCard>
-	{/if}
-{/if}
+<CatalogListStates
+	loading={store.loading}
+	error={store.error}
+	toggleError={store.toggleError}
+	columns={5}
+	totalCount={store.bridges.length}
+	filteredCount={store.filteredBridges.length}
+	loadedLabel={m['admin.bridges.bridgesLoaded']({ count: store.filteredBridges.length })}
+	emptyTitle={m['admin.bridges.emptyTitle']()}
+	emptyDescription={m['admin.bridges.emptyDescription']()}
+	emptyActionLabel={m['admin.bridges.emptyAction']()}
+	noMatchTitle={m['admin.bridges.noMatchTitle']()}
+	noMatchDescription={m['admin.bridges.noMatchDescription']()}
+	resetLabel={m['admin.bridges.resetFilters']()}
+	onResetFilters={() => store.resetBridgeFilters()}
+>
+	<TableCard>
+		{#snippet toolbar()}
+			<CatalogToolbar {store} kind="bridges" />
+		{/snippet}
+		<BridgesTable
+			bridges={store.filteredBridges}
+			toggling={store.toggling}
+			onToggle={(n, name, e) => void handleToggle(n, name, e)}
+			onRemove={(n, name) => void handleRemove(n, name)}
+			sortBy={store.bridgeSortBy}
+			sortDir={store.bridgeSortDir}
+			onSort={(column) => store.setBridgeSort(column)}
+		/>
+	</TableCard>
+</CatalogListStates>

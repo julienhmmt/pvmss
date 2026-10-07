@@ -3,6 +3,8 @@
 	import { getAuditLogContext } from './auditLog.svelte';
 	import Alert from '$lib/shared/ui/Alert.svelte';
 	import Button from '$lib/shared/ui/Button.svelte';
+	import Select from '$lib/shared/ui/Select.svelte';
+	import TextField from '$lib/shared/ui/TextField.svelte';
 	import TableSkeleton from '$lib/shared/ui/TableSkeleton.svelte';
 	import EmptyState from '$lib/shared/ui/EmptyState.svelte';
 	import { m } from '$lib/paraglide/messages.js';
@@ -82,32 +84,35 @@
 	<form class="flex flex-wrap items-end gap-3" onsubmit={(e) => { e.preventDefault(); applyFilter(); }}>
 		<label class="flex flex-col gap-1 text-sm">
 			<span class="text-muted-foreground">{m['admin.audit.action']()}</span>
-			<input class="pv-input" type="text" bind:value={actionFilter} placeholder={m['admin.audit.actionPlaceholder']()} />
+			<TextField bind:value={actionFilter} placeholder={m['admin.audit.actionPlaceholder']()} />
 		</label>
 		<label class="flex flex-col gap-1 text-sm">
 			<span class="text-muted-foreground">{m['admin.audit.actor']()}</span>
-			<input class="pv-input" type="text" bind:value={actorFilter} placeholder={m['admin.audit.actorPlaceholder']()} />
+			<TextField bind:value={actorFilter} placeholder={m['admin.audit.actorPlaceholder']()} />
 		</label>
 		<label class="flex flex-col gap-1 text-sm">
 			<span class="text-muted-foreground">{m['admin.audit.vmid']()}</span>
-			<input class="pv-input w-24" type="number" bind:value={vmidFilter} placeholder="101" />
+			<TextField class="w-24" type="number" bind:value={vmidFilter} placeholder="101" />
 		</label>
 		<label class="flex flex-col gap-1 text-sm">
 			<span class="text-muted-foreground">{m['admin.audit.from']()}</span>
-			<input class="pv-input" type="datetime-local" bind:value={fromFilter} />
+			<TextField type="datetime-local" bind:value={fromFilter} />
 		</label>
 		<label class="flex flex-col gap-1 text-sm">
 			<span class="text-muted-foreground">{m['admin.audit.to']()}</span>
-			<input class="pv-input" type="datetime-local" bind:value={toFilter} />
+			<TextField type="datetime-local" bind:value={toFilter} />
 		</label>
 		<label class="flex flex-col gap-1 text-sm">
 			<span class="text-muted-foreground">{m['admin.audit.severity']()}</span>
-			<select class="pv-input" bind:value={severityFilter}>
-				<option value="">{m['admin.audit.severityAll']()}</option>
-				<option value="critical">{m['admin.audit.severityCritical']()}</option>
-				<option value="warning">{m['admin.audit.severityWarning']()}</option>
-				<option value="info">{m['admin.audit.severityInfo']()}</option>
-			</select>
+			<Select
+				bind:value={severityFilter}
+				options={[
+					{ value: '', label: m['admin.audit.severityAll']() },
+					{ value: 'critical', label: m['admin.audit.severityCritical']() },
+					{ value: 'warning', label: m['admin.audit.severityWarning']() },
+					{ value: 'info', label: m['admin.audit.severityInfo']() }
+				]}
+			/>
 		</label>
 		<Button type="submit">{m['common.filter']()}</Button>
 		<Button variant="secondary" onclick={clearFilter}>{m['admin.audit.clear']()}</Button>

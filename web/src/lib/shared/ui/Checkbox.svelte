@@ -14,8 +14,8 @@
 		label: string;
 		/** Checked state. */
 		checked: boolean;
-		/** Called with the new checked state. */
-		onToggle: (checked: boolean) => void;
+		/** Called with the new checked state. Optional when using bind:checked only. */
+		onToggle?: (checked: boolean) => void;
 		hint?: string;
 		variant?: Variant;
 		id?: string;
@@ -23,6 +23,7 @@
 		invalid?: boolean;
 		disabled?: boolean;
 		class?: string;
+		[key: string]: unknown;
 	}
 
 	let {
@@ -35,13 +36,14 @@
 		describedBy,
 		invalid = false,
 		disabled = false,
-		class: klass = ''
+		class: klass = '',
+		...rest
 	}: Props = $props();
 
 	function handleChange(event: Event): void {
 		const target = event.currentTarget as HTMLInputElement;
 		checked = target.checked;
-		onToggle(checked);
+		onToggle?.(checked);
 	}
 
 	const rowClass = $derived(
@@ -61,6 +63,7 @@
 		aria-invalid={invalid ? 'true' : undefined}
 		aria-describedby={describedBy}
 		onchange={handleChange}
+		{...rest}
 	/>
 	<span class="grid gap-0.5">
 		<span class="font-medium text-foreground">{label}</span>

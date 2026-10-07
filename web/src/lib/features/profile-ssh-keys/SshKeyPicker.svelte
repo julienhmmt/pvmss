@@ -9,6 +9,7 @@
 	 * SSH-key field always had (D7).
 	 */
 	import { m } from '$lib/paraglide/messages.js';
+	import Checkbox from '$lib/shared/ui/Checkbox.svelte';
 	import Textarea from '$lib/shared/ui/Textarea.svelte';
 	import TextField from '$lib/shared/ui/TextField.svelte';
 	import type { SshKeySelection } from './ssh-key-selection.svelte';
@@ -68,15 +69,11 @@
 	/>
 
 	{#if offer !== null}
-		<label class="flex items-start gap-2 text-sm">
-			<input
-				type="checkbox"
-				class="mt-0.5 h-4 w-4 rounded accent-primary pv-focus"
-				bind:checked={selection.saveToProfile}
-				data-testid="ssh-key-picker-save"
-			/>
-			<span class="font-medium text-foreground">{m['profileSshKeys.saveToProfile']()}</span>
-		</label>
+		<Checkbox
+			label={m['profileSshKeys.saveToProfile']()}
+			bind:checked={selection.saveToProfile}
+			data-testid="ssh-key-picker-save"
+		/>
 		<TextField
 			bind:value={selection.saveLabel}
 			maxLength={64}

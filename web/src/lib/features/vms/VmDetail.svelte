@@ -24,10 +24,11 @@
 	import { resolve } from '$app/paths';
 	import Button from '$lib/shared/ui/Button.svelte';
 	import ButtonLink from '$lib/shared/ui/ButtonLink.svelte';
+	import Card from '$lib/shared/ui/Card.svelte';
 	import Pill from '$lib/shared/ui/Pill.svelte';
 	import OsMark from '$lib/shared/ui/OsMark.svelte';
 	import ConfirmDialog from '$lib/shared/ui/ConfirmDialog.svelte';
-	import { focusOnMount } from '$lib/shared/ui/focus-on-mount';
+	import Textarea from '$lib/shared/ui/Textarea.svelte';
 	import { getSessionContext } from '$lib/features/auth/session.svelte';
 	import { m } from '$lib/paraglide/messages.js';
 
@@ -290,7 +291,7 @@
 			hidden={configTab !== 'overview'}
 			class="mt-4 grid gap-5"
 		>
-			<section class="rounded-xl border border-border bg-card p-6 shadow-card">
+			<Card pad="lg">
 				<dl class="grid gap-x-6 gap-y-4 text-sm sm:grid-cols-2" data-testid="vm-config-summary">
 					<div>
 						<dt class="text-xs text-muted-foreground">{m['vms.detail.config.size']()}</dt>
@@ -314,9 +315,9 @@
 				{:else if entity.baselineState === 'override'}
 					<p class="mt-4 text-sm text-muted-foreground" data-testid="vm-baseline-override">{m['vms.detail.baselineOverride']()}</p>
 				{/if}
-			</section>
+			</Card>
 
-			<section class="rounded-xl border border-border bg-card p-6 shadow-card">
+			<Card pad="lg">
 				<div class="flex items-center justify-between">
 					<h2 class="text-sm font-medium text-muted-foreground">{m['vms.detail.descriptionLabel']()}</h2>
 					{#if !editingDescription}
@@ -326,17 +327,14 @@
 					{/if}
 				</div>
 				{#if editingDescription}
-					<textarea
-						class="pv-input mt-3"
+					<Textarea
+						class="mt-3"
 						bind:value={descriptionDraft}
-						onkeydown={(e) => {
-							if (e.key === 'Escape') { e.preventDefault(); cancelDescription(); }
-							if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') { e.preventDefault(); void commitDescription(); }
-						}}
-						rows="4"
+						onEscape={cancelDescription}
+						onCmdEnter={() => void commitDescription()}
 						data-testid="vm-description-edit"
-						use:focusOnMount
-					></textarea>
+						focusOnMount
+					/>
 					<div class="mt-3 flex gap-2">
 						<Button size="sm" onclick={() => void commitDescription()} data-testid="vm-description-save">
 							{m['common.save']()}
@@ -365,9 +363,9 @@
 						{/if}
 					</div>
 				{/if}
-			</section>
+			</Card>
 
-			<section class="rounded-xl border border-border bg-card p-6 shadow-card" aria-labelledby="vm-power-heading">
+			<Card pad="lg" aria-labelledby="vm-power-heading">
 				<h2 id="vm-power-heading" class="mb-4 text-sm font-medium text-muted-foreground">{m['vms.detail.config.power']()}</h2>
 				<VmActionBar onDelete={() => { deleteOpen = true; }} />
 				{#if session.isAdmin}
@@ -388,7 +386,7 @@
 						{/if}
 					</div>
 				{/if}
-			</section>
+			</Card>
 
 			<section aria-labelledby="vm-usage-heading">
 				<h2 id="vm-usage-heading" class="sr-only">{m['vms.detail.config.usage']()}</h2>

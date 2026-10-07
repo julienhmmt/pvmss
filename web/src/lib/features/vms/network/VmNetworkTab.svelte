@@ -3,25 +3,19 @@
 	import EditNetworkInterfaceDialog from './EditNetworkInterfaceDialog.svelte';
 	import { m } from '$lib/paraglide/messages.js';
 	import Alert from '$lib/shared/ui/Alert.svelte';
+	import Button from '$lib/shared/ui/Button.svelte';
+	import Card from '$lib/shared/ui/Card.svelte';
+	import CopyChip from '$lib/shared/ui/CopyChip.svelte';
 	import EmptyState from '$lib/shared/ui/EmptyState.svelte';
 
 	const store = getVmDetailContext();
 
 	let editOpen = $state(false);
 	let editTarget = $state<VmNetworkInterface | null>(null);
-	let copied = $state('');
 
 	function openEdit(iface: VmNetworkInterface): void {
 		editTarget = iface;
 		editOpen = true;
-	}
-
-	async function copy(value: string): Promise<void> {
-		await navigator.clipboard.writeText(value);
-		copied = value;
-		setTimeout(() => {
-			if (copied === value) copied = '';
-		}, 1500);
 	}
 
 	const guestAgentHint = $derived.by((): string | null => {
@@ -40,7 +34,7 @@
 	});
 </script>
 
-<section class="rounded-xl border border-border bg-card p-6 shadow-card" aria-labelledby="network-heading">
+<Card pad="lg" aria-labelledby="network-heading">
 	<h2 id="network-heading" class="text-lg font-semibold">{m['vms.network.heading']()}</h2>
 	<p class="mt-1 text-sm text-muted-foreground">{m['vms.network.description']()}</p>
 
@@ -76,14 +70,7 @@
 								{nic.model}
 							</td>
 							<td data-label={m['vms.network.columnMac']()}>
-								<button
-									type="button"
-									class="rounded-md border border-border bg-muted/40 px-2 py-0.5 font-mono text-xs hover:bg-muted"
-									onclick={() => copy(nic.mac)}
-									data-testid={`vm-nic-mac-copy-${nic.index}`}
-								>
-									{copied === nic.mac ? m['common.copied']() : nic.mac}
-								</button>
+								<CopyChip value={nic.mac} testId={`vm-nic-mac-copy-${nic.index}`} />
 							</td>
 							<td class="font-mono text-muted-foreground" data-label={m['vms.network.columnVlan']()}>
 								{nic.vlan ?? m['common.dash']()}
@@ -95,13 +82,7 @@
 								{#if nic.ipAddresses.length}
 									<div class="flex flex-wrap gap-1">
 										{#each nic.ipAddresses as ip (ip)}
-											<button
-												type="button"
-												class="rounded-md border border-border bg-muted/40 px-2 py-0.5 font-mono text-xs hover:bg-muted"
-												onclick={() => copy(ip)}
-											>
-												{copied === ip ? m['common.copied']() : ip}
-											</button>
+											<CopyChip value={ip} />
 										{/each}
 									</div>
 								{:else}
@@ -109,15 +90,15 @@
 								{/if}
 							</td>
 							<td data-label={m['common.actions']()}>
-								<button
-									type="button"
-									class="rounded-lg border border-border px-2.5 py-1 text-xs font-medium hover:bg-muted disabled:opacity-50"
+								<Button
+									variant="secondary"
+									size="sm"
 									disabled={store.networkInFlight}
 									onclick={() => openEdit(nic)}
 									data-testid={`vm-nic-edit-open-${nic.index}`}
 								>
 									{m['common.edit']()}
-								</button>
+								</Button>
 							</td>
 						</tr>
 					{/each}
@@ -136,6 +117,6 @@
 	{#if store.writeError}
 		<Alert class="mt-3">{store.writeError}</Alert>
 	{/if}
-</section>
+</Card>
 
 <EditNetworkInterfaceDialog bind:open={editOpen} iface={editTarget} />

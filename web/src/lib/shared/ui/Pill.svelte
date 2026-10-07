@@ -23,9 +23,10 @@
 		/** Drop the leading dot - for chips that are labels, not states. */
 		dot?: boolean;
 		class?: string;
+		[key: string]: unknown;
 	}
 
-	let { tone, label, pending = false, size = 'sm', dot = true, class: klass = '' }: Props = $props();
+	let { tone, label, pending = false, size = 'sm', dot = true, class: klass = '', ...rest }: Props = $props();
 
 	const tones: Record<Tone, { wrap: string; dot: string }> = {
 		ok: {
@@ -62,6 +63,7 @@
 
 <span
 	class="inline-flex items-center whitespace-nowrap rounded-full border font-medium {tones[tone].wrap} {sizes[size]} {klass}"
+	{...rest}
 >
 	{#if dot}
 		<span

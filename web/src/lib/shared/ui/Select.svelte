@@ -26,7 +26,7 @@
 		/** Options: strings or { value, label } pairs. */
 		options: ReadonlyArray<string | Option>;
 		/** Disabled first option acting as a prompt. */
-		placeholder?: string;
+		placeholder?: string | undefined;
 		describedBy?: string | undefined;
 		invalid?: boolean;
 		required?: boolean;

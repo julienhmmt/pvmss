@@ -1,7 +1,11 @@
-<script lang="ts">
+<script lang="ts" generics="C extends string">
 	/**
 	 * TableHeader - a `<th>` for the admin tables, with optional sorting and
 	 * an optional tooltip.
+	 *
+	 * `C` binds `column` to the caller's sort-column union: a table whose
+	 * columns are `NodeSortColumn` can hand `onSort` straight through and
+	 * stay type-checked - no `as` casts at the call site.
 	 *
 	 * The cell's own look (padding, uppercase, sticky band) comes from
 	 * `.pv-table thead th` in app.css, so this component no longer carries
@@ -17,10 +21,10 @@
 	interface Props {
 		text: string;
 		tooltip?: string;
-		column?: string;
+		column?: C;
 		activeColumn?: string;
 		sortDir?: 'asc' | 'desc';
-		onSort?: (column: string) => void;
+		onSort?: (column: C) => void;
 		/** Right-align the column - for figures and action columns. */
 		numeric?: boolean;
 		class?: string;
@@ -29,7 +33,7 @@
 	let {
 		text,
 		tooltip,
-		column = '',
+		column,
 		activeColumn = '',
 		sortDir = 'asc',
 		onSort,
@@ -37,14 +41,15 @@
 		class: className = ''
 	}: Props = $props();
 
-	const isActive = $derived(column !== '' && activeColumn === column);
+	const hasColumn = $derived(column !== undefined && column !== '');
+	const isActive = $derived(hasColumn && activeColumn === column);
 	const ariaSort = $derived(isActive ? (sortDir === 'asc' ? 'ascending' : 'descending') : 'none');
-	const sortable = $derived(column !== '' && onSort !== undefined);
+	const sortable = $derived(hasColumn && onSort !== undefined);
 </script>
 
 <th class="{numeric ? 'num' : ''} {className}" aria-sort={sortable ? ariaSort : undefined}>
 	<span class="inline-flex items-center gap-1">
-		{#if sortable}
+		{#if sortable && column}
 			<SortButton
 				label={text}
 				active={isActive}

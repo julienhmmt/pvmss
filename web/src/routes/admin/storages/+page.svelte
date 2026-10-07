@@ -1,21 +1,13 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
-	import { goto } from '$app/navigation';
-	import { resolve } from '$app/paths';
 	import { page } from '$app/state';
-	import {
-		setAdminCatalogContext,
-		type StorageSortColumn
-	} from '$lib/features/admin-catalog/admin-catalog.svelte';
+	import { setAdminCatalogContext } from '$lib/features/admin-catalog/admin-catalog.svelte';
+	import CatalogListStates from '$lib/features/admin-catalog/CatalogListStates.svelte';
+	import CatalogToolbar from '$lib/features/admin-catalog/CatalogToolbar.svelte';
 	import StoragesTable from '$lib/features/admin-catalog/StoragesTable.svelte';
-	import StoragesTableToolbar from '$lib/features/admin-catalog/StoragesTableToolbar.svelte';
-	import Alert from '$lib/shared/ui/Alert.svelte';
 	import ClusterSelector from '$lib/shared/ui/ClusterSelector.svelte';
 	import PageHeader from '$lib/shared/ui/PageHeader.svelte';
 	import TableCard from '$lib/shared/ui/TableCard.svelte';
-	import TableSkeleton from '$lib/shared/ui/TableSkeleton.svelte';
-	import EmptyState from '$lib/shared/ui/EmptyState.svelte';
-	import Button from '$lib/shared/ui/Button.svelte';
 	import { getToastContext } from '$lib/shared/ui/toast.svelte';
 	import { m } from '$lib/paraglide/messages.js';
 
@@ -32,11 +24,7 @@
 		void store.loadAll();
 	});
 
-	function handleToggle(name: string, node: string, enabled: boolean): void {
-		void performToggle(name, node, enabled);
-	}
-
-	async function performToggle(name: string, node: string, enabled: boolean): Promise<void> {
+	async function handleToggle(name: string, node: string, enabled: boolean): Promise<void> {
 		try {
 			await store.toggleStorage(name, node, enabled);
 			toast.success(
@@ -47,15 +35,7 @@
 		}
 	}
 
-	function handleSort(column: StorageSortColumn): void {
-		store.setStorageSort(column);
-	}
-
-	function handleRemove(name: string, node: string): void {
-		void performRemove(name, node);
-	}
-
-	async function performRemove(name: string, node: string): Promise<void> {
+	async function handleRemove(name: string, node: string): Promise<void> {
 		try {
 			await store.removeStorage(name, node);
 			toast.success(m['admin.storages.removeSuccess']({ name, node }));
@@ -80,64 +60,34 @@
 	{/snippet}
 </PageHeader>
 
-{#if store.loading}
-	<div role="status" aria-live="polite" class="sr-only">{m['common.loading']()}</div>
-	<TableSkeleton columns={5} />
-{:else if store.error}
-	<Alert>{store.error}</Alert>
-{:else}
-	<div role="status" aria-live="polite" class="sr-only">
-		{m['admin.storages.storagesLoaded']({ count: store.filteredStorageCount })}
-	</div>
-
-	{#if store.toggleError}
-		<Alert class="mb-4">{store.toggleError}</Alert>
-	{/if}
-
-	{#if store.storages.length === 0}
-		<EmptyState
-			title={m['admin.storages.emptyTitle']()}
-			description={m['admin.storages.emptyDescription']()}
-		>
-			{#snippet actions()}
-				<Button
-					variant="secondary"
-					size="sm"
-					onclick={() => goto(resolve('/admin/clusters'))}
-				>
-					{m['admin.storages.emptyAction']()}
-				</Button>
-			{/snippet}
-		</EmptyState>
-	{:else if store.filteredStorages.length === 0}
-		<EmptyState
-			title={m['admin.storages.noMatchTitle']()}
-			description={m['admin.storages.noMatchDescription']()}
-		>
-			{#snippet actions()}
-				<Button
-					variant="secondary"
-					size="sm"
-					onclick={() => store.resetStorageFilters()}
-				>
-					{m['admin.storages.resetFilters']()}
-				</Button>
-			{/snippet}
-		</EmptyState>
-	{:else}
-		<TableCard>
-			{#snippet toolbar()}
-				<StoragesTableToolbar {store} />
-			{/snippet}
-			<StoragesTable
-				storages={store.filteredStorages}
-				toggling={store.toggling}
-				onToggle={handleToggle}
-				onRemove={handleRemove}
-				sortBy={store.storageSortBy}
-				sortDir={store.storageSortDir}
-				onSort={handleSort}
-			/>
-		</TableCard>
-	{/if}
-{/if}
+<CatalogListStates
+	loading={store.loading}
+	error={store.error}
+	toggleError={store.toggleError}
+	columns={5}
+	totalCount={store.storages.length}
+	filteredCount={store.filteredStorages.length}
+	loadedLabel={m['admin.storages.storagesLoaded']({ count: store.filteredStorageCount })}
+	emptyTitle={m['admin.storages.emptyTitle']()}
+	emptyDescription={m['admin.storages.emptyDescription']()}
+	emptyActionLabel={m['admin.storages.emptyAction']()}
+	noMatchTitle={m['admin.storages.noMatchTitle']()}
+	noMatchDescription={m['admin.storages.noMatchDescription']()}
+	resetLabel={m['admin.storages.resetFilters']()}
+	onResetFilters={() => store.resetStorageFilters()}
+>
+	<TableCard>
+		{#snippet toolbar()}
+			<CatalogToolbar {store} kind="storages" />
+		{/snippet}
+		<StoragesTable
+			storages={store.filteredStorages}
+			toggling={store.toggling}
+			onToggle={(name, node, e) => void handleToggle(name, node, e)}
+			onRemove={(name, node) => void handleRemove(name, node)}
+			sortBy={store.storageSortBy}
+			sortDir={store.storageSortDir}
+			onSort={(column) => store.setStorageSort(column)}
+		/>
+	</TableCard>
+</CatalogListStates>

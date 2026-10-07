@@ -1,12 +1,11 @@
 <script lang="ts">
-	import type { AdminTemplate } from './admin-catalog.svelte';
-	import Switch from '$lib/shared/ui/Switch.svelte';
+	import type { AdminTemplate, TemplateSortColumn } from './admin-catalog.svelte';
 	import EmptyState from '$lib/shared/ui/EmptyState.svelte';
+	import Pill from '$lib/shared/ui/Pill.svelte';
 	import TableHeader from '$lib/shared/ui/TableHeader.svelte';
 	import Button from '$lib/shared/ui/Button.svelte';
+	import ApprovalCell from './ApprovalCell.svelte';
 	import { m } from '$lib/paraglide/messages.js';
-
-	type TemplateSortColumn = 'vmid' | 'name' | 'node' | 'disk' | 'cloudInit' | 'enabled';
 
 	interface Props {
 		templates: AdminTemplate[];
@@ -20,28 +19,24 @@
 	}
 
 	let { templates, toggling, onToggle, onRemove, onEdit, sortBy, sortDir, onSort }: Props = $props();
-
-	function handleSort(column: string): void {
-		onSort(column as TemplateSortColumn);
-	}
 </script>
 
 <table class="pv-table pv-responsive-table">
 	<caption class="sr-only">{m['admin.templates.heading']()}</caption>
 	<thead>
 		<tr>
-			<TableHeader text={m['admin.templates.vmid']()} column="vmid" activeColumn={sortBy} {sortDir} onSort={handleSort} />
-			<TableHeader text={m['admin.templates.name']()} column="name" activeColumn={sortBy} {sortDir} onSort={handleSort} />
-			<TableHeader text={m['common.node']()} column="node" activeColumn={sortBy} {sortDir} onSort={handleSort} />
-			<TableHeader text={m['admin.templates.disk']()} column="disk" activeColumn={sortBy} {sortDir} onSort={handleSort} />
-			<TableHeader text={m['admin.templates.cloudInit']()} column="cloudInit" activeColumn={sortBy} {sortDir} onSort={handleSort} />
+			<TableHeader text={m['admin.templates.vmid']()} column="vmid" activeColumn={sortBy} {sortDir} {onSort} />
+			<TableHeader text={m['admin.templates.name']()} column="name" activeColumn={sortBy} {sortDir} {onSort} />
+			<TableHeader text={m['common.node']()} column="node" activeColumn={sortBy} {sortDir} {onSort} />
+			<TableHeader text={m['admin.templates.disk']()} column="disk" activeColumn={sortBy} {sortDir} {onSort} />
+			<TableHeader text={m['admin.templates.cloudInit']()} column="cloudInit" activeColumn={sortBy} {sortDir} {onSort} />
 			<TableHeader
 				text={m['admin.catalog.statusColumn']()}
 				tooltip={m['admin.catalog.tooltip.statusColumn']()}
 				column="enabled"
 				activeColumn={sortBy}
 				{sortDir}
-				onSort={handleSort}
+				{onSort}
 			/>
 			<TableHeader text={m['common.actions']()} />
 		</tr>
@@ -52,26 +47,29 @@
 				<td class="font-mono" data-label={m['admin.templates.vmid']()}>{tmpl.vmid}</td>
 				<td data-label={m['admin.templates.name']()}>
 					{tmpl.name !== '' ? tmpl.name : `VMID ${tmpl.vmid}`}{#if tmpl.missing}
-						<span
-							class="ml-2 inline-flex items-center rounded-full border border-destructive/40 bg-destructive/10 px-2 py-0.5 text-xs font-medium text-destructive"
+						<Pill
+							tone="error"
+							dot={false}
+							label={m['admin.catalog.missingBadge']()}
+							class="ml-2"
 							data-testid="template-missing-badge"
-						>
-							{m['admin.templates.missingBadge']()}
-						</span>
+						/>
 					{:else if tmpl.diskUnreadable}
-						<span
-							class="ml-2 inline-flex items-center rounded-full border border-border bg-muted px-2 py-0.5 text-xs font-medium text-muted-foreground"
+						<Pill
+							tone="off"
+							dot={false}
+							label={m['admin.templates.unreadableBadge']()}
+							class="ml-2"
 							data-testid="template-unreadable-badge"
-						>
-							{m['admin.templates.unreadableBadge']()}
-						</span>
+						/>
 					{/if}{#if tmpl.overrideDiscovery}
-						<span
-							class="ml-2 inline-flex items-center rounded-full border border-border bg-muted px-2 py-0.5 text-xs font-medium text-muted-foreground"
+						<Pill
+							tone="off"
+							dot={false}
+							label={m['admin.templates.overrideBadge']()}
+							class="ml-2"
 							data-testid="template-override-badge"
-						>
-							{m['admin.templates.overrideBadge']()}
-						</span>
+						/>
 					{/if}
 				</td>
 				<td class="font-mono" data-label={m['common.node']()}>{tmpl.node}</td>
@@ -80,33 +78,18 @@
 				</td>
 				<td data-label={m['admin.templates.cloudInit']()}>
 					{#if tmpl.cloudInitCapable}
-						<span class="inline-flex items-center rounded-full bg-muted px-2 py-0.5 text-xs font-medium text-muted-foreground">
-							{m['admin.templates.cloudInit']()}
-						</span>
+						<Pill tone="off" dot={false} label={m['admin.templates.cloudInit']()} />
 					{/if}
 				</td>
 				<td data-label={m['admin.catalog.statusColumn']()}>
-					{#if tmpl.missing}
-						<span class="text-xs text-muted-foreground">{m['admin.templates.missingBadge']()}</span>
-					{:else}
-						<span class="inline-flex items-center gap-2" aria-busy={toggling === `template:${tmpl.vmid}`}>
-							<Switch
-								checked={tmpl.enabled}
-								disabled={tmpl.diskUnreadable && !tmpl.enabled}
-								label={tmpl.enabled
-									? m['admin.catalog.revokeApproval']({ name: tmpl.name })
-									: m['admin.catalog.approveName']({ name: tmpl.name })}
-								onToggle={() => onToggle(tmpl.vmid, !tmpl.enabled)}
-							/>
-							<span class="text-xs text-muted-foreground">
-								{#if toggling === `template:${tmpl.vmid}`}
-									…
-								{:else}
-									{tmpl.enabled ? m['admin.catalog.approvedStatus']() : m['admin.catalog.approveAction']()}
-								{/if}
-							</span>
-						</span>
-					{/if}
+					<ApprovalCell
+						enabled={tmpl.enabled}
+						name={tmpl.name}
+						pending={toggling === `template:${tmpl.vmid}`}
+						missing={tmpl.missing}
+						disabled={tmpl.diskUnreadable && !tmpl.enabled}
+						onToggle={() => onToggle(tmpl.vmid, !tmpl.enabled)}
+					/>
 				</td>
 				<td data-label={m['common.actions']()}>
 					<div class="flex items-center gap-1">

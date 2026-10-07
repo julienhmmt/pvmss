@@ -1,11 +1,12 @@
 <script lang="ts">
 	/**
-	 * TemplatePicker - grouped native select for approved Proxmox templates.
+	 * TemplatePicker - grouped select for approved Proxmox templates.
 	 * Used by both the simple wizard and the detailed wizard's Base step.
 	 */
 	import { getVmCreateContext } from './create.svelte';
 	import { m } from '$lib/paraglide/messages.js';
 	import FormField from '$lib/shared/ui/FormField.svelte';
+	import Select from '$lib/shared/ui/Select.svelte';
 
 	interface Props {
 		error?: string | null;
@@ -49,14 +50,16 @@
 		}
 	}
 
-	// Issue 04: group templates by node and carry the facts that matter in
-	// the label. The shared Select has no optgroup support, so the template
-	// picker is a native select - keyboard type-ahead for free.
-	const templateGroups = $derived(
-		[...new Set(templates.map((tmpl) => tmpl.node))].sort().map((node) => ({
-			node,
-			templates: templates.filter((tmpl) => tmpl.node === node)
-		}))
+	// Issue 04: carry the node as `group` so Select emits one <optgroup> per
+	// node (sorted), and carry the facts that matter in the label.
+	const options = $derived(
+		[...templates]
+			.sort((a, b) => a.node.localeCompare(b.node))
+			.map((tmpl) => ({
+				value: String(tmpl.vmid),
+				label: templateLabel(tmpl),
+				group: tmpl.node
+			}))
 	);
 
 	function templateLabel(tmpl: (typeof templates)[number]): string {
@@ -68,24 +71,16 @@
 
 <FormField label={m['vms.create.template']()} required hint={m['vms.create.templateHelp']()} {error}>
 	{#snippet children({ id, describedBy, invalid })}
-		<select
+		<Select
 			{id}
-			class="pv-input pv-select"
-			aria-describedby={describedBy}
-			aria-invalid={invalid ? 'true' : undefined}
+			{describedBy}
+			{invalid}
 			value={templateIdStr}
+			{options}
 			onchange={onTemplateChange}
+			placeholder={m['vms.create.chooseTemplate']()}
 			required
-		>
-			<option value="" disabled>{m['vms.create.chooseTemplate']()}</option>
-			{#each templateGroups as group (group.node)}
-				<optgroup label={group.node}>
-					{#each group.templates as tmpl (tmpl.vmid)}
-						<option value={String(tmpl.vmid)}>{templateLabel(tmpl)}</option>
-					{/each}
-				</optgroup>
-			{/each}
-		</select>
+		/>
 		{#if templateMinRaised}
 			<p class="mt-1 text-xs text-muted-foreground" data-testid="template-min-raised">
 				{m['vms.create.templateMinRaised']({ min: form.templateMinDiskGB })}

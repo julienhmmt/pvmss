@@ -4,6 +4,8 @@
 	import { m } from '$lib/paraglide/messages.js';
 	import Alert from '$lib/shared/ui/Alert.svelte';
 	import Button from '$lib/shared/ui/Button.svelte';
+	import Card from '$lib/shared/ui/Card.svelte';
+	import TextField from '$lib/shared/ui/TextField.svelte';
 
 	const store = getVmDetailContext();
 
@@ -59,38 +61,20 @@
 	}
 </script>
 
-<section class="rounded-xl border border-border bg-card p-6 shadow-card" aria-labelledby="hardware-heading" data-testid="vm-hardware">
+<Card pad="lg" aria-labelledby="hardware-heading" data-testid="vm-hardware">
 	<h2 id="hardware-heading" class="text-lg font-semibold">{m['vms.hardware.heading']()}</h2>
 	<div class="mt-5 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
 		<label class="grid gap-1.5 text-sm font-medium">
 			{m['vms.hardware.sockets']()}
-			<input
-				class="pv-input"
-				type="number"
-				min="1"
-				bind:value={socketsDraft}
-				data-testid="vm-hardware-sockets"
-			/>
+			<TextField type="number" min={1} bind:value={socketsDraft} data-testid="vm-hardware-sockets" />
 		</label>
 		<label class="grid gap-1.5 text-sm font-medium">
 			{m['vms.hardware.cores']()}
-			<input
-				class="pv-input"
-				type="number"
-				min="1"
-				bind:value={coresDraft}
-				data-testid="vm-hardware-cores"
-			/>
+			<TextField type="number" min={1} bind:value={coresDraft} data-testid="vm-hardware-cores" />
 		</label>
 		<label class="grid gap-1.5 text-sm font-medium">
 			{m['vms.hardware.memory']()}
-			<input
-				class="pv-input"
-				type="number"
-				min="1"
-				bind:value={memoryDraft}
-				data-testid="vm-hardware-memory"
-			/>
+			<TextField type="number" min={1} bind:value={memoryDraft} data-testid="vm-hardware-memory" />
 		</label>
 		<div class="grid gap-1.5 text-sm font-medium">
 			{m['vms.hardware.tags']()}
@@ -121,9 +105,9 @@
 		</div>
 	</div>
 	{#if hardwareWillRestart}
-		<p class="mt-4 rounded-lg bg-warning-soft px-3 py-2 text-sm text-warning-soft-foreground" data-testid="vm-hardware-restart-notice">
+		<Alert tone="warning" role="status" class="mt-4" data-testid="vm-hardware-restart-notice">
 			{m['vms.hardware.restartNotice']()}
-		</p>
+		</Alert>
 	{/if}
 	<Button
 		class="mt-5"
@@ -143,4 +127,4 @@
 	{#if store.writeError}
 		<Alert class="mt-3">{store.writeError}</Alert>
 	{/if}
-</section>
+</Card>

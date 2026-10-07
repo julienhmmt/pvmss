@@ -4,11 +4,15 @@
 	import Alert from '$lib/shared/ui/Alert.svelte';
 	import PageHeader from '$lib/shared/ui/PageHeader.svelte';
 	import Button from '$lib/shared/ui/Button.svelte';
+	import ConfirmDialog from '$lib/shared/ui/ConfirmDialog.svelte';
+	import Pill from '$lib/shared/ui/Pill.svelte';
+	import Select from '$lib/shared/ui/Select.svelte';
 	import Switch from '$lib/shared/ui/Switch.svelte';
 	import TableCard from '$lib/shared/ui/TableCard.svelte';
 	import TableSkeleton from '$lib/shared/ui/TableSkeleton.svelte';
 	import EmptyState from '$lib/shared/ui/EmptyState.svelte';
 	import TableHeader from '$lib/shared/ui/TableHeader.svelte';
+	import TextField from '$lib/shared/ui/TextField.svelte';
 	import { m } from '$lib/paraglide/messages.js';
 
 	type DocSortColumn = 'title' | 'id' | 'category' | 'lang';
@@ -66,10 +70,6 @@
 		onDelete,
 		onToggle
 	}: Props = $props();
-
-	function handleSort(column: string): void {
-		onSort(column as DocSortColumn);
-	}
 
 	let showForm = $state(false);
 	let editing = $state<AdminDocPage | null>(null);
@@ -170,17 +170,12 @@
 		slug = value;
 	}
 
-	function confirmDelete(page: AdminDocPage): void {
-		if (page.isSystem) return;
-		if (window.confirm(m['docs.confirmDelete']())) {
-			onDelete(page.id, page.lang);
-		}
-	}
+	let pendingDelete = $state<AdminDocPage | null>(null);
 
-	function audienceBadgeClass(a: 'user' | 'admin'): string {
-		return a === 'admin'
-			? 'bg-destructive/10 text-destructive'
-			: 'bg-primary/10 text-primary';
+	function confirmDelete(): void {
+		if (pendingDelete === null || pendingDelete.isSystem) return;
+		onDelete(pendingDelete.id, pendingDelete.lang);
+		pendingDelete = null;
 	}
 </script>
 
@@ -207,45 +202,47 @@
 	{#if pages.length > 0}
 		<TableCard>
 			{#snippet toolbar()}
-				<input
+				<TextField
 					type="search"
-					class="pv-input text-sm"
+					class="w-full sm:w-64"
 					placeholder={m['admin.docs.searchPlaceholder']()}
 					value={search}
-					oninput={(e) => onSearchChange(e.currentTarget.value)}
+					oninput={(event: Event) => onSearchChange((event.currentTarget as HTMLInputElement).value)}
 				/>
-				<select class="pv-input text-sm" value={categoryFilter} onchange={(e) => onCategoryFilterChange(e.currentTarget.value)}>
-					<option value="">{m['admin.docs.filterCategory']()}</option>
-					{#each categoryOptions as cat (cat)}
-						<option value={cat}>{cat}</option>
-					{/each}
-				</select>
-				<select class="pv-input text-sm" value={langFilter} onchange={(e) => onLangFilterChange(e.currentTarget.value)}>
-					<option value="">{m['admin.docs.filterLang']()}</option>
-					{#each langOptions as lang (lang)}
-						<option value={lang}>{lang}</option>
-					{/each}
-				</select>
-				<select class="pv-input text-sm" value={audienceFilter} onchange={(e) => onAudienceFilterChange(e.currentTarget.value as 'all' | 'user' | 'admin')}>
-					<option value="all">{m['admin.docs.filterAudience']()}</option>
-					<option value="user">{m['docs.audienceUser']()}</option>
-					<option value="admin">{m['docs.audienceAdmin']()}</option>
-				</select>
-				<button
-					class="rounded-md border border-border px-3 py-1.5 text-sm text-muted-foreground hover:bg-muted"
-					onclick={onResetFilters}
-				>
+				<Select
+					class="w-full sm:w-44"
+					value={categoryFilter}
+					onchange={(event: Event) => onCategoryFilterChange((event.currentTarget as HTMLSelectElement).value)}
+					options={[{ value: '', label: m['admin.docs.filterCategory']() }, ...categoryOptions]}
+				/>
+				<Select
+					class="w-full sm:w-44"
+					value={langFilter}
+					onchange={(event: Event) => onLangFilterChange((event.currentTarget as HTMLSelectElement).value)}
+					options={[{ value: '', label: m['admin.docs.filterLang']() }, ...langOptions]}
+				/>
+				<Select
+					class="w-full sm:w-44"
+					value={audienceFilter}
+					onchange={(event: Event) => onAudienceFilterChange((event.currentTarget as HTMLSelectElement).value as 'all' | 'user' | 'admin')}
+					options={[
+						{ value: 'all', label: m['admin.docs.filterAudience']() },
+						{ value: 'user', label: m['docs.audienceUser']() },
+						{ value: 'admin', label: m['docs.audienceAdmin']() }
+					]}
+				/>
+				<Button variant="ghost" size="sm" onclick={onResetFilters}>
 					{m['admin.docs.resetFilters']()}
-				</button>
+				</Button>
 			{/snippet}
 			<table class="pv-table pv-responsive-table">
 				<caption class="sr-only">{m['docs.title']()}</caption>
 				<thead>
 					<tr>
-						<TableHeader text={m['docs.titleField']()} tooltip={m['admin.docs.searchPlaceholder']()} column="title" activeColumn={sortBy} {sortDir} onSort={handleSort} />
-						<TableHeader text={m['docs.category']()} tooltip={m['admin.docs.filterCategory']()} column="category" activeColumn={sortBy} {sortDir} onSort={handleSort} />
+						<TableHeader text={m['docs.titleField']()} tooltip={m['admin.docs.searchPlaceholder']()} column="title" activeColumn={sortBy} {sortDir} {onSort} />
+						<TableHeader text={m['docs.category']()} tooltip={m['admin.docs.filterCategory']()} column="category" activeColumn={sortBy} {sortDir} {onSort} />
 						<th class="font-medium">{m['docs.audience']()}</th>
-						<TableHeader text={m['docs.language']()} tooltip={m['admin.docs.filterLang']()} column="lang" activeColumn={sortBy} {sortDir} onSort={handleSort} />
+						<TableHeader text={m['docs.language']()} tooltip={m['admin.docs.filterLang']()} column="lang" activeColumn={sortBy} {sortDir} {onSort} />
 						<th class="font-medium">{m['docs.enabled']()}</th>
 						<th class="font-medium">{m['admin.docs.actions']()}</th>
 					</tr>
@@ -261,9 +258,11 @@
 							</td>
 							<td data-label={m['docs.category']()}>{page.category}</td>
 							<td data-label={m['docs.audience']()}>
-								<span class={`inline-block rounded px-2 py-0.5 text-xs font-medium ${audienceBadgeClass(page.audience)}`}>
-									{page.audience === 'admin' ? m['docs.audienceAdmin']() : m['docs.audienceUser']()}
-								</span>
+								<Pill
+									tone={page.audience === 'admin' ? 'error' : 'accent'}
+									dot={false}
+									label={page.audience === 'admin' ? m['docs.audienceAdmin']() : m['docs.audienceUser']()}
+								/>
 							</td>
 							<td class="font-mono text-xs" data-label={m['docs.language']()}>{page.lang}</td>
 							<td data-label={m['docs.enabled']()}>
@@ -286,7 +285,7 @@
 										size="sm"
 										label={m['admin.docs.deleteLabel']({ title: page.title })}
 										disabled={page.isSystem}
-										onclick={() => confirmDelete(page)}
+										onclick={() => (pendingDelete = page)}
 									>{m['admin.docs.delete']()}</Button>
 								</div>
 								{#if page.isSystem}
@@ -333,4 +332,15 @@
 	onCancel={closeForm}
 	onSave={submitSave}
 	onSaveAndView={submitSaveAndView}
+/>
+
+<ConfirmDialog
+	open={pendingDelete !== null}
+	title={m['admin.docs.delete']()}
+	message={m['docs.confirmDelete']()}
+	confirmLabel={m['common.deletePermanently']()}
+	cancelLabel={m['common.cancel']()}
+	testId="doc-delete-confirm"
+	onConfirm={confirmDelete}
+	onClose={() => (pendingDelete = null)}
 />

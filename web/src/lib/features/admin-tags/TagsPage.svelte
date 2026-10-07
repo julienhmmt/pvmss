@@ -65,10 +65,6 @@
 		onDelete
 	}: Props = $props();
 
-	function handleSort(column: string): void {
-		onSort(column as TagSortColumn);
-	}
-
 	let showForm = $state(false);
 	let newName = $state('');
 	let newColor = $state('#4f46e5');
@@ -153,9 +149,9 @@
 				<caption class="sr-only">{m['admin.tags.title']()}</caption>
 				<thead>
 					<tr>
-						<TableHeader text={m['common.name']()} tooltip={m['admin.tags.tooltip.color']()} column="name" activeColumn={sortBy} {sortDir} onSort={handleSort} />
+						<TableHeader text={m['common.name']()} tooltip={m['admin.tags.tooltip.color']()} column="name" activeColumn={sortBy} {sortDir} {onSort} />
 						<TableHeader text={m['admin.tags.color']()} tooltip={m['admin.tags.tooltip.color']()} />
-						<TableHeader text={m['common.vms']()} tooltip={m['admin.tags.tooltip.vmCount']()} column="vmCount" activeColumn={sortBy} {sortDir} onSort={handleSort} />
+						<TableHeader text={m['common.vms']()} tooltip={m['admin.tags.tooltip.vmCount']()} column="vmCount" activeColumn={sortBy} {sortDir} {onSort} />
 						<th class="font-medium">{m['common.actions']()}</th>
 					</tr>
 				</thead>

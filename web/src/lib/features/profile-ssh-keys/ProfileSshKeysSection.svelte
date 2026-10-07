@@ -11,6 +11,7 @@
 	import { profileKeyErrorMessage } from './ssh-key-identity';
 	import { PROFILE_SSH_KEY_MAX, type ProfileSshKey } from './types';
 	import FormField from '$lib/shared/ui/FormField.svelte';
+	import Card from '$lib/shared/ui/Card.svelte';
 	import TextField from '$lib/shared/ui/TextField.svelte';
 	import Textarea from '$lib/shared/ui/Textarea.svelte';
 	import Button from '$lib/shared/ui/Button.svelte';
@@ -67,8 +68,9 @@
 	}
 </script>
 
-<section
-	class="mt-6 rounded-xl border border-border bg-card shadow-card"
+<Card
+	pad="none"
+	class="mt-6"
 	aria-labelledby="profile-ssh-keys-heading"
 	data-testid="profile-ssh-keys"
 >
@@ -176,7 +178,7 @@
 			</div>
 		</div>
 	</div>
-</section>
+</Card>
 
 <ConfirmDialog
 	open={pendingDelete !== null}
