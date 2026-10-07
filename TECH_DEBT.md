@@ -45,6 +45,7 @@ documented here so the next reader does not reopen them.
 | Two-column admin grids | only the dashboard uses `xl:grid-cols-2`; no other page clearly gains |
 | "Pool at quota" | means the per-user VM quota (one pool per user), not a CPU/RAM pool quota - none exists |
 | Browser OTel (traces, web-vitals) | errors now report via `POST /api/v1/client-errors`; a full browser SDK (bundle size, CORS, consent) is still undecided |
+| Per-cluster CA certificate | a cluster signed by a private CA can only be reached with TLS skip-verify (`newProxmoxHTTPClient` takes one bool). Deciding it takes: a `clusters.ca_pem` column (and its import exclusion), a PEM field in Admin > Clusters, `RootCAs` from that PEM in the HTTP client, and a rotation story. Parked 2026-10-06 (functional review Q2) |
 | `docs/plans/`, `server/internal/recovery/` stale `backend/` refs | historical context only - fix when the surrounding area is touched, no dedicated pass |
 
 ## Resolved 2026-10-04
