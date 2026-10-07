@@ -34,6 +34,16 @@
 
 	const store = getVmDetailContext();
 	const session = getSessionContext();
+
+	const baselineReasons: Record<string, () => string> = {
+		cloudinit_write_unavailable: () => m['vms.detail.baselineReason.writeUnavailable'](),
+		no_document: () => m['vms.detail.baselineReason.noDocument'](),
+		delivery_failed: () => m['vms.detail.baselineReason.deliveryFailed']()
+	};
+
+	function baselineReason(code: string): string {
+		return (baselineReasons[code] ?? baselineReasons.delivery_failed!)();
+	}
 	const tray = getTaskTrayContext();
 	const ledger = getTaskOutcomeLedgerContext();
 	const powerActions = getPowerActionsContext();
@@ -268,7 +278,10 @@
 			<div class="rounded-xl border border-warning-soft-border bg-warning-soft p-4 text-warning-soft-foreground" data-testid="vm-baseline-not-delivered">
 				<p class="text-sm font-medium">{m['vms.detail.baselineNotDelivered']()}</p>
 				<p class="text-xs">{m['vms.detail.baselineNotDeliveredHint']()}</p>
-				{#if entity.baselineError}
+				{#if entity.baselineErrorCode}
+					<p class="mt-1 text-xs" data-testid="vm-baseline-reason">{baselineReason(entity.baselineErrorCode)}</p>
+				{/if}
+				{#if entity.baselineError && session.isAdmin}
 					<p class="mt-1 font-mono text-xs" data-testid="vm-baseline-error">{entity.baselineError}</p>
 				{/if}
 			</div>

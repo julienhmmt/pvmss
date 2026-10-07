@@ -81,7 +81,9 @@ func locatePublishedDocument(ctx context.Context, deps CreateDeps, target docume
 	storage, err := deps.Snippets.FindSnippetStorage(ctx, target.Node)
 	if err != nil {
 		if errors.Is(err, cluster.ErrSnippetWriteUnavailable) {
-			return publishedDocument{}, fmt.Errorf("%w: %w", ErrCloudInitWriteUnavailable, err)
+			// Not wrapped: both errors say the same thing, and the cluster
+			// one carries an admin-only hint.
+			return publishedDocument{}, ErrCloudInitWriteUnavailable
 		}
 
 		return publishedDocument{}, fmt.Errorf("%w: %s: enable the snippets content type of the cluster's snippet storage on this node (%w)", ErrNoSnippetStorage, target.Node, err)
