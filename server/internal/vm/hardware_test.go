@@ -34,7 +34,7 @@ func TestUpdateHardware_RestartsForResourceChanges(t *testing.T) {
 
 	calls := cluster.FakeCallsFor(101)
 	// The setup "start" is call 0; UpdateHardware's shutdown/update/start are 1-3.
-	if len(calls) != 4 || calls[1].Action != "shutdown" || calls[2].Action != actionUpdateHW || calls[3].Action != actionStart {
+	if len(calls) != 4 || calls[1].Action != actionShutdown || calls[2].Action != actionUpdateHW || calls[3].Action != actionStart {
 		t.Fatalf("calls = %+v, want setup-start/shutdown/update_hardware/start", calls)
 	}
 }
@@ -74,6 +74,7 @@ func TestUpdateHardware_StartsOnlyAfterGuestStopped(t *testing.T) {
 	vm.SetStopWaitForTest(t, time.Millisecond, time.Second)
 
 	var log []string
+
 	polls := 0
 	deps := hardwareDependencies(diskTestIndex(t, 101, cluster.VMRunning), aliceIdentity(), 101)
 	deps.Writer = slowStopWriter{stopAfter: 3, polls: &polls, log: &log}
@@ -82,7 +83,7 @@ func TestUpdateHardware_StartsOnlyAfterGuestStopped(t *testing.T) {
 		t.Fatalf("UpdateHardware: %v", err)
 	}
 
-	want := []string{"shutdown", "observed-stopped", actionUpdateHW, actionStart}
+	want := []string{actionShutdown, "observed-stopped", actionUpdateHW, actionStart}
 	if !slices.Equal(log, want) {
 		t.Fatalf("sequence = %v, want %v", log, want)
 	}
@@ -94,6 +95,7 @@ func TestUpdateHardware_GuestNeverStopsChangesNothing(t *testing.T) {
 	vm.SetStopWaitForTest(t, time.Millisecond, 20*time.Millisecond)
 
 	var log []string
+
 	polls := 0
 	deps := hardwareDependencies(diskTestIndex(t, 101, cluster.VMRunning), aliceIdentity(), 101)
 	deps.Writer = slowStopWriter{stopAfter: -1, polls: &polls, log: &log}
@@ -103,7 +105,7 @@ func TestUpdateHardware_GuestNeverStopsChangesNothing(t *testing.T) {
 		t.Fatalf("err = %v, want ErrShutdownTimeout", err)
 	}
 
-	if !slices.Equal(log, []string{"shutdown"}) {
+	if !slices.Equal(log, []string{actionShutdown}) {
 		t.Fatalf("sequence = %v, want only the shutdown request (no power cut, no config)", log)
 	}
 }

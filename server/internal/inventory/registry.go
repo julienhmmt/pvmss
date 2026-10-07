@@ -24,13 +24,13 @@ type Source interface {
 
 // Registry owns one projection and refresh worker per active cluster.
 type Registry struct {
-	mu         sync.RWMutex
-	provider   cluster.ClientProvider
-	entries    map[string]*registryEntry
+	mu       sync.RWMutex
+	provider cluster.ClientProvider
+	entries  map[string]*registryEntry
 	// handles keeps each cluster's projection and refresher across Remove/Add
 	// (an admin edit is Remove then Add): consumers wired once at boot hold
 	// these pointers and must keep seeing the live cluster, not an orphan.
-	handles map[string]*registryEntry
+	handles    map[string]*registryEntry
 	interval   time.Duration
 	options    []Option
 	log        *slog.Logger
