@@ -26,9 +26,9 @@ test.describe('T10 VM console VNC', () => {
 		// The status badge transitions from connecting to connected - the fake
 		// RFB server completes the handshake immediately, so this should happen
 		// within a few seconds.
-		await expect(page.getByTestId('vm-console-status')).toContainText(/connected|connecting/, { timeout: 10000 });
+		await expect(page.getByTestId('vm-console-status')).toHaveAttribute('data-state', /^(connected|connecting)$/, { timeout: 10000 });
 		// Wait for the connected state specifically.
-		await expect(page.getByTestId('vm-console-status')).toContainText('connected', { timeout: 15000 });
+		await expect(page.getByTestId('vm-console-status')).toHaveAttribute('data-state', 'connected', { timeout: 15000 });
 	});
 
 	test('P2: toolbar controls are visible and the scale toggle works', async ({ page }) => {
@@ -36,7 +36,7 @@ test.describe('T10 VM console VNC', () => {
 		await page.goto('/vms/default/100/console');
 
 		// Wait for connection.
-		await expect(page.getByTestId('vm-console-status')).toContainText('connected', { timeout: 15000 });
+		await expect(page.getByTestId('vm-console-status')).toHaveAttribute('data-state', 'connected', { timeout: 15000 });
 
 		// The toolbar is visible with all controls.
 		await expect(page.getByTestId('vm-console-toolbar')).toBeVisible();
@@ -57,7 +57,7 @@ test.describe('T10 VM console VNC', () => {
 		await signInAlice(page.request);
 		await page.goto('/vms/default/100/console');
 
-		await expect(page.getByTestId('vm-console-status')).toContainText('connected', { timeout: 15000 });
+		await expect(page.getByTestId('vm-console-status')).toHaveAttribute('data-state', 'connected', { timeout: 15000 });
 		await expect(page.getByTestId('vm-console-popout')).toBeVisible();
 
 		const [popup] = await Promise.all([
@@ -69,12 +69,12 @@ test.describe('T10 VM console VNC', () => {
 		// Locale-agnostic: only asserts the vmid is present, not English word
 		// order - see the pre-existing locale-negotiation note above.
 		await expect(popup.getByTestId('vm-console-title')).toContainText('100');
-		await expect(popup.getByTestId('vm-console-status')).toContainText('connected', { timeout: 15000 });
+		await expect(popup.getByTestId('vm-console-status')).toHaveAttribute('data-state', 'connected', { timeout: 15000 });
 
 		// Both windows are independently connected - closing the popup does not
 		// disturb the original window's session.
 		await popup.close();
-		await expect(page.getByTestId('vm-console-status')).toContainText('connected');
+		await expect(page.getByTestId('vm-console-status')).toHaveAttribute('data-state', 'connected');
 	});
 
 	test('T01: pop-out shows a message when the browser blocks the popup', async ({ page }) => {
@@ -86,7 +86,7 @@ test.describe('T10 VM console VNC', () => {
 		});
 		await page.goto('/vms/default/100/console');
 
-		await expect(page.getByTestId('vm-console-status')).toContainText('connected', { timeout: 15000 });
+		await expect(page.getByTestId('vm-console-status')).toHaveAttribute('data-state', 'connected', { timeout: 15000 });
 		await expect(page.getByTestId('vm-console-popout-blocked')).toBeHidden();
 
 		await page.getByTestId('vm-console-popout').click();
@@ -97,23 +97,23 @@ test.describe('T10 VM console VNC', () => {
 		await signInAlice(page.request);
 		await page.goto('/vms/default/100/console');
 
-		await expect(page.getByTestId('vm-console-status')).toContainText('connected', { timeout: 15000 });
+		await expect(page.getByTestId('vm-console-status')).toHaveAttribute('data-state', 'connected', { timeout: 15000 });
 
 		// Disconnect.
 		await page.getByTestId('vm-console-disconnect').click();
-		await expect(page.getByTestId('vm-console-status')).toContainText('disconnected');
+		await expect(page.getByTestId('vm-console-status')).toHaveAttribute('data-state', 'disconnected');
 		await expect(page.getByTestId('vm-console-disconnected')).toBeVisible();
 
 		// Reconnect.
 		await page.getByTestId('vm-console-reconnect').click();
-		await expect(page.getByTestId('vm-console-status')).toContainText('connected', { timeout: 15000 });
+		await expect(page.getByTestId('vm-console-status')).toHaveAttribute('data-state', 'connected', { timeout: 15000 });
 	});
 
 	test('P3: clipboard from VM is visible (SC-005)', async ({ page }) => {
 		await signInAlice(page.request);
 		await page.goto('/vms/default/100/console');
 
-		await expect(page.getByTestId('vm-console-status')).toContainText('connected', { timeout: 15000 });
+		await expect(page.getByTestId('vm-console-status')).toHaveAttribute('data-state', 'connected', { timeout: 15000 });
 
 		// The fake RFB server sends a ServerCutText right after ServerInit with
 		// the fixture string "hello from the fake console". noVNC dispatches a
@@ -140,7 +140,7 @@ test.describe('T10 VM console VNC', () => {
 		await page.goto('/vms/default/100/console');
 
 		// 1. Open - the fake screen connects.
-		await expect(page.getByTestId('vm-console-status')).toContainText('connected', { timeout: 15000 });
+		await expect(page.getByTestId('vm-console-status')).toHaveAttribute('data-state', 'connected', { timeout: 15000 });
 
 		// 2. Scale toggle.
 		await expect(page.getByTestId('vm-console-scale')).toContainText('Scale On');
@@ -151,29 +151,29 @@ test.describe('T10 VM console VNC', () => {
 
 		// 3. Ctrl+Alt+Del - the fake server accepts it without closing.
 		await page.getByTestId('vm-console-ctrlaltdel').click();
-		await expect(page.getByTestId('vm-console-status')).toContainText('connected');
+		await expect(page.getByTestId('vm-console-status')).toHaveAttribute('data-state', 'connected');
 
 		// 4. Clipboard - the fake server's ServerCutText surfaces.
 		await expect(page.getByTestId('vm-console-clipboard-preview')).toContainText('hello from the fake console', { timeout: 10000 });
 
 		// 5. Disconnect.
 		await page.getByTestId('vm-console-disconnect').click();
-		await expect(page.getByTestId('vm-console-status')).toContainText('disconnected');
+		await expect(page.getByTestId('vm-console-status')).toHaveAttribute('data-state', 'disconnected');
 
 		// 6. Reconnect - a fresh ticket is requested.
 		await page.getByTestId('vm-console-reconnect').click();
-		await expect(page.getByTestId('vm-console-status')).toContainText('connected', { timeout: 15000 });
+		await expect(page.getByTestId('vm-console-status')).toHaveAttribute('data-state', 'connected', { timeout: 15000 });
 	});
 
 	test('T030: clean disconnect keeps the route mounted - the boundary fallback is NOT shown', async ({ page }) => {
 		await signInAlice(page.request);
 		await page.goto('/vms/default/100/console');
 
-		await expect(page.getByTestId('vm-console-status')).toContainText('connected', { timeout: 15000 });
+		await expect(page.getByTestId('vm-console-status')).toHaveAttribute('data-state', 'connected', { timeout: 15000 });
 
 		// A clean, expected disconnect via the toolbar button.
 		await page.getByTestId('vm-console-disconnect').click();
-		await expect(page.getByTestId('vm-console-status')).toContainText('disconnected');
+		await expect(page.getByTestId('vm-console-status')).toHaveAttribute('data-state', 'disconnected');
 
 		// The route heading is still in the DOM - the route did not unmount.
 		await expect(page.getByTestId('vm-console-title')).toContainText('VM 100 Console');

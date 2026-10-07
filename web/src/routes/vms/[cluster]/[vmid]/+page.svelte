@@ -28,7 +28,7 @@
 </script>
 
 <svelte:head>
-	<title>{m['vms.detail.title']({ vmid: String(vmid) })}</title>
+	<title>{m['vms.detail.title']({ name: store.entity?.name || `VM ${vmid}` })}</title>
 </svelte:head>
 
 <section class="mx-auto w-full max-w-reading">
