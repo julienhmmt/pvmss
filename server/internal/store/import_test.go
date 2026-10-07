@@ -68,18 +68,22 @@ func buildCraftedDB(t *testing.T, path string, rowsByTable map[string][]string) 
 	// exact column shapes match the live migrations so attach-by-attach works
 	// against a real exported snapshot too.
 	ddls := map[string]string{
-		tblCatalogNodes:     `CREATE TABLE catalog_nodes (cluster TEXT NOT NULL, name TEXT NOT NULL, enabled BOOLEAN NOT NULL DEFAULT 1, PRIMARY KEY (cluster, name))`,
-		"catalog_storages":  `CREATE TABLE catalog_storages (cluster TEXT NOT NULL, name TEXT NOT NULL, node TEXT NOT NULL, enabled BOOLEAN NOT NULL DEFAULT 1, PRIMARY KEY (cluster, name, node))`,
-		"catalog_bridges":   `CREATE TABLE catalog_bridges (cluster TEXT NOT NULL, node TEXT NOT NULL, name TEXT NOT NULL, enabled BOOLEAN NOT NULL DEFAULT 1, PRIMARY KEY (cluster, node, name))`,
-		"catalog_isos":      `CREATE TABLE catalog_isos (cluster TEXT NOT NULL, node TEXT NOT NULL, storage TEXT NOT NULL, file TEXT NOT NULL, enabled BOOLEAN NOT NULL DEFAULT 1, PRIMARY KEY (cluster, node, storage, file))`,
-		"catalog_profiles":  `CREATE TABLE catalog_profiles (cluster TEXT NOT NULL, id TEXT NOT NULL, label TEXT NOT NULL, cpu_cores INTEGER NOT NULL, memory_mb INTEGER NOT NULL, disk_gb INTEGER NOT NULL, bus TEXT NOT NULL, enabled BOOLEAN NOT NULL DEFAULT 1, PRIMARY KEY (cluster, id))`,
-		tblCatalogTags:      `CREATE TABLE catalog_tags (cluster TEXT NOT NULL, name TEXT NOT NULL, color TEXT NOT NULL, created_at TEXT NOT NULL, PRIMARY KEY (cluster, name))`,
-		"vm_limits":         `CREATE TABLE vm_limits (cluster TEXT PRIMARY KEY, max_sockets INTEGER NOT NULL, max_cores INTEGER NOT NULL, max_memory_mb INTEGER NOT NULL, max_disk_per_vm_gb INTEGER NOT NULL, max_network_cards INTEGER NOT NULL, max_snapshots INTEGER NOT NULL, max_vm_per_user INTEGER NOT NULL, isolation_vlan_tag INTEGER NOT NULL DEFAULT 0)`,
-		"node_limits":       `CREATE TABLE node_limits (cluster TEXT NOT NULL, node TEXT NOT NULL, max_vms INTEGER NOT NULL, max_vcpus INTEGER NOT NULL, max_ram_gb INTEGER NOT NULL, max_disk_gb INTEGER NOT NULL, PRIMARY KEY (cluster, node))`,
-		tblAuditLog:         `CREATE TABLE audit_log (id INTEGER PRIMARY KEY AUTOINCREMENT, actor TEXT NOT NULL, cluster TEXT NOT NULL, vmid INTEGER NOT NULL, action TEXT NOT NULL, timestamp TEXT NOT NULL)`,
-		tblSessions:         `CREATE TABLE sessions (token_hash BLOB PRIMARY KEY, username TEXT NOT NULL, is_admin INTEGER NOT NULL, expires_at TEXT NOT NULL, created_at TEXT NOT NULL, pool TEXT NOT NULL DEFAULT '')`,
-		tblAPITokens:        `CREATE TABLE api_tokens (id TEXT PRIMARY KEY, token_hash BLOB NOT NULL UNIQUE, username TEXT NOT NULL, is_admin INTEGER NOT NULL, scope TEXT NOT NULL, label TEXT NOT NULL, expires_at TEXT, created_at TEXT NOT NULL, last_used_at TEXT, pool TEXT NOT NULL DEFAULT '')`,
-		tblSchemaMigrations: `CREATE TABLE schema_migrations (version INTEGER PRIMARY KEY, applied_at TEXT NOT NULL)`,
+		tblCatalogNodes:               `CREATE TABLE catalog_nodes (cluster TEXT NOT NULL, name TEXT NOT NULL, enabled BOOLEAN NOT NULL DEFAULT 1, PRIMARY KEY (cluster, name))`,
+		"catalog_storages":            `CREATE TABLE catalog_storages (cluster TEXT NOT NULL, name TEXT NOT NULL, node TEXT NOT NULL, enabled BOOLEAN NOT NULL DEFAULT 1, PRIMARY KEY (cluster, name, node))`,
+		"catalog_bridges":             `CREATE TABLE catalog_bridges (cluster TEXT NOT NULL, node TEXT NOT NULL, name TEXT NOT NULL, enabled BOOLEAN NOT NULL DEFAULT 1, PRIMARY KEY (cluster, node, name))`,
+		"catalog_isos":                `CREATE TABLE catalog_isos (cluster TEXT NOT NULL, node TEXT NOT NULL, storage TEXT NOT NULL, file TEXT NOT NULL, enabled BOOLEAN NOT NULL DEFAULT 1, PRIMARY KEY (cluster, node, storage, file))`,
+		"catalog_profiles":            `CREATE TABLE catalog_profiles (cluster TEXT NOT NULL, id TEXT NOT NULL, label TEXT NOT NULL, cpu_cores INTEGER NOT NULL, memory_mb INTEGER NOT NULL, disk_gb INTEGER NOT NULL, bus TEXT NOT NULL, enabled BOOLEAN NOT NULL DEFAULT 1, PRIMARY KEY (cluster, id))`,
+		tblCatalogTags:                `CREATE TABLE catalog_tags (cluster TEXT NOT NULL, name TEXT NOT NULL, color TEXT NOT NULL, created_at TEXT NOT NULL, PRIMARY KEY (cluster, name))`,
+		"vm_limits":                   `CREATE TABLE vm_limits (cluster TEXT PRIMARY KEY, max_sockets INTEGER NOT NULL, max_cores INTEGER NOT NULL, max_memory_mb INTEGER NOT NULL, max_disk_per_vm_gb INTEGER NOT NULL, max_network_cards INTEGER NOT NULL, max_snapshots INTEGER NOT NULL, max_vm_per_user INTEGER NOT NULL, isolation_vlan_tag INTEGER NOT NULL DEFAULT 0)`,
+		"node_limits":                 `CREATE TABLE node_limits (cluster TEXT NOT NULL, node TEXT NOT NULL, max_vms INTEGER NOT NULL, max_vcpus INTEGER NOT NULL, max_ram_gb INTEGER NOT NULL, max_disk_gb INTEGER NOT NULL, PRIMARY KEY (cluster, node))`,
+		"catalog_images":              `CREATE TABLE catalog_images (cluster TEXT NOT NULL, node TEXT NOT NULL, storage TEXT NOT NULL, file TEXT NOT NULL, size_bytes INTEGER NOT NULL DEFAULT 0, enabled BOOLEAN NOT NULL DEFAULT 1, PRIMARY KEY (cluster, node, storage, file))`,
+		"catalog_cloudinit_templates": `CREATE TABLE catalog_cloudinit_templates (cluster TEXT NOT NULL, id TEXT NOT NULL, label TEXT NOT NULL, content TEXT NOT NULL, enabled BOOLEAN NOT NULL DEFAULT 1, created_at TEXT NOT NULL, updated_at TEXT NOT NULL, PRIMARY KEY (cluster, id))`,
+		"managed_pools":               `CREATE TABLE managed_pools (cluster TEXT NOT NULL, name TEXT NOT NULL, created_at TEXT NOT NULL, PRIMARY KEY (cluster, name))`,
+		"profile_ssh_keys":            `CREATE TABLE profile_ssh_keys (id TEXT PRIMARY KEY, cluster TEXT NOT NULL, username TEXT NOT NULL, label TEXT NOT NULL, public_key TEXT NOT NULL, created_at TEXT NOT NULL)`,
+		tblAuditLog:                   `CREATE TABLE audit_log (id INTEGER PRIMARY KEY AUTOINCREMENT, actor TEXT NOT NULL, cluster TEXT NOT NULL, vmid INTEGER NOT NULL, action TEXT NOT NULL, timestamp TEXT NOT NULL)`,
+		tblSessions:                   `CREATE TABLE sessions (token_hash BLOB PRIMARY KEY, username TEXT NOT NULL, is_admin INTEGER NOT NULL, expires_at TEXT NOT NULL, created_at TEXT NOT NULL, pool TEXT NOT NULL DEFAULT '')`,
+		tblAPITokens:                  `CREATE TABLE api_tokens (id TEXT PRIMARY KEY, token_hash BLOB NOT NULL UNIQUE, username TEXT NOT NULL, is_admin INTEGER NOT NULL, scope TEXT NOT NULL, label TEXT NOT NULL, expires_at TEXT, created_at TEXT NOT NULL, last_used_at TEXT, pool TEXT NOT NULL DEFAULT '')`,
+		tblSchemaMigrations:           `CREATE TABLE schema_migrations (version INTEGER PRIMARY KEY, applied_at TEXT NOT NULL)`,
 	}
 
 	for table, ddl := range ddls {
@@ -529,15 +533,17 @@ func TestImportAllowlist_ListMatchesCurrentSchema(t *testing.T) {
 		}
 	}
 
-	// Every table in the excluded categories must NOT be allowlisted.
-	excluded := []string{tblSchemaMigrations, tblSessions, tblAPITokens, tblAuditLog, "vm_cloudinit_snippets", "profile_ssh_keys"}
-	for _, name := range excluded {
-		if !liveTables[name] {
-			continue // table doesn't exist yet - fine, the test is tolerant
+	// Every live table is either imported or excluded with a reason - a new
+	// table must be classified, or a restore silently drops it.
+	excluded := store.ExcludedImportTables()
+	for name := range liveTables {
+		if strings.HasPrefix(name, "sqlite_") {
+			continue
 		}
 
-		if allowlisted[name] {
-			t.Errorf("table %s is allowlisted but should be excluded (auth/system/history)", name)
+		_, isExcluded := excluded[name]
+		if allowlisted[name] == isExcluded {
+			t.Errorf("table %s must be in exactly one of importableTables / excludedImportTables", name)
 		}
 	}
 }
@@ -644,4 +650,42 @@ func equalStringSlices(a, b []string) bool {
 	}
 
 	return true
+}
+
+// TestConfirmImport_RestoresLaterConfigTables - the configuration tables added
+// after the first import allowlist come back on a restore.
+//
+//nolint:paralleltest // serial: shared staging map
+func TestConfirmImport_RestoresLaterConfigTables(t *testing.T) {
+	st := newImportStore(t)
+	ctx := context.Background()
+
+	rows := map[string][]string{
+		"catalog_images":              {`('default','n1','local','debian.qcow2',1,1)`},
+		"catalog_cloudinit_templates": {`('default','web','Web','#cloud-config',1,'t','t')`},
+		"managed_pools":               {`('default','pool-a','t')`},
+		"profile_ssh_keys":            {`('k1','default','alice@pve','laptop','ssh-ed25519 AAAA','t')`},
+	}
+	craftedPath := filepath.Join(t.TempDir(), "later.db")
+	buildCraftedDB(t, craftedPath, rows)
+	data, _ := os.ReadFile(craftedPath) //nolint:gosec // test fixture path
+
+	preview, err := st.ValidateImport(ctx, bytes.NewReader(data))
+	if err != nil {
+		t.Fatalf("ValidateImport: %v", err)
+	}
+
+	if _, err := st.ConfirmImport(ctx, preview.StagingToken); err != nil {
+		t.Fatalf("ConfirmImport: %v", err)
+	}
+
+	liveDB := openLiveReadOnly(ctx, t, st)
+	defer func() { _ = liveDB.Close() }()
+
+	for table := range rows {
+		var n int
+		if err := liveDB.QueryRowContext(ctx, `SELECT COUNT(*) FROM `+table).Scan(&n); err != nil || n != 1 {
+			t.Errorf("%s: %d rows (%v), want 1 restored", table, n, err)
+		}
+	}
 }

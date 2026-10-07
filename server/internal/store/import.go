@@ -32,6 +32,37 @@ var importableTables = []string{
 	"catalog_tags",
 	"vm_limits",
 	"node_limits",
+	"catalog_images",
+	"catalog_templates",
+	"catalog_cloudinit_templates",
+	"documentation_pages",
+	"managed_pools",
+	"audit_config",
+	"profile_ssh_keys",
+}
+
+// excludedImportTables is every live table an import never touches, with
+// the reason. Each table is in exactly one of the two lists (enforced by
+// TestImportableTablesMatchLiveSchema), so a new table cannot be silently
+// left out of a restore.
+var excludedImportTables = map[string]string{
+	"schema_migrations":      "schema bookkeeping",
+	"sessions":               "login sessions",
+	"audit_log":              "history, not configuration",
+	"clusters":               "holds Proxmox API token secrets; re-enter clusters by hand",
+	"vm_cloudinit_snippets":  "legacy per-VM runtime state",
+	"vm_cloudinit_documents": "per-VM runtime state",
+	"vm_baseline_state":      "per-VM runtime state",
+}
+
+// ExcludedImportTables returns a copy of the excluded tables and reasons.
+func ExcludedImportTables() map[string]string {
+	out := make(map[string]string, len(excludedImportTables))
+	for name, reason := range excludedImportTables {
+		out[name] = reason
+	}
+
+	return out
 }
 
 // ImportableTables returns a copy of the import allowlist. Tests use this to

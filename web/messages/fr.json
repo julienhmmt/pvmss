@@ -1332,7 +1332,7 @@
   "admin.db.export": "Exporter",
   "admin.db.exportError": "échec de l'export",
   "admin.db.importTitle": "Importer la base de données",
-  "admin.db.importDescription": "Télécharger un fichier de base de données précédemment exporté. Vous verrez un aperçu avant que quoi que ce soit ne soit écrit.",
+  "admin.db.importDescription": "Téléversez un fichier de base de données exporté précédemment. Un aperçu s'affiche avant toute écriture. Les clusters ne sont jamais importés (ils contiennent les secrets des jetons API) : ajoutez-les de nouveau dans Clusters. Les sessions, l'historique d'audit et l'état par VM ne sont pas importés non plus.",
   "admin.db.importSuccess": "Import réussi - {tables} remplacé(s).",
   "admin.db.preview": "Aperçu",
   "admin.db.previewDescription": "Les tables suivantes seront remplacées (lignes existantes supprimées, puis rechargées depuis le téléchargement) :",
