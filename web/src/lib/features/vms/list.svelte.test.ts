@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, afterEach } from 'vitest';
-import { VmListStore, type VmListResult } from './list.svelte';
+import { VmListStore, INCOMPLETE_RETRY_MS, type VmListResult } from './list.svelte';
 import { markVmDeleted } from './recently-deleted';
 
 function jsonResponse(status: number, body: unknown): Response {
@@ -83,6 +83,29 @@ describe('VmListStore', () => {
 		const { store } = makeStore('?cluster=secondary');
 		expect(store.cluster).toBe('secondary');
 		expect(store.queryString()).toBe('cluster=secondary');
+	});
+
+	it('re-reads a just-created row until Proxmox reports it (ghost row)', async () => {
+		vi.useFakeTimers();
+		const ghost: VmListResult = {
+			...oneVmResult,
+			items: [{ ...oneVmResult.items[0]!, name: '', cpuCores: 0, memoryTotal: 0, status: 'stopped' }]
+		};
+		const fetchMock = vi
+			.fn()
+			.mockResolvedValueOnce(jsonResponse(200, ghost))
+			// The forced refresh is throttled: 429 is not proof of freshness.
+			.mockResolvedValueOnce(jsonResponse(429, { error: { code: 'refresh_too_soon', message: 'later' } }))
+			.mockResolvedValueOnce(jsonResponse(200, oneVmResult));
+		vi.stubGlobal('fetch', fetchMock);
+
+		const { store } = makeStore('');
+		const done = store.loadUntilComplete();
+		await vi.advanceTimersByTimeAsync(INCOMPLETE_RETRY_MS);
+		await done;
+
+		expect(store.result?.items[0]).toMatchObject({ name: 'web-01', status: 'running' });
+		expect(fetchMock).toHaveBeenCalledWith('/api/v1/cluster/refresh', expect.anything());
 	});
 
 	it('loads the list through the shared API client', async () => {

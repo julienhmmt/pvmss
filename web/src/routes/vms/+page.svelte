@@ -54,7 +54,7 @@
 	onMount(() => {
 		void loadPage();
 		offTaskOk = getTaskTrayContext().onTaskOk(() => {
-			void vmListStore.load();
+			void vmListStore.loadUntilComplete();
 			vmBulk.clearResult();
 		});
 		offVisible = onVisibleRefresh(() => void vmListStore.refreshIfStale());

@@ -74,6 +74,10 @@ const SEARCH_DEBOUNCE_MS = 300;
  */
 const MAX_ATTENTION_PAGES = 50;
 
+/** Ghost-row convergence after a create: ~5 x 4 s covers Proxmox's lag. */
+export const INCOMPLETE_RETRY_MS = 4000;
+const INCOMPLETE_RETRIES = 5;
+
 export const SORTABLE_COLUMNS: readonly VmSortBy[] = ['name', 'vmid', 'node', 'status', 'cpu', 'memory'] as const;
 
 /**
@@ -177,6 +181,30 @@ export class VmListStore {
 			this.loading = false;
 			this.lastLoadedAt = Date.now();
 		}
+	}
+
+	/**
+	 * Loads the list, then re-reads while a row is still incomplete (no name or
+	 * zero resources). Proxmox's /cluster/resources lags a few seconds behind a
+	 * finished vm_create task, so the first load after the task shows a ghost
+	 * row. Each retry forces an inventory refresh first; a throttled 429 is
+	 * ignored - only the rows themselves prove the list is fresh. Bounded.
+	 */
+	async loadUntilComplete(): Promise<void> {
+		await this.load();
+		for (let attempt = 0; attempt < INCOMPLETE_RETRIES && this.#hasIncompleteRow(); attempt++) {
+			await new Promise((resolve) => setTimeout(resolve, INCOMPLETE_RETRY_MS));
+			try {
+				await post('/api/v1/cluster/refresh');
+			} catch {
+				// Throttled or failed: still re-read below.
+			}
+			await this.load();
+		}
+	}
+
+	#hasIncompleteRow(): boolean {
+		return (this.result?.items ?? []).some((row) => row.name === '' || row.cpuCores === 0 || row.memoryTotal === 0);
 	}
 
 	/**

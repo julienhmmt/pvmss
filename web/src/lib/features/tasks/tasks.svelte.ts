@@ -222,8 +222,9 @@ export class TaskTrayStore {
 /** Forces the inventory cache to catch up before the list reloads (FR-018) - 
  *  otherwise the periodic background refresh (PVMSS_INVENTORY_REFRESH_INTERVAL,
  *  default 30s) can leave a just-created VM missing from /api/v1/vms for up
- *  to 30s after its task reports "ok". Best-effort: a throttled 429 just
- *  means a refresh already ran recently, so the list is already fresh. */
+ *  to 30s after its task reports "ok". Best-effort: a throttled 429 does not
+ *  mean the list is fresh (Proxmox lags the task); the VM list re-reads
+ *  incomplete rows itself (VmListStore.loadUntilComplete). */
 async function refreshInventory(): Promise<void> {
 	try {
 		await post('/api/v1/cluster/refresh');
