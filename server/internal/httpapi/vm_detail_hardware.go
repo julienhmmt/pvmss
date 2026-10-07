@@ -4,7 +4,12 @@ import (
 	"encoding/json"
 	"net/http"
 	"pvmss/server/internal/vm"
+	"time"
 )
+
+// hardwareWriteDeadline outlives the server's global WriteTimeout (10 s): a
+// hardware change on a running VM waits for the guest shutdown (up to 75 s).
+const hardwareWriteDeadline = 2 * time.Minute
 
 // parseHardwareRequest decodes and validates the PUT .../hardware body: at
 // least one field must be present. Split out of handleHardware to keep its
@@ -31,6 +36,8 @@ func (h *VMDetail) handleHardware(w http.ResponseWriter, r *http.Request) {
 
 		return
 	}
+
+	_ = http.NewResponseController(w).SetWriteDeadline(time.Now().Add(hardwareWriteDeadline))
 
 	identity, err := h.auth.Principal(r)
 	if err != nil {

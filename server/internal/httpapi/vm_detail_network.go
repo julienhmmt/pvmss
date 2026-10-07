@@ -48,6 +48,8 @@ func (h *VMDetail) writeHardwareError(w http.ResponseWriter, err error) {
 		h.writeDetailError(w, http.StatusServiceUnavailable, "policy_unavailable", msgPolicyUnavailable)
 	case errors.Is(err, vm.ErrHardwareExceedsLimit):
 		h.writeDetailError(w, http.StatusBadRequest, "hardware_exceeds_limit", err.Error())
+	case errors.Is(err, vm.ErrShutdownTimeout):
+		h.writeDetailError(w, http.StatusConflict, "shutdown_timeout", "the VM did not shut down in time; nothing was changed")
 	default:
 		h.writeUnhandledVMError(w, "vm hardware operation failed", err)
 	}
