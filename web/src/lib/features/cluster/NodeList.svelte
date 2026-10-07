@@ -51,6 +51,12 @@
 		unknown: 'bg-muted text-muted-foreground'
 	};
 
+	const statusLabel: Record<NodeStatus, () => string> = {
+		online: () => m['common.online'](),
+		offline: () => m['common.offline'](),
+		unknown: () => m['common.unknown']()
+	};
+
 	const statusDot: Record<NodeStatus, string> = {
 		online: 'bg-success',
 		offline: 'bg-destructive',
@@ -109,7 +115,7 @@
 					<td data-label={m['nodes.columnStatus']()}>
 						<span class="inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-xs font-medium {statusClasses[node.status]}">
 							<span class="h-1.5 w-1.5 rounded-full {statusDot[node.status]}"></span>
-							{node.status}
+							{statusLabel[node.status]?.() ?? node.status}
 						</span>
 					</td>
 					<td class="text-muted-foreground" data-label={m['nodes.columnVms']()} data-testid="vm-count">
