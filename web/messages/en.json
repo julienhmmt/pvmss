@@ -1196,6 +1196,7 @@
   "admin.profiles.editProfile": "Edit profile",
   "admin.profiles.newProfileForm": "New profile",
   "admin.profiles.labelField": "Label",
+  "admin.profiles.sockets": "Sockets",
   "admin.profiles.vcpuCores": "vCPU cores",
   "admin.profiles.pageTitle": "Admin Profiles - PVMSS",
   "admin.profiles.editLabel": "Edit {label}",
