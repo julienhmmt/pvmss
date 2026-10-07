@@ -86,6 +86,7 @@
   "error.invalid_action": "Action invalide.",
   "error.quota_exceeded": "Quota de VM atteint.",
   "error.gabarit_exceeded": "Gabarit de VM dépassé.",
+  "error.cluster_permission_denied": "Il manque une permission Proxmox à PVMSS : son jeton de service doit avoir {privilege} sur {path}. Demandez à un administrateur de l'accorder.",
   "error.snapshot_storage_unsupported": "Ce stockage ne gère pas les snapshots.",
   "error.vm_locked": "La VM est verrouillée par une autre opération. Réessayez dans un instant.",
   "error.snapshot_name_exists": "Un snapshot de ce nom existe déjà.",

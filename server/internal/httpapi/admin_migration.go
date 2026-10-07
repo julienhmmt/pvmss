@@ -198,7 +198,7 @@ func (h *AdminMigration) writeMigrationError(w http.ResponseWriter, r *http.Requ
 		h.warnRefusal(r, deps, "migration_blocked")
 		h.writeError(w, http.StatusConflict, "migration_blocked", err.Error())
 	default:
-		if code, message, ok := clusterRejectionResponse(err); ok {
+		if code, message, ok := clusterRejectionResponse(w, err); ok {
 			h.writeError(w, http.StatusBadGateway, code, message)
 			return
 		}

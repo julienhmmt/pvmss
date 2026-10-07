@@ -46,6 +46,17 @@ describe('resolveErrorMessage', () => {
 		});
 	});
 
+	it('cluster_permission_denied names the missing privilege, localized', async () => {
+		await setLocale('fr', { reload: false });
+		const message = resolveErrorMessage(
+			'cluster_permission_denied',
+			'the PVMSS service token lacks the Proxmox privilege VM.GuestAgent.Unrestricted on /vms/999102'
+		);
+		expect(message).toContain('VM.GuestAgent.Unrestricted');
+		expect(message).toContain('/vms/999102');
+		expect(message).toContain('permission Proxmox');
+	});
+
 	it('an unlisted code resolves to the generic localized fallback, never the raw server message', async () => {
 		await setLocale('fr', { reload: false });
 		const result = resolveErrorMessage('some_unknown_code_xyz', 'raw server text');

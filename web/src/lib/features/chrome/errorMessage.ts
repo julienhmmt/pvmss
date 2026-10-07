@@ -42,6 +42,11 @@ export const KNOWN_ERROR_CODES: readonly string[] = Object.keys(ERROR_CODE_MAP);
  */
 export function resolveErrorMessage(code: string, fallback: string): string {
 	if (code === 'cluster_rejected' && fallback.trim() !== '') return fallback;
+	if (code === 'cluster_permission_denied') {
+		// Server text: "... lacks the Proxmox privilege <priv> on <path>".
+		const match = /privilege (\S+) on (\S+)/.exec(fallback);
+		if (match) return m['error.cluster_permission_denied']({ privilege: match[1]!, path: match[2]! });
+	}
 	const resolver = ERROR_CODE_MAP[code];
 	if (resolver !== undefined) return resolver();
 	return m['error.generic']();

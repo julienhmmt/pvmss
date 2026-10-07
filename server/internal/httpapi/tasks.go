@@ -133,7 +133,7 @@ func (h *Tasks) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		SetErrorMsg(w, "task status read failed", err)
 		// Surface Proxmox's own rejection message when there is one (ADR
 		// 0002); transport errors stay generic.
-		if code, message, ok := clusterRejectionResponse(err); ok {
+		if code, message, ok := clusterRejectionResponse(w, err); ok {
 			h.writeTaskError(w, http.StatusBadGateway, code, message)
 		} else {
 			h.writeTaskError(w, http.StatusBadGateway, "cluster_error", "cluster rejected the request")
