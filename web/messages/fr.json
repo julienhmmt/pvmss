@@ -1045,7 +1045,6 @@
   "admin.catalog.removeBridgeError": "Échec de la suppression de l'approbation du pont",
   "admin.catalog.removeIsoError": "Échec de la suppression de l'approbation de l'ISO",
   "admin.templates.title": "Admin - Modèles de VM - PVMSS",
-  "admin.templates.missingBadge": "introuvable dans Proxmox",
   "admin.templates.unreadableBadge": "disque illisible",
   "admin.templates.remove": "Supprimer",
   "admin.templates.removeSuccess": "Modèle {vmid} supprimé",

@@ -9,6 +9,7 @@
 	import { getVmDetailContext } from './detail.svelte';
 	import { MetricsStore, type MetricsRange } from './metrics.svelte';
 	import Alert from '$lib/shared/ui/Alert.svelte';
+	import Card from '$lib/shared/ui/Card.svelte';
 	import LineChart from '$lib/shared/ui/LineChart.svelte';
 	import Skeleton from '$lib/shared/ui/Skeleton.svelte';
 	import { m } from '$lib/paraglide/messages.js';
@@ -45,9 +46,10 @@
 	const netValues = $derived(store.samples.map((s) => s.netInBytesPerSec + s.netOutBytesPerSec));
 </script>
 
-<section
+<Card
+	pad="lg"
 	aria-labelledby="metrics-heading"
-	class="mt-6 rounded-xl border border-border bg-card p-6 shadow-card"
+	class="mt-6"
 	data-testid="vm-metrics-row"
 >
 	<div class="flex flex-wrap items-center justify-between gap-3">
@@ -56,7 +58,7 @@
 				{m['vms.detail.metricsHeading']()}
 			</h2>
 			{#if store.streamState === 'reconnecting'}
-				<span class="text-xs text-amber-500" data-testid="vm-metrics-stream-reconnecting">
+				<span class="text-xs text-warning" data-testid="vm-metrics-stream-reconnecting">
 					{m['vms.detail.metricsStreamReconnecting']()}
 				</span>
 			{:else if store.streamState === 'error'}
@@ -115,4 +117,4 @@
 			</div>
 		</div>
 	{/if}
-</section>
+</Card>

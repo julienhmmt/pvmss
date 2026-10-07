@@ -1,5 +1,6 @@
 <script lang="ts">
 	import Dialog from '$lib/shared/ui/Dialog.svelte';
+	import Checkbox from '$lib/shared/ui/Checkbox.svelte';
 	import { m } from '$lib/paraglide/messages.js';
 	import Button from '$lib/shared/ui/Button.svelte';
 
@@ -36,15 +37,11 @@
 		<li>{m['vms.cloudinit.dialogScopeNow']()}</li>
 		<li>{m['vms.cloudinit.dialogScopeFirstBoot']()}</li>
 	</ul>
-	<label class="flex items-start gap-2 text-sm">
-		<input
-			type="checkbox"
-			class="mt-0.5 size-4 accent-primary"
-			bind:checked={rebootNow}
-			data-testid="cloudinit-reboot-checkbox"
-		/>
-		<span>{m['vms.cloudinit.dialogReboot']()}</span>
-	</label>
+	<Checkbox
+		label={m['vms.cloudinit.dialogReboot']()}
+		bind:checked={rebootNow}
+		data-testid="cloudinit-reboot-checkbox"
+	/>
 	<div class="mt-6 flex justify-end gap-2">
 		<Button variant="secondary" onclick={close}>{m['common.cancel']()}</Button>
 		<Button

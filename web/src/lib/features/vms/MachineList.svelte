@@ -25,6 +25,7 @@
 	import EmptyState from '$lib/shared/ui/EmptyState.svelte';
 	import Button from '$lib/shared/ui/Button.svelte';
 	import ButtonLink from '$lib/shared/ui/ButtonLink.svelte';
+	import Card from '$lib/shared/ui/Card.svelte';
 	import Toolbar from '$lib/shared/ui/Toolbar.svelte';
 	import TextField from '$lib/shared/ui/TextField.svelte';
 	import Select from '$lib/shared/ui/Select.svelte';
@@ -185,7 +186,7 @@
 {/if}
 
 {#if unreachable}
-	<div class="rounded-xl border border-border bg-card shadow-card">
+	<Card as="div" pad="none">
 		<EmptyState
 			title={m['vms.list.unreachableTitle']()}
 			description={m['vms.list.unreachableBody']()}
@@ -196,9 +197,9 @@
 				<Button onclick={() => void retry()} data-testid="vm-list-cluster-retry">{m['vms.list.unreachableRetry']()}</Button>
 			{/snippet}
 		</EmptyState>
-	</div>
+	</Card>
 {:else if firstVisit}
-	<div class="flex flex-col items-center gap-4 rounded-xl border border-border bg-card px-6 py-14 text-center shadow-card" data-testid="vm-empty-owned">
+	<Card as="div" pad="none" class="flex flex-col items-center gap-4 px-6 py-14 text-center" data-testid="vm-empty-owned">
 		<div class="relative" aria-hidden="true">
 			<span class="flex h-16 w-16 items-center justify-center rounded-lg border border-border bg-muted text-muted-foreground">
 				<svg viewBox="0 0 24 24" class="h-7 w-7" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">
@@ -216,9 +217,9 @@
 		</div>
 		<ButtonLink href={resolve('/vms/create')} data-testid="vm-empty-create">{m['vms.list.emptyFirstAction']()}</ButtonLink>
 		<p class="text-xs text-muted-foreground-subtle">{m['vms.list.emptyFirstReassurance']()}</p>
-	</div>
+	</Card>
 {:else}
-	<section class="machine-collection overflow-hidden rounded-xl border border-border bg-card shadow-card" aria-label={m['vms.list.caption']()}>
+	<Card pad="none" class="machine-collection overflow-hidden" aria-label={m['vms.list.caption']()}>
 		<Toolbar>
 			{#snippet search()}
 				<label for="vm-search" class="sr-only">{m['common.search']()}</label>
@@ -484,7 +485,7 @@
 				<span class="ml-auto">{m['vms.list.allowanceSource']()}</span>
 			</div>
 		{/if}
-	</section>
+	</Card>
 {/if}
 
 {#if !unreachable}

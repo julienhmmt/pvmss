@@ -14,6 +14,7 @@
 	import ImagePicker from './ImagePicker.svelte';
 	import ImageCloudInitFields from './ImageCloudInitFields.svelte';
 	import CloudInitDocumentSelect from './CloudInitDocumentSelect.svelte';
+	import Card from '$lib/shared/ui/Card.svelte';
 	import Checkbox from '$lib/shared/ui/Checkbox.svelte';
 	import Button from '$lib/shared/ui/Button.svelte';
 	import Skeleton from '$lib/shared/ui/Skeleton.svelte';
@@ -361,7 +362,7 @@
 			<p class="text-xs text-muted-foreground" data-testid="vm-create-retention">{m['vms.create.retentionNote']()}</p>
 		</div>
 
-		<aside class="creation-summary flex flex-col gap-4 rounded-xl border border-border bg-card p-5 shadow-card min-[700px]:sticky min-[700px]:top-24" aria-labelledby="creation-summary-title" data-testid="vm-create-summary">
+		<Card as="aside" pad="md" class="creation-summary flex flex-col gap-4 min-[700px]:sticky min-[700px]:top-24" aria-labelledby="creation-summary-title" data-testid="vm-create-summary">
 			<p id="creation-summary-title" class="flex items-center gap-2 text-sm font-semibold">
 				<svg viewBox="0 0 24 24" class="h-4 w-4 text-muted-foreground" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
 					<rect x="2" y="3" width="20" height="14" rx="2" />
@@ -427,6 +428,6 @@
 				{form.submitting ? m['common.creating']() : m['vms.create.summary.submit']()}
 			</Button>
 			<p class="text-2xs text-muted-foreground-subtle">{m['vms.create.summary.provisioningNote']()}</p>
-		</aside>
+		</Card>
 	</form>
 {/if}

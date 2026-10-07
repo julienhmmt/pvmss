@@ -2,6 +2,7 @@
 	import { getAuditRetentionContext } from './auditRetention.svelte';
 	import Alert from '$lib/shared/ui/Alert.svelte';
 	import Button from '$lib/shared/ui/Button.svelte';
+	import TextField from '$lib/shared/ui/TextField.svelte';
 	import { m } from '$lib/paraglide/messages.js';
 
 	const store = getAuditRetentionContext();
@@ -55,10 +56,10 @@
 		<form class="flex flex-wrap items-end gap-3" onsubmit={(e) => { e.preventDefault(); if (canPreview()) void onPreview(); }}>
 			<label class="flex flex-col gap-1 text-sm">
 				<span class="text-muted-foreground">{m['admin.audit.retention.daysLabel']()}</span>
-				<input
-					class="pv-input w-32"
+				<TextField
+					class="w-32"
 					type="number"
-					min="30"
+					min={30}
 					bind:value={daysInput}
 					aria-label={m['admin.audit.retention.daysLabel']()}
 				/>

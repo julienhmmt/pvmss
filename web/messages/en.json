@@ -1045,7 +1045,6 @@
   "admin.catalog.removeBridgeError": "Failed to remove bridge approval",
   "admin.catalog.removeIsoError": "Failed to remove ISO approval",
   "admin.templates.title": "Admin - VM templates - PVMSS",
-  "admin.templates.missingBadge": "not found in Proxmox",
   "admin.templates.unreadableBadge": "disk unreadable",
   "admin.templates.remove": "Remove",
   "admin.templates.removeSuccess": "Template {vmid} removed",

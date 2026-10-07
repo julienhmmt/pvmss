@@ -73,10 +73,6 @@
 		onToggle
 	}: Props = $props();
 
-	function handleSort(column: string): void {
-		onSort(column as ProfileSortColumn);
-	}
-
 	let showForm = $state(false);
 	let editingId = $state<string | null>(null);
 	let pendingDelete = $state<AdminProfile | null>(null);
@@ -178,11 +174,11 @@
 				<caption class="sr-only">{m['admin.profiles.title']()}</caption>
 				<thead>
 					<tr>
-						<TableHeader text={m['admin.profiles.id']()} tooltip={m['admin.profiles.tooltip.id']()} column="id" activeColumn={sortBy} {sortDir} onSort={handleSort} />
-						<TableHeader text={m['admin.profiles.labelField']()} tooltip={m['admin.profiles.tooltip.id']()} column="label" activeColumn={sortBy} {sortDir} onSort={handleSort} />
-						<TableHeader text={m['admin.profiles.vcpu']()} tooltip={m['admin.profiles.tooltip.vcpu']()} column="cpuCores" activeColumn={sortBy} {sortDir} onSort={handleSort} />
-						<TableHeader text={m['common.memory']()} tooltip={m['admin.profiles.tooltip.memory']()} column="memoryMB" activeColumn={sortBy} {sortDir} onSort={handleSort} />
-						<TableHeader text={m['admin.profiles.disk']()} tooltip={m['admin.profiles.tooltip.disk']()} column="diskGB" activeColumn={sortBy} {sortDir} onSort={handleSort} />
+						<TableHeader text={m['admin.profiles.id']()} tooltip={m['admin.profiles.tooltip.id']()} column="id" activeColumn={sortBy} {sortDir} {onSort} />
+						<TableHeader text={m['admin.profiles.labelField']()} tooltip={m['admin.profiles.tooltip.id']()} column="label" activeColumn={sortBy} {sortDir} {onSort} />
+						<TableHeader text={m['admin.profiles.vcpu']()} tooltip={m['admin.profiles.tooltip.vcpu']()} column="cpuCores" activeColumn={sortBy} {sortDir} {onSort} />
+						<TableHeader text={m['common.memory']()} tooltip={m['admin.profiles.tooltip.memory']()} column="memoryMB" activeColumn={sortBy} {sortDir} {onSort} />
+						<TableHeader text={m['admin.profiles.disk']()} tooltip={m['admin.profiles.tooltip.disk']()} column="diskGB" activeColumn={sortBy} {sortDir} {onSort} />
 						<TableHeader text={m['admin.profiles.bus']()} tooltip={m['admin.profiles.tooltip.bus']()} />
 						<th class="font-medium">{m['admin.profiles.enabledStatus']()}</th>
 						<th class="font-medium">{m['common.actions']()}</th>
