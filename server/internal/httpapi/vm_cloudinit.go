@@ -509,12 +509,29 @@ func (h *VMCloudInit) writeDomainError(w http.ResponseWriter, err error) {
 		// Already written by the helper (password-path errors).
 	case errors.Is(err, vm.ErrSnippetPushFailed):
 		h.writeError(w, http.StatusBadGateway, "push_failed", "the cloud-init document could not be applied to the VM")
-	case errors.Is(err, cluster.ErrNotImplemented), errors.Is(err, cluster.ErrUnreachable), errors.Is(err, cluster.ErrNotFound):
-		h.writeError(w, http.StatusBadGateway, "cluster_error", msgClusterRejected)
+	case h.writeClusterFailure(w, err):
+		// Already written: the cluster failed or refused the call.
 	default:
 		SetErrorMsg(w, "cloud-init request failed", err)
 		h.writeError(w, http.StatusInternalServerError, "internal_error", msgInternalServerError)
 	}
+}
+
+// writeClusterFailure maps a cluster-side failure (unreachable, missing, or a
+// Proxmox rejection such as a missing privilege) and reports true when it
+// wrote the response.
+func (h *VMCloudInit) writeClusterFailure(w http.ResponseWriter, err error) bool {
+	if code, message, ok := clusterRejectionResponse(w, err); ok {
+		h.writeError(w, http.StatusBadGateway, code, message)
+		return true
+	}
+
+	if errors.Is(err, cluster.ErrNotImplemented) || errors.Is(err, cluster.ErrUnreachable) || errors.Is(err, cluster.ErrNotFound) {
+		h.writeError(w, http.StatusBadGateway, "cluster_error", msgClusterRejected)
+		return true
+	}
+
+	return false
 }
 
 // writeGuestAgentError maps the password-path errors introduced by tickets 02

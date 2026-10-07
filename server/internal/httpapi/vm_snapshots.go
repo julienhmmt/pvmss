@@ -320,7 +320,7 @@ func (h *VMSnapshots) writeSnapshotError(w http.ResponseWriter, err error) {
 		// A Proxmox rejection surfaces its own message with a stable machine
 		// code; a lock that did not clear within the retry budget surfaces the
 		// retry-expiry message under the same vm_locked code (ADR 0002).
-		code, message, _ := snapshotRejectionResponse(err)
+		code, message, _ := snapshotRejectionResponse(w, err)
 		h.writeError(w, http.StatusBadGateway, code, message)
 	default:
 		SetErrorMsg(w, "vm snapshot operation failed", err)
@@ -331,8 +331,8 @@ func (h *VMSnapshots) writeSnapshotError(w http.ResponseWriter, err error) {
 // snapshotRejectionResponse maps a cluster rejection (cluster.ErrClusterRejected)
 // or a lock-retry expiry (vm.ErrVMLocked) to the (code, message) pair the UI
 // acts on. ok=false when err is neither.
-func snapshotRejectionResponse(err error) (code, message string, ok bool) {
-	if code, message, ok := clusterRejectionResponse(err); ok {
+func snapshotRejectionResponse(w http.ResponseWriter, err error) (code, message string, ok bool) {
+	if code, message, ok := clusterRejectionResponse(w, err); ok {
 		return code, message, true
 	}
 

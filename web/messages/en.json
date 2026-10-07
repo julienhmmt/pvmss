@@ -86,6 +86,7 @@
   "error.invalid_action": "Invalid action.",
   "error.quota_exceeded": "VM quota reached.",
   "error.gabarit_exceeded": "VM template exceeded.",
+  "error.cluster_permission_denied": "PVMSS is missing a Proxmox permission: its service token needs {privilege} on {path}. Ask an administrator to grant it.",
   "error.snapshot_storage_unsupported": "This storage does not support snapshots.",
   "error.vm_locked": "The VM is locked by another operation. Try again shortly.",
   "error.snapshot_name_exists": "A snapshot with this name already exists.",
