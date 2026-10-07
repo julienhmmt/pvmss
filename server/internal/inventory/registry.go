@@ -27,6 +27,10 @@ type Registry struct {
 	mu         sync.RWMutex
 	provider   cluster.ClientProvider
 	entries    map[string]*registryEntry
+	// handles keeps each cluster's projection and refresher across Remove/Add
+	// (an admin edit is Remove then Add): consumers wired once at boot hold
+	// these pointers and must keep seeing the live cluster, not an orphan.
+	handles map[string]*registryEntry
 	interval   time.Duration
 	options    []Option
 	log        *slog.Logger
@@ -51,7 +55,7 @@ func NewRegistry(provider cluster.ClientProvider, interval time.Duration, log *s
 	if log == nil {
 		log = slog.Default()
 	}
-	registry := &Registry{provider: provider, entries: make(map[string]*registryEntry), interval: interval, options: append([]Option(nil), options...), log: log}
+	registry := &Registry{provider: provider, entries: make(map[string]*registryEntry), handles: make(map[string]*registryEntry), interval: interval, options: append([]Option(nil), options...), log: log}
 	for _, name := range provider.List() {
 		registry.addEntry(name)
 	}
@@ -138,6 +142,7 @@ func (registry *Registry) Remove(name string) {
 			entry.cancel()
 		}
 		delete(registry.entries, name)
+		entry.projection.store(nil) // a removed cluster serves nothing
 	}
 	registry.mu.Unlock()
 }
@@ -249,10 +254,15 @@ func (registry *Registry) makeEntry(name string) (*registryEntry, error) {
 	if err != nil {
 		return nil, fmt.Errorf("inventory client for %q: %w", name, err)
 	}
-	projection := NewProjection()
+	handle, ok := registry.handles[name]
+	if !ok {
+		handle = &registryEntry{projection: NewProjection(), refresher: &Refresher{minInterval: registry.interval}}
+		registry.handles[name] = handle
+	}
 	options := append([]Option{WithClusterName(name)}, registry.options...)
-	worker := NewWorker(client, projection, registry.interval, registry.log, options...)
-	return &registryEntry{projection: projection, worker: worker, refresher: NewRefresher(worker, registry.interval)}, nil
+	worker := NewWorker(client, handle.projection, registry.interval, registry.log, options...)
+	handle.refresher.worker.Store(worker)
+	return &registryEntry{projection: handle.projection, worker: worker, refresher: handle.refresher}, nil
 }
 
 func (registry *Registry) startEntryLocked(entry *registryEntry) {

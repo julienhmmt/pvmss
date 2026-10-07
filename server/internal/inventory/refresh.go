@@ -3,6 +3,7 @@ package inventory
 import (
 	"context"
 	"errors"
+	"sync/atomic"
 	"time"
 )
 
@@ -34,16 +35,17 @@ func (e *TooSoonError) Unwrap() error { return ErrRefreshTooSoon }
 // exactly one Worker, so there is no second projection reference a caller
 // could accidentally mismatch.
 type Refresher struct {
-	worker      *Worker
+	// worker is swapped when the cluster is re-added after an admin edit.
+	worker      atomic.Pointer[Worker]
 	minInterval time.Duration
 }
 
 // NewRefresher creates a manual refresher with the given guard interval.
 func NewRefresher(worker *Worker, minInterval time.Duration) *Refresher {
-	return &Refresher{
-		worker:      worker,
-		minInterval: minInterval,
-	}
+	r := &Refresher{minInterval: minInterval}
+	r.worker.Store(worker)
+
+	return r
 }
 
 // MinInterval returns the configured minimum interval between refreshes.
@@ -57,13 +59,14 @@ func (r *Refresher) MinInterval() time.Duration {
 // worker, which serializes with any
 // in-flight automatic cycle.
 func (r *Refresher) Refresh(ctx context.Context) (time.Time, error) {
-	if current := r.worker.projection.Load(); current != nil {
+	worker := r.worker.Load()
+	if current := worker.projection.Load(); current != nil {
 		if remaining := r.minInterval - time.Since(current.RefreshedAt); remaining > 0 {
 			return time.Time{}, &TooSoonError{RetryAfter: remaining}
 		}
 	}
 
-	at, err := r.worker.Refresh(ctx)
+	at, err := worker.Refresh(ctx)
 	if err != nil {
 		return time.Time{}, ErrClusterUnreachable
 	}
@@ -83,7 +86,8 @@ func (r *Refresher) Refresh(ctx context.Context) (time.Time, error) {
 // outcome by re-reading the projection (e.g. re-loading the VM list or
 // polling /health).
 func (r *Refresher) RefreshAsync(ctx context.Context) error {
-	if current := r.worker.projection.Load(); current != nil {
+	worker := r.worker.Load()
+	if current := worker.projection.Load(); current != nil {
 		if remaining := r.minInterval - time.Since(current.RefreshedAt); remaining > 0 {
 			return &TooSoonError{RetryAfter: remaining}
 		}
@@ -94,8 +98,8 @@ func (r *Refresher) RefreshAsync(ctx context.Context) error {
 		// HTTP response being written. The worker's own timeout
 		// (InventoryRefreshTimeout) bounds the call.
 		detached := context.WithoutCancel(ctx)
-		if _, err := r.worker.Refresh(detached); err != nil {
-			r.worker.log.ErrorContext(ctx, "async refresh failed", "component", "inventory", "error", err)
+		if _, err := worker.Refresh(detached); err != nil {
+			worker.log.ErrorContext(ctx, "async refresh failed", "component", "inventory", "error", err)
 		}
 	}()
 

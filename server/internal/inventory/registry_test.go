@@ -184,3 +184,45 @@ func firstVMFromIndex(t *testing.T, index *inventory.Index) cluster.VM {
 	t.Fatal("no stopped VM found in index")
 	return cluster.VM{}
 }
+
+// TestRegistry_ReAddKeepsConsumerHandles - an admin cluster edit is Remove
+// then Add. Consumers wired at boot hold the *Projection and *Refresher; both
+// must stay the live ones afterwards, not orphans of the removed entry.
+//
+//nolint:paralleltest // registry tests share fake client fixture state
+func TestRegistry_ReAddKeepsConsumerHandles(t *testing.T) {
+	clusters, err := cluster.NewRegistry("fake", []store.ClusterRow{
+		{Name: inventoryTestCluster, URL: inventoryDefaultURL, TokenID: "id", TokenSecret: registryTestSecret},
+	})
+	if err != nil {
+		t.Fatalf("NewRegistry: %v", err)
+	}
+	registry := inventory.NewRegistry(clusters, time.Hour, slog.Default())
+
+	projection, _ := registry.Projection(inventoryTestCluster)
+	refresher, _ := registry.Refresher(inventoryTestCluster)
+	if _, err := registry.Refresh(context.Background(), inventoryTestCluster); err != nil || projection.Load() == nil {
+		t.Fatalf("initial refresh: %v", err)
+	}
+
+	registry.Remove(inventoryTestCluster)
+	if projection.Load() != nil {
+		t.Fatal("removed cluster still serves its last index")
+	}
+	if err := registry.Add(inventoryTestCluster); err != nil {
+		t.Fatalf("Add: %v", err)
+	}
+
+	if p, _ := registry.Projection(inventoryTestCluster); p != projection {
+		t.Fatal("re-added cluster got a new projection; boot-time consumers are orphaned")
+	}
+	if r, _ := registry.Refresher(inventoryTestCluster); r != refresher {
+		t.Fatal("re-added cluster got a new refresher; boot-time consumers are orphaned")
+	}
+	if _, err := refresher.Refresh(context.Background()); err != nil {
+		t.Fatalf("boot-time refresher after re-add: %v", err)
+	}
+	if projection.Load() == nil {
+		t.Fatal("boot-time projection not refreshed after re-add")
+	}
+}
