@@ -1424,8 +1424,37 @@
   "chrome.sidebar.navAbout": "À propos",
   "chrome.sidebar.newMachine": "Nouvelle machine",
   "chrome.sidebar.quotaHeading": "Votre quota",
-  "chrome.sidebar.quotaUsed": "{used} sur {allowed} machines",
-  "chrome.sidebar.quotaUnlimited": "{used} machines · sans plafond",
+  "chrome.sidebar.quotaUsed": [
+    {
+      "declarations": [
+        "input allowed",
+        "local allowedPlural = allowed: plural",
+        "input used"
+      ],
+      "selectors": [
+        "allowedPlural"
+      ],
+      "match": {
+        "allowedPlural=one": "{used} sur {allowed} machine",
+        "allowedPlural=other": "{used} sur {allowed} machines"
+      }
+    }
+  ],
+  "chrome.sidebar.quotaUnlimited": [
+    {
+      "declarations": [
+        "input used",
+        "local usedPlural = used: plural"
+      ],
+      "selectors": [
+        "usedPlural"
+      ],
+      "match": {
+        "usedPlural=one": "{used} machine · sans plafond",
+        "usedPlural=other": "{used} machines · sans plafond"
+      }
+    }
+  ],
   "chrome.sidebar.quotaExhausted": "Quota atteint",
   "chrome.sidebar.quotaUnavailable": "Quota indisponible",
   "chrome.sidebar.userChip": "Connecté en tant que {username}",
@@ -1768,9 +1797,53 @@
   "vms.list.hint.stopped": "Arrêtée. Vos fichiers sont conservés.",
   "vms.list.hint.failed": "La création n'a pas abouti. Rien n'a été décompté de votre quota.",
   "vms.list.hint.partial": "Créée, mais la configuration de l'accès a échoué. Ne créez pas de doublon : ouvrez-la pour obtenir de l'aide.",
-  "vms.list.allowanceUsed": "{used} / {allowed} machines utilisées",
-  "vms.list.allowanceUnlimited": "{used} machines, aucune limite",
-  "vms.list.allowanceMeterLabel": "{used} machines utilisées sur {allowed}",
+  "vms.list.allowanceUsed": [
+    {
+      "declarations": [
+        "input allowed",
+        "local allowedPlural = allowed: plural",
+        "input used"
+      ],
+      "selectors": [
+        "allowedPlural"
+      ],
+      "match": {
+        "allowedPlural=one": "{used} / {allowed} machine utilisée",
+        "allowedPlural=other": "{used} / {allowed} machines utilisées"
+      }
+    }
+  ],
+  "vms.list.allowanceUnlimited": [
+    {
+      "declarations": [
+        "input used",
+        "local usedPlural = used: plural"
+      ],
+      "selectors": [
+        "usedPlural"
+      ],
+      "match": {
+        "usedPlural=one": "{used} machine, aucune limite",
+        "usedPlural=other": "{used} machines, aucune limite"
+      }
+    }
+  ],
+  "vms.list.allowanceMeterLabel": [
+    {
+      "declarations": [
+        "input used",
+        "local usedPlural = used: plural",
+        "input allowed"
+      ],
+      "selectors": [
+        "usedPlural"
+      ],
+      "match": {
+        "usedPlural=one": "{used} machine utilisée sur {allowed}",
+        "usedPlural=other": "{used} machines utilisées sur {allowed}"
+      }
+    }
+  ],
   "vms.list.allowanceSource": "Défini par votre administrateur",
   "vms.list.quietHelpTitle": "Un peu d'aide, si besoin.",
   "vms.list.quietHelpBody": "Comment se connecter, ce que signifient les états, et quoi faire quand quelque chose semble anormal.",
@@ -1918,8 +1991,37 @@
   "vms.create.summary.includedNetwork": "Réseau et stockage approuvés",
   "vms.create.summary.includedStart": "Démarre après la préparation",
   "vms.create.summary.includedStopped": "Reste arrêtée après la préparation",
-  "vms.create.summary.quota": "Après création : {used} / {allowed} machines",
-  "vms.create.summary.quotaUnlimited": "Après création : {used} machines",
+  "vms.create.summary.quota": [
+    {
+      "declarations": [
+        "input allowed",
+        "local allowedPlural = allowed: plural",
+        "input used"
+      ],
+      "selectors": [
+        "allowedPlural"
+      ],
+      "match": {
+        "allowedPlural=one": "Après création : {used} / {allowed} machine",
+        "allowedPlural=other": "Après création : {used} / {allowed} machines"
+      }
+    }
+  ],
+  "vms.create.summary.quotaUnlimited": [
+    {
+      "declarations": [
+        "input used",
+        "local usedPlural = used: plural"
+      ],
+      "selectors": [
+        "usedPlural"
+      ],
+      "match": {
+        "usedPlural=one": "Après création : {used} machine",
+        "usedPlural=other": "Après création : {used} machines"
+      }
+    }
+  ],
   "vms.create.summary.submit": "Créer cette machine",
   "vms.create.summary.provisioningNote": "La préparation prend quelques minutes. Vous pouvez la suivre depuis Mes machines ou Activité.",
   "vms.create.blocked.quotaTitle": "Vous avez atteint votre quota de machines.",

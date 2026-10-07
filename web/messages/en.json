@@ -1424,8 +1424,37 @@
   "chrome.sidebar.navAbout": "About",
   "chrome.sidebar.newMachine": "New machine",
   "chrome.sidebar.quotaHeading": "Your quota",
-  "chrome.sidebar.quotaUsed": "{used} of {allowed} machines",
-  "chrome.sidebar.quotaUnlimited": "{used} machines · no cap",
+  "chrome.sidebar.quotaUsed": [
+    {
+      "declarations": [
+        "input allowed",
+        "local allowedPlural = allowed: plural",
+        "input used"
+      ],
+      "selectors": [
+        "allowedPlural"
+      ],
+      "match": {
+        "allowedPlural=one": "{used} of {allowed} machine",
+        "allowedPlural=other": "{used} of {allowed} machines"
+      }
+    }
+  ],
+  "chrome.sidebar.quotaUnlimited": [
+    {
+      "declarations": [
+        "input used",
+        "local usedPlural = used: plural"
+      ],
+      "selectors": [
+        "usedPlural"
+      ],
+      "match": {
+        "usedPlural=one": "{used} machine · no cap",
+        "usedPlural=other": "{used} machines · no cap"
+      }
+    }
+  ],
   "chrome.sidebar.quotaExhausted": "Quota reached",
   "chrome.sidebar.quotaUnavailable": "Quota unavailable",
   "chrome.sidebar.userChip": "Signed in as {username}",
@@ -1768,9 +1797,53 @@
   "vms.list.hint.stopped": "Stopped. Your files are kept.",
   "vms.list.hint.failed": "The creation did not finish. Nothing was taken from your allowance.",
   "vms.list.hint.partial": "Created, but its access setup failed. Do not create a duplicate: open it to get help.",
-  "vms.list.allowanceUsed": "{used} / {allowed} machines used",
-  "vms.list.allowanceUnlimited": "{used} machines, no limit set",
-  "vms.list.allowanceMeterLabel": "{used} of {allowed} machines used",
+  "vms.list.allowanceUsed": [
+    {
+      "declarations": [
+        "input allowed",
+        "local allowedPlural = allowed: plural",
+        "input used"
+      ],
+      "selectors": [
+        "allowedPlural"
+      ],
+      "match": {
+        "allowedPlural=one": "{used} / {allowed} machine used",
+        "allowedPlural=other": "{used} / {allowed} machines used"
+      }
+    }
+  ],
+  "vms.list.allowanceUnlimited": [
+    {
+      "declarations": [
+        "input used",
+        "local usedPlural = used: plural"
+      ],
+      "selectors": [
+        "usedPlural"
+      ],
+      "match": {
+        "usedPlural=one": "{used} machine, no limit set",
+        "usedPlural=other": "{used} machines, no limit set"
+      }
+    }
+  ],
+  "vms.list.allowanceMeterLabel": [
+    {
+      "declarations": [
+        "input allowed",
+        "local allowedPlural = allowed: plural",
+        "input used"
+      ],
+      "selectors": [
+        "allowedPlural"
+      ],
+      "match": {
+        "allowedPlural=one": "{used} of {allowed} machine used",
+        "allowedPlural=other": "{used} of {allowed} machines used"
+      }
+    }
+  ],
   "vms.list.allowanceSource": "Set by your administrator",
   "vms.list.quietHelpTitle": "A little help, if you need it.",
   "vms.list.quietHelpBody": "How to connect, what the states mean, and what to do when something looks wrong.",
@@ -1918,8 +1991,37 @@
   "vms.create.summary.includedNetwork": "Approved network & storage",
   "vms.create.summary.includedStart": "Starts after setup",
   "vms.create.summary.includedStopped": "Stays stopped after setup",
-  "vms.create.summary.quota": "After creation: {used} / {allowed} machines",
-  "vms.create.summary.quotaUnlimited": "After creation: {used} machines",
+  "vms.create.summary.quota": [
+    {
+      "declarations": [
+        "input allowed",
+        "local allowedPlural = allowed: plural",
+        "input used"
+      ],
+      "selectors": [
+        "allowedPlural"
+      ],
+      "match": {
+        "allowedPlural=one": "After creation: {used} / {allowed} machine",
+        "allowedPlural=other": "After creation: {used} / {allowed} machines"
+      }
+    }
+  ],
+  "vms.create.summary.quotaUnlimited": [
+    {
+      "declarations": [
+        "input used",
+        "local usedPlural = used: plural"
+      ],
+      "selectors": [
+        "usedPlural"
+      ],
+      "match": {
+        "usedPlural=one": "After creation: {used} machine",
+        "usedPlural=other": "After creation: {used} machines"
+      }
+    }
+  ],
   "vms.create.summary.submit": "Create this machine",
   "vms.create.summary.provisioningNote": "Setup takes a few minutes. You can follow it from My machines or Activity.",
   "vms.create.blocked.quotaTitle": "You've reached your machine allowance.",
