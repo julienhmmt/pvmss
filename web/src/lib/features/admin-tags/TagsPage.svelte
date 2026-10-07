@@ -215,7 +215,7 @@
 					{describedBy}
 					{invalid}
 					type="text"
-					pattern={'[a-zA-Z0-9]{1,50}'}
+					pattern={'[a-z0-9_][a-z0-9_+.\-]{0,49}'}
 					bind:value={newName}
 					required
 				/>
