@@ -35,8 +35,7 @@ func (h *AdminCatalog) ServeStorages(w http.ResponseWriter, r *http.Request) {
 	}
 	storages, err := catalog.AdminListStorages(r.Context(), h.store, client, clusterName)
 	if err != nil {
-		SetErrorMsg(w, "admin list storages failed", err)
-		writeAdminError(w, http.StatusInternalServerError, "internal_error", msgInternalServerError)
+		writeAdminFailure(w, "admin list storages failed", err)
 
 		return
 	}
@@ -83,8 +82,7 @@ func (h *AdminCatalog) ServeSnippetStorages(w http.ResponseWriter, r *http.Reque
 
 	snap, err := client.Snapshot(r.Context())
 	if err != nil {
-		SetErrorMsg(w, "admin list snippet storages failed", err)
-		writeAdminError(w, http.StatusInternalServerError, "internal_error", msgInternalServerError)
+		writeAdminFailure(w, "admin list snippet storages failed", err)
 
 		return
 	}
@@ -147,8 +145,7 @@ func (h *AdminCatalog) ServeStorageToggle(w http.ResponseWriter, r *http.Request
 	}
 
 	if err != nil {
-		SetErrorMsg(w, "admin toggle storage failed", err)
-		writeAdminError(w, http.StatusInternalServerError, "internal_error", msgInternalServerError)
+		writeAdminFailure(w, "admin toggle storage failed", err)
 
 		return
 	}

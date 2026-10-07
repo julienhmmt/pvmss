@@ -26,8 +26,7 @@ func (h *AdminCatalog) ServeNodeDelete(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err != nil {
-		SetErrorMsg(w, "admin delete node failed", err)
-		writeAdminError(w, http.StatusInternalServerError, "internal_error", msgInternalServerError)
+		writeAdminFailure(w, "admin delete node failed", err)
 		return
 	}
 
@@ -57,8 +56,7 @@ func (h *AdminCatalog) ServeStorageDelete(w http.ResponseWriter, r *http.Request
 	}
 
 	if err != nil {
-		SetErrorMsg(w, "admin delete storage failed", err)
-		writeAdminError(w, http.StatusInternalServerError, "internal_error", msgInternalServerError)
+		writeAdminFailure(w, "admin delete storage failed", err)
 		return
 	}
 
@@ -88,8 +86,7 @@ func (h *AdminCatalog) ServeBridgeDelete(w http.ResponseWriter, r *http.Request)
 	}
 
 	if err != nil {
-		SetErrorMsg(w, "admin delete bridge failed", err)
-		writeAdminError(w, http.StatusInternalServerError, "internal_error", msgInternalServerError)
+		writeAdminFailure(w, "admin delete bridge failed", err)
 		return
 	}
 
