@@ -3,6 +3,7 @@ package cloudinit
 
 import (
 	"errors"
+	"fmt"
 	"strings"
 	"unicode/utf8"
 
@@ -48,7 +49,7 @@ func Validate(content string) error {
 	// Future directive allow-listing can be added here with a policy flag.
 	var root any
 	if err := yaml.Unmarshal([]byte(trimmed), &root); err != nil {
-		return ErrSnippetInvalidYAML
+		return fmt.Errorf("%w: %w", ErrSnippetInvalidYAML, err) // parser error names the line
 	}
 
 	if root != nil && !isYAMLMap(root) {

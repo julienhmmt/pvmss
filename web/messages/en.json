@@ -947,6 +947,7 @@
   "admin.cloudinit.contentSyncWarning": "Saving publishes the template over SSH to every node of the cluster, merged on top of the PVMSS baseline. Each version is a new file: VMs keep the version they were created with.",
   "admin.cloudinit.contentCounter": "{used} / {max} characters",
   "admin.cloudinit.loadError": "failed to load templates",
+  "admin.cloudinit.invalidYaml": "The content is not valid YAML: {detail}",
   "admin.cloudinit.createError": "failed to create template",
   "admin.cloudinit.updateError": "failed to update template",
   "admin.cloudinit.deleteError": "failed to delete template",
