@@ -423,11 +423,11 @@
 							<div class="grid min-w-0 flex-1 grid-cols-[minmax(0,1fr)_auto] items-center gap-x-4 gap-y-2 min-[700px]:grid-cols-[minmax(0,1fr)_11rem_8.5rem_9rem]">
 								<div class="flex min-w-0 items-center gap-3">
 									<span class="max-[369px]:hidden"><OsMark ostype={machine.ostype} /></span>
-									<div class="min-w-0">
+									<div class="min-w-0 flex-1">
 										<div class="flex min-w-0 items-center gap-2">
 											<a
 												href={detailHref(machine)}
-												class="pv-focus block min-w-0 truncate font-medium text-foreground underline-offset-2 after:absolute after:inset-0 after:content-[''] hover:text-primary hover:underline"
+												class="pv-focus block max-w-full shrink-0 truncate font-medium text-foreground underline-offset-2 after:absolute after:inset-0 after:content-[''] hover:text-primary hover:underline"
 												aria-label={spansClusters
 													? m['vms.list.rowLinkLabel']({
 															name: machine.name,
@@ -439,7 +439,8 @@
 												{machine.name}
 											</a>
 											{#if spansClusters}
-												<span class="shrink-0" data-testid="vm-row-cluster">
+												<!-- The chip yields before the name does. -->
+												<span class="min-w-0 shrink overflow-hidden" data-testid="vm-row-cluster">
 													<Pill tone="off" dot={false} label={machine.clusterDisplayName} />
 												</span>
 											{/if}
