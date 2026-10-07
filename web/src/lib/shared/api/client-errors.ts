@@ -18,12 +18,12 @@ export function reportClientError(error: unknown): void {
 /** Installs the global handlers SvelteKit does not route through
  * handleError (uncaught exceptions, unhandled rejections). Idempotent. */
 export function installClientErrorReporting(): void {
-	if (installed || typeof window === 'undefined') return;
+	if (installed || globalThis.window === undefined) return;
 	installed = true;
-	window.addEventListener('error', (event: ErrorEvent) => {
+	globalThis.addEventListener('error', (event: ErrorEvent) => {
 		reportClientError(event.error ?? event.message);
 	});
-	window.addEventListener('unhandledrejection', (event: PromiseRejectionEvent) => {
+	globalThis.addEventListener('unhandledrejection', (event: PromiseRejectionEvent) => {
 		reportClientError(event.reason);
 	});
 }

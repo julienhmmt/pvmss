@@ -42,46 +42,53 @@ const maxPolicyUpdateAttempts = 3
 // changes nothing skips the write and reports Changed=false.
 func (service *Policy) UpdatePolicy(ctx context.Context, clusterName string, mutate func(current Settings) Settings) (Update, error) {
 	for range maxPolicyUpdateAttempts {
-		row, err := service.store.PolicyRow(ctx, clusterName)
-
-		missing := errors.Is(err, sql.ErrNoRows)
-		if err != nil && !missing {
-			return Update{}, err
-		}
-
-		if missing {
-			row = defaultPolicyRow(clusterName)
-		}
-
-		before := Settings{Gabarit: gabaritFromRow(row), Allowed: row.MaxVMPerUser}
-		after := mutate(before)
-
-		if err := validateSettings(after); err != nil {
-			return Update{}, err
-		}
-
-		if after == before {
-			return Update{Before: before, After: after}, nil
-		}
-
-		var expected *store.PolicyRow
-		if !missing {
-			expected = &row
-		}
-
-		err = service.store.ReplacePolicyRow(ctx, expected, policyRowFrom(clusterName, after))
+		update, err := service.attemptPolicyUpdate(ctx, clusterName, mutate)
 		if errors.Is(err, store.ErrPolicyConflict) {
 			continue
 		}
 
-		if err != nil {
-			return Update{}, err
-		}
-
-		return Update{Before: before, After: after, Changed: true}, nil
+		return update, err
 	}
 
 	return Update{}, ErrConcurrentUpdate
+}
+
+// attemptPolicyUpdate runs one compare-and-swap round of UpdatePolicy. A
+// store.ErrPolicyConflict error means the row changed mid-flight and the
+// caller may retry; any other error is final.
+func (service *Policy) attemptPolicyUpdate(ctx context.Context, clusterName string, mutate func(current Settings) Settings) (Update, error) {
+	row, err := service.store.PolicyRow(ctx, clusterName)
+
+	missing := errors.Is(err, sql.ErrNoRows)
+	if err != nil && !missing {
+		return Update{}, err
+	}
+
+	if missing {
+		row = defaultPolicyRow(clusterName)
+	}
+
+	before := Settings{Gabarit: gabaritFromRow(row), Allowed: row.MaxVMPerUser}
+	after := mutate(before)
+
+	if err := validateSettings(after); err != nil {
+		return Update{}, err
+	}
+
+	if after == before {
+		return Update{Before: before, After: after}, nil
+	}
+
+	var expected *store.PolicyRow
+	if !missing {
+		expected = &row
+	}
+
+	if err := service.store.ReplacePolicyRow(ctx, expected, policyRowFrom(clusterName, after)); err != nil {
+		return Update{}, err
+	}
+
+	return Update{Before: before, After: after, Changed: true}, nil
 }
 
 // SetPolicy replaces the global gabarit and quota in one atomic update.
