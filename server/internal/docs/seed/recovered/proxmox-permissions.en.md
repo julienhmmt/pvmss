@@ -28,7 +28,7 @@ Run as `root` on the Proxmox node. Create the role, then the user and its API
 token. The token secret must be stored in `PROXMOX_API_TOKEN_VALUE`.
 
 ```bash
-pveum roleadd PVMSS_Service -privs "Sys.Audit VM.Audit VM.Allocate VM.PowerMgmt VM.Console VM.Config.CDROM VM.Config.CPU VM.Config.HWType VM.Config.Memory VM.Config.Disk VM.Config.Network VM.Config.Options VM.Config.Cloudinit VM.Snapshot VM.Snapshot.Rollback VM.Migrate Datastore.Audit Datastore.AllocateSpace Datastore.AllocateTemplate Pool.Allocate Pool.Audit User.Modify Permissions.Modify Realm.AllocateUser SDN.Allocate SDN.Audit SDN.Use"
+pveum roleadd PVMSS_Service -privs "Sys.Audit VM.Audit VM.Allocate VM.PowerMgmt VM.Console VM.Config.CDROM VM.Config.CPU VM.Config.HWType VM.Config.Memory VM.Config.Disk VM.Config.Network VM.Config.Options VM.Config.Cloudinit VM.Snapshot VM.Snapshot.Rollback VM.Migrate VM.GuestAgent.Audit VM.GuestAgent.Unrestricted Datastore.Audit Datastore.AllocateSpace Datastore.AllocateTemplate Pool.Allocate Pool.Audit User.Modify Permissions.Modify Realm.AllocateUser SDN.Allocate SDN.Audit SDN.Use"
 
 pveum useradd pvmss-svc@pve \
   -comment "PVMSS service account" \
@@ -38,6 +38,11 @@ pveum aclmod / -user pvmss-svc@pve -role PVMSS_Service -propagate 1
 
 pveum user token add pvmss-svc@pve pvmss-service-token --privsep 0
 ```
+
+The two `VM.GuestAgent.*` privileges cover the QEMU guest agent calls: `Audit`
+reads guest IP addresses, `Unrestricted` injects SSH keys (`agent/exec`) and
+sets the cloud-init password (`agent/set-user-password`). Without them those
+actions fail with `cluster_permission_denied`.
 
 ## Administrators (PVMSS_Admin)
 
