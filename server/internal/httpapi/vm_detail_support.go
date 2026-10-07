@@ -296,8 +296,7 @@ func (h *VMDetail) writeActionError(w http.ResponseWriter, err error) {
 	case errors.Is(err, cluster.ErrVMRunning):
 		h.writeDetailError(w, http.StatusConflict, "vm_running", msgVMRunning)
 	case errors.Is(err, cluster.ErrClusterRejected):
-		code, message, _ := clusterRejectionResponse(w, err)
-		h.writeDetailError(w, http.StatusBadGateway, code, message)
+		writeClusterRejection(w, err, h.log)
 	default:
 		SetErrorMsg(w, "vm action failed", err)
 		h.writeDetailError(w, http.StatusInternalServerError, "internal_error", msgInternalServerError)
@@ -321,8 +320,7 @@ func (h *VMDetail) writePatchError(w http.ResponseWriter, err error) {
 		SetErrorMsg(w, "cluster writer: VM not found after Resolve", err)
 		h.writeDetailError(w, http.StatusBadGateway, "cluster_error", msgClusterRejected)
 	case errors.Is(err, cluster.ErrClusterRejected):
-		code, message, _ := clusterRejectionResponse(w, err)
-		h.writeDetailError(w, http.StatusBadGateway, code, message)
+		writeClusterRejection(w, err, h.log)
 	default:
 		SetErrorMsg(w, "vm patch failed", err)
 		h.writeDetailError(w, http.StatusInternalServerError, "internal_error", msgInternalServerError)

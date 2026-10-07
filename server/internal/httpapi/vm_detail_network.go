@@ -71,9 +71,7 @@ func (h *VMDetail) writeCommonVMError(w http.ResponseWriter, err error) bool {
 func (h *VMDetail) writeUnhandledVMError(w http.ResponseWriter, message string, err error) {
 	// A cluster rejection is not an unhandled error: surface Proxmox's own
 	// message with its machine code instead of a generic 500 (ADR 0002).
-	if code, msg, ok := clusterRejectionResponse(w, err); ok {
-		h.writeDetailError(w, http.StatusBadGateway, code, msg)
-
+	if writeClusterRejection(w, err, h.log) {
 		return
 	}
 
@@ -159,8 +157,7 @@ func (h *VMDetail) writeNetworkError(w http.ResponseWriter, err error) {
 	case errors.Is(err, vm.ErrInvalidNetworkModel), errors.Is(err, vm.ErrDuplicateNetworkIndex):
 		h.writeDetailError(w, http.StatusBadRequest, "invalid_request", err.Error())
 	case errors.Is(err, cluster.ErrClusterRejected):
-		code, message, _ := clusterRejectionResponse(w, err)
-		h.writeDetailError(w, http.StatusBadGateway, code, message)
+		writeClusterRejection(w, err, h.log)
 	default:
 		SetErrorMsg(w, "vm network operation failed", err)
 		h.writeDetailError(w, http.StatusInternalServerError, "internal_error", msgInternalServerError)
@@ -392,8 +389,7 @@ func (h *VMDetail) writeDiskError(w http.ResponseWriter, err error) {
 	case errors.Is(err, cluster.ErrNotFound):
 		h.writeDetailError(w, http.StatusBadGateway, "cluster_error", msgClusterRejected)
 	case errors.Is(err, cluster.ErrClusterRejected):
-		code, message, _ := clusterRejectionResponse(w, err)
-		h.writeDetailError(w, http.StatusBadGateway, code, message)
+		writeClusterRejection(w, err, h.log)
 	default:
 		SetErrorMsg(w, "vm disk operation failed", err)
 		h.writeDetailError(w, http.StatusInternalServerError, "internal_error", msgInternalServerError)

@@ -1,6 +1,6 @@
 <script lang="ts">
-	import { onMount } from 'svelte';
-	import { goto } from '$app/navigation';
+	import { onMount, onDestroy } from 'svelte';
+	import { afterNavigate, goto } from '$app/navigation';
 	import { resolve } from '$app/paths';
 	import { page } from '$app/state';
 	import { setSearchContext } from '$lib/features/search/search.svelte';
@@ -11,9 +11,12 @@
 		initialQuery: page.url.search,
 		navigate: (queryString: string) => {
 			const base = resolve('/search');
-			void goto(queryString === '' ? base : `${base}?${queryString}`, { replaceState: true, noScroll: true, keepFocus: true });
+			void goto(queryString === '' ? base : `${base}?${queryString}`, { noScroll: true, keepFocus: true });
 		}
 	});
+
+	afterNavigate(() => store.restoreQuery(page.url.search));
+	onDestroy(() => store.dispose());
 
 	onMount(() => {
 		if (store.query !== '') void store.load();

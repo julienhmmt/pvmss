@@ -10,7 +10,7 @@ import (
 	"testing"
 )
 
-func TestWriteAdminFailure(t *testing.T) {
+func TestWriteAdminFailure_MapsClusterAndInternalFailures(t *testing.T) {
 	t.Parallel()
 
 	cases := []struct {

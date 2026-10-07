@@ -1,5 +1,7 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { ApiRequestError, del, get, patch, post, put } from './client';
+import { m } from '$lib/paraglide/messages.js';
+import { setLocale } from '$lib/paraglide/runtime.js';
 
 function jsonResponse(status: number, body: unknown): Response {
 	return new Response(JSON.stringify(body), { status, headers: { 'Content-Type': 'application/json' } });
@@ -16,6 +18,17 @@ describe('get', () => {
 	it('returns undefined on 204', async () => {
 		vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response(null, { status: 204 })));
 		await expect(get('/api/v1/foo')).resolves.toBeUndefined();
+	});
+
+	it.each(['en', 'fr'] as const)('localizes structured permission failures in %s at the API boundary', async (locale) => {
+		await setLocale(locale, { reload: false });
+		const details: { privilege: string; path: string } = { privilege: 'VM.Migrate', path: '/vms/100' };
+		vi.stubGlobal('fetch', vi.fn().mockResolvedValue(jsonResponse(502, {
+			code: 'cluster_permission_denied', message: 'different server wording', ...details
+		})));
+		await expect(get('/api/v1/foo')).rejects.toMatchObject({
+			code: 'cluster_permission_denied', ...details, message: m['error.cluster_permission_denied'](details)
+		});
 	});
 
 	it('throws ApiRequestError on non-2xx', async () => {

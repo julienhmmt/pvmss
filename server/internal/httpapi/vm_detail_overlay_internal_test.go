@@ -12,7 +12,7 @@ import (
 
 // The projection lags /cluster/resources by seconds after a write; a write
 // response must show what was just written, not the stale read.
-func TestWrittenValuesOverlayStaleEntity(t *testing.T) {
+func TestWrittenValues_OverlayStaleEntity(t *testing.T) {
 	t.Parallel()
 
 	stale := vm.Entity{Name: "old", Description: "d", Sockets: 1, Cores: 1, CPUCores: 1, MemoryTotal: 1 << 30}

@@ -6,7 +6,7 @@ import (
 	"testing"
 )
 
-func TestCloudInitTemplateValidationError(t *testing.T) {
+func TestCloudInitTemplateValidationError_ReportsInvalidYAMLAndHeader(t *testing.T) {
 	t.Parallel()
 
 	_, err := catalog.CreateCloudInitTemplate(t.Context(), nil, "c", "web", "#cloud-config\nusers: [\n")

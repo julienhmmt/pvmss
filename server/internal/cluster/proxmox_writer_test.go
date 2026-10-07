@@ -94,7 +94,7 @@ func TestProxmox_Action_ShutdownSendsTimeout(t *testing.T) {
 		wantForm   string
 		wantNoForm bool
 	}{
-		{"shutdown sends timeout", "shutdown", "timeout=60", false},
+		{"shutdown sends timeout", "shutdown", "forceStop=0&timeout=60", false},
 		{"start sends no params", "start", "", true},
 		{"stop sends no params", "stop", "", true},
 		{"reboot sends no params", "reboot", "", true},

@@ -521,8 +521,7 @@ func (h *VMCloudInit) writeDomainError(w http.ResponseWriter, err error) {
 // Proxmox rejection such as a missing privilege) and reports true when it
 // wrote the response.
 func (h *VMCloudInit) writeClusterFailure(w http.ResponseWriter, err error) bool {
-	if code, message, ok := clusterRejectionResponse(w, err); ok {
-		h.writeError(w, http.StatusBadGateway, code, message)
+	if writeClusterRejection(w, err, h.log) {
 		return true
 	}
 

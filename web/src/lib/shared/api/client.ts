@@ -1,7 +1,11 @@
+import { resolveErrorMessage } from '$lib/features/chrome/errorMessage';
+
 interface ErrorEnvelope {
 	code: string;
 	message: string;
 	retryAfterSeconds?: number;
+	privilege?: string;
+	path?: string;
 }
 
 const CSRF_COOKIE_NAME = 'pvmss_csrf';
@@ -13,12 +17,17 @@ export class ApiRequestError extends Error {
 	/** Present on 429 responses that carry a guard countdown (contracts/cluster-refresh.md). */
 	readonly retryAfterSeconds?: number | undefined;
 
-	constructor(status: number, code: string, message: string, retryAfterSeconds?: number) {
-		super(message);
+	readonly privilege?: string | undefined;
+	readonly path?: string | undefined;
+
+	constructor(status: number, code: string, message: string, retryAfterSeconds?: number, details: Pick<ErrorEnvelope, 'privilege' | 'path'> = {}) {
+		super(code === 'cluster_permission_denied' ? resolveErrorMessage(code, message, details) : message);
 		this.name = 'ApiRequestError';
 		this.status = status;
 		this.code = code;
 		this.retryAfterSeconds = retryAfterSeconds;
+		this.privilege = details.privilege;
+		this.path = details.path;
 	}
 }
 
@@ -69,7 +78,7 @@ async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
 			globalThis.location.reload();
 		}
 
-		throw new ApiRequestError(response.status, envelope.code, envelope.message, envelope.retryAfterSeconds);
+		throw new ApiRequestError(response.status, envelope.code, envelope.message, envelope.retryAfterSeconds, envelope);
 	}
 	if (response.status === 204) return undefined as T;
 	return (await response.json()) as T;

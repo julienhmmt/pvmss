@@ -14,6 +14,7 @@ export interface TrackedTask {
 	 *  poll must carry the cluster explicitly via ?cluster= - otherwise a
 	 *  non-default-cluster task is polled against the wrong cluster's client. */
 	cluster: string;
+	expectedStatus?: 'running' | 'stopped';
 	/** Epoch ms by which the task should reach a terminal state. Past this
 	 *  deadline the tray stops following it with an informational toast - 
 	 *  the task may still be running (or have finished) server-side. */
@@ -63,7 +64,7 @@ export class TaskTrayStore {
 	toast = $state.raw<TaskToast | null>(null);
 
 	#timer: ReturnType<typeof setInterval> | null = null;
-	#okListeners: (() => void)[] = [];
+	#okListeners: ((task: TrackedTask) => void)[] = [];
 	/** Fired when a tracked task ends in `error` - the VM list / shell uses
 	 *  it to record a `failed` outcome in the session ledger (issue 09). */
 	#errorListeners: ((task: TrackedTask) => void)[] = [];
@@ -84,7 +85,7 @@ export class TaskTrayStore {
 	/** Registers a listener fired when any tracked task completes
 	 *  successfully - the VM list uses it to pick up creations without a
 	 *  manual reload (US1 scenario 3, FR-018's client half). */
-	onTaskOk(listener: () => void): () => void {
+	onTaskOk(listener: (task: TrackedTask) => void): () => void {
 		this.#okListeners.push(listener);
 		return () => {
 			this.#okListeners = this.#okListeners.filter((fn) => fn !== listener);
@@ -209,7 +210,7 @@ export class TaskTrayStore {
 		this.tasks = this.tasks.filter((pending) => pending.upid !== task.upid);
 		this.toast = toast;
 		if (toast.kind === 'success') {
-			for (const listener of this.#okListeners) listener();
+			for (const listener of this.#okListeners) listener(task);
 		}
 		if (toast.kind === 'error') {
 			for (const listener of [...this.#errorListeners]) listener(task);

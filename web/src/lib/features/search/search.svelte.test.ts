@@ -121,6 +121,35 @@ describe('SearchStore URL query (q)', () => {
 		vi.useRealTimers();
 	});
 
+	it('restores an earlier URL query and cancels pending typing without rewriting history', async () => {
+		vi.useFakeTimers();
+		const fetchMock = vi.fn().mockImplementation(() => Promise.resolve(jsonResponse(200, oneVmResult)));
+		vi.stubGlobal('fetch', fetchMock);
+		const navigated: string[] = [];
+		const store = new SearchStore({ initialQuery: '?q=web', navigate: (query: string) => { navigated.push(query); } });
+		store.applySearch('db');
+		await vi.advanceTimersByTimeAsync(300);
+		store.applySearch('unfinished');
+		store.restoreQuery('?q=web');
+		await vi.advanceTimersByTimeAsync(300);
+		expect(store.query).toBe('web');
+		expect(navigated).toEqual(['q=db']);
+		expect(fetchMock).toHaveBeenLastCalledWith(expect.stringContaining('search=web'), expect.anything());
+		store.restoreQuery('');
+		expect(store.query).toBe('');
+		expect(store.result).toBeNull();
+	});
+
+	it('dispose cancels a pending search navigation', async () => {
+		vi.useFakeTimers();
+		const navigate = vi.fn();
+		const store = new SearchStore({ navigate });
+		store.applySearch('web');
+		store.dispose();
+		await vi.advanceTimersByTimeAsync(300);
+		expect(navigate).not.toHaveBeenCalled();
+	});
+
 	it('starts from ?q= and writes the debounced query back', async () => {
 		vi.useFakeTimers();
 		vi.stubGlobal('fetch', vi.fn().mockResolvedValue(jsonResponse(200, oneVmResult)));

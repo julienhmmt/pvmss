@@ -45,8 +45,10 @@ type clusterNodesResponse struct {
 // message stays generic - driver detail goes
 // only to the structured server log.
 type clusterErrorEnvelope struct {
-	Code    string `json:"code"`
-	Message string `json:"message"`
+	Code      string `json:"code"`
+	Message   string `json:"message"`
+	Privilege string `json:"privilege,omitempty"`
+	Path      string `json:"path,omitempty"`
 }
 
 func (h *ClusterNodes) ServeHTTP(w http.ResponseWriter, r *http.Request) {
