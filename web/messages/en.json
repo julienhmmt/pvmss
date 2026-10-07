@@ -1250,7 +1250,7 @@
   "admin.tags.noFilterMatches": "No tags match your filters.",
   "admin.tags.resetFilters": "Reset filters",
   "admin.tags.newTagForm": "New tag",
-  "admin.tags.nameField": "Name (1-50 alphanumeric)",
+  "admin.tags.nameField": "Name (1-50: lowercase letters, digits, - _ . +)",
   "admin.tags.colorField": "Color",
   "admin.tags.loadError": "failed to load tags",
   "admin.tags.createError": "failed to create tag",
