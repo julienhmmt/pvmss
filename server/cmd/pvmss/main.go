@@ -333,7 +333,7 @@ func discoverClusterDisplayNames(ctx context.Context, registry *cluster.Registry
 // initInventory builds the inventory registry and resolves the first
 // cluster's projection, worker, and refresher. Each active cluster gets an
 // independent projection and refresh worker.
-func initInventory(cfg config.Configuration, clusterRegistry *cluster.Registry, logger *slog.Logger) (*inventory.Registry, *inventory.Projection, *inventory.Worker, *inventory.Refresher, error) {
+func initInventory(cfg config.Configuration, clusterRegistry *cluster.Registry, logger *slog.Logger) (*inventory.Registry, *inventory.Projection, vm.IndexRefresher, *inventory.Refresher, error) {
 	inventoryRegistry := inventory.NewRegistry(
 		clusterRegistry,
 		cfg.InventoryRefreshInterval,
@@ -353,11 +353,12 @@ func initInventory(cfg config.Configuration, clusterRegistry *cluster.Registry, 
 		logger.Error("primary inventory projection is unavailable", "component", "main", "cluster", primary, "error", err)
 		return nil, nil, nil, nil, err
 	}
-	defaultWorker, err := inventoryRegistry.Worker(primary)
-	if err != nil {
+	if _, err := inventoryRegistry.Worker(primary); err != nil {
 		logger.Error("primary inventory worker is unavailable", "component", "main", "cluster", primary, "error", err)
 		return nil, nil, nil, nil, err
 	}
+	// The worker is rebuilt on every admin cluster edit; resolve it per call.
+	defaultWorker := registryClusterRefresh{registry: inventoryRegistry, name: primary}
 	defaultRefresher, err := inventoryRegistry.Refresher(primary)
 	if err != nil {
 		logger.Error("primary inventory refresher is unavailable", "component", "main", "cluster", primary, "error", err)
@@ -431,7 +432,7 @@ type routerDeps struct {
 	clusterClient     cluster.Client
 	projection        *inventory.Projection
 	refresher         *inventory.Refresher
-	worker            *inventory.Worker
+	worker            vm.IndexRefresher
 	sessions          *auth.SessionManager
 	st                *store.Store
 	webDir            string
@@ -454,7 +455,7 @@ func buildRouter(deps routerDeps) (http.Handler, error) {
 	st := deps.st
 	webDir := deps.webDir
 	logger := deps.logger
-	policyService := policy.New(st, projection, clusterClient)
+	policyService := policy.New(st, projection, registrySnapshotter{registry: clusterRegistry})
 	freshness := inventoryFreshness{registry: inventoryRegistry, demoMode: cfg.ClusterSource == "fake"}
 	health := httpapi.NewHealth(st, logger, freshness, 2*cfg.InventoryRefreshInterval)
 	clusterNodes := httpapi.NewClusterNodes(projection, logger)
@@ -504,7 +505,7 @@ func buildRouter(deps routerDeps) (http.Handler, error) {
 	adminPolicy.SetTrustedProxyHops(cfg.TrustedProxyHops)
 	adminPools := httpapi.NewAdminPoolsWithRegistry(httpapi.AdminPoolsRegistryDeps{Auth: authHandler, Clients: clusterRegistry, Source: inventoryRegistry, Projection: projection, Writer: clients.writer, Audit: st, Refresher: worker, Store: st, Log: logger})
 	adminPools.SetTrustedProxyHops(cfg.TrustedProxyHops)
-	adminOps := httpapi.NewAdminOps(authHandler, st, clusterClient, projection, appVersion, logger)
+	adminOps := httpapi.NewAdminOps(authHandler, st, projection, appVersion, logger)
 	// The level at build time is the startup default (LOG_LEVEL); nothing has
 	// changed it yet. The runtime endpoint can move it and reset back to it.
 	adminOps.SetLogLevel(deps.logLevel, deps.logLevel.Level())
@@ -553,6 +554,36 @@ func buildRouter(deps routerDeps) (http.Handler, error) {
 		TrustedProxyHops: cfg.TrustedProxyHops,
 		RateLimitMax:     cfg.RateLimitMax,
 	}), nil
+}
+
+// registryClusterRefresh refreshes one cluster through the inventory
+// registry, so it always drives the cluster's current worker - an admin edit
+// replaces the worker and its client.
+type registryClusterRefresh struct {
+	registry *inventory.Registry
+	name     string
+}
+
+func (r registryClusterRefresh) Refresh(ctx context.Context) (time.Time, error) {
+	return r.registry.Refresh(ctx, r.name)
+}
+
+// registrySnapshotter reads the primary cluster through the registry on each
+// call, so policy never keeps a client an admin edit has replaced.
+type registrySnapshotter struct{ registry *cluster.Registry }
+
+func (r registrySnapshotter) Snapshot(ctx context.Context) (cluster.Snapshot, error) {
+	names := r.registry.List()
+	if len(names) == 0 {
+		return cluster.Snapshot{}, cluster.ErrClusterNotFound
+	}
+
+	client, err := r.registry.Client(names[0])
+	if err != nil {
+		return cluster.Snapshot{}, err
+	}
+
+	return client.Snapshot(ctx)
 }
 
 // clusterClientInterfaces bundles the cluster.Client capability interfaces

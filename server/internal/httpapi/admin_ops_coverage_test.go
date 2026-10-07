@@ -116,7 +116,7 @@ func TestAdminOpsCoverage_Dashboard_InventoryNotReady_Returns503(t *testing.T) {
 	st := auditAdminStore(t)
 	emptyProjection := inventory.NewProjection()
 	logger := slog.New(slog.DiscardHandler)
-	ops := httpapi.NewAdminOps(authHandler, st, cluster.Fake{}, emptyProjection, "0.4.0-test", logger)
+	ops := httpapi.NewAdminOps(authHandler, st, emptyProjection, "0.4.0-test", logger)
 
 	cookie := adminCookie(t, authHandler)
 
@@ -255,7 +255,7 @@ func TestAdminOpsCoverage_AppInfo_NoProjection_ReturnsEmptyClusters(t *testing.T
 	st := auditAdminStore(t)
 	emptyProjection := inventory.NewProjection()
 	logger := slog.New(slog.DiscardHandler)
-	ops := httpapi.NewAdminOps(authHandler, st, cluster.Fake{}, emptyProjection, "0.4.0-test", logger)
+	ops := httpapi.NewAdminOps(authHandler, st, emptyProjection, "0.4.0-test", logger)
 
 	cookie := adminCookie(t, authHandler)
 

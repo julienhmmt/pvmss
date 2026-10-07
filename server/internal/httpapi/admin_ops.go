@@ -9,7 +9,6 @@ import (
 	"log/slog"
 	"net/http"
 	"pvmss/server/internal/auth"
-	"pvmss/server/internal/cluster"
 	"pvmss/server/internal/config"
 	"pvmss/server/internal/inventory"
 	"pvmss/server/internal/logctx"
@@ -29,7 +28,6 @@ const maxAuditPageSize = 100
 type AdminOps struct {
 	auth             *Auth
 	store            *store.Store
-	client           cluster.Client
 	projection       *inventory.Projection
 	inventory        dashboardInventory
 	staleAfter       time.Duration
@@ -47,11 +45,10 @@ type AdminOps struct {
 // (from Index.StoragesByNode) and the appinfo's per-cluster refresh state.
 // The version string is surfaced in the dashboard and the public version
 // endpoint.
-func NewAdminOps(authHandler *Auth, st *store.Store, client cluster.Client, projection *inventory.Projection, version string, log *slog.Logger) *AdminOps {
+func NewAdminOps(authHandler *Auth, st *store.Store, projection *inventory.Projection, version string, log *slog.Logger) *AdminOps {
 	return &AdminOps{
 		auth:       authHandler,
 		store:      st,
-		client:     client,
 		projection: projection,
 		inventory:  projection,
 		version:    version,

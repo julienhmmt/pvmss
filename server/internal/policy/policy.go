@@ -121,11 +121,16 @@ type CapacityDelta struct {
 type Policy struct {
 	store      *store.Store
 	projection *inventory.Projection
-	client     cluster.Client
+	client     Snapshotter
+}
+
+// Snapshotter is the one cluster read policy needs (physical-node checks).
+type Snapshotter interface {
+	Snapshot(ctx context.Context) (cluster.Snapshot, error)
 }
 
 // New creates a policy service backed by the store and inventory projection.
-func New(st *store.Store, projection *inventory.Projection, client cluster.Client) *Policy {
+func New(st *store.Store, projection *inventory.Projection, client Snapshotter) *Policy {
 	return &Policy{store: st, projection: projection, client: client}
 }
 
