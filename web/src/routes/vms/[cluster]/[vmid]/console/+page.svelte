@@ -34,6 +34,18 @@
 	// wins; this only seeds the initial mode before the entity loads.
 	const IMAGE_TAG = 'pvmss-image';
 
+	const stateLabels: Record<string, () => string> = {
+		idle: () => m['vms.console.state.idle'](),
+		connecting: () => m['vms.console.state.connecting'](),
+		connected: () => m['vms.console.state.connected'](),
+		disconnected: () => m['vms.console.state.disconnected'](),
+		error: () => m['vms.console.state.error']()
+	};
+
+	function consoleStateLabel(state: string): string {
+		return stateLabels[state]?.() ?? state;
+	}
+
 	function switchMode(next: ConsoleMode): void {
 		if (mode === next) return;
 		// Tear down the inactive session so no WebSocket leaks (the user
@@ -78,7 +90,7 @@
 </script>
 
 <svelte:head>
-	<title>{m['vms.console.title']({ vmid: String(vmid) })}</title>
+	<title>{m['vms.console.title']({ name: vmStore.entity?.name || `VM ${vmid}` })}</title>
 </svelte:head>
 
 <section class="mx-auto flex h-screen w-full max-w-reading flex-col px-4 py-4">
@@ -107,8 +119,9 @@
 						: 'bg-muted text-muted-foreground'}"
 			aria-live="polite"
 			data-testid="vm-console-status"
+			data-state={mode === 'graphical' ? store.state : serialStore.state}
 		>
-			{mode === 'graphical' ? store.state : serialStore.state}
+			{consoleStateLabel(mode === 'graphical' ? store.state : serialStore.state)}
 		</span>
 	</div>
 

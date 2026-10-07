@@ -6,6 +6,7 @@ package logctx
 import (
 	"context"
 	"log/slog"
+	"slices"
 	"sync"
 )
 
@@ -46,7 +47,9 @@ func FromOr(ctx context.Context, fallback *slog.Logger) *slog.Logger {
 	return h.base.With(h.attrs...)
 }
 
-// AddAttrs enriches the ctx logger. It is a no-op when ctx has no holder.
+// AddAttrs enriches the ctx logger; an attr whose key is already set
+// replaces it (auth resolves the principal several times per request). It is
+// a no-op when ctx has no holder.
 func AddAttrs(ctx context.Context, attrs ...slog.Attr) {
 	h, ok := ctx.Value(ctxKey{}).(*holder)
 	if !ok {
@@ -57,6 +60,10 @@ func AddAttrs(ctx context.Context, attrs ...slog.Attr) {
 	defer h.mu.Unlock()
 
 	for _, a := range attrs {
+		h.attrs = slices.DeleteFunc(h.attrs, func(old any) bool {
+			existing, ok := old.(slog.Attr)
+			return ok && existing.Key == a.Key
+		})
 		h.attrs = append(h.attrs, a)
 	}
 }

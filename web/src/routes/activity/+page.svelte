@@ -13,6 +13,7 @@
 	import { ActivityStore, activityMessage } from '$lib/features/activity/activity.svelte';
 	import type { VmAction } from '$lib/features/vms/detail.svelte';
 	import PageHeader from '$lib/shared/ui/PageHeader.svelte';
+	import Card from '$lib/shared/ui/Card.svelte';
 	import EmptyState from '$lib/shared/ui/EmptyState.svelte';
 	import Button from '$lib/shared/ui/Button.svelte';
 	import ButtonLink from '$lib/shared/ui/ButtonLink.svelte';
@@ -97,8 +98,7 @@
 	</PageHeader>
 
 	{#if inFlight.length > 0}
-		<section class="mb-6 rounded-xl border border-border bg-card shadow-card" aria-labelledby="activity-in-progress" data-testid="activity-in-progress">
-			<h2 id="activity-in-progress" class="border-b border-border px-5 py-3 text-sm font-semibold">{m['activity.inProgress']()}</h2>
+		<Card pad="none" class="mb-6" title={m['activity.inProgress']()} titleId="activity-in-progress" aria-labelledby="activity-in-progress" data-testid="activity-in-progress">
 			<ul aria-live="polite">
 				{#each inFlight as row (row.key)}
 					<li class="border-b border-border-subtle last:border-b-0">
@@ -116,11 +116,10 @@
 					</li>
 				{/each}
 			</ul>
-		</section>
+		</Card>
 	{/if}
 
-	<section class="rounded-xl border border-border bg-card shadow-card" aria-labelledby="activity-recent" data-testid="activity-recent">
-		<h2 id="activity-recent" class="border-b border-border px-5 py-3 text-sm font-semibold">{m['activity.recent']()}</h2>
+	<Card pad="none" title={m['activity.recent']()} titleId="activity-recent" aria-labelledby="activity-recent" data-testid="activity-recent">
 		{#if store.entries === null && store.loading}
 			<div class="grid gap-3 p-5" role="status" aria-label={m['common.loading']()}>
 				<Skeleton class="h-4 w-2/3" />
@@ -158,5 +157,5 @@
 				{/each}
 			</ol>
 		{/if}
-	</section>
+	</Card>
 </section>

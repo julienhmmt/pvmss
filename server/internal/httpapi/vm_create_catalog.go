@@ -8,6 +8,7 @@ import (
 	"pvmss/server/internal/catalog"
 	"pvmss/server/internal/cluster"
 	"pvmss/server/internal/store"
+	"slices"
 )
 
 // catalogData is the raw catalog payload loaded from the store and the live
@@ -121,7 +122,7 @@ func loadClusterDiscovery(ctx context.Context, client cluster.Client, data *cata
 func buildCatalogDTO(clusterName string, data catalogData, cloudInitWriteEnabled bool) catalogDTO {
 	return catalogDTO{
 		Cluster:               clusterName,
-		Nodes:                 catalogNodeNames(data.resources.Nodes, data.snap),
+		Nodes:                 catalogNodeNames(data.resources, data.snap),
 		Storages:              catalogStorageDTOs(data.resources.Storages, data.snap.Storages),
 		Bridges:               catalogBridgeDTOs(data.resources.Bridges, data.bridges),
 		ISOs:                  catalogFileDTOs(data.resources.ISOs, catalogISOKey, liveISOKeys(data.isos), catalogISOView),
@@ -146,16 +147,22 @@ func mapCatalogSlice[In, Out any](items []In, viewOf func(In) Out) []Out {
 	return out
 }
 
-// catalogNodeNames keeps only approved nodes the cluster still reports.
-func catalogNodeNames(nodes []catalog.Node, snap cluster.Snapshot) []string {
+// catalogNodeNames keeps only approved nodes the cluster still reports and
+// that can host a VM: at least one approved storage and bridge on the node.
+// Create validates again server-side; this only spares the user a dead end.
+func catalogNodeNames(resources catalog.Resources, snap cluster.Snapshot) []string {
 	discovered := make(map[string]bool, len(snap.Nodes))
 	for _, n := range snap.Nodes {
 		discovered[n.Name] = true
 	}
 
-	names := make([]string, 0, len(nodes))
-	for _, node := range nodes {
-		if !discovered[node.Name] {
+	names := make([]string, 0, len(resources.Nodes))
+	for _, node := range resources.Nodes {
+		onNode := func(n string) bool { return n == node.Name }
+		usable := slices.ContainsFunc(resources.Storages, func(s catalog.Storage) bool { return onNode(s.Node) }) &&
+			slices.ContainsFunc(resources.Bridges, func(b catalog.Bridge) bool { return onNode(b.Node) })
+
+		if !discovered[node.Name] || !usable {
 			continue
 		}
 

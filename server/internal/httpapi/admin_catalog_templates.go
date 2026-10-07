@@ -47,8 +47,7 @@ func (h *AdminCatalog) ServeTemplates(w http.ResponseWriter, r *http.Request) {
 
 	templates, err := catalog.AdminListTemplates(r.Context(), h.store, client, clusterName)
 	if err != nil {
-		SetErrorMsg(w, "admin list templates failed", err)
-		writeAdminError(w, http.StatusInternalServerError, "internal_error", msgInternalServerError)
+		writeAdminFailure(w, "admin list templates failed", err)
 
 		return
 	}
@@ -119,8 +118,7 @@ func (h *AdminCatalog) ServeTemplateToggle(w http.ResponseWriter, r *http.Reques
 	}
 
 	if err != nil {
-		SetErrorMsg(w, "admin toggle template failed", err)
-		writeAdminError(w, http.StatusInternalServerError, "internal_error", msgInternalServerError)
+		writeAdminFailure(w, "admin toggle template failed", err)
 
 		return
 	}
@@ -152,8 +150,7 @@ func (h *AdminCatalog) ServeTemplateDelete(w http.ResponseWriter, r *http.Reques
 	}
 
 	if err != nil {
-		SetErrorMsg(w, "admin delete template failed", err)
-		writeAdminError(w, http.StatusInternalServerError, "internal_error", msgInternalServerError)
+		writeAdminFailure(w, "admin delete template failed", err)
 
 		return
 	}
@@ -221,8 +218,7 @@ func (h *AdminCatalog) ServeTemplateUpdate(w http.ResponseWriter, r *http.Reques
 			return
 		}
 
-		SetErrorMsg(w, "admin update template failed", err)
-		writeAdminError(w, http.StatusInternalServerError, "internal_error", msgInternalServerError)
+		writeAdminFailure(w, "admin update template failed", err)
 
 		return
 	}

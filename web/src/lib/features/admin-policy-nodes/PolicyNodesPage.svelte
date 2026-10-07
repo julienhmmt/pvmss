@@ -144,12 +144,12 @@
 				<caption class="sr-only">{m['policy.nodeTitle']()}</caption>
 				<thead>
 					<tr>
-						<TableHeader text={m['policy.node']()} column="node" activeColumn={sortBy} {sortDir} onSort={(c) => onSort(c as NodeCapacitySortColumn)} />
-						<TableHeader text={m['policy.colVms']()} column="vms" tooltip={m['policy.dimensionTooltip']()} activeColumn={sortBy} {sortDir} onSort={(c) => onSort(c as NodeCapacitySortColumn)} />
-						<TableHeader text={m['policy.colVcpus']()} column="vcpus" tooltip={m['policy.dimensionTooltip']()} activeColumn={sortBy} {sortDir} onSort={(c) => onSort(c as NodeCapacitySortColumn)} />
-						<TableHeader text={m['policy.colRam']()} column="ram" tooltip={m['policy.dimensionTooltip']()} activeColumn={sortBy} {sortDir} onSort={(c) => onSort(c as NodeCapacitySortColumn)} />
-						<TableHeader text={m['policy.colDisk']()} column="disk" tooltip={m['policy.dimensionTooltip']()} activeColumn={sortBy} {sortDir} onSort={(c) => onSort(c as NodeCapacitySortColumn)} />
-						<TableHeader text={m['policy.realLoad']()} column="load" tooltip={m['policy.realLoadTooltip']()} activeColumn={sortBy} {sortDir} onSort={(c) => onSort(c as NodeCapacitySortColumn)} />
+						<TableHeader text={m['policy.node']()} column="node" activeColumn={sortBy} {sortDir} {onSort} />
+						<TableHeader text={m['policy.colVms']()} column="vms" tooltip={m['policy.dimensionTooltip']()} activeColumn={sortBy} {sortDir} {onSort} />
+						<TableHeader text={m['policy.colVcpus']()} column="vcpus" tooltip={m['policy.dimensionTooltip']()} activeColumn={sortBy} {sortDir} {onSort} />
+						<TableHeader text={m['policy.colRam']()} column="ram" tooltip={m['policy.dimensionTooltip']()} activeColumn={sortBy} {sortDir} {onSort} />
+						<TableHeader text={m['policy.colDisk']()} column="disk" tooltip={m['policy.dimensionTooltip']()} activeColumn={sortBy} {sortDir} {onSort} />
+						<TableHeader text={m['policy.realLoad']()} column="load" tooltip={m['policy.realLoadTooltip']()} activeColumn={sortBy} {sortDir} {onSort} />
 						<th scope="col" class="font-medium">{m['policy.actions']()}</th>
 					</tr>
 				</thead>

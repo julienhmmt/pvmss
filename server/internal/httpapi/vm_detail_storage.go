@@ -6,6 +6,7 @@ import (
 	"pvmss/server/internal/catalog"
 	"pvmss/server/internal/cluster"
 	"pvmss/server/internal/vm"
+	"time"
 )
 
 func (h *VMDetail) handleDisk(w http.ResponseWriter, r *http.Request) {
@@ -84,6 +85,10 @@ func (h *VMDetail) handleDiskCreate(w http.ResponseWriter, r *http.Request, deps
 // handleDiskResize grows an existing disk from a PUT body, then re-resolves the
 // VM to return the updated disk.
 func (h *VMDetail) handleDiskResize(w http.ResponseWriter, r *http.Request, deps vm.DiskDependencies, identity auth.Identity, clusterName string, vmid int) {
+	// The resize waits for its Proxmox task (up to 60 s), past the 10 s
+	// server WriteTimeout.
+	_ = http.NewResponseController(w).SetWriteDeadline(time.Now().Add(hardwareWriteDeadline))
+
 	var request resizeDiskRequest
 	if err := decodeJSON(w, r, &request); err != nil {
 		h.writeDetailError(w, http.StatusBadRequest, "invalid_request", msgInvalidRequestBody)

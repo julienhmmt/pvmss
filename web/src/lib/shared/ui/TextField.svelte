@@ -15,7 +15,7 @@
 	import EyeOffIcon from './icons/EyeOffIcon.svelte';
 	import { m } from '$lib/paraglide/messages.js';
 
-	type InputType = 'text' | 'password' | 'email' | 'url' | 'number' | 'search' | 'tel';
+	type InputType = 'text' | 'password' | 'email' | 'url' | 'number' | 'search' | 'tel' | 'date' | 'datetime-local';
 	type InputMode = 'numeric' | 'decimal' | 'tel' | 'email' | 'url' | 'search';
 
 	interface Props {
@@ -49,6 +49,11 @@
 		reveal?: boolean;
 		/** Show a character count (requires maxLength). */
 		showCount?: boolean;
+		/** Density: `md` is the default control; `lg` is the page-level hero
+		 *  field - bigger type and roomier leading-icon padding (e.g. the
+		 *  global search). Takes the name of the native `size` attribute,
+		 *  which this component intentionally does not expose. */
+		size?: 'md' | 'lg';
 		class?: string;
 		[key: string]: unknown;
 	}
@@ -75,6 +80,7 @@
 		trailing,
 		reveal = false,
 		showCount = false,
+		size = 'md',
 		class: klass = '',
 		...rest
 	}: Props = $props();
@@ -90,7 +96,9 @@
 <div class="grid gap-1 {klass}">
 	<div class="relative">
 		{#if hasLeading}
-			<span class="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3 text-muted-foreground">
+			<span
+				class="pointer-events-none absolute inset-y-0 left-0 flex items-center text-muted-foreground {size === 'lg' ? 'pl-3.5' : 'pl-3'}"
+			>
 				{@render leading!()}
 			</span>
 		{/if}
@@ -98,7 +106,7 @@
 			{id}
 			{name}
 			type={effectiveType}
-			class="pv-input {hasLeading ? 'pl-9' : ''} {hasTrailing ? 'pr-9' : ''}"
+			class="pv-input {hasLeading ? (size === 'lg' ? 'pl-11' : 'pl-9') : ''} {hasTrailing ? 'pr-9' : ''} {size === 'lg' ? 'text-base' : ''}"
 			{required}
 			{disabled}
 			{readonly}

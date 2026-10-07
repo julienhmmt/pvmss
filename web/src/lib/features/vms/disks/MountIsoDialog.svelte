@@ -2,6 +2,7 @@
 	import { getVmDetailContext } from '../detail.svelte';
 	import Alert from '$lib/shared/ui/Alert.svelte';
 	import Dialog from '$lib/shared/ui/Dialog.svelte';
+	import Select from '$lib/shared/ui/Select.svelte';
 	import { m } from '$lib/paraglide/messages.js';
 	import Button from '$lib/shared/ui/Button.svelte';
 
@@ -31,16 +32,14 @@
 	<div class="grid gap-3">
 		<label class="grid gap-1 text-sm">
 			{m['vms.disks.mountApprovedIso']()}
-			<select
-				class="pv-input"
+			<Select
 				bind:value={selectedIso}
+				options={[
+					{ value: '', label: m['vms.disks.mountSelectIso']() },
+					...(store.hardwareOptions?.isos ?? []).map((iso) => ({ value: iso.volId, label: iso.name }))
+				]}
 				data-testid="mount-iso-select"
-			>
-				<option value="">{m['vms.disks.mountSelectIso']()}</option>
-				{#each store.hardwareOptions?.isos ?? [] as iso (iso.volId)}
-					<option value={iso.volId}>{iso.name}</option>
-				{/each}
-			</select>
+			/>
 		</label>
 		{#if store.writeError}
 			<Alert>{store.writeError}</Alert>

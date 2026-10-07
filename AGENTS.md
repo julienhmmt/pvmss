@@ -18,17 +18,17 @@ script, or CI job still pointing at `backend/` or `frontend/` is stale - see
 
 ## Repository Layout
 
-| Path              | Role                                                                  |
-| ----------------- | --------------------------------------------------------------------- |
-| `server/`         | Go REST API - module `pvmss/server`, own `go.mod`                     |
-| `web/`            | SvelteKit SPA - app `pvmss-web`, own `package.json` (bun)             |
-| `helm/`           | Helm chart                                                            |
+| Path              | Role                                                                                                                              |
+| ----------------- | --------------------------------------------------------------------------------------------------------------------------------- |
+| `server/`         | Go REST API - module `pvmss/server`, own `go.mod`                                                                                 |
+| `web/`            | SvelteKit SPA - app `pvmss-web`, own `package.json` (bun)                                                                         |
+| `helm/`           | Helm chart                                                                                                                        |
 | `docs/`           | Documentation: `FEATURES.md`, `cloud-init.md`, `observability.md`, `constitution.md`, `design/`, `agents/`, `plans/` (task plans) |
-| `specs/`          | Feature specifications (speckit); gitignored but real work            |
-| `sonar-projects/` | Per-project SonarScanner `.properties` files                          |
-| `tools/`          | Helper scripts (`pq`, sonar bootstrap/coverage/scan/query, superlint) |
-| `.devin/`         | Project rules + skills (local, gitignored - not in a fresh clone)     |
-| `.agents/`        | Agent-local working files - `skills/`, `memory/` (gitignored)         |
+| `specs/`          | Feature specifications (speckit); gitignored but real work                                                                        |
+| `sonar-projects/` | Per-project SonarScanner `.properties` files                                                                                      |
+| `tools/`          | Helper scripts (`pq`, sonar bootstrap/coverage/scan/query, superlint)                                                             |
+| `.devin/`         | Project rules + skills (local, gitignored - not in a fresh clone)                                                                 |
+| `.agents/`        | Agent-local working files - `skills/`, `memory/` (gitignored)                                                                     |
 
 `server/` and `web/` are separate build units with separate tooling. The root
 `Makefile` exposes them via the `server-*` / `web-*` targets.
@@ -36,16 +36,16 @@ script, or CI job still pointing at `backend/` or `frontend/` is stale - see
 Root documents carry the product context. Read the relevant one before
 building a user-facing feature:
 
-| File               | Answers                                                           |
-| ------------------ | ----------------------------------------------------------------- |
-| `PRODUCT.md`       | Who the users are, why the product exists, design principles      |
-| `docs/FEATURES.md` | Route-by-route inventory of every shipped feature and its status  |
-| `WORKFLOWS.md`     | What a user does, end to end, per workflow                        |
-| `DESIGN.md`        | Design tokens - colors, typography, spacing                       |
-| `ROADMAP.md`       | History from v0.1 to the current rewrite, and what's next         |
-| `TECH_DEBT.md`     | What's lingering or half-finished, and what deciding it takes     |
-| `CONTEXT.md`       | Domain glossary (projection, live status, UPID, lock...)          |
-| `CONTRIBUTING.md`  | How to contribute; docs to update with a user-facing change       |
+| File               | Answers                                                          |
+| ------------------ | ---------------------------------------------------------------- |
+| `PRODUCT.md`       | Who the users are, why the product exists, design principles     |
+| `docs/FEATURES.md` | Route-by-route inventory of every shipped feature and its status |
+| `WORKFLOWS.md`     | What a user does, end to end, per workflow                       |
+| `DESIGN.md`        | Design tokens - colors, typography, spacing                      |
+| `ROADMAP.md`       | History from v0.1 to the current rewrite, and what's next        |
+| `TECH_DEBT.md`     | What's lingering or half-finished, and what deciding it takes    |
+| `CONTEXT.md`       | Domain glossary (projection, live status, UPID, lock...)         |
+| `CONTRIBUTING.md`  | How to contribute; docs to update with a user-facing change      |
 
 `WORKFLOWS.md` opens with a seven-field template (audience, entry, route, API,
 steps, states, safety nets). Adding a user-facing workflow means adding its
@@ -113,14 +113,14 @@ Use `tools/pq`. It wraps ripgrep with declaration-aware patterns and
 excludes `node_modules`, build output and vendor trees. It indexes nothing -
 every answer is computed fresh in ~200 ms, so it is never stale.
 
-| Question | Command | Typical cost |
-| --- | --- | --- |
-| Where is `Foo` defined? | `pq def Foo` | ~130 tok |
-| What does this package expose? | `pq api server/internal/vm` | ~2.5k tok |
-| Who uses `Foo`? | `pq callers Foo` | ~190 tok |
-| What is in this file? | `pq file path/to/x.go` | varies |
-| How is this area organised? | `pq tree server/internal` | ~120 tok |
-| Free-text, last resort | `pq grep 'pattern' [path]` | unbounded |
+| Question                       | Command                     | Typical cost |
+| ------------------------------ | --------------------------- | ------------ |
+| Where is `Foo` defined?        | `pq def Foo`                | ~130 tok     |
+| What does this package expose? | `pq api server/internal/vm` | ~2.5k tok    |
+| Who uses `Foo`?                | `pq callers Foo`            | ~190 tok     |
+| What is in this file?          | `pq file path/to/x.go`      | varies       |
+| How is this area organised?    | `pq tree server/internal`   | ~120 tok     |
+| Free-text, last resort         | `pq grep 'pattern' [path]`  | unbounded    |
 
 ### Procedure
 
@@ -262,20 +262,20 @@ the values are ignored and the admin UI owns cluster management.
 
 **Optional:**
 
-| Variable                                      | Default                            |
-| --------------------------------------------- | ---------------------------------- |
-| `PVMSS_HOST`                                  | `127.0.0.1` (image sets `0.0.0.0`) |
-| `PVMSS_WEB_DIR`                               | relative to the executable         |
-| `ADMIN_PASSWORD_HASH`                         | empty; if set, must be `$2…`       |
-| `PVMSS_COOKIE_SECURE`                         | `true`                             |
-| `PVMSS_INVENTORY_REFRESH_INTERVAL`            | `30s`                              |
-| `PVMSS_INVENTORY_MANUAL_REFRESH_MIN_INTERVAL` | `5s`                               |
-| `PVMSS_INVENTORY_REFRESH_TIMEOUT`             | `15s`                              |
-| `PVMSS_MAX_LIST_PAGE_SIZE`                    | `100`                              |
+| Variable                                      | Default                                                                                                                              |
+| --------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------ |
+| `PVMSS_HOST`                                  | `127.0.0.1` (image sets `0.0.0.0`)                                                                                                   |
+| `PVMSS_WEB_DIR`                               | relative to the executable                                                                                                           |
+| `ADMIN_PASSWORD_HASH`                         | empty; if set, must be `$2…`                                                                                                         |
+| `PVMSS_COOKIE_SECURE`                         | `true`                                                                                                                               |
+| `PVMSS_INVENTORY_REFRESH_INTERVAL`            | `30s`                                                                                                                                |
+| `PVMSS_INVENTORY_MANUAL_REFRESH_MIN_INTERVAL` | `5s`                                                                                                                                 |
+| `PVMSS_INVENTORY_REFRESH_TIMEOUT`             | `15s`                                                                                                                                |
+| `PVMSS_MAX_LIST_PAGE_SIZE`                    | `100`                                                                                                                                |
 | `PVMSS_DB_RESET_ON_INCOMPATIBLE`              | `false` (dev compose sets `true`: a DB with an unknown schema is renamed to `<db>.incompatible-<time>` and recreated, never deleted) |
-| `PVMSS_TRUSTED_PROXY_HOPS`                    | `1`                                |
-| `PVMSS_RATE_LIMIT_MAX`                        | `0` (keep each limiter's built-in ceiling; a positive value raises them all, used by e2e) |
-| `PVMSS_METRICS_PORT`                          | empty (no metrics listener); 1-65535 and different from `PVMSS_PORT` enables `GET /metrics` on `PVMSS_HOST:<port>` |
+| `PVMSS_TRUSTED_PROXY_HOPS`                    | `1`                                                                                                                                  |
+| `PVMSS_RATE_LIMIT_MAX`                        | `0` (keep each limiter's built-in ceiling; a positive value raises them all, used by e2e)                                            |
+| `PVMSS_METRICS_PORT`                          | empty (no metrics listener); 1-65535 and different from `PVMSS_PORT` enables `GET /metrics` on `PVMSS_HOST:<port>`                   |
 
 Tracing and OTLP metric push use the standard `OTEL_*` variables, read by the
 OpenTelemetry SDK itself, not by `config/load.go`: `OTEL_EXPORTER_OTLP_ENDPOINT`
@@ -298,12 +298,12 @@ Binding for every agent writing server code. Operator-facing detail
 
 **Level contract.**
 
-| Level   | Meaning                                                          | Examples |
-| ------- | ---------------------------------------------------------------- | -------- |
-| `Error` | Broken, needs a human                                            | a 5xx, a DB failure, a cluster that becomes unreachable |
-| `Warn`  | Degraded, or an expected refusal worth noticing                  | failed login, 403, CSRF reject, 429, a cluster still down, a deprecated env var |
-| `Info`  | App lifecycle, user actions (audit mirror), state transitions    | startup banner, login, VM action, cluster recovered |
-| `Debug` | Diagnostics                                                      | each Proxmox call, each successful refresh, GET requests |
+| Level   | Meaning                                                       | Examples                                                                        |
+| ------- | ------------------------------------------------------------- | ------------------------------------------------------------------------------- |
+| `Error` | Broken, needs a human                                         | a 5xx, a DB failure, a cluster that becomes unreachable                         |
+| `Warn`  | Degraded, or an expected refusal worth noticing               | failed login, 403, CSRF reject, 429, a cluster still down, a deprecated env var |
+| `Info`  | App lifecycle, user actions (audit mirror), state transitions | startup banner, login, VM action, cluster recovered                             |
+| `Debug` | Diagnostics                                                   | each Proxmox call, each successful refresh, GET requests                        |
 
 **Rules.**
 
@@ -356,6 +356,10 @@ locally with `make server-lint` (`go tool golangci-lint`).
 - `make server-test` runs the whole Go suite with `-race`, no Proxmox needed -
   tests use the `fake` cluster source.
 - `make web-test` runs vitest; `cd web && bun run test:coverage` for coverage.
+- Run `make web-check` and `bun run build` sequentially: both regenerate
+  SvelteKit/Paraglide artifacts. Concurrent runs can produce a blank SPA with
+  `Cannot read properties of undefined (reading 'data')`; rebuild serially
+  before running Playwright.
 - Playwright e2e lives in `web/e2e/`; run `bun run test:e2e:install` once, then
   `bun run test:e2e`.
 - There is no `-tags=integration` build tag and no separate offline/online test

@@ -86,6 +86,7 @@
   "error.invalid_action": "Invalid action.",
   "error.quota_exceeded": "VM quota reached.",
   "error.gabarit_exceeded": "VM template exceeded.",
+  "error.cluster_permission_denied": "PVMSS is missing a Proxmox permission: its service token needs {privilege} on {path}. Ask an administrator to grant it.",
   "error.snapshot_storage_unsupported": "This storage does not support snapshots.",
   "error.vm_locked": "The VM is locked by another operation. Try again shortly.",
   "error.snapshot_name_exists": "A snapshot with this name already exists.",
@@ -418,7 +419,7 @@
   "vms.list.paginationLabel": "VM list pagination",
   "vms.list.errorLoading": "failed to load VMs",
   "vms.detail.breadcrumb": "VM {vmid}",
-  "vms.detail.title": "VM {vmid} - PVMSS",
+  "vms.detail.title": "{name} - PVMSS",
   "vms.detail.loading": "Loading…",
   "vms.detail.clickToRename": "Click to rename",
   "vms.detail.clickToEdit": "Click to edit",
@@ -474,6 +475,9 @@
   "vms.detail.baselineApplied": "Cloud-init baseline delivered (qemu-guest-agent installed and enabled).",
   "vms.detail.baselineOverride": "Cloud-init baseline delivered (replaced by a cluster-wide pvmss-baseline.yml).",
   "vms.detail.baselineNotDelivered": "Cloud-init baseline not delivered.",
+  "vms.detail.baselineReason.writeUnavailable": "Cloud-init documents are not enabled on this cluster yet.",
+  "vms.detail.baselineReason.noDocument": "No cloud-init document was published for this cluster at creation time.",
+  "vms.detail.baselineReason.deliveryFailed": "The document could not be attached to this machine.",
   "vms.detail.baselineNotDeliveredHint": "This machine boots with its native keys (user, SSH key, network) but without the document that installs the QEMU guest agent. Pick a document under Configuration > Cloud-init once it is published on the node, or ask an admin to publish it.",
   "vms.action.start": "Start",
   "vms.action.shutdown": "Shut down",
@@ -487,7 +491,12 @@
   "vms.confirm.reset.title": "Reset {name}?",
   "vms.confirm.reset.message": "Reset restarts the machine without letting the guest shut down first. Anything not saved inside the guest is lost. Reboot instead if the machine still responds.",
   "vms.confirm.reset.confirm": "Reset",
-  "vms.console.title": "VM {vmid} Console - PVMSS",
+  "vms.console.state.idle": "Idle",
+  "vms.console.state.connecting": "Connecting",
+  "vms.console.state.connected": "Connected",
+  "vms.console.state.disconnected": "Disconnected",
+  "vms.console.state.error": "Error",
+  "vms.console.title": "{name} console - PVMSS",
   "vms.console.heading": "VM {vmid} Console",
   "vms.console.crashed": "The console crashed unexpectedly.",
   "vms.console.open": "Open Console",
@@ -624,9 +633,9 @@
   "vms.hardware.memory": "Memory (MB)",
   "vms.hardware.tags": "Tags",
   "vms.hardware.tagsHint": "Tags are defined by administrators - click to select or deselect.",
-  "vms.hardware.restartNotice": "This VM is running - saving sockets, cores, or memory changes will stop and restart it.",
+  "vms.hardware.restartNotice": "This VM is running - saving sockets, cores, or memory changes will shut it down cleanly, apply them, and start it again. If it does not shut down within about a minute, nothing is changed.",
   "vms.hardware.save": "Save hardware",
-  "vms.hardware.applyingRestart": "Applying hardware change - VM is restarting…",
+  "vms.hardware.applyingRestart": "Applying hardware change - shutting the VM down, then starting it again…",
   "vms.hardware.applying": "Applying hardware change…",
   "vms.network.vlan": "VLAN",
   "vms.snapshots.heading": "Snapshots",
@@ -916,7 +925,7 @@
   "admin.bridges.filterActive": "All states",
   "admin.bridges.filterActiveOnly": "Active only",
   "admin.bridges.filterInactiveOnly": "Inactive only",
-  "admin.bridges.filterAllEnabled": "All states",
+  "admin.bridges.filterAllEnabled": "Enabled and disabled",
   "admin.bridges.filterEnabled": "Enabled",
   "admin.bridges.filterDisabled": "Disabled",
   "admin.bridges.resetFilters": "Reset filters",
@@ -946,6 +955,7 @@
   "admin.cloudinit.contentSyncWarning": "Saving publishes the template over SSH to every node of the cluster, merged on top of the PVMSS baseline. Each version is a new file: VMs keep the version they were created with.",
   "admin.cloudinit.contentCounter": "{used} / {max} characters",
   "admin.cloudinit.loadError": "failed to load templates",
+  "admin.cloudinit.invalidYaml": "The content is not valid YAML: {detail}",
   "admin.cloudinit.createError": "failed to create template",
   "admin.cloudinit.updateError": "failed to update template",
   "admin.cloudinit.deleteError": "failed to delete template",
@@ -1045,7 +1055,6 @@
   "admin.catalog.removeBridgeError": "Failed to remove bridge approval",
   "admin.catalog.removeIsoError": "Failed to remove ISO approval",
   "admin.templates.title": "Admin - VM templates - PVMSS",
-  "admin.templates.missingBadge": "not found in Proxmox",
   "admin.templates.unreadableBadge": "disk unreadable",
   "admin.templates.remove": "Remove",
   "admin.templates.removeSuccess": "Template {vmid} removed",
@@ -1086,7 +1095,7 @@
   "admin.nodes.tableCaption": "Nodes",
   "admin.nodes.searchPlaceholder": "Search by name",
   "admin.nodes.filterAllStatuses": "All statuses",
-  "admin.nodes.filterAllEnabled": "All states",
+  "admin.nodes.filterAllEnabled": "Enabled and disabled",
   "admin.nodes.filterEnabled": "Enabled",
   "admin.nodes.filterDisabled": "Disabled",
   "admin.nodes.resetFilters": "Reset filters",
@@ -1195,6 +1204,7 @@
   "admin.profiles.editProfile": "Edit profile",
   "admin.profiles.newProfileForm": "New profile",
   "admin.profiles.labelField": "Label",
+  "admin.profiles.sockets": "Sockets",
   "admin.profiles.vcpuCores": "vCPU cores",
   "admin.profiles.pageTitle": "Admin Profiles - PVMSS",
   "admin.profiles.editLabel": "Edit {label}",
@@ -1217,7 +1227,7 @@
   "admin.storages.searchPlaceholder": "Search by name, node, or type",
   "admin.storages.filterAllNodes": "All nodes",
   "admin.storages.filterAllTypes": "All types",
-  "admin.storages.filterAllEnabled": "All states",
+  "admin.storages.filterAllEnabled": "Enabled and disabled",
   "admin.storages.filterEnabled": "Enabled",
   "admin.storages.filterDisabled": "Disabled",
   "admin.storages.resetFilters": "Reset filters",
@@ -1243,7 +1253,7 @@
   "admin.tags.noFilterMatches": "No tags match your filters.",
   "admin.tags.resetFilters": "Reset filters",
   "admin.tags.newTagForm": "New tag",
-  "admin.tags.nameField": "Name (1-50 alphanumeric)",
+  "admin.tags.nameField": "Name (1-50: lowercase letters, digits, - _ . +)",
   "admin.tags.colorField": "Color",
   "admin.tags.loadError": "failed to load tags",
   "admin.tags.createError": "failed to create tag",
@@ -1332,7 +1342,7 @@
   "admin.db.export": "Export",
   "admin.db.exportError": "export failed",
   "admin.db.importTitle": "Import Database",
-  "admin.db.importDescription": "Upload a previously exported database file. You'll see a preview before anything is written.",
+  "admin.db.importDescription": "Upload a previously exported database file. You'll see a preview before anything is written. Clusters are never imported (they hold API token secrets): add them again under Clusters. Sessions, audit history and per-VM state are not imported either.",
   "admin.db.importSuccess": "Import successful - {tables} replaced.",
   "admin.db.preview": "Preview",
   "admin.db.previewDescription": "The following tables will be replaced (existing rows deleted, then reloaded from the upload):",
@@ -1422,8 +1432,37 @@
   "chrome.sidebar.navAbout": "About",
   "chrome.sidebar.newMachine": "New machine",
   "chrome.sidebar.quotaHeading": "Your quota",
-  "chrome.sidebar.quotaUsed": "{used} of {allowed} machines",
-  "chrome.sidebar.quotaUnlimited": "{used} machines · no cap",
+  "chrome.sidebar.quotaUsed": [
+    {
+      "declarations": [
+        "input allowed",
+        "local allowedPlural = allowed: plural",
+        "input used"
+      ],
+      "selectors": [
+        "allowedPlural"
+      ],
+      "match": {
+        "allowedPlural=one": "{used} of {allowed} machine",
+        "allowedPlural=other": "{used} of {allowed} machines"
+      }
+    }
+  ],
+  "chrome.sidebar.quotaUnlimited": [
+    {
+      "declarations": [
+        "input used",
+        "local usedPlural = used: plural"
+      ],
+      "selectors": [
+        "usedPlural"
+      ],
+      "match": {
+        "usedPlural=one": "{used} machine · no cap",
+        "usedPlural=other": "{used} machines · no cap"
+      }
+    }
+  ],
   "chrome.sidebar.quotaExhausted": "Quota reached",
   "chrome.sidebar.quotaUnavailable": "Quota unavailable",
   "chrome.sidebar.userChip": "Signed in as {username}",
@@ -1646,6 +1685,9 @@
   "machine.status.stopping": "Stopping",
   "machine.status.failed": "Creation failed",
   "machine.status.partial": "Partially ready",
+  "os.family.linux": "Linux",
+  "os.family.windows": "Windows",
+  "os.family.unknown": "Unknown OS",
   "vms.cloudinit.modeDocument": "Template",
   "vms.cloudinit.documentHelp": "Cloud-init templates are written by your administrator and published on every node. Pick one to change what the VM runs at boot.",
   "vms.cloudinit.documentCurrent": "Current document:",
@@ -1763,9 +1805,53 @@
   "vms.list.hint.stopped": "Stopped. Your files are kept.",
   "vms.list.hint.failed": "The creation did not finish. Nothing was taken from your allowance.",
   "vms.list.hint.partial": "Created, but its access setup failed. Do not create a duplicate: open it to get help.",
-  "vms.list.allowanceUsed": "{used} / {allowed} machines used",
-  "vms.list.allowanceUnlimited": "{used} machines, no limit set",
-  "vms.list.allowanceMeterLabel": "{used} of {allowed} machines used",
+  "vms.list.allowanceUsed": [
+    {
+      "declarations": [
+        "input allowed",
+        "local allowedPlural = allowed: plural",
+        "input used"
+      ],
+      "selectors": [
+        "allowedPlural"
+      ],
+      "match": {
+        "allowedPlural=one": "{used} / {allowed} machine used",
+        "allowedPlural=other": "{used} / {allowed} machines used"
+      }
+    }
+  ],
+  "vms.list.allowanceUnlimited": [
+    {
+      "declarations": [
+        "input used",
+        "local usedPlural = used: plural"
+      ],
+      "selectors": [
+        "usedPlural"
+      ],
+      "match": {
+        "usedPlural=one": "{used} machine, no limit set",
+        "usedPlural=other": "{used} machines, no limit set"
+      }
+    }
+  ],
+  "vms.list.allowanceMeterLabel": [
+    {
+      "declarations": [
+        "input allowed",
+        "local allowedPlural = allowed: plural",
+        "input used"
+      ],
+      "selectors": [
+        "allowedPlural"
+      ],
+      "match": {
+        "allowedPlural=one": "{used} of {allowed} machine used",
+        "allowedPlural=other": "{used} of {allowed} machines used"
+      }
+    }
+  ],
   "vms.list.allowanceSource": "Set by your administrator",
   "vms.list.quietHelpTitle": "A little help, if you need it.",
   "vms.list.quietHelpBody": "How to connect, what the states mean, and what to do when something looks wrong.",
@@ -1780,6 +1866,12 @@
   "vms.list.filterAttention": "Needs attention",
   "vms.list.sortByName": "Sort by name",
   "vms.list.sortByStatus": "Sort by status",
+  "vms.list.sortByCpu": "Sort by CPU",
+  "vms.list.sortByMemory": "Sort by memory",
+  "vms.list.sortByVmid": "Sort by VMID",
+  "vms.list.selectAllMatching": "Select all {total} machines",
+  "vms.list.pageSizeLabel": "Machines per page",
+  "vms.list.perPage": "{count} / page",
   "vms.list.sortGroupLabel": "Sort machines",
   "vms.detail.back": "My machines",
   "vms.detail.identityLine": "{cpu} vCPU · {memory} RAM · {disk} storage",
@@ -1907,8 +1999,37 @@
   "vms.create.summary.includedNetwork": "Approved network & storage",
   "vms.create.summary.includedStart": "Starts after setup",
   "vms.create.summary.includedStopped": "Stays stopped after setup",
-  "vms.create.summary.quota": "After creation: {used} / {allowed} machines",
-  "vms.create.summary.quotaUnlimited": "After creation: {used} machines",
+  "vms.create.summary.quota": [
+    {
+      "declarations": [
+        "input allowed",
+        "local allowedPlural = allowed: plural",
+        "input used"
+      ],
+      "selectors": [
+        "allowedPlural"
+      ],
+      "match": {
+        "allowedPlural=one": "After creation: {used} / {allowed} machine",
+        "allowedPlural=other": "After creation: {used} / {allowed} machines"
+      }
+    }
+  ],
+  "vms.create.summary.quotaUnlimited": [
+    {
+      "declarations": [
+        "input used",
+        "local usedPlural = used: plural"
+      ],
+      "selectors": [
+        "usedPlural"
+      ],
+      "match": {
+        "usedPlural=one": "After creation: {used} machine",
+        "usedPlural=other": "After creation: {used} machines"
+      }
+    }
+  ],
   "vms.create.summary.submit": "Create this machine",
   "vms.create.summary.provisioningNote": "Setup takes a few minutes. You can follow it from My machines or Activity.",
   "vms.create.blocked.quotaTitle": "You've reached your machine allowance.",

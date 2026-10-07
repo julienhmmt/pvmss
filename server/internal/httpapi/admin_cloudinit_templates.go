@@ -7,6 +7,8 @@ import (
 	"fmt"
 	"net/http"
 	"pvmss/server/internal/catalog"
+	"pvmss/server/internal/cloudinit"
+	"strings"
 )
 
 // maxCloudInitTemplateBody is the explicit server-side content cap for an
@@ -97,7 +99,9 @@ func (h *AdminCatalog) ServeCloudInitTemplateCreate(w http.ResponseWriter, r *ht
 	}
 
 	if errors.Is(err, catalog.ErrInvalidCloudInitTemplate) {
-		writeAdminError(w, http.StatusBadRequest, "invalid_content", "content must start with #cloud-config")
+		code, message := cloudInitTemplateError(err)
+		writeAdminError(w, http.StatusBadRequest, code, message)
+
 		return
 	}
 
@@ -147,7 +151,9 @@ func (h *AdminCatalog) ServeCloudInitTemplateUpdate(w http.ResponseWriter, r *ht
 	}
 
 	if errors.Is(err, catalog.ErrInvalidCloudInitTemplate) {
-		writeAdminError(w, http.StatusBadRequest, "invalid_content", "content must start with #cloud-config")
+		code, message := cloudInitTemplateError(err)
+		writeAdminError(w, http.StatusBadRequest, code, message)
+
 		return
 	}
 
@@ -194,4 +200,18 @@ func (h *AdminCatalog) templateWithDocument(ctx context.Context, clusterName str
 	dto.Document, dto.DocumentError = documentFor(ctx, client, t.ID, t.Content)
 
 	return dto
+}
+
+// cloudInitTemplateError maps a template validation failure (create and
+// update) to its code and message: a YAML parse error keeps the parser's
+// line, a missing header or label says so.
+func cloudInitTemplateError(err error) (code, message string) {
+	switch {
+	case errors.Is(err, cloudinit.ErrSnippetInvalidYAML):
+		return "invalid_yaml", strings.TrimPrefix(err.Error(), catalog.ErrInvalidCloudInitTemplate.Error()+": ")
+	case errors.Is(err, cloudinit.ErrSnippetPrefix):
+		return "invalid_content", "content must start with #cloud-config"
+	default:
+		return "invalid_content", strings.TrimPrefix(err.Error(), catalog.ErrInvalidCloudInitTemplate.Error()+": ")
+	}
 }

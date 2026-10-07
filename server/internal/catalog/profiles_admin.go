@@ -84,7 +84,7 @@ func ListAdminProfiles(ctx context.Context, st *store.Store, cluster string) ([]
 // ProfileSpec is the editable field set of a VM profile, shared by
 // CreateProfile and UpdateProfile. Grouping it collapses the positional
 // field parameters those functions used to take (SonarQube go:S107).
-// Sockets defaults to 1 when zero - the admin UI does not yet expose it.
+// Sockets defaults to 1 when zero (older clients omit it).
 type ProfileSpec struct {
 	Label    string
 	Sockets  int

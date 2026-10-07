@@ -10,6 +10,7 @@ import (
 	"pvmss/server/internal/inventory"
 	"pvmss/server/internal/store"
 	"pvmss/server/internal/vm"
+	"strings"
 	"sync"
 	"testing"
 	"time"
@@ -508,3 +509,36 @@ func TestBulkAction_FailedTarget_StillRefreshes(t *testing.T) {
 // returns auth.Identity, but the import is in create_test.go - this file needs
 // its own reference if it constructs identities directly).
 var _ auth.Identity
+
+// rejectingWriter is the fake writer except Action, which fails the way a real
+// Proxmox does: a RejectionError carrying the raw Proxmox text.
+type rejectingWriter struct{ cluster.Fake }
+
+func (rejectingWriter) Action(context.Context, string, int, string) error {
+	return &cluster.RejectionError{
+		Status: 501, Method: "POST", Path: "/nodes/n/qemu/101/status/pause",
+		Message: "Method 'POST /nodes/n/qemu/101/status/pause' not implemented",
+	}
+}
+
+// TestBulkAction_ClusterRejectionIsGeneric - the raw Proxmox response text
+// never reaches the per-VM message; the detail stays in the server log.
+//
+//nolint:paralleltest // serial: shared fake dataset
+func TestBulkAction_ClusterRejectionIsGeneric(t *testing.T) {
+	results := vm.BulkAction(context.Background(), vm.BulkDeps{
+		Resolver:  bulkTestResolver(t),
+		Actor:     aliceIdentity(),
+		Writer:    rejectingWriter{},
+		Audit:     noopAudit{},
+		Refresher: noopRefresher{},
+	}, []vm.BulkTarget{{Cluster: testClusterName, VMID: 101}}, "start")
+
+	if results[0].Status != bulkStatusError {
+		t.Fatalf("status = %q, want error", results[0].Status)
+	}
+
+	if strings.Contains(results[0].Message, "not implemented") || strings.Contains(results[0].Message, "/nodes/") {
+		t.Errorf("message leaks raw Proxmox text: %q", results[0].Message)
+	}
+}

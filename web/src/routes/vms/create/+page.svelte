@@ -8,6 +8,7 @@
 	import ModeChooser from '$lib/features/vm-create/ModeChooser.svelte';
 	import ClusterSelector from '$lib/shared/ui/ClusterSelector.svelte';
 	import PageHeader from '$lib/shared/ui/PageHeader.svelte';
+	import Card from '$lib/shared/ui/Card.svelte';
 	import EmptyState from '$lib/shared/ui/EmptyState.svelte';
 	import Button from '$lib/shared/ui/Button.svelte';
 	import ButtonLink from '$lib/shared/ui/ButtonLink.svelte';
@@ -77,31 +78,31 @@
 		<Alert>{m['vms.create.adminBlocked']()}</Alert>
 	{:else}
 		{#if form.clusterOptions.length > 1}
-			<div class="mb-6 flex flex-col gap-4 rounded-xl border border-border bg-card p-4 shadow-card">
+			<Card as="div" pad="sm" class="mb-6 flex flex-col gap-4">
 				<ClusterSelector options={form.clusterOptions} value={form.cluster} onChange={(value) => form.setCluster(value)} id="vm-create-cluster" />
-			</div>
+			</Card>
 		{/if}
 
 		{#if unavailable}
-			<div class="rounded-xl border border-border bg-card shadow-card">
+			<Card as="div" pad="none">
 				<EmptyState title={m['vms.create.blocked.unavailableTitle']()} description={m['vms.create.blocked.unavailableBody']()} tone="error" dataTestid="vm-create-unavailable">
 					{#snippet actions()}
 						<Button onclick={() => void form.loadCatalog()}>{m['vms.create.blocked.retry']()}</Button>
 					{/snippet}
 				</EmptyState>
-			</div>
+			</Card>
 		{:else if quotaReached}
-			<div class="rounded-xl border border-border bg-card shadow-card">
+			<Card as="div" pad="none">
 				<EmptyState title={m['vms.create.blocked.quotaTitle']()} description={m['vms.create.blocked.quotaBody']()} dataTestid="vm-create-quota-reached">
 					{#snippet actions()}
 						<ButtonLink href={resolve('/vms')} variant="secondary">{m['vms.create.back']()}</ButtonLink>
 					{/snippet}
 				</EmptyState>
-			</div>
+			</Card>
 		{:else if noCatalog}
-			<div class="rounded-xl border border-border bg-card shadow-card">
+			<Card as="div" pad="none">
 				<EmptyState title={m['vms.create.blocked.noCatalogTitle']()} description={m['vms.create.blocked.noCatalogBody']()} dataTestid="vm-create-no-catalog" />
-			</div>
+			</Card>
 		{:else if chosen === null}
 			<div class="mx-auto flex w-full max-w-2xl flex-col gap-4">
 				<p class="text-sm text-muted-foreground">{m['vms.create.modePrompt']()}</p>

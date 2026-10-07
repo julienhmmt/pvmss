@@ -36,6 +36,7 @@
 		interactive?: boolean;
 		class?: string;
 		children: Snippet;
+		[key: string]: unknown;
 	}
 
 	let {
@@ -50,7 +51,8 @@
 		footer,
 		interactive = false,
 		class: extra = '',
-		children
+		children,
+		...rest
 	}: Props = $props();
 
 	const padding: Record<NonNullable<Props['pad']>, string> = {
@@ -71,6 +73,7 @@
 		: padding[pad]} {interactive
 		? 'transition-[box-shadow,border-color] duration-150 hover:border-muted-foreground-subtle hover:shadow-raised'
 		: ''} {extra}"
+	{...rest}
 >
 	{#if header}
 		<div class="border-b border-border px-5 py-4">{@render header()}</div>

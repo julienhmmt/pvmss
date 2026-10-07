@@ -1,13 +1,13 @@
 <script lang="ts">
 	/**
-	 * ImagePicker - grouped native select for approved cloud images.
-	 * Grouped by node like the TemplatePicker (the shared Select has no
-	 * optgroup support) and showing each image's size, the disk floor the
-	 * server enforces (code "disk_below_image").
+	 * ImagePicker - grouped select for approved cloud images. Options carry
+	 * `group` so Select renders one <optgroup> per node, and each image's
+	 * size, the disk floor the server enforces (code "disk_below_image").
 	 */
 	import { getVmCreateContext } from './create.svelte';
 	import { m } from '$lib/paraglide/messages.js';
 	import FormField from '$lib/shared/ui/FormField.svelte';
+	import Select from '$lib/shared/ui/Select.svelte';
 
 	interface Props {
 		error?: string | null;
@@ -45,12 +45,17 @@
 		}
 	}
 
-	// Group images by node so the picker reads like the ISO/template ones.
-	const imageGroups = $derived(
-		[...new Set(images.map((image) => image.node))].sort().map((node) => ({
-			node,
-			images: images.filter((image) => image.node === node)
-		}))
+	// Options carry the node as `group`: Select emits one <optgroup> per
+	// distinct group in first-seen order, so sort by node to keep the
+	// alphabetical grouping the picker had.
+	const options = $derived(
+		[...images]
+			.sort((a, b) => a.node.localeCompare(b.node))
+			.map((image) => ({
+				value: `${image.storage}|${image.file}`,
+				label: imageLabel(image),
+				group: image.node
+			}))
 	);
 
 	function imageLabel(image: (typeof images)[number]): string {
@@ -61,24 +66,16 @@
 
 <FormField label={m['vms.create.image']()} required hint={m['vms.create.imageHelp']()} {error}>
 	{#snippet children({ id, describedBy, invalid })}
-		<select
+		<Select
 			{id}
-			class="pv-input pv-select"
-			aria-describedby={describedBy}
-			aria-invalid={invalid ? 'true' : undefined}
+			{describedBy}
+			{invalid}
 			value={selectedKey}
+			{options}
 			onchange={onImageChange}
+			placeholder={m['vms.create.chooseImage']()}
 			required
-		>
-			<option value="" disabled>{m['vms.create.chooseImage']()}</option>
-			{#each imageGroups as group (group.node)}
-				<optgroup label={group.node}>
-					{#each group.images as image (image.file)}
-						<option value={`${image.storage}|${image.file}`}>{imageLabel(image)}</option>
-					{/each}
-				</optgroup>
-			{/each}
-		</select>
+		/>
 		{#if imageMinRaised}
 			<p class="mt-1 text-xs text-muted-foreground" data-testid="image-min-raised">
 				{m['vms.create.imageMinRaised']({ min: form.imageMinDiskGB })}

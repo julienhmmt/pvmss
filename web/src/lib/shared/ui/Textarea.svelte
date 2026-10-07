@@ -6,6 +6,8 @@
 	 * auto-grow to fit content. All transitions are guarded by the global
 	 * prefers-reduced-motion rule in app.css.
 	 */
+	import { focusOnMount } from './focus-on-mount';
+
 	interface Props {
 		id?: string | undefined;
 		value: string;
@@ -26,6 +28,10 @@
 		class?: string;
 		/** Called when Cmd/Ctrl+Enter is pressed inside the textarea. */
 		onCmdEnter?: () => void;
+		/** Called when Escape is pressed inside the textarea. */
+		onEscape?: () => void;
+		/** Focus the textarea when it mounts (inline-edit flows). */
+		focusOnMount?: boolean;
 		[key: string]: unknown;
 	}
 
@@ -48,6 +54,8 @@
 		name,
 		class: klass = '',
 		onCmdEnter,
+		onEscape,
+		focusOnMount: shouldFocusOnMount = false,
 		...rest
 	}: Props = $props();
 
@@ -55,6 +63,10 @@
 	const count = $derived(strValue.length);
 
 	function handleKeydown(event: KeyboardEvent): void {
+		if (onEscape && event.key === 'Escape') {
+			event.preventDefault();
+			onEscape();
+		}
 		if (onCmdEnter && (event.metaKey || event.ctrlKey) && event.key === 'Enter') {
 			event.preventDefault();
 			onCmdEnter();
@@ -100,6 +112,7 @@
 		aria-describedby={describedBy}
 		bind:value
 		use:autogrow={autoGrow}
+		use:focusOnMount={shouldFocusOnMount}
 		onkeydown={handleKeydown}
 		{...rest}
 	></textarea>

@@ -37,8 +37,7 @@ func (h *AdminCatalog) ServeImages(w http.ResponseWriter, r *http.Request) {
 	}
 	images, err := catalog.AdminListImages(r.Context(), h.store, client, clusterName)
 	if err != nil {
-		SetErrorMsg(w, "admin list images failed", err)
-		writeAdminError(w, http.StatusInternalServerError, "internal_error", msgInternalServerError)
+		writeAdminFailure(w, "admin list images failed", err)
 
 		return
 	}
@@ -102,8 +101,7 @@ func (h *AdminCatalog) ServeImageToggle(w http.ResponseWriter, r *http.Request) 
 	}
 
 	if err != nil {
-		SetErrorMsg(w, "admin toggle image failed", err)
-		writeAdminError(w, http.StatusInternalServerError, "internal_error", msgInternalServerError)
+		writeAdminFailure(w, "admin toggle image failed", err)
 
 		return
 	}
@@ -135,8 +133,7 @@ func (h *AdminCatalog) ServeImageDelete(w http.ResponseWriter, r *http.Request) 
 	}
 
 	if err != nil {
-		SetErrorMsg(w, "admin delete image failed", err)
-		writeAdminError(w, http.StatusInternalServerError, "internal_error", msgInternalServerError)
+		writeAdminFailure(w, "admin delete image failed", err)
 		return
 	}
 
@@ -167,8 +164,7 @@ func (h *AdminCatalog) ServeISODelete(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err != nil {
-		SetErrorMsg(w, "admin delete iso failed", err)
-		writeAdminError(w, http.StatusInternalServerError, "internal_error", msgInternalServerError)
+		writeAdminFailure(w, "admin delete iso failed", err)
 		return
 	}
 

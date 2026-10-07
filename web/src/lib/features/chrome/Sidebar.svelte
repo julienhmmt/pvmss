@@ -70,6 +70,7 @@
 		try {
 			const result = await get<VmListResult>('/api/v1/vms?pageSize=8&sortBy=name');
 			machinesVms = result.items;
+			machineCount = result.total; // same total: no separate count request
 			machinesLoaded = true;
 		} catch {
 			machinesVms = [];
@@ -85,9 +86,13 @@
 
 	onMount(() =>
 		tray.onTaskOk(() => {
+			// One request per task end: the drawer list carries the count too.
+			if (machinesOpen) {
+				void loadMachines();
+				return;
+			}
+			machinesLoaded = false;
 			void loadMachineCount();
-			if (machinesOpen) void loadMachines();
-			else machinesLoaded = false;
 		})
 	);
 

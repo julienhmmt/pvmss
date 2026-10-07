@@ -112,7 +112,7 @@ func (h *VMSerialConsole) handleSerialTicket(w http.ResponseWriter, r *http.Requ
 		consoleTicketParams{
 			kind:           vm.KindTerminal,
 			capabilityName: "TerminalRelay",
-			fetcher:        terminalProxyFetcher(h.relay),
+			fetcher:        terminalProxyFetcher(h.clients, h.relay),
 			invalidMsg:     "serial terminal is not available for this VM",
 			noTokenMsg:     "serial ticket has no token",
 			issuedMsg:      "serial ticket issued",
@@ -191,8 +191,14 @@ func (h *VMSerialConsole) writeSerialError(w http.ResponseWriter, status int, co
 
 // terminalProxyFetcher adapts a cluster.TerminalRelay to the vm.ProxyFetcher
 // function type, extracting just the ticket and port from the TermProxyTicket.
-func terminalProxyFetcher(relay cluster.TerminalRelay) vm.ProxyFetcher {
+func terminalProxyFetcher(clients cluster.ClientProvider, fallback cluster.TerminalRelay) vm.ProxyFetcher {
 	return func(ctx context.Context, clusterName string, vmid int, node string) (string, int, error) {
+		// Resolved per call, like vncProxyFetcher.
+		relay, err := resolveCapability(clients, fallback, clusterName, "TerminalRelay")
+		if err != nil {
+			return "", 0, err
+		}
+
 		proxy, err := relay.GetTermProxy(ctx, clusterName, vmid, node)
 		if err != nil {
 			return "", 0, err

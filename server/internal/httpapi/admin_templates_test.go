@@ -377,11 +377,11 @@ func (unreachableTemplateClient) ListTemplates(_ context.Context) ([]cluster.Tem
 	return nil, cluster.ErrUnreachable
 }
 
-// TestAdminTemplates_ListClusterUnreachableReturns500 - when the cluster
-// client fails discovery, the list endpoint returns 500.
+// TestAdminTemplates_ListClusterUnreachableReturns503 - when the cluster
+// client fails discovery, the list endpoint returns 503 cluster_unavailable.
 //
 //nolint:paralleltest // serial: database-backed handler fixture
-func TestAdminTemplates_ListClusterUnreachableReturns500(t *testing.T) {
+func TestAdminTemplates_ListClusterUnreachableReturns503(t *testing.T) {
 	authHandler := newAuthHandler(t)
 	st := newAdminStore(t)
 	logger := slog.New(slog.NewTextHandler(testWriter{t}, nil))
@@ -389,8 +389,8 @@ func TestAdminTemplates_ListClusterUnreachableReturns500(t *testing.T) {
 	cookie := adminCookie(t, authHandler)
 
 	rec := adminGet(t, handler, authHandler, cookie, "/api/v1/admin/templates?cluster=default")
-	if rec.Code != http.StatusInternalServerError {
-		t.Fatalf("status = %d, want %d", rec.Code, http.StatusInternalServerError)
+	if rec.Code != http.StatusServiceUnavailable {
+		t.Fatalf("status = %d, want %d", rec.Code, http.StatusServiceUnavailable)
 	}
 }
 

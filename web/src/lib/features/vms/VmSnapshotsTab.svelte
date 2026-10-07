@@ -8,6 +8,7 @@
 	import { VmSnapshotsStore, type VmSnapshot } from './snapshots.svelte';
 	import { m } from '$lib/paraglide/messages.js';
 	import Alert from '$lib/shared/ui/Alert.svelte';
+	import Card from '$lib/shared/ui/Card.svelte';
 	import EmptyState from '$lib/shared/ui/EmptyState.svelte';
 	import Button from '$lib/shared/ui/Button.svelte';
 
@@ -42,7 +43,7 @@
 	}
 </script>
 
-<section class="rounded-xl border border-border bg-card p-6 shadow-card" aria-labelledby="snapshots-heading" data-testid="vm-snapshots">
+<Card pad="lg" aria-labelledby="snapshots-heading" data-testid="vm-snapshots">
 	<div class="flex flex-wrap items-start justify-between gap-3">
 		<div>
 			<h2 id="snapshots-heading" class="text-lg font-semibold">{m['vms.snapshots.heading']()}</h2>
@@ -95,4 +96,4 @@
 	<CreateSnapshotDialog bind:open={createOpen} store={snapshots} status={vmStore.entity?.status ?? 'stopped'} />
 	<RollbackSnapshotDialog bind:open={rollbackOpen} store={snapshots} snapshot={selected} />
 	<DeleteSnapshotDialog bind:open={deleteOpen} store={snapshots} snapshot={selected} />
-</section>
+</Card>

@@ -79,7 +79,7 @@ func newAdminOpsHandler(t *testing.T) (*httpapi.AdminOps, *httpapi.Auth, *store.
 	idx := inventory.BuildIndex(snap)
 	projection := inventory.NewProjectionFromIndex(&idx)
 	logger := slog.New(slog.DiscardHandler)
-	ops := httpapi.NewAdminOps(authHandler, st, fake, projection, "0.4.0-dev-test", logger)
+	ops := httpapi.NewAdminOps(authHandler, st, projection, "0.4.0-dev-test", logger)
 
 	return ops, authHandler, st
 }

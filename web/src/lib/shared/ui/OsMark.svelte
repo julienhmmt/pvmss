@@ -9,9 +9,11 @@
 	 * arbitrary colours and no user could tell a Windows guest from a Linux
 	 * one. It now shows the family Proxmox actually reports (`ostype`) and
 	 * says "unknown" when the config reported none, rather than inventing a
-	 * distinction the data does not carry.
+	 * distinction the data does not carry. The family is the tile's
+	 * accessible name, so the anchor is not sighted-only.
 	 */
 	import { osFamily, type OsFamily } from '$lib/shared/os-family';
+	import { m } from '$lib/paraglide/messages.js';
 
 	type Size = 'sm' | 'lg';
 
@@ -24,6 +26,12 @@
 	let { ostype, size = 'sm' }: Props = $props();
 
 	const family = $derived<OsFamily>(osFamily(ostype));
+
+	const labels: Record<OsFamily, () => string> = {
+		linux: () => m['os.family.linux'](),
+		windows: () => m['os.family.windows'](),
+		other: () => m['os.family.unknown']()
+	};
 
 	const tones: Record<OsFamily, string> = {
 		// `bg-sidebar-accent` is the codebase's established "primary soft"
@@ -47,7 +55,8 @@
 	class="inline-flex shrink-0 items-center justify-center rounded-lg border {tones[family]} {sizes[
 		size
 	]}"
-	aria-hidden="true"
+	role="img"
+	aria-label={labels[family]()}
 >
 	<svg
 		class={glyphSizes[size]}

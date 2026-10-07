@@ -1,22 +1,13 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
-	import { goto } from '$app/navigation';
-	import { resolve } from '$app/paths';
-	import {
-		setAdminCatalogContext,
-		type AdminNode,
-		type NodeSortColumn
-	} from '$lib/features/admin-catalog/admin-catalog.svelte';
+	import { setAdminCatalogContext, type AdminNode } from '$lib/features/admin-catalog/admin-catalog.svelte';
+	import CatalogListStates from '$lib/features/admin-catalog/CatalogListStates.svelte';
+	import CatalogToolbar from '$lib/features/admin-catalog/CatalogToolbar.svelte';
 	import NodesTable from '$lib/features/admin-catalog/NodesTable.svelte';
-	import NodeTableToolbar from '$lib/features/admin-catalog/NodeTableToolbar.svelte';
-	import Alert from '$lib/shared/ui/Alert.svelte';
 	import ClusterSelector from '$lib/shared/ui/ClusterSelector.svelte';
+	import ConfirmDialog from '$lib/shared/ui/ConfirmDialog.svelte';
 	import PageHeader from '$lib/shared/ui/PageHeader.svelte';
 	import TableCard from '$lib/shared/ui/TableCard.svelte';
-	import TableSkeleton from '$lib/shared/ui/TableSkeleton.svelte';
-	import EmptyState from '$lib/shared/ui/EmptyState.svelte';
-	import ConfirmDialog from '$lib/shared/ui/ConfirmDialog.svelte';
-	import Button from '$lib/shared/ui/Button.svelte';
 	import { getToastContext } from '$lib/shared/ui/toast.svelte';
 	import { m } from '$lib/paraglide/messages.js';
 
@@ -68,15 +59,7 @@
 		pendingNode = null;
 	}
 
-	function handleSort(column: NodeSortColumn): void {
-		store.setNodeSort(column);
-	}
-
-	function handleRemove(name: string): void {
-		void performRemove(name);
-	}
-
-	async function performRemove(name: string): Promise<void> {
+	async function handleRemove(name: string): Promise<void> {
 		try {
 			await store.removeNode(name);
 			toast.success(m['admin.nodes.removeSuccess']({ name }));
@@ -101,68 +84,38 @@
 	{/snippet}
 </PageHeader>
 
-{#if store.loading}
-	<div role="status" aria-live="polite" class="sr-only">{m['common.loading']()}</div>
-	<TableSkeleton columns={6} />
-{:else if store.error}
-	<Alert>{store.error}</Alert>
-{:else}
-	<div role="status" aria-live="polite" class="sr-only">
-		{m['admin.nodes.nodesLoaded']({ count: store.filteredNodes.length })}
-	</div>
-
-	{#if store.toggleError}
-		<Alert class="mb-4">{store.toggleError}</Alert>
-	{/if}
-
-	{#if store.nodes.length === 0}
-		<EmptyState
-			title={m['admin.nodes.emptyTitle']()}
-			description={m['admin.nodes.emptyDescription']()}
-		>
-			{#snippet actions()}
-				<Button
-					variant="secondary"
-					size="sm"
-					onclick={() => goto(resolve('/admin/clusters'))}
-				>
-					{m['admin.nodes.emptyAction']()}
-				</Button>
-			{/snippet}
-		</EmptyState>
-	{:else if store.filteredNodes.length === 0}
-		<EmptyState
-			title={m['admin.nodes.noMatchTitle']()}
-			description={m['admin.nodes.noMatchDescription']()}
-		>
-			{#snippet actions()}
-				<Button
-					variant="secondary"
-					size="sm"
-					onclick={() => store.resetNodeFilters()}
-				>
-					{m['admin.nodes.resetFilters']()}
-				</Button>
-			{/snippet}
-		</EmptyState>
-	{:else}
-		<TableCard>
-			{#snippet toolbar()}
-				<NodeTableToolbar {store} />
-			{/snippet}
-			<NodesTable
-				clusterKey={store.cluster}
-				nodes={store.filteredNodes}
-				toggling={store.toggling}
-				sortBy={store.nodeSortBy}
-				sortDir={store.nodeSortDir}
-				onToggle={handleToggle}
-				onRemove={handleRemove}
-				onSort={handleSort}
-			/>
-		</TableCard>
-	{/if}
-{/if}
+<CatalogListStates
+	loading={store.loading}
+	error={store.error}
+	toggleError={store.toggleError}
+	columns={6}
+	totalCount={store.nodes.length}
+	filteredCount={store.filteredNodes.length}
+	loadedLabel={m['admin.nodes.nodesLoaded']({ count: store.filteredNodes.length })}
+	emptyTitle={m['admin.nodes.emptyTitle']()}
+	emptyDescription={m['admin.nodes.emptyDescription']()}
+	emptyActionLabel={m['admin.nodes.emptyAction']()}
+	noMatchTitle={m['admin.nodes.noMatchTitle']()}
+	noMatchDescription={m['admin.nodes.noMatchDescription']()}
+	resetLabel={m['admin.nodes.resetFilters']()}
+	onResetFilters={() => store.resetNodeFilters()}
+>
+	<TableCard>
+		{#snippet toolbar()}
+			<CatalogToolbar {store} kind="nodes" />
+		{/snippet}
+		<NodesTable
+			clusterKey={store.cluster}
+			nodes={store.filteredNodes}
+			toggling={store.toggling}
+			sortBy={store.nodeSortBy}
+			sortDir={store.nodeSortDir}
+			onToggle={(name, e) => handleToggle(name, e)}
+			onRemove={(name) => void handleRemove(name)}
+			onSort={(column) => store.setNodeSort(column)}
+		/>
+	</TableCard>
+</CatalogListStates>
 
 <ConfirmDialog
 	open={disableDialogOpen}

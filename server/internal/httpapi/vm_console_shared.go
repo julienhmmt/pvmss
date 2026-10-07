@@ -84,7 +84,7 @@ func serveConsoleTicket(
 		return
 	}
 
-	_ = relay // relay is already captured in the fetcher closure
+	_ = relay // early cluster/capability check; the fetcher resolves its own per call
 
 	ticket, err := vm.GetConsoleTicket(r.Context(), vm.ConsoleTicketDeps{
 		Index:       index,

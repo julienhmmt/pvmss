@@ -159,13 +159,54 @@ test.describe('T04 VM list', () => {
 		await expect(page.locator('[data-testid="vm-search"]')).toHaveValue('');
 	});
 
+	test('global search restores committed queries on back and forward', async ({ page }) => {
+		await signInAlice(page.request);
+		await page.goto('/search?q=web');
+		const input = page.locator('#global-search');
+		await expect(input).toHaveValue('web');
+		await input.fill('db');
+		await expect(page).toHaveURL(/[?&]q=db$/);
+		await page.goBack();
+		await expect(input).toHaveValue('web');
+		await expect(page).toHaveURL(/[?&]q=web$/);
+		await page.goForward();
+		await expect(input).toHaveValue('db');
+		await expect(page).toHaveURL(/[?&]q=db$/);
+	});
+
+	for (const width of [375, 800, 1280]) {
+		test(`keeps the tagged VM name readable at ${width}px`, async ({ page }, testInfo) => {
+			await signInAlice(page.request);
+			await page.route('**/api/v1/vms?*', async (route) => {
+				const response = await route.fetch();
+				const result: { items: { name: string; tags: string[] }[] } = await response.json() as { items: { name: string; tags: string[] }[] };
+				result.items[0]!.name = 'pvmss-test-img';
+				result.items[0]!.tags = ['pvmss', 'pvmss-image'];
+				await route.fulfill({ response, json: result });
+			});
+			await page.setViewportSize({ width, height: 900 });
+			await page.goto('/vms?cluster=default');
+			const name = page.getByTestId('vm-row-link').filter({ hasText: 'pvmss-test-img' });
+			await expect(name).toBeVisible();
+			const dimensions = await name.evaluate((element) => ({
+				width: element.clientWidth, text: element.scrollWidth,
+				right: element.getBoundingClientRect().right,
+				identityRight: element.parentElement!.parentElement!.getBoundingClientRect().right
+			}));
+			expect(dimensions.text).toBeLessThanOrEqual(dimensions.width);
+			expect(dimensions.right).toBeLessThanOrEqual(dimensions.identityRight + 1);
+			expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(width);
+			await page.screenshot({ path: testInfo.outputPath('tagged-vm.png') });
+		});
+	}
+
 	test('the whole row opens the VM detail, not just the name link', async ({ page }) => {
 		await signInAlice(page.request);
 		await page.goto('/vms?cluster=default');
 
 		// The name link is stretched over the whole row: a click on the
 		// resources line must still navigate. Use a real pointer click.
-		const resources = vmRows(page).first().getByText(/vCPU/);
+		const resources = vmRows(page).first().getByText(/vCPU/).filter({ visible: true });
 		const box = await resources.boundingBox();
 		if (box === null) throw new Error('resources line has no box');
 		await page.mouse.click(box.x + box.width / 2, box.y + box.height / 2);

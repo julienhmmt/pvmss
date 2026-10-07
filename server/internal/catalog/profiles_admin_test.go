@@ -6,6 +6,7 @@ import (
 	"pvmss/server/internal/catalog"
 	"pvmss/server/internal/cluster"
 	"pvmss/server/internal/inventory"
+	"strings"
 	"testing"
 )
 
@@ -402,8 +403,9 @@ func TestCreateTag_Duplicate(t *testing.T) {
 	}
 }
 
-// TestCreateTag_InvalidName - names with non-alphanumeric characters or wrong
-// length are rejected.
+// TestCreateTag_InvalidName - names outside the Proxmox tag charset
+// (lowercase [a-z0-9_+.-], not starting with - + .) or of the wrong length
+// are rejected.
 func TestCreateTag_InvalidName(t *testing.T) {
 	t.Parallel()
 
@@ -413,14 +415,30 @@ func TestCreateTag_InvalidName(t *testing.T) {
 	tests := []string{
 		"",         // too short
 		"team web", // space
-		"team_web", // underscore
-		"team-web", // hyphen
-		"this-tag-name-is-way-too-long-to-be-valid-yes", // 51 chars
+		"Team",     // uppercase
+		"-web",     // leading hyphen
+		"web/prod", // slash
+		"été",      // non-ascii
+		strings.Repeat("a", 51),
 	}
 	for _, name := range tests {
 		_, err := catalog.CreateTag(ctx, st, "default", name, "#000000")
 		if !errors.Is(err, catalog.ErrInvalidTagName) {
 			t.Errorf("CreateTag(%q): got %v, want ErrInvalidTagName", name, err)
+		}
+	}
+}
+
+// TestCreateTag_ProxmoxCharset - Proxmox tags allow - _ . + (PVMSS itself
+// uses pvmss-image).
+func TestCreateTag_ProxmoxCharset(t *testing.T) {
+	t.Parallel()
+
+	st := openAdminStore(t)
+
+	for _, name := range []string{"pvmss-test-tag", "team_web", "v1.2", "c++", "_x"} {
+		if _, err := catalog.CreateTag(context.Background(), st, "default", name, "#000000"); err != nil {
+			t.Errorf("CreateTag(%q): %v", name, err)
 		}
 	}
 }

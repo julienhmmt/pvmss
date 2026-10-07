@@ -9,9 +9,11 @@ package vm
 
 import (
 	"context"
+	"errors"
 	"pvmss/server/internal/auth"
 	"pvmss/server/internal/cluster"
 	"pvmss/server/internal/inventory"
+	"pvmss/server/internal/logctx"
 )
 
 // MaxBulkTargets is the upper bound on the number of targets a single bulk
@@ -206,10 +208,26 @@ func bulkActionResultFor(
 
 	if err := Action(ctx, targetDeps, index, target.Cluster, target.VMID, kind); err != nil {
 		result.Status = "error"
-		result.Message = err.Error()
+		result.Message = bulkErrorMessage(ctx, target, err)
 	} else {
 		result.Status = "ok"
 	}
 
 	return result
+}
+
+// bulkErrorMessage keeps PVMSS's own refusals (ownership, invalid transition)
+// verbatim but hides a cluster-side failure behind a generic message: the raw
+// Proxmox text (paths, internals) goes to the log, not to the user. The batch
+// answers 200, so the swallowed error is logged at Warn.
+func bulkErrorMessage(ctx context.Context, target BulkTarget, err error) string {
+	if !errors.Is(err, cluster.ErrClusterRejected) && !errors.Is(err, cluster.ErrUnreachable) &&
+		!errors.Is(err, cluster.ErrTLSVerify) {
+		return err.Error()
+	}
+
+	logctx.From(ctx).WarnContext(ctx, "bulk vm action failed on the cluster",
+		"component", "vm", "cluster", target.Cluster, "vmid", target.VMID, "error", err)
+
+	return "the cluster refused or failed the action"
 }

@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, afterEach } from 'vitest';
-import { VmListStore, type VmListResult } from './list.svelte';
+import { VmListStore, INCOMPLETE_RETRY_MS, type VmListResult } from './list.svelte';
 import { markVmDeleted } from './recently-deleted';
 
 function jsonResponse(status: number, body: unknown): Response {
@@ -83,6 +83,130 @@ describe('VmListStore', () => {
 		const { store } = makeStore('?cluster=secondary');
 		expect(store.cluster).toBe('secondary');
 		expect(store.queryString()).toBe('cluster=secondary');
+	});
+
+	it('re-reads a just-created row until Proxmox reports it (ghost row)', async () => {
+		vi.useFakeTimers();
+		const ghost: VmListResult = {
+			...oneVmResult,
+			items: [{ ...oneVmResult.items[0]!, name: '', cpuCores: 0, memoryTotal: 0, status: 'stopped' }]
+		};
+		const fetchMock = vi
+			.fn()
+			.mockResolvedValueOnce(jsonResponse(200, ghost))
+			// The forced refresh is throttled: 429 is not proof of freshness.
+			.mockResolvedValueOnce(jsonResponse(429, { error: { code: 'refresh_too_soon', message: 'later' } }))
+			.mockResolvedValueOnce(jsonResponse(200, oneVmResult));
+		vi.stubGlobal('fetch', fetchMock);
+
+		const { store } = makeStore('');
+		const done = store.loadUntilComplete({ cluster: 'default', vmid: 100, expectedStatus: 'running' });
+		await vi.advanceTimersByTimeAsync(INCOMPLETE_RETRY_MS);
+		await done;
+
+		expect(store.result?.items[0]).toMatchObject({ name: 'web-01', status: 'running' });
+		expect(fetchMock).toHaveBeenCalledWith('/api/v1/cluster/refresh', expect.anything());
+	});
+
+	it('coalesces overlapping equivalent loads into one fetch', async () => {
+		const fetchMock = vi.fn().mockImplementation(() => Promise.resolve(jsonResponse(200, oneVmResult)));
+		vi.stubGlobal('fetch', fetchMock);
+		const { store } = makeStore();
+		await Promise.all([store.load(), store.load(), store.load()]);
+		expect(fetchMock).toHaveBeenCalledTimes(1);
+		expect(store.result).toEqual(oneVmResult);
+	});
+
+	it('allows a fresh load after a coalesced failure', async () => {
+		const fetchMock = vi.fn().mockRejectedValueOnce(new Error('offline'))
+			.mockResolvedValueOnce(jsonResponse(200, oneVmResult));
+		vi.stubGlobal('fetch', fetchMock);
+		const { store } = makeStore();
+		await Promise.all([store.load(), store.load()]);
+		expect(fetchMock).toHaveBeenCalledTimes(1);
+		expect(store.error).not.toBeNull();
+		await store.load();
+		expect(fetchMock).toHaveBeenCalledTimes(2);
+		expect(store.error).toBeNull();
+	});
+
+	it('keeps the newest query result when an older load finishes last', async () => {
+		let finishOld: (response: Response) => void = () => {};
+		const oldResponse: Promise<Response> = new Promise((resolve) => { finishOld = resolve; });
+		const filtered: VmListResult = { ...oneVmResult, items: [], total: 0 };
+		const fetchMock = vi.fn().mockReturnValueOnce(oldResponse)
+			.mockResolvedValueOnce(jsonResponse(200, filtered));
+		vi.stubGlobal('fetch', fetchMock);
+		const { store } = makeStore();
+		const oldLoad: Promise<void> = store.load();
+		store.search = 'missing';
+		await store.load();
+		finishOld(jsonResponse(200, oneVmResult));
+		await oldLoad;
+		expect(fetchMock).toHaveBeenCalledTimes(2);
+		expect(store.result).toEqual(filtered);
+	});
+
+	it.each(['running', 'stopped'] as const)('re-reads a complete created row until its status is %s', async (expectedStatus) => {
+		vi.useFakeTimers();
+		const stale: VmListResult = { ...oneVmResult, items: [{ ...oneVmResult.items[0]!, status: expectedStatus === 'running' ? 'stopped' : 'running' }] };
+		const fresh: VmListResult = { ...oneVmResult, items: [{ ...oneVmResult.items[0]!, status: expectedStatus }] };
+		const fetchMock = vi.fn().mockResolvedValueOnce(jsonResponse(200, stale))
+			.mockResolvedValueOnce(jsonResponse(200, {})).mockResolvedValueOnce(jsonResponse(200, fresh));
+		vi.stubGlobal('fetch', fetchMock);
+		const { store } = makeStore();
+		const done: Promise<void> = store.loadUntilComplete({ cluster: 'default', vmid: 100, expectedStatus });
+		await vi.advanceTimersByTimeAsync(INCOMPLETE_RETRY_MS);
+		await done;
+		expect(fetchMock).toHaveBeenCalledTimes(3);
+		expect(store.result?.items[0]?.status).toBe(expectedStatus);
+	});
+
+	it('does not retry an unrelated incomplete row after creation', async () => {
+		const otherGhost: VmListResult = { ...oneVmResult, items: [...oneVmResult.items, { ...oneVmResult.items[0]!, vmid: 101, name: '', cpuCores: 0 }] };
+		const fetchMock = vi.fn().mockResolvedValue(jsonResponse(200, otherGhost));
+		vi.stubGlobal('fetch', fetchMock);
+		const { store } = makeStore();
+		await store.loadUntilComplete({ cluster: 'default', vmid: 100, expectedStatus: 'running' });
+		expect(fetchMock).toHaveBeenCalledTimes(1);
+	});
+
+	it.each(['vm_snapshot_create', 'vm_snapshot_rollback', 'vm_snapshot_delete', 'vm_migrate'] as const)('only loads once after %s, even with an incomplete row', async (kind) => {
+		const ghost: VmListResult = { ...oneVmResult, items: [{ ...oneVmResult.items[0]!, name: '', cpuCores: 0 }] };
+		const fetchMock = vi.fn().mockResolvedValue(jsonResponse(200, ghost));
+		vi.stubGlobal('fetch', fetchMock);
+		const { store } = makeStore();
+		await store.loadAfterTask({ kind, cluster: 'default', vmid: 100, name: 'web', upid: 'task', deadline: 0 });
+		expect(fetchMock).toHaveBeenCalledTimes(1);
+	});
+
+	it('bounds retries when the created VM is missing from the projection', async () => {
+		vi.useFakeTimers();
+		const empty: VmListResult = { ...oneVmResult, items: [], total: 0 };
+		const fetchMock = vi.fn().mockImplementation(() => Promise.resolve(jsonResponse(200, empty)));
+		vi.stubGlobal('fetch', fetchMock);
+		const { store } = makeStore();
+		const done: Promise<void> = store.loadUntilComplete({ cluster: 'default', vmid: 100, expectedStatus: 'running' });
+		await vi.runAllTimersAsync();
+		await done;
+		const calls: number = fetchMock.mock.calls.length;
+		expect(calls).toBeGreaterThan(1);
+		await vi.advanceTimersByTimeAsync(INCOMPLETE_RETRY_MS);
+		expect(fetchMock).toHaveBeenCalledTimes(calls);
+	});
+
+	it('stops creation retries after disposal', async () => {
+		vi.useFakeTimers();
+		const ghost: VmListResult = { ...oneVmResult, items: [{ ...oneVmResult.items[0]!, name: '' }] };
+		const fetchMock = vi.fn().mockResolvedValue(jsonResponse(200, ghost));
+		vi.stubGlobal('fetch', fetchMock);
+		const { store } = makeStore();
+		const done: Promise<void> = store.loadUntilComplete({ cluster: 'default', vmid: 100, expectedStatus: 'running' });
+		await vi.advanceTimersByTimeAsync(0);
+		store.dispose();
+		await vi.advanceTimersByTimeAsync(INCOMPLETE_RETRY_MS);
+		await done;
+		expect(fetchMock).toHaveBeenCalledTimes(1);
 	});
 
 	it('loads the list through the shared API client', async () => {
@@ -370,5 +494,49 @@ describe('VmListStore attention filter', () => {
 	it('reads the filter back out of the URL', () => {
 		const { store } = makeStore('?attention=1');
 		expect(store.attention).toBe(true);
+	});
+});
+
+describe('VmListStore fetchAllMatching', () => {
+	afterEach(() => {
+		vi.unstubAllGlobals();
+		sessionStorage.clear();
+	});
+
+	it('returns every page of the filtered set', async () => {
+		const [baseVm] = oneVmResult.items;
+		if (baseVm === undefined) throw new Error('fixture is missing its VM');
+		const pageResult = (page: number, count: number, total: number): VmListResult => ({
+			items: Array.from({ length: count }, (_, i) => ({
+				...baseVm,
+				vmid: page * 100 + i,
+				name: `vm-${page}-${i}`
+			})),
+			total,
+			page,
+			pageSize: 10,
+			availableNodes: []
+		});
+		const fetchMock = vi
+			.fn()
+			.mockResolvedValueOnce(jsonResponse(200, pageResult(1, 10, 15)))
+			.mockResolvedValueOnce(jsonResponse(200, pageResult(2, 5, 15)));
+		vi.stubGlobal('fetch', fetchMock);
+
+		const { store } = makeStore('?status=running');
+		const items = await store.fetchAllMatching();
+
+		expect(fetchMock).toHaveBeenCalledTimes(2);
+		expect(String(fetchMock.mock.calls[1]?.[0])).toContain('status=running');
+		expect(String(fetchMock.mock.calls[1]?.[0])).toContain('page=2');
+		expect(items).toHaveLength(15);
+	});
+
+	it('drops rows this tab just deleted, like load() does', async () => {
+		markVmDeleted('default', 100);
+		vi.stubGlobal('fetch', vi.fn().mockResolvedValue(jsonResponse(200, oneVmResult)));
+		const { store } = makeStore();
+
+		expect(await store.fetchAllMatching()).toEqual([]);
 	});
 });

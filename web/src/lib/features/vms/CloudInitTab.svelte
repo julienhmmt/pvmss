@@ -10,6 +10,7 @@
 	import CloudInitForm from './CloudInitForm.svelte';
 	import CloudInitDocumentPicker from './CloudInitDocumentPicker.svelte';
 	import SaveCloudInitDialog from './SaveCloudInitDialog.svelte';
+	import Card from '$lib/shared/ui/Card.svelte';
 	import { m } from '$lib/paraglide/messages.js';
 
 	interface Props {
@@ -56,7 +57,7 @@
 	}
 </script>
 
-<section class="rounded-xl border border-border bg-card p-6 shadow-card" aria-labelledby="cloudinit-heading" data-testid="vm-cloudinit">
+<Card pad="lg" aria-labelledby="cloudinit-heading" data-testid="vm-cloudinit">
 	<div class="flex flex-wrap items-start justify-between gap-3">
 		<div>
 			<h2 id="cloudinit-heading" class="text-lg font-semibold">{m['vms.cloudinit.heading']()}</h2>
@@ -97,4 +98,4 @@
 	</div>
 
 	<SaveCloudInitDialog bind:open={saveDialogOpen} saving={cloudInit.configInFlight} onConfirm={confirmSave} onClose={closeSaveDialog} />
-</section>
+</Card>

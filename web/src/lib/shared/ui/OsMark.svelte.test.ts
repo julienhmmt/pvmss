@@ -1,6 +1,7 @@
-import { describe, it, expect, afterEach } from 'vitest';
+import { describe, it, expect, beforeAll, afterEach } from 'vitest';
 import { mount } from 'svelte';
 import OsMark from './OsMark.svelte';
+import { setLocale } from '$lib/paraglide/runtime.js';
 
 function tileFor(ostype: string, size?: 'sm' | 'lg'): Element {
 	document.body.innerHTML = '';
@@ -14,6 +15,7 @@ function tileFor(ostype: string, size?: 'sm' | 'lg'): Element {
 }
 
 describe('OsMark', () => {
+	beforeAll(() => setLocale('en', { reload: false }));
 	afterEach(() => {
 		document.body.innerHTML = '';
 	});
@@ -48,5 +50,11 @@ describe('OsMark', () => {
 		const tile = tileFor('l26', 'lg');
 		expect(tile.className).toContain('h-[58px]');
 		expect(tile.className).toContain('w-[53px]');
+	});
+
+	it('names the OS family for assistive tech', () => {
+		expect(tileFor('l26').getAttribute('aria-label')).toBe('Linux');
+		expect(tileFor('win11').getAttribute('aria-label')).toBe('Windows');
+		expect(tileFor('').getAttribute('aria-label')).toBe('Unknown OS');
 	});
 });

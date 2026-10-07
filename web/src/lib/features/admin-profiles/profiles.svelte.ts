@@ -7,6 +7,7 @@ import { m } from '$lib/paraglide/messages.js';
 export interface AdminProfile {
 	id: string;
 	label: string;
+	sockets: number;
 	cpuCores: number;
 	memoryMB: number;
 	diskGB: number;
@@ -100,12 +101,12 @@ export class AdminProfilesStore {
 		}
 	}
 
-	async create(label: string, cpuCores: number, memoryMB: number, diskGB: number, bus: string): Promise<void> {
+	async create(label: string, cpuCores: number, memoryMB: number, diskGB: number, bus: string, sockets = 1): Promise<void> {
 		this.saving = true;
 		this.saveError = null;
 		try {
 			const created = await post<AdminProfile>('/api/v1/admin/profiles', {
-				cluster: this.cluster, label, cpuCores, memoryMB, diskGB, bus
+				cluster: this.cluster, label, sockets, cpuCores, memoryMB, diskGB, bus
 			});
 			this.profiles = [...this.profiles, created];
 		} catch (err) {
@@ -116,12 +117,12 @@ export class AdminProfilesStore {
 		}
 	}
 
-	async update(id: string, label: string, cpuCores: number, memoryMB: number, diskGB: number, bus: string): Promise<void> {
+	async update(id: string, label: string, cpuCores: number, memoryMB: number, diskGB: number, bus: string, sockets = 1): Promise<void> {
 		this.saving = true;
 		this.saveError = null;
 		try {
 			const updated = await put<AdminProfile>(`/api/v1/admin/profiles/${id}`, {
-				cluster: this.cluster, label, cpuCores, memoryMB, diskGB, bus
+				cluster: this.cluster, label, sockets, cpuCores, memoryMB, diskGB, bus
 			});
 			this.profiles = this.profiles.map((p) => (p.id === id ? updated : p));
 		} catch (err) {

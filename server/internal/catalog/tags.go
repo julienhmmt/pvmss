@@ -7,9 +7,9 @@ import (
 	"fmt"
 	"pvmss/server/internal/inventory"
 	"pvmss/server/internal/store"
+	"regexp"
 	"strings"
 	"time"
-	"unicode"
 )
 
 // ErrProtectedTag is returned when attempting to delete the mandatory pvmss
@@ -40,17 +40,18 @@ type TagWithCount struct {
 	Protected bool
 }
 
-// validateTagName checks the 1-50 alphanumeric rule. The pvmss tag
-// itself passes validation (it is alphanumeric).
+// tagNamePattern is Proxmox's pve-tag format ([a-z0-9_][a-z0-9_+.-]*),
+// lowercase only since Proxmox stores tags lowercased.
+var tagNamePattern = regexp.MustCompile(`^[a-z0-9_][a-z0-9_+.\-]*$`)
+
+// validateTagName checks the 1-50 character Proxmox tag rule.
 func validateTagName(name string) error {
 	if len(name) < 1 || len(name) > 50 {
 		return fmt.Errorf("%w: name must be 1-50 characters", ErrInvalidTagName)
 	}
 
-	for _, r := range name {
-		if !unicode.IsLetter(r) && !unicode.IsDigit(r) {
-			return fmt.Errorf("%w: name must be alphanumeric", ErrInvalidTagName)
-		}
+	if !tagNamePattern.MatchString(name) {
+		return fmt.Errorf("%w: use lowercase letters, digits, - _ . + (not first: - . +)", ErrInvalidTagName)
 	}
 
 	return nil

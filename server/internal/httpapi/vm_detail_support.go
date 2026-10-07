@@ -105,10 +105,11 @@ func (h *VMDetail) fillBaselineState(ctx context.Context, entity vm.Entity, dto 
 
 	dto.BaselineState = state.State
 	dto.BaselineError = state.Error
+	dto.BaselineErrorCode = baselineErrorCode(state.State, state.Error)
 
 	if state.State == vm.BaselineStateNotDelivered {
 		if _, attached, err := h.store.GetVMCloudInitDocument(ctx, entity.Cluster, entity.VMID); err == nil && attached {
-			dto.BaselineState, dto.BaselineError = "", ""
+			dto.BaselineState, dto.BaselineError, dto.BaselineErrorCode = "", "", ""
 		}
 	}
 }
@@ -295,8 +296,7 @@ func (h *VMDetail) writeActionError(w http.ResponseWriter, err error) {
 	case errors.Is(err, cluster.ErrVMRunning):
 		h.writeDetailError(w, http.StatusConflict, "vm_running", msgVMRunning)
 	case errors.Is(err, cluster.ErrClusterRejected):
-		code, message, _ := clusterRejectionResponse(err)
-		h.writeDetailError(w, http.StatusBadGateway, code, message)
+		writeClusterRejection(w, err, h.log)
 	default:
 		SetErrorMsg(w, "vm action failed", err)
 		h.writeDetailError(w, http.StatusInternalServerError, "internal_error", msgInternalServerError)
@@ -320,8 +320,7 @@ func (h *VMDetail) writePatchError(w http.ResponseWriter, err error) {
 		SetErrorMsg(w, "cluster writer: VM not found after Resolve", err)
 		h.writeDetailError(w, http.StatusBadGateway, "cluster_error", msgClusterRejected)
 	case errors.Is(err, cluster.ErrClusterRejected):
-		code, message, _ := clusterRejectionResponse(err)
-		h.writeDetailError(w, http.StatusBadGateway, code, message)
+		writeClusterRejection(w, err, h.log)
 	default:
 		SetErrorMsg(w, "vm patch failed", err)
 		h.writeDetailError(w, http.StatusInternalServerError, "internal_error", msgInternalServerError)
@@ -331,5 +330,20 @@ func (h *VMDetail) writePatchError(w http.ResponseWriter, err error) {
 func (h *VMDetail) writeDetailError(w http.ResponseWriter, status int, code, message string) {
 	if err := writeClusterError(w, status, code, message); err != nil {
 		h.log.Warn("failed to write error response", "component", "httpapi", "code", code, "error", err)
+	}
+}
+
+// baselineErrorCode derives a stable code from the stored delivery error
+// (stored as text since the row predates codes).
+func baselineErrorCode(state, text string) string {
+	switch {
+	case state != vm.BaselineStateNotDelivered:
+		return ""
+	case strings.HasPrefix(text, vm.ErrCloudInitWriteUnavailable.Error()):
+		return "cloudinit_write_unavailable"
+	case text == "" || strings.Contains(text, "no published cloud-init document"):
+		return "no_document"
+	default:
+		return "delivery_failed"
 	}
 }

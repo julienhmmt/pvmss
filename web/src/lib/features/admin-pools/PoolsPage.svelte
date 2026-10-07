@@ -15,6 +15,7 @@
 	import TableHeader from '$lib/shared/ui/TableHeader.svelte';
 	import ClusterSelector from '$lib/shared/ui/ClusterSelector.svelte';
 	import SearchIcon from '$lib/shared/ui/icons/SearchIcon.svelte';
+	import TextField from '$lib/shared/ui/TextField.svelte';
 	import TrashIcon from '$lib/shared/ui/icons/TrashIcon.svelte';
 	import { m } from '$lib/paraglide/messages.js';
 
@@ -90,12 +91,11 @@
 		}
 	}
 
-	function handleSort(column: string): void {
-		const next = column as PoolSortColumn;
-		if (sortBy === next) {
+	function handleSort(column: PoolSortColumn): void {
+		if (sortBy === column) {
 			sortDir = sortDir === 'asc' ? 'desc' : 'asc';
 		} else {
-			sortBy = next;
+			sortBy = column;
 			sortDir = 'asc';
 		}
 	}
@@ -190,19 +190,18 @@
 
 	<TableCard>
 		{#snippet toolbar()}
-			<div class="relative w-full max-w-xs">
-				<span class="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3 text-muted-foreground">
+			<TextField
+				type="search"
+				class="w-full max-w-xs"
+				placeholder={m['admin.pools.searchPlaceholder']()}
+				aria-label={m['admin.pools.search']()}
+				bind:value={search}
+				oninput={updateSearch}
+			>
+				{#snippet leading()}
 					<SearchIcon class="h-4 w-4" />
-				</span>
-				<input
-					type="search"
-					class="pv-input pl-9"
-					placeholder={m['admin.pools.searchPlaceholder']()}
-					aria-label={m['admin.pools.search']()}
-					bind:value={search}
-					oninput={updateSearch}
-				/>
-			</div>
+				{/snippet}
+			</TextField>
 			{#if hasFilters}
 				<Button variant="ghost" size="sm" onclick={resetFilters}>{m['admin.pools.resetFilters']()}</Button>
 			{/if}

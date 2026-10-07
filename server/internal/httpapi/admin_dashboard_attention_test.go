@@ -111,7 +111,7 @@ func getAttentionDashboard(t *testing.T) attentionDashboardDTO {
 		t.Fatalf("SetNodeEnabled: %v", err)
 	}
 
-	ops := httpapi.NewAdminOps(authHandler, st, cluster.Fake{}, inventory.NewProjection(), "test", slog.New(slog.DiscardHandler))
+	ops := httpapi.NewAdminOps(authHandler, st, inventory.NewProjection(), "test", slog.New(slog.DiscardHandler))
 	// west never completed a refresh: it must surface as unreachable.
 	ops.SetInventorySource(inventory.NewRegistryFromIndexes(map[string]*inventory.Index{dashCluster: attentionIndex(), dashWestCluster: nil}), time.Minute)
 
@@ -173,7 +173,7 @@ func TestAdminDashboard_PoolQuotaIgnoresNonPVMSSPools(t *testing.T) {
 	})
 	idx.RefreshedAt = time.Now()
 
-	ops := httpapi.NewAdminOps(authHandler, st, cluster.Fake{}, inventory.NewProjection(), "test", slog.New(slog.DiscardHandler))
+	ops := httpapi.NewAdminOps(authHandler, st, inventory.NewProjection(), "test", slog.New(slog.DiscardHandler))
 	ops.SetInventorySource(inventory.NewRegistryFromIndexes(map[string]*inventory.Index{dashCluster: &idx}), time.Minute)
 
 	rec := opsGet(t, ops, authHandler, adminCookie(t, authHandler), "/api/v1/admin/dashboard")
@@ -236,7 +236,7 @@ func TestAdminDashboard_SharedFlagDedupesNonListedPlugin(t *testing.T) {
 	})
 	idx.RefreshedAt = time.Now()
 
-	ops := httpapi.NewAdminOps(authHandler, st, cluster.Fake{}, inventory.NewProjection(), "test", slog.New(slog.DiscardHandler))
+	ops := httpapi.NewAdminOps(authHandler, st, inventory.NewProjection(), "test", slog.New(slog.DiscardHandler))
 	ops.SetInventorySource(inventory.NewRegistryFromIndexes(map[string]*inventory.Index{dashCluster: &idx}), time.Minute)
 
 	rec := opsGet(t, ops, authHandler, adminCookie(t, authHandler), "/api/v1/admin/dashboard")
@@ -328,7 +328,7 @@ func offlineSeverityOps(t *testing.T, tt offlineSeverityCase) (*httpapi.AdminOps
 		}
 	}
 
-	ops := httpapi.NewAdminOps(authHandler, st, cluster.Fake{}, inventory.NewProjection(), "test", slog.New(slog.DiscardHandler))
+	ops := httpapi.NewAdminOps(authHandler, st, inventory.NewProjection(), "test", slog.New(slog.DiscardHandler))
 	ops.SetInventorySource(inventory.NewRegistryFromIndexes(map[string]*inventory.Index{dashCluster: &idx}), time.Minute)
 
 	return ops, authHandler
