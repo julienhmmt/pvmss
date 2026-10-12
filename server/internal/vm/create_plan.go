@@ -425,20 +425,44 @@ func resolveNode(req CreateRequest, resources catalog.Resources, capacities map[
 }
 
 // pickBestNode scores each candidate node and returns the name of the highest
-// scorer. Catalog order breaks ties (stable selection for reproducible tests).
+// scorer. Equal scores go to the node with more absolute headroom: the free
+// fractions are size-blind, so two idle nodes always tie. Catalog order breaks
+// what is still tied (stable selection for reproducible tests).
 func pickBestNode(candidates []catalog.Node, capacities map[string]policy.Capacity, req CreateRequest) string {
 	best := candidates[0]
 	bestScore := scoreNode(capacities[best.Name], req)
 
 	for _, candidate := range candidates[1:] {
 		score := scoreNode(capacities[candidate.Name], req)
-		if score > bestScore {
+		if score > bestScore || (score == bestScore && hasMoreHeadroom(capacities[candidate.Name], capacities[best.Name])) {
 			best = candidate
 			bestScore = score
 		}
 	}
 
 	return best.Name
+}
+
+// hasMoreHeadroom reports whether a has more free RAM (GB), then more free
+// vCPUs, than b. Unknown ceilings count as zero headroom.
+func hasMoreHeadroom(a, b policy.Capacity) bool {
+	aRAM, aCPU := absoluteHeadroom(a)
+	bRAM, bCPU := absoluteHeadroom(b)
+
+	if aRAM != bRAM {
+		return aRAM > bRAM
+	}
+
+	return aCPU > bCPU
+}
+
+// absoluteHeadroom returns the free RAM (GB) and free vCPUs under the
+// effective ceilings (configured cap or physical capacity, whichever is tighter).
+func absoluteHeadroom(c policy.Capacity) (ramGB, vcpus int) {
+	ramGB = effectiveCeiling(c.MaxRAMGB, c.PhysicalRAMGB) - c.UsedRAMGB
+	vcpus = effectiveCeiling(c.MaxVCPUs, c.PhysicalVCPUs) - c.UsedVCPUs
+
+	return ramGB, vcpus
 }
 
 // scoreNode computes a placement score from free resource fractions.
