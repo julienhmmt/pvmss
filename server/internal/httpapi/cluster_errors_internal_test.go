@@ -61,29 +61,37 @@ func TestClusterPermissionDenied_ReportsPrivilegeAndPath(t *testing.T) {
 		t.Run(name, func(t *testing.T) {
 			t.Parallel()
 
-			rec := httptest.NewRecorder()
-			logged := &logWriter{ResponseWriter: rec}
-			write(logged, denied)
-
-			if !errors.Is(logged.err, denied) {
-				t.Errorf("access log lost the rejection: %v", logged.err)
-			}
-
-			var body struct{ Code, Message, Privilege, Path string }
-
-			_ = json.Unmarshal(rec.Body.Bytes(), &body)
-
-			if rec.Code != http.StatusBadGateway || body.Code != "cluster_permission_denied" {
-				t.Fatalf("got %d %q, want 502 cluster_permission_denied", rec.Code, body.Code)
-			}
-
-			if body.Privilege != "VM.GuestAgent.Unrestricted" || body.Path != "/vms/999102" {
-				t.Errorf("permission fields = %q/%q", body.Privilege, body.Path)
-			}
-
-			if !strings.Contains(body.Message, "VM.GuestAgent.Unrestricted") || !strings.Contains(body.Message, "/vms/999102") {
-				t.Errorf("message %q does not name the privilege and path", body.Message)
-			}
+			assertPermissionDenied(t, write, denied)
 		})
+	}
+}
+
+// assertPermissionDenied runs one error writer and checks the 502 body names
+// the missing privilege and path, and that the access log keeps the rejection.
+func assertPermissionDenied(t *testing.T, write func(http.ResponseWriter, error), denied *cluster.RejectionError) {
+	t.Helper()
+
+	rec := httptest.NewRecorder()
+	logged := &logWriter{ResponseWriter: rec}
+	write(logged, denied)
+
+	if !errors.Is(logged.err, denied) {
+		t.Errorf("access log lost the rejection: %v", logged.err)
+	}
+
+	var body struct{ Code, Message, Privilege, Path string }
+
+	_ = json.Unmarshal(rec.Body.Bytes(), &body)
+
+	if rec.Code != http.StatusBadGateway || body.Code != "cluster_permission_denied" {
+		t.Fatalf("got %d %q, want 502 cluster_permission_denied", rec.Code, body.Code)
+	}
+
+	if body.Privilege != "VM.GuestAgent.Unrestricted" || body.Path != "/vms/999102" {
+		t.Errorf("permission fields = %q/%q", body.Privilege, body.Path)
+	}
+
+	if !strings.Contains(body.Message, "VM.GuestAgent.Unrestricted") || !strings.Contains(body.Message, "/vms/999102") {
+		t.Errorf("message %q does not name the privilege and path", body.Message)
 	}
 }

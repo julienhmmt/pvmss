@@ -96,7 +96,7 @@ func TestProxmox_Action_ShutdownSendsTimeout(t *testing.T) {
 	}{
 		{"shutdown sends timeout", "shutdown", "forceStop=0&timeout=60", false},
 		{"start sends no params", "start", "", true},
-		{"stop sends no params", "stop", "", true},
+		{"stop overrules a pending shutdown", "stop", "overrule-shutdown=1", false},
 		{"reboot sends no params", "reboot", "", true},
 		{"reset sends no params", "reset", "", true},
 		{"pause sends no params", "pause", "", true},

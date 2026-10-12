@@ -263,6 +263,34 @@ func TestScoreNode_CapBelowRequestLosesFitBonus(t *testing.T) {
 	}
 }
 
+// TestPickBestNode_IdleTieGoesToLargerNode - two idle nodes score the same
+// (free fractions are size-blind), so the bigger one must win whatever the
+// catalog order. Regression: 12c/46GB and 3c/5GB both scored 1.850 and the
+// small node won by catalog order.
+func TestPickBestNode_IdleTieGoesToLargerNode(t *testing.T) {
+	t.Parallel()
+
+	const (
+		small = "small"
+		big   = "big"
+	)
+
+	req := CreateRequest{Sockets: 1, CPUCores: 2, MemoryMB: 2048, Disk: DiskRequest{SizeGB: 20}}
+	capacities := map[string]policy.Capacity{
+		small: {PhysicalVCPUs: 3, PhysicalRAMGB: 5},
+		big:   {PhysicalVCPUs: 12, PhysicalRAMGB: 46},
+	}
+
+	for _, order := range [][]catalog.Node{
+		{{Name: small}, {Name: big}},
+		{{Name: big}, {Name: small}},
+	} {
+		if got := pickBestNode(order, capacities, req); got != big {
+			t.Errorf("pickBestNode(%v) = %q, want %q", order, got, big)
+		}
+	}
+}
+
 // fakeFreeSpaceChecker is a minimal FreeSpaceChecker for unit-testing
 // checkLiveDiskSpace without pulling in the cluster.Fake dataset.
 type fakeFreeSpaceChecker struct {
