@@ -270,18 +270,23 @@ func TestScoreNode_CapBelowRequestLosesFitBonus(t *testing.T) {
 func TestPickBestNode_IdleTieGoesToLargerNode(t *testing.T) {
 	t.Parallel()
 
+	const (
+		small = "small"
+		big   = "big"
+	)
+
 	req := CreateRequest{Sockets: 1, CPUCores: 2, MemoryMB: 2048, Disk: DiskRequest{SizeGB: 20}}
 	capacities := map[string]policy.Capacity{
-		"small": {PhysicalVCPUs: 3, PhysicalRAMGB: 5},
-		"big":   {PhysicalVCPUs: 12, PhysicalRAMGB: 46},
+		small: {PhysicalVCPUs: 3, PhysicalRAMGB: 5},
+		big:   {PhysicalVCPUs: 12, PhysicalRAMGB: 46},
 	}
 
 	for _, order := range [][]catalog.Node{
-		{{Name: "small"}, {Name: "big"}},
-		{{Name: "big"}, {Name: "small"}},
+		{{Name: small}, {Name: big}},
+		{{Name: big}, {Name: small}},
 	} {
-		if got := pickBestNode(order, capacities, req); got != "big" {
-			t.Errorf("pickBestNode(%v) = %q, want %q", order, got, "big")
+		if got := pickBestNode(order, capacities, req); got != big {
+			t.Errorf("pickBestNode(%v) = %q, want %q", order, got, big)
 		}
 	}
 }
