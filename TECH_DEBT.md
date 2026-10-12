@@ -30,6 +30,12 @@ documented here so the next reader does not reopen them.
 - **e2e wants `CI=1` locally.** Specs share one fake cluster; `fullyParallel`
   makes VM-creating specs change the row counts `vm-list.spec.ts` expects.
   `CI=1 bunx playwright test` runs one worker, as CI does, and is green.
+- **Template clones keep secondary volumes where the template has them.**
+  A clone of a template whose extra disk (e.g. `efidisk0`) sits on a storage
+  not approved in PVMSS keeps it there: the clone writes the volume on the
+  template's storage, PVMSS only places the boot disk on approved storage.
+  Accepted (decided 2026-10-12): operators keep templates on approved
+  storage. Revisit if a real template breaks it (`vm/create_template.go`).
 - **`ostype` is `l26` at create.** The create form has no OS selector -
   Windows guests are expected to come from Proxmox directly. The Connect
   tab reads `ostype` from the detail DTO and shows an RDP card for `w*`

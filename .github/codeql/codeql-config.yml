@@ -1,0 +1,8 @@
+name: pvmss codeql config
+
+# DES is mandated by RFC 6143 for the VNC-auth challenge-response Proxmox
+# speaks (server/internal/cluster/websocket_real.go). CodeQL has no inline
+# suppression comment, so the rule is excluded here.
+query-filters:
+  - exclude:
+      id: go/weak-cryptographic-algorithm
