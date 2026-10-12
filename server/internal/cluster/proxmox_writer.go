@@ -34,12 +34,17 @@ func vmConfigPath(node string, vmid int) string {
 
 // actionForm returns the parameters Proxmox accepts for a given action.
 // shutdown is the only one that needs a bound: without a timeout Proxmox
-// waits on the guest's ACPI handler forever. Other actions send no
-// parameters. skiplock is never sent - PVMSS authenticates by API token,
-// and Proxmox rejects skiplock under token even for root@pam.
+// waits on the guest's ACPI handler forever. stop sends overrule-shutdown=1
+// so a pending reboot/shutdown task (e.g. a guest without ACPI) does not
+// turn the forced stop into a silent no-op (Proxmox >= 8.1). Other actions
+// send no parameters. skiplock is never sent - PVMSS authenticates by API
+// token, and Proxmox rejects skiplock under token even for root@pam.
 func actionForm(action string) url.Values {
-	if action == actionShutdown {
+	switch action {
+	case actionShutdown:
 		return url.Values{"timeout": {strconv.Itoa(int(shutdownTimeout.Seconds()))}, "forceStop": {"0"}}
+	case actionStop:
+		return url.Values{"overrule-shutdown": {"1"}}
 	}
 
 	return nil
