@@ -1060,6 +1060,7 @@
   "admin.templates.removeSuccess": "Modèle {vmid} supprimé",
   "admin.templates.removeError": "échec de la suppression du modèle",
   "admin.templates.heading": "Modèles de VM",
+  "admin.templates.storageRule": "Les clones conservent leurs volumes secondaires (comme efidisk0) sur le stockage du modèle ; placez tous les volumes du modèle sur un stockage approuvé.",
   "admin.templates.templatesLoaded": "{count} modèles chargés",
   "admin.templates.searchPlaceholder": "Rechercher par nom ou VMID...",
   "admin.templates.filterStorage": "Tous les stockages",

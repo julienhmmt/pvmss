@@ -1060,6 +1060,7 @@
   "admin.templates.removeSuccess": "Template {vmid} removed",
   "admin.templates.removeError": "failed to remove template",
   "admin.templates.heading": "VM templates",
+  "admin.templates.storageRule": "Clones keep any secondary volumes (such as efidisk0) on the template's storage; keep every template volume on an approved storage.",
   "admin.templates.templatesLoaded": "{count} templates loaded",
   "admin.templates.searchPlaceholder": "Search by name or VMID...",
   "admin.templates.filterStorage": "All storages",
