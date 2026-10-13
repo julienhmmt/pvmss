@@ -198,7 +198,7 @@ func resolvePlacement(ctx context.Context, req CreateRequest, policyService *pol
 	}
 
 	if req.Node == "" && log != nil {
-		logPlacement(log, node, resources.Nodes, capacities, req)
+		logPlacement(ctx, log, node, placementCandidates(req, resources), capacities, req)
 	}
 
 	return node, storage, nics, nil
@@ -302,9 +302,9 @@ func fetchStorageFreeBytes(policyService *policy.Policy, storages []catalog.Stor
 	return free
 }
 
-// logPlacement emits a [placement] log line naming each candidate and its
-// score, like ProxMate's scheduler log.
-func logPlacement(log *slog.Logger, selected string, candidates []catalog.Node, capacities map[string]policy.Capacity, req CreateRequest) {
+// logPlacement emits a placement log line naming each eligible candidate and
+// its score, like ProxMate's scheduler log.
+func logPlacement(ctx context.Context, log *slog.Logger, selected string, candidates []catalog.Node, capacities map[string]policy.Capacity, req CreateRequest) {
 	scores := make([]string, 0, len(candidates))
 
 	for _, n := range candidates {
@@ -312,7 +312,7 @@ func logPlacement(log *slog.Logger, selected string, candidates []catalog.Node, 
 		scores = append(scores, fmt.Sprintf("%s=%.3f", n.Name, score))
 	}
 
-	log.Info("[placement] auto-selected node", "component", "vm", "selected", selected, "candidates", scores)
+	log.InfoContext(ctx, "node auto-selected", "component", "vm", "selected", selected, "candidates", scores)
 }
 
 // resolveHardware returns the effective sockets, CPU, memory, disk, and bus
@@ -525,8 +525,22 @@ func effectiveCeiling(configured, physical int) int {
 	}
 }
 
-// nodesWithStorage filters candidates to those that have at least one approved
-// storage in the catalog (hard filter).
+// placementCandidates returns the approved nodes eligible to host req:
+// restricted to nodes holding the requested ISO or image, then hard-filtered
+// to nodes with at least one approved storage.
+func placementCandidates(req CreateRequest, resources catalog.Resources) []catalog.Node {
+	candidates := resources.Nodes
+	if req.ISO != nil {
+		candidates = nodesWithISO(resources, req.ISO.Storage, req.ISO.File)
+	}
+
+	if req.Image != nil {
+		candidates = nodesWithImage(resources, req.Image.Storage, req.Image.File)
+	}
+
+	return nodesWithStorage(resources, candidates)
+}
+
 func nodesWithStorage(resources catalog.Resources, candidates []catalog.Node) []catalog.Node {
 	var filtered []catalog.Node
 
