@@ -307,7 +307,7 @@ func parseNetValue(index int, value string) NetworkInterface {
 			if proxmoxNICModels[key] {
 				nic.Model = key
 			}
-		case key == "bridge":
+		case key == netKeyBridge:
 			nic.Bridge = val
 		case key == "tag":
 			if n, err := strconv.Atoi(val); err == nil {

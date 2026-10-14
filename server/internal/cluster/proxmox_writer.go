@@ -310,7 +310,16 @@ func (p Proxmox) UpdateNetwork(ctx context.Context, node string, vmid int, inter
 
 	for _, iface := range interfaces {
 		keep[iface.Index] = true
-		form.Set(fmt.Sprintf("net%d", iface.Index), encodeNetValue(iface))
+
+		key := fmt.Sprintf("net%d", iface.Index)
+		value := encodeNetValue(iface)
+
+		// Keep options PVMSS does not model (queues, link_down, ...) from the live NIC.
+		if existing, ok := cfg[key].(string); ok && existing != "" {
+			value = mergeNetValue(existing, value)
+		}
+
+		form.Set(key, value)
 	}
 
 	var toDelete []string
