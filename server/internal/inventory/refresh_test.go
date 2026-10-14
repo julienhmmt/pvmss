@@ -63,7 +63,7 @@ func TestRefresh_InsideGuardRefusedWithZeroCalls(t *testing.T) {
 	// Immediately attempt a manual refresh - should be refused.
 	refresher := inventory.NewRefresher(worker, 5*time.Second)
 
-	_, err := refresher.Refresh(context.Background())
+	err := refresher.RefreshAsync(context.Background())
 	if !errors.Is(err, inventory.ErrRefreshTooSoon) {
 		t.Fatalf("expected ErrRefreshTooSoon, got %v", err)
 	}
@@ -97,7 +97,7 @@ func TestRefresh_RetryAfterCountsDownNotFullInterval(t *testing.T) {
 
 	time.Sleep(retryObservationDelay)
 
-	_, err := refresher.Refresh(context.Background())
+	err := refresher.RefreshAsync(context.Background())
 
 	var tooSoon *inventory.TooSoonError
 	if !errors.As(err, &tooSoon) {
@@ -173,5 +173,28 @@ func TestRefresh_MinInterval(t *testing.T) {
 	refresher := inventory.NewRefresher(worker, 7*time.Second)
 	if got := refresher.MinInterval(); got != 7*time.Second {
 		t.Fatalf("MinInterval = %v, want 7s", got)
+	}
+}
+
+// TestRefresh_PostWriteIgnoresGuard - a post-write refresh (Refresh) always
+// rebuilds the projection, even inside the manual guard interval. Otherwise a
+// write made soon after another refresh leaves the projection stale.
+//
+//nolint:paralleltest // serial: shared refresh fixture
+func TestRefresh_PostWriteIgnoresGuard(t *testing.T) {
+	client := &callCountClient{snapshot: fakeSnapshot()}
+	worker := inventory.NewWorker(client, inventory.NewProjection(), time.Hour, testLogger())
+	refresher := inventory.NewRefresher(worker, time.Hour)
+
+	if _, err := refresher.Refresh(context.Background()); err != nil {
+		t.Fatalf("first post-write refresh: %v", err)
+	}
+
+	if _, err := refresher.Refresh(context.Background()); err != nil {
+		t.Fatalf("second post-write refresh inside guard: %v", err)
+	}
+
+	if client.calls.Load() != 2 {
+		t.Fatalf("expected 2 client calls, got %d", client.calls.Load())
 	}
 }

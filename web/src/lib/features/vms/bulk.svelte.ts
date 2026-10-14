@@ -17,7 +17,10 @@ export interface BulkTarget {
 export interface BulkTargetResult {
 	cluster: string;
 	vmid: number;
-	status: 'ok' | 'error';
+	/** "accepted" = the Proxmox task is still running; it is not a failure. */
+	status: 'ok' | 'accepted' | 'error';
+	/** Proxmox task the action started, when one was started. */
+	upid?: string;
 	message?: string;
 }
 
@@ -144,8 +147,8 @@ export class VmBulkSelection {
 		let ok = 0;
 		let error = 0;
 		for (const r of this.lastResult.results) {
-			if (r.status === 'ok') ok++;
-			else error++;
+			if (r.status === 'error') error++;
+			else ok++;
 		}
 		return { ok, error, total: this.lastResult.results.length };
 	}

@@ -239,6 +239,23 @@ describe('VmBulkSelection', () => {
 		expect(summary.total).toBe(3);
 	});
 
+	it('resultSummary counts accepted (task still running) as ok, not failed', async () => {
+		const fetchMock = vi.fn().mockResolvedValue(
+			new Response(JSON.stringify({ results: [
+				{ cluster: 'default', vmid: 101, status: 'accepted', upid: 'UPID:pve1:101' },
+				{ cluster: 'default', vmid: 102, status: 'error', message: 'VM is locked (backup)' }
+			] }), { status: 200, headers: { 'Content-Type': 'application/json' } })
+		);
+		vi.stubGlobal('fetch', fetchMock);
+
+		const sel = new VmBulkSelection();
+		sel.toggle(target('default', 101));
+		sel.toggle(target('default', 102));
+		await sel.submitBulkAction('stop');
+
+		expect(sel.resultSummary).toEqual({ ok: 1, error: 1, total: 2 });
+	});
+
 	it('resultSummary returns zeros when no result is stored', () => {
 		const sel = new VmBulkSelection();
 		expect(sel.resultSummary).toEqual({ ok: 0, error: 0, total: 0 });

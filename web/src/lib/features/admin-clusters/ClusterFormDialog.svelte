@@ -34,6 +34,7 @@
 		onSubmit
 	}: Props = $props();
 	let name = $state('');
+	let displayName = $state('');
 	let url = $state('');
 	let tokenId = $state('');
 	let tokenSecret = $state('');
@@ -46,6 +47,7 @@
 		if (!open) return;
 		untrack(() => {
 			name = editing?.name ?? '';
+			displayName = editing?.displayName ?? '';
 			url = editing?.url ?? '';
 			tokenId = editing?.tokenId ?? '';
 			tokenSecret = '';
@@ -57,6 +59,7 @@
 	function submit(): void {
 		onSubmit({
 			name: name.trim(),
+			displayName: displayName.trim(),
 			url: url.trim(),
 			tokenId: tokenId.trim(),
 			tokenSecret,
@@ -71,9 +74,14 @@
 	<form id={FORM_ID} class="mt-5 grid gap-6" onsubmit={(event) => { event.preventDefault(); submit(); }}>
 		<FormSection legend={m['admin.clusters.connectionSection']()} description={m['admin.clusters.connectionHint']()}>
 			<div class="grid gap-4 sm:grid-cols-2">
-				<FormField label={m['common.name']()} required>
+				<FormField label={m['common.name']()} required hint={m['admin.clusters.idHint']()}>
 					{#snippet children({ id, describedBy, invalid })}
 						<TextField {id} {describedBy} {invalid} bind:value={name} disabled={editing !== null} pattern="[a-z0-9-]+" required />
+					{/snippet}
+				</FormField>
+				<FormField label={m['admin.clusters.displayName']()} hint={m['admin.clusters.displayNameHint']()}>
+					{#snippet children({ id, describedBy, invalid })}
+						<TextField {id} {describedBy} {invalid} bind:value={displayName} />
 					{/snippet}
 				</FormField>
 				<FormField label={m['admin.clusters.url']()} required>

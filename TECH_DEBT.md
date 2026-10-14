@@ -136,6 +136,10 @@ Resolved 2026-10-04 except:
   the fixed vocabulary in `AGENTS.md` permits domain extras, so this is a
   note, not debt.
 
+## Cluster id rename not supported (2026-10-14)
+
+The cluster id (`clusters.name`, e.g. `default`) cannot be renamed; only the display label is editable (edit form and `displayName`). The id is a plain `cluster TEXT` key in about 20 tables with no foreign keys, used as the `:cluster` route param, as the client and inventory registry key, and as the persisted active-cluster selection. Deciding it means one transaction that rewrites every `cluster` column (catalog, policy, pools, VM and audit tables), re-keying the in-memory registries, and a decision on whether audit history keeps the old id. Workaround: create a cluster with the wanted id and remove the old one.
+
 ## How to re-check any of this
 
 ```bash

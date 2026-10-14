@@ -84,8 +84,10 @@ turns cloud-init templates off on that cluster.
 ### 4. Paste the command on the chosen nodes
 
 In the template's row, open **Command to paste**, click **Copy**, and paste
-it in a root shell on each node that must offer the template (the Proxmox
-web shell works). It looks like:
+it in a root login shell on each node that must offer the template (the
+Proxmox web shell works). From a user account, become root with `su -`, not
+plain `su`: without the `-` the `PATH` lacks `/usr/sbin` and `pvesm` is not
+found. It looks like:
 
 ```sh
 F=$(pvesm path local:snippets/pvmss-tpl-web-3f2a9c81d0e4.yml) && mkdir -p "${F%/*}" && cat > "$F" <<'PVMSS_EOF'
@@ -143,6 +145,7 @@ Older PVMSS versions published over SSH. After upgrading:
 | "cloud-init: off" on the cluster | No snippet storage selected (step 2) |
 | Storage list empty in the cluster form | Snippets content type not enabled (step 1) |
 | Pasted, still "absent" | Pasted on another node, or into another storage than the one selected in step 2: `pvesm list <storage> --content snippets` on the node |
+| `bash: pvesm: command not found` | Root shell opened with `su` instead of `su -`: `/usr/sbin` is not in `PATH`. Run `su -` and paste again |
 | `pvesm: storage '…' does not exist` | Storage id typo, or the storage is not available on that node |
 | Node shows "node is offline" | The node is down: nothing can be read from it |
 | Template missing from the create wizard | Its file is not on the VM's node: paste it there |

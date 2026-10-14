@@ -212,6 +212,16 @@ func (s *Store) SetClusterTestResult(ctx context.Context, name, status, version,
 	return nil
 }
 
+// SetDiscoveredClusterDisplayName fills the display name from /cluster/status
+// only while none is set, so an admin-chosen label is never overwritten by a
+// connection test. Missing or already-labelled rows are a silent no-op.
+func (s *Store) SetDiscoveredClusterDisplayName(ctx context.Context, name, displayName string) error {
+	if _, err := s.db.ExecContext(ctx, `UPDATE clusters SET display_name = ? WHERE name = ? AND removed_at IS NULL AND (display_name IS NULL OR display_name = '')`, nullableString(displayName), name); err != nil {
+		return fmt.Errorf("set discovered cluster display name: %w", err)
+	}
+	return nil
+}
+
 // SetClusterDisplayName records the real Proxmox cluster name discovered via
 // /cluster/status. An empty display name clears the column (falls back to the
 // logical name in the UI).

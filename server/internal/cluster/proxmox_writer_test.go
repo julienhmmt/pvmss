@@ -616,3 +616,40 @@ func TestProxmox_Delete_RunningVMMappedToErrVMRunning(t *testing.T) {
 		t.Fatalf("err = %v, want ErrVMRunning", err)
 	}
 }
+
+func TestProxmox_UpdateNetwork_KeepsUnmanagedOptions(t *testing.T) {
+	t.Parallel()
+
+	var gotForm url.Values
+
+	srv := newProxmoxTestServer(t, func(mux *http.ServeMux) {
+		mux.HandleFunc("GET /api2/json/nodes/node01/qemu/101/config", func(w http.ResponseWriter, _ *http.Request) {
+			writeJSONFixture(t, w, `{"data":{"net0":"virtio=AA:BB,bridge=vmbr0,firewall=1,queues=4,link_down=1"}}`)
+		})
+		mux.HandleFunc("PUT /api2/json/nodes/node01/qemu/101/config", func(w http.ResponseWriter, r *http.Request) {
+			if err := r.ParseForm(); err != nil {
+				t.Fatalf("parse form: %v", err)
+			}
+
+			gotForm = r.Form
+
+			writeJSONFixture(t, w, `{"data":null}`)
+		})
+	})
+
+	p := Proxmox{BaseURL: srv.URL, APITokenName: testTokenName, APITokenValue: testTokenVal}
+
+	rate := 50
+
+	err := p.UpdateNetwork(context.Background(), testNodeName, testVMID, []NetworkInterface{
+		{Index: 0, Model: string(DiskBusVirtio), MAC: "AA:BB", Bridge: "vmbr1", RateMbps: &rate},
+	})
+	if err != nil {
+		t.Fatalf("UpdateNetwork: %v", err)
+	}
+
+	want := "virtio=AA:BB,bridge=vmbr1,firewall=1,queues=4,link_down=1,rate=50"
+	if got := gotForm.Get("net0"); got != want {
+		t.Errorf("net0 = %q, want %q", got, want)
+	}
+}

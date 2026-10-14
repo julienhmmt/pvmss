@@ -722,3 +722,85 @@ func TestPruneAuditLog_DoesNotBlockConcurrentQuery(t *testing.T) {
 		t.Errorf("concurrent QueryAudit failed: %v", err)
 	}
 }
+
+// TestListAuditLog_CurrentIncarnation_ExcludesPreviousVMIDOwner - Proxmox
+// reuses VMIDs. Rows of a deleted VM must not appear in the history of a new
+// VM created under the same cluster+vmid.
+//
+//nolint:paralleltest // serial: shared database fixture
+func TestListAuditLog_CurrentIncarnation_ExcludesPreviousVMIDOwner(t *testing.T) {
+	st := newAuditStore(t)
+	ctx := context.Background()
+
+	const vmid = 999103
+
+	for _, step := range []struct{ actor, action string }{
+		{"pvmss-test", "vm_create"},
+		{"pvmss-test", "stop"},
+		{"pvmss-test", "delete"},
+		{"jho", "vm_create"},
+		{"jho", "stop"},
+	} {
+		if err := st.RecordAction(ctx, step.actor, testStoreCluster, vmid, step.action); err != nil {
+			t.Fatalf("RecordAction %s: %v", step.action, err)
+		}
+	}
+
+	page, err := st.ListAuditLog(ctx, store.AuditFilter{
+		Cluster: testStoreCluster, VMID: new(vmid), CurrentIncarnation: true, Page: 1, PageSize: 20,
+	})
+	if err != nil {
+		t.Fatalf("ListAuditLog: %v", err)
+	}
+
+	if page.Total != 2 || len(page.Items) != 2 {
+		t.Fatalf("total=%d items=%d, want 2 (current incarnation only)", page.Total, len(page.Items))
+	}
+
+	for _, e := range page.Items {
+		if e.Actor != "jho" {
+			t.Errorf("row %d actor=%q action=%q leaked from previous incarnation", e.ID, e.Actor, e.Action)
+		}
+	}
+
+	all, err := st.ListAuditLog(ctx, store.AuditFilter{Cluster: testStoreCluster, VMID: new(vmid), Page: 1, PageSize: 20})
+	if err != nil {
+		t.Fatalf("ListAuditLog unscoped: %v", err)
+	}
+
+	if all.Total != 5 {
+		t.Errorf("unscoped total = %d, want 5 (admin view keeps full history)", all.Total)
+	}
+}
+
+// TestListAuditLog_CurrentIncarnation_ExternalCreateAfterDelete - a VM created
+// outside PVMSS (no vm_create row) after a delete only sees rows after that delete.
+//
+//nolint:paralleltest // serial: shared database fixture
+func TestListAuditLog_CurrentIncarnation_ExternalCreateAfterDelete(t *testing.T) {
+	st := newAuditStore(t)
+	ctx := context.Background()
+
+	const vmid = 999104
+
+	for _, step := range []struct{ actor, action string }{
+		{"pvmss-test", "vm_create"},
+		{"pvmss-test", "delete"},
+		{"jho", "start"},
+	} {
+		if err := st.RecordAction(ctx, step.actor, testStoreCluster, vmid, step.action); err != nil {
+			t.Fatalf("RecordAction %s: %v", step.action, err)
+		}
+	}
+
+	page, err := st.ListAuditLog(ctx, store.AuditFilter{
+		Cluster: testStoreCluster, VMID: new(vmid), CurrentIncarnation: true, Page: 1, PageSize: 20,
+	})
+	if err != nil {
+		t.Fatalf("ListAuditLog: %v", err)
+	}
+
+	if page.Total != 1 || len(page.Items) != 1 || page.Items[0].Action != "start" {
+		t.Fatalf("got total=%d items=%+v, want only the post-delete start row", page.Total, page.Items)
+	}
+}

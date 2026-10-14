@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"log/slog"
 	"net/http"
+	"net/url"
 	"pvmss/server/internal/cluster"
 	"regexp"
 	"strings"
@@ -15,6 +16,24 @@ import (
 // "Permission check failed (<path>, <privilege>)". Path and privilege name
 // the ACL, never the token, so they are safe to show the admin.
 var permissionCheckFailed = regexp.MustCompile(`Permission check failed \(([^,()]+), ([^()]+)\)`)
+
+// safeClientMessage is the text a client may see for err. A Proxmox rejection
+// keeps its own message (it is actionable). Anything that is a transport
+// failure (a *url.Error, cluster.ErrUnreachable, or a URL flattened into text
+// by %v) is replaced by fallback: the internal API URL and the Go client chain
+// belong in the access log, never in a response body.
+func safeClientMessage(err error, fallback string) string {
+	if _, ok := errors.AsType[*cluster.RejectionError](err); ok {
+		return err.Error()
+	}
+
+	_, isURLErr := errors.AsType[*url.Error](err)
+	if isURLErr || errors.Is(err, cluster.ErrUnreachable) || strings.Contains(err.Error(), "://") {
+		return fallback
+	}
+
+	return err.Error()
+}
 
 // clusterRejectionResponse maps a cluster.ErrClusterRejected (wrapped by
 // cluster.RejectionError) to a stable machine code and the message to

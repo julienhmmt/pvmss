@@ -105,7 +105,10 @@ func newVMDetailHandler(t *testing.T) (*httpapi.VMDetail, *httpapi.Auth, *invent
 	seedBridgeApprovals(t, st)
 
 	worker := inventory.NewWorker(cluster.Fake{}, projection, time.Hour, logger)
-	handler := httpapi.NewVMDetail(projection, authHandler, cluster.Fake{}, st, worker, logger)
+	// Production wiring: post-write refreshes go through the Refresher, so the
+	// fixture must too - a bare Worker skips the guard and hides stale projections.
+	refresher := inventory.NewRefresher(worker, time.Minute)
+	handler := httpapi.NewVMDetail(projection, authHandler, cluster.Fake{}, st, refresher, logger)
 
 	return handler, authHandler, projection, st
 }

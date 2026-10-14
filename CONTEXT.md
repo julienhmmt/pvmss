@@ -33,6 +33,14 @@ reboot/reset) - matching both reference implementations - and waits on it only
 where post-task configuration is required (create → cloud-init attach, delete).
 _Avoid_: task id, job id
 
+**Cluster id**:
+The immutable logical name of a Proxmox connection (`clusters.name`), chosen at creation; `default` for the env-seeded cluster. It is the key in URLs, the API, audit history and per-cluster settings, and it cannot be renamed. Workaround: create a cluster with the wanted id.
+_Avoid_: cluster name, slug
+
+**Cluster display label**:
+The editable name shown in the interface (`clusters.display_name`). Empty means the id is shown. A connection test fills it from Proxmox only while it is empty, so an admin label is never overwritten.
+_Avoid_: display name, alias
+
 **Tâche**:
 An asynchronous Proxmox operation tracked by UPID and polled by the task tray
 (create, snapshot, rollback, snapshot delete). Terminal states are

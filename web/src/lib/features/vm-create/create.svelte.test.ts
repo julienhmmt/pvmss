@@ -122,6 +122,23 @@ describe('VmCreateStore.buildRequest in simple mode', () => {
 		});
 	});
 
+	it('pins the auto node when a cloud-init template is chosen', () => {
+		// The picker lists templates whose file is on effectiveNode(); the
+		// server picks by capacity, so the node must be sent explicitly.
+		const store = new VmCreateStore();
+		store.catalog = catalog();
+		store.name = 'web-05';
+		store.profileId = 'small';
+		store.cloudInitTemplateId = 'ci-01';
+		store.isoFile = 'debian-12.iso';
+
+		expect(store.buildRequest()).toMatchObject({
+			node: 'pve-node-01',
+			cloudInitTemplateId: 'ci-01',
+			iso: { storage: 'local', file: 'debian-12.iso' }
+		});
+	});
+
 	it('never sends a secureBoot field - the EFI disk always gets an empty key store', () => {
 		const store = new VmCreateStore();
 		store.catalog = catalog();

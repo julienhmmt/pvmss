@@ -7,6 +7,7 @@
 	 * Tone mapping:
 	 *   running       → ok (success-soft)
 	 *   stopped       → off (muted)
+	 *   paused        → warn
 	 *   provisioning   → warn
 	 *   starting      → warn
 	 *   stopping      → warn
@@ -32,6 +33,7 @@
 	const map: Record<MachineDisplayStatus, { tone: Tone; label: () => string }> = {
 		running: { tone: 'ok', label: () => m['machine.status.running']() },
 		stopped: { tone: 'off', label: () => m['machine.status.stopped']() },
+		paused: { tone: 'warn', label: () => m['machine.status.paused']() },
 		provisioning: { tone: 'warn', label: () => m['machine.status.provisioning']() },
 		starting: { tone: 'warn', label: () => m['machine.status.starting']() },
 		stopping: { tone: 'warn', label: () => m['machine.status.stopping']() },

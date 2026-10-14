@@ -1,12 +1,14 @@
 package httpapi
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"log/slog"
 	"net/http"
 	"net/http/httptest"
+	"net/url"
 	"pvmss/server/internal/cluster"
 	"pvmss/server/internal/vm"
 	"strings"
@@ -93,5 +95,58 @@ func assertPermissionDenied(t *testing.T, write func(http.ResponseWriter, error)
 
 	if !strings.Contains(body.Message, "VM.GuestAgent.Unrestricted") || !strings.Contains(body.Message, "/vms/999102") {
 		t.Errorf("message %q does not name the privilege and path", body.Message)
+	}
+}
+
+// A transport failure carries the internal Proxmox URL and the Go client chain;
+// the central helper must hand clients the fallback instead, while Proxmox's
+// own rejection text stays intact.
+func TestSafeClientMessage_HidesTransportURL(t *testing.T) {
+	t.Parallel()
+
+	urlErr := &url.Error{Op: "Get", URL: "https://192.168.1.1:8006/api2/json/nodes", Err: context.DeadlineExceeded}
+
+	const fallback = "cluster is unavailable"
+
+	cases := []struct {
+		name string
+		err  error
+		want string
+	}{
+		{"wrapped url error", fmt.Errorf("%w: %w", cluster.ErrUnreachable, urlErr), fallback},
+		{"bare url error", urlErr, fallback},
+		{"unreachable sentinel", cluster.ErrUnreachable, fallback},
+		{"url flattened into text", errors.New("create: " + urlErr.Error()), fallback},
+		{"proxmox rejection kept", &cluster.RejectionError{Status: http.StatusBadRequest, Message: "has wrong type 'iso'"}, "proxmox  : HTTP 400: has wrong type 'iso'"},
+		{"plain error kept", errors.New("disk too small"), "disk too small"},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
+			if got := safeClientMessage(tc.err, fallback); got != tc.want {
+				t.Errorf("safeClientMessage() = %q, want %q", got, tc.want)
+			}
+		})
+	}
+}
+
+// The create path echoes ErrClusterCreate text; a transport failure inside it
+// must not reach the client.
+func TestMapCreateError_ClusterErrorHidesTransportURL(t *testing.T) {
+	t.Parallel()
+
+	urlErr := &url.Error{Op: "Post", URL: "https://192.168.1.1:8006/api2/json/nodes/n/qemu", Err: context.DeadlineExceeded}
+	err := fmt.Errorf("%w: create: %w", vm.ErrClusterCreate, fmt.Errorf("%w: %w", cluster.ErrUnreachable, urlErr))
+
+	status, code, msg, ok := mapCreateError(err)
+	if !ok || status != http.StatusBadGateway || code != "cluster_error" {
+		t.Fatalf("mapCreateError = %d %q %v", status, code, ok)
+	}
+
+	for _, leak := range []string{"http", "8006", "api2"} {
+		if strings.Contains(msg, leak) {
+			t.Errorf("client message leaks %q: %q", leak, msg)
+		}
 	}
 }

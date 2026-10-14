@@ -144,6 +144,13 @@ type CloudInitUpdate struct {
 	SearchDomain *string
 }
 
+// ActionTasker is an optional Writer capability: a power action that also
+// returns the Proxmox task UPID, so the caller can observe whether the task
+// the POST started actually succeeded (the POST alone only means "queued").
+type ActionTasker interface {
+	ActionTask(ctx context.Context, node string, vmid int, action string) (string, error)
+}
+
 // Writer is the contract for mutating a single VM. It is deliberately separate
 // from Client (reads and writes are separated) - a handler
 // that writes never reads the cluster directly, it reads the inventory

@@ -8,7 +8,7 @@ d'administration ; la procédure complète est dans le
 
 **Clusters** connecte un ou plusieurs environnements Proxmox (URL, token
 d'API, test de connexion) et définit la cible d'écriture cloud-init par
-cluster. **Nœuds** approuve les hôtes sur lesquels les utilisateurs peuvent
+cluster. Chaque cluster a un identifiant immuable (choisi à la création ; `default` pour le premier) et un libellé modifiable ; l'identifiant ne peut pas être renommé. **Nœuds** approuve les hôtes sur lesquels les utilisateurs peuvent
 créer des VM. **Pools** crée les utilisateurs self-service (utilisateur
 Proxmox + pool + ACL en une étape).
 

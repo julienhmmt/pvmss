@@ -26,6 +26,7 @@ type VMDetail struct {
 	refresher      vm.IndexRefresher
 	refreshers     ClusterRefresherResolver
 	statusReader   cluster.VMStatusReader
+	creator        cluster.Creator
 	guestNetReader cluster.GuestNetworkReader
 	policy         *policy.Policy
 	log            *slog.Logger
@@ -134,6 +135,9 @@ type VMDetailDeps struct {
 	Store        *store.Store
 	Refresher    vm.IndexRefresher
 	StatusReader cluster.VMStatusReader
+	// Creator reads the task a power action started (TaskStatus), so the
+	// action response reports the task outcome rather than just the POST.
+	Creator cluster.Creator
 	// GuestNetReader supplies the live per-NIC IP addresses the detail DTO
 	// merges in - the inventory projection carries config-only interfaces.
 	GuestNetReader cluster.GuestNetworkReader
@@ -155,6 +159,7 @@ func NewVMDetailWithRegistry(deps VMDetailDeps, services ...*policy.Policy) *VMD
 
 	handler.clients = deps.Clients
 	handler.statusReader = deps.StatusReader
+	handler.creator = deps.Creator
 	handler.guestNetReader = deps.GuestNetReader
 
 	return handler
@@ -359,6 +364,7 @@ type actionRequest struct {
 
 type actionResponse struct {
 	Status string `json:"status"`
+	Upid   string `json:"upid,omitempty"`
 }
 
 type deleteResponse struct {

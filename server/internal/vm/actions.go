@@ -134,13 +134,22 @@ type WriteDeps struct {
 // chooses stop explicitly). With Force, shutdown skips the ACPI request and
 // stops the VM directly.
 func Action(ctx context.Context, deps BulkDeps, index *inventory.Index, clusterName string, vmid int, action string) error {
+	_, err := ActionTask(ctx, deps, index, clusterName, vmid, action)
+
+	return err
+}
+
+// ActionTask is Action that also returns the Proxmox task UPID the power
+// transition started. The UPID is empty when no cluster task was started (the
+// idempotent no-op, or a writer without the ActionTasker capability).
+func ActionTask(ctx context.Context, deps BulkDeps, index *inventory.Index, clusterName string, vmid int, action string) (string, error) {
 	if !validActions[action] {
-		return fmt.Errorf("%w: %q", ErrActionRejected, action)
+		return "", fmt.Errorf("%w: %q", ErrActionRejected, action)
 	}
 
 	entity, err := Resolve(index, deps.Actor, clusterName, vmid)
 	if err != nil {
-		return err
+		return "", err
 	}
 
 	// Shutdown with Force skips the ACPI request and stops the VM directly.
@@ -161,25 +170,26 @@ func Action(ctx context.Context, deps BulkDeps, index *inventory.Index, clusterN
 			// Record the audit entry - the intention is real even though
 			// no Proxmox call was made.
 			if err := deps.Audit.RecordAction(ctx, deps.Actor.Username, clusterName, vmid, action); err != nil {
-				return fmt.Errorf(auditWrapFmt, err)
+				return "", fmt.Errorf(auditWrapFmt, err)
 			}
 
-			return nil
+			return "", nil
 		}
 	}
 
 	// Retry-on-lock: a VM locked by backup/migrate/snapshot/etc.
 	// rejects actions with "VM is locked (lockname)". Retry with backoff
 	// until the lock clears or the budget expires.
-	if err := actionWithLockRetry(ctx, deps, entity, action); err != nil {
-		return fmt.Errorf("cluster action: %w", err)
+	upid, err := actionWithLockRetry(ctx, deps, entity, action)
+	if err != nil {
+		return "", fmt.Errorf("cluster action: %w", err)
 	}
 
 	if err := deps.Audit.RecordAction(ctx, deps.Actor.Username, clusterName, vmid, action); err != nil {
-		return fmt.Errorf(auditWrapFmt, err)
+		return "", fmt.Errorf(auditWrapFmt, err)
 	}
 
-	return nil
+	return upid, nil
 }
 
 // isIdempotentNoop reports whether action is a target-state transition
@@ -207,16 +217,28 @@ func isAlreadyInTargetState(action string, live cluster.VMStatus) bool {
 // forceShutdown implements shutdown with Force: skip the ACPI request and stop
 // the VM directly, recording the stop as its own audit entry (same pattern as
 // Delete's force-stop).
-func forceShutdown(ctx context.Context, deps BulkDeps, entity Entity, clusterName string, vmid int) error {
-	if err := deps.Writer.Action(ctx, entity.Node, entity.VMID, "stop"); err != nil {
-		return fmt.Errorf("cluster stop: %w", err)
+func forceShutdown(ctx context.Context, deps BulkDeps, entity Entity, clusterName string, vmid int) (string, error) {
+	upid, err := invokeAction(ctx, deps.Writer, entity.Node, entity.VMID, "stop")
+	if err != nil {
+		return "", fmt.Errorf("cluster stop: %w", err)
 	}
 
 	if err := deps.Audit.RecordAction(ctx, deps.Actor.Username, clusterName, vmid, "stop"); err != nil {
-		return fmt.Errorf(auditWrapFmt, err)
+		return "", fmt.Errorf(auditWrapFmt, err)
 	}
 
-	return nil
+	return upid, nil
+}
+
+// invokeAction issues a power action through the writer's ActionTasker
+// capability when present, so the UPID is returned; otherwise it falls back to
+// the plain Writer.Action and reports no task.
+func invokeAction(ctx context.Context, writer cluster.Writer, node string, vmid int, action string) (string, error) {
+	if tasker, ok := writer.(cluster.ActionTasker); ok {
+		return tasker.ActionTask(ctx, node, vmid, action)
+	}
+
+	return "", writer.Action(ctx, node, vmid, action)
 }
 
 // Lock retry constants. Vars so tests can shorten them.
@@ -234,15 +256,15 @@ var (
 // actionWithLockRetry calls deps.Writer.Action and retries when the error
 // indicates a VM lock (e.g. "VM is locked (backup)"). Returns a named-lock
 // error when the budget expires.
-func actionWithLockRetry(ctx context.Context, deps BulkDeps, entity Entity, action string) error {
-	err := deps.Writer.Action(ctx, entity.Node, entity.VMID, action)
+func actionWithLockRetry(ctx context.Context, deps BulkDeps, entity Entity, action string) (string, error) {
+	upid, err := invokeAction(ctx, deps.Writer, entity.Node, entity.VMID, action)
 	if err == nil {
-		return nil
+		return upid, nil
 	}
 
 	lockName, locked := extractLockName(err)
 	if !locked {
-		return err
+		return "", err
 	}
 
 	// Retry with backoff until the lock clears or the budget expires.
@@ -255,18 +277,18 @@ func actionWithLockRetry(ctx context.Context, deps BulkDeps, entity Entity, acti
 	for {
 		select {
 		case <-ticker.C:
-			err = deps.Writer.Action(ctx, entity.Node, entity.VMID, action)
+			upid, err = invokeAction(ctx, deps.Writer, entity.Node, entity.VMID, action)
 			if err == nil {
-				return nil
+				return upid, nil
 			}
 
 			if _, stillLocked := extractLockName(err); !stillLocked {
-				return err
+				return "", err
 			}
 		case <-deadline.C:
-			return fmt.Errorf("VM %d is locked by a %s; retry once it completes", entity.VMID, lockName)
+			return "", fmt.Errorf("VM %d is locked by a %s; retry once it completes", entity.VMID, lockName)
 		case <-ctx.Done():
-			return ctx.Err()
+			return "", ctx.Err()
 		}
 	}
 }

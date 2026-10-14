@@ -69,6 +69,7 @@ type createClusterRequest struct {
 }
 
 type updateClusterRequest struct {
+	DisplayName           string `json:"displayName"`
 	URL                   string `json:"url"`
 	TLSInsecureSkipVerify bool   `json:"tlsInsecureSkipVerify"`
 	TokenID               string `json:"tokenId"`
@@ -180,6 +181,10 @@ func (handler *AdminClusters) ServeUpdate(w http.ResponseWriter, r *http.Request
 		handler.writeStoreFailure(w, err)
 		return
 	}
+	if err := handler.store.SetClusterDisplayName(r.Context(), name, request.DisplayName); err != nil {
+		handler.writeStoreFailure(w, err)
+		return
+	}
 	if err := handler.store.SetClusterSnippetStorage(r.Context(), name, request.SnippetStorage); err != nil {
 		handler.writeStoreFailure(w, err)
 		return
@@ -249,7 +254,7 @@ func (handler *AdminClusters) ServeTest(w http.ResponseWriter, r *http.Request) 
 	if displayName, err := client.DisplayName(r.Context()); err != nil {
 		logctx.FromOr(r.Context(), handler.log).WarnContext(r.Context(), "cluster display name discovery failed", "component", "httpapi", "cluster", name, "error", err)
 	} else if displayName != "" {
-		if err := handler.store.SetClusterDisplayName(r.Context(), name, displayName); err != nil {
+		if err := handler.store.SetDiscoveredClusterDisplayName(r.Context(), name, displayName); err != nil {
 			logctx.FromOr(r.Context(), handler.log).WarnContext(r.Context(), "cluster display name persist failed", "component", "httpapi", "cluster", name, "error", err)
 		}
 	}

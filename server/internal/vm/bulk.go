@@ -14,6 +14,15 @@ import (
 	"pvmss/server/internal/cluster"
 	"pvmss/server/internal/inventory"
 	"pvmss/server/internal/logctx"
+	"sync"
+	"time"
+)
+
+// Per-target status values in BulkTargetResult.Status.
+const (
+	bulkStatusOK       = "ok"
+	bulkStatusAccepted = "accepted"
+	bulkStatusError    = "error"
 )
 
 // MaxBulkTargets is the upper bound on the number of targets a single bulk
@@ -43,6 +52,10 @@ type BulkTargetResult struct {
 	VMID    int    `json:"vmid"`
 	Status  string `json:"status"`
 	Message string `json:"message,omitempty"`
+	// Upid is the Proxmox task the action started, when one was started.
+	// Status is "accepted" while that task is still running, "ok" once it
+	// finished OK, and "error" (Message = exit message) if it failed.
+	Upid string `json:"upid,omitempty"`
 }
 
 // BulkActionRequest is the POST /api/v1/vms/bulk-action body. Action is one
@@ -107,6 +120,10 @@ type BulkDeps struct {
 	StatusReader cluster.VMStatusReader
 	// Force authorizes shutdown to skip ACPI and go directly to stop.
 	Force bool
+	// TaskWait bounds, in total across every target, how long BulkAction
+	// waits for the dispatched Proxmox tasks to settle. Zero skips the wait:
+	// started tasks stay "accepted" with their UPID.
+	TaskWait time.Duration
 }
 
 // BulkAction performs one power transition on every target in targets, in
@@ -136,10 +153,20 @@ func BulkAction(
 	results := make([]BulkTargetResult, 0, len(targets))
 	affectedClusters := make(map[string]struct{})
 
-	for _, target := range targets {
-		results = append(results, bulkActionResultFor(ctx, deps, target, kind))
+	var pending []pendingTask
+
+	for i, target := range targets {
+		result, task := bulkActionResultFor(ctx, deps, target, kind)
+		results = append(results, result)
 		affectedClusters[target.Cluster] = struct{}{}
+
+		if task != nil {
+			task.index = i
+			pending = append(pending, *task)
+		}
 	}
+
+	results = settleBulkTasks(ctx, deps.TaskWait, results, pending)
 
 	// Refresh once per distinct affected cluster. Not once per
 	// target - that was N redundant cluster snapshots. Best-effort: a refresh
@@ -170,48 +197,136 @@ func refreshAfterBulk(ctx context.Context, deps BulkDeps, clusters map[string]st
 	}
 }
 
+// pendingTask is a dispatched Proxmox task whose outcome settleBulkTasks
+// still has to observe. index is the target's position in the results.
+type pendingTask struct {
+	index  int
+	reader TaskReader
+	upid   string
+}
+
 // bulkActionResultFor resolves and performs the action for a single target and
-// returns its result entry. Extracted from BulkAction to hold that function
-// under the cognitive-complexity ceiling; logic is identical.
+// returns its result entry. When the action started a Proxmox task, it also
+// returns the task to settle; the entry is then "accepted" until settled.
+// Extracted from BulkAction to hold that function under the cognitive-complexity
+// ceiling.
 func bulkActionResultFor(
 	ctx context.Context,
 	deps BulkDeps,
 	target BulkTarget,
 	kind string,
-) BulkTargetResult {
+) (BulkTargetResult, *pendingTask) {
 	result := BulkTargetResult{Cluster: target.Cluster, VMID: target.VMID}
 
 	index, err := deps.Resolver.IndexFor(target.Cluster)
 	if err != nil || index == nil {
-		result.Status = "error"
+		result.Status = bulkStatusError
 		if err != nil {
 			result.Message = err.Error()
 		} else {
 			result.Message = "inventory has not been populated yet"
 		}
 
-		return result
+		return result, nil
 	}
 
 	targetDeps := deps
 	if deps.WriterResolver != nil {
 		writer, err := deps.WriterResolver.WriterFor(target.Cluster)
 		if err != nil {
-			result.Status = "error"
+			result.Status = bulkStatusError
 			result.Message = err.Error()
 
-			return result
+			return result, nil
 		}
 
 		targetDeps.Writer = writer
 	}
 
-	if err := Action(ctx, targetDeps, index, target.Cluster, target.VMID, kind); err != nil {
-		result.Status = "error"
+	upid, err := ActionTask(ctx, targetDeps, index, target.Cluster, target.VMID, kind)
+	if err != nil {
+		result.Status = bulkStatusError
 		result.Message = bulkErrorMessage(ctx, target, err)
-	} else {
-		result.Status = "ok"
+
+		return result, nil
 	}
+
+	result.Status = bulkStatusOK
+	result.Upid = upid
+
+	if upid == "" {
+		return result, nil
+	}
+
+	result.Status = bulkStatusAccepted
+
+	// A writer that cannot read task status (no TaskReader) leaves the task
+	// unsettled: it stays "accepted" with its UPID, never "ok" or "error".
+	reader, ok := targetDeps.Writer.(TaskReader)
+	if !ok {
+		return result, nil
+	}
+
+	return result, &pendingTask{reader: reader, upid: upid}
+}
+
+// settleBulkTasks waits for every pending task concurrently under one shared
+// budget of wait, so N tasks cost one wait, not N. It returns a new results
+// slice: a task that finished OK becomes "ok", one that failed becomes "error"
+// with its exit message, and one still unsettled (budget spent, or a failed
+// read) stays "accepted" with its UPID.
+func settleBulkTasks(ctx context.Context, wait time.Duration, results []BulkTargetResult, pending []pendingTask) []BulkTargetResult {
+	if wait <= 0 || len(pending) == 0 {
+		return results
+	}
+
+	waitCtx, cancel := context.WithTimeout(ctx, wait)
+	defer cancel()
+
+	settled := make([]BulkTargetResult, len(pending))
+
+	var group sync.WaitGroup
+
+	for i, task := range pending {
+		group.Go(func() {
+			settled[i] = settledResult(waitCtx, results[task.index], task)
+		})
+	}
+
+	group.Wait()
+
+	out := make([]BulkTargetResult, len(results))
+	copy(out, results)
+
+	for i, task := range pending {
+		out[task.index] = settled[i]
+	}
+
+	return out
+}
+
+// settledResult maps one task's observed outcome onto its result entry.
+func settledResult(ctx context.Context, result BulkTargetResult, task pendingTask) BulkTargetResult {
+	status, done, err := AwaitTask(ctx, task.reader, task.upid)
+	if err != nil {
+		logctx.From(ctx).WarnContext(ctx, "bulk vm task status read failed",
+			"component", "vm", "cluster", result.Cluster, "vmid", result.VMID, "error", err)
+
+		return result
+	}
+
+	if !done {
+		return result
+	}
+
+	if status.State == cluster.TaskError {
+		result.Status = bulkStatusError
+		result.Message = status.ExitMessage
+
+		return result
+	}
+
+	result.Status = bulkStatusOK
 
 	return result
 }

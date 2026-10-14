@@ -91,6 +91,7 @@
 			editing === null
 				? await store.create(input)
 				: await store.update(editing.name, {
+						displayName: input.displayName ?? '',
 						url: input.url,
 						tlsInsecureSkipVerify: input.tlsInsecureSkipVerify,
 						tokenId: input.tokenId,
@@ -131,7 +132,6 @@
 				<thead>
 					<tr>
 						<th scope="col" class="font-medium">{m['common.name']()}</th>
-						<th scope="col" class="font-medium">{m['admin.clusters.displayName']()}</th>
 						<th scope="col" class="font-medium">{m['common.status']()}</th>
 						<th scope="col" class="font-medium">{m['admin.clusters.version']()}</th>
 						<th scope="col" class="font-medium">{m['admin.clusters.nodesVms']()}</th>
@@ -143,10 +143,10 @@
 					{#each store.clusters as cluster (cluster.name)}
 						<tr class="align-top">
 							<td data-label={m['common.name']()}>
-								<div class="font-medium">{cluster.name}</div>
+								<div class="font-medium">{cluster.displayName || cluster.name}</div>
+								<div class="text-xs text-muted-foreground">{cluster.name}</div>
 								<div class="max-w-xs truncate text-xs text-muted-foreground" title={cluster.url}>{cluster.url}</div>
 							</td>
-							<td class="text-muted-foreground" data-label={m['admin.clusters.displayName']()}>{cluster.displayName || ' - '}</td>
 							<td data-label={m['common.status']()}>
 								<Pill tone={statusTone(cluster.lastTestStatus)} label={statusLabel(cluster.lastTestStatus)} />
 								{#if cluster.lastTestMessage}

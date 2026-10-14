@@ -65,6 +65,7 @@
 			<h2 class="text-lg font-semibold" id="baseline-publication-heading">
 				{m['admin.baseline.publication']()}
 			</h2>
+			<p class="text-sm text-muted-foreground">{m['admin.baseline.publicationScope']()}</p>
 			<Card as="div" pad="md">
 				<CloudInitDocumentStatus document={store.state.document} error={store.state.documentError} />
 			</Card>

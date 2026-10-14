@@ -179,6 +179,12 @@ var (
 	maxAgentPingWait = 30 * time.Second
 )
 
+// agentPasswordBudget caps the whole guest-agent password step (ping plus
+// account retries) inside one synchronous request. It must stay below the
+// server WriteTimeout (10 s, cmd/pvmss/main.go): past that the connection is
+// killed and the 504 never reaches the client.
+var agentPasswordBudget = 7 * time.Second
+
 // preflightGuestAgent refuses a password request that cannot succeed before
 // anything is written: the guest agent must be enabled in the VM config, and
 // the VM must be running (read live, not from the up-to-30s-stale projection -
@@ -226,6 +232,9 @@ const agentBootGrace = 3 * time.Minute
 // operation must succeed inside one synchronous request - hence the bounded,
 // in-request wait instead of ProxMate's persisted-retry subsystem.
 func applyCloudInitPassword(ctx context.Context, writer cluster.Writer, entity Entity, user, password string) error {
+	ctx, cancel := context.WithTimeout(ctx, agentPasswordBudget)
+	defer cancel()
+
 	deadline := time.NewTimer(maxAgentPingWait)
 	defer deadline.Stop()
 
@@ -237,7 +246,7 @@ func applyCloudInitPassword(ctx context.Context, writer cluster.Writer, entity E
 		if !agentReady {
 			if err := writer.PingGuestAgent(ctx, entity.Node, entity.VMID); err != nil {
 				if !waitNextProbe(ctx, deadline.C, ticker.C) {
-					return fmt.Errorf("%w after %s (is qemu-guest-agent installed and running?): %w", ErrGuestAgentUnreachable, maxAgentPingWait, err)
+					return fmt.Errorf("%w: no answer in time (is qemu-guest-agent installed and running?): %w", ErrGuestAgentUnreachable, err)
 				}
 
 				continue
@@ -378,7 +387,7 @@ func attachTemplateToVM(ctx context.Context, deps CloudInitDocumentDeps, entity 
 		return wrapJoin(ErrSnippetPushFailed, err)
 	}
 
-	return deps.Store.PutVMCloudInitDocument(ctx, deps.ClusterName, deps.VMID, templateID, filename, deps.Actor.Username)
+	return deps.Store.PutVMCloudInitDocument(ctx, deps.ClusterName, deps.VMID, catalog.DocumentKey(templateID), filename, deps.Actor.Username)
 }
 
 // dropLegacySnippet forgets the VM's legacy per-VM file row once the VM no
@@ -409,6 +418,9 @@ type AddCloudInitSSHKeyDeps struct {
 	Reader      cluster.CloudInitReader
 	Writer      cluster.Writer
 	Audit       AuditRecorder
+	// StatusReader reads the live power state; a stopped guest is refused
+	// with ErrVMNotRunning before the agent is called. Nil skips the check.
+	StatusReader cluster.VMStatusReader
 }
 
 // AddCloudInitSSHKey injects a single public key into the running guest's
@@ -425,6 +437,10 @@ func AddCloudInitSSHKey(ctx context.Context, deps AddCloudInitSSHKeyDeps, user, 
 
 	entity, err := resolveCloudInitTarget(deps.Index, deps.Actor, deps.ClusterName, deps.VMID)
 	if err != nil {
+		return err
+	}
+
+	if err := ensureVMRunning(ctx, deps.StatusReader, entity); err != nil {
 		return err
 	}
 
@@ -451,6 +467,25 @@ func AddCloudInitSSHKey(ctx context.Context, deps AddCloudInitSSHKeyDeps, user, 
 	}
 
 	return recordSSHKeyAudit(ctx, deps, user, key)
+}
+
+// ensureVMRunning refuses a stopped guest before an agent call. An unreachable
+// status read falls through: the agent call stays the authoritative gate.
+func ensureVMRunning(ctx context.Context, reader cluster.VMStatusReader, entity Entity) error {
+	if reader == nil {
+		return nil
+	}
+
+	status, err := reader.VMStatus(ctx, entity.Node, entity.VMID)
+	if err != nil {
+		return nil //nolint:nilerr // deliberate fall-through: the agent call is the authoritative gate
+	}
+
+	if status.Status != cluster.VMRunning {
+		return ErrVMNotRunning
+	}
+
+	return nil
 }
 
 func recordSSHKeyAudit(ctx context.Context, deps AddCloudInitSSHKeyDeps, _, _ string) error {

@@ -181,7 +181,7 @@
 					<span class="font-mono text-muted-foreground">
 						{result.cluster}:{result.vmid}
 					</span>
-					{#if result.status === 'ok'}
+					{#if result.status !== 'error'}
 						<span class="font-medium text-success" data-testid="vm-bulk-result-ok">
 							{m['common.ok']()}
 						</span>

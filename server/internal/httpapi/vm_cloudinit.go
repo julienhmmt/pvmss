@@ -359,6 +359,7 @@ func (h *VMCloudInit) handleSSHKey(w http.ResponseWriter, r *http.Request) {
 	if err := vm.AddCloudInitSSHKey(r.Context(), vm.AddCloudInitSSHKeyDeps{
 		Index: index, Actor: identity, ClusterName: clusterName, VMID: vmid,
 		Reader: reader, Writer: writer, Audit: h.store,
+		StatusReader: h.statusReaderFor(clusterName),
 	}, user, strings.TrimSpace(request.Key)); err != nil {
 		h.writeDomainError(w, err)
 		return
@@ -533,6 +534,10 @@ func (h *VMCloudInit) writeClusterFailure(w http.ResponseWriter, err error) bool
 	return false
 }
 
+// msgGuestAgentUnreachable is what a client sees when the guest agent never
+// answers; the Proxmox URL and transport error stay in the access log.
+const msgGuestAgentUnreachable = "guest agent did not answer in time; is qemu-guest-agent installed and running?"
+
 // writeGuestAgentError maps the password-path errors introduced by tickets 02
 // and 05. It writes the response and reports true when err is one of them.
 func (h *VMCloudInit) writeGuestAgentError(w http.ResponseWriter, err error) bool {
@@ -542,9 +547,10 @@ func (h *VMCloudInit) writeGuestAgentError(w http.ResponseWriter, err error) boo
 	case errors.Is(err, vm.ErrGuestAgentDisabled):
 		h.writeError(w, http.StatusConflict, "guest_agent_disabled", "the QEMU guest agent is not enabled on this VM")
 	case errors.Is(err, vm.ErrVMNotRunning):
-		h.writeError(w, http.StatusConflict, "vm_not_running", "start the VM before setting its cloud-init password")
+		h.writeError(w, http.StatusConflict, "vm_not_running", "start the VM first")
 	case errors.Is(err, vm.ErrGuestAgentUnreachable):
-		h.writeError(w, http.StatusGatewayTimeout, "guest_agent_unreachable", err.Error())
+		SetError(w, err)
+		h.writeError(w, http.StatusGatewayTimeout, "guest_agent_unreachable", msgGuestAgentUnreachable)
 	default:
 		return false
 	}
