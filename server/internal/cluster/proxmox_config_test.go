@@ -289,6 +289,27 @@ func TestProxmox_VMStatus(t *testing.T) {
 			wantUptime: 500 * time.Second,
 		},
 		{
+			name:       "running with qmpstatus paused is paused",
+			body:       `{"data":{"status":"running","qmpstatus":"paused","uptime":500}}`,
+			wantStatus: VMPaused,
+			wantLock:   "",
+			wantUptime: 500 * time.Second,
+		},
+		{
+			name:       "running with qmpstatus suspended is paused",
+			body:       `{"data":{"status":"running","qmpstatus":"suspended","uptime":500}}`,
+			wantStatus: VMPaused,
+			wantLock:   "",
+			wantUptime: 500 * time.Second,
+		},
+		{
+			name:       "running with qmpstatus running stays running",
+			body:       `{"data":{"status":"running","qmpstatus":"running","uptime":500}}`,
+			wantStatus: VMRunning,
+			wantLock:   "",
+			wantUptime: 500 * time.Second,
+		},
+		{
 			name:       "unknown status defaults to stopped",
 			body:       `{"data":{"status":"weird","uptime":0}}`,
 			wantStatus: VMStopped,

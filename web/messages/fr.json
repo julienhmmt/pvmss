@@ -1701,6 +1701,7 @@
   "vm.activity.pagetitle": "Page {page} sur {total}",
   "machine.status.running": "En marche",
   "machine.status.stopped": "Arrêtée",
+  "machine.status.paused": "En pause",
   "machine.status.provisioning": "Provisionnement",
   "machine.status.starting": "Démarrage",
   "machine.status.stopping": "Arrêt en cours",

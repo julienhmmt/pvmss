@@ -40,10 +40,8 @@ describe('displayStatus', () => {
 		expect(displayStatus(vm({ status: 'stopped' }), { tray: tray([]) })).toBe('stopped');
 	});
 
-	it('collapses the legacy paused status to stopped', () => {
-		// paused is not a Calm-workspace display state; never produce an
-		// invalid union member.
-		expect(displayStatus(vm({ status: 'paused' }), { tray: tray([]) })).toBe('stopped');
+	it('surfaces a paused VM as paused', () => {
+		expect(displayStatus(vm({ status: 'paused' }), { tray: tray([]) })).toBe('paused');
 	});
 
 	it('derives starting from an in-flight start action', () => {
