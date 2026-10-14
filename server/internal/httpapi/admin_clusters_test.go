@@ -341,6 +341,55 @@ func TestAdminClusters_UpdateRejectsNameAnd404sOnRemoved(t *testing.T) {
 	}
 }
 
+// TestAdminClusters_UpdateSetsDisplayName covers the editable display label:
+// the PUT persists displayName and the response reflects it.
+//
+//nolint:paralleltest // serial: shared fake cluster dataset
+func TestAdminClusters_UpdateSetsDisplayName(t *testing.T) {
+	fixture := newAdminClusterFixture(t)
+	cookie := adminClusterCookie(t, fixture.auth)
+
+	response := adminClusterRequest(t, fixture, cookie, clusterRequestSpec{Method: fixture.handler.ServeUpdate, HTTPMethod: http.MethodPut, Path: "/api/v1/admin/clusters/" + crossSecondaryCluster, Name: crossSecondaryCluster, Body: `{"displayName":"Lab Proxmox","url":"https://pve-b4.example.com:8006/api2/json","tokenId":"pvmss@pve!service"}`})
+	if response.Code != http.StatusOK {
+		t.Fatalf("update status = %d, want 200: %s", response.Code, response.Body.String())
+	}
+	var updated adminClusterDTOForTest
+	if err := json.Unmarshal(response.Body.Bytes(), &updated); err != nil {
+		t.Fatalf("decode updated: %v", err)
+	}
+	if updated.DisplayName != "Lab Proxmox" {
+		t.Fatalf("displayName = %q, want %q", updated.DisplayName, "Lab Proxmox")
+	}
+}
+
+// TestAdminClusters_TestKeepsAdminDisplayName: a successful connection test
+// must not overwrite a label the admin set (the Proxmox name is only a fallback).
+//
+//nolint:paralleltest // HTTP fixture shares fake cluster state; steps are sequential
+func TestAdminClusters_TestKeepsAdminDisplayName(t *testing.T) {
+	fixture := newAdminClusterFixture(t)
+	cookie := adminClusterCookie(t, fixture.auth)
+
+	update := adminClusterRequest(t, fixture, cookie, clusterRequestSpec{Method: fixture.handler.ServeUpdate, HTTPMethod: http.MethodPut, Path: "/api/v1/admin/clusters/" + auditTestCluster, Name: auditTestCluster, Body: `{"displayName":"Lab Proxmox","url":"https://pve-t.example.com:8006/api2/json","tokenId":"pvmss@pve!service"}`})
+	if update.Code != http.StatusOK {
+		t.Fatalf("update status = %d, want 200: %s", update.Code, update.Body.String())
+	}
+	testResponse := adminClusterRequest(t, fixture, cookie, clusterRequestSpec{Method: fixture.handler.ServeTest, HTTPMethod: http.MethodPost, Path: "/api/v1/admin/clusters/" + auditTestCluster + "/test", Name: auditTestCluster, Body: ""})
+	if testResponse.Code != http.StatusOK {
+		t.Fatalf("test status = %d, want 200: %s", testResponse.Code, testResponse.Body.String())
+	}
+	list := adminClusterRequest(t, fixture, cookie, clusterRequestSpec{Method: fixture.handler.ServeList, HTTPMethod: http.MethodGet, Path: adminClustersPath, Name: "", Body: ""})
+	var rows []adminClusterDTOForTest
+	if err := json.Unmarshal(list.Body.Bytes(), &rows); err != nil {
+		t.Fatalf("decode list: %v", err)
+	}
+	for _, row := range rows {
+		if row.Name == auditTestCluster && row.DisplayName != "Lab Proxmox" {
+			t.Fatalf("displayName after test = %q, want admin label %q preserved", row.DisplayName, "Lab Proxmox")
+		}
+	}
+}
+
 // TestAdminClusters_TestReachableReportsOKAndPersists - test path
 // (reachable branch): a healthy cluster's test returns 200 status "ok" with
 // version/counts, and - per the contract's "a test is the refresh"

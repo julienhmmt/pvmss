@@ -307,7 +307,7 @@ func parseNetValue(index int, value string) NetworkInterface {
 			if proxmoxNICModels[key] {
 				nic.Model = key
 			}
-		case key == "bridge":
+		case key == netKeyBridge:
 			nic.Bridge = val
 		case key == "tag":
 			if n, err := strconv.Atoi(val); err == nil {
@@ -406,9 +406,7 @@ func hydrateVM(ctx context.Context, rest proxmoxRESTClient, vm *VM) error {
 	vm.Agent = agentEnabled(cfg.str("agent"))
 	vm.OSType = cfg.str("ostype")
 
-	if len(vm.Tags) == 0 {
-		vm.Tags = splitProxmoxTags(cfg.str("tags"))
-	}
+	applyConfigSummary(vm, cfg)
 
 	if vm.Status != VMRunning {
 		return nil
@@ -422,6 +420,30 @@ func hydrateVM(ctx context.Context, rest proxmoxRESTClient, vm *VM) error {
 	vm.Uptime = uptime
 
 	return nil
+}
+
+// bytesPerMiBConfig converts the MiB unit of the config "memory" key to bytes.
+const bytesPerMiBConfig int64 = 1024 * 1024
+
+// applyConfigSummary makes the VM config authoritative for the fields a write
+// changes. /cluster/resources (the summary used to build the VM) lags a config
+// write by seconds, so name, vCPU count, memory and tags must come from the
+// config read in the same snapshot. Name and memory keep the summary value
+// when the config omits them (Proxmox leaves unset keys out of the config).
+// ponytail: tags always follow the config, since Proxmox omits the key when
+// no tag is set; a real empty result must not fall back to a stale summary.
+func applyConfigSummary(vm *VM, cfg proxmoxVMConfig) {
+	if name := cfg.str("name"); name != "" {
+		vm.Name = name
+	}
+
+	vm.CPUCores = vm.Sockets * vm.Cores
+
+	if mb := cfg.int("memory"); mb > 0 {
+		vm.MemoryTotal = int64(mb) * bytesPerMiBConfig
+	}
+
+	vm.Tags = splitProxmoxTags(cfg.str("tags"))
 }
 
 func fetchUptime(ctx context.Context, rest proxmoxRESTClient, node string, vmid int) (time.Duration, error) {
@@ -452,26 +474,32 @@ func (p Proxmox) VMStatus(ctx context.Context, node string, vmid int) (VMLiveSta
 	}
 
 	var status struct {
-		Status string `json:"status"`
-		Lock   string `json:"lock"`
-		Uptime int64  `json:"uptime"`
+		Status    string `json:"status"`
+		QMPStatus string `json:"qmpstatus"`
+		Lock      string `json:"lock"`
+		Uptime    int64  `json:"uptime"`
 	}
 	if err := decodeData(raw, &status); err != nil {
 		return VMLiveStatus{}, fmt.Errorf("decode vm status: %w", err)
 	}
 
 	return VMLiveStatus{
-		Status: parseVMStatus(status.Status),
+		Status: parseVMStatus(status.Status, status.QMPStatus),
 		Lock:   status.Lock,
 		Uptime: time.Duration(status.Uptime) * time.Second,
 	}, nil
 }
 
-// parseVMStatus maps Proxmox's status string to the VMStatus enum. Proxmox
-// reports "running", "stopped", "paused" - matching the enum directly. An
-// unexpected value defaults to stopped rather than failing the read, matching
+// parseVMStatus maps Proxmox's status to the VMStatus enum. A paused guest is
+// reported as status "running" with qmpstatus "paused" (or "suspended" for a
+// hibernated guest), so qmpstatus wins when it says the guest is not running.
+// Any other value defaults to stopped rather than failing the read, matching
 // the best-effort posture of the snapshot path.
-func parseVMStatus(s string) VMStatus {
+func parseVMStatus(s, qmpStatus string) VMStatus {
+	if s == string(VMRunning) && (qmpStatus == "paused" || qmpStatus == "suspended") {
+		return VMPaused
+	}
+
 	switch VMStatus(s) {
 	case VMRunning, VMStopped, VMPaused:
 		return VMStatus(s)

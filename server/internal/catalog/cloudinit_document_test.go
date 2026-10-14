@@ -61,7 +61,11 @@ func TestWriteCommand_WritesContentVerbatim(t *testing.T) {
 	}
 
 	content := "#cloud-config\nruncmd:\n  - echo \"$HOME `id` $(date)\"\nPVMSS_EOF\n"
-	cmd := catalog.WriteCommand("local", "pvmss-tpl-web-0123456789ab.yml", content)
+
+	cmd, err := catalog.WriteCommand(storageLocal, "pvmss-tpl-web-0123456789ab.yml", content)
+	if err != nil {
+		t.Fatal(err)
+	}
 
 	run := exec.CommandContext(context.Background(), "sh", "-c", cmd) //nolint:gosec // command under test
 
@@ -150,5 +154,24 @@ func TestCheckCloudInitDocument_NotConfigured(t *testing.T) {
 
 	if _, err := catalog.CheckCloudInitDocument(context.Background(), nil, "web", ""); !errors.Is(err, cluster.ErrSnippetWriteUnavailable) {
 		t.Errorf("err = %v, want ErrSnippetWriteUnavailable", err)
+	}
+}
+
+func TestWriteCommand_RefusesShellUnsafeNames(t *testing.T) {
+	t.Parallel()
+
+	cases := []struct{ storage, filename string }{
+		{"local;rm -rf /", "pvmss-baseline-0123456789ab.yml"},
+		{storageLocal, "x$(id).yml"},
+		{storageLocal, "a b.yml"},
+		{"", "pvmss-baseline-0123456789ab.yml"},
+		{storageLocal, "../etc/x"},
+	}
+
+	for _, c := range cases {
+		cmd, err := catalog.WriteCommand(c.storage, c.filename, "#cloud-config\n")
+		if !errors.Is(err, catalog.ErrUnsafeSnippetPath) || cmd != "" {
+			t.Errorf("WriteCommand(%q, %q) = %q, %v; want ErrUnsafeSnippetPath", c.storage, c.filename, cmd, err)
+		}
 	}
 }

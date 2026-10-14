@@ -365,11 +365,11 @@ func proxmoxErrorMessage(raw []byte) string {
 			parts = append(parts, fmt.Sprintf("%s: %s", field, message))
 		}
 
-		return strings.Join(parts, "; ")
+		return strings.TrimSpace(strings.Join(parts, "; "))
 	}
 
 	if envelope.Message != "" {
-		return envelope.Message
+		return strings.TrimSpace(envelope.Message)
 	}
 
 	return strings.TrimSpace(string(raw))

@@ -452,3 +452,26 @@ func TestDo_ConnectionReuseAcrossCalls(t *testing.T) {
 		t.Errorf("server calls = %d, want 5", got)
 	}
 }
+
+func TestProxmoxRESTClient_Do_RejectionTrimsMessage(t *testing.T) {
+	t.Parallel()
+
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.WriteHeader(http.StatusInternalServerError)
+		_, _ = w.Write([]byte(`{"data":null,"message":"VM 999103 is not running\n"}`))
+	}))
+	t.Cleanup(srv.Close)
+
+	rest := newProxmoxREST(srv.URL, testTokenName, testTokenVal, newProxmoxHTTPClient(false))
+
+	_, err := rest.do(context.Background(), http.MethodPost, "/nodes/n1/qemu/999103/agent/exec", nil)
+
+	var rejection *RejectionError
+	if !errors.As(err, &rejection) {
+		t.Fatalf("error should be a *RejectionError, got %T", err)
+	}
+
+	if rejection.Message != "VM 999103 is not running" {
+		t.Errorf("message = %q, want trimmed text without trailing newline", rejection.Message)
+	}
+}

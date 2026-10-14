@@ -590,7 +590,8 @@ export class VmCreateStore {
 		}
 	}
 
-	/** The node the server will pick when the user did not adjust it (FR-010). */
+	/** The default node shown when the user did not adjust it (FR-010). The
+	 *  server picks by capacity, so this is only exact once sent explicitly. */
 	autoNode(): string {
 		return this.catalog?.nodes[0] ?? '';
 	}
@@ -811,17 +812,21 @@ export class VmCreateStore {
 			request.uefi = this.uefi;
 			if (this.profileId !== '') request.profileId = this.profileId;
 			this.applyCloudInitDocument(request);
-			if (this.nodeAdjusted && this.node !== '') request.node = this.node;
+			// A chosen cloud-init template pins the node the picker filtered on:
+			// the server would otherwise pick by capacity, maybe a node without
+			// the template's file (ErrCloudInitNotPublished).
+			const pinnedNode = this.nodeAdjusted || this.cloudInitTemplateId !== '' ? this.effectiveNode() : '';
+			if (pinnedNode !== '') request.node = pinnedNode;
 			if (this.storageAdjusted && this.storage !== '') {
 				request.disk = { storage: this.storage };
 			}
 			if (this.isoFile !== '') {
-				// When the node is adjusted, only an ISO on that node is valid
+				// When the node is pinned, only an ISO on that node is valid
 				// (the server rejects a mismatch with ErrNotApproved). When auto,
 				// send any matching file - the server restricts candidate nodes
 				// to those that hold the ISO (resolveResources/nodesWithISO).
 				const iso = this.catalog?.isos.find(
-					(entry) => entry.file === this.isoFile && (!this.nodeAdjusted || entry.node === this.node)
+					(entry) => entry.file === this.isoFile && (pinnedNode === '' || entry.node === pinnedNode)
 				);
 				if (iso !== undefined) request.iso = { storage: iso.storage, file: iso.file };
 			}
