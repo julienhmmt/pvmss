@@ -7,6 +7,7 @@
 	import Card from '$lib/shared/ui/Card.svelte';
 	import CopyChip from '$lib/shared/ui/CopyChip.svelte';
 	import EmptyState from '$lib/shared/ui/EmptyState.svelte';
+	import TableSkeleton from '$lib/shared/ui/TableSkeleton.svelte';
 
 	const store = getVmDetailContext();
 
@@ -39,7 +40,10 @@
 	<p class="mt-1 text-sm text-muted-foreground">{m['vms.network.description']()}</p>
 
 	{#if store.hardwareLoading}
-		<p class="mt-5 text-sm text-muted-foreground" role="status">{m['vms.network.loading']()}</p>
+		<div class="mt-5" role="status">
+			<span class="sr-only">{m['vms.network.loading']()}</span>
+			<TableSkeleton columns={8} />
+		</div>
 	{:else if store.hardwareError}
 		<Alert class="mt-5">{store.hardwareError}</Alert>
 	{:else if store.entity?.networkInterfaces?.length}
