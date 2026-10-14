@@ -21,6 +21,8 @@
 	import { getTaskOutcomeLedgerContext } from '$lib/features/tasks/task-outcome-ledger.svelte';
 	import { getPowerActionsContext } from '$lib/features/tasks/power-actions.svelte';
 	import { getToastContext } from '$lib/shared/ui/toast.svelte';
+	import { page } from '$app/state';
+	import { goto } from '$app/navigation';
 	import { resolve } from '$app/paths';
 	import Button from '$lib/shared/ui/Button.svelte';
 	import ButtonLink from '$lib/shared/ui/ButtonLink.svelte';
@@ -57,8 +59,7 @@
 		{ id: 'configuration', label: () => m['vms.detail.tabConfiguration']() },
 		{ id: 'activity', label: () => m['vm.activity.tab']() }
 	];
-	let activeTab = $state('connect');
-
+	type MainTab = 'connect' | 'configuration' | 'activity';
 	const configTabs = [
 		{ id: 'overview', label: () => m['vms.detail.tabSummary']() },
 		{ id: 'disks', label: () => m['vms.detail.tabDisks']() },
@@ -67,7 +68,40 @@
 		{ id: 'cloudinit', label: () => m['vms.detail.tabCloudinit']() },
 		{ id: 'snapshots', label: () => m['vms.detail.tabSnapshots']() }
 	];
-	let configTab = $state('overview');
+	type ConfigTab = 'overview' | 'disks' | 'network' | 'hardware' | 'cloudinit' | 'snapshots';
+
+	function parseTab(raw: string | null): MainTab {
+		if (raw === 'configuration' || raw === 'activity') return raw;
+		return 'connect';
+	}
+
+	function parseSub(raw: string | null): ConfigTab {
+		if (raw === 'disks' || raw === 'network' || raw === 'hardware' || raw === 'cloudinit' || raw === 'snapshots') return raw;
+		return 'overview';
+	}
+
+	// Both tabs are derived from the URL so deep links (?tab=&sub=) and
+	// back/forward navigation land on the right panel. The setters write the
+	// query string back, omitting default values to keep URLs clean.
+	const activeTab: MainTab = $derived(parseTab(page.url.searchParams.get('tab')));
+	const configTab: ConfigTab = $derived(parseSub(page.url.searchParams.get('sub')));
+
+	function syncTabUrl(tab: MainTab, sub: ConfigTab): void {
+		const url = new URL(page.url);
+		if (tab === 'connect') url.searchParams.delete('tab');
+		else url.searchParams.set('tab', tab);
+		if (sub === 'overview') url.searchParams.delete('sub');
+		else url.searchParams.set('sub', sub);
+		void goto(`${url.pathname}${url.search}`, { replaceState: true, noScroll: true, keepFocus: true });
+	}
+
+	function selectTab(id: string): void {
+		syncTabUrl(parseTab(id), configTab);
+	}
+
+	function selectConfigTab(id: string): void {
+		syncTabUrl('configuration', parseSub(id));
+	}
 
 	const status = $derived(
 		store.entity === null
@@ -209,12 +243,24 @@
 						{:else}
 							<button
 								type="button"
-								class="truncate text-left hover:cursor-text hover:underline"
+								class="group inline-flex items-center gap-1.5 truncate text-left hover:cursor-text hover:underline"
 								onclick={startEditName}
 								title={m['vms.detail.clickToRename']()}
 								data-testid="vm-name"
 							>
 								{entity.name}
+								<svg
+									aria-hidden="true"
+									class="size-4 shrink-0 text-muted-foreground opacity-60 transition-opacity group-hover:opacity-100"
+									viewBox="0 0 20 20"
+									fill="none"
+									stroke="currentColor"
+									stroke-width="1.5"
+									stroke-linecap="round"
+									stroke-linejoin="round"
+								>
+									<path d="M13.586 3.586a2 2 0 1 1 2.828 2.828l-8.486 8.486a2 2 0 0 1-.878.508l-3.25.867.867-3.25a2 2 0 0 1 .508-.878l8.485-8.487Z" />
+								</svg>
 							</button>
 						{/if}
 					</h1>
@@ -288,14 +334,14 @@
 		{/if}
 	</div>
 
-	<Tabs {tabs} bind:active={activeTab} look="underline" />
+	<Tabs {tabs} look="underline" bind:active={() => activeTab, selectTab} />
 
 	<div id="panel-connect" role="tabpanel" aria-labelledby="tab-connect" hidden={activeTab !== 'connect'} class="mt-5">
 		<VmConnectTab {status} />
 	</div>
 
 	<div id="panel-configuration" role="tabpanel" aria-labelledby="tab-configuration" hidden={activeTab !== 'configuration'} class="mt-5">
-		<Tabs tabs={configTabs} bind:active={configTab} />
+		<Tabs tabs={configTabs} bind:active={() => configTab, selectConfigTab} />
 
 		<div
 			id="panel-overview"

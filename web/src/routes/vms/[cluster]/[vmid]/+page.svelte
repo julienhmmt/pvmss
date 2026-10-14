@@ -31,6 +31,6 @@
 	<title>{m['vms.detail.title']({ name: store.entity?.name || `VM ${vmid}` })}</title>
 </svelte:head>
 
-<section class="mx-auto w-full max-w-reading">
+<section class="mx-auto w-full max-w-6xl">
 	<VmDetail />
 </section>
