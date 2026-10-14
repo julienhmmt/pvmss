@@ -24,7 +24,7 @@ type taskWriter struct {
 }
 
 func (w taskWriter) ActionTask(ctx context.Context, node string, vmid int, action string) (string, error) {
-	if err := w.Fake.Action(ctx, node, vmid, action); err != nil {
+	if err := w.Action(ctx, node, vmid, action); err != nil {
 		return "", err
 	}
 
@@ -103,6 +103,7 @@ func postAction(t *testing.T, handler *httpapi.VMDetail, cookie *http.Cookie, ac
 	return rec.Code, body
 }
 
+//nolint:paralleltest // serial: shared fake cluster dataset
 func TestVmAction_FailedTaskReturns409TaskFailed(t *testing.T) {
 	const exitMsg = "VM is locked (shutdown)"
 
@@ -125,6 +126,7 @@ func TestVmAction_FailedTaskReturns409TaskFailed(t *testing.T) {
 	}
 }
 
+//nolint:paralleltest // serial: shared fake cluster dataset
 func TestVmAction_OKTaskReturns200WithUPID(t *testing.T) {
 	handler, authHandler := newActionTaskHandler(t, taskCreator{
 		status: cluster.TaskStatus{State: cluster.TaskOK},
@@ -141,6 +143,7 @@ func TestVmAction_OKTaskReturns200WithUPID(t *testing.T) {
 	}
 }
 
+//nolint:paralleltest // mutates ActionTaskWait
 func TestVmAction_RunningTaskPastDeadlineReturns202(t *testing.T) {
 	prev := httpapi.ActionTaskWait
 	httpapi.ActionTaskWait = 50 * time.Millisecond

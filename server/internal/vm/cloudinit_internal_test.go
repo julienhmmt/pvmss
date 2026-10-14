@@ -194,6 +194,7 @@ func TestApplyCloudInitPassword_BoundedBelowWriteTimeout(t *testing.T) {
 
 	prevBudget := agentPasswordBudget
 	agentPasswordBudget = 50 * time.Millisecond
+
 	t.Cleanup(func() { agentPasswordBudget = prevBudget })
 
 	entity := Entity{Node: cluster.FakeNode01, VMID: 101}

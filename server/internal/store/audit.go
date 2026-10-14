@@ -331,6 +331,27 @@ func (s *Store) ListAuditLog(ctx context.Context, f AuditFilter) (AuditPage, err
 	return AuditPage{Items: items, Total: total, Page: page, PageSize: pageSize}, nil
 }
 
+// appendIncarnationClauses restricts a VMID-scoped query to the current
+// incarnation of the VM when f.CurrentIncarnation is set. Proxmox reuses VMIDs:
+// keep only rows at or after the latest vm_create and strictly after the latest
+// delete of this cluster+vmid. Compared by id (AUTOINCREMENT insertion order),
+// not timestamp: RFC3339Nano trims fractional seconds, so the strings do not
+// sort chronologically. Callers must ensure f.VMID is non-nil.
+func appendIncarnationClauses(clauses []string, args []any, f AuditFilter) ([]string, []any) {
+	if !f.CurrentIncarnation || f.Cluster == "" {
+		return clauses, args
+	}
+
+	clauses = append(clauses,
+		"id >= COALESCE((SELECT MAX(id) FROM audit_log WHERE cluster = ? AND vmid = ? AND action = 'vm_create'), 0)",
+		"id > COALESCE((SELECT MAX(id) FROM audit_log WHERE cluster = ? AND vmid = ? AND action = 'delete'), 0)")
+	for range 2 {
+		args = append(args, f.Cluster, *f.VMID)
+	}
+
+	return clauses, args
+}
+
 // buildAuditWhere constructs the WHERE clause and args for an AuditFilter.
 // All filters combine with AND; an empty filter yields an empty WHERE clause.
 func buildAuditWhere(f AuditFilter) (string, []any) {
@@ -347,20 +368,7 @@ func buildAuditWhere(f AuditFilter) (string, []any) {
 	if f.VMID != nil {
 		clauses = append(clauses, "vmid = ?")
 		args = append(args, *f.VMID)
-
-		if f.CurrentIncarnation && f.Cluster != "" {
-			// Proxmox reuses VMIDs: keep only rows at or after the latest
-			// vm_create and strictly after the latest delete of this
-			// cluster+vmid. Compared by id (AUTOINCREMENT insertion order),
-			// not timestamp: RFC3339Nano trims fractional seconds, so the
-			// strings do not sort chronologically.
-			clauses = append(clauses,
-				"id >= COALESCE((SELECT MAX(id) FROM audit_log WHERE cluster = ? AND vmid = ? AND action = 'vm_create'), 0)",
-				"id > COALESCE((SELECT MAX(id) FROM audit_log WHERE cluster = ? AND vmid = ? AND action = 'delete'), 0)")
-			for range 2 {
-				args = append(args, f.Cluster, *f.VMID)
-			}
-		}
+		clauses, args = appendIncarnationClauses(clauses, args, f)
 	}
 
 	if f.Actor != "" {
