@@ -13,6 +13,7 @@
 	import Button from '$lib/shared/ui/Button.svelte';
 	import Card from '$lib/shared/ui/Card.svelte';
 	import Select from '$lib/shared/ui/Select.svelte';
+	import ProfilePasswordSection from '$lib/features/auth/ProfilePasswordSection.svelte';
 	import ProfileSshKeysSection from '$lib/features/profile-ssh-keys/ProfileSshKeysSection.svelte';
 	import { accountInitials } from '$lib/shared/initials';
 	import { m } from '$lib/paraglide/messages.js';
@@ -85,9 +86,11 @@
 				/>
 			</label>
 		</div>
-
-		<p class="border-t border-border px-6 py-4 text-xs text-muted-foreground">{m['account.authNote']()}</p>
 	</Card>
 
-	<ProfileSshKeysSection />
+	<ProfilePasswordSection />
+
+	{#if !session.isAdmin}
+		<ProfileSshKeysSection />
+	{/if}
 </section>
