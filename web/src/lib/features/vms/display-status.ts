@@ -11,6 +11,7 @@ import type { TrackedTask } from '$lib/features/tasks/tasks.svelte';
 export type MachineDisplayStatus =
 	| 'running'
 	| 'stopped'
+	| 'paused'
 	| 'provisioning'
 	| 'starting'
 	| 'stopping'
@@ -70,8 +71,7 @@ const STOPPING_ACTIONS: ReadonlySet<VmAction> = new Set(['shutdown', 'stop']);
  * 3. Session outcome ledger → `partial` / `failed` (only when the VM is
  *    not running - a live VM is connectable regardless of a stale
  *    creation-time outcome).
- * 4. Server status floor (`running` / `stopped`; `paused` collapses to
- *    `stopped` - it is not a Calm-workspace display state).
+ * 4. Server status floor (`running` / `paused` / `stopped`).
  */
 export function displayStatus(vm: MachineDisplayInput, deps: DisplayStatusDeps): MachineDisplayStatus {
 	const { tray, ledger, inFlightAction = null } = deps;
@@ -98,6 +98,7 @@ export function displayStatus(vm: MachineDisplayInput, deps: DisplayStatusDeps):
 		if (outcome === 'failed') return 'failed';
 	}
 
+	if (vm.status === 'paused') return 'paused';
 	return vm.status === 'running' ? 'running' : 'stopped';
 }
 

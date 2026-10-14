@@ -1701,6 +1701,7 @@
   "vm.activity.pagetitle": "Page {page} of {total}",
   "machine.status.running": "Running",
   "machine.status.stopped": "Stopped",
+  "machine.status.paused": "Paused",
   "machine.status.provisioning": "Provisioning",
   "machine.status.starting": "Starting",
   "machine.status.stopping": "Stopping",

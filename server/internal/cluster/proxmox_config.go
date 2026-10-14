@@ -452,26 +452,32 @@ func (p Proxmox) VMStatus(ctx context.Context, node string, vmid int) (VMLiveSta
 	}
 
 	var status struct {
-		Status string `json:"status"`
-		Lock   string `json:"lock"`
-		Uptime int64  `json:"uptime"`
+		Status    string `json:"status"`
+		QMPStatus string `json:"qmpstatus"`
+		Lock      string `json:"lock"`
+		Uptime    int64  `json:"uptime"`
 	}
 	if err := decodeData(raw, &status); err != nil {
 		return VMLiveStatus{}, fmt.Errorf("decode vm status: %w", err)
 	}
 
 	return VMLiveStatus{
-		Status: parseVMStatus(status.Status),
+		Status: parseVMStatus(status.Status, status.QMPStatus),
 		Lock:   status.Lock,
 		Uptime: time.Duration(status.Uptime) * time.Second,
 	}, nil
 }
 
-// parseVMStatus maps Proxmox's status string to the VMStatus enum. Proxmox
-// reports "running", "stopped", "paused" - matching the enum directly. An
-// unexpected value defaults to stopped rather than failing the read, matching
+// parseVMStatus maps Proxmox's status to the VMStatus enum. A paused guest is
+// reported as status "running" with qmpstatus "paused" (or "suspended" for a
+// hibernated guest), so qmpstatus wins when it says the guest is not running.
+// Any other value defaults to stopped rather than failing the read, matching
 // the best-effort posture of the snapshot path.
-func parseVMStatus(s string) VMStatus {
+func parseVMStatus(s, qmpStatus string) VMStatus {
+	if s == string(VMRunning) && (qmpStatus == "paused" || qmpStatus == "suspended") {
+		return VMPaused
+	}
+
 	switch VMStatus(s) {
 	case VMRunning, VMStopped, VMPaused:
 		return VMStatus(s)
