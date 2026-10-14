@@ -153,7 +153,7 @@
 	}
 </script>
 
-<form class="grid gap-6" onsubmit={(event) => { event.preventDefault(); submit(); }}>
+<form class="grid max-w-5xl gap-6 lg:grid-cols-[minmax(0,2fr)_minmax(0,1fr)] lg:items-start" onsubmit={(event) => { event.preventDefault(); submit(); }}>
 	<Card pad="lg">
 		<div class="mb-4 grid gap-1">
 			<h2 class="text-lg font-medium text-foreground">{m['policy.gabarit']()}</h2>
@@ -180,13 +180,15 @@
 
 			<fieldset>
 				<legend class="mb-3 text-sm font-medium text-muted-foreground">{m['policy.memoryGroup']()}</legend>
-				<FormField label={m['policy.maxMemory']()} required class="max-w-xs" error={maxMemoryError ?? serverErrorForField('maxMemoryMB')}>
-					{#snippet children({ id, describedBy, invalid })}
-						<TextField {id} {describedBy} {invalid} type="number" min={0} max={MAX_MEMORY_MB} bind:value={form.gabarit.maxMemoryMB} required>
-							{#snippet trailing()}<span class="text-xs text-muted-foreground">{m['policy.unitMB']()}</span>{/snippet}
-						</TextField>
-					{/snippet}
-				</FormField>
+				<div class="grid gap-4 sm:grid-cols-2">
+					<FormField label={m['policy.maxMemory']()} required error={maxMemoryError ?? serverErrorForField('maxMemoryMB')}>
+						{#snippet children({ id, describedBy, invalid })}
+							<TextField {id} {describedBy} {invalid} type="number" min={0} max={MAX_MEMORY_MB} bind:value={form.gabarit.maxMemoryMB} required>
+								{#snippet trailing()}<span class="text-xs text-muted-foreground">{m['policy.unitMB']()}</span>{/snippet}
+							</TextField>
+						{/snippet}
+					</FormField>
+				</div>
 			</fieldset>
 
 			<fieldset>
@@ -209,43 +211,46 @@
 
 			<fieldset>
 				<legend class="mb-3 text-sm font-medium text-muted-foreground">{m['policy.networkGroup']()}</legend>
-				<FormField label={m['policy.maxNetworkCards']()} required class="max-w-xs" error={maxNetworkCardsError ?? serverErrorForField('maxNetworkCards')}>
-					{#snippet children({ id, describedBy, invalid })}
-						<TextField {id} {describedBy} {invalid} type="number" min={0} max={MAX_NETWORK_CARDS} bind:value={form.gabarit.maxNetworkCards} required />
-					{/snippet}
-				</FormField>
-				<FormField
-					label={m['policy.isolationVlanTag']()}
-					hint={m['policy.isolationVlanHint']()}
-					class="max-w-xs"
-					error={isolationVlanError ?? serverErrorForField('isolationVlanTag')}
-				>
-					{#snippet children({ id, describedBy, invalid })}
-						<TextField {id} {describedBy} {invalid} type="number" min={0} max={4094} bind:value={form.gabarit.isolationVlanTag} />
-					{/snippet}
-				</FormField>
+				<div class="grid gap-4 sm:grid-cols-2">
+					<FormField label={m['policy.maxNetworkCards']()} required error={maxNetworkCardsError ?? serverErrorForField('maxNetworkCards')}>
+						{#snippet children({ id, describedBy, invalid })}
+							<TextField {id} {describedBy} {invalid} type="number" min={0} max={MAX_NETWORK_CARDS} bind:value={form.gabarit.maxNetworkCards} required />
+						{/snippet}
+					</FormField>
+					<FormField
+						label={m['policy.isolationVlanTag']()}
+						hint={m['policy.isolationVlanHint']()}
+						error={isolationVlanError ?? serverErrorForField('isolationVlanTag')}
+					>
+						{#snippet children({ id, describedBy, invalid })}
+							<TextField {id} {describedBy} {invalid} type="number" min={0} max={4094} bind:value={form.gabarit.isolationVlanTag} />
+						{/snippet}
+					</FormField>
+				</div>
 			</fieldset>
 		</div>
 	</Card>
 
-	<Card pad="md" class="max-w-md">
-		<div class="mb-3 grid gap-1">
-			<h2 class="text-lg font-medium text-foreground">{m['policy.quota']()}</h2>
-			<p class="text-xs text-muted-foreground-subtle">{m['policy.unlimitedHint']()}</p>
-		</div>
-		<FormField label={m['policy.maxVmPerUser']()} required error={maxVmPerUserError ?? serverErrorForField('maxVmPerUser')}>
-			{#snippet children({ id, describedBy, invalid })}
-				<TextField {id} {describedBy} {invalid} type="number" min={-1} max={MAX_VM_PER_USER} bind:value={form.maxVmPerUser} required />
-			{/snippet}
-		</FormField>
-	</Card>
+	<div class="grid gap-4 lg:sticky lg:top-24">
+		<Card pad="lg">
+			<div class="mb-3 grid gap-1">
+				<h2 class="text-lg font-medium text-foreground">{m['policy.quota']()}</h2>
+				<p class="text-xs text-muted-foreground-subtle">{m['policy.unlimitedHint']()}</p>
+			</div>
+			<FormField label={m['policy.maxVmPerUser']()} required error={maxVmPerUserError ?? serverErrorForField('maxVmPerUser')}>
+				{#snippet children({ id, describedBy, invalid })}
+					<TextField {id} {describedBy} {invalid} type="number" min={-1} max={MAX_VM_PER_USER} bind:value={form.maxVmPerUser} required />
+				{/snippet}
+			</FormField>
+		</Card>
 
-	{#if saveError && !serverErrorField}<Alert>{saveError}</Alert>{/if}
-	{#if isDirty}<p class="text-xs text-muted-foreground">{m['policy.unsavedChanges']()}</p>{/if}
-	<div class="flex justify-end gap-2">
-		{#if isDirty}
-			<Button variant="ghost" onclick={discard}>{m['policy.discard']()}</Button>
-		{/if}
-		<Button type="submit" disabled={saving || !isDirty || !isValid}>{saving ? m['policy.saving']() : m['policy.save']()}</Button>
+		{#if saveError && !serverErrorField}<Alert>{saveError}</Alert>{/if}
+		{#if isDirty}<p class="text-xs text-muted-foreground">{m['policy.unsavedChanges']()}</p>{/if}
+		<div class="flex justify-end gap-2">
+			{#if isDirty}
+				<Button variant="ghost" onclick={discard}>{m['policy.discard']()}</Button>
+			{/if}
+			<Button type="submit" disabled={saving || !isDirty || !isValid}>{saving ? m['policy.saving']() : m['policy.save']()}</Button>
+		</div>
 	</div>
 </form>
