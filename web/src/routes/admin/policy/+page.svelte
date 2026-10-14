@@ -3,6 +3,7 @@
 	import { page } from '$app/state';
 	import PolicyPage from '$lib/features/admin-policy/PolicyPage.svelte';
 	import { setAdminPolicyContext } from '$lib/features/admin-policy/policy.svelte';
+	import { saveAdminCluster } from '$lib/shared/clusters';
 
 	const store = setAdminPolicyContext();
 
@@ -10,7 +11,10 @@
 		// Deep links from dashboard alerts carry a ?cluster= hint; assigning it
 		// before load keeps the first (and only) fetch.
 		const clusterHint = page.url.searchParams.get('cluster');
-		if (clusterHint) store.cluster = clusterHint;
+		if (clusterHint) {
+			saveAdminCluster(clusterHint);
+			store.cluster = clusterHint;
+		}
 		void store.load();
 	});
 </script>

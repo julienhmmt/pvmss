@@ -1,5 +1,10 @@
 import { get, post, put, del, ApiRequestError } from '$lib/shared/api/client';
-import { fetchClusterOptions, type ClusterOption } from '$lib/shared/clusters';
+import {
+	fetchClusterOptions,
+	resolveInitialAdminCluster,
+	saveAdminCluster,
+	type ClusterOption
+} from '$lib/shared/clusters';
 import { setContext, getContext } from 'svelte';
 import { SvelteSet } from 'svelte/reactivity';
 import { m } from '$lib/paraglide/messages.js';
@@ -454,9 +459,8 @@ export class AdminCatalogStore {
 	async loadClusters(): Promise<void> {
 		try {
 			this.clusterOptions = await fetchClusterOptions();
-			const first = this.clusterOptions[0];
-			if (first && (this.clusterOptions.length === 1 || !this.clusterOptions.some((option) => option.name === this.cluster))) {
-				this.cluster = first.name;
+			if (this.clusterOptions.length > 0) {
+				this.cluster = resolveInitialAdminCluster(this.clusterOptions, this.cluster);
 			}
 		} catch (error: unknown) {
 			this.error = error instanceof ApiRequestError ? error.message : m['admin.catalog.loadClustersError']();
@@ -486,6 +490,7 @@ export class AdminCatalogStore {
 	}
 
 	setCluster(value: string): void {
+		saveAdminCluster(value);
 		this.cluster = value;
 		void this.loadAll();
 	}

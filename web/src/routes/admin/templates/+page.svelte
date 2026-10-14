@@ -10,6 +10,7 @@
 	import TemplateEditDialog from '$lib/features/admin-catalog/TemplateEditDialog.svelte';
 	import TemplatesTable from '$lib/features/admin-catalog/TemplatesTable.svelte';
 	import ClusterSelector from '$lib/shared/ui/ClusterSelector.svelte';
+	import { saveAdminCluster } from '$lib/shared/clusters';
 	import PageHeader from '$lib/shared/ui/PageHeader.svelte';
 	import TableCard from '$lib/shared/ui/TableCard.svelte';
 	import { getToastContext } from '$lib/shared/ui/toast.svelte';
@@ -57,6 +58,7 @@
 	}
 
 	function handleClusterChange(value: string): void {
+		saveAdminCluster(value);
 		store.cluster = value;
 		void store.loadTemplates();
 	}
