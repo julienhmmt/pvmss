@@ -418,6 +418,9 @@ type AddCloudInitSSHKeyDeps struct {
 	Reader      cluster.CloudInitReader
 	Writer      cluster.Writer
 	Audit       AuditRecorder
+	// StatusReader reads the live power state; a stopped guest is refused
+	// with ErrVMNotRunning before the agent is called. Nil skips the check.
+	StatusReader cluster.VMStatusReader
 }
 
 // AddCloudInitSSHKey injects a single public key into the running guest's
@@ -434,6 +437,10 @@ func AddCloudInitSSHKey(ctx context.Context, deps AddCloudInitSSHKeyDeps, user, 
 
 	entity, err := resolveCloudInitTarget(deps.Index, deps.Actor, deps.ClusterName, deps.VMID)
 	if err != nil {
+		return err
+	}
+
+	if err := ensureVMRunning(ctx, deps.StatusReader, entity); err != nil {
 		return err
 	}
 
@@ -460,6 +467,25 @@ func AddCloudInitSSHKey(ctx context.Context, deps AddCloudInitSSHKeyDeps, user, 
 	}
 
 	return recordSSHKeyAudit(ctx, deps, user, key)
+}
+
+// ensureVMRunning refuses a stopped guest before an agent call. An unreachable
+// status read falls through: the agent call stays the authoritative gate.
+func ensureVMRunning(ctx context.Context, reader cluster.VMStatusReader, entity Entity) error {
+	if reader == nil {
+		return nil
+	}
+
+	status, err := reader.VMStatus(ctx, entity.Node, entity.VMID)
+	if err != nil {
+		return nil //nolint:nilerr // deliberate fall-through: the agent call is the authoritative gate
+	}
+
+	if status.Status != cluster.VMRunning {
+		return ErrVMNotRunning
+	}
+
+	return nil
 }
 
 func recordSSHKeyAudit(ctx context.Context, deps AddCloudInitSSHKeyDeps, _, _ string) error {

@@ -359,6 +359,7 @@ func (h *VMCloudInit) handleSSHKey(w http.ResponseWriter, r *http.Request) {
 	if err := vm.AddCloudInitSSHKey(r.Context(), vm.AddCloudInitSSHKeyDeps{
 		Index: index, Actor: identity, ClusterName: clusterName, VMID: vmid,
 		Reader: reader, Writer: writer, Audit: h.store,
+		StatusReader: h.statusReaderFor(clusterName),
 	}, user, strings.TrimSpace(request.Key)); err != nil {
 		h.writeDomainError(w, err)
 		return
@@ -542,7 +543,7 @@ func (h *VMCloudInit) writeGuestAgentError(w http.ResponseWriter, err error) boo
 	case errors.Is(err, vm.ErrGuestAgentDisabled):
 		h.writeError(w, http.StatusConflict, "guest_agent_disabled", "the QEMU guest agent is not enabled on this VM")
 	case errors.Is(err, vm.ErrVMNotRunning):
-		h.writeError(w, http.StatusConflict, "vm_not_running", "start the VM before setting its cloud-init password")
+		h.writeError(w, http.StatusConflict, "vm_not_running", "start the VM first")
 	case errors.Is(err, vm.ErrGuestAgentUnreachable):
 		h.writeError(w, http.StatusGatewayTimeout, "guest_agent_unreachable", err.Error())
 	default:
