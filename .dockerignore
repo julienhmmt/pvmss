@@ -16,6 +16,8 @@ web/coverage/
 web/playwright-report/
 web/test-results/
 web/src/lib/paraglide/
+web/project.inlang/*
+!web/project.inlang/settings.json
 
 # But ignore git and other temporary files
 .git
