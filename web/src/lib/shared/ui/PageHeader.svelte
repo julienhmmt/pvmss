@@ -35,12 +35,13 @@
 		back?: { href: string; label: string };
 		/** Inline element next to the title (e.g. a status Pill). */
 		titleMeta?: Snippet;
-		/** Make the <h1> the screen-change focus target (`#page-heading`,
-		 *  tabindex -1, DESIGN.md §9). Ignored when titleId is set. */
+		/** Make the <h1> the screen-change focus target (`#page-heading` or the
+		 *  custom `titleId`, tabindex -1, DESIGN.md §9). On by default so every
+		 *  page using PageHeader announces itself on client-side navigation. */
 		focusTarget?: boolean;
 	}
 
-	let { title, eyebrow, description, titleId, actions, divider = true, back, titleMeta, focusTarget = false }: Props = $props();
+	let { title, eyebrow, description, titleId, actions, divider = true, back, titleMeta, focusTarget = true }: Props = $props();
 </script>
 
 <div class="mb-6 {divider ? 'border-b border-border pb-5' : ''}">
@@ -66,8 +67,8 @@
 					{eyebrow}
 				</p>
 			{/if}
-			{#if focusTarget && !titleId}
-				<h1 id="page-heading" tabindex="-1" class="flex flex-wrap items-center gap-x-3 gap-y-1.5 text-2xl font-semibold tracking-tight text-balance focus:outline-none">
+			{#if focusTarget}
+				<h1 id={titleId ?? 'page-heading'} tabindex="-1" class="flex flex-wrap items-center gap-x-3 gap-y-1.5 text-2xl font-semibold tracking-tight text-balance focus:outline-none">
 					{title}
 					{#if titleMeta}{@render titleMeta()}{/if}
 				</h1>

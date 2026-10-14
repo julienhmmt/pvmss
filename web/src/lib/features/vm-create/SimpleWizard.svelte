@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { tick } from 'svelte';
 	import { getVmCreateContext, gabaritCeiling, type SimpleSource } from './create.svelte';
 	import { getTaskTrayContext } from '$lib/features/tasks/tasks.svelte';
 	import { getTaskOutcomeLedgerContext } from '$lib/features/tasks/task-outcome-ledger.svelte';
@@ -177,6 +178,46 @@
 					: !profileError)
 	);
 
+	// DESIGN.md §6.2: never render red field errors on initial mount; reveal
+	// them on blur/change or after a submit attempt, and focus the first
+	// offending field on an invalid submit.
+	let submitted = $state(false);
+	let nameTouched = $state(false);
+	let diskTouched = $state(false);
+	let formEl: HTMLFormElement | undefined = $state();
+
+	const visibleNameError = $derived(submitted || nameTouched || form.name !== '' ? nameError : null);
+	const visibleProfileError = $derived(submitted ? profileError : null);
+	const visibleTemplateError = $derived(submitted ? templateError : null);
+	const visibleImageError = $derived(submitted ? imageError : null);
+	const visibleDiskSizeError = $derived(submitted || diskTouched ? diskSizeError : null);
+	const visibleImageProfileError = $derived(submitted ? imageProfileError : null);
+	const hasVisibleError = $derived(
+		Boolean(
+			visibleNameError ||
+				visibleProfileError ||
+				visibleTemplateError ||
+				visibleImageError ||
+				visibleDiskSizeError ||
+				visibleImageProfileError ||
+				cloudInitDocumentError
+		)
+	);
+
+	function focusFirstInvalid(): void {
+		const invalidControl = formEl?.querySelector<HTMLElement>('[aria-invalid="true"]');
+		if (invalidControl) {
+			invalidControl.focus();
+			return;
+		}
+		if (
+			(form.simpleSource === 'profile' && profileError) ||
+			(form.simpleSource === 'image' && hasProfiles && imageProfileError)
+		) {
+			formEl?.querySelector<HTMLElement>('input[name="simple-size"]')?.focus();
+		}
+	}
+
 	// Summary rail: everything derived live from the form state.
 	const selectedProfile = $derived(form.catalog?.profiles.find((profile) => profile.id === form.profileId) ?? null);
 	const selectedTemplate = $derived(form.catalog?.templates.find((tmpl) => tmpl.vmid === form.templateId) ?? null);
@@ -206,7 +247,12 @@
 	const quota = $derived(form.catalog?.quota ?? null);
 
 	async function submit(): Promise<void> {
-		if (!canSubmit) return;
+		submitted = true;
+		if (!canSubmit) {
+			await tick();
+			focusFirstInvalid();
+			return;
+		}
 		const accepted = await form.submit();
 		if (accepted === null) {
 			if (form.submitError) toast.error(m['toast.vmCreateFailed']({ error: form.submitError }));
@@ -228,6 +274,7 @@
 {:else}
 	{@const cat = form.catalog}
 	<form
+		bind:this={formEl}
 		class="grid items-start gap-6 min-[700px]:grid-cols-[minmax(0,1fr)_272px]"
 		novalidate
 		aria-label={m['vms.create.heading']()}
@@ -265,9 +312,9 @@
 				{/if}
 
 				{#if form.simpleSource === 'image'}
-					<ImagePicker error={imageError} />
+					<ImagePicker error={visibleImageError} />
 				{:else if form.simpleSource === 'template'}
-					<TemplatePicker error={templateError} />
+					<TemplatePicker error={visibleTemplateError} />
 				{:else if isoOptions.length > 0}
 					<FormField label={m['vms.create.iso']()} hint={m['common.optional']()}>
 						{#snippet children({ id, describedBy, invalid })}
@@ -290,8 +337,8 @@
 								</RadioCard>
 							{/each}
 						</div>
-						{#if form.simpleSource === 'image' ? imageProfileError : profileError}
-							<p role="alert" class="text-xs font-medium text-destructive">{form.simpleSource === 'image' ? imageProfileError : profileError}</p>
+						{#if form.simpleSource === 'image' ? visibleImageProfileError : visibleProfileError}
+							<p role="alert" class="text-xs font-medium text-destructive">{form.simpleSource === 'image' ? visibleImageProfileError : visibleProfileError}</p>
 						{/if}
 						<p class="text-xs text-muted-foreground">{m['vms.create.fieldNote.size']()}</p>
 					{:else}
@@ -299,10 +346,10 @@
 							label={m['vms.create.size']()}
 							required
 							hint={m['vms.create.diskLimitHint']({ min: Math.max(1, form.imageMinDiskGB), max: maxDiskGB })}
-							error={diskSizeError}
+							error={visibleDiskSizeError}
 						>
 							{#snippet children({ id, describedBy, invalid })}
-								<TextField {id} {describedBy} {invalid} type="number" min={Math.max(1, form.imageMinDiskGB)} max={maxDiskGB} bind:value={form.diskSizeGB} required />
+								<TextField {id} {describedBy} {invalid} type="number" min={Math.max(1, form.imageMinDiskGB)} max={maxDiskGB} bind:value={form.diskSizeGB} onblur={() => (diskTouched = true)} required />
 							{/snippet}
 						</FormField>
 					{/if}
@@ -310,14 +357,14 @@
 			{/if}
 
 			<FormSection step={form.simpleSource === 'template' ? 2 : 3} legend={m['vms.create.section.yours']()} description={m['vms.create.section.yoursHelp']()}>
-				<FormField label={m['vms.create.name']()} required hint={m['vms.create.nameHint']()} error={nameError}>
+				<FormField label={m['vms.create.name']()} required hint={m['vms.create.nameHint']()} error={visibleNameError}>
 					{#snippet children({ id, describedBy, invalid })}
-						<TextField {id} {describedBy} {invalid} bind:value={form.name} required maxlength={63} placeholder="web-04" autocomplete="off" />
+						<TextField {id} {describedBy} {invalid} bind:value={form.name} onblur={() => (nameTouched = true)} required maxlength={63} placeholder="web-04" autocomplete="off" />
 					{/snippet}
 				</FormField>
 
 				{#if form.simpleSource === 'image'}
-					<ImageCloudInitFields />
+					<ImageCloudInitFields showErrors={submitted} />
 					<p class="border-t border-border pt-3 text-xs text-muted-foreground">{m['vms.create.fieldNote.access']()}</p>
 				{/if}
 
@@ -418,7 +465,14 @@
 			{#if form.submitError}
 				<Alert>{form.submitError}</Alert>
 			{/if}
-			<Button type="submit" size="lg" block loading={form.submitting} disabled={!canSubmit} data-testid="vm-create-submit">
+			<Button
+				type="submit"
+				size="lg"
+				block
+				loading={form.submitting}
+				disabled={form.catalog === null || form.submitting || (submitted ? !canSubmit : hasVisibleError)}
+				data-testid="vm-create-submit"
+			>
 				{#if !form.submitting}
 					<svg viewBox="0 0 24 24" class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true">
 						<line x1="12" y1="5" x2="12" y2="19" />

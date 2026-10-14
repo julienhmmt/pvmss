@@ -11,6 +11,8 @@
 	import ConsoleToolbar from '$lib/features/vm-console/ConsoleToolbar.svelte';
 	import { setVmDetailContext } from '$lib/features/vms/detail.svelte';
 	import VmActionBar from '$lib/features/vms/VmActionBar.svelte';
+	import Pill from '$lib/shared/ui/Pill.svelte';
+	import CopyButton from '$lib/shared/ui/CopyButton.svelte';
 	import { m } from '$lib/paraglide/messages.js';
 
 	/** Live-status poll cadence while the console is open. */
@@ -44,6 +46,12 @@
 
 	function consoleStateLabel(state: string): string {
 		return stateLabels[state]?.() ?? state;
+	}
+
+	function consoleStateTone(state: string): 'ok' | 'error' | 'off' {
+		if (state === 'connected') return 'ok';
+		if (state === 'error') return 'error';
+		return 'off';
 	}
 
 	function switchMode(next: ConsoleMode): void {
@@ -93,7 +101,7 @@
 	<title>{m['vms.console.title']({ name: vmStore.entity?.name || `VM ${vmid}` })}</title>
 </svelte:head>
 
-<section class="mx-auto flex h-screen w-full max-w-reading flex-col px-4 py-4">
+<section class="flex min-h-[calc(100vh-11rem)] w-full flex-col">
 	<div class="mb-3 flex items-center gap-3">
 		<Button
 			variant="secondary"
@@ -102,26 +110,19 @@
 		>
 			{m['common.backToVm']()}
 		</Button>
-		<h1 class="text-lg font-semibold" data-testid="vm-console-title">
-			{m['vms.console.heading']({ vmid: String(vmid) })}
+		<h1 id="page-heading" tabindex="-1" class="text-lg font-semibold focus:outline-none" data-testid="vm-console-title">
+			{vmStore.entity?.name ? `${vmStore.entity.name} · ` : ''}{m['vms.console.heading']({ vmid: String(vmid) })}
 		</h1>
 		<span
-			class="inline-flex items-center rounded-full px-2 py-0.5 text-xs {mode === 'graphical'
-				? store.state === 'connected'
-					? 'bg-success-soft text-success-soft-foreground'
-					: store.state === 'error'
-						? 'bg-destructive-soft text-destructive-soft-foreground'
-						: 'bg-muted text-muted-foreground'
-				: serialStore.state === 'connected'
-					? 'bg-success-soft text-success-soft-foreground'
-					: serialStore.state === 'error'
-						? 'bg-destructive-soft text-destructive-soft-foreground'
-						: 'bg-muted text-muted-foreground'}"
+			class="inline-flex items-center"
 			aria-live="polite"
 			data-testid="vm-console-status"
 			data-state={mode === 'graphical' ? store.state : serialStore.state}
 		>
-			{consoleStateLabel(mode === 'graphical' ? store.state : serialStore.state)}
+			<Pill
+				tone={consoleStateTone(mode === 'graphical' ? store.state : serialStore.state)}
+				label={consoleStateLabel(mode === 'graphical' ? store.state : serialStore.state)}
+			/>
 		</span>
 	</div>
 
@@ -129,12 +130,12 @@
 		<VmActionBar hideDelete />
 	</div>
 
-	<div class="mb-3 flex items-center gap-2" data-testid="vm-console-mode-switcher">
+	<div class="mb-3 inline-flex w-fit rounded-lg border border-border bg-muted/40 p-0.5" role="group" aria-label={m['vms.console.modeLabel']()} data-testid="vm-console-mode-switcher">
 		<button
 			type="button"
 			class="rounded-md px-3 py-1.5 text-sm font-medium {mode === 'graphical'
-				? 'bg-primary-solid text-primary-foreground'
-				: 'border border-border bg-background text-foreground hover:bg-muted'}"
+				? 'bg-card text-foreground shadow-card'
+				: 'text-muted-foreground hover:text-foreground'}"
 			onclick={() => switchMode('graphical')}
 			data-testid="vm-console-mode-graphical"
 			aria-pressed={mode === 'graphical'}
@@ -144,8 +145,8 @@
 		<button
 			type="button"
 			class="rounded-md px-3 py-1.5 text-sm font-medium {mode === 'text'
-				? 'bg-primary-solid text-primary-foreground'
-				: 'border border-border bg-background text-foreground hover:bg-muted'}"
+				? 'bg-card text-foreground shadow-card'
+				: 'text-muted-foreground hover:text-foreground'}"
 			onclick={() => switchMode('text')}
 			data-testid="vm-console-mode-text"
 			aria-pressed={mode === 'text'}
@@ -228,7 +229,10 @@
 			{#if vmStore.generatedPassword}
 				<div class="mt-2 rounded-md border border-success-soft bg-success-soft/40 p-2" data-testid="vm-console-password-generated">
 					<p class="font-semibold text-sm">{m['vms.console.passwordGenerated']()}:</p>
-					<code class="block mt-1 font-mono text-sm break-all">{vmStore.generatedPassword}</code>
+					<div class="mt-1 flex flex-wrap items-center gap-2">
+						<code class="font-mono text-sm break-all">{vmStore.generatedPassword}</code>
+						<CopyButton value={vmStore.generatedPassword} variant="secondary" testId="vm-console-password-copy" />
+					</div>
 					<p class="mt-1 text-xs text-muted-foreground">{m['vms.console.passwordCopyHint']()}</p>
 				</div>
 			{/if}

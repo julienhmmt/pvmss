@@ -364,34 +364,32 @@
 		</div>
 
 		{#if session.principal}
-			{#if session.isAdmin}
-				<p class="px-2 text-xs text-muted-foreground-subtle">
-					{m['chrome.sidebar.userChip']({ username: session.principal.displayName || session.principal.username })}
-				</p>
-			{:else}
-				{@const accountHref = resolve('/profile')}
-				<a
-					href={accountHref}
-					aria-current={isActive(accountHref, true) ? 'page' : undefined}
-					aria-label={m['chrome.sidebar.accountLink']({ name: session.principal.displayName || session.principal.username })}
-					class="flex items-center gap-2.5 rounded-lg px-2 py-2 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring {isActive(accountHref, true)
-						? 'bg-sidebar-accent'
-						: 'hover:bg-sidebar-accent/50'}"
-					onclick={closeDrawer}
-					data-testid="sidebar-account-link"
-				>
-					<span class="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-sidebar-accent text-xs font-semibold text-sidebar-accent-foreground" aria-hidden="true">
-						{initials}
+			{@const accountHref = resolve('/profile')}
+			<a
+				href={accountHref}
+				aria-current={isActive(accountHref, true) ? 'page' : undefined}
+				aria-label={m['chrome.sidebar.accountLink']({ name: session.principal.displayName || session.principal.username })}
+				class="flex items-center gap-2.5 rounded-lg px-2 py-2 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring {isActive(accountHref, true)
+					? 'bg-sidebar-accent'
+					: 'hover:bg-sidebar-accent/50'}"
+				onclick={closeDrawer}
+				data-testid="sidebar-account-link"
+			>
+				<span class="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-sidebar-accent text-xs font-semibold text-sidebar-accent-foreground" aria-hidden="true">
+					{initials}
+				</span>
+				<span class="flex min-w-0 flex-1 flex-col">
+					<span class="truncate text-sm font-medium text-foreground">{session.principal.displayName || session.principal.username}</span>
+					<span class="truncate text-xs text-muted-foreground">
+						{session.isAdmin
+							? m['chrome.sidebar.userChip']({ username: session.principal.displayName || session.principal.username })
+							: m['chrome.sidebar.accountLabel']()}
 					</span>
-					<span class="flex min-w-0 flex-1 flex-col">
-						<span class="truncate text-sm font-medium text-foreground">{session.principal.displayName || session.principal.username}</span>
-						<span class="truncate text-xs text-muted-foreground">{m['chrome.sidebar.accountLabel']()}</span>
-					</span>
-					<svg viewBox="0 0 24 24" class="h-4 w-4 shrink-0 text-muted-foreground" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-						<polyline points="9 18 15 12 9 6" />
-					</svg>
-				</a>
-			{/if}
+				</span>
+				<svg viewBox="0 0 24 24" class="h-4 w-4 shrink-0 text-muted-foreground" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+					<polyline points="9 18 15 12 9 6" />
+				</svg>
+			</a>
 			<button
 				type="button"
 				class="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium text-muted-foreground transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"

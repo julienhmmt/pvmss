@@ -1,8 +1,11 @@
-import { describe, expect, it, vi } from 'vitest';
+import { beforeAll, describe, expect, it, vi } from 'vitest';
+import { setLocale } from '$lib/paraglide/runtime.js';
 import { ADMIN_NAV_GROUPS } from './admin-nav-items.svelte';
 import { SidebarNavigationState } from './sidebar-navigation.svelte';
 
 vi.mock('$app/paths', () => ({ resolve: (path: string) => path }));
+
+beforeAll(() => setLocale('en', { reload: false }));
 
 describe('SidebarNavigationState', () => {
 	it.each([
@@ -27,6 +30,31 @@ describe('SidebarNavigationState', () => {
 			href: nodesItem.href,
 			exact: nodesItem.exact ?? true
 		})).toBe(true);
+	});
+
+	it('keeps the Pools sidebar link active on pool detail routes', () => {
+		const poolsItem = ADMIN_NAV_GROUPS.flatMap((group) => group.items).find((item) => item.href === '/admin/pools');
+		expect(poolsItem?.exact).toBe(false);
+		if (!poolsItem) throw new Error('Pools navigation item is missing');
+		const navigation: SidebarNavigationState = new SidebarNavigationState(ADMIN_NAV_GROUPS.length);
+		expect(navigation.isItemActive({
+			pathname: '/admin/pools/alice',
+			href: poolsItem.href,
+			exact: poolsItem.exact ?? true
+		})).toBe(true);
+	});
+
+	it('does not duplicate the Dashboard link inside an admin group', () => {
+		const hrefs = ADMIN_NAV_GROUPS.flatMap((group) => group.items.map((item) => item.href));
+		expect(hrefs).not.toContain('/admin');
+		expect(new Set(hrefs).size).toBe(hrefs.length);
+	});
+
+	it('groups admin navigation into Infrastructure, Resources, Provisioning, Policy and System', () => {
+		const headings = ADMIN_NAV_GROUPS.map((group) => group.heading());
+		expect(headings).toEqual(['Infrastructure', 'Resources', 'Provisioning', 'Policy', 'System']);
+		const systemItems = (ADMIN_NAV_GROUPS[4]?.items ?? []).map((item) => item.href);
+		expect(systemItems).toContain('/admin/docs');
 	});
 
 	it('lets the user close and reopen the active group', () => {

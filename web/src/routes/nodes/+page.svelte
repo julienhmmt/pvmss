@@ -29,7 +29,7 @@
 {#if nodesStore.errorCode === 'unauthenticated'}
 	<AuthRequired />
 {:else}
-	<section class="w-full py-2">
+	<section class="w-full">
 		{#if nodesStore.loading}
 			<div role="status" aria-live="polite" class="sr-only">{m['common.loading']()}</div>
 			<TableSkeleton columns={6} />

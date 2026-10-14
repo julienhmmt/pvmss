@@ -58,7 +58,7 @@ Rules for the fields:
 | **States**      | Disabled when `ADMIN_PASSWORD_HASH` is unset                                                 |
 | **Safety nets** | bcrypt hash only (validated at startup, `config/load.go`); same per-IP rate limit as sign-in |
 
-Password change goes through `POST /api/v1/auth/password`.
+Password change on `/profile` (`ProfilePasswordSection`) goes through `POST /api/v1/auth/password`.
 
 ---
 

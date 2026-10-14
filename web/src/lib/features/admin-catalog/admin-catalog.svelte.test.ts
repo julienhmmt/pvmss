@@ -785,6 +785,21 @@ describe('AdminCatalogStore', () => {
 			expect(store.filteredTemplates.map((t) => t.vmid)).toEqual([9001]);
 		});
 
+		it('filteredTemplates filters by enabled state and resets it', () => {
+			const store = new AdminCatalogStore();
+			store.templates = templates;
+
+			store.templateEnabledFilter = 'enabled';
+			expect(store.filteredTemplates.map((t) => t.vmid)).toEqual([9000]);
+
+			store.templateEnabledFilter = 'disabled';
+			expect(store.filteredTemplates.map((t) => t.vmid)).toEqual([9001, 9002]);
+
+			store.resetTemplateFilters();
+			expect(store.templateEnabledFilter).toBe('all');
+			expect(store.filteredTemplates.length).toBe(3);
+		});
+
 		it('filteredTemplates sorts by vmid, name, and node', () => {
 			const store = new AdminCatalogStore();
 			store.templates = [...templates].reverse();

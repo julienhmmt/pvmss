@@ -1,11 +1,13 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
 	import { getVmDetailContext } from './detail.svelte';
+	import { activityMessage } from '$lib/features/activity/activity.svelte';
 	import { m } from '$lib/paraglide/messages.js';
 	import Alert from '$lib/shared/ui/Alert.svelte';
 	import Button from '$lib/shared/ui/Button.svelte';
 	import Card from '$lib/shared/ui/Card.svelte';
 	import EmptyState from '$lib/shared/ui/EmptyState.svelte';
+	import TableSkeleton from '$lib/shared/ui/TableSkeleton.svelte';
 
 	const store = getVmDetailContext();
 
@@ -34,9 +36,10 @@
 	<h2 id="activity-heading" class="text-lg font-semibold">{m['vm.activity.tab']()}</h2>
 
 	{#if store.auditLoading && (store.auditItems === null || store.auditItems.length === 0)}
-		<p role="status" aria-live="polite" class="mt-6 text-sm text-muted-foreground" data-testid="vm-activity-loading">
-			{m['common.loading']()}
-		</p>
+		<div role="status" aria-live="polite" class="mt-6" data-testid="vm-activity-loading">
+			<span class="sr-only">{m['common.loading']()}</span>
+			<TableSkeleton columns={3} />
+		</div>
 	{:else if store.auditError && store.auditItems === null}
 		<Alert data-testid="vm-activity-error" class="mt-6">{store.auditError}</Alert>
 	{:else if store.auditItems !== null && store.auditItems.length === 0}
@@ -47,20 +50,24 @@
 		/>
 	{:else if store.auditItems !== null && store.auditItems.length > 0}
 		<div class="mt-6 overflow-x-auto">
-			<table class="pv-table" data-testid="vm-activity-table">
+			<table class="pv-table pv-responsive-table" data-testid="vm-activity-table">
+				<caption class="sr-only">{m['vm.activity.tab']()}</caption>
 				<thead>
-					<tr class="border-b border-border text-left text-muted-foreground">
-						<th scope="col" class="pr-4 font-medium">{m['vm.activity.actor']()}</th>
-						<th scope="col" class="pr-4 font-medium">{m['vm.activity.action']()}</th>
-						<th scope="col" class="pr-4 font-medium">{m['vm.activity.time']()}</th>
+					<tr>
+						<th scope="col" class="font-medium">{m['vm.activity.actor']()}</th>
+						<th scope="col" class="font-medium">{m['vm.activity.action']()}</th>
+						<th scope="col" class="font-medium">{m['vm.activity.time']()}</th>
 					</tr>
 				</thead>
 				<tbody>
 					{#each store.auditItems as entry (entry.id)}
 						<tr data-testid="vm-activity-row">
-							<td class="pr-4">{entry.actor}</td>
-							<td class="pr-4 font-mono">{entry.action}</td>
-							<td class="pr-4 text-muted-foreground">{formatTimestamp(entry.timestamp)}</td>
+							<td data-label={m['vm.activity.actor']()}>{entry.actor}</td>
+							<td data-label={m['vm.activity.action']()}>
+								{activityMessage(entry.action)}
+								<span class="ml-1.5 font-mono text-xs text-muted-foreground">({entry.action})</span>
+							</td>
+							<td class="text-muted-foreground" data-label={m['vm.activity.time']()}>{formatTimestamp(entry.timestamp)}</td>
 						</tr>
 					{/each}
 				</tbody>

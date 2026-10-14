@@ -70,6 +70,6 @@ describe('DashboardPage VM summary', () => {
 
 		document.querySelector<HTMLButtonElement>('[data-testid="dashboard-node-card"]')?.click();
 
-		expect(goto).toHaveBeenCalledWith('/admin/nodes/default/miniquarium');
+		expect(goto).toHaveBeenCalledWith('/admin/nodes/default/miniquarium?from=dashboard');
 	});
 });

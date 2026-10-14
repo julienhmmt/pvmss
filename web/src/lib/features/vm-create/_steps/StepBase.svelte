@@ -10,6 +10,12 @@
 	import ImageCloudInitFields from '../ImageCloudInitFields.svelte';
 	import CloudInitDocumentSelect from '../CloudInitDocumentSelect.svelte';
 
+	interface Props {
+		showErrors?: boolean;
+	}
+
+	let { showErrors = false }: Props = $props();
+
 	// Base step (FR-011): name, source type (ISO vs template vs cloud image,
 	// US2/issue-02), node (hidden for template source, D2b), extra tags
 	// (pvmss is added server-side, FR-006), and the source - all choices
@@ -17,15 +23,24 @@
 	const form = getVmCreateContext();
 	const outcomeLedger = getTaskOutcomeLedgerContext();
 
+	const HOSTNAME_PATTERN = /^[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?$/;
+	let nameTouched = $state(false);
+	let nodeTouched = $state(false);
+
 	// Same no-duplicate rule as the simple form (DESIGN.md §7).
 	const sameName = $derived(form.machineNamed(form.name));
-	const duplicateNameError = $derived(
-		sameName === null
-			? null
-			: outcomeLedger?.get(form.cluster || (form.catalog?.cluster ?? ''), sameName.vmid) === 'partial'
-				? m['vms.create.errorNamePartial']()
-				: m['vms.create.errorNameTaken']()
+	const rawNameError = $derived(
+		form.name.trim() === ''
+			? m['vms.create.errorNameRequired']()
+			: !HOSTNAME_PATTERN.test(form.name.trim())
+				? m['vms.create.errorInvalidName']()
+				: sameName !== null
+					? outcomeLedger?.get(form.cluster || (form.catalog?.cluster ?? ''), sameName.vmid) === 'partial'
+						? m['vms.create.errorNamePartial']()
+						: m['vms.create.errorNameTaken']()
+					: null
 	);
+	const nameError = $derived(showErrors || nameTouched || form.name !== '' ? rawNameError : null);
 
 	const catalogTags = $derived(form.catalog?.tags ?? []);
 	const selected = $derived(new Set(form.selectedTags()));
@@ -71,6 +86,21 @@
 	// ISO, an image is node-local and the server restricts candidates to the
 	// nodes holding it.
 	const showNodeSelector = $derived(form.sourceType !== 'template');
+	const nodeError = $derived(
+		showNodeSelector && (showErrors || nodeTouched) && form.node === ''
+			? m['vms.create.errorNodeRequired']()
+			: null
+	);
+	const templateError = $derived(
+		form.sourceType === 'template' && showErrors && form.templateId === 0
+			? m['vms.create.errorTemplateRequired']()
+			: null
+	);
+	const imageError = $derived(
+		form.sourceType === 'image' && showErrors && form.imageFile === ''
+			? m['vms.create.errorImageRequired']()
+			: null
+	);
 
 	// Issue 04: the template's disk is the clone source - Proxmox cannot
 	// shrink it, so the disk size may never drop below the template's size.
@@ -83,9 +113,9 @@
 </script>
 
 <div class="grid gap-4">
-	<FormField label={m['vms.create.name']()} required error={duplicateNameError}>
+	<FormField label={m['vms.create.name']()} required error={nameError}>
 		{#snippet children({ id, describedBy, invalid })}
-			<TextField {id} {describedBy} {invalid} bind:value={form.name} required placeholder="web-03" />
+			<TextField {id} {describedBy} {invalid} bind:value={form.name} onblur={() => (nameTouched = true)} required placeholder="web-03" />
 		{/snippet}
 	</FormField>
 
@@ -112,6 +142,7 @@
 			label={m['vms.create.node']()}
 			required
 			hint={form.catalog ? m['vms.create.nodeInCluster']({ cluster: form.clusterDisplayName() }) : undefined}
+			error={nodeError}
 		>
 			{#snippet children({ id, describedBy, invalid })}
 				<Select
@@ -119,6 +150,7 @@
 					{describedBy}
 					{invalid}
 					bind:value={form.node}
+					onblur={() => (nodeTouched = true)}
 					placeholder={m['vms.create.chooseNode']()}
 					options={form.catalog?.nodes ?? []}
 				/>
@@ -150,10 +182,10 @@
 	</FormField>
 
 	{#if form.sourceType === 'template'}
-		<TemplatePicker />
+		<TemplatePicker error={templateError} />
 	{:else if form.sourceType === 'image'}
-		<ImagePicker />
-		<ImageCloudInitFields />
+		<ImagePicker error={imageError} />
+		<ImageCloudInitFields {showErrors} />
 	{:else}
 		<FormField label={m['vms.create.iso']()} hint={m['common.optional']()}>
 			{#snippet children({ id, describedBy, invalid })}

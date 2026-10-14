@@ -3,6 +3,7 @@ package vm
 import (
 	"context"
 	"errors"
+	"log/slog"
 	"pvmss/server/internal/catalog"
 	"pvmss/server/internal/policy"
 	"testing"
@@ -289,6 +290,57 @@ func TestPickBestNode_IdleTieGoesToLargerNode(t *testing.T) {
 			t.Errorf("pickBestNode(%v) = %q, want %q", order, got, big)
 		}
 	}
+}
+
+func TestLogPlacement_StaticMessageAndEligibleCandidatesOnly(t *testing.T) {
+	t.Parallel()
+
+	var rec slog.Record
+
+	log := slog.New(recordHandler{onHandle: func(r slog.Record) { rec = r }})
+
+	resources := catalog.Resources{
+		Nodes:    []catalog.Node{{Name: placementNodeA}, {Name: placementNodeB}},
+		Storages: []catalog.Storage{{Name: "storage-a", Node: placementNodeA}},
+		Bridges:  []catalog.Bridge{{Name: placementBridge, Node: placementNodeA}, {Name: placementBridge, Node: placementNodeB}},
+	}
+	req := CreateRequest{CPUCores: 2, MemoryMB: 2048, Disk: DiskRequest{SizeGB: 20}}
+	caps := map[string]policy.Capacity{
+		placementNodeA: {PhysicalVCPUs: 12, PhysicalRAMGB: 46},
+		placementNodeB: {PhysicalVCPUs: 3, PhysicalRAMGB: 5},
+	}
+
+	logPlacement(context.Background(), log, placementNodeA, placementCandidates(req, resources), caps, req)
+
+	if rec.Message != "node auto-selected" {
+		t.Errorf("message = %q, want %q", rec.Message, "node auto-selected")
+	}
+
+	var candidates []string
+
+	rec.Attrs(func(a slog.Attr) bool {
+		if a.Key == "candidates" {
+			candidates, _ = a.Value.Any().([]string)
+		}
+
+		return true
+	})
+
+	if len(candidates) != 1 || candidates[0] != "pve-a=1.850" {
+		t.Errorf("candidates = %v, want [pve-a=1.850] (node without storage excluded)", candidates)
+	}
+}
+
+type recordHandler struct {
+	onHandle func(slog.Record)
+}
+
+func (h recordHandler) Enabled(context.Context, slog.Level) bool { return true }
+func (h recordHandler) WithAttrs([]slog.Attr) slog.Handler       { return h }
+func (h recordHandler) WithGroup(string) slog.Handler            { return h }
+func (h recordHandler) Handle(_ context.Context, r slog.Record) error {
+	h.onHandle(r)
+	return nil
 }
 
 // fakeFreeSpaceChecker is a minimal FreeSpaceChecker for unit-testing

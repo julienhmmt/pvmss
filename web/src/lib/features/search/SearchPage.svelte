@@ -6,7 +6,10 @@
 	import Alert from '$lib/shared/ui/Alert.svelte';
 	import EmptyState from '$lib/shared/ui/EmptyState.svelte';
 	import Card from '$lib/shared/ui/Card.svelte';
+	import ClusterSelector from '$lib/shared/ui/ClusterSelector.svelte';
+	import PageHeader from '$lib/shared/ui/PageHeader.svelte';
 	import Pill from '$lib/shared/ui/Pill.svelte';
+	import Select from '$lib/shared/ui/Select.svelte';
 	import Skeleton from '$lib/shared/ui/Skeleton.svelte';
 	import TextField from '$lib/shared/ui/TextField.svelte';
 	import SearchIcon from '$lib/shared/ui/icons/SearchIcon.svelte';
@@ -29,29 +32,61 @@
 		return resolve(`/vms/${encodeURIComponent(machine.cluster)}/${machine.vmid}`);
 	}
 
+	const statusOptions = $derived([
+		{ value: '', label: m['common.all']() },
+		{ value: 'running', label: m['common.statusRunning']() },
+		{ value: 'stopped', label: m['common.statusStopped']() },
+		{ value: 'paused', label: m['common.statusPaused']() }
+	]);
+
 	function handleInput(event: Event): void {
 		store.applySearch((event.currentTarget as HTMLInputElement).value);
 	}
+
+	function handleStatusChange(event: Event): void {
+		store.setStatus((event.currentTarget as HTMLSelectElement).value as '' | VmStatus);
+	}
 </script>
 
-<section class="w-full px-4 py-8">
-	<h1 class="mb-6 text-2xl font-semibold tracking-tight">{m['search.heading']()}</h1>
+<section class="w-full">
+	<PageHeader eyebrow={m['chrome.context.workspace']()} title={m['search.heading']()} focusTarget />
 
-	<label for="global-search" class="sr-only">{m['search.label']()}</label>
-	<TextField
-		id="global-search"
-		type="search"
-		size="lg"
-		class="mb-6"
-		placeholder={m['search.placeholder']()}
-		value={store.query}
-		oninput={handleInput}
-		data-testid="global-search-input"
-	>
-		{#snippet leading()}
-			<SearchIcon class="h-5 w-5" />
-		{/snippet}
-	</TextField>
+	<div class="mb-6 flex flex-col gap-3 sm:flex-row sm:items-center">
+		<div class="min-w-0 flex-1">
+			<label for="global-search" class="sr-only">{m['search.label']()}</label>
+			<TextField
+				id="global-search"
+				type="search"
+				size="lg"
+				placeholder={m['search.placeholder']()}
+				value={store.query}
+				oninput={handleInput}
+				data-testid="global-search-input"
+			>
+				{#snippet leading()}
+					<SearchIcon class="h-5 w-5" />
+				{/snippet}
+			</TextField>
+		</div>
+		<ClusterSelector
+			options={store.clusterOptions}
+			value={store.cluster}
+			onChange={(value: string) => store.setCluster(value)}
+			id="search-cluster-filter"
+			includeAll
+		/>
+		<label for="search-status-filter" class="flex items-center gap-2 text-sm font-medium">
+			{m['common.status']()}
+			<Select
+				id="search-status-filter"
+				value={store.status}
+				options={statusOptions}
+				onchange={handleStatusChange}
+				class="w-auto"
+				data-testid="search-status-filter"
+			/>
+		</label>
+	</div>
 
 	{#if store.loading && store.result === null}
 		<div role="status" aria-live="polite" class="sr-only">{m['common.loading']()}</div>

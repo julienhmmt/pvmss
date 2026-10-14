@@ -17,6 +17,7 @@
 		 *  the ungrouped options. Callers that never set group get identical
 		 *  markup to before. */
 		group?: string;
+		disabled?: boolean;
 	}
 
 	interface Props {
@@ -91,12 +92,12 @@
 			<option value="" disabled>{placeholder}</option>
 		{/if}
 		{#each grouped.ungrouped as option (option.value)}
-			<option value={option.value}>{option.label}</option>
+			<option value={option.value} disabled={option.disabled}>{option.label}</option>
 		{/each}
 		{#each grouped.groups as group (group.label)}
 			<optgroup label={group.label}>
 				{#each group.options as option (option.value)}
-					<option value={option.value}>{option.label}</option>
+					<option value={option.value} disabled={option.disabled}>{option.label}</option>
 				{/each}
 			</optgroup>
 		{/each}

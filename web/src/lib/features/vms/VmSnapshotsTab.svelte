@@ -10,7 +10,9 @@
 	import Alert from '$lib/shared/ui/Alert.svelte';
 	import Card from '$lib/shared/ui/Card.svelte';
 	import EmptyState from '$lib/shared/ui/EmptyState.svelte';
+	import Pill from '$lib/shared/ui/Pill.svelte';
 	import Button from '$lib/shared/ui/Button.svelte';
+	import TableSkeleton from '$lib/shared/ui/TableSkeleton.svelte';
 
 	const vmStore = getVmDetailContext();
 	const tray = getTaskTrayContext();
@@ -59,7 +61,10 @@
 	{/if}
 
 	{#if snapshots.loading && snapshots.snapshots.length === 0}
-		<p role="status" aria-live="polite" class="mt-6 text-sm text-muted-foreground">{m['vms.snapshots.loading']()}</p>
+		<div role="status" aria-live="polite" class="mt-6">
+			<span class="sr-only">{m['vms.snapshots.loading']()}</span>
+			<TableSkeleton columns={3} />
+		</div>
 	{:else if snapshots.error && snapshots.snapshots.length === 0}
 		<Alert data-testid="snapshot-list-error" class="mt-6">{snapshots.error}</Alert>
 	{:else if snapshots.snapshots.length === 0}
@@ -79,14 +84,14 @@
 					<div class="min-w-0">
 						<div class="flex flex-wrap items-center gap-2">
 							<strong class="text-sm">{snapshot.name}</strong>
-							{#if snapshot.vmstate}<span class="rounded-full bg-primary/10 px-2 py-0.5 text-xs font-medium text-primary">{m['vms.snapshots.ramState']()}</span>{/if}
+							{#if snapshot.vmstate}<Pill tone="accent" dot={false} label={m['vms.snapshots.ramState']()} />{/if}
 						</div>
 						<p class="mt-1 text-xs text-muted-foreground">{formatCreatedAt(snapshot.createdAt)}</p>
 						{#if snapshot.description}<p class="mt-2 text-sm">{snapshot.description}</p>{/if}
 					</div>
 					<div class="flex shrink-0 gap-2">
-						<button type="button" class="rounded-lg border border-border px-3 py-1.5 text-sm font-medium hover:bg-muted" onclick={() => openRollback(snapshot)} data-testid="snapshot-rollback-open" title={m['vms.snapshots.restore']()} aria-label={m['vms.snapshots.restore']()}>{m['vms.snapshots.restore']()}</button>
-						<button type="button" class="rounded-lg border border-destructive/30 bg-destructive/5 px-3 py-1.5 text-sm font-medium text-destructive hover:bg-destructive/10" onclick={() => openDelete(snapshot)} data-testid="snapshot-delete-open" title={m['vms.snapshots.delete']()} aria-label={m['vms.snapshots.delete']()}>{m['vms.snapshots.delete']()}</button>
+						<Button variant="secondary" size="sm" onclick={() => openRollback(snapshot)} data-testid="snapshot-rollback-open" label={m['vms.snapshots.restore']()}>{m['vms.snapshots.restore']()}</Button>
+						<Button variant="destructive" size="sm" onclick={() => openDelete(snapshot)} data-testid="snapshot-delete-open" label={m['vms.snapshots.delete']()}>{m['vms.snapshots.delete']()}</Button>
 					</div>
 				</li>
 			{/each}

@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { AdminTagsStore } from './tags.svelte';
 
 const testTags = [
@@ -63,5 +63,27 @@ describe('AdminTagsStore filteredTags', () => {
 		store.protectedFilter = 'protected';
 		store.resetFilters();
 		expect(store.filteredTags.length).toBe(3);
+	});
+});
+
+describe('AdminTagsStore create contract', () => {
+	function jsonResponse(status: number, body: unknown): Response {
+		return new Response(JSON.stringify(body), { status, headers: { 'Content-Type': 'application/json' } });
+	}
+
+	it('returns true and appends the tag on success', async () => {
+		vi.stubGlobal('fetch', vi.fn().mockResolvedValue(jsonResponse(201, { name: 'new', color: '#fff', vmCount: 0, protected: false })));
+		const store = new AdminTagsStore();
+		await expect(store.create('new', '#fff')).resolves.toBe(true);
+		expect(store.tags.at(-1)?.name).toBe('new');
+		vi.unstubAllGlobals();
+	});
+
+	it('returns false and sets saveError on failure instead of throwing', async () => {
+		vi.stubGlobal('fetch', vi.fn().mockResolvedValue(jsonResponse(400, { code: 'bad', message: 'name already used' })));
+		const store = new AdminTagsStore();
+		await expect(store.create('pvmss', '#fff')).resolves.toBe(false);
+		expect(store.saveError).toBe('name already used');
+		vi.unstubAllGlobals();
 	});
 });

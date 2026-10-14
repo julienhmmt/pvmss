@@ -3,6 +3,7 @@
 	import CloudInitDocumentStatus from '$lib/features/admin-cloudinit-templates/CloudInitDocumentStatus.svelte';
 	import PageHeader from '$lib/shared/ui/PageHeader.svelte';
 	import Button from '$lib/shared/ui/Button.svelte';
+	import ClusterSelector from '$lib/shared/ui/ClusterSelector.svelte';
 	import Card from '$lib/shared/ui/Card.svelte';
 	import Skeleton from '$lib/shared/ui/Skeleton.svelte';
 	import ErrorState from '$lib/shared/ui/ErrorState.svelte';
@@ -11,16 +12,23 @@
 	const store = getAdminBaselineContext();
 
 	function refresh(): void {
-		void store.load('default');
+		void store.load(store.cluster);
 	}
 </script>
 
 <PageHeader
 	title={m['admin.baseline.heading']()}
+	eyebrow={m['chrome.adminNav.provisioning']()}
 	description={m['admin.baseline.generatedHint']()}
 	titleId="baseline-title"
 >
 	{#snippet actions()}
+		<ClusterSelector
+			options={store.clusterOptions}
+			value={store.cluster}
+			onChange={(value) => store.setCluster(value)}
+			id="baseline-cluster"
+		/>
 		<Button variant="secondary" size="sm" loading={store.loading} onclick={refresh}>
 			{m['common.refresh']()}
 		</Button>

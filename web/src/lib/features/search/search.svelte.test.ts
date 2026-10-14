@@ -167,3 +167,97 @@ describe('SearchStore URL query (q)', () => {
 		expect(navigated.at(-1)).toBe('');
 	});
 });
+
+describe('SearchStore cluster & status filters', () => {
+	beforeEach(() => {
+		vi.useFakeTimers();
+	});
+
+	afterEach(() => {
+		vi.unstubAllGlobals();
+		vi.useRealTimers();
+	});
+
+	it('reads cluster and status from the initial URL query', () => {
+		const store = new SearchStore({ initialQuery: '?q=web&cluster=prod&status=running' });
+		expect(store.query).toBe('web');
+		expect(store.cluster).toBe('prod');
+		expect(store.status).toBe('running');
+	});
+
+	it('ignores an invalid status query param', () => {
+		const store = new SearchStore({ initialQuery: '?status=bogus' });
+		expect(store.status).toBe('');
+	});
+
+	it('passes cluster and status to the API and syncs the URL', async () => {
+		const fetchMock = vi.fn().mockResolvedValue(jsonResponse(200, oneVmResult));
+		vi.stubGlobal('fetch', fetchMock);
+		const navigated: string[] = [];
+		const store = new SearchStore({ initialQuery: '?q=web', navigate: (qs) => navigated.push(qs) });
+
+		store.setCluster('prod');
+		await vi.advanceTimersByTimeAsync(0);
+		expect(fetchMock).toHaveBeenLastCalledWith(
+			expect.stringContaining('search=web'),
+			expect.anything()
+		);
+		expect(fetchMock).toHaveBeenLastCalledWith(
+			expect.stringContaining('cluster=prod'),
+			expect.anything()
+		);
+		expect(navigated.at(-1)).toBe('q=web&cluster=prod');
+
+		store.setStatus('running');
+		await vi.advanceTimersByTimeAsync(0);
+		expect(fetchMock).toHaveBeenLastCalledWith(
+			expect.stringContaining('status=running'),
+			expect.anything()
+		);
+		expect(navigated.at(-1)).toBe('q=web&cluster=prod&status=running');
+	});
+
+	it('searches on filters alone when the query is empty', async () => {
+		const fetchMock = vi.fn().mockResolvedValue(jsonResponse(200, oneVmResult));
+		vi.stubGlobal('fetch', fetchMock);
+		const store = new SearchStore({ navigate: () => {} });
+
+		store.setStatus('stopped');
+		await vi.advanceTimersByTimeAsync(0);
+
+		expect(fetchMock).toHaveBeenCalledWith(
+			expect.stringContaining('status=stopped'),
+			expect.anything()
+		);
+		expect(fetchMock).not.toHaveBeenCalledWith(expect.stringContaining('search='), expect.anything());
+		expect(store.result?.items).toHaveLength(1);
+	});
+
+	it('restores filters when navigating back', () => {
+		vi.stubGlobal('fetch', vi.fn().mockResolvedValue(jsonResponse(200, oneVmResult)));
+		const store = new SearchStore({ navigate: () => {} });
+		store.setCluster('prod');
+		store.restoreQuery('?q=db&status=paused');
+		expect(store.query).toBe('db');
+		expect(store.cluster).toBe('');
+		expect(store.status).toBe('paused');
+	});
+
+	it('loads cluster options via init', async () => {
+		vi.stubGlobal(
+			'fetch',
+			vi.fn().mockResolvedValue(jsonResponse(200, [{ name: 'prod', displayName: 'Production' }]))
+		);
+		const store = new SearchStore();
+		await store.init();
+		expect(store.clusterOptions).toEqual([{ name: 'prod', displayName: 'Production' }]);
+	});
+
+	it('keeps search usable when cluster options fail to load', async () => {
+		vi.stubGlobal('fetch', vi.fn().mockRejectedValue(new Error('offline')));
+		const store = new SearchStore();
+		await store.init();
+		expect(store.clusterOptions).toEqual([]);
+		expect(store.error).toBeNull();
+	});
+});

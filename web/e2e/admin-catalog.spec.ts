@@ -96,7 +96,10 @@ test.describe('T11 admin catalog', () => {
 		await signInAlice(page.request);
 		await page.goto('/vms/create');
 		await page.getByRole('button', { name: /Detailed/ }).click();
-		await expect(page.getByLabel('Node').locator('option[value="pve-node-03"]')).toHaveCount(1);
+		// pve-node-03 is approved but has no approved storage or bridge, so the
+		// catalog hides it (it could not host a VM); the bridge node stays offered.
+		await expect(page.getByLabel('Node').locator('option[value="pve-node-03"]')).toHaveCount(0);
+		await expect(page.getByLabel('Node').locator(`option[value="${bridgeNode ?? 'pve-node-01'}"]`)).toHaveCount(1);
 
 		// Select the node that hosts the approved bridge; pve-node-01 is used
 		// for the storage assertion and may differ from the bridge node.

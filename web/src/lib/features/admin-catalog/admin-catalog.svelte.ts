@@ -1,5 +1,10 @@
 import { get, post, put, del, ApiRequestError } from '$lib/shared/api/client';
-import { fetchClusterOptions, type ClusterOption } from '$lib/shared/clusters';
+import {
+	fetchClusterOptions,
+	resolveInitialAdminCluster,
+	saveAdminCluster,
+	type ClusterOption
+} from '$lib/shared/clusters';
 import { setContext, getContext } from 'svelte';
 import { SvelteSet } from 'svelte/reactivity';
 import { m } from '$lib/paraglide/messages.js';
@@ -190,6 +195,7 @@ export class AdminCatalogStore {
 	templateSearch = $state('');
 	templateStorageFilter = $state('');
 	templateNodeFilter = $state('');
+	templateEnabledFilter: 'all' | 'enabled' | 'disabled' = $state('all');
 	templateSortBy: TemplateSortColumn = $state('vmid');
 	templateSortDir: 'asc' | 'desc' = $state('asc');
 
@@ -329,6 +335,8 @@ export class AdminCatalogStore {
 				if (search && !tmpl.name.toLowerCase().includes(search) && String(tmpl.vmid) !== search) return false;
 				if (this.templateStorageFilter && tmpl.diskStorage !== this.templateStorageFilter) return false;
 				if (this.templateNodeFilter && tmpl.node !== this.templateNodeFilter) return false;
+				if (this.templateEnabledFilter === 'enabled' && !tmpl.enabled) return false;
+				if (this.templateEnabledFilter === 'disabled' && tmpl.enabled) return false;
 				return true;
 			}),
 			this.templateSortBy,
@@ -443,6 +451,7 @@ export class AdminCatalogStore {
 		this.templateSearch = '';
 		this.templateStorageFilter = '';
 		this.templateNodeFilter = '';
+		this.templateEnabledFilter = 'all';
 		this.templateSortBy = 'vmid';
 		this.templateSortDir = 'asc';
 	}
@@ -450,9 +459,8 @@ export class AdminCatalogStore {
 	async loadClusters(): Promise<void> {
 		try {
 			this.clusterOptions = await fetchClusterOptions();
-			const first = this.clusterOptions[0];
-			if (first && (this.clusterOptions.length === 1 || !this.clusterOptions.some((option) => option.name === this.cluster))) {
-				this.cluster = first.name;
+			if (this.clusterOptions.length > 0) {
+				this.cluster = resolveInitialAdminCluster(this.clusterOptions, this.cluster);
 			}
 		} catch (error: unknown) {
 			this.error = error instanceof ApiRequestError ? error.message : m['admin.catalog.loadClustersError']();
@@ -482,6 +490,7 @@ export class AdminCatalogStore {
 	}
 
 	setCluster(value: string): void {
+		saveAdminCluster(value);
 		this.cluster = value;
 		void this.loadAll();
 	}

@@ -19,7 +19,8 @@
 	onDestroy(() => store.dispose());
 
 	onMount(() => {
-		if (store.query !== '') void store.load();
+		void store.init();
+		if (store.query !== '' || store.cluster !== '' || store.status !== '') void store.load();
 		const input = document.querySelector<HTMLInputElement>('#global-search');
 		input?.focus();
 	});

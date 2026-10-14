@@ -5,6 +5,12 @@
 	import Select from '$lib/shared/ui/Select.svelte';
 	import Tooltip from '$lib/shared/ui/Tooltip.svelte';
 
+	interface Props {
+		showErrors?: boolean;
+	}
+
+	let { showErrors = false }: Props = $props();
+
 	// Network step: one or more NICs (US2/D3a - multi-NIC). In simple mode
 	// only nics[0] is used; detailed mode allows add/remove up to
 	// gabarit.maxNetworkCards. Each NIC's bridge is filtered to the node.
@@ -17,7 +23,7 @@
 	);
 	const canRemoveNIC = $derived(form.nics.length > 1);
 
-	const bridgeError = $derived(
+	const noBridgeOnNodeError = $derived(
 		form.node !== '' && bridgesOnNode.length === 0 ? m['vms.create.noBridgeOnNode']({ node: form.node }) : null
 	);
 
@@ -52,7 +58,11 @@
 				</div>
 			{/if}
 
-			<FormField label={m['vms.create.bridge']()} required error={bridgeError}>
+			<FormField
+				label={m['vms.create.bridge']()}
+				required
+				error={noBridgeOnNodeError ?? (showErrors && nic.bridge === '' ? m['vms.create.chooseBridge']() : null)}
+			>
 				{#snippet children({ id, describedBy, invalid })}
 					<Select
 						{id}

@@ -17,26 +17,40 @@
 	import Select from '$lib/shared/ui/Select.svelte';
 	import SshKeyPicker from '$lib/features/profile-ssh-keys/SshKeyPicker.svelte';
 
+	interface Props {
+		showErrors?: boolean;
+	}
+
+	let { showErrors = false }: Props = $props();
+
 	const form = getVmCreateContext();
 
 	// The picker needs the profile keys; a failure degrades to the
 	// textarea-only experience (loaded once per wizard session).
 	onMount(() => void form.loadProfileKeysOnce());
 
+	let userTouched = $state(false);
+	let sshKeysTouched = $state(false);
+	let ipAddressTouched = $state(false);
+
 	const ipModeOptions = [
 		{ value: 'dhcp', label: m['vms.create.ciIpModeDhcp']() },
 		{ value: 'static', label: m['vms.create.ciIpModeStatic']() }
 	];
 
-	const userError = $derived(form.ciUser.trim() === '' ? m['vms.create.errorCiUserRequired']() : null);
-	const sshKeysError = $derived(
+	const rawUserError = $derived(form.ciUser.trim() === '' ? m['vms.create.errorCiUserRequired']() : null);
+	const rawSshKeysError = $derived(
 		form.sshKeys().length === 0 ? m['vms.create.errorCiSshKeysRequired']() : null
 	);
-	const ipAddressError = $derived(
+	const rawIpAddressError = $derived(
 		form.ciIpMode === 'static' && form.ciIpAddress.trim() === ''
 			? m['vms.create.errorCiIpRequired']()
 			: null
 	);
+
+	const userError = $derived(showErrors || userTouched ? rawUserError : null);
+	const sshKeysError = $derived(showErrors || sshKeysTouched ? rawSshKeysError : null);
+	const ipAddressError = $derived(showErrors || ipAddressTouched ? rawIpAddressError : null);
 </script>
 
 <div class="grid gap-4 rounded-lg border border-border p-4" data-testid="image-cloud-init">
@@ -44,7 +58,7 @@
 
 	<FormField label={m['vms.create.ciUsername']()} required error={userError}>
 		{#snippet children({ id, describedBy, invalid })}
-			<TextField {id} {describedBy} {invalid} bind:value={form.ciUser} required placeholder="admin" />
+			<TextField {id} {describedBy} {invalid} bind:value={form.ciUser} onblur={() => (userTouched = true)} required placeholder="admin" />
 		{/snippet}
 	</FormField>
 
@@ -55,7 +69,9 @@
 		error={sshKeysError}
 	>
 		{#snippet children({ id, describedBy, invalid })}
-			<SshKeyPicker {id} {describedBy} {invalid} selection={form.sshSelection} />
+			<div onfocusout={() => (sshKeysTouched = true)}>
+				<SshKeyPicker {id} {describedBy} {invalid} selection={form.sshSelection} />
+			</div>
 		{/snippet}
 	</FormField>
 
@@ -69,7 +85,7 @@
 		<div class="grid gap-4 sm:grid-cols-2">
 			<FormField label={m['vms.create.ciIpAddress']()} required error={ipAddressError}>
 				{#snippet children({ id, describedBy, invalid })}
-					<TextField {id} {describedBy} {invalid} bind:value={form.ciIpAddress} required placeholder="192.168.1.50" />
+					<TextField {id} {describedBy} {invalid} bind:value={form.ciIpAddress} onblur={() => (ipAddressTouched = true)} required placeholder="192.168.1.50" />
 				{/snippet}
 			</FormField>
 			<FormField label={m['vms.create.ciGateway']()} hint={m['common.optional']()}>

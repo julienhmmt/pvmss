@@ -10,6 +10,7 @@
 	import EmptyState from '$lib/shared/ui/EmptyState.svelte';
 	import Pill from '$lib/shared/ui/Pill.svelte';
 	import Button from '$lib/shared/ui/Button.svelte';
+	import TableSkeleton from '$lib/shared/ui/TableSkeleton.svelte';
 
 	const store = getVmDetailContext();
 
@@ -48,7 +49,10 @@
 	</div>
 
 	{#if store.hardwareLoading}
-		<p class="mt-5 text-sm text-muted-foreground" role="status">{m['vms.disks.loading']()}</p>
+		<div class="mt-5" role="status">
+			<span class="sr-only">{m['vms.disks.loading']()}</span>
+			<TableSkeleton columns={4} />
+		</div>
 	{:else if store.hardwareError}
 		<Alert class="mt-5">{store.hardwareError}</Alert>
 	{:else if store.entity?.disks?.length}

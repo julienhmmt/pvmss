@@ -1,8 +1,9 @@
 import { getContext, setContext } from 'svelte';
 import { SvelteURLSearchParams } from 'svelte/reactivity';
 import { get, ApiRequestError } from '$lib/shared/api/client';
+import { fetchClusterOptions, type ClusterOption } from '$lib/shared/clusters';
 import { m } from '$lib/paraglide/messages.js';
-import type { VmListResult } from '$lib/features/vms/list.svelte';
+import type { VmListResult, VmStatus } from '$lib/features/vms/list.svelte';
 
 const DEFAULT_PAGE_SIZE = 15;
 const SEARCH_DEBOUNCE_MS = 300;
@@ -12,13 +13,24 @@ const DEFAULT_SORT_DIR = 'asc';
 
 const SEARCH_CONTEXT_KEY = Symbol('search');
 
+const VALID_STATUSES: readonly VmStatus[] = ['running', 'stopped', 'paused'];
+
+function parseStatus(value: string | null): '' | VmStatus {
+	return VALID_STATUSES.includes(value as VmStatus) ? (value as VmStatus) : '';
+}
+
 /**
- * Owns the query, loading, error and result state for the global VM search
- * page. Queries are debounced and sent to the existing /api/v1/vms endpoint
- * with the search parameter, which already matches by name, tag or VM ID.
+ * Owns the query, filter, loading, error and result state for the global VM
+ * search page. Queries are debounced and sent to the existing /api/v1/vms
+ * endpoint with the search parameter, which already matches by name, tag or
+ * VM ID; the cluster and status filters are passed through as-is and synced
+ * to the URL query string (`?q=&cluster=&status=`).
  */
 export class SearchStore {
 	query = $state('');
+	cluster = $state('');
+	status = $state<'' | VmStatus>('');
+	clusterOptions = $state.raw<ClusterOption[]>([]);
 	loading = $state(false);
 	error = $state<string | null>(null);
 	result = $state<VmListResult | null>(null);
@@ -26,13 +38,64 @@ export class SearchStore {
 	#searchTimer: ReturnType<typeof setTimeout> | null = null;
 	#navigate: (queryString: string) => void;
 	#committedQuery: string = '';
+	#committedCluster: string = '';
+	#committedStatus: '' | VmStatus = '';
 	#requestId: number = 0;
 
-	/** initialQuery is the page's URL search (`?q=`); navigate writes `q` back. */
+	/** initialQuery is the page's URL search (`?q=&cluster=&status=`);
+	 *  navigate writes the committed state back. */
 	constructor(options: { initialQuery?: string; navigate?: (queryString: string) => void } = {}) {
-		this.query = new SvelteURLSearchParams(options.initialQuery ?? '').get('q') ?? '';
+		const params = new SvelteURLSearchParams(options.initialQuery ?? '');
+		this.query = params.get('q') ?? '';
+		this.cluster = params.get('cluster') ?? '';
+		this.status = parseStatus(params.get('status'));
 		this.#navigate = options.navigate ?? (() => {});
 		this.#committedQuery = this.query;
+		this.#committedCluster = this.cluster;
+		this.#committedStatus = this.status;
+	}
+
+	/** Fetches the cluster list for the filter selector (non-fatal on error). */
+	async init(): Promise<void> {
+		try {
+			this.clusterOptions = await fetchClusterOptions();
+		} catch {
+			this.clusterOptions = [];
+		}
+	}
+
+	/** Builds the URL query string for the committed query + filters. */
+	#buildQueryString(): string {
+		const params = new SvelteURLSearchParams();
+		if (this.#committedQuery !== '') params.set('q', this.#committedQuery);
+		if (this.cluster !== '') params.set('cluster', this.cluster);
+		if (this.status !== '') params.set('status', this.status);
+		return params.toString();
+	}
+
+	/** Commits the current query + filters, syncs the URL and reloads. */
+	#commitFilters(): void {
+		if (this.#searchTimer !== null) clearTimeout(this.#searchTimer);
+		this.#searchTimer = null;
+		this.#committedQuery = this.query.trim();
+		this.#committedCluster = this.cluster;
+		this.#committedStatus = this.status;
+		this.#navigate(this.#buildQueryString());
+		void this.load();
+	}
+
+	/** Updates the cluster filter and reloads immediately. */
+	setCluster(value: string): void {
+		if (value === this.cluster) return;
+		this.cluster = value;
+		this.#commitFilters();
+	}
+
+	/** Updates the status filter and reloads immediately. */
+	setStatus(value: '' | VmStatus): void {
+		if (value === this.status) return;
+		this.status = value;
+		this.#commitFilters();
 	}
 
 	/** Updates the query and debounces the server call. */
@@ -44,18 +107,25 @@ export class SearchStore {
 			const trimmed: string = this.query.trim();
 			if (trimmed !== this.#committedQuery) {
 				this.#committedQuery = trimmed;
-				this.#navigate(trimmed === '' ? '' : new SvelteURLSearchParams({ q: trimmed }).toString());
+				this.#navigate(this.#buildQueryString());
 			}
 			void this.load();
 		}, SEARCH_DEBOUNCE_MS);
 	}
 
 	restoreQuery(queryString: string): void {
-		const query: string = new SvelteURLSearchParams(queryString).get('q') ?? '';
-		if (query === this.#committedQuery) return;
+		const params = new SvelteURLSearchParams(queryString);
+		const query: string = params.get('q') ?? '';
+		const cluster: string = params.get('cluster') ?? '';
+		const status: '' | VmStatus = parseStatus(params.get('status'));
+		if (query === this.#committedQuery && cluster === this.#committedCluster && status === this.#committedStatus) return;
 		this.dispose();
 		this.#committedQuery = query;
+		this.#committedCluster = cluster;
+		this.#committedStatus = status;
 		this.query = query;
+		this.cluster = cluster;
+		this.status = status;
 		void this.load();
 	}
 
@@ -69,7 +139,7 @@ export class SearchStore {
 	async load(): Promise<void> {
 		const requestId: number = ++this.#requestId;
 		const trimmed: string = this.query.trim();
-		if (trimmed === '') {
+		if (trimmed === '' && this.cluster === '' && this.status === '') {
 			this.loading = false;
 			this.result = null;
 			this.error = null;
@@ -80,7 +150,9 @@ export class SearchStore {
 		this.error = null;
 		try {
 			const params = new SvelteURLSearchParams();
-			params.set('search', trimmed);
+			if (trimmed !== '') params.set('search', trimmed);
+			if (this.cluster !== '') params.set('cluster', this.cluster);
+			if (this.status !== '') params.set('status', this.status);
 			params.set('scope', SEARCH_SCOPE);
 			params.set('sortBy', DEFAULT_SORT_BY);
 			params.set('sortDir', DEFAULT_SORT_DIR);

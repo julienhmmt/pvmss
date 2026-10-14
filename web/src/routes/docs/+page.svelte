@@ -9,7 +9,6 @@
 	import { fetchDocPage, type DocSummary } from '$lib/features/docs/docs.svelte';
 	import Alert from '$lib/shared/ui/Alert.svelte';
 	import PageHeader from '$lib/shared/ui/PageHeader.svelte';
-	import Select from '$lib/shared/ui/Select.svelte';
 
 	// Help & guides (DESIGN.md §6.5): the seeded documentation as a stack of
 	// numbered accordions (first one open), each body fetched when opened,
@@ -22,7 +21,6 @@
 	let pages = $state<DocSummary[]>([]);
 	let loading = $state(true);
 	let error = $state<string | null>(null);
-	let selectedLang = $state<Locale>('en');
 
 	async function loadDocs(): Promise<void> {
 		loading = true;
@@ -37,7 +35,6 @@
 	}
 
 	onMount(() => {
-		selectedLang = locale.current;
 		void loadDocs();
 	});
 
@@ -67,7 +64,7 @@
 		if ((event.currentTarget as HTMLDetailsElement).open) void loadBody(page);
 	}
 
-	const visible = $derived(visiblePages(pages, session.isAdmin, selectedLang));
+	const visible = $derived(visiblePages(pages, session.isAdmin, locale.current));
 
 	// The first article is open by default; load its body as soon as the
 	// list is known.
@@ -92,19 +89,7 @@
 		description={m['help.description']()}
 		focusTarget
 		divider={false}
-	>
-		{#snippet actions()}
-			<label class="flex items-center gap-2 text-sm">
-				{m['docs.language']()}
-				<Select
-					value={selectedLang}
-					options={['en', 'fr']}
-					onchange={(e: Event) => (selectedLang = (e.currentTarget as HTMLSelectElement).value as Locale)}
-					class="w-auto"
-				/>
-			</label>
-		{/snippet}
-	</PageHeader>
+	/>
 
 	<div class="grid items-start gap-6 min-[900px]:grid-cols-[minmax(0,1fr)_260px]">
 		<div>

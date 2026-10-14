@@ -7,10 +7,11 @@
 	import { getLocaleContext } from '$lib/features/chrome/locale.svelte';
 	import { m } from '$lib/paraglide/messages.js';
 	import Alert from '$lib/shared/ui/Alert.svelte';
-	import Button from '$lib/shared/ui/Button.svelte';
 	import Card from '$lib/shared/ui/Card.svelte';
+	import EmptyState from '$lib/shared/ui/EmptyState.svelte';
 	import PageHeader from '$lib/shared/ui/PageHeader.svelte';
 	import Select from '$lib/shared/ui/Select.svelte';
+	import Skeleton from '$lib/shared/ui/Skeleton.svelte';
 	import type { Locale } from '$lib/paraglide/runtime.js';
 	import { ApiRequestError } from '$lib/shared/api/client';
 
@@ -62,14 +63,12 @@
 	<title>{doc ? `${doc.title} - PVMSS` : `${m['docs.title']()} - PVMSS`}</title>
 </svelte:head>
 
-<section class="mx-auto w-full max-w-reading px-4 py-8 md:px-6">
-	<div class="mb-4">
-		<Button variant="secondary" size="sm" onclick={() => void goto(resolve('/docs'))}>
-			← {m['docs.back']()}
-		</Button>
-	</div>
-
-	<PageHeader title={doc ? doc.title : m['docs.title']()}>
+<section class="w-full max-w-reading">
+	<PageHeader
+		title={doc ? doc.title : m['docs.title']()}
+		eyebrow={m['help.eyebrow']()}
+		back={{ href: resolve('/docs'), label: m['docs.back']() }}
+	>
 		{#snippet actions()}
 			<label class="flex items-center gap-2 text-sm">
 				{m['docs.language']()}
@@ -88,9 +87,15 @@
 	</PageHeader>
 
 	{#if loading}
-		<p role="status" aria-live="polite" class="text-muted-foreground">{m['docs.loading']()}</p>
+		<div role="status" aria-live="polite" class="flex flex-col gap-3">
+			<span class="sr-only">{m['docs.loading']()}</span>
+			<Skeleton class="h-6 w-1/2" />
+			<Skeleton class="h-4 w-full" />
+			<Skeleton class="h-4 w-full" />
+			<Skeleton class="h-4 w-2/3" />
+		</div>
 	{:else if notFound}
-		<p role="alert" class="text-muted-foreground">{m['docs.notFound']()}</p>
+		<EmptyState title={m['docs.notFound']()} />
 	{:else if error}
 		<Alert>{error}</Alert>
 	{:else if doc}

@@ -5,9 +5,16 @@
 	import TextField from '$lib/shared/ui/TextField.svelte';
 	import Select from '$lib/shared/ui/Select.svelte';
 
+	interface Props {
+		showErrors?: boolean;
+	}
+
+	let { showErrors = false }: Props = $props();
+
 	// Disk step: one initial disk (multi-disk is T07) - an approved storage on
 	// the chosen node, plus a size within the technical ceiling.
 	const form = getVmCreateContext();
+	let storageTouched = $state(false);
 
 	const storagesOnNode = $derived(
 		(form.catalog?.storages ?? []).filter((storage) => storage.node === form.node)
@@ -15,7 +22,9 @@
 	const storageError = $derived(
 		form.node !== '' && storagesOnNode.length === 0
 			? m['vms.create.noStorageOnNode']({ node: form.node })
-			: null
+			: (showErrors || storageTouched) && form.diskStorage === ''
+				? m['vms.create.errorStorageRequired']()
+				: null
 	);
 
 	// Image source with profiles configured: the profile's disk size is
@@ -73,6 +82,7 @@
 				{describedBy}
 				{invalid}
 				bind:value={form.diskStorage}
+				onblur={() => (storageTouched = true)}
 				placeholder={m['vms.create.chooseStorage']()}
 				options={storagesOnNode.map((storage) => ({
 					value: storage.name,

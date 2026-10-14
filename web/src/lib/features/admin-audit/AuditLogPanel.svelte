@@ -5,8 +5,10 @@
 	import Button from '$lib/shared/ui/Button.svelte';
 	import Select from '$lib/shared/ui/Select.svelte';
 	import TextField from '$lib/shared/ui/TextField.svelte';
+	import TableCard from '$lib/shared/ui/TableCard.svelte';
 	import TableSkeleton from '$lib/shared/ui/TableSkeleton.svelte';
 	import EmptyState from '$lib/shared/ui/EmptyState.svelte';
+	import Pill from '$lib/shared/ui/Pill.svelte';
 	import { m } from '$lib/paraglide/messages.js';
 
 	const store = getAuditLogContext();
@@ -69,55 +71,34 @@
 		}
 	}
 
+	/** Pretty-printed JSON for the expanded detail row, or the raw string. */
+	function detailBlock(entry: { detail: string }): string {
+		try {
+			return JSON.stringify(JSON.parse(entry.detail), null, 2);
+		} catch {
+			return entry.detail;
+		}
+	}
+
+	function severityTone(severity: string): 'error' | 'warn' | 'off' {
+		if (severity === 'critical') return 'error';
+		if (severity === 'warning') return 'warn';
+		return 'off';
+	}
+
+	function severityLabel(severity: string): string {
+		if (severity === 'critical') return m['admin.audit.severityCritical']();
+		if (severity === 'warning') return m['admin.audit.severityWarning']();
+		if (severity === 'info') return m['admin.audit.severityInfo']();
+		return severity;
+	}
+
 	function formatTimestamp(ts: string): string {
 		return new Date(ts).toLocaleString();
 	}
 </script>
 
-<svelte:head>
-	<title>{m['admin.audit.pageTitle']()}</title>
-</svelte:head>
-
-<section class="space-y-4">
-	<h2 class="text-xl font-semibold tracking-tight">{m['admin.audit.title']()}</h2>
-
-	<form class="flex flex-wrap items-end gap-3" onsubmit={(e) => { e.preventDefault(); applyFilter(); }}>
-		<label class="flex flex-col gap-1 text-sm">
-			<span class="text-muted-foreground">{m['admin.audit.action']()}</span>
-			<TextField bind:value={actionFilter} placeholder={m['admin.audit.actionPlaceholder']()} />
-		</label>
-		<label class="flex flex-col gap-1 text-sm">
-			<span class="text-muted-foreground">{m['admin.audit.actor']()}</span>
-			<TextField bind:value={actorFilter} placeholder={m['admin.audit.actorPlaceholder']()} />
-		</label>
-		<label class="flex flex-col gap-1 text-sm">
-			<span class="text-muted-foreground">{m['admin.audit.vmid']()}</span>
-			<TextField class="w-24" type="number" bind:value={vmidFilter} placeholder="101" />
-		</label>
-		<label class="flex flex-col gap-1 text-sm">
-			<span class="text-muted-foreground">{m['admin.audit.from']()}</span>
-			<TextField type="datetime-local" bind:value={fromFilter} />
-		</label>
-		<label class="flex flex-col gap-1 text-sm">
-			<span class="text-muted-foreground">{m['admin.audit.to']()}</span>
-			<TextField type="datetime-local" bind:value={toFilter} />
-		</label>
-		<label class="flex flex-col gap-1 text-sm">
-			<span class="text-muted-foreground">{m['admin.audit.severity']()}</span>
-			<Select
-				bind:value={severityFilter}
-				options={[
-					{ value: '', label: m['admin.audit.severityAll']() },
-					{ value: 'critical', label: m['admin.audit.severityCritical']() },
-					{ value: 'warning', label: m['admin.audit.severityWarning']() },
-					{ value: 'info', label: m['admin.audit.severityInfo']() }
-				]}
-			/>
-		</label>
-		<Button type="submit">{m['common.filter']()}</Button>
-		<Button variant="secondary" onclick={clearFilter}>{m['admin.audit.clear']()}</Button>
-	</form>
-
+<section class="space-y-4" aria-label={m['admin.audit.title']()}>
 	{#if store.loading}
 		<div role="status" aria-live="polite" class="sr-only">{m['common.loading']()}</div>
 		<TableSkeleton columns={5} />
@@ -126,8 +107,47 @@
 	{:else}
 		<div role="status" aria-live="polite" class="sr-only">{m['admin.audit.entriesLoaded']({ loaded: store.entries.length, total: store.total })}</div>
 
-		<div class="overflow-x-auto rounded-md border border-border">
-			<table class="pv-table">
+		<TableCard>
+			{#snippet toolbar()}
+				<form class="flex flex-wrap items-end gap-3" onsubmit={(e) => { e.preventDefault(); applyFilter(); }}>
+					<label class="flex flex-col gap-1 text-sm">
+						<span class="text-muted-foreground">{m['admin.audit.action']()}</span>
+						<TextField bind:value={actionFilter} placeholder={m['admin.audit.actionPlaceholder']()} />
+					</label>
+					<label class="flex flex-col gap-1 text-sm">
+						<span class="text-muted-foreground">{m['admin.audit.actor']()}</span>
+						<TextField bind:value={actorFilter} placeholder={m['admin.audit.actorPlaceholder']()} />
+					</label>
+					<label class="flex flex-col gap-1 text-sm">
+						<span class="text-muted-foreground">{m['admin.audit.vmid']()}</span>
+						<TextField class="w-24" type="number" bind:value={vmidFilter} placeholder="101" />
+					</label>
+					<label class="flex flex-col gap-1 text-sm">
+						<span class="text-muted-foreground">{m['admin.audit.from']()}</span>
+						<TextField type="datetime-local" bind:value={fromFilter} />
+					</label>
+					<label class="flex flex-col gap-1 text-sm">
+						<span class="text-muted-foreground">{m['admin.audit.to']()}</span>
+						<TextField type="datetime-local" bind:value={toFilter} />
+					</label>
+					<label class="flex flex-col gap-1 text-sm">
+						<span class="text-muted-foreground">{m['admin.audit.severity']()}</span>
+						<Select
+							bind:value={severityFilter}
+							options={[
+								{ value: '', label: m['admin.audit.severityAll']() },
+								{ value: 'critical', label: m['admin.audit.severityCritical']() },
+								{ value: 'warning', label: m['admin.audit.severityWarning']() },
+								{ value: 'info', label: m['admin.audit.severityInfo']() }
+							]}
+						/>
+					</label>
+					<Button type="submit">{m['common.filter']()}</Button>
+					<Button variant="secondary" onclick={clearFilter}>{m['admin.audit.clear']()}</Button>
+				</form>
+			{/snippet}
+			<table class="pv-table pv-responsive-table">
+				<caption class="sr-only">{m['admin.audit.title']()}</caption>
 				<thead>
 					<tr>
 						<th class="font-medium">{m['admin.audit.time']()}</th>
@@ -143,29 +163,37 @@
 				<tbody>
 					{#each store.entries as entry (entry.id)}
 						{@const summary = detailSummary(entry)}
-						<tr class="border-t border-border">
-							<td class="text-muted-foreground">{formatTimestamp(entry.timestamp)}</td>
-							<td>{entry.actor}</td>
-							<td>{entry.cluster}</td>
-							<td>{entry.vmid ?? ''}</td>
-							<td class="font-mono">{entry.action}</td>
-							<td>{entry.targetType ? `${entry.targetType}:${entry.targetId}` : ''}</td>
-							<td>{entry.severity}</td>
-							<td>
-								<button type="button" class="text-left hover:underline" onclick={() => selectedDetail = selectedDetail === entry.id ? null : entry.id}>
+						<tr>
+							<td class="text-muted-foreground" data-label={m['admin.audit.time']()}>{formatTimestamp(entry.timestamp)}</td>
+							<td data-label={m['admin.audit.actor']()}>{entry.actor}</td>
+							<td data-label={m['common.cluster']()}>{entry.cluster}</td>
+							<td data-label={m['admin.audit.columnVm']()}>{entry.vmid ?? ''}</td>
+							<td class="font-mono" data-label={m['admin.audit.action']()}>{entry.action}</td>
+							<td data-label={m['admin.audit.target']()}>{entry.targetType ? `${entry.targetType}:${entry.targetId}` : ''}</td>
+							<td data-label={m['admin.audit.severity']()}>
+								<Pill tone={severityTone(entry.severity)} label={severityLabel(entry.severity)} />
+							</td>
+							<td data-label={m['admin.audit.detail']()}>
+								<button type="button" class="pv-focus rounded-sm text-left hover:underline" onclick={() => selectedDetail = selectedDetail === entry.id ? null : entry.id}>
 									{summary}
 								</button>
-								{#if selectedDetail === entry.id}
-									<pre class="mt-1 max-w-xs whitespace-pre-wrap break-all rounded bg-muted p-1 text-xs">{entry.detail}</pre>
-								{/if}
 							</td>
 						</tr>
+						{#if selectedDetail === entry.id}
+							<tr>
+								<td colspan={8} data-nolabel="true">
+									<pre class="max-h-96 overflow-auto whitespace-pre-wrap break-words rounded-md bg-muted p-4 font-mono text-xs">{detailBlock(entry)}</pre>
+								</td>
+							</tr>
+						{/if}
+					{:else}
+						<tr><td colspan={8} class="p-0">
+							<EmptyState title={m['admin.audit.empty']()} />
+						</td></tr>
 					{/each}
 				</tbody>
 			</table>
-		</div>
-
-		<EmptyState title={m['admin.audit.empty']()} />
+		</TableCard>
 
 		<div class="flex items-center justify-between">
 			<p class="text-sm text-muted-foreground">

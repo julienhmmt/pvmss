@@ -84,6 +84,7 @@
 
 <PageHeader
 	title={m['admin.appinfo.heading']()}
+	eyebrow={m['chrome.adminNav.system']()}
 	description={m['admin.appinfo.description']()}
 	titleId="appinfo-title"
 >

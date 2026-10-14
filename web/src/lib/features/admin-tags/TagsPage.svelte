@@ -39,9 +39,10 @@
 		onProtectedFilterChange: (value: 'all' | 'protected' | 'unprotected') => void;
 		onSort: (column: TagSortColumn) => void;
 		onResetFilters: () => void;
-		onCreate: (name: string, color: string) => void;
+		onCreate: (name: string, color: string) => Promise<boolean>;
 		onUpdateColor: (name: string, color: string) => void;
 		onDelete: (name: string) => void;
+		onClearSaveError: () => void;
 	}
 
 	let {
@@ -64,7 +65,8 @@
 		onResetFilters,
 		onCreate,
 		onUpdateColor,
-		onDelete
+		onDelete,
+		onClearSaveError
 	}: Props = $props();
 
 	let showForm = $state(false);
@@ -77,12 +79,20 @@
 	function openCreate(): void {
 		newName = '';
 		newColor = '#4f46e5';
+		onClearSaveError();
 		showForm = true;
 	}
 
-	function submitCreate(): void {
-		onCreate(newName, newColor);
+	function closeForm(): void {
 		showForm = false;
+		onClearSaveError();
+	}
+
+	async function submitCreate(): Promise<void> {
+		// A failed save keeps the dialog open with the draft intact and the
+		// store's saveError rendered inside it.
+		const succeeded = await onCreate(newName, newColor);
+		if (succeeded) showForm = false;
 	}
 
 	function startEdit(tag: AdminTag): void {
@@ -96,13 +106,17 @@
 		}
 		editingTag = null;
 	}
+
+	const filtersActive = $derived(
+		search !== '' || protectedFilter !== 'all' || sortBy !== 'name' || sortDir !== 'asc'
+	);
 </script>
 
 <svelte:head>
 	<title>{m['admin.tags.pageTitle']()}</title>
 </svelte:head>
 
-<PageHeader title={m['admin.tags.title']()}>
+<PageHeader title={m['admin.tags.title']()} eyebrow={m['chrome.adminNav.provisioning']()}>
 	{#snippet actions()}
 		<ClusterSelector options={clusterOptions} value={cluster} onChange={onClusterChange} id="tags-cluster" />
 		<Button onclick={openCreate}>{m['admin.tags.newTag']()}</Button>
@@ -115,7 +129,7 @@
 {:else if error}
 	<Alert>{error}</Alert>
 {:else}
-	{#if saveError}
+	{#if saveError && !showForm}
 		<Alert class="mb-4">{saveError}</Alert>
 	{/if}
 
@@ -139,13 +153,18 @@
 					]}
 					class="w-full sm:w-44"
 				/>
-				<Button
-					variant="secondary"
-					size="sm"
-					onclick={onResetFilters}
-				>
-					{m['admin.tags.resetFilters']()}
-				</Button>
+				<span class="ml-auto text-sm text-muted-foreground" data-testid="tags-count">
+					{m['admin.tags.resultCount']({ count: filteredTags.length })}
+				</span>
+				{#if filtersActive}
+					<Button
+						variant="secondary"
+						size="sm"
+						onclick={onResetFilters}
+					>
+						{m['admin.tags.resetFilters']()}
+					</Button>
+				{/if}
 			{/snippet}
 			<table class="pv-table pv-responsive-table">
 				<caption class="sr-only">{m['admin.tags.title']()}</caption>
@@ -207,9 +226,12 @@
 	{/if}
 {/if}
 
-<Dialog bind:open={showForm} size="sm" labelledBy="tag-form-title" onClose={() => (showForm = false)}>
+<Dialog bind:open={showForm} size="sm" labelledBy="tag-form-title" onClose={closeForm}>
 	<h2 id="tag-form-title" class="mb-4 text-lg font-medium">{m['admin.tags.newTagForm']()}</h2>
-	<form onsubmit={(e) => { e.preventDefault(); submitCreate(); }} class="space-y-4">
+	<form onsubmit={(e) => { e.preventDefault(); void submitCreate(); }} class="space-y-4">
+		{#if saveError}
+			<Alert>{saveError}</Alert>
+		{/if}
 		<FormField label={m['admin.tags.nameField']()} required>
 			{#snippet children({ id, describedBy, invalid })}
 				<TextField
@@ -229,7 +251,7 @@
 			{/snippet}
 		</FormField>
 		<div class="flex justify-end gap-2 pt-2">
-			<Button variant="ghost" onclick={() => (showForm = false)}>{m['common.cancel']()}</Button>
+			<Button variant="ghost" onclick={closeForm}>{m['common.cancel']()}</Button>
 			<Button type="submit" disabled={saving}>
 				{saving ? m['common.creating']() : m['common.create']()}
 			</Button>

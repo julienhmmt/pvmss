@@ -172,6 +172,10 @@
 
 	let pendingDelete = $state<AdminDocPage | null>(null);
 
+	const filtersActive = $derived(
+		search !== '' || categoryFilter !== '' || langFilter !== '' || audienceFilter !== 'all' || sortBy !== 'title' || sortDir !== 'asc'
+	);
+
 	function confirmDelete(): void {
 		if (pendingDelete === null || pendingDelete.isSystem) return;
 		onDelete(pendingDelete.id, pendingDelete.lang);
@@ -183,7 +187,7 @@
 	<title>{m['docs.title']()} - PVMSS</title>
 </svelte:head>
 
-<PageHeader title={m['docs.title']()}>
+<PageHeader title={m['docs.title']()} eyebrow={m['chrome.adminNav.system']()}>
 	{#snippet actions()}
 		<Button onclick={openCreate}>{m['docs.newPage']()}</Button>
 	{/snippet}
@@ -231,9 +235,14 @@
 						{ value: 'admin', label: m['docs.audienceAdmin']() }
 					]}
 				/>
-				<Button variant="ghost" size="sm" onclick={onResetFilters}>
-					{m['admin.docs.resetFilters']()}
-				</Button>
+				<span class="ml-auto text-sm text-muted-foreground" data-testid="docs-count">
+					{m['admin.docs.resultCount']({ count: filteredPages.length })}
+				</span>
+				{#if filtersActive}
+					<Button variant="ghost" size="sm" onclick={onResetFilters}>
+						{m['admin.docs.resetFilters']()}
+					</Button>
+				{/if}
 			{/snippet}
 			<table class="pv-table pv-responsive-table">
 				<caption class="sr-only">{m['docs.title']()}</caption>

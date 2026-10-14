@@ -2,6 +2,7 @@
 	import { getLogLevelContext, LOG_LEVELS, type LogLevel } from './logLevel.svelte';
 	import Alert from '$lib/shared/ui/Alert.svelte';
 	import Button from '$lib/shared/ui/Button.svelte';
+	import Card from '$lib/shared/ui/Card.svelte';
 	import Select from '$lib/shared/ui/Select.svelte';
 	import { m } from '$lib/paraglide/messages.js';
 
@@ -25,10 +26,8 @@
 	}
 </script>
 
-<section class="space-y-3">
-	<h2 class="text-xl font-semibold tracking-tight">{m['admin.logLevel.title']()}</h2>
-	<p class="text-sm text-muted-foreground">{m['admin.logLevel.description']()}</p>
-
+<Card pad="lg" title={m['admin.logLevel.title']()} description={m['admin.logLevel.description']()}>
+	<div class="space-y-3">
 	{#if store.loading}
 		<p class="text-sm text-muted-foreground" role="status" aria-live="polite">{m['common.loading']()}</p>
 	{:else if store.error}
@@ -64,4 +63,5 @@
 			<p role="status" class="text-sm text-muted-foreground">{m['admin.logLevel.saved']()}</p>
 		{/if}
 	{/if}
-</section>
+	</div>
+</Card>

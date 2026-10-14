@@ -129,8 +129,11 @@ test.describe('T06 VM creation', () => {
 		await page.getByRole('button', { name: /Simple/ }).click();
 		await page.getByRole('radio', { name: /Medium/ }).check();
 
-		// The name is empty, so the inline error is already rendered and
-		// submit is disabled - the form cannot silently "do nothing".
+		// Errors stay hidden until submit (or blur) is attempted (DESIGN.md §6.2).
+		await expect(page.getByText('Name is required.')).toHaveCount(0);
+		await page.getByRole('button', { name: 'Create this machine' }).click();
+
+		// Submitting an empty name reveals the inline error, focuses Name, and blocks submit.
 		await expect(page.getByText('Name is required.')).toBeVisible();
 		await expect(page.getByRole('button', { name: 'Create this machine' })).toBeDisabled();
 		await expect(page).toHaveURL(/\/vms\/create$/);

@@ -42,7 +42,7 @@
 	<title>{m['admin.isos.title']()}</title>
 </svelte:head>
 
-<PageHeader title={m['admin.isos.heading']()}>
+<PageHeader title={m['admin.isos.heading']()} eyebrow={m['chrome.adminNav.resources']()}>
 	{#snippet actions()}
 		<ClusterSelector
 			options={store.clusterOptions}

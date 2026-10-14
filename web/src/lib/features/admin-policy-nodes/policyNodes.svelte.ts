@@ -1,5 +1,10 @@
 import { get, post, put, ApiRequestError } from '$lib/shared/api/client';
-import { fetchClusterOptions, type ClusterOption } from '$lib/shared/clusters';
+import {
+	fetchClusterOptions,
+	resolveInitialAdminCluster,
+	saveAdminCluster,
+	type ClusterOption
+} from '$lib/shared/clusters';
 import { getContext, setContext } from 'svelte';
 import { m } from '$lib/paraglide/messages.js';
 import type { NodeStatus } from '../cluster/nodes.svelte';
@@ -80,9 +85,8 @@ export class AdminPolicyNodesStore {
 	async loadClusters(): Promise<void> {
 		try {
 			this.clusterOptions = await fetchClusterOptions();
-			const first = this.clusterOptions[0];
-			if (first && (this.clusterOptions.length === 1 || !this.clusterOptions.some((option) => option.name === this.cluster))) {
-				this.cluster = first.name;
+			if (this.clusterOptions.length > 0) {
+				this.cluster = resolveInitialAdminCluster(this.clusterOptions, this.cluster);
 			}
 		} catch (error: unknown) {
 			this.errorCode = error instanceof ApiRequestError ? error.code : null;
@@ -91,6 +95,7 @@ export class AdminPolicyNodesStore {
 	}
 
 	setCluster(value: string): void {
+		saveAdminCluster(value);
 		this.cluster = value;
 		void this.load();
 	}

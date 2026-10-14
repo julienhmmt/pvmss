@@ -5,6 +5,7 @@
 	import Alert from '$lib/shared/ui/Alert.svelte';
 	import Button from '$lib/shared/ui/Button.svelte';
 	import Card from '$lib/shared/ui/Card.svelte';
+	import FormField from '$lib/shared/ui/FormField.svelte';
 	import TextField from '$lib/shared/ui/TextField.svelte';
 
 	const store = getVmDetailContext();
@@ -25,6 +26,34 @@
 	});
 
 	const catalogTags = $derived(store.hardwareOptions?.tags ?? []);
+
+	function limitCeiling(configured: number | undefined, fallback: number): number {
+		return configured !== undefined && configured > 0 ? configured : fallback;
+	}
+
+	const maxSockets = $derived(limitCeiling(store.hardwareOptions?.limits.maxSockets, 4));
+	const maxCores = $derived(limitCeiling(store.hardwareOptions?.limits.maxCores, 32));
+	const maxMemoryMB = $derived(limitCeiling(store.hardwareOptions?.limits.maxMemoryMB, 65536));
+
+	const socketsNum = $derived(Number(socketsDraft));
+	const coresNum = $derived(Number(coresDraft));
+	const memoryNum = $derived(Number(memoryDraft));
+
+	const socketsError = $derived(
+		Number.isInteger(socketsNum) && socketsNum >= 1 && socketsNum <= maxSockets
+			? null
+			: m['vms.create.socketsOutOfRange']({ min: 1, max: maxSockets })
+	);
+	const coresError = $derived(
+		Number.isInteger(coresNum) && coresNum >= 1 && coresNum <= maxCores
+			? null
+			: m['vms.create.vcpuOutOfRange']({ min: 1, max: maxCores })
+	);
+	const memoryError = $derived(
+		Number.isInteger(memoryNum) && memoryNum >= 128 && memoryNum <= maxMemoryMB
+			? null
+			: m['vms.create.memoryOutOfRange']({ min: 128, max: maxMemoryMB })
+	);
 
 	const hardwareWillRestart = $derived.by(() => {
 		const entity = store.entity;
@@ -48,14 +77,11 @@
 	}
 
 	async function saveHardware(): Promise<void> {
-		const sockets = Number(socketsDraft);
-		const cores = Number(coresDraft);
-		const memoryMB = Number(memoryDraft);
-		if (![sockets, cores, memoryMB].every(Number.isInteger)) return;
+		if (socketsError !== null || coresError !== null || memoryError !== null) return;
 		await store.updateHardware({
-			sockets,
-			cores,
-			memoryMB,
+			sockets: socketsNum,
+			cores: coresNum,
+			memoryMB: memoryNum,
 			tags: [...selectedTags]
 		});
 	}
@@ -64,18 +90,66 @@
 <Card pad="lg" aria-labelledby="hardware-heading" data-testid="vm-hardware">
 	<h2 id="hardware-heading" class="text-lg font-semibold">{m['vms.hardware.heading']()}</h2>
 	<div class="mt-5 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-		<label class="grid gap-1.5 text-sm font-medium">
-			{m['vms.hardware.sockets']()}
-			<TextField type="number" min={1} bind:value={socketsDraft} data-testid="vm-hardware-sockets" />
-		</label>
-		<label class="grid gap-1.5 text-sm font-medium">
-			{m['vms.hardware.cores']()}
-			<TextField type="number" min={1} bind:value={coresDraft} data-testid="vm-hardware-cores" />
-		</label>
-		<label class="grid gap-1.5 text-sm font-medium">
-			{m['vms.hardware.memory']()}
-			<TextField type="number" min={1} bind:value={memoryDraft} data-testid="vm-hardware-memory" />
-		</label>
+		<FormField
+			label={m['vms.hardware.sockets']()}
+			hint={m['vms.create.socketsLimitHint']({ min: 1, max: maxSockets })}
+			error={socketsError}
+			required
+		>
+			{#snippet children({ id, describedBy, invalid })}
+				<TextField
+					{id}
+					{describedBy}
+					{invalid}
+					type="number"
+					min={1}
+					max={maxSockets}
+					bind:value={socketsDraft}
+					required
+					data-testid="vm-hardware-sockets"
+				/>
+			{/snippet}
+		</FormField>
+		<FormField
+			label={m['vms.hardware.cores']()}
+			hint={m['vms.create.vcpuLimitHint']({ min: 1, max: maxCores })}
+			error={coresError}
+			required
+		>
+			{#snippet children({ id, describedBy, invalid })}
+				<TextField
+					{id}
+					{describedBy}
+					{invalid}
+					type="number"
+					min={1}
+					max={maxCores}
+					bind:value={coresDraft}
+					required
+					data-testid="vm-hardware-cores"
+				/>
+			{/snippet}
+		</FormField>
+		<FormField
+			label={m['vms.hardware.memory']()}
+			hint={m['vms.create.memoryLimitHint']({ min: 128, max: maxMemoryMB })}
+			error={memoryError}
+			required
+		>
+			{#snippet children({ id, describedBy, invalid })}
+				<TextField
+					{id}
+					{describedBy}
+					{invalid}
+					type="number"
+					min={128}
+					max={maxMemoryMB}
+					bind:value={memoryDraft}
+					required
+					data-testid="vm-hardware-memory"
+				/>
+			{/snippet}
+		</FormField>
 		<div class="grid gap-1.5 text-sm font-medium">
 			{m['vms.hardware.tags']()}
 			{#if catalogTags.length === 0}

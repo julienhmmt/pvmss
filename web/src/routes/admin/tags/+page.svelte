@@ -28,7 +28,8 @@
 	onProtectedFilterChange={(v) => (store.protectedFilter = v)}
 	onSort={(column) => store.setSort(column)}
 	onResetFilters={() => store.resetFilters()}
-	onCreate={(name, color) => void store.create(name, color)}
+	onCreate={(name, color) => store.create(name, color)}
 	onUpdateColor={(name, color) => void store.updateColor(name, color)}
 	onDelete={(name) => void store.remove(name)}
+	onClearSaveError={() => (store.saveError = null)}
 />
