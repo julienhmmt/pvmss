@@ -4,6 +4,7 @@ import (
 	"context"
 	"crypto/sha256"
 	"encoding/hex"
+	"errors"
 	"fmt"
 	"pvmss/server/internal/cloudinit"
 	"pvmss/server/internal/cluster"
@@ -58,6 +59,10 @@ func PublishedFilename(templateID, content string) (filename, hash string) {
 // shell would interpret gets through, whatever a stored row contains.
 var shellSafeRE = regexp.MustCompile(`^[A-Za-z0-9._-]+$`)
 
+// ErrUnsafeSnippetPath refuses a storage id or file name that a shell would
+// interpret if spliced into WriteCommand.
+var ErrUnsafeSnippetPath = errors.New("unsafe snippet storage or file name")
+
 // heredocDelimiter ends the here-document of WriteCommand.
 const heredocDelimiter = "PVMSS_EOF"
 
@@ -65,7 +70,12 @@ const heredocDelimiter = "PVMSS_EOF"
 // that must offer the document: pvesm resolves the storage's snippets
 // directory, and a quoted here-document writes the content verbatim (no
 // expansion). PVMSS never runs it - the Proxmox API cannot write snippets.
-func WriteCommand(storage, filename, content string) string {
+// It refuses a storage id or file name a shell would interpret.
+func WriteCommand(storage, filename, content string) (string, error) {
+	if !shellSafeRE.MatchString(storage) || !shellSafeRE.MatchString(filename) {
+		return "", fmt.Errorf("%w: storage %q or file name %q", ErrUnsafeSnippetPath, storage, filename)
+	}
+
 	delimiter := heredocDelimiter
 	for strings.Contains("\n"+content+"\n", "\n"+delimiter+"\n") {
 		delimiter += "_"
@@ -76,7 +86,7 @@ func WriteCommand(storage, filename, content string) string {
 	}
 
 	return fmt.Sprintf("F=$(pvesm path %s:snippets/%s) && mkdir -p \"${F%%/*}\" && cat > \"$F\" <<'%s'\n%s%s\n",
-		storage, filename, delimiter, content, delimiter)
+		storage, filename, delimiter, content, delimiter), nil
 }
 
 // DocumentStatus is one document as the admin sees it: the file to place,
@@ -104,8 +114,9 @@ func CheckCloudInitDocument(ctx context.Context, checker cluster.SnippetChecker,
 	filename, _ := PublishedFilename(templateID, content)
 	storage := checker.SnippetStorageID()
 
-	if !shellSafeRE.MatchString(storage) || !shellSafeRE.MatchString(filename) {
-		return DocumentStatus{}, fmt.Errorf("refusing unsafe snippet storage %q or file name %q", storage, filename)
+	command, err := WriteCommand(storage, filename, content)
+	if err != nil {
+		return DocumentStatus{}, err
 	}
 
 	nodes, err := checker.CheckSnippet(ctx, filename)
@@ -116,7 +127,7 @@ func CheckCloudInitDocument(ctx context.Context, checker cluster.SnippetChecker,
 	return DocumentStatus{
 		TemplateID: templateID,
 		Filename:   filename,
-		Command:    WriteCommand(storage, filename, content),
+		Command:    command,
 		Nodes:      nodes,
 	}, nil
 }
