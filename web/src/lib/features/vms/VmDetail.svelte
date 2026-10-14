@@ -268,9 +268,11 @@
 						{m['vms.detail.identityLine']({ cpu: entity.cpuCores, memory: compactBytes(entity.memoryTotal), disk: compactBytes(entity.diskTotal) })}
 						· <span class="font-mono">VM {entity.vmid}</span>
 					</p>
-					<p class="mt-0.5 font-mono text-xs text-muted-foreground-subtle" data-testid="vm-meta">
-						{m['vms.detail.meta']({ vmid: String(entity.vmid), node: entity.node, pool: entity.pool })}
-					</p>
+					{#if session.isAdmin}
+						<p class="mt-0.5 font-mono text-xs text-muted-foreground-subtle" data-testid="vm-meta">
+							{m['vms.detail.meta']({ vmid: String(entity.vmid), node: entity.node, pool: entity.pool })}
+						</p>
+					{/if}
 				</div>
 			</div>
 			<div class="flex flex-wrap items-center gap-2">
@@ -362,7 +364,12 @@
 					</div>
 					<div>
 						<dt class="text-xs text-muted-foreground">{m['vms.detail.config.placement']()}</dt>
-						<dd class="mt-0.5">{m['vms.detail.config.managed']()} <span class="font-mono text-xs text-muted-foreground">({entity.node})</span></dd>
+						<dd class="mt-0.5">
+							{m['vms.detail.config.managed']()}
+							{#if session.isAdmin}
+								<span class="font-mono text-xs text-muted-foreground">({entity.node})</span>
+							{/if}
+						</dd>
 					</div>
 					<div>
 						<dt class="text-xs text-muted-foreground">{m['vms.detail.config.identifier']()}</dt>
