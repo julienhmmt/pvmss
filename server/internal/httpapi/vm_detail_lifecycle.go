@@ -133,17 +133,23 @@ func (h *VMDetail) handleAction(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if err := vm.Action(r.Context(), vm.BulkDeps{
+	upid, err := vm.ActionTask(r.Context(), vm.BulkDeps{
 		Actor:        identity,
 		Writer:       writer,
 		Audit:        h.store,
 		Refresher:    h.refresherFor(clusterName),
 		StatusReader: h.statusReaderFor(clusterName),
 		Force:        req.Force,
-	}, index, clusterName, vmid, req.Action); err != nil {
+	}, index, clusterName, vmid, req.Action)
+	if err != nil {
 		h.writeActionError(w, err)
 		return
 	}
+
+	// The POST only queues the Proxmox task; wait briefly for its outcome so a
+	// task that failed (e.g. VM locked by a pending shutdown) is not reported
+	// as success.
+	status, settled := h.awaitActionTask(r.Context(), clusterName, upid)
 
 	// Refresh the projection once after the action (the caller owns refresh, not Action).
 	// Best-effort - the action already succeeded.
@@ -153,7 +159,7 @@ func (h *VMDetail) handleAction(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	h.writeJSONStatus(w, http.StatusOK, actionResponse{Status: "accepted"})
+	h.writeActionOutcome(w, upid, status, settled)
 }
 
 // handleDelete serves DELETE /vms/:cluster/:vmid. Same Resolve() gate.

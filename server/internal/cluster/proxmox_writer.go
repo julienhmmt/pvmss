@@ -50,13 +50,20 @@ func actionForm(action string) url.Values {
 	return nil
 }
 
-// Action implements Writer via POST /nodes/{node}/qemu/{vmid}/status/{action}.
-// Proxmox returns a task UPID; it is discarded - the Writer contract is
-// synchronous (error only), matching how the fake and every caller (vm.Action)
-// already treat power transitions as immediate.
+// Action implements Writer. The synchronous contract discards the task UPID;
+// callers that must observe the task outcome use ActionTask.
 func (p Proxmox) Action(ctx context.Context, node string, vmid int, action string) error {
+	_, err := p.ActionTask(ctx, node, vmid, action)
+
+	return err
+}
+
+// ActionTask implements ActionTasker via POST /nodes/{node}/qemu/{vmid}/status/{action}.
+// Proxmox answers with the UPID of the task it started; the task itself may
+// still fail (e.g. "VM is locked"), which only TaskStatus reveals.
+func (p Proxmox) ActionTask(ctx context.Context, node string, vmid int, action string) (string, error) {
 	if !proxmoxValidActions[action] {
-		return ErrInvalidAction
+		return "", ErrInvalidAction
 	}
 
 	verb := action
@@ -64,11 +71,19 @@ func (p Proxmox) Action(ctx context.Context, node string, vmid int, action strin
 		verb = "suspend" // Proxmox has no status/pause
 	}
 
-	_, err := p.rest().do(ctx, http.MethodPost,
+	raw, err := p.rest().do(ctx, http.MethodPost,
 		fmt.Sprintf("/nodes/%s/qemu/%d/status/%s", url.PathEscape(node), vmid, verb),
 		actionForm(action))
+	if err != nil {
+		return "", err
+	}
 
-	return err
+	var upid string
+	if err := decodeData(raw, &upid); err != nil {
+		return "", fmt.Errorf("decode action upid: %w", err)
+	}
+
+	return upid, nil
 }
 
 // Delete implements Writer via DELETE /nodes/{node}/qemu/{vmid}. purge=1 also
