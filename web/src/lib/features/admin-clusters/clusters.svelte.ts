@@ -22,6 +22,7 @@ export interface AdminCluster {
 
 export interface ClusterInput {
 	name: string;
+	displayName?: string;
 	url: string;
 	tlsInsecureSkipVerify: boolean;
 	tokenId: string;

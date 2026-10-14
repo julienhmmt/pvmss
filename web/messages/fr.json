@@ -976,6 +976,8 @@
   "admin.clusters.empty": "Aucun cluster configuré",
   "admin.clusters.caption": "Clusters Proxmox configurés",
   "admin.clusters.displayName": "Nom du cluster",
+  "admin.clusters.displayNameHint": "Libellé affiché dans l'interface. Facultatif : si vide, l'identifiant est affiché.",
+  "admin.clusters.idHint": "Identifiant immuable, choisi à la création. Utilisé dans les URL, l'API, l'historique d'audit et les réglages par cluster. Il ne peut pas être modifié ; le libellé ci-dessus est celui affiché.",
   "admin.clusters.version": "Version",
   "admin.clusters.nodesVms": "Nœuds / VMs",
   "admin.clusters.test": "Tester",

@@ -122,6 +122,57 @@ func TestUpdateNetwork_RemovesInterface(t *testing.T) {
 	}
 }
 
+// TestUpdateNetwork_PreservesServerOwnedNICOptions covers a PUT that only
+// carries bridge/model/vlan/rate: the firewall flag and MTU are not request
+// fields, so they must be carried over from the live NIC, as the MAC is.
+//
+//nolint:paralleltest // serial: shared fake cluster dataset
+func TestUpdateNetwork_PreservesServerOwnedNICOptions(t *testing.T) {
+	cluster.ResetFake()
+
+	seeded := []cluster.NetworkInterface{{
+		Index: 0, Bridge: testBridgeVMbr0, Model: testModelVirtio,
+		Firewall: true, MTU: 9000,
+	}}
+	if err := (cluster.Fake{}).UpdateNetwork(context.Background(), cluster.FakeNode01, 101, seeded); err != nil {
+		t.Fatalf("seed NIC: %v", err)
+	}
+
+	index := diskTestIndex(t, 101, cluster.VMRunning)
+	entity, err := vm.Resolve(index, aliceIdentity(), testClusterName, 101)
+	if err != nil {
+		t.Fatalf("Resolve: %v", err)
+	}
+
+	existingMAC := entity.NetworkInterfaces[0].MAC
+	deps := networkDependencies(index, aliceIdentity(), 101)
+
+	rate := 50
+	result, err := vm.UpdateNetwork(context.Background(), deps, []cluster.NetworkInterface{{
+		Index: 0, Bridge: testBridgeVMbr1, Model: testModelVirtio, RateMbps: &rate,
+	}})
+	if err != nil {
+		t.Fatalf("UpdateNetwork: %v", err)
+	}
+
+	if len(result) != 1 {
+		t.Fatalf("result = %+v, want 1 interface", result)
+	}
+
+	got := result[0]
+	if !got.Firewall {
+		t.Errorf("Firewall = false, want true (preserved from live NIC)")
+	}
+
+	if got.MTU != 9000 {
+		t.Errorf("MTU = %d, want 9000 (preserved from live NIC)", got.MTU)
+	}
+
+	if got.MAC != existingMAC {
+		t.Errorf("MAC = %q, want %q (preserved)", got.MAC, existingMAC)
+	}
+}
+
 func networkDependencies(index *inventory.Index, actor auth.Identity, vmid int) vm.NetworkDependencies {
 	return vm.NetworkDependencies{
 		Index: index, Actor: actor, ClusterName: testClusterName, VMID: vmid, Writer: cluster.Fake{},
