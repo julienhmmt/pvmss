@@ -129,6 +129,7 @@ func TestUpdateNetwork_RemovesInterface(t *testing.T) {
 //nolint:paralleltest // serial: shared fake cluster dataset
 func TestUpdateNetwork_PreservesServerOwnedNICOptions(t *testing.T) {
 	cluster.ResetFake()
+	t.Cleanup(cluster.ResetFake)
 
 	seeded := []cluster.NetworkInterface{{
 		Index: 0, Bridge: testBridgeVMbr0, Model: testModelVirtio,

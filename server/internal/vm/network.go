@@ -72,8 +72,13 @@ func UpdateNetwork(ctx context.Context, deps NetworkDependencies, requested []cl
 			return nil, fmt.Errorf("%w: %s", ErrInvalidNetworkModel, iface.Model)
 		}
 
-		iface.MAC = existing[iface.Index].MAC
-		iface.IPAddresses = append([]string(nil), existing[iface.Index].IPAddresses...)
+		// Server-owned NIC state (MAC, guest-agent IPs) and options the request
+		// cannot set (firewall, mtu) come from the live NIC, not the request.
+		current := existing[iface.Index]
+		iface.MAC = current.MAC
+		iface.IPAddresses = append([]string(nil), current.IPAddresses...)
+		iface.Firewall = current.Firewall
+		iface.MTU = current.MTU
 		updated = append(updated, iface)
 	}
 
