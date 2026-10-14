@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"pvmss/server/internal/cluster"
 	"pvmss/server/internal/logctx"
+	"pvmss/server/internal/vm"
 	"time"
 )
 
@@ -13,13 +14,10 @@ import (
 // WriteTimeout. A var so tests can shorten it.
 var ActionTaskWait = 3 * time.Second
 
-// actionTaskPollInterval is the gap between TaskStatus reads while waiting.
-const actionTaskPollInterval = 300 * time.Millisecond
-
-// awaitActionTask polls the power action's task until it leaves the running
-// state or ActionTaskWait elapses. settled is false when the outcome is still
-// unknown (deadline, no task reader, or a failed read): the caller must then
-// report the action as accepted, never as failed.
+// awaitActionTask waits up to ActionTaskWait for the power action's task to
+// settle. settled is false when the outcome is still unknown (deadline, no task
+// reader, or a failed read): the caller must then report the action as
+// accepted, never as failed.
 func (h *VMDetail) awaitActionTask(ctx context.Context, clusterName, upid string) (status cluster.TaskStatus, settled bool) {
 	if upid == "" {
 		return cluster.TaskStatus{}, false
@@ -30,32 +28,15 @@ func (h *VMDetail) awaitActionTask(ctx context.Context, clusterName, upid string
 		return cluster.TaskStatus{}, false
 	}
 
-	deadline := time.NewTimer(ActionTaskWait)
-	defer deadline.Stop()
+	waitCtx, cancel := context.WithTimeout(ctx, ActionTaskWait)
+	defer cancel()
 
-	ticker := time.NewTicker(actionTaskPollInterval)
-	defer ticker.Stop()
-
-	for {
-		status, err := creator.TaskStatus(ctx, upid)
-		if err != nil {
-			logctx.FromOr(ctx, h.log).WarnContext(ctx, "power action task status read failed", "component", "httpapi", "cluster", clusterName, "error", err)
-
-			return cluster.TaskStatus{}, false
-		}
-
-		if status.State != cluster.TaskRunning {
-			return status, true
-		}
-
-		select {
-		case <-ticker.C:
-		case <-deadline.C:
-			return cluster.TaskStatus{}, false
-		case <-ctx.Done():
-			return cluster.TaskStatus{}, false
-		}
+	status, settled, readErr := vm.AwaitTask(waitCtx, creator, upid)
+	if readErr != nil {
+		logctx.FromOr(ctx, h.log).WarnContext(ctx, "power action task status read failed", "component", "httpapi", "cluster", clusterName, "error", readErr)
 	}
+
+	return status, settled
 }
 
 // writeActionOutcome maps the observed task outcome onto the response:
