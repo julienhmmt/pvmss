@@ -3,6 +3,22 @@ import tailwindcss from '@tailwindcss/vite';
 import { paraglideVitePlugin } from '@inlang/paraglide-js';
 import { defineConfig } from 'vite';
 
+// @lix-js/sdk (used by @inlang/paraglide-js during buildStart) schedules 30s
+// WASM timers via globalThis.setTimeout without calling .unref(), which otherwise
+// keeps `vite build` hanging for ~25s after adapter-static finishes writing build/.
+const originalSetTimeout = globalThis.setTimeout;
+globalThis.setTimeout = Object.assign(
+	function (...args: Parameters<typeof originalSetTimeout>): ReturnType<typeof originalSetTimeout> {
+		const timer = originalSetTimeout(...args);
+		const maybeTimeout = timer as unknown as { unref?: () => void };
+		if (args[1] === 30_000 && typeof maybeTimeout?.unref === 'function') {
+			maybeTimeout.unref();
+		}
+		return timer;
+	},
+	originalSetTimeout
+);
+
 const backendUrl = process.env.VITE_BACKEND_URL ?? 'http://localhost:50000';
 
 export default defineConfig({
