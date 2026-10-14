@@ -976,6 +976,8 @@
   "admin.clusters.empty": "No clusters configured",
   "admin.clusters.caption": "Configured Proxmox clusters",
   "admin.clusters.displayName": "Cluster name",
+  "admin.clusters.displayNameHint": "The label shown in the interface. Optional: when empty, the identifier is shown.",
+  "admin.clusters.idHint": "Immutable identifier, chosen at creation. Used in URLs, the API, audit history and per-cluster settings. It cannot be changed; the label above is what is displayed.",
   "admin.clusters.version": "Version",
   "admin.clusters.nodesVms": "Nodes / VMs",
   "admin.clusters.test": "Test",

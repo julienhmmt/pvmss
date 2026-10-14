@@ -6,7 +6,7 @@ the full walkthrough is the [Administrator guide](/docs/admin-guide).
 ## Infrastructure
 
 **Clusters** connects one or more Proxmox environments (URL, API token,
-connection test) and sets the per-cluster cloud-init write target. **Nodes**
+connection test) and sets the per-cluster cloud-init write target. Each cluster has an immutable id (chosen at creation; `default` for the first one) and an editable label; the id cannot be renamed. **Nodes**
 approves the hosts users may create VMs on. **Pools** creates self-service
 users (Proxmox user + pool + ACL in one step).
 
