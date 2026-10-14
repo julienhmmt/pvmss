@@ -78,7 +78,7 @@
 	<title>{m['admin.cloudinit.pageTitle']()}</title>
 </svelte:head>
 
-<PageHeader title={m['admin.cloudinit.header']()}>
+<PageHeader title={m['admin.cloudinit.header']()} eyebrow={m['chrome.adminNav.provisioning']()}>
 	{#snippet actions()}
 		<ClusterSelector options={clusterOptions} value={cluster} onChange={onClusterChange} id="cloudinit-cluster" />
 		<Button variant="secondary" loading={loading} onclick={onVerify} data-testid="cloudinit-verify">{m['admin.cloudinit.verify']()}</Button>

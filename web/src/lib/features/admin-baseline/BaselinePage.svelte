@@ -17,6 +17,7 @@
 
 <PageHeader
 	title={m['admin.baseline.heading']()}
+	eyebrow={m['chrome.adminNav.provisioning']()}
 	description={m['admin.baseline.generatedHint']()}
 	titleId="baseline-title"
 >

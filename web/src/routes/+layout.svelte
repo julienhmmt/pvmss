@@ -94,7 +94,7 @@
 		const changed = lastPathname !== null && pathname !== lastPathname;
 		lastPathname = pathname;
 		if (!changed || navigation.type === 'enter') return;
-		const heading = document.getElementById('page-heading');
+		const heading = document.getElementById('page-heading') ?? document.querySelector('main h1[tabindex="-1"]');
 		heading?.focus({ preventScroll: true });
 	});
 

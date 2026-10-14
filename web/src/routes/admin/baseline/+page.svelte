@@ -15,6 +15,4 @@
 	<title>{m['admin.baseline.title']()}</title>
 </svelte:head>
 
-<section class="mx-auto w-full max-w-4xl px-4 py-8">
-	<BaselinePage />
-</section>
+<BaselinePage />

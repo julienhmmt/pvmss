@@ -34,7 +34,7 @@
 	}
 </script>
 
-<section class="w-full px-4 py-8">
+<section class="w-full">
 	<h1 class="mb-6 text-2xl font-semibold tracking-tight">{m['search.heading']()}</h1>
 
 	<label for="global-search" class="sr-only">{m['search.label']()}</label>

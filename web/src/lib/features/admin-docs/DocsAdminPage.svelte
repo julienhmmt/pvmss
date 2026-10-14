@@ -183,7 +183,7 @@
 	<title>{m['docs.title']()} - PVMSS</title>
 </svelte:head>
 
-<PageHeader title={m['docs.title']()}>
+<PageHeader title={m['docs.title']()} eyebrow={m['chrome.adminNav.system']()}>
 	{#snippet actions()}
 		<Button onclick={openCreate}>{m['docs.newPage']()}</Button>
 	{/snippet}
