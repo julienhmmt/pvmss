@@ -51,6 +51,11 @@
 	}
 
 	const CONFIRMATIONS: Partial<Record<VmAction, Confirmation>> = {
+		shutdown: {
+			title: () => m['vms.detail.banner.shutdownTitle'](),
+			message: () => m['vms.detail.banner.shutdownBody'](),
+			confirmLabel: () => m['vms.detail.banner.confirmShutdown']()
+		},
 		stop: {
 			title: (name) => m['vms.confirm.forceStop.title']({ name }),
 			message: () => m['vms.confirm.forceStop.message'](),

@@ -40,10 +40,11 @@
 		onEnabledFilterChange: (value: 'all' | 'enabled' | 'disabled') => void;
 		onSort: (column: ProfileSortColumn) => void;
 		onResetFilters: () => void;
-		onCreate: (label: string, cpuCores: number, memoryMB: number, diskGB: number, bus: string, sockets: number) => void;
-		onUpdate: (id: string, label: string, cpuCores: number, memoryMB: number, diskGB: number, bus: string, sockets: number) => void;
+		onCreate: (label: string, cpuCores: number, memoryMB: number, diskGB: number, bus: string, sockets: number) => Promise<boolean>;
+		onUpdate: (id: string, label: string, cpuCores: number, memoryMB: number, diskGB: number, bus: string, sockets: number) => Promise<boolean>;
 		onDelete: (id: string) => void;
 		onToggle: (id: string, enabled: boolean) => void;
+		onClearSaveError: () => void;
 	}
 
 	let {
@@ -70,7 +71,8 @@
 		onCreate,
 		onUpdate,
 		onDelete,
-		onToggle
+		onToggle,
+		onClearSaveError
 	}: Props = $props();
 
 	let showForm = $state(false);
@@ -91,6 +93,7 @@
 		memoryMB = 2048;
 		diskGB = 20;
 		bus = 'scsi';
+		onClearSaveError();
 		showForm = true;
 	}
 
@@ -102,24 +105,34 @@
 		memoryMB = profile.memoryMB;
 		diskGB = profile.diskGB;
 		bus = profile.bus;
+		onClearSaveError();
 		showForm = true;
 	}
 
-	function submitForm(): void {
-		if (editingId) {
-			onUpdate(editingId, label, cpuCores, memoryMB, diskGB, bus, sockets);
-		} else {
-			onCreate(label, cpuCores, memoryMB, diskGB, bus, sockets);
-		}
+	function closeForm(): void {
 		showForm = false;
+		onClearSaveError();
 	}
+
+	async function submitForm(): Promise<void> {
+		// A failed save keeps the dialog open with the draft intact and the
+		// store's saveError rendered inside it.
+		const succeeded = editingId
+			? await onUpdate(editingId, label, cpuCores, memoryMB, diskGB, bus, sockets)
+			: await onCreate(label, cpuCores, memoryMB, diskGB, bus, sockets);
+		if (succeeded) showForm = false;
+	}
+
+	const filtersActive = $derived(
+		search !== '' || busFilter !== '' || enabledFilter !== 'all' || sortBy !== 'label' || sortDir !== 'asc'
+	);
 </script>
 
 <svelte:head>
 	<title>{m['admin.profiles.pageTitle']()}</title>
 </svelte:head>
 
-<PageHeader title={m['admin.profiles.title']()}>
+<PageHeader title={m['admin.profiles.title']()} eyebrow={m['chrome.adminNav.provisioning']()}>
 	{#snippet actions()}
 		<ClusterSelector options={clusterOptions} value={cluster} onChange={onClusterChange} id="profiles-cluster" />
 		<Button onclick={openCreate}>{m['admin.profiles.newProfile']()}</Button>
@@ -132,7 +145,7 @@
 {:else if error}
 	<Alert>{error}</Alert>
 {:else}
-	{#if saveError}
+	{#if saveError && !showForm}
 		<Alert class="mb-4">{saveError}</Alert>
 	{/if}
 
@@ -165,13 +178,18 @@
 					]}
 					class="w-full sm:w-44"
 				/>
-				<Button
-					variant="secondary"
-					size="sm"
-					onclick={onResetFilters}
-				>
-					{m['admin.profiles.resetFilters']()}
-				</Button>
+				<span class="ml-auto text-sm text-muted-foreground" data-testid="profiles-count">
+					{m['admin.profiles.resultCount']({ count: filteredProfiles.length })}
+				</span>
+				{#if filtersActive}
+					<Button
+						variant="secondary"
+						size="sm"
+						onclick={onResetFilters}
+					>
+						{m['admin.profiles.resetFilters']()}
+					</Button>
+				{/if}
 			{/snippet}
 			<table class="pv-table pv-responsive-table">
 				<caption class="sr-only">{m['admin.profiles.title']()}</caption>
@@ -232,9 +250,12 @@
 	{/if}
 {/if}
 
-<Dialog bind:open={showForm} size="lg" labelledBy="profile-form-title" onClose={() => (showForm = false)}>
+<Dialog bind:open={showForm} size="lg" labelledBy="profile-form-title" onClose={closeForm}>
 	<h2 id="profile-form-title" class="mb-4 text-lg font-medium">{editingId ? m['admin.profiles.editProfile']() : m['admin.profiles.newProfileForm']()}</h2>
-	<form onsubmit={(e) => { e.preventDefault(); submitForm(); }} class="space-y-4">
+	<form onsubmit={(e) => { e.preventDefault(); void submitForm(); }} class="space-y-4">
+		{#if saveError}
+			<Alert>{saveError}</Alert>
+		{/if}
 		<FormField label={m['admin.profiles.labelField']()} required>
 			{#snippet children({ id, describedBy, invalid })}
 				<TextField {id} {describedBy} {invalid} bind:value={label} required />
@@ -275,7 +296,7 @@
 			</FormField>
 		</div>
 		<div class="flex justify-end gap-2 pt-2">
-			<Button variant="ghost" onclick={() => (showForm = false)}>{m['common.cancel']()}</Button>
+			<Button variant="ghost" onclick={closeForm}>{m['common.cancel']()}</Button>
 			<Button type="submit" disabled={saving}>
 				{saving ? m['common.saving']() : editingId ? m['common.save']() : m['common.create']()}
 			</Button>

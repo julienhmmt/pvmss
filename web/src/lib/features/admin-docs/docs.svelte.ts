@@ -88,6 +88,8 @@ export class AdminDocsStore {
 		this.categoryFilter = '';
 		this.langFilter = '';
 		this.audienceFilter = 'all';
+		this.sortBy = 'title';
+		this.sortDir = 'asc';
 	}
 
 	async load(): Promise<void> {

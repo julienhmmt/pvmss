@@ -1,5 +1,6 @@
 <script lang="ts">
 	import Alert from '$lib/shared/ui/Alert.svelte';
+	import Card from '$lib/shared/ui/Card.svelte';
 	import Dialog from '$lib/shared/ui/Dialog.svelte';
 	import Button from '$lib/shared/ui/Button.svelte';
 	import { getDbOpsContext } from './dbOps.svelte';
@@ -34,12 +35,8 @@
 	}
 </script>
 
-<section class="space-y-3">
-	<h2 class="text-xl font-semibold tracking-tight">{m['admin.db.importTitle']()}</h2>
-	<p class="text-sm text-muted-foreground">
-		{m['admin.db.importDescription']()}
-	</p>
-
+<Card pad="lg" title={m['admin.db.importTitle']()} description={m['admin.db.importDescription']()}>
+	<div class="space-y-3">
 	{#if store.importError}
 		<Alert>{store.importError}</Alert>
 	{/if}
@@ -107,7 +104,8 @@
 			</div>
 		</div>
 	{/if}
-</section>
+	</div>
+</Card>
 
 <Dialog open={confirmOpen} labelledBy={CONFIRM_DIALOG_ID} onClose={closeConfirm}>
 	<h2 id={CONFIRM_DIALOG_ID} class="text-lg font-semibold">{m['admin.db.confirmDialogTitle']()}</h2>

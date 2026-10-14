@@ -3,6 +3,7 @@
 	import { resolve } from '$app/paths';
 	import { m } from '$lib/paraglide/messages.js';
 	import Button from '$lib/shared/ui/Button.svelte';
+	import PageHeader from '$lib/shared/ui/PageHeader.svelte';
 	import { CAPABILITIES } from '$lib/features/capabilities/capability-data';
 	import CapabilityIcon from '$lib/features/capabilities/CapabilityIcon.svelte';
 	import { getSessionContext } from '$lib/features/auth/session.svelte';
@@ -56,13 +57,13 @@
 	<title>{m['capabilities.aboutTitle']()} - PVMSS</title>
 </svelte:head>
 
-<article class="mx-auto w-full max-w-reading px-4 py-8 md:px-6" data-testid="about-page">
-	<header>
-		<h1 class="text-2xl font-semibold tracking-tight">{m['capabilities.aboutTitle']()}</h1>
-		<p class="mt-3 max-w-prose text-base leading-relaxed text-muted-foreground">
-			{m['capabilities.page.introduction']()}
-		</p>
-	</header>
+<article class="w-full max-w-reading" data-testid="about-page">
+	<PageHeader
+		title={m['capabilities.aboutTitle']()}
+		eyebrow={m['chrome.context.about']()}
+		description={m['capabilities.page.introduction']()}
+		focusTarget
+	/>
 
 	<section class="mt-10" aria-labelledby="about-capabilities-heading">
 		<h2 id="about-capabilities-heading" class="text-lg font-semibold tracking-tight">

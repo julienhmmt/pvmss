@@ -43,4 +43,58 @@ describe('AdminBaselineStore', () => {
 		expect(store.state).toBeNull();
 		expect(store.error).not.toBeNull();
 	});
+
+	function requestUrl(input: RequestInfo | URL): string {
+		if (typeof input === 'string') return input;
+		return input instanceof URL ? input.href : input.url;
+	}
+
+	it('init resolves the real cluster name and loads its baseline', async () => {
+		const fetchMock = vi.fn().mockImplementation((input: RequestInfo | URL) => {
+			const url = requestUrl(input);
+			if (url.includes('/api/v1/auth/clusters')) {
+				return Promise.resolve(jsonResponse(200, [{ name: 'prod', displayName: 'Production' }]));
+			}
+			return Promise.resolve(jsonResponse(200, { generated: '#cloud-config\n', document: null, documentError: 'off' }));
+		});
+		vi.stubGlobal('fetch', fetchMock);
+		const store = new AdminBaselineStore();
+		await store.init();
+		expect(store.cluster).toBe('prod');
+		expect(store.clusterOptions[0]?.name).toBe('prod');
+		expect(fetchMock).toHaveBeenCalledWith(expect.stringContaining('/api/v1/admin/baseline?cluster=prod'), expect.anything());
+		expect(store.state?.generated).toContain('cloud-config');
+	});
+
+	it('keeps a matching cluster selection when multiple clusters exist', async () => {
+		vi.stubGlobal(
+			'fetch',
+			vi.fn().mockImplementation((input: RequestInfo | URL) => {
+				const url = requestUrl(input);
+				if (url.includes('/api/v1/auth/clusters')) {
+					return Promise.resolve(
+						jsonResponse(200, [
+							{ name: 'default', displayName: 'Default' },
+							{ name: 'prod', displayName: 'Production' }
+						])
+					);
+				}
+				return Promise.resolve(jsonResponse(200, { generated: '#cloud-config\n', document: null, documentError: 'off' }));
+			})
+		);
+		const store = new AdminBaselineStore();
+		await store.init();
+		expect(store.cluster).toBe('default');
+	});
+
+	it('setCluster reloads the baseline for the new cluster', async () => {
+		const fetchMock = vi.fn().mockResolvedValue(jsonResponse(200, { generated: '#cloud-config\n', document: null, documentError: 'off' }));
+		vi.stubGlobal('fetch', fetchMock);
+		const store = new AdminBaselineStore();
+		store.setCluster('prod');
+		expect(store.cluster).toBe('prod');
+		await vi.waitFor(() => {
+			expect(fetchMock).toHaveBeenCalledWith(expect.stringContaining('cluster=prod'), expect.anything());
+		});
+	});
 });

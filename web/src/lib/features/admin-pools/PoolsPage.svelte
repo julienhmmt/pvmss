@@ -164,7 +164,7 @@
 
 <div class="sr-only" role="status" aria-live="polite">{announce ?? ''}</div>
 
-<PageHeader title={m['admin.pools.heading']()} description={m['admin.pools.description']()}>
+<PageHeader title={m['admin.pools.heading']()} eyebrow={m['chrome.adminNav.infrastructure']()} description={m['admin.pools.description']()}>
 	{#snippet actions()}
 		<ClusterSelector options={clusterOptions} value={cluster} onChange={onClusterChange} id="pools-cluster" />
 		<Button onclick={openCreate}>{m['admin.pools.newPool']()}</Button>

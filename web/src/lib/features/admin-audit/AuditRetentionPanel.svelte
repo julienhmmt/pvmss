@@ -2,6 +2,7 @@
 	import { getAuditRetentionContext } from './auditRetention.svelte';
 	import Alert from '$lib/shared/ui/Alert.svelte';
 	import Button from '$lib/shared/ui/Button.svelte';
+	import Card from '$lib/shared/ui/Card.svelte';
 	import TextField from '$lib/shared/ui/TextField.svelte';
 	import { m } from '$lib/paraglide/messages.js';
 
@@ -42,12 +43,8 @@
 	}
 </script>
 
-<section class="space-y-3">
-	<h2 class="text-xl font-semibold tracking-tight">{m['admin.audit.retention.title']()}</h2>
-	<p class="text-sm text-muted-foreground">
-		{m['admin.audit.retention.description']()}
-	</p>
-
+<Card pad="lg" title={m['admin.audit.retention.title']()} description={m['admin.audit.retention.description']()}>
+	<div class="space-y-3">
 	{#if store.loading}
 		<p class="text-sm text-muted-foreground" role="status" aria-live="polite">{m['common.loading']()}</p>
 	{:else if store.error}
@@ -108,4 +105,5 @@
 			<p role="status" class="text-sm text-muted-foreground">{m['admin.audit.retention.saved']()}</p>
 		{/if}
 	{/if}
-</section>
+	</div>
+</Card>

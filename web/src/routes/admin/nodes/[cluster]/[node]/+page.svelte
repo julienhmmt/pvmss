@@ -170,6 +170,19 @@
 		return status;
 	}
 
+	function guestStatusTone(status: string): 'ok' | 'warn' | 'off' {
+		if (status === 'running') return 'ok';
+		if (status === 'paused') return 'warn';
+		return 'off';
+	}
+
+	const backTarget: { href: string; label: string } = $derived.by(() => {
+		const from: string | null = page.url.searchParams.get('from');
+		if (from === 'dashboard') return { href: resolve('/admin'), label: m['admin.dashboard.title']() };
+		if (from === 'policy') return { href: resolve('/admin/policy/nodes'), label: m['policy.nodeTitle']() };
+		return { href: resolve('/admin/nodes'), label: m['admin.nodes.heading']() };
+	});
+
 	function uptimeLabel(seconds: number): string {
 		const days: number = Math.floor(seconds / (SECONDS_PER_MINUTE * MINUTES_PER_HOUR * HOURS_PER_DAY));
 		const hours: number = Math.floor((seconds / (SECONDS_PER_MINUTE * MINUTES_PER_HOUR)) % HOURS_PER_DAY);
@@ -208,7 +221,7 @@
 	title={detail?.name ?? m['admin.nodeDetails.title']()}
 	eyebrow={detail?.cluster ?? m['admin.nodeDetails.eyebrow']()}
 	description={m['admin.nodeDetails.description']()}
-	back={{ href: resolve('/admin'), label: m['admin.dashboard.title']() }}
+	back={{ href: backTarget.href, label: backTarget.label }}
 	focusTarget
 >
 	{#snippet titleMeta()}
@@ -281,14 +294,15 @@
 				<p class="px-5 py-4 text-sm text-muted-foreground">{m['admin.nodeDetails.networkEmpty']()}</p>
 			{:else}
 				<div class="overflow-x-auto">
-					<table class="w-full min-w-[760px] text-left text-sm">
-						<thead class="bg-muted/50 text-xs text-muted-foreground"><tr>
-							<th class="px-5 py-3 font-medium">{m['admin.nodeDetails.interface']()}</th><th class="px-3 py-3 font-medium">{m['admin.nodeDetails.type']()}</th><th class="px-3 py-3 font-medium">{m['admin.nodeDetails.state']()}</th><th class="px-3 py-3 font-medium">{m['admin.nodeDetails.address']()}</th><th class="px-3 py-3 font-medium">{m['admin.nodeDetails.gateway']()}</th><th class="px-3 py-3 font-medium">{m['admin.nodeDetails.topology']()}</th><th class="px-3 py-3 font-medium">{m['admin.nodeDetails.vlan']()}</th><th class="px-5 py-3 text-right font-medium">{m['admin.nodeDetails.mtu']()}</th>
+					<table class="pv-table pv-responsive-table">
+						<caption class="sr-only">{m['admin.nodeDetails.networkTitle']()}</caption>
+						<thead><tr>
+							<th class="font-medium">{m['admin.nodeDetails.interface']()}</th><th class="font-medium">{m['admin.nodeDetails.type']()}</th><th class="font-medium">{m['admin.nodeDetails.state']()}</th><th class="font-medium">{m['admin.nodeDetails.address']()}</th><th class="font-medium">{m['admin.nodeDetails.gateway']()}</th><th class="font-medium">{m['admin.nodeDetails.topology']()}</th><th class="font-medium">{m['admin.nodeDetails.vlan']()}</th><th class="text-right font-medium">{m['admin.nodeDetails.mtu']()}</th>
 						</tr></thead>
-						<tbody class="divide-y divide-border">
+						<tbody>
 							{#each detail.network.interfaces as iface (iface.name)}
 								<tr>
-									<td class="px-5 py-3 font-mono font-medium">{iface.name}</td><td class="px-3 py-3">{iface.type}</td><td class="px-3 py-3">{iface.active ? m['admin.nodeDetails.active']() : m['admin.nodeDetails.inactive']()}</td><td class="px-3 py-3 font-mono text-xs">{interfaceAddresses(iface)}</td><td class="px-3 py-3 font-mono text-xs">{interfaceGateways(iface)}</td><td class="max-w-64 px-3 py-3 text-xs text-muted-foreground">{interfaceLinks(iface)}</td><td class="px-3 py-3 font-mono tabular-nums">{#if iface.vlanId > 0}{iface.vlanId}{:else if iface.bridgeVlanAware}{m['admin.nodeDetails.vlanAware']()}{:else}{m['admin.nodeDetails.notReported']()}{/if}</td><td class="px-5 py-3 text-right font-mono tabular-nums">{iface.mtu || m['admin.nodeDetails.notReported']()}</td>
+									<td class="font-mono font-medium" data-label={m['admin.nodeDetails.interface']()}>{iface.name}</td><td data-label={m['admin.nodeDetails.type']()}>{iface.type}</td><td data-label={m['admin.nodeDetails.state']()}><Pill tone={iface.active ? 'ok' : 'off'} label={iface.active ? m['admin.nodeDetails.active']() : m['admin.nodeDetails.inactive']()} /></td><td class="font-mono text-xs" data-label={m['admin.nodeDetails.address']()}>{interfaceAddresses(iface)}</td><td class="font-mono text-xs" data-label={m['admin.nodeDetails.gateway']()}>{interfaceGateways(iface)}</td><td class="max-w-64 text-xs text-muted-foreground" data-label={m['admin.nodeDetails.topology']()}>{interfaceLinks(iface)}</td><td class="font-mono tabular-nums" data-label={m['admin.nodeDetails.vlan']()}>{#if iface.vlanId > 0}{iface.vlanId}{:else if iface.bridgeVlanAware}{m['admin.nodeDetails.vlanAware']()}{:else}{m['admin.nodeDetails.notReported']()}{/if}</td><td class="text-right font-mono tabular-nums" data-label={m['admin.nodeDetails.mtu']()}>{iface.mtu || m['admin.nodeDetails.notReported']()}</td>
 								</tr>
 							{/each}
 						</tbody>
@@ -304,13 +318,14 @@
 				<p class="px-5 py-4 text-sm text-muted-foreground">{m['admin.nodeDetails.pciEmpty']()}</p>
 			{:else}
 				<div class="overflow-x-auto">
-					<table class="w-full min-w-[700px] text-left text-sm">
-						<thead class="bg-muted/50 text-xs text-muted-foreground"><tr>
-							<th class="px-5 py-3 font-medium">{m['admin.nodeDetails.pciId']()}</th><th class="px-3 py-3 font-medium">{m['admin.nodeDetails.device']()}</th><th class="px-3 py-3 font-medium">{m['admin.nodeDetails.vendor']()}</th><th class="px-3 py-3 font-medium">{m['admin.nodeDetails.class']()}</th><th class="px-3 py-3 font-medium">{m['admin.nodeDetails.iommuGroup']()}</th><th class="px-5 py-3 font-medium">{m['admin.nodeDetails.mediatedDevice']()}</th>
+					<table class="pv-table pv-responsive-table">
+						<caption class="sr-only">{m['admin.nodeDetails.pciTitle']()}</caption>
+						<thead><tr>
+							<th class="font-medium">{m['admin.nodeDetails.pciId']()}</th><th class="font-medium">{m['admin.nodeDetails.device']()}</th><th class="font-medium">{m['admin.nodeDetails.vendor']()}</th><th class="font-medium">{m['admin.nodeDetails.class']()}</th><th class="font-medium">{m['admin.nodeDetails.iommuGroup']()}</th><th class="font-medium">{m['admin.nodeDetails.mediatedDevice']()}</th>
 						</tr></thead>
-						<tbody class="divide-y divide-border">
+						<tbody>
 							{#each detail.pci.devices as device (device.id)}
-								<tr><td class="px-5 py-3 font-mono text-xs">{device.id}</td><td class="px-3 py-3">{device.deviceName || device.deviceId}</td><td class="px-3 py-3">{device.vendorName || device.vendorId}</td><td class="px-3 py-3 font-mono text-xs">{device.class}</td><td class="px-3 py-3 font-mono tabular-nums">{device.iommuGroup}</td><td class="px-5 py-3">{device.mediatedDevice ? m['admin.nodeDetails.yes']() : m['admin.nodeDetails.no']()}</td></tr>
+								<tr><td class="font-mono text-xs" data-label={m['admin.nodeDetails.pciId']()}>{device.id}</td><td data-label={m['admin.nodeDetails.device']()}>{device.deviceName || device.deviceId}</td><td data-label={m['admin.nodeDetails.vendor']()}>{device.vendorName || device.vendorId}</td><td class="font-mono text-xs" data-label={m['admin.nodeDetails.class']()}>{device.class}</td><td class="font-mono tabular-nums" data-label={m['admin.nodeDetails.iommuGroup']()}>{device.iommuGroup}</td><td data-label={m['admin.nodeDetails.mediatedDevice']()}>{device.mediatedDevice ? m['admin.nodeDetails.yes']() : m['admin.nodeDetails.no']()}</td></tr>
 							{/each}
 						</tbody>
 					</table>
@@ -325,9 +340,10 @@
 					{#if detail.inventory.vms.length === 0}
 						<p class="text-sm text-muted-foreground">{m['admin.nodeDetails.vmsEmpty']()}</p>
 					{:else}
-					<div class="overflow-x-auto"><table class="w-full min-w-[500px] text-left text-sm">
-						<thead class="text-xs text-muted-foreground"><tr><th class="pb-2 font-medium">{m['admin.nodeDetails.vmid']()}</th><th class="pb-2 font-medium">{m['admin.nodeDetails.name']()}</th><th class="pb-2 font-medium">{m['admin.nodeDetails.status']()}</th><th class="pb-2 font-medium">{m['admin.nodeDetails.vcpu']()}</th><th class="pb-2 text-right font-medium">{m['admin.nodeDetails.memory']()}</th><th class="pb-2 text-right font-medium">{m['admin.nodeDetails.actions']()}</th></tr></thead>
-						<tbody class="divide-y divide-border">{#each detail.inventory.vms as vm (vm.vmid)}<tr><td class="py-2 font-mono">{vm.vmid}</td><td class="py-2">{vm.name || m['admin.nodeDetails.notReported']()}</td><td class="py-2">{guestStatusLabel(vm.status)}</td><td class="py-2 font-mono tabular-nums">{vm.cpuCores}</td><td class="py-2 text-right font-mono tabular-nums">{formatBytes(vm.memoryTotalBytes)}</td><td class="py-2 text-right">{#if vm.managed}<Button variant="secondary" size="sm" label={m['admin.nodeDetails.migrateActionLabel']({ vmid: vm.vmid, name: vm.name })} onclick={() => (migrating = vm)} data-testid="node-vm-migrate-{vm.vmid}">{m['admin.nodeDetails.migrateAction']()}</Button>{/if}</td></tr>{/each}</tbody>
+					<div class="overflow-x-auto"><table class="pv-table pv-responsive-table">
+						<caption class="sr-only">{m['admin.nodeDetails.vmsTitle']()}</caption>
+						<thead><tr><th class="font-medium">{m['admin.nodeDetails.vmid']()}</th><th class="font-medium">{m['admin.nodeDetails.name']()}</th><th class="font-medium">{m['admin.nodeDetails.status']()}</th><th class="font-medium">{m['admin.nodeDetails.vcpu']()}</th><th class="text-right font-medium">{m['admin.nodeDetails.memory']()}</th><th class="text-right font-medium">{m['admin.nodeDetails.actions']()}</th></tr></thead>
+						<tbody>{#each detail.inventory.vms as vm (vm.vmid)}<tr><td class="font-mono" data-label={m['admin.nodeDetails.vmid']()}>{vm.vmid}</td><td data-label={m['admin.nodeDetails.name']()}>{vm.name || m['admin.nodeDetails.notReported']()}</td><td data-label={m['admin.nodeDetails.status']()}><Pill tone={guestStatusTone(vm.status)} label={guestStatusLabel(vm.status)} /></td><td class="font-mono tabular-nums" data-label={m['admin.nodeDetails.vcpu']()}>{vm.cpuCores}</td><td class="text-right font-mono tabular-nums" data-label={m['admin.nodeDetails.memory']()}>{formatBytes(vm.memoryTotalBytes)}</td><td class="text-right" data-label={m['admin.nodeDetails.actions']()}>{#if vm.managed}<Button variant="secondary" size="sm" label={m['admin.nodeDetails.migrateActionLabel']({ vmid: vm.vmid, name: vm.name })} onclick={() => (migrating = vm)} data-testid="node-vm-migrate-{vm.vmid}">{m['admin.nodeDetails.migrateAction']()}</Button>{/if}</td></tr>{/each}</tbody>
 					</table></div>
 					{/if}
 				</section>
@@ -336,9 +352,10 @@
 					{#if detail.containers.available && detail.containers.containers.length === 0}
 						<p class="text-sm text-muted-foreground">{m['admin.nodeDetails.containersEmpty']()}</p>
 					{:else if detail.containers.available}
-						<div class="overflow-x-auto"><table class="w-full min-w-[600px] text-left text-sm">
-							<thead class="text-xs text-muted-foreground"><tr><th class="pb-2 font-medium">{m['admin.nodeDetails.vmid']()}</th><th class="pb-2 font-medium">{m['admin.nodeDetails.name']()}</th><th class="pb-2 font-medium">{m['admin.nodeDetails.status']()}</th><th class="pb-2 font-medium">{m['admin.nodeDetails.vcpu']()}</th><th class="pb-2 font-medium">{m['admin.nodeDetails.memory']()}</th><th class="pb-2 text-right font-medium">{m['admin.nodeDetails.disk']()}</th></tr></thead>
-							<tbody class="divide-y divide-border">{#each detail.containers.containers as container (container.vmid)}<tr><td class="py-2 font-mono">{container.vmid}</td><td class="py-2">{container.name || m['admin.nodeDetails.notReported']()}</td><td class="py-2">{guestStatusLabel(container.status)}</td><td class="py-2 font-mono tabular-nums">{container.cpuCount}</td><td class="py-2 font-mono tabular-nums">{formatBytes(container.memoryUsedBytes)} / {formatBytes(container.memoryTotalBytes)}</td><td class="py-2 text-right font-mono tabular-nums">{formatBytes(container.diskUsedBytes)} / {formatBytes(container.diskTotalBytes)}</td></tr>{/each}</tbody>
+						<div class="overflow-x-auto"><table class="pv-table pv-responsive-table">
+							<caption class="sr-only">{m['admin.nodeDetails.lxcTitle']()}</caption>
+							<thead><tr><th class="font-medium">{m['admin.nodeDetails.vmid']()}</th><th class="font-medium">{m['admin.nodeDetails.name']()}</th><th class="font-medium">{m['admin.nodeDetails.status']()}</th><th class="font-medium">{m['admin.nodeDetails.vcpu']()}</th><th class="font-medium">{m['admin.nodeDetails.memory']()}</th><th class="text-right font-medium">{m['admin.nodeDetails.disk']()}</th></tr></thead>
+							<tbody>{#each detail.containers.containers as container (container.vmid)}<tr><td class="font-mono" data-label={m['admin.nodeDetails.vmid']()}>{container.vmid}</td><td data-label={m['admin.nodeDetails.name']()}>{container.name || m['admin.nodeDetails.notReported']()}</td><td data-label={m['admin.nodeDetails.status']()}><Pill tone={guestStatusTone(container.status)} label={guestStatusLabel(container.status)} /></td><td class="font-mono tabular-nums" data-label={m['admin.nodeDetails.vcpu']()}>{container.cpuCount}</td><td class="font-mono tabular-nums" data-label={m['admin.nodeDetails.memory']()}>{formatBytes(container.memoryUsedBytes)} / {formatBytes(container.memoryTotalBytes)}</td><td class="text-right font-mono tabular-nums" data-label={m['admin.nodeDetails.disk']()}>{formatBytes(container.diskUsedBytes)} / {formatBytes(container.diskTotalBytes)}</td></tr>{/each}</tbody>
 						</table></div>
 					{/if}
 				</section>

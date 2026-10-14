@@ -76,20 +76,40 @@ describe('AdminProfilesStore filteredProfiles', () => {
 });
 
 describe('AdminProfilesStore create', () => {
+	function jsonResponse(status: number, body: unknown): Response {
+		return new Response(JSON.stringify(body), { status, headers: { 'Content-Type': 'application/json' } });
+	}
+
 	it('sends the sockets the admin entered', async () => {
 		const fetchMock = vi.fn().mockResolvedValue(
-			new Response(JSON.stringify({ id: 'p', label: 'p', sockets: 2, cpuCores: 4, memoryMB: 2048, diskGB: 20, bus: 'scsi', enabled: true }), {
-				status: 201,
-				headers: { 'Content-Type': 'application/json' }
-			})
+			jsonResponse(201, { id: 'p', label: 'p', sockets: 2, cpuCores: 4, memoryMB: 2048, diskGB: 20, bus: 'scsi', enabled: true })
 		);
 		vi.stubGlobal('fetch', fetchMock);
 
-		await new AdminProfilesStore().create('p', 4, 2048, 20, 'scsi', 2);
+		await expect(new AdminProfilesStore().create('p', 4, 2048, 20, 'scsi', 2)).resolves.toBe(true);
 
 		const init = fetchMock.mock.calls[0]![1] as RequestInit;
 		const body = JSON.parse(init.body as string) as { sockets: number };
 		expect(body.sockets).toBe(2);
+		vi.unstubAllGlobals();
+	});
+
+	it('returns false and sets saveError on failure instead of throwing', async () => {
+		vi.stubGlobal('fetch', vi.fn().mockResolvedValue(jsonResponse(400, { code: 'bad', message: 'duplicate label' })));
+		const store = new AdminProfilesStore();
+		await expect(store.create('p', 4, 2048, 20, 'scsi', 2)).resolves.toBe(false);
+		expect(store.saveError).toBe('duplicate label');
+		expect(store.profiles).toHaveLength(0);
+		vi.unstubAllGlobals();
+	});
+
+	it('update() returns false and sets saveError on failure', async () => {
+		vi.stubGlobal('fetch', vi.fn().mockResolvedValue(jsonResponse(500, { code: 'oops', message: 'server broke' })));
+		const store = new AdminProfilesStore();
+		store.profiles = testProfiles;
+		await expect(store.update('small', 'p', 4, 2048, 20, 'scsi', 2)).resolves.toBe(false);
+		expect(store.saveError).toBe('server broke');
+		expect(store.profiles[0]?.label).toBe('Small');
 		vi.unstubAllGlobals();
 	});
 });

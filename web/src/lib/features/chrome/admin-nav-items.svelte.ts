@@ -40,32 +40,32 @@ interface AdminNavGroup {
  */
 export const ADMIN_NAV_GROUPS: readonly AdminNavGroup[] = [
 	{
-		heading: () => m['chrome.adminNav.overview'](),
-		icon: 'dashboard',
-		items: [{ href: resolve('/admin'), label: () => m['chrome.adminNav.dashboard']() }]
-	},
-	{
 		heading: () => m['chrome.adminNav.infrastructure'](),
 		icon: 'infrastructure',
 		items: [
 			{ href: resolve('/admin/nodes'), label: () => m['chrome.adminNav.nodes'](), exact: false },
 			{ href: resolve('/admin/clusters'), label: () => m['chrome.adminNav.clusters']() },
-			{ href: resolve('/admin/pools'), label: () => m['chrome.adminNav.pools']() }
+			{ href: resolve('/admin/pools'), label: () => m['chrome.adminNav.pools'](), exact: false }
 		]
 	},
 	{
-		heading: () => m['chrome.adminNav.catalog'](),
+		heading: () => m['chrome.adminNav.resources'](),
 		icon: 'catalog',
 		items: [
 			{ href: resolve('/admin/storages'), label: () => m['chrome.adminNav.storages']() },
 			{ href: resolve('/admin/isos'), label: () => m['chrome.adminNav.isos']() },
 			{ href: resolve('/admin/templates'), label: () => m['chrome.adminNav.templates']() },
 			{ href: resolve('/admin/images'), label: () => m['chrome.adminNav.images']() },
-			{ href: resolve('/admin/bridges'), label: () => m['chrome.adminNav.bridges']() },
+			{ href: resolve('/admin/bridges'), label: () => m['chrome.adminNav.bridges']() }
+		]
+	},
+	{
+		heading: () => m['chrome.adminNav.provisioning'](),
+		icon: 'shield',
+		items: [
+			{ href: resolve('/admin/profiles'), label: () => m['chrome.adminNav.profiles']() },
 			{ href: resolve('/admin/cloudinit-templates'), label: () => m['chrome.adminNav.cloudinit']() },
 			{ href: resolve('/admin/baseline'), label: () => m['chrome.adminNav.baseline']() },
-			{ href: resolve('/admin/docs'), label: () => m['chrome.adminNav.documentation']() },
-			{ href: resolve('/admin/profiles'), label: () => m['chrome.adminNav.profiles']() },
 			{ href: resolve('/admin/tags'), label: () => m['chrome.adminNav.tags']() }
 		]
 	},
@@ -82,6 +82,7 @@ export const ADMIN_NAV_GROUPS: readonly AdminNavGroup[] = [
 		icon: 'system',
 		items: [
 			{ href: resolve('/admin/appinfo'), label: () => m['chrome.adminNav.appInfo']() },
+			{ href: resolve('/admin/docs'), label: () => m['chrome.adminNav.documentation']() },
 			{ href: resolve('/admin/settings'), label: () => m['chrome.adminNav.settings']() }
 		]
 	}

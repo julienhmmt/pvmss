@@ -3,8 +3,12 @@
 	import { m } from '$lib/paraglide/messages.js';
 	import { formatBytes } from '$lib/shared/format-bytes';
 	import Alert from '$lib/shared/ui/Alert.svelte';
+	import EmptyState from '$lib/shared/ui/EmptyState.svelte';
+	import NodeUsageBar from '$lib/shared/ui/NodeUsageBar.svelte';
 	import PageHeader from '$lib/shared/ui/PageHeader.svelte';
 	import Button from '$lib/shared/ui/Button.svelte';
+	import StatusDot from '$lib/shared/ui/StatusDot.svelte';
+	import TableCard from '$lib/shared/ui/TableCard.svelte';
 
 	interface Props {
 		nodes: ClusterNode[];
@@ -24,8 +28,8 @@
 		onRefresh
 	}: Props = $props();
 
-	function formatPercent(usage: number): string {
-		return `${Math.round(usage * 100)}%`;
+	function formatPercent(usage: number): number {
+		return Math.round(usage * 100);
 	}
 
 	function formatRefreshedAt(iso: string | null): string {
@@ -34,21 +38,14 @@
 		return date.toLocaleString();
 	}
 
-	function usagePercent(used: number, total: number): number {
-		if (total <= 0) return 0;
-		return Math.min(100, Math.round((used / total) * 100));
+	function usageRatio(used: number, total: number): number {
+		return total > 0 ? used / total : 0;
 	}
 
-	function usageColor(percent: number): string {
-		if (percent >= 85) return 'bg-destructive';
-		if (percent >= 60) return 'bg-warning';
-		return 'bg-success';
-	}
-
-	const statusClasses: Record<NodeStatus, string> = {
-		online: 'bg-success-soft text-success-soft-foreground',
-		offline: 'bg-destructive-soft text-destructive-soft-foreground',
-		unknown: 'bg-muted text-muted-foreground'
+	const statusTone: Record<NodeStatus, 'success' | 'destructive' | 'muted'> = {
+		online: 'success',
+		offline: 'destructive',
+		unknown: 'muted'
 	};
 
 	const statusLabel: Record<NodeStatus, () => string> = {
@@ -57,18 +54,18 @@
 		unknown: () => m['common.unknown']()
 	};
 
-	const statusDot: Record<NodeStatus, string> = {
-		online: 'bg-success',
-		offline: 'bg-destructive',
-		unknown: 'bg-muted-foreground'
-	};
-
 	let refreshButtonLabel = $derived(
 		refreshing ? m['nodes.refreshing']() : refreshDisabled ? m['nodes.refreshWait']() : m['nodes.refresh']()
 	);
 </script>
 
-<PageHeader title={m['nodes.heading']()} description={m['nodes.description']()} titleId="nodes-heading">
+<PageHeader
+	eyebrow={m['chrome.context.workspace']()}
+	title={m['nodes.heading']()}
+	description={m['nodes.description']()}
+	titleId="nodes-heading"
+	focusTarget
+>
 	{#snippet actions()}
 		<div class="flex flex-col items-end gap-1">
 			<Button
@@ -92,61 +89,61 @@
 	<Alert data-testid="refresh-error" class="mb-4">{refreshError}</Alert>
 {/if}
 
-<div class="overflow-x-auto rounded-lg border border-border" aria-labelledby="nodes-heading">
-	<table class="pv-table pv-responsive-table">
-		<caption class="sr-only">{m['nodes.caption']()}</caption>
-		<thead>
-			<tr>
-				<th scope="col" class="font-medium">{m['nodes.columnName']()}</th>
-				<th scope="col" class="font-medium">{m['nodes.columnStatus']()}</th>
-				<th scope="col" class="font-medium">{m['nodes.columnVms']()}</th>
-				<th scope="col" class="font-medium">{m['nodes.columnCpu']()}</th>
-				<th scope="col" class="font-medium">{m['nodes.columnMemory']()}</th>
-				<th scope="col" class="font-medium">{m['nodes.columnStorage']()}</th>
-			</tr>
-		</thead>
-		<tbody>
-			{#each nodes as node (node.name)}
-				{@const cpuPct = usagePercent(node.cpuUsage, 1)}
-				{@const memPct = usagePercent(node.memoryUsed, node.memoryTotal)}
-				{@const storPct = usagePercent(node.storageUsed, node.storageTotal)}
-				<tr class="border-t border-border">
-					<td class="font-mono font-medium" data-label={m['nodes.columnName']()}>{node.name}</td>
-					<td data-label={m['nodes.columnStatus']()}>
-						<span class="inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-xs font-medium {statusClasses[node.status]}">
-							<span class="h-1.5 w-1.5 rounded-full {statusDot[node.status]}"></span>
-							{statusLabel[node.status]?.() ?? node.status}
-						</span>
-					</td>
-					<td class="text-muted-foreground" data-label={m['nodes.columnVms']()} data-testid="vm-count">
-						{node.vmCount}
-					</td>
-					<td data-label={m['nodes.columnCpu']()}>
-						<div class="flex flex-col gap-1">
-							<span class="text-muted-foreground">{node.cpuCores} {m['common.coreCount']({ count: node.cpuCores })} · {formatPercent(node.cpuUsage)}</span>
-							<div class="h-1.5 w-24 overflow-hidden rounded-full bg-muted">
-								<div class="h-full rounded-full {usageColor(cpuPct)}" style="width: {cpuPct}%"></div>
-							</div>
-						</div>
-					</td>
-					<td data-label={m['nodes.columnMemory']()}>
-						<div class="flex flex-col gap-1">
-							<span class="text-muted-foreground">{formatBytes(node.memoryUsed)} / {formatBytes(node.memoryTotal)}</span>
-							<div class="h-1.5 w-24 overflow-hidden rounded-full bg-muted">
-								<div class="h-full rounded-full {usageColor(memPct)}" style="width: {memPct}%"></div>
-							</div>
-						</div>
-					</td>
-					<td data-label={m['nodes.columnStorage']()}>
-						<div class="flex flex-col gap-1">
-							<span class="text-muted-foreground">{formatBytes(node.storageUsed)} / {formatBytes(node.storageTotal)}</span>
-							<div class="h-1.5 w-24 overflow-hidden rounded-full bg-muted">
-								<div class="h-full rounded-full {usageColor(storPct)}" style="width: {storPct}%"></div>
-							</div>
-						</div>
-					</td>
+{#if nodes.length === 0}
+	<EmptyState title={m['nodes.empty']()} dataTestid="nodes-empty" />
+{:else}
+	<TableCard>
+		<table class="pv-table pv-responsive-table" aria-labelledby="nodes-heading">
+			<caption class="sr-only">{m['nodes.caption']()}</caption>
+			<thead>
+				<tr>
+					<th scope="col" class="font-medium">{m['nodes.columnName']()}</th>
+					<th scope="col" class="font-medium">{m['nodes.columnStatus']()}</th>
+					<th scope="col" class="font-medium">{m['nodes.columnVms']()}</th>
+					<th scope="col" class="font-medium">{m['nodes.columnCpu']()}</th>
+					<th scope="col" class="font-medium">{m['nodes.columnMemory']()}</th>
+					<th scope="col" class="font-medium">{m['nodes.columnStorage']()}</th>
 				</tr>
-			{/each}
-		</tbody>
-	</table>
-</div>
+			</thead>
+			<tbody>
+				{#each nodes as node (node.name)}
+					<tr class="border-t border-border">
+						<td class="font-mono font-medium" data-label={m['nodes.columnName']()}>{node.name}</td>
+						<td data-label={m['nodes.columnStatus']()}>
+							<StatusDot tone={statusTone[node.status]} label={statusLabel[node.status]?.() ?? node.status} />
+						</td>
+						<td class="text-muted-foreground" data-label={m['nodes.columnVms']()} data-testid="vm-count">
+							{node.vmCount}
+						</td>
+						<td data-label={m['nodes.columnCpu']()}>
+							<NodeUsageBar
+								value={node.cpuUsage}
+								label={m['admin.nodes.cpuLabel']({ cores: node.cpuCores, percent: formatPercent(node.cpuUsage) })}
+							/>
+						</td>
+						<td data-label={m['nodes.columnMemory']()}>
+							<NodeUsageBar
+								value={usageRatio(node.memoryUsed, node.memoryTotal)}
+								label={m['admin.nodes.memoryLabel']({
+									used: formatBytes(node.memoryUsed),
+									total: formatBytes(node.memoryTotal),
+									percent: formatPercent(usageRatio(node.memoryUsed, node.memoryTotal))
+								})}
+							/>
+						</td>
+						<td data-label={m['nodes.columnStorage']()}>
+							<NodeUsageBar
+								value={usageRatio(node.storageUsed, node.storageTotal)}
+								label={m['nodes.storageLabel']({
+									used: formatBytes(node.storageUsed),
+									total: formatBytes(node.storageTotal),
+									percent: formatPercent(usageRatio(node.storageUsed, node.storageTotal))
+								})}
+							/>
+						</td>
+					</tr>
+				{/each}
+			</tbody>
+		</table>
+	</TableCard>
+{/if}

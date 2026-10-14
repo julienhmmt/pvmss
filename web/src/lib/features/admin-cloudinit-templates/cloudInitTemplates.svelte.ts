@@ -1,5 +1,10 @@
 import { get, post, put, del, ApiRequestError } from '$lib/shared/api/client';
-import { fetchClusterOptions, type ClusterOption } from '$lib/shared/clusters';
+import {
+	fetchClusterOptions,
+	resolveInitialAdminCluster,
+	saveAdminCluster,
+	type ClusterOption
+} from '$lib/shared/clusters';
 import { setContext, getContext } from 'svelte';
 import { m } from '$lib/paraglide/messages.js';
 
@@ -52,9 +57,8 @@ export class AdminCloudInitTemplatesStore {
 	async loadClusters(): Promise<void> {
 		try {
 			this.clusterOptions = await fetchClusterOptions();
-			const first = this.clusterOptions[0];
-			if (first && (this.clusterOptions.length === 1 || !this.clusterOptions.some((option) => option.name === this.cluster))) {
-				this.cluster = first.name;
+			if (this.clusterOptions.length > 0) {
+				this.cluster = resolveInitialAdminCluster(this.clusterOptions, this.cluster);
 			}
 		} catch (err) {
 			this.error = err instanceof ApiRequestError ? err.message : m['admin.cloudinit.loadError']();
@@ -62,6 +66,7 @@ export class AdminCloudInitTemplatesStore {
 	}
 
 	setCluster(value: string): void {
+		saveAdminCluster(value);
 		this.cluster = value;
 		void this.load();
 	}
@@ -81,7 +86,7 @@ export class AdminCloudInitTemplatesStore {
 		}
 	}
 
-	async create(label: string, content: string): Promise<void> {
+	async create(label: string, content: string): Promise<boolean> {
 		this.saving = true;
 		this.saveError = null;
 		try {
@@ -91,15 +96,16 @@ export class AdminCloudInitTemplatesStore {
 				content
 			});
 			this.templates = [...this.templates, created];
+			return true;
 		} catch (err) {
 			this.saveError = saveErrorMessage(err, m['admin.cloudinit.createError']());
-			throw err;
+			return false;
 		} finally {
 			this.saving = false;
 		}
 	}
 
-	async update(id: string, label: string, content: string): Promise<void> {
+	async update(id: string, label: string, content: string): Promise<boolean> {
 		this.saving = true;
 		this.saveError = null;
 		try {
@@ -108,9 +114,10 @@ export class AdminCloudInitTemplatesStore {
 				{ cluster: this.cluster, label, content }
 			);
 			this.templates = this.templates.map((t) => (t.id === id ? updated : t));
+			return true;
 		} catch (err) {
 			this.saveError = saveErrorMessage(err, m['admin.cloudinit.updateError']());
-			throw err;
+			return false;
 		} finally {
 			this.saving = false;
 		}

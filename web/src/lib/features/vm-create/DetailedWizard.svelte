@@ -1,5 +1,6 @@
 <script lang="ts">
-	import { getVmCreateContext } from './create.svelte';
+	import { tick } from 'svelte';
+	import { getVmCreateContext, gabaritCeiling } from './create.svelte';
 	import StepBase from './_steps/StepBase.svelte';
 	import StepHardware from './_steps/StepHardware.svelte';
 	import StepDisk from './_steps/StepDisk.svelte';
@@ -24,13 +25,78 @@
 	] as const;
 	type StepName = (typeof STEPS)[number]['id'];
 
+	const HOSTNAME_PATTERN = /^[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?$/;
+
 	let current = $state<StepName>('Base');
+	let stepContainer: HTMLDivElement | undefined = $state();
+	let stepAttempted = $state<Record<StepName, boolean>>({
+		Base: false,
+		Hardware: false,
+		Disk: false,
+		Network: false,
+		Review: false
+	});
 
 	function stepIndex(name: StepName): number {
 		return STEPS.findIndex((s) => s.id === name);
 	}
 
-	function goNext(): void {
+	function isStepValid(step: StepName): boolean {
+		const cat = form.catalog;
+		if (!cat) return false;
+		switch (step) {
+			case 'Base': {
+				const name = form.name.trim();
+				if (name === '' || !HOSTNAME_PATTERN.test(name) || form.machineNamed(name) !== null) return false;
+				if (form.sourceType !== 'template' && form.node === '') return false;
+				if (form.sourceType === 'template' && form.templateId === 0) return false;
+				if (form.sourceType === 'image') {
+					if (form.imageFile === '' || form.ciUser.trim() === '' || form.sshKeys().length === 0) return false;
+					if (form.ciIpMode === 'static' && form.ciIpAddress.trim() === '') return false;
+				}
+				return true;
+			}
+			case 'Hardware': {
+				if (form.sourceType === 'image' && form.hasProfiles()) {
+					return form.profileId !== '' && cat.profiles.some((p) => p.id === form.profileId);
+				}
+				const maxSockets = gabaritCeiling(cat.gabarit?.maxSockets, 4);
+				const maxCores = gabaritCeiling(cat.gabarit?.maxCores, 32);
+				const maxMemoryMB = gabaritCeiling(cat.gabarit?.maxMemoryMB, 65536);
+				return (
+					Number.isInteger(form.sockets) &&
+					form.sockets >= 1 &&
+					form.sockets <= maxSockets &&
+					Number.isInteger(form.cpuCores) &&
+					form.cpuCores >= 1 &&
+					form.cpuCores <= maxCores &&
+					Number.isInteger(form.memoryMB) &&
+					form.memoryMB >= 128 &&
+					form.memoryMB <= maxMemoryMB
+				);
+			}
+			case 'Disk': {
+				if (form.diskStorage === '') return false;
+				if (form.sourceType === 'image' && form.hasProfiles()) return true;
+				const maxDiskGB = gabaritCeiling(cat.gabarit?.maxDiskPerVMGB, 2048);
+				const minDiskGB = Math.max(1, form.templateMinDiskGB, form.sourceType === 'image' ? form.imageMinDiskGB : 0);
+				return Number.isInteger(form.diskSizeGB) && form.diskSizeGB >= minDiskGB && form.diskSizeGB <= maxDiskGB;
+			}
+			case 'Network':
+				return form.nics.length > 0 && form.nics.every((nic) => nic.bridge !== '');
+			case 'Review':
+				return true;
+		}
+	}
+
+	async function goNext(): Promise<void> {
+		if (!isStepValid(current)) {
+			stepAttempted = { ...stepAttempted, [current]: true };
+			await tick();
+			const firstInvalid = stepContainer?.querySelector<HTMLElement>('[aria-invalid="true"], input[type="radio"]');
+			firstInvalid?.focus();
+			return;
+		}
 		const next = stepIndex(current) + 1;
 		const step = STEPS[next];
 		if (step !== undefined) current = step.id;
@@ -95,24 +161,26 @@
 		{/each}
 	</ol>
 
-	{#if current === 'Base'}
-		<StepBase />
-	{:else if current === 'Hardware'}
-		<StepHardware />
-	{:else if current === 'Disk'}
-		<StepDisk />
-	{:else if current === 'Network'}
-		<StepNetwork />
-	{:else}
-		<StepReview />
-	{/if}
+	<div bind:this={stepContainer}>
+		{#if current === 'Base'}
+			<StepBase showErrors={stepAttempted.Base} />
+		{:else if current === 'Hardware'}
+			<StepHardware showErrors={stepAttempted.Hardware} />
+		{:else if current === 'Disk'}
+			<StepDisk showErrors={stepAttempted.Disk} />
+		{:else if current === 'Network'}
+			<StepNetwork showErrors={stepAttempted.Network} />
+		{:else}
+			<StepReview />
+		{/if}
+	</div>
 
 	{#if current !== 'Review'}
 		<div class="mt-6 flex gap-2">
 			{#if stepIndex(current) > 0}
 				<Button variant="secondary" onclick={goBack}>{m['common.back']()}</Button>
 			{/if}
-			<Button onclick={goNext}>{m['common.next']()}</Button>
+			<Button onclick={() => void goNext()}>{m['common.next']()}</Button>
 		</div>
 	{/if}
 {/if}

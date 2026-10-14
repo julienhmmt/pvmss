@@ -1,5 +1,10 @@
 import { get, post, put, del, ApiRequestError } from '$lib/shared/api/client';
-import { fetchClusterOptions, type ClusterOption } from '$lib/shared/clusters';
+import {
+	fetchClusterOptions,
+	resolveInitialAdminCluster,
+	saveAdminCluster,
+	type ClusterOption
+} from '$lib/shared/clusters';
 import { setContext, getContext } from 'svelte';
 import { SvelteSet } from 'svelte/reactivity';
 import { m } from '$lib/paraglide/messages.js';
@@ -66,6 +71,8 @@ export class AdminProfilesStore {
 		this.search = '';
 		this.busFilter = '';
 		this.enabledFilter = 'all';
+		this.sortBy = 'label';
+		this.sortDir = 'asc';
 	}
 
 	/** Resolves the real cluster name (matches admin-catalog's pattern) so
@@ -74,9 +81,8 @@ export class AdminProfilesStore {
 	async loadClusters(): Promise<void> {
 		try {
 			this.clusterOptions = await fetchClusterOptions();
-			const first = this.clusterOptions[0];
-			if (first && (this.clusterOptions.length === 1 || !this.clusterOptions.some((option) => option.name === this.cluster))) {
-				this.cluster = first.name;
+			if (this.clusterOptions.length > 0) {
+				this.cluster = resolveInitialAdminCluster(this.clusterOptions, this.cluster);
 			}
 		} catch (err) {
 			this.error = err instanceof ApiRequestError ? err.message : m['admin.profiles.loadError']();
@@ -84,6 +90,7 @@ export class AdminProfilesStore {
 	}
 
 	setCluster(value: string): void {
+		saveAdminCluster(value);
 		this.cluster = value;
 		void this.load();
 	}
@@ -101,7 +108,7 @@ export class AdminProfilesStore {
 		}
 	}
 
-	async create(label: string, cpuCores: number, memoryMB: number, diskGB: number, bus: string, sockets = 1): Promise<void> {
+	async create(label: string, cpuCores: number, memoryMB: number, diskGB: number, bus: string, sockets = 1): Promise<boolean> {
 		this.saving = true;
 		this.saveError = null;
 		try {
@@ -109,15 +116,16 @@ export class AdminProfilesStore {
 				cluster: this.cluster, label, sockets, cpuCores, memoryMB, diskGB, bus
 			});
 			this.profiles = [...this.profiles, created];
+			return true;
 		} catch (err) {
 			this.saveError = err instanceof ApiRequestError ? err.message : m['admin.profiles.createError']();
-			throw err;
+			return false;
 		} finally {
 			this.saving = false;
 		}
 	}
 
-	async update(id: string, label: string, cpuCores: number, memoryMB: number, diskGB: number, bus: string, sockets = 1): Promise<void> {
+	async update(id: string, label: string, cpuCores: number, memoryMB: number, diskGB: number, bus: string, sockets = 1): Promise<boolean> {
 		this.saving = true;
 		this.saveError = null;
 		try {
@@ -125,9 +133,10 @@ export class AdminProfilesStore {
 				cluster: this.cluster, label, sockets, cpuCores, memoryMB, diskGB, bus
 			});
 			this.profiles = this.profiles.map((p) => (p.id === id ? updated : p));
+			return true;
 		} catch (err) {
 			this.saveError = err instanceof ApiRequestError ? err.message : m['admin.profiles.updateError']();
-			throw err;
+			return false;
 		} finally {
 			this.saving = false;
 		}

@@ -36,6 +36,8 @@
 			testid: string;
 		};
 		selects: SelectSpec[];
+		/** True when a filter or sort differs from the default - gates the reset button. */
+		active: (store: Store) => boolean;
 		reset: (store: Store) => void;
 		resetLabel: () => string;
 		resetTestId: string;
@@ -94,6 +96,12 @@
 					'node-enabled-filter'
 				)
 			],
+			active: (s) =>
+				s.nodeSearch !== '' ||
+				s.nodeStatusFilter !== '' ||
+				s.nodeEnabledFilter !== 'all' ||
+				s.nodeSortBy !== 'name' ||
+				s.nodeSortDir !== 'asc',
 			reset: (s) => s.resetNodeFilters(),
 			resetLabel: () => m['admin.nodes.resetFilters'](),
 			resetTestId: 'node-reset-filters',
@@ -137,6 +145,13 @@
 					'bridge-enabled-filter'
 				)
 			],
+			active: (s) =>
+				s.bridgeSearch !== '' ||
+				s.bridgeNodeFilter !== '' ||
+				s.bridgeActiveFilter !== 'all' ||
+				s.bridgeEnabledFilter !== 'all' ||
+				s.bridgeSortBy !== 'name' ||
+				s.bridgeSortDir !== 'asc',
 			reset: (s) => s.resetBridgeFilters(),
 			resetLabel: () => m['admin.bridges.resetFilters'](),
 			resetTestId: 'bridge-reset-filters',
@@ -177,6 +192,13 @@
 					'storage-enabled-filter'
 				)
 			],
+			active: (s) =>
+				s.storageSearch !== '' ||
+				s.storageNodeFilter !== '' ||
+				s.storageTypeFilter !== '' ||
+				s.storageEnabledFilter !== 'all' ||
+				s.storageSortBy !== 'name' ||
+				s.storageSortDir !== 'asc',
 			reset: (s) => s.resetStorageFilters(),
 			resetLabel: () => m['admin.storages.resetFilters'](),
 			resetTestId: 'storage-reset-filters',
@@ -217,6 +239,13 @@
 					'iso-enabled-filter'
 				)
 			],
+			active: (s) =>
+				s.isoSearch !== '' ||
+				s.isoStorageFilter !== '' ||
+				s.isoNodeFilter !== '' ||
+				s.isoEnabledFilter !== 'all' ||
+				s.isoSortBy !== 'file' ||
+				s.isoSortDir !== 'asc',
 			reset: (s) => s.resetISOFilters(),
 			resetLabel: () => m['admin.isos.resetFilters'](),
 			resetTestId: 'iso-reset-filters',
@@ -257,6 +286,13 @@
 					'image-enabled-filter'
 				)
 			],
+			active: (s) =>
+				s.imageSearch !== '' ||
+				s.imageStorageFilter !== '' ||
+				s.imageNodeFilter !== '' ||
+				s.imageEnabledFilter !== 'all' ||
+				s.imageSortBy !== 'file' ||
+				s.imageSortDir !== 'asc',
 			reset: (s) => s.resetImageFilters(),
 			resetLabel: () => m['admin.images.resetFilters'](),
 			resetTestId: 'image-reset-filters',
@@ -285,8 +321,25 @@
 					set: (s, v) => (s.templateNodeFilter = v),
 					placeholder: () => m['admin.templates.filterNode'](),
 					testid: 'template-node-filter'
-				}
+				},
+				enabledSelect(
+					(s) => s.templateEnabledFilter,
+					(s, v) => (s.templateEnabledFilter = v),
+					[
+						() => m['admin.templates.filterEnabled'](),
+						() => m['admin.templates.filterEnabledOnly'](),
+						() => m['admin.templates.filterDisabledOnly']()
+					],
+					'template-enabled-filter'
+				)
 			],
+			active: (s) =>
+				s.templateSearch !== '' ||
+				s.templateStorageFilter !== '' ||
+				s.templateNodeFilter !== '' ||
+				s.templateEnabledFilter !== 'all' ||
+				s.templateSortBy !== 'vmid' ||
+				s.templateSortDir !== 'asc',
 			reset: (s) => s.resetTemplateFilters(),
 			resetLabel: () => m['admin.templates.resetFilters'](),
 			resetTestId: 'template-reset-filters',
@@ -323,14 +376,16 @@
 		data-testid={select.testid}
 	/>
 {/each}
-<Button
-	variant="ghost"
-	size="sm"
-	onclick={() => config.reset(store)}
-	data-testid={config.resetTestId}
->
-	{config.resetLabel()}
-</Button>
+{#if config.active(store)}
+	<Button
+		variant="ghost"
+		size="sm"
+		onclick={() => config.reset(store)}
+		data-testid={config.resetTestId}
+	>
+		{config.resetLabel()}
+	</Button>
+{/if}
 <span class="ml-auto text-sm text-muted-foreground" data-testid={config.countTestId}>
 	{config.countLabel(config.count(store))}
 </span>

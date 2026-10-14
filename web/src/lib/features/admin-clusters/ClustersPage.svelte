@@ -4,6 +4,10 @@
 	import Alert from '$lib/shared/ui/Alert.svelte';
 	import PageHeader from '$lib/shared/ui/PageHeader.svelte';
 	import Button from '$lib/shared/ui/Button.svelte';
+	import ConfirmDialog from '$lib/shared/ui/ConfirmDialog.svelte';
+	import EmptyState from '$lib/shared/ui/EmptyState.svelte';
+	import Pill from '$lib/shared/ui/Pill.svelte';
+	import TableCard from '$lib/shared/ui/TableCard.svelte';
 	import TableSkeleton from '$lib/shared/ui/TableSkeleton.svelte';
 	import { m } from '$lib/paraglide/messages.js';
 
@@ -14,6 +18,7 @@
 	let { store }: Props = $props();
 	let formOpen = $state(false);
 	let editing = $state<AdminCluster | null>(null);
+	let pendingDelete = $state<AdminCluster | null>(null);
 	let snippetStorages = $state<SnippetStorage[]>([]);
 	let snippetStoragesLoading = $state(false);
 
@@ -51,15 +56,15 @@
 		}
 	}
 
-	function statusClass(status: AdminCluster['lastTestStatus']): string {
+	function statusTone(status: AdminCluster['lastTestStatus']): 'ok' | 'error' | 'off' {
 		switch (status) {
 			case 'ok':
-				return 'bg-success text-success-foreground';
+				return 'ok';
 			case 'unreachable':
 			case 'error':
-				return 'bg-destructive text-destructive-foreground';
+				return 'error';
 			default:
-				return 'bg-muted text-muted-foreground';
+				return 'off';
 		}
 	}
 
@@ -72,6 +77,13 @@
 			default:
 				return null;
 		}
+	}
+
+	async function confirmRemove(): Promise<void> {
+		const cluster = pendingDelete;
+		if (cluster === null) return;
+		await store.remove(cluster.name);
+		pendingDelete = null;
 	}
 
 	async function saveCluster(input: ClusterInput): Promise<void> {
@@ -94,7 +106,7 @@
 	}
 </script>
 
-<PageHeader title={m['admin.clusters.heading']()} description={m['admin.clusters.description']()}>
+<PageHeader title={m['admin.clusters.heading']()} eyebrow={m['chrome.adminNav.infrastructure']()} description={m['admin.clusters.description']()}>
 	{#snippet actions()}
 		<Button onclick={() => void openForm(null)}>{m['admin.clusters.addCluster']()}</Button>
 	{/snippet}
@@ -106,9 +118,15 @@
 	{#if store.loading}
 		<div role="status" aria-live="polite" class="sr-only">{m['admin.clusters.loading']()}</div>
 		<TableSkeleton columns={8} />
+	{:else if store.clusters.length === 0}
+		<EmptyState title={m['admin.clusters.empty']()}>
+			{#snippet actions()}
+				<Button onclick={() => void openForm(null)}>{m['admin.clusters.addCluster']()}</Button>
+			{/snippet}
+		</EmptyState>
 	{:else}
-		<div class="overflow-x-auto rounded-lg border border-border">
-			<table class="pv-table min-w-[900px]">
+		<TableCard>
+			<table class="pv-table pv-responsive-table">
 				<caption class="sr-only">{m['admin.clusters.caption']()}</caption>
 				<thead>
 					<tr>
@@ -123,43 +141,55 @@
 				</thead>
 				<tbody>
 					{#each store.clusters as cluster (cluster.name)}
-						<tr class="border-t border-border align-top">
-							<td>
+						<tr class="align-top">
+							<td data-label={m['common.name']()}>
 								<div class="font-medium">{cluster.name}</div>
 								<div class="max-w-xs truncate text-xs text-muted-foreground" title={cluster.url}>{cluster.url}</div>
 							</td>
-							<td class="text-muted-foreground">{cluster.displayName || ' - '}</td>
-							<td>
-								<span class="rounded-full px-2 py-1 text-xs {statusClass(cluster.lastTestStatus)}">{statusLabel(cluster.lastTestStatus)}</span>
+							<td class="text-muted-foreground" data-label={m['admin.clusters.displayName']()}>{cluster.displayName || ' - '}</td>
+							<td data-label={m['common.status']()}>
+								<Pill tone={statusTone(cluster.lastTestStatus)} label={statusLabel(cluster.lastTestStatus)} />
 								{#if cluster.lastTestMessage}
 									<div class="mt-1 text-xs text-muted-foreground">{cluster.lastTestMessage}</div>
 								{:else if statusHint(cluster.lastTestStatus)}
 									<div class="mt-1 text-xs text-muted-foreground">{statusHint(cluster.lastTestStatus)}</div>
 								{/if}
 							</td>
-							<td class="text-muted-foreground">{cluster.proxmoxVersion ?? ' - '}</td>
-							<td>{cluster.nodeCount} / {cluster.vmCount}</td>
-							<td class="text-muted-foreground">
+							<td class="text-muted-foreground" data-label={m['admin.clusters.version']()}>{cluster.proxmoxVersion ?? ' - '}</td>
+							<td data-label={m['admin.clusters.nodesVms']()}>{cluster.nodeCount} / {cluster.vmCount}</td>
+							<td class="text-muted-foreground" data-label={m['admin.clusters.cloudinitSection']()}>
 								{#if cluster.cloudInitWriteEnabled}
 									{m['admin.clusters.cloudinitOn']()}
 								{:else}
 									{m['admin.clusters.cloudinitOff']()}
 								{/if}
 							</td>
-							<td>
+							<td data-label={m['common.actions']()}>
 								<div class="flex flex-wrap gap-2">
 									<Button variant="secondary" size="sm" disabled={store.busy !== null} label={m['admin.clusters.testLabel']({ name: cluster.name })} onclick={() => void store.test(cluster.name)}>{m['admin.clusters.test']()}</Button>
 									<Button variant="secondary" size="sm" disabled={store.busy !== null} label={m['admin.clusters.editLabel']({ name: cluster.name })} onclick={() => void openForm(cluster)}>{m['common.edit']()}</Button>
-									<Button variant="destructive" size="sm" disabled={store.busy !== null} label={m['admin.clusters.removeLabel']({ name: cluster.name })} onclick={() => void store.remove(cluster.name)}>{m['admin.clusters.remove']()}</Button>
+									<Button variant="destructive" size="sm" disabled={store.busy !== null} label={m['admin.clusters.removeLabel']({ name: cluster.name })} onclick={() => (pendingDelete = cluster)}>{m['admin.clusters.remove']()}</Button>
 								</div>
 							</td>
 						</tr>
 					{/each}
 				</tbody>
 			</table>
-		</div>
+		</TableCard>
 	{/if}
 </section>
+
+<ConfirmDialog
+	open={pendingDelete !== null}
+	title={m['admin.clusters.removeTitle']({ name: pendingDelete?.name ?? '' })}
+	message={m['admin.clusters.removeConfirm']()}
+	confirmLabel={m['admin.clusters.remove']()}
+	cancelLabel={m['common.cancel']()}
+	confirming={store.busy === `remove:${pendingDelete?.name}`}
+	testId="cluster-remove-confirm"
+	onConfirm={() => void confirmRemove()}
+	onClose={() => (pendingDelete = null)}
+/>
 
 <ClusterFormDialog
 	bind:open={formOpen}

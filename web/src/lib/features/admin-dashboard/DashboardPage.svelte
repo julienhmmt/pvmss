@@ -38,7 +38,7 @@
 	}
 
 	function goToNodeDetails(node: NodeSummary): void {
-		void goto(resolve('/admin/nodes/[cluster]/[node]', { cluster: node.clusterKey, node: node.name }));
+		void goto(`${resolve('/admin/nodes/[cluster]/[node]', { cluster: node.clusterKey, node: node.name })}?from=dashboard`);
 	}
 
 	function goToCreateUser(): void {
@@ -60,7 +60,7 @@
 	</div>
 {/snippet}
 
-<PageHeader title={m['admin.dashboard.title']()}>
+<PageHeader title={m['admin.dashboard.title']()} eyebrow={m['chrome.adminNav.overview']()}>
 	{#snippet actions()}
 		<div class="flex flex-col items-end gap-1">
 			<div class="flex items-center gap-2">

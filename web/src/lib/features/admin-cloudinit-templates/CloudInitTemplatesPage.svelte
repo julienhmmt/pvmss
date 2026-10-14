@@ -7,6 +7,7 @@
 	import PageHeader from '$lib/shared/ui/PageHeader.svelte';
 	import ClusterSelector from '$lib/shared/ui/ClusterSelector.svelte';
 	import Button from '$lib/shared/ui/Button.svelte';
+	import ConfirmDialog from '$lib/shared/ui/ConfirmDialog.svelte';
 	import Switch from '$lib/shared/ui/Switch.svelte';
 	import TableCard from '$lib/shared/ui/TableCard.svelte';
 	import TableSkeleton from '$lib/shared/ui/TableSkeleton.svelte';
@@ -23,10 +24,11 @@
 		clusterOptions: ClusterOption[];
 		cluster: string;
 		onClusterChange: (value: string) => void;
-		onCreate: (label: string, content: string) => void;
-		onUpdate: (id: string, label: string, content: string) => void;
+		onCreate: (label: string, content: string) => Promise<boolean>;
+		onUpdate: (id: string, label: string, content: string) => Promise<boolean>;
 		onDelete: (id: string) => void;
 		onToggle: (id: string, enabled: boolean) => void;
+		onClearSaveError: () => void;
 	}
 
 	let {
@@ -42,18 +44,21 @@
 		onCreate,
 		onUpdate,
 		onDelete,
-		onToggle
+		onToggle,
+		onClearSaveError
 	}: Props = $props();
 
 	let showForm = $state(false);
 	let editingId = $state<string | null>(null);
 	let label = $state('');
 	let content = $state('#cloud-config\n');
+	let pendingDelete = $state<AdminCloudInitTemplate | null>(null);
 
 	function openCreate(): void {
 		editingId = null;
 		label = '';
 		content = '#cloud-config\n';
+		onClearSaveError();
 		showForm = true;
 	}
 
@@ -61,16 +66,21 @@
 		editingId = template.id;
 		label = template.label;
 		content = template.content;
+		onClearSaveError();
 		showForm = true;
 	}
 
-	function submitForm(): void {
-		if (editingId) {
-			onUpdate(editingId, label, content);
-		} else {
-			onCreate(label, content);
-		}
+	function closeForm(): void {
 		showForm = false;
+		onClearSaveError();
+	}
+
+	async function submitForm(): Promise<void> {
+		// A failed save keeps the dialog open with the draft intact and the
+		// store's saveError rendered inside it - closing unconditionally here
+		// would drop the admin's YAML on a validation error.
+		const succeeded = editingId ? await onUpdate(editingId, label, content) : await onCreate(label, content);
+		if (succeeded) showForm = false;
 	}
 </script>
 
@@ -78,7 +88,7 @@
 	<title>{m['admin.cloudinit.pageTitle']()}</title>
 </svelte:head>
 
-<PageHeader title={m['admin.cloudinit.header']()}>
+<PageHeader title={m['admin.cloudinit.header']()} eyebrow={m['chrome.adminNav.provisioning']()}>
 	{#snippet actions()}
 		<ClusterSelector options={clusterOptions} value={cluster} onChange={onClusterChange} id="cloudinit-cluster" />
 		<Button variant="secondary" loading={loading} onclick={onVerify} data-testid="cloudinit-verify">{m['admin.cloudinit.verify']()}</Button>
@@ -93,7 +103,7 @@
 	<Alert>{error}</Alert>
 {:else}
 	<p class="mb-4 text-sm text-muted-foreground">{m['admin.cloudinit.publishHelp']()}</p>
-	{#if saveError}
+	{#if saveError && !showForm}
 		<Alert class="mb-4">{saveError}</Alert>
 	{/if}
 
@@ -136,7 +146,7 @@
 						<td data-label={m['common.actions']()}>
 							<div class="flex gap-2">
 								<Button variant="secondary" size="sm" label={m['admin.cloudinit.editLabel']({ label: template.label })} onclick={() => openEdit(template)}>{m['admin.cloudinit.edit']()}</Button>
-								<Button variant="destructive" size="sm" label={m['admin.cloudinit.deleteLabel']({ label: template.label })} onclick={() => onDelete(template.id)}>{m['admin.cloudinit.delete']()}</Button>
+								<Button variant="destructive" size="sm" label={m['admin.cloudinit.deleteLabel']({ label: template.label })} onclick={() => (pendingDelete = template)}>{m['admin.cloudinit.delete']()}</Button>
 							</div>
 						</td>
 					</tr>
@@ -160,8 +170,21 @@
 	{label}
 	{content}
 	{saving}
+	{saveError}
 	onLabelChange={(v) => (label = v)}
 	onContentChange={(v) => (content = v)}
-	onCancel={() => (showForm = false)}
-	onSubmit={submitForm}
+	onCancel={closeForm}
+	onSubmit={() => void submitForm()}
+/>
+
+<ConfirmDialog
+	open={pendingDelete !== null}
+	title={m['admin.cloudinit.deleteTitle']({ label: pendingDelete?.label ?? '' })}
+	message={m['admin.cloudinit.deleteConfirm']()}
+	confirmLabel={m['common.deletePermanently']()}
+	cancelLabel={m['common.cancel']()}
+	confirming={saving}
+	testId="cloudinit-delete-confirm"
+	onConfirm={() => { if (pendingDelete) { onDelete(pendingDelete.id); pendingDelete = null; } }}
+	onClose={() => (pendingDelete = null)}
 />
