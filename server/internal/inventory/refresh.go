@@ -28,9 +28,10 @@ type TooSoonError struct {
 func (e *TooSoonError) Error() string { return ErrRefreshTooSoon.Error() }
 func (e *TooSoonError) Unwrap() error { return ErrRefreshTooSoon }
 
-// Refresher handles manual refresh requests, guarded by a minimum interval
-// since the last successful refresh. The guard is enforced
-// server-side, not only by disabling a button. It reads
+// Refresher handles refreshes of one cluster's projection. Manual refresh
+// requests (RefreshAsync) are guarded by a minimum interval since the last
+// successful refresh, enforced server-side, not only by disabling a button.
+// Post-write invalidation (Refresh) is not guarded. It reads
 // the worker's own projection directly - a Refresher is always paired with
 // exactly one Worker, so there is no second projection reference a caller
 // could accidentally mismatch.
@@ -53,20 +54,14 @@ func (r *Refresher) MinInterval() time.Duration {
 	return r.minInterval
 }
 
-// Refresh attempts a manual refresh. If the minimum interval has not elapsed
-// since the last successful refresh, it returns a *TooSoonError carrying the
-// precise remaining wait, without calling the cluster client. Otherwise it delegates to the
-// worker, which serializes with any
+// Refresh rebuilds the projection now. It is the post-write invalidation used
+// by every mutation path (VM writes, task completion, create), so it is never
+// guarded: a write must always be reflected before its response is built. The
+// minimum interval only throttles the user-triggered manual refresh, see
+// RefreshAsync. It delegates to the worker, which serializes with any
 // in-flight automatic cycle.
 func (r *Refresher) Refresh(ctx context.Context) (time.Time, error) {
-	worker := r.worker.Load()
-	if current := worker.projection.Load(); current != nil {
-		if remaining := r.minInterval - time.Since(current.RefreshedAt); remaining > 0 {
-			return time.Time{}, &TooSoonError{RetryAfter: remaining}
-		}
-	}
-
-	at, err := worker.Refresh(ctx)
+	at, err := r.worker.Load().Refresh(ctx)
 	if err != nil {
 		return time.Time{}, ErrClusterUnreachable
 	}
