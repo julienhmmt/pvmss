@@ -122,6 +122,10 @@
 			: await onCreate(label, cpuCores, memoryMB, diskGB, bus, sockets);
 		if (succeeded) showForm = false;
 	}
+
+	const filtersActive = $derived(
+		search !== '' || busFilter !== '' || enabledFilter !== 'all' || sortBy !== 'label' || sortDir !== 'asc'
+	);
 </script>
 
 <svelte:head>
@@ -174,13 +178,18 @@
 					]}
 					class="w-full sm:w-44"
 				/>
-				<Button
-					variant="secondary"
-					size="sm"
-					onclick={onResetFilters}
-				>
-					{m['admin.profiles.resetFilters']()}
-				</Button>
+				<span class="ml-auto text-sm text-muted-foreground" data-testid="profiles-count">
+					{m['admin.profiles.resultCount']({ count: filteredProfiles.length })}
+				</span>
+				{#if filtersActive}
+					<Button
+						variant="secondary"
+						size="sm"
+						onclick={onResetFilters}
+					>
+						{m['admin.profiles.resetFilters']()}
+					</Button>
+				{/if}
 			{/snippet}
 			<table class="pv-table pv-responsive-table">
 				<caption class="sr-only">{m['admin.profiles.title']()}</caption>

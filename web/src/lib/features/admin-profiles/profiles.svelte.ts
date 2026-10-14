@@ -66,6 +66,8 @@ export class AdminProfilesStore {
 		this.search = '';
 		this.busFilter = '';
 		this.enabledFilter = 'all';
+		this.sortBy = 'label';
+		this.sortDir = 'asc';
 	}
 
 	/** Resolves the real cluster name (matches admin-catalog's pattern) so

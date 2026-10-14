@@ -7,7 +7,7 @@
 	const store = setAdminBaselineContext();
 
 	onMount(() => {
-		void store.load('default');
+		void store.init();
 	});
 </script>
 

@@ -53,6 +53,8 @@ export class AdminTagsStore {
 	resetFilters(): void {
 		this.search = '';
 		this.protectedFilter = 'all';
+		this.sortBy = 'name';
+		this.sortDir = 'asc';
 	}
 
 	/** Resolves the real cluster name (matches admin-catalog's pattern) so

@@ -38,7 +38,7 @@ export function alertHref(alert: DashboardAlert): string {
 		case 'node_offline_disabled':
 		case 'node_cpu':
 		case 'node_memory':
-			return resolve('/admin/nodes/[cluster]/[node]', { cluster: clusterKey, node: alert.subject ?? '' });
+			return withQuery(resolve('/admin/nodes/[cluster]/[node]', { cluster: clusterKey, node: alert.subject ?? '' }), { from: 'dashboard' });
 		case 'cluster_unreachable':
 			return resolve('/admin/clusters');
 		case 'storage_full':

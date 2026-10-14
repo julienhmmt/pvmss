@@ -12,10 +12,10 @@ describe('dashboard alerts', () => {
 	it('sends each alert to the page where it is fixed', () => {
 		expect(alertHref(alert('cluster_unreachable'))).toBe('/admin/clusters');
 		// clusterKey wins over the display label when the server sends both.
-		expect(alertHref(alert('node_offline', { subject: 'n1', cluster: 'East Campus', clusterKey: 'east' }))).toBe('/admin/nodes/east/n1');
-		expect(alertHref(alert('node_offline_disabled', { subject: 'n1' }))).toBe('/admin/nodes/east/n1');
-		expect(alertHref(alert('node_cpu', { subject: 'n1' }))).toBe('/admin/nodes/east/n1');
-		expect(alertHref(alert('node_memory', { subject: 'n1' }))).toBe('/admin/nodes/east/n1');
+		expect(alertHref(alert('node_offline', { subject: 'n1', cluster: 'East Campus', clusterKey: 'east' }))).toBe('/admin/nodes/east/n1?from=dashboard');
+		expect(alertHref(alert('node_offline_disabled', { subject: 'n1' }))).toBe('/admin/nodes/east/n1?from=dashboard');
+		expect(alertHref(alert('node_cpu', { subject: 'n1' }))).toBe('/admin/nodes/east/n1?from=dashboard');
+		expect(alertHref(alert('node_memory', { subject: 'n1' }))).toBe('/admin/nodes/east/n1?from=dashboard');
 	});
 
 	it('deep-links storage and pool alerts to the filtered admin list', () => {

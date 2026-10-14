@@ -160,7 +160,7 @@
 							<th scope="row" class="text-left" data-label={m['policy.node']()}>
 								<span class="inline-flex items-center gap-2">
 									<a
-										href={resolve('/admin/nodes/[cluster]/[node]', { cluster, node: node.node })}
+										href="{resolve('/admin/nodes/[cluster]/[node]', { cluster, node: node.node })}?from=policy"
 										class="pv-focus rounded-sm font-mono text-primary underline decoration-primary/40 underline-offset-2 hover:decoration-primary"
 										data-testid="node-details-link"
 									>

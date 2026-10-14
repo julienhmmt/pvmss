@@ -118,3 +118,38 @@ describe('TagsPage create dialog', () => {
 		expect(document.querySelector('[role="dialog"]')?.textContent).toContain('name already used');
 	});
 });
+
+describe('TagsPage toolbar', () => {
+	beforeAll(() => setLocale('en', { reload: false }));
+	afterEach(() => {
+		document.body.innerHTML = '';
+	});
+
+	function resetButton(): HTMLButtonElement | undefined {
+		return [...document.querySelectorAll<HTMLButtonElement>('button')].find(
+			(candidate) => candidate.textContent?.trim() === 'Reset filters'
+		);
+	}
+
+	it('shows the result count and hides reset when filters are default', async () => {
+		mount(TagsPage, { target: document.body, props: baseProps() });
+		await tick();
+
+		expect(document.querySelector('[data-testid="tags-count"]')?.textContent?.trim()).toBe('1 tags');
+		expect(resetButton()).toBeUndefined();
+	});
+
+	it('shows the reset button when a filter is active', async () => {
+		mount(TagsPage, { target: document.body, props: baseProps({ search: 'web' }) });
+		await tick();
+
+		expect(resetButton()).toBeDefined();
+	});
+
+	it('shows the reset button when sorting is non-default', async () => {
+		mount(TagsPage, { target: document.body, props: baseProps({ sortBy: 'vmCount' }) });
+		await tick();
+
+		expect(resetButton()).toBeDefined();
+	});
+});

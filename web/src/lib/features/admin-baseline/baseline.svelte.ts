@@ -1,4 +1,5 @@
 import { get, ApiRequestError } from '$lib/shared/api/client';
+import { fetchClusterOptions, type ClusterOption } from '$lib/shared/clusters';
 import { setContext, getContext } from 'svelte';
 import { m } from '$lib/paraglide/messages.js';
 
@@ -23,6 +24,34 @@ export class AdminBaselineStore {
 	state = $state.raw<BaselineState | null>(null);
 	loading = $state.raw(false);
 	error = $state.raw<string | null>(null);
+	clusterOptions = $state.raw<ClusterOption[]>([]);
+	cluster = $state('default');
+
+	/** Resolves the real cluster name (matches admin-catalog's pattern) so
+	 *  requests never send the literal "default" against a deployment whose
+	 *  cluster is named something else. */
+	async loadClusters(): Promise<void> {
+		try {
+			this.clusterOptions = await fetchClusterOptions();
+			const first = this.clusterOptions[0];
+			if (first && (this.clusterOptions.length === 1 || !this.clusterOptions.some((option) => option.name === this.cluster))) {
+				this.cluster = first.name;
+			}
+		} catch (err) {
+			this.error = err instanceof ApiRequestError ? err.message : m['admin.baseline.loadError']();
+		}
+	}
+
+	/** First paint: fetch the cluster list, then the selected cluster's baseline. */
+	async init(): Promise<void> {
+		await this.loadClusters();
+		await this.load(this.cluster);
+	}
+
+	setCluster(value: string): void {
+		this.cluster = value;
+		void this.load(value);
+	}
 
 	async load(cluster: string): Promise<void> {
 		this.loading = true;
