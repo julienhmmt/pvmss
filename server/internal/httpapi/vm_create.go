@@ -42,21 +42,64 @@ func (h *VMCreate) SetInventoryRefreshers(refreshers ClusterRefresherResolver) {
 	h.refreshers = refreshers
 }
 
-// refreshAfterCreate rebuilds clusterName's projection. Every create path
-// has already waited for its Proxmox task, so the VM exists now.
-// Best-effort: a failure only delays visibility to the next cycle.
-func (h *VMCreate) refreshAfterCreate(ctx context.Context, clusterName string) {
+// createRefreshBackoff spaces the projection rebuilds that follow a create
+// task's OK state. Proxmox can list a new VM in /cluster/resources a moment
+// after its task reports OK, so one refresh may still miss it. Var so tests
+// can shorten it.
+var createRefreshBackoff = []time.Duration{0, 2 * time.Second, 4 * time.Second}
+
+// createRefreshSlack covers the refresh attempts after the task wait, on top
+// of vm.MaxCreateTaskWait.
+const createRefreshSlack = 30 * time.Second
+
+// refreshAfterCreate hands the post-create projection rebuild to a background
+// goroutine. The create task is still running when the handler has the UPID,
+// so the rebuild waits for it first. The goroutine is detached from the request
+// and bounded by vm.MaxCreateTaskWait plus createRefreshSlack. Best-effort: a
+// failure only delays visibility to the next automatic cycle.
+func (h *VMCreate) refreshAfterCreate(ctx context.Context, creator cluster.Creator, clusterName, upid string) {
 	if h.refreshers == nil {
 		return
 	}
 
 	refresher, err := h.refreshers.RefresherFor(clusterName)
 	if err != nil {
+		h.log.WarnContext(ctx, "post-create inventory refresh skipped", "component", "httpapi", "cluster", clusterName, "error", err)
+
 		return
 	}
 
-	if _, err := refresher.Refresh(ctx); err != nil {
-		h.log.WarnContext(ctx, "post-create inventory refresh failed", "component", "httpapi", "cluster", clusterName, "error", err)
+	bounded, cancel := context.WithTimeout(context.WithoutCancel(ctx), vm.MaxCreateTaskWait+createRefreshSlack)
+
+	go func() {
+		defer cancel()
+
+		h.awaitCreateThenRefresh(bounded, creator, refresher, clusterName, upid)
+	}()
+}
+
+// awaitCreateThenRefresh waits for upid to finish and then rebuilds the
+// projection on the createRefreshBackoff schedule. A failed task is not
+// refreshed: nothing new exists in the cluster.
+func (h *VMCreate) awaitCreateThenRefresh(ctx context.Context, creator cluster.Creator, refresher vm.IndexRefresher, clusterName, upid string) {
+	if err := vm.WaitCreateTask(ctx, creator, upid); err != nil {
+		h.log.WarnContext(ctx, "create task did not complete; inventory not refreshed", "component", "httpapi", "cluster", clusterName, "upid", upid, "error", err)
+
+		return
+	}
+
+	for _, wait := range createRefreshBackoff {
+		select {
+		case <-ctx.Done():
+			h.log.WarnContext(ctx, "post-create inventory refresh cancelled", "component", "httpapi", "cluster", clusterName, "error", ctx.Err())
+
+			return
+		case <-time.After(wait):
+		}
+
+		if _, err := refresher.Refresh(ctx); err != nil {
+			h.log.WarnContext(ctx, "post-create inventory refresh failed", "component", "httpapi", "cluster", clusterName, "error", err)
+		}
 	}
 }
 
@@ -314,7 +357,7 @@ func (h *VMCreate) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	h.refreshAfterCreate(r.Context(), target.clusterName)
+	h.refreshAfterCreate(r.Context(), target.creator, target.clusterName, result.UPID)
 
 	h.writeCreateJSON(w, http.StatusAccepted, createResultDTO{
 		Cluster:             result.Cluster,
