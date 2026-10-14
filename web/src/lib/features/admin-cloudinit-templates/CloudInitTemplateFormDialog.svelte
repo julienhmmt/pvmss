@@ -1,4 +1,5 @@
 <script lang="ts">
+	import Alert from '$lib/shared/ui/Alert.svelte';
 	import Button from '$lib/shared/ui/Button.svelte';
 	import Dialog from '$lib/shared/ui/Dialog.svelte';
 	import FormField from '$lib/shared/ui/FormField.svelte';
@@ -12,6 +13,8 @@
 		label: string;
 		content: string;
 		saving: boolean;
+		/** Save failure shown inside the dialog so the draft stays in view. */
+		saveError: string | null;
 		onLabelChange: (value: string) => void;
 		onContentChange: (value: string) => void;
 		onCancel: () => void;
@@ -24,6 +27,7 @@
 		label,
 		content,
 		saving,
+		saveError,
 		onLabelChange,
 		onContentChange,
 		onCancel,
@@ -36,6 +40,9 @@
 <Dialog open={showForm} size="lg" labelledBy="cloudinit-template-form-title" onClose={onCancel}>
 	<h2 id="cloudinit-template-form-title" class="mb-4 text-lg font-semibold">{editingId ? m['admin.cloudinit.editTemplate']() : m['admin.cloudinit.newTemplateForm']()}</h2>
 	<form onsubmit={(e) => { e.preventDefault(); onSubmit(); }} class="grid gap-4">
+		{#if saveError}
+			<Alert>{saveError}</Alert>
+		{/if}
 		<FormField label={m['admin.cloudinit.labelField']()} required>
 			{#snippet children({ id, describedBy, invalid })}
 				<TextField

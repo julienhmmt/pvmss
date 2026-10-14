@@ -4,6 +4,7 @@
 	import Alert from '$lib/shared/ui/Alert.svelte';
 	import PageHeader from '$lib/shared/ui/PageHeader.svelte';
 	import Button from '$lib/shared/ui/Button.svelte';
+	import ConfirmDialog from '$lib/shared/ui/ConfirmDialog.svelte';
 	import TableSkeleton from '$lib/shared/ui/TableSkeleton.svelte';
 	import { m } from '$lib/paraglide/messages.js';
 
@@ -14,6 +15,7 @@
 	let { store }: Props = $props();
 	let formOpen = $state(false);
 	let editing = $state<AdminCluster | null>(null);
+	let pendingDelete = $state<AdminCluster | null>(null);
 	let snippetStorages = $state<SnippetStorage[]>([]);
 	let snippetStoragesLoading = $state(false);
 
@@ -72,6 +74,13 @@
 			default:
 				return null;
 		}
+	}
+
+	async function confirmRemove(): Promise<void> {
+		const cluster = pendingDelete;
+		if (cluster === null) return;
+		await store.remove(cluster.name);
+		pendingDelete = null;
 	}
 
 	async function saveCluster(input: ClusterInput): Promise<void> {
@@ -150,7 +159,7 @@
 								<div class="flex flex-wrap gap-2">
 									<Button variant="secondary" size="sm" disabled={store.busy !== null} label={m['admin.clusters.testLabel']({ name: cluster.name })} onclick={() => void store.test(cluster.name)}>{m['admin.clusters.test']()}</Button>
 									<Button variant="secondary" size="sm" disabled={store.busy !== null} label={m['admin.clusters.editLabel']({ name: cluster.name })} onclick={() => void openForm(cluster)}>{m['common.edit']()}</Button>
-									<Button variant="destructive" size="sm" disabled={store.busy !== null} label={m['admin.clusters.removeLabel']({ name: cluster.name })} onclick={() => void store.remove(cluster.name)}>{m['admin.clusters.remove']()}</Button>
+									<Button variant="destructive" size="sm" disabled={store.busy !== null} label={m['admin.clusters.removeLabel']({ name: cluster.name })} onclick={() => (pendingDelete = cluster)}>{m['admin.clusters.remove']()}</Button>
 								</div>
 							</td>
 						</tr>
@@ -160,6 +169,18 @@
 		</div>
 	{/if}
 </section>
+
+<ConfirmDialog
+	open={pendingDelete !== null}
+	title={m['admin.clusters.removeTitle']({ name: pendingDelete?.name ?? '' })}
+	message={m['admin.clusters.removeConfirm']()}
+	confirmLabel={m['admin.clusters.remove']()}
+	cancelLabel={m['common.cancel']()}
+	confirming={store.busy === `remove:${pendingDelete?.name}`}
+	testId="cluster-remove-confirm"
+	onConfirm={() => void confirmRemove()}
+	onClose={() => (pendingDelete = null)}
+/>
 
 <ClusterFormDialog
 	bind:open={formOpen}

@@ -88,7 +88,7 @@ export class AdminTagsStore {
 		}
 	}
 
-	async create(name: string, color: string): Promise<void> {
+	async create(name: string, color: string): Promise<boolean> {
 		this.saving = true;
 		this.saveError = null;
 		try {
@@ -96,9 +96,10 @@ export class AdminTagsStore {
 				cluster: this.cluster, name, color
 			});
 			this.tags = [...this.tags, created];
+			return true;
 		} catch (err) {
 			this.saveError = err instanceof ApiRequestError ? err.message : m['admin.tags.createError']();
-			throw err;
+			return false;
 		} finally {
 			this.saving = false;
 		}
