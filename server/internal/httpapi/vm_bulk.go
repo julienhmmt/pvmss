@@ -173,6 +173,7 @@ func (h *VMBulk) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		Writer:            h.writer,
 		Audit:             h.store,
 		Refresher:         h.refresher,
+		TaskWait:          ActionTaskWait,
 	}, req.Targets, req.Action)
 	h.writeJSONStatus(w, http.StatusOK, bulkActionResponseDTO{Results: results})
 }
