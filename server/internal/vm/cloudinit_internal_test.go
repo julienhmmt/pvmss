@@ -170,3 +170,43 @@ func TestPreflightGuestAgent_KeepsWaitForFreshVM(t *testing.T) {
 		t.Error("fresh VM was pinged in the preflight; the bounded wait owns it")
 	}
 }
+
+// blockingAgentStub never answers the ping: it blocks until the caller's
+// context ends, like a configured but unstarted guest agent pending on Proxmox.
+type blockingAgentStub struct {
+	cluster.Fake
+}
+
+func (blockingAgentStub) PingGuestAgent(ctx context.Context, _ string, _ int) error {
+	<-ctx.Done()
+
+	return ctx.Err()
+}
+
+// TestApplyCloudInitPassword_BoundedBelowWriteTimeout verifies a silent guest
+// agent fails with ErrGuestAgentUnreachable within agentPasswordBudget, not
+// after the full maxAgentPingWait. The server WriteTimeout (10s) would
+// otherwise kill the connection before the 504 is written.
+//
+//nolint:paralleltest // serial: mutates package-level timing vars
+func TestApplyCloudInitPassword_BoundedBelowWriteTimeout(t *testing.T) {
+	withAgentPingTiming(t, time.Millisecond, time.Minute)
+
+	prevBudget := agentPasswordBudget
+	agentPasswordBudget = 50 * time.Millisecond
+	t.Cleanup(func() { agentPasswordBudget = prevBudget })
+
+	entity := Entity{Node: cluster.FakeNode01, VMID: 101}
+
+	start := time.Now()
+	err := applyCloudInitPassword(context.Background(), &blockingAgentStub{}, entity, "debian", "pw")
+	elapsed := time.Since(start)
+
+	if !errors.Is(err, ErrGuestAgentUnreachable) {
+		t.Fatalf("err = %v, want ErrGuestAgentUnreachable", err)
+	}
+
+	if elapsed > 5*time.Second {
+		t.Fatalf("elapsed = %s, want well under the 10s server WriteTimeout (bound not applied)", elapsed)
+	}
+}

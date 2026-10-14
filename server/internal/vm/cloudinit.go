@@ -179,6 +179,12 @@ var (
 	maxAgentPingWait = 30 * time.Second
 )
 
+// agentPasswordBudget caps the whole guest-agent password step (ping plus
+// account retries) inside one synchronous request. It must stay below the
+// server WriteTimeout (10 s, cmd/pvmss/main.go): past that the connection is
+// killed and the 504 never reaches the client.
+var agentPasswordBudget = 7 * time.Second
+
 // preflightGuestAgent refuses a password request that cannot succeed before
 // anything is written: the guest agent must be enabled in the VM config, and
 // the VM must be running (read live, not from the up-to-30s-stale projection -
@@ -226,6 +232,9 @@ const agentBootGrace = 3 * time.Minute
 // operation must succeed inside one synchronous request - hence the bounded,
 // in-request wait instead of ProxMate's persisted-retry subsystem.
 func applyCloudInitPassword(ctx context.Context, writer cluster.Writer, entity Entity, user, password string) error {
+	ctx, cancel := context.WithTimeout(ctx, agentPasswordBudget)
+	defer cancel()
+
 	deadline := time.NewTimer(maxAgentPingWait)
 	defer deadline.Stop()
 
@@ -237,7 +246,7 @@ func applyCloudInitPassword(ctx context.Context, writer cluster.Writer, entity E
 		if !agentReady {
 			if err := writer.PingGuestAgent(ctx, entity.Node, entity.VMID); err != nil {
 				if !waitNextProbe(ctx, deadline.C, ticker.C) {
-					return fmt.Errorf("%w after %s (is qemu-guest-agent installed and running?): %w", ErrGuestAgentUnreachable, maxAgentPingWait, err)
+					return fmt.Errorf("%w: no answer in time (is qemu-guest-agent installed and running?): %w", ErrGuestAgentUnreachable, err)
 				}
 
 				continue
