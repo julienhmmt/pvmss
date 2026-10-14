@@ -161,6 +161,7 @@ func TestVMCloudInit_AddSSHKey(t *testing.T) {
 	})
 
 	t.Run("injects valid key", func(t *testing.T) {
+		startFakeVM101(t)
 		assertSSHKeyInjected(t, handler, path, authHandler)
 	})
 
@@ -174,6 +175,15 @@ func TestVMCloudInit_AddSSHKey(t *testing.T) {
 			t.Fatalf("status = %d, want 502", recorder.Code)
 		}
 	})
+}
+
+// startFakeVM101 starts VM 101; the fake creates it stopped.
+func startFakeVM101(t *testing.T) {
+	t.Helper()
+
+	if err := (cluster.Fake{}).Action(context.Background(), cluster.FakeNode01, 101, "start"); err != nil {
+		t.Fatalf("start VM 101: %v", err)
+	}
 }
 
 func assertSSHKeyInjected(t *testing.T, handler http.Handler, path string, authHandler *httpapi.Auth) {
@@ -316,4 +326,29 @@ func TestVMCloudInit_DocumentSwitch_Refusals(t *testing.T) {
 	}
 
 	assertAPIError(t, recorder.Body.Bytes(), "cloudinit_not_published")
+}
+
+// TestVMCloudInit_AddSSHKey_StoppedVM - injecting a key into a stopped guest is
+// refused with 409 vm_not_running before any agent call is made. The fake
+// starts VM 101 stopped.
+//
+//nolint:paralleltest // serial: shared fake VM and SQLite fixtures
+func TestVMCloudInit_AddSSHKey_StoppedVM(t *testing.T) {
+	handler, authHandler, _ := newVMCloudInitHandler(t)
+	path := "/api/v1/vms/default/101/cloudinit/ssh-keys"
+
+	recorder := httptest.NewRecorder()
+	handler.ServeHTTP(recorder, cloudInitRequest(http.MethodPost, path, `{"user":"claude","key":"ssh-ed25519 AAAA x"}`, aliceCookie(t, authHandler)))
+
+	if recorder.Code != http.StatusConflict {
+		t.Fatalf("status = %d, want 409; body = %s", recorder.Code, recorder.Body.String())
+	}
+
+	assertAPIError(t, recorder.Body.Bytes(), "vm_not_running")
+
+	for _, c := range cluster.FakeCallsFor(101) {
+		if c.Action == "add_ssh_key" {
+			t.Fatalf("agent called on a stopped VM: %+v", c)
+		}
+	}
 }
