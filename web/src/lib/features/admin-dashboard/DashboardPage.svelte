@@ -38,7 +38,7 @@
 	}
 
 	function goToNodeDetails(node: NodeSummary): void {
-		void goto(resolve('/admin/nodes/[cluster]/[node]', { cluster: node.clusterKey, node: node.name }));
+		void goto(`${resolve('/admin/nodes/[cluster]/[node]', { cluster: node.clusterKey, node: node.name })}?from=dashboard`);
 	}
 
 	function goToCreateUser(): void {

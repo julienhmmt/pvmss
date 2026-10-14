@@ -106,6 +106,10 @@
 		}
 		editingTag = null;
 	}
+
+	const filtersActive = $derived(
+		search !== '' || protectedFilter !== 'all' || sortBy !== 'name' || sortDir !== 'asc'
+	);
 </script>
 
 <svelte:head>
@@ -149,13 +153,18 @@
 					]}
 					class="w-full sm:w-44"
 				/>
-				<Button
-					variant="secondary"
-					size="sm"
-					onclick={onResetFilters}
-				>
-					{m['admin.tags.resetFilters']()}
-				</Button>
+				<span class="ml-auto text-sm text-muted-foreground" data-testid="tags-count">
+					{m['admin.tags.resultCount']({ count: filteredTags.length })}
+				</span>
+				{#if filtersActive}
+					<Button
+						variant="secondary"
+						size="sm"
+						onclick={onResetFilters}
+					>
+						{m['admin.tags.resetFilters']()}
+					</Button>
+				{/if}
 			{/snippet}
 			<table class="pv-table pv-responsive-table">
 				<caption class="sr-only">{m['admin.tags.title']()}</caption>

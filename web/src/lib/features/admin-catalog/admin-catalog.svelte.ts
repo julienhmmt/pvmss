@@ -190,6 +190,7 @@ export class AdminCatalogStore {
 	templateSearch = $state('');
 	templateStorageFilter = $state('');
 	templateNodeFilter = $state('');
+	templateEnabledFilter: 'all' | 'enabled' | 'disabled' = $state('all');
 	templateSortBy: TemplateSortColumn = $state('vmid');
 	templateSortDir: 'asc' | 'desc' = $state('asc');
 
@@ -329,6 +330,8 @@ export class AdminCatalogStore {
 				if (search && !tmpl.name.toLowerCase().includes(search) && String(tmpl.vmid) !== search) return false;
 				if (this.templateStorageFilter && tmpl.diskStorage !== this.templateStorageFilter) return false;
 				if (this.templateNodeFilter && tmpl.node !== this.templateNodeFilter) return false;
+				if (this.templateEnabledFilter === 'enabled' && !tmpl.enabled) return false;
+				if (this.templateEnabledFilter === 'disabled' && tmpl.enabled) return false;
 				return true;
 			}),
 			this.templateSortBy,
@@ -443,6 +446,7 @@ export class AdminCatalogStore {
 		this.templateSearch = '';
 		this.templateStorageFilter = '';
 		this.templateNodeFilter = '';
+		this.templateEnabledFilter = 'all';
 		this.templateSortBy = 'vmid';
 		this.templateSortDir = 'asc';
 	}
