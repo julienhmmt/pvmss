@@ -184,8 +184,8 @@ func (h *VMCreate) writeCreateFailure(w http.ResponseWriter, err error) {
 }
 
 // createErrorMapping pairs a sentinel error with its HTTP status, error code,
-// and message. A nil message means "use err.Error()" (the sentinel carries a
-// dynamic detail string).
+// and message. An empty message means safeClientMessage(err): the error's own
+// text, except that transport failures never reach the client.
 type createErrorMapping struct {
 	err     error
 	status  int
@@ -227,7 +227,7 @@ func mapCreateError(err error) (int, string, string, bool) {
 		if errors.Is(err, m.err) {
 			msg := m.message
 			if msg == "" {
-				msg = err.Error()
+				msg = safeClientMessage(err, msgClusterUnavailable)
 			}
 
 			return m.status, m.code, msg, true
