@@ -387,7 +387,7 @@ func attachTemplateToVM(ctx context.Context, deps CloudInitDocumentDeps, entity 
 		return wrapJoin(ErrSnippetPushFailed, err)
 	}
 
-	return deps.Store.PutVMCloudInitDocument(ctx, deps.ClusterName, deps.VMID, templateID, filename, deps.Actor.Username)
+	return deps.Store.PutVMCloudInitDocument(ctx, deps.ClusterName, deps.VMID, catalog.DocumentKey(templateID), filename, deps.Actor.Username)
 }
 
 // dropLegacySnippet forgets the VM's legacy per-VM file row once the VM no
