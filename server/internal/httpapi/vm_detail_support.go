@@ -208,10 +208,11 @@ func (h *VMDetail) handleAudit(w http.ResponseWriter, r *http.Request) {
 	}
 
 	filter := store.AuditFilter{
-		Cluster:  clusterName,
-		VMID:     &vmid,
-		Page:     page,
-		PageSize: 20,
+		Cluster:            clusterName,
+		VMID:               &vmid,
+		CurrentIncarnation: true,
+		Page:               page,
+		PageSize:           20,
 	}
 	if actor := r.URL.Query().Get("actor"); actor != "" {
 		filter.Actor = actor

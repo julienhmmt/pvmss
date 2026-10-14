@@ -233,16 +233,19 @@ func (s *Store) QueryAudit(ctx context.Context) ([]AuditEntry, error) {
 // nil pointer) means "no filter on this field." Page is 1-based; PageSize
 // is capped by the caller (the HTTP handler enforces the configured maximum).
 type AuditFilter struct {
-	Cluster    string
-	VMID       *int
-	Actor      string
-	Action     string
-	TargetType string
-	TargetID   string
-	From, To   *time.Time
-	Severity   *string
-	Page       int
-	PageSize   int
+	Cluster string
+	VMID    *int
+	// CurrentIncarnation limits VMID-scoped results to the rows of the VM
+	// that currently owns cluster+vmid (see buildAuditWhere).
+	CurrentIncarnation bool
+	Actor              string
+	Action             string
+	TargetType         string
+	TargetID           string
+	From, To           *time.Time
+	Severity           *string
+	Page               int
+	PageSize           int
 }
 
 // AuditPage is the paginated envelope returned by ListAuditLog, matching
@@ -344,6 +347,20 @@ func buildAuditWhere(f AuditFilter) (string, []any) {
 	if f.VMID != nil {
 		clauses = append(clauses, "vmid = ?")
 		args = append(args, *f.VMID)
+
+		if f.CurrentIncarnation && f.Cluster != "" {
+			// Proxmox reuses VMIDs: keep only rows at or after the latest
+			// vm_create and strictly after the latest delete of this
+			// cluster+vmid. Compared by id (AUTOINCREMENT insertion order),
+			// not timestamp: RFC3339Nano trims fractional seconds, so the
+			// strings do not sort chronologically.
+			clauses = append(clauses,
+				"id >= COALESCE((SELECT MAX(id) FROM audit_log WHERE cluster = ? AND vmid = ? AND action = 'vm_create'), 0)",
+				"id > COALESCE((SELECT MAX(id) FROM audit_log WHERE cluster = ? AND vmid = ? AND action = 'delete'), 0)")
+			for range 2 {
+				args = append(args, f.Cluster, *f.VMID)
+			}
+		}
 	}
 
 	if f.Actor != "" {
