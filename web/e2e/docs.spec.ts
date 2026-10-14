@@ -39,7 +39,7 @@ test.describe('T53 documentation browser', () => {
 		await expect(page.getByText('Chargement…')).toHaveCount(0, { timeout: 10_000 });
 
 		// Switch to English and open a user-facing page.
-		await page.selectOption('select', 'en');
+		await page.getByRole('button', { name: 'English' }).click();
 		const article = page.getByTestId('help-article').filter({ has: page.getByText('User guide', { exact: true }) });
 		await article.locator('summary').click();
 		await article.getByTestId('help-open-page').click();
@@ -54,12 +54,12 @@ test.describe('T53 documentation browser', () => {
 		await expect(page.getByText('Chargement…')).toHaveCount(0, { timeout: 10_000 });
 
 		// Selecting English shows only the English user-facing pages.
-		await page.selectOption('select', 'en');
+		await page.getByRole('button', { name: 'English' }).click();
 		await expect(page.getByTestId('help-article').filter({ hasText: /Getting started|User guide|VM creation guidelines/ })).toHaveCount(3);
 		await expect(page.getByText("Guide de l'utilisateur")).toHaveCount(0);
 
 		// Switching to French shows only the French variants.
-		await page.selectOption('select', 'fr');
+		await page.getByRole('button', { name: 'Français' }).click();
 		await expect(page.getByText("Guide de l'utilisateur")).toBeVisible();
 		await expect(page.getByText('Getting started')).toHaveCount(0);
 	});
