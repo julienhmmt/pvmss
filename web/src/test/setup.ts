@@ -1,4 +1,4 @@
-import { expect } from 'vitest';
+import { afterEach, expect } from 'vitest';
 
 // Unit tests must never hit the network: an unstubbed global fetch resolves
 // relative URLs against happy-dom's http://localhost:3000 and fails later
@@ -58,3 +58,19 @@ if (globalThis.localStorage === undefined) {
 		globalThis.localStorage = createMemoryStorage();
 	}
 }
+
+if (globalThis.sessionStorage === undefined) {
+	try {
+		Object.defineProperty(globalThis, 'sessionStorage', {
+			value: createMemoryStorage(),
+			writable: true,
+			configurable: true
+		});
+	} catch {
+		globalThis.sessionStorage = createMemoryStorage();
+	}
+}
+
+afterEach(() => {
+	globalThis.sessionStorage?.clear();
+});

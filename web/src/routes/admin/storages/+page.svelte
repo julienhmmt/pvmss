@@ -6,6 +6,7 @@
 	import CatalogToolbar from '$lib/features/admin-catalog/CatalogToolbar.svelte';
 	import StoragesTable from '$lib/features/admin-catalog/StoragesTable.svelte';
 	import ClusterSelector from '$lib/shared/ui/ClusterSelector.svelte';
+	import { saveAdminCluster } from '$lib/shared/clusters';
 	import PageHeader from '$lib/shared/ui/PageHeader.svelte';
 	import TableCard from '$lib/shared/ui/TableCard.svelte';
 	import { getToastContext } from '$lib/shared/ui/toast.svelte';
@@ -19,7 +20,10 @@
 		// assigning them before loadAll keeps the first (and only) fetch.
 		const clusterHint = page.url.searchParams.get('cluster');
 		const searchHint = page.url.searchParams.get('search');
-		if (clusterHint) store.cluster = clusterHint;
+		if (clusterHint) {
+			saveAdminCluster(clusterHint);
+			store.cluster = clusterHint;
+		}
 		if (searchHint) store.storageSearch = searchHint;
 		void store.loadAll();
 	});
