@@ -406,9 +406,7 @@ func hydrateVM(ctx context.Context, rest proxmoxRESTClient, vm *VM) error {
 	vm.Agent = agentEnabled(cfg.str("agent"))
 	vm.OSType = cfg.str("ostype")
 
-	if len(vm.Tags) == 0 {
-		vm.Tags = splitProxmoxTags(cfg.str("tags"))
-	}
+	applyConfigSummary(vm, cfg)
 
 	if vm.Status != VMRunning {
 		return nil
@@ -422,6 +420,30 @@ func hydrateVM(ctx context.Context, rest proxmoxRESTClient, vm *VM) error {
 	vm.Uptime = uptime
 
 	return nil
+}
+
+// bytesPerMiBConfig converts the MiB unit of the config "memory" key to bytes.
+const bytesPerMiBConfig int64 = 1024 * 1024
+
+// applyConfigSummary makes the VM config authoritative for the fields a write
+// changes. /cluster/resources (the summary used to build the VM) lags a config
+// write by seconds, so name, vCPU count, memory and tags must come from the
+// config read in the same snapshot. Name and memory keep the summary value
+// when the config omits them (Proxmox leaves unset keys out of the config).
+// ponytail: tags always follow the config, since Proxmox omits the key when
+// no tag is set; a real empty result must not fall back to a stale summary.
+func applyConfigSummary(vm *VM, cfg proxmoxVMConfig) {
+	if name := cfg.str("name"); name != "" {
+		vm.Name = name
+	}
+
+	vm.CPUCores = vm.Sockets * vm.Cores
+
+	if mb := cfg.int("memory"); mb > 0 {
+		vm.MemoryTotal = int64(mb) * bytesPerMiBConfig
+	}
+
+	vm.Tags = splitProxmoxTags(cfg.str("tags"))
 }
 
 func fetchUptime(ctx context.Context, rest proxmoxRESTClient, node string, vmid int) (time.Duration, error) {
