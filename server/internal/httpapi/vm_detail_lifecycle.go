@@ -258,7 +258,7 @@ func (h *VMDetail) handlePatch(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	h.writeEntity(w, r, withPatch(entity, req))
+	h.writeEntity(w, r, entity)
 }
 
 // patchVM applies a PATCH: name and a non-empty description through

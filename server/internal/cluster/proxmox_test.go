@@ -87,7 +87,7 @@ func TestProxmox_Snapshot(t *testing.T) {
 		mux.HandleFunc("GET /api2/json/nodes/pve1/qemu/101/config", func(w http.ResponseWriter, _ *http.Request) {
 			writeJSONFixture(t, w, `{"data":{
 				"sockets":1,"cores":2,"scsi0":"local-lvm:vm-101-disk-0,size=32G",
-				"net0":"virtio=AA:BB:CC:DD:EE:01,bridge=vmbr0","description":"demo box"
+				"net0":"virtio=AA:BB:CC:DD:EE:01,bridge=vmbr0","description":"demo box","tags":"pvmss;prod"
 			}}`)
 		})
 		mux.HandleFunc("GET /api2/json/nodes/pve1/qemu/101/status/current", func(w http.ResponseWriter, _ *http.Request) {
