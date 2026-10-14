@@ -731,6 +731,7 @@ func TestPruneAuditLog_DoesNotBlockConcurrentQuery(t *testing.T) {
 func TestListAuditLog_CurrentIncarnation_ExcludesPreviousVMIDOwner(t *testing.T) {
 	st := newAuditStore(t)
 	ctx := context.Background()
+
 	const vmid = 999103
 
 	for _, step := range []struct{ actor, action string }{
@@ -746,7 +747,7 @@ func TestListAuditLog_CurrentIncarnation_ExcludesPreviousVMIDOwner(t *testing.T)
 	}
 
 	page, err := st.ListAuditLog(ctx, store.AuditFilter{
-		Cluster: testStoreCluster, VMID: ptrInt(vmid), CurrentIncarnation: true, Page: 1, PageSize: 20,
+		Cluster: testStoreCluster, VMID: new(vmid), CurrentIncarnation: true, Page: 1, PageSize: 20,
 	})
 	if err != nil {
 		t.Fatalf("ListAuditLog: %v", err)
@@ -762,7 +763,7 @@ func TestListAuditLog_CurrentIncarnation_ExcludesPreviousVMIDOwner(t *testing.T)
 		}
 	}
 
-	all, err := st.ListAuditLog(ctx, store.AuditFilter{Cluster: testStoreCluster, VMID: ptrInt(vmid), Page: 1, PageSize: 20})
+	all, err := st.ListAuditLog(ctx, store.AuditFilter{Cluster: testStoreCluster, VMID: new(vmid), Page: 1, PageSize: 20})
 	if err != nil {
 		t.Fatalf("ListAuditLog unscoped: %v", err)
 	}
@@ -779,6 +780,7 @@ func TestListAuditLog_CurrentIncarnation_ExcludesPreviousVMIDOwner(t *testing.T)
 func TestListAuditLog_CurrentIncarnation_ExternalCreateAfterDelete(t *testing.T) {
 	st := newAuditStore(t)
 	ctx := context.Background()
+
 	const vmid = 999104
 
 	for _, step := range []struct{ actor, action string }{
@@ -792,7 +794,7 @@ func TestListAuditLog_CurrentIncarnation_ExternalCreateAfterDelete(t *testing.T)
 	}
 
 	page, err := st.ListAuditLog(ctx, store.AuditFilter{
-		Cluster: testStoreCluster, VMID: ptrInt(vmid), CurrentIncarnation: true, Page: 1, PageSize: 20,
+		Cluster: testStoreCluster, VMID: new(vmid), CurrentIncarnation: true, Page: 1, PageSize: 20,
 	})
 	if err != nil {
 		t.Fatalf("ListAuditLog: %v", err)
@@ -802,5 +804,3 @@ func TestListAuditLog_CurrentIncarnation_ExternalCreateAfterDelete(t *testing.T)
 		t.Fatalf("got total=%d items=%+v, want only the post-delete start row", page.Total, page.Items)
 	}
 }
-
-func ptrInt(v int) *int { return &v }

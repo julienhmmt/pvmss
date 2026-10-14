@@ -140,6 +140,7 @@ func TestUpdateNetwork_PreservesServerOwnedNICOptions(t *testing.T) {
 	}
 
 	index := diskTestIndex(t, 101, cluster.VMRunning)
+
 	entity, err := vm.Resolve(index, aliceIdentity(), testClusterName, 101)
 	if err != nil {
 		t.Fatalf("Resolve: %v", err)
@@ -149,6 +150,7 @@ func TestUpdateNetwork_PreservesServerOwnedNICOptions(t *testing.T) {
 	deps := networkDependencies(index, aliceIdentity(), 101)
 
 	rate := 50
+
 	result, err := vm.UpdateNetwork(context.Background(), deps, []cluster.NetworkInterface{{
 		Index: 0, Bridge: testBridgeVMbr1, Model: testModelVirtio, RateMbps: &rate,
 	}})

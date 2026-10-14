@@ -3,9 +3,8 @@ package httpapi_test
 import (
 	"net/http"
 	"net/http/httptest"
-	"testing"
-
 	"pvmss/server/internal/cluster"
+	"testing"
 )
 
 // TestVMDetail_MutationsKeepProjectionConsistent - a rename, then a hardware
@@ -26,6 +25,7 @@ func TestVMDetail_MutationsKeepProjectionConsistent(t *testing.T) {
 
 	hw := httptest.NewRecorder()
 	handler.ServeHTTP(hw, detailRequest(http.MethodPut, "/api/v1/vms/default/101/hardware", `{"cores":2,"memoryMB":1536}`, cookie))
+
 	if hw.Code != http.StatusOK {
 		t.Fatalf("hardware status = %d; body=%s", hw.Code, hw.Body.String())
 	}

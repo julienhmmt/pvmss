@@ -343,6 +343,8 @@ func TestAdminClusters_UpdateRejectsNameAnd404sOnRemoved(t *testing.T) {
 
 // TestAdminClusters_UpdateSetsDisplayName covers the editable display label:
 // the PUT persists displayName and the response reflects it.
+//
+//nolint:paralleltest // serial: shared fake cluster dataset
 func TestAdminClusters_UpdateSetsDisplayName(t *testing.T) {
 	fixture := newAdminClusterFixture(t)
 	cookie := adminClusterCookie(t, fixture.auth)
