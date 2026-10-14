@@ -50,6 +50,14 @@
 		await store.updateNetwork(interfaces);
 		if (!store.writeError) close();
 	}
+	const bridgeOptions = $derived(
+		(store.hardwareOptions?.bridges ?? [])
+			.filter((option) => option.node === store.entity?.node)
+			.map((option) => ({
+				value: option.bridge,
+				label: option.bridge
+			}))
+	);
 </script>
 
 <Dialog bind:open labelledBy="edit-nic-title" onClose={close}>
@@ -69,10 +77,7 @@
 					{invalid}
 					bind:value={bridge}
 					placeholder={m['vms.network.selectBridge']()}
-					options={(store.hardwareOptions?.bridges ?? []).map((option) => ({
-						value: option.bridge,
-						label: `${option.bridge} · ${option.node}`
-					}))}
+					options={bridgeOptions}
 					required
 					data-testid="edit-nic-bridge"
 				/>

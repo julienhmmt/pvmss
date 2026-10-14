@@ -17,6 +17,18 @@
 
 	let sizeGB = $state('');
 
+	const minSizeGB = $derived((disk?.sizeGB ?? 0) + 1);
+	const maxDiskGB = $derived.by(() => {
+		const configured = store.hardwareOptions?.limits.maxDiskPerVMGB;
+		return configured !== undefined && configured > 0 ? configured : 2048;
+	});
+	const sizeNum = $derived(Number(sizeGB));
+	const sizeError = $derived(
+		sizeGB === '' || (Number.isInteger(sizeNum) && sizeNum >= minSizeGB && sizeNum <= maxDiskGB)
+			? null
+			: m['vms.create.diskOutOfRange']({ min: minSizeGB, max: maxDiskGB })
+	);
+
 	$effect(() => {
 		if (disk) sizeGB = String(disk.sizeGB + 1);
 	});
@@ -26,10 +38,8 @@
 	}
 
 	async function submit(): Promise<void> {
-		if (!disk) return;
-		const size = Number(sizeGB);
-		if (!Number.isInteger(size) || size <= disk.sizeGB) return;
-		if (await store.resizeDisk(disk.key, size)) close();
+		if (!disk || sizeError !== null || !Number.isInteger(sizeNum) || sizeNum <= disk.sizeGB) return;
+		if (await store.resizeDisk(disk.key, sizeNum)) close();
 	}
 </script>
 
@@ -42,14 +52,20 @@
 			void submit();
 		}}
 	>
-		<FormField label={m['vms.disks.resizeNewSize']()} required error={store.diskError}>
+		<FormField
+			label={m['vms.disks.resizeNewSize']()}
+			hint={m['vms.create.diskLimitHint']({ min: minSizeGB, max: maxDiskGB })}
+			required
+			error={sizeError ?? store.diskError}
+		>
 			{#snippet children({ id, describedBy, invalid })}
 				<TextField
 					{id}
 					{describedBy}
 					{invalid}
 					type="number"
-					min={(disk?.sizeGB ?? 0) + 1}
+					min={minSizeGB}
+					max={maxDiskGB}
 					value={sizeGB}
 					oninput={(e: Event & { currentTarget: HTMLInputElement }) => (sizeGB = e.currentTarget.value)}
 					required

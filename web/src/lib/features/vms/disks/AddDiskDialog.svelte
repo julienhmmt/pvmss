@@ -19,14 +19,41 @@
 	let storage = $state('');
 	let sizeGB = $state('10');
 
+	const maxDiskGB = $derived.by(() => {
+		const configured = store.hardwareOptions?.limits.maxDiskPerVMGB;
+		return configured !== undefined && configured > 0 ? configured : 2048;
+	});
+
+	const sizeNum = $derived(Number(sizeGB));
+	const sizeError = $derived(
+		Number.isInteger(sizeNum) && sizeNum >= 1 && sizeNum <= maxDiskGB
+			? null
+			: m['vms.create.diskOutOfRange']({ min: 1, max: maxDiskGB })
+	);
+
+	const busOptions = $derived.by(() => {
+		const slots = store.hardwareOptions?.limits.remainingBusSlots;
+		return (
+			[
+				{ value: 'scsi', label: 'SCSI' },
+				{ value: 'virtio', label: 'VirtIO' },
+				{ value: 'sata', label: 'SATA' },
+				{ value: 'ide', label: 'IDE' }
+			] as const
+		).map((option) => ({
+			value: option.value,
+			label: option.label,
+			disabled: slots !== undefined && slots[option.value] !== undefined && slots[option.value]! <= 0
+		}));
+	});
+
 	function close(): void {
 		open = false;
 	}
 
 	async function submit(): Promise<void> {
-		const size = Number(sizeGB);
-		if (!storage || !Number.isInteger(size) || size < 1) return;
-		if (await store.addDisk(bus, storage, size)) close();
+		if (!storage || sizeError !== null) return;
+		if (await store.addDisk(bus, storage, sizeNum)) close();
 	}
 
 	// Only the VM's own node's storages: the request carries the storage name
@@ -57,12 +84,7 @@
 					{invalid}
 					value={bus}
 					onchange={(e: Event & { currentTarget: HTMLSelectElement }) => (bus = e.currentTarget.value as typeof bus)}
-					options={[
-						{ value: 'scsi', label: 'SCSI' },
-						{ value: 'virtio', label: 'VirtIO' },
-						{ value: 'sata', label: 'SATA' },
-						{ value: 'ide', label: 'IDE' }
-					]}
+					options={busOptions}
 					required
 				/>
 			{/snippet}
@@ -81,7 +103,12 @@
 				/>
 			{/snippet}
 		</FormField>
-		<FormField label={m['vms.disks.addSize']()} required>
+		<FormField
+			label={m['vms.disks.addSize']()}
+			hint={m['vms.create.diskLimitHint']({ min: 1, max: maxDiskGB })}
+			error={sizeError}
+			required
+		>
 			{#snippet children({ id, describedBy, invalid })}
 				<TextField
 					{id}
@@ -89,6 +116,7 @@
 					{invalid}
 					type="number"
 					min={1}
+					max={maxDiskGB}
 					value={sizeGB}
 					oninput={(e: Event & { currentTarget: HTMLInputElement }) => (sizeGB = e.currentTarget.value)}
 					required
