@@ -102,7 +102,7 @@
 	<title>{m['admin.tags.pageTitle']()}</title>
 </svelte:head>
 
-<PageHeader title={m['admin.tags.title']()}>
+<PageHeader title={m['admin.tags.title']()} eyebrow={m['chrome.adminNav.provisioning']()}>
 	{#snippet actions()}
 		<ClusterSelector options={clusterOptions} value={cluster} onChange={onClusterChange} id="tags-cluster" />
 		<Button onclick={openCreate}>{m['admin.tags.newTag']()}</Button>

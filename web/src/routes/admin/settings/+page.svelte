@@ -28,7 +28,7 @@
 	<title>{m['admin.settings.title']()}</title>
 </svelte:head>
 
-<PageHeader title={m['admin.settings.heading']()} />
+<PageHeader title={m['admin.settings.heading']()} eyebrow={m['chrome.adminNav.system']()} />
 
 <section class="space-y-8">
 	<AuditLogPanel />

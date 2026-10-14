@@ -106,7 +106,7 @@
 
 <svelte:head><title>{m['policy.nodeTitle']()} - PVMSS</title></svelte:head>
 
-<PageHeader title={m['policy.nodeTitle']()} description={m['policy.nodeDescription']()} titleId="node-policy-title">
+<PageHeader title={m['policy.nodeTitle']()} eyebrow={m['chrome.adminNav.policy']()} description={m['policy.nodeDescription']()} titleId="node-policy-title">
 	{#snippet actions()}
 		<div class="flex items-center gap-4">
 			<ClusterSelector options={clusterOptions} value={cluster} onChange={onClusterChange} id="policy-nodes-cluster" />
