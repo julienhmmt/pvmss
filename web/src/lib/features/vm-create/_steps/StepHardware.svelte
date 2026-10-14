@@ -6,6 +6,12 @@
 	import TextField from '$lib/shared/ui/TextField.svelte';
 	import ProfilePicker from '../ProfilePicker.svelte';
 
+	interface Props {
+		showErrors?: boolean;
+	}
+
+	let { showErrors = false }: Props = $props();
+
 	// Hardware step: vCPU and memory. Client-side bounds are a convenience
 	// only - the server re-checks against the same ceiling (constitution VI).
 	const form = getVmCreateContext();
@@ -20,7 +26,7 @@
 	}
 
 	const profileError = $derived(
-		showProfilePicker
+		showProfilePicker && showErrors
 			? form.profileId !== '' && form.catalog?.profiles.some((profile) => profile.id === form.profileId)
 				? null
 				: m['vms.create.errorProfileRequired']()
