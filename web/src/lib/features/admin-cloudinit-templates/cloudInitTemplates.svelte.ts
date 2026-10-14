@@ -81,7 +81,7 @@ export class AdminCloudInitTemplatesStore {
 		}
 	}
 
-	async create(label: string, content: string): Promise<void> {
+	async create(label: string, content: string): Promise<boolean> {
 		this.saving = true;
 		this.saveError = null;
 		try {
@@ -91,15 +91,16 @@ export class AdminCloudInitTemplatesStore {
 				content
 			});
 			this.templates = [...this.templates, created];
+			return true;
 		} catch (err) {
 			this.saveError = saveErrorMessage(err, m['admin.cloudinit.createError']());
-			throw err;
+			return false;
 		} finally {
 			this.saving = false;
 		}
 	}
 
-	async update(id: string, label: string, content: string): Promise<void> {
+	async update(id: string, label: string, content: string): Promise<boolean> {
 		this.saving = true;
 		this.saveError = null;
 		try {
@@ -108,9 +109,10 @@ export class AdminCloudInitTemplatesStore {
 				{ cluster: this.cluster, label, content }
 			);
 			this.templates = this.templates.map((t) => (t.id === id ? updated : t));
+			return true;
 		} catch (err) {
 			this.saveError = saveErrorMessage(err, m['admin.cloudinit.updateError']());
-			throw err;
+			return false;
 		} finally {
 			this.saving = false;
 		}

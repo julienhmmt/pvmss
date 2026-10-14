@@ -20,8 +20,9 @@
 	clusterOptions={store.clusterOptions}
 	cluster={store.cluster}
 	onClusterChange={(v) => store.setCluster(v)}
-	onCreate={(label, content) => void store.create(label, content)}
-	onUpdate={(id, label, content) => void store.update(id, label, content)}
+	onCreate={(label, content) => store.create(label, content)}
+	onUpdate={(id, label, content) => store.update(id, label, content)}
 	onDelete={(id) => void store.remove(id)}
 	onToggle={(id, enabled) => void store.toggle(id, enabled)}
+	onClearSaveError={() => (store.saveError = null)}
 />

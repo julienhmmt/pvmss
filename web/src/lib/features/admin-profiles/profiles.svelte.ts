@@ -101,7 +101,7 @@ export class AdminProfilesStore {
 		}
 	}
 
-	async create(label: string, cpuCores: number, memoryMB: number, diskGB: number, bus: string, sockets = 1): Promise<void> {
+	async create(label: string, cpuCores: number, memoryMB: number, diskGB: number, bus: string, sockets = 1): Promise<boolean> {
 		this.saving = true;
 		this.saveError = null;
 		try {
@@ -109,15 +109,16 @@ export class AdminProfilesStore {
 				cluster: this.cluster, label, sockets, cpuCores, memoryMB, diskGB, bus
 			});
 			this.profiles = [...this.profiles, created];
+			return true;
 		} catch (err) {
 			this.saveError = err instanceof ApiRequestError ? err.message : m['admin.profiles.createError']();
-			throw err;
+			return false;
 		} finally {
 			this.saving = false;
 		}
 	}
 
-	async update(id: string, label: string, cpuCores: number, memoryMB: number, diskGB: number, bus: string, sockets = 1): Promise<void> {
+	async update(id: string, label: string, cpuCores: number, memoryMB: number, diskGB: number, bus: string, sockets = 1): Promise<boolean> {
 		this.saving = true;
 		this.saveError = null;
 		try {
@@ -125,9 +126,10 @@ export class AdminProfilesStore {
 				cluster: this.cluster, label, sockets, cpuCores, memoryMB, diskGB, bus
 			});
 			this.profiles = this.profiles.map((p) => (p.id === id ? updated : p));
+			return true;
 		} catch (err) {
 			this.saveError = err instanceof ApiRequestError ? err.message : m['admin.profiles.updateError']();
-			throw err;
+			return false;
 		} finally {
 			this.saving = false;
 		}
