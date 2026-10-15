@@ -9,13 +9,17 @@ import (
 	"strings"
 )
 
+// proxmoxPoolsPath is the /pools collection endpoint, shared by the pool
+// list, create and comment-update calls below (delete appends the pool id).
+const proxmoxPoolsPath = "/pools"
+
 // ListPools implements Client.
 func (p Proxmox) ListPools(ctx context.Context) ([]Pool, error) {
 	return proxmoxListPools(ctx, p.rest())
 }
 
 func proxmoxListPools(ctx context.Context, rest proxmoxRESTClient) ([]Pool, error) {
-	raw, err := rest.do(ctx, http.MethodGet, "/pools", nil)
+	raw, err := rest.do(ctx, http.MethodGet, proxmoxPoolsPath, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -127,7 +131,7 @@ func (p Proxmox) CreatePool(ctx context.Context, poolID, comment string) error {
 		form.Set("comment", comment)
 	}
 
-	_, err = rest.do(ctx, http.MethodPost, "/pools", form)
+	_, err = rest.do(ctx, http.MethodPost, proxmoxPoolsPath, form)
 
 	return err
 }
@@ -160,7 +164,7 @@ func (p Proxmox) UpdatePoolComment(ctx context.Context, poolID, comment string) 
 		return ErrNotFound
 	}
 
-	_, err = rest.do(ctx, http.MethodPut, "/pools", url.Values{"poolid": {poolID}, "comment": {comment}})
+	_, err = rest.do(ctx, http.MethodPut, proxmoxPoolsPath, url.Values{"poolid": {poolID}, "comment": {comment}})
 
 	return err
 }
