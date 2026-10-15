@@ -2121,7 +2121,6 @@
   "account.title": "Votre compte - PVMSS",
   "account.eyebrow": "Vos préférences",
   "account.heading": "Votre compte",
-  "account.description": "Un espace de travail agréable à utiliser.",
   "account.personal": "Compte personnel",
   "account.signedInOn": "Connecté à {cluster}",
   "account.appearanceTitle": "Apparence",

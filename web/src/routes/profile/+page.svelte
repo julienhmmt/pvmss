@@ -39,7 +39,6 @@
 	<PageHeader
 		eyebrow={m['account.eyebrow']()}
 		title={m['account.heading']()}
-		description={m['account.description']()}
 		focusTarget
 		divider={false}
 	/>
