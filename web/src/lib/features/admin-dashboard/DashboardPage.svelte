@@ -10,7 +10,7 @@
 	import Card from '$lib/shared/ui/Card.svelte';
 	import Skeleton from '$lib/shared/ui/Skeleton.svelte';
 	import EmptyState from '$lib/shared/ui/EmptyState.svelte';
-	import { formatBytes } from '$lib/shared/format-bytes';
+	import { formatBytes, usagePercent } from '$lib/shared/format-bytes';
 	import { m } from '$lib/paraglide/messages.js';
 	import { post } from '$lib/shared/api/client';
 
@@ -24,11 +24,6 @@
 			// current state either way.
 		}
 		await store.load();
-	}
-
-	function usagePercent(used: number, total: number): number {
-		if (total <= 0) return 0;
-		return Math.min(100, Math.round((used / total) * 100));
 	}
 
 	const TONE_BG = { success: 'bg-success', warning: 'bg-warning', destructive: 'bg-destructive' } as const;
