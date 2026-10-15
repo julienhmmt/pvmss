@@ -90,3 +90,14 @@ func (s *Store) DeleteSession(ctx context.Context, hash []byte) error {
 
 	return nil
 }
+
+// DeleteOtherSessions revokes every session of one cluster account except
+// the one whose hash is keep (the session that changed the password).
+func (s *Store) DeleteOtherSessions(ctx context.Context, cluster, username string, keep []byte) error {
+	_, err := s.db.ExecContext(ctx, `DELETE FROM sessions WHERE cluster = ? AND username = ? AND token_hash != ?`, cluster, username, keep)
+	if err != nil {
+		return fmt.Errorf("delete other sessions: %w", err)
+	}
+
+	return nil
+}

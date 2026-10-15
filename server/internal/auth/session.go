@@ -69,6 +69,7 @@ type SessionRepository interface {
 	FindSession(ctx context.Context, hash []byte) (SessionRecord, error)
 	TouchSession(ctx context.Context, hash []byte, expiresAt time.Time) error
 	DeleteSession(ctx context.Context, hash []byte) error
+	DeleteOtherSessions(ctx context.Context, cluster, username string, keep []byte) error
 }
 
 // SessionManager issues opaque, database-backed browser sessions with sliding
@@ -152,6 +153,21 @@ func (m *SessionManager) Logout(ctx context.Context, w http.ResponseWriter, r *h
 	http.SetCookie(w, &http.Cookie{Name: SessionCookieName, Value: "", Path: "/", MaxAge: -1, HttpOnly: true, Secure: m.isSecure, SameSite: http.SameSiteStrictMode}) //nolint:gosec // Secure is intentionally conditional for dev HTTP mode
 	//nolint:gosec // CSRF cookie must remain readable by the client, so it is not HttpOnly; Secure and SameSite match the session cookie.
 	http.SetCookie(w, &http.Cookie{Name: CSRFCookieName, Value: "", Path: "/", MaxAge: -1, Secure: m.isSecure, SameSite: http.SameSiteStrictMode})
+
+	return nil
+}
+
+// RevokeOthers ends every session of identity except the one tied to the
+// request's cookie. Used after a password change.
+func (m *SessionManager) RevokeOthers(ctx context.Context, r *http.Request, identity Identity) error {
+	cookie, err := r.Cookie(SessionCookieName)
+	if err != nil {
+		return fmt.Errorf("read session cookie: %w", err)
+	}
+
+	if err := m.repository.DeleteOtherSessions(ctx, identity.Cluster, identity.Username, m.hash(cookie.Value)); err != nil {
+		return fmt.Errorf("revoke other sessions: %w", err)
+	}
 
 	return nil
 }

@@ -35,6 +35,10 @@ func (brokenSessionRepository) DeleteSession(context.Context, []byte) error {
 	return errSessionStore
 }
 
+func (brokenSessionRepository) DeleteOtherSessions(context.Context, string, string, []byte) error {
+	return errSessionStore
+}
+
 func newAuthWithBrokenSessions(t *testing.T) *httpapi.Auth {
 	t.Helper()
 
