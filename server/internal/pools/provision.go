@@ -21,6 +21,7 @@ var (
 	ErrNotManaged    = errors.New("pool not managed by PVMSS")
 	ErrInvalidName   = errors.New("invalid pool name")
 	ErrAlreadyExists = errors.New("pool already exists")
+	ErrMembersRemain = errors.New("pool still has members")
 	poolNamePattern  = regexp.MustCompile(`^[a-z0-9]+(?:-[a-z0-9]+)*$`)
 )
 

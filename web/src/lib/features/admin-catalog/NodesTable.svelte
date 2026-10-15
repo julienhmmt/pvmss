@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { resolve } from '$app/paths';
 	import type { AdminNode, NodeSortColumn } from './admin-catalog.svelte';
-	import { formatBytes } from './format';
+	import { formatBytes } from '$lib/shared/format-bytes';
 	import EmptyState from '$lib/shared/ui/EmptyState.svelte';
 	import Pill from '$lib/shared/ui/Pill.svelte';
 	import StatusDot from '$lib/shared/ui/StatusDot.svelte';

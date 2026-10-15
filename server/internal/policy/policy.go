@@ -12,6 +12,7 @@ import (
 	"pvmss/server/internal/inventory"
 	"pvmss/server/internal/store"
 	"slices"
+	"sync"
 )
 
 var (
@@ -122,6 +123,10 @@ type Policy struct {
 	store      *store.Store
 	projection *inventory.Projection
 	client     Snapshotter
+
+	mu      sync.Mutex // guards pending and nextID (ReserveCreate)
+	pending []pendingCreate
+	nextID  uint64
 }
 
 // Snapshotter is the one cluster read policy needs (physical-node checks).

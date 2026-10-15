@@ -68,6 +68,7 @@ const (
 type ConsoleTicket struct {
 	Kind          ConsoleKind
 	Token         string
+	Username      string // the issuing user; only they can consume it
 	Cluster       string
 	VMID          int
 	Node          string
@@ -98,19 +99,20 @@ func NewConsoleTicketStore() *ConsoleTicketStore {
 // Issue generates an opaque, cryptographically random token, stores the entry,
 // appends to the insertion-order slice, and evicts the oldest entry if the
 // fixed capacity is exceeded. Returns the new ticket.
-func (s *ConsoleTicketStore) Issue(kind ConsoleKind, clusterName string, vmid int, node, proxmoxTicket string, port int) ConsoleTicket {
+func (s *ConsoleTicketStore) Issue(kind ConsoleKind, username, clusterName string, vmid int, node, proxmoxTicket string, port int) ConsoleTicket {
 	token, err := generateConsoleToken()
 	if err != nil {
 		// crypto/rand failure is a fatal environment condition - surface it as
 		// a ticket with an empty token so the caller can detect it, and let the
 		// HTTP layer turn it into a 500. This path is not reachable in practice.
-		return ConsoleTicket{Kind: kind, Cluster: clusterName, VMID: vmid, Node: node, ProxmoxTicket: proxmoxTicket, Port: port}
+		return ConsoleTicket{Kind: kind, Username: username, Cluster: clusterName, VMID: vmid, Node: node, ProxmoxTicket: proxmoxTicket, Port: port}
 	}
 
 	now := time.Now()
 	ticket := ConsoleTicket{
 		Kind:          kind,
 		Token:         token,
+		Username:      username,
 		Cluster:       clusterName,
 		VMID:          vmid,
 		Node:          node,
@@ -133,13 +135,13 @@ func (s *ConsoleTicketStore) Issue(kind ConsoleKind, clusterName string, vmid in
 	return ticket
 }
 
-// Consume looks up the token. Missing, expired, or a (kind, cluster, vmid)
-// mismatch against what was bound at issuance → ErrInvalidTicket. On success,
+// Consume looks up the token. Missing, expired, or a (kind, user, cluster,
+// vmid) mismatch against what was bound at issuance → ErrInvalidTicket. On success,
 // the entry is deleted from the map BEFORE returning it - a concurrent second
 // Consume for the same token cannot observe it as still present, closing the
 // single-use race. A mismatched Consume does NOT consume the ticket:
-// it remains valid for its real (kind, cluster, vmid).
-func (s *ConsoleTicketStore) Consume(kind ConsoleKind, token, clusterName string, vmid int) (ConsoleTicket, error) {
+// it remains valid for its real (kind, user, cluster, vmid).
+func (s *ConsoleTicketStore) Consume(kind ConsoleKind, token, username, clusterName string, vmid int) (ConsoleTicket, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
@@ -155,7 +157,7 @@ func (s *ConsoleTicketStore) Consume(kind ConsoleKind, token, clusterName string
 		return ConsoleTicket{}, ErrInvalidTicket
 	}
 
-	if ticket.Kind != kind || ticket.Cluster != clusterName || ticket.VMID != vmid {
+	if ticket.Kind != kind || ticket.Username != username || ticket.Cluster != clusterName || ticket.VMID != vmid {
 		return ConsoleTicket{}, ErrInvalidTicket
 	}
 
@@ -236,7 +238,7 @@ func GetConsoleTicket(ctx context.Context, deps ConsoleTicketDeps) (ConsoleTicke
 		return ConsoleTicket{}, fmt.Errorf("%w: %w", ErrClusterConsoleUnavailable, err)
 	}
 
-	ticket := deps.Store.Issue(deps.Kind, deps.ClusterName, deps.VMID, entity.Node, proxyTicket, port)
+	ticket := deps.Store.Issue(deps.Kind, deps.Actor.Username, deps.ClusterName, deps.VMID, entity.Node, proxyTicket, port)
 
 	if err := deps.Audit.RecordAction(ctx, deps.Actor.Username, deps.ClusterName, deps.VMID, AuditActionConsoleOpen); err != nil {
 		return ConsoleTicket{}, fmt.Errorf(auditWrapFmt, err)

@@ -13,6 +13,7 @@
 	import Pill from '$lib/shared/ui/Pill.svelte';
 	import Skeleton from '$lib/shared/ui/Skeleton.svelte';
 	import StatCard from '$lib/shared/ui/StatCard.svelte';
+	import TextField from '$lib/shared/ui/TextField.svelte';
 	import { m } from '$lib/paraglide/messages.js';
 
 	interface Props {
@@ -22,12 +23,46 @@
 		notFound: boolean;
 		deleting: boolean;
 		deleteError: string | null;
+		savingComment: boolean;
+		commentError: string | null;
 		onRefresh: () => void;
+		onUpdateComment: (comment: string) => Promise<void>;
 		onDelete: () => Promise<void>;
 		onDeleted: () => void;
 	}
 
-	let { detail, loading, error, notFound, deleting, deleteError, onRefresh, onDelete, onDeleted }: Props = $props();
+	let {
+		detail,
+		loading,
+		error,
+		notFound,
+		deleting,
+		deleteError,
+		savingComment,
+		commentError,
+		onRefresh,
+		onUpdateComment,
+		onDelete,
+		onDeleted
+	}: Props = $props();
+
+	let editingComment = $state(false);
+	let commentDraft = $state('');
+
+	function startCommentEdit() {
+		commentDraft = detail?.comment ?? '';
+		editingComment = true;
+	}
+
+	async function saveComment(event: SubmitEvent) {
+		event.preventDefault();
+		try {
+			await onUpdateComment(commentDraft);
+			editingComment = false;
+		} catch {
+			// commentError carries the message; keep the editor open.
+		}
+	}
 
 	let showDelete = $state(false);
 
@@ -167,7 +202,39 @@
 					</div>
 					<div class="sm:col-span-2">
 						<dt class="text-xs text-muted-foreground">{m['admin.pools.comment']()}</dt>
-						<dd class="mt-1">{detail.comment || m['admin.nodeDetails.notReported']()}</dd>
+						{#if editingComment}
+							<dd class="mt-1">
+								<form class="flex flex-wrap items-center gap-2" onsubmit={saveComment}>
+									<div class="min-w-0 flex-1">
+										<TextField
+											id="pool-comment-input"
+											type="text"
+											bind:value={commentDraft}
+											maxLength={255}
+											aria-label={m['admin.pools.comment']()}
+										/>
+									</div>
+									<Button type="submit" size="sm" disabled={savingComment}>{m['common.save']()}</Button>
+									<Button
+										type="button"
+										size="sm"
+										variant="ghost"
+										disabled={savingComment}
+										onclick={() => (editingComment = false)}>{m['common.cancel']()}</Button
+									>
+								</form>
+								{#if commentError}
+									<p class="mt-2 text-xs text-destructive" role="alert">{commentError}</p>
+								{/if}
+							</dd>
+						{:else}
+							<dd class="mt-1 flex items-center gap-2">
+								<span>{detail.comment || m['admin.nodeDetails.notReported']()}</span>
+								<Button size="sm" variant="ghost" onclick={startCommentEdit}>
+									{detail.comment ? m['common.edit']() : m['admin.poolDetail.addComment']()}
+								</Button>
+							</dd>
+						{/if}
 					</div>
 				</dl>
 				<div class="content-start">

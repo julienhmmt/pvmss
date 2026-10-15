@@ -182,6 +182,8 @@ Packages under `server/internal/`:
 | `auth/`      | Sessions, password hashing, admin auth                        |
 | `cloudinit/` | Cloud-init document validation + slug helpers                 |
 | `config/`    | Env-based configuration, validation, slog logger, redaction   |
+| `telemetry/` | OTel tracing and metrics, Prometheus `/metrics`               |
+| `logctx/`    | Request-scoped log attributes (requestId, user, span IDs)     |
 
 Cloud-init documents are authored by PVMSS administrators only
 (`catalog_cloudinit_templates`, per cluster). **PVMSS never writes on the
@@ -224,7 +226,7 @@ Built with bun; the Go binary serves the build output (catch-all to
 - **Entrypoint**: `/app/pvmss` - no flags; the web dir comes from
   `PVMSS_WEB_DIR` (default `/app/web/build` in the image) or a path relative
   to the executable
-- **Build**: multi-stage - `golang:1.27-alpine` builds a static CGO-free
+- **Build**: multi-stage - `golang:1.27.2-alpine` builds a static CGO-free
   binary, `oven/bun:1-alpine` builds the SPA
 - Kubernetes manifests: `pvmss-deployment.yaml`, `pvmss-httproute.yml`
 - Helm chart: `helm/`
@@ -335,7 +337,9 @@ Binding for every agent writing server code. Operator-facing detail
   `event=audit` for every `audit_log` row; do not add a second log line for an
   audited action.
 - **Metrics labels** are limited to `route`, `method`, `status_class`,
-  `cluster`, `action`, `result`, `status` (a view drops the rest). Never
+  `cluster`, `action`, `result`, `status`, plus the semconv `http.route`,
+  `http.request.method` and `http.response.status_code` that otelhttp emits
+  (a view drops the rest). Never
   `vmid`, `user` or `node`.
 - **Enforced by `sloglint`** in `server/.golangci.yml`: no package-level slog
   calls outside `cmd/`, camelCase keys, static messages, context-aware calls
@@ -347,7 +351,8 @@ Binding for every agent writing server code. Operator-facing detail
 svelte-check/eslint/build/vitest, Playwright e2e), `lint.yml` (Super-Linter for
 CSS/Markdown/YAML, golangci-lint pinned to the `go tool` version in
 `server/go.mod`). `v0.4.yml` runs on pushes to `main` and `v0.4` and on PRs to
-`main`; `lint.yml` on every push. Go version comes from `server/go.mod`, bun is
+`main`; `lint.yml` on every push; `codeql.yml` (CodeQL) on pushes to `main`
+and `v0.4` and on PRs to `main`. Go version comes from `server/go.mod`, bun is
 pinned to `1.3.13`. Dependabot: `.github/dependabot.yml`. Run the same linter
 locally with `make server-lint` (`go tool golangci-lint`).
 

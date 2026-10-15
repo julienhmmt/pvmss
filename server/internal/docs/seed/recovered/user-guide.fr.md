@@ -13,8 +13,8 @@ hébergées sur Proxmox VE, sans passer par l'interface Proxmox.
 
 ## Accueil
 
-La page d'accueil affiche le nombre de vos VM (total, en marche, arrêtées),
-votre consommation de quota et les tâches encore en cours. Chaque opération
+Après connexion, vous arrivez sur **Mes VM**. Votre consommation de quota est
+affichée dans la barre latérale. Chaque opération
 longue (création, suppression, snapshot…) apparaît dans le tiroir des tâches
 en haut de page : vous pouvez naviguer pendant qu'elle s'exécute.
 
@@ -30,7 +30,7 @@ Configurez :
 - **Profil (optionnel)** : si votre administrateur a publié des profils matériels, choisissez-en un pour remplir CPU, mémoire et disque.
 - **Ressources** : sockets, cœurs, mémoire et taille de disque. Les valeurs sont bornées par la politique du cluster et votre quota.
 - **Stockage** : un stockage approuvé ; l'assistant vérifie l'espace libre en direct.
-- **Réseau** : une ou plusieurs cartes, chacune avec un bridge et un modèle (VirtIO, E1000, E1000E, RTL8139, VMXNet3). Le pare-feu Proxmox est toujours activé ; votre administrateur peut imposer un VLAN d'isolation.
+- **Réseau** : une ou plusieurs cartes, chacune avec un bridge et un modèle (VirtIO, E1000, RTL8139, VMXNet3). Le pare-feu Proxmox est toujours activé ; votre administrateur peut imposer un VLAN d'isolation.
 - **Firmware** : UEFI (activé par défaut) avec un magasin de clés EFI vide - Secure Boot n'est jamais activé, car la plupart des ISO Linux ne sont pas signés et ne démarreraient pas avec. TPM 2.0 pour les invités qui l'exigent.
 - **Document cloud-init** : l'un des templates fournis par votre administrateur. Voir le [guide cloud-init](/docs/cloud-init-howto).
 - **Clés SSH** (source image cloud) : cochez les clés enregistrées dans votre profil ou collez des clés ponctuelles dans le même champ. Coller exactement une clé absente de votre profil propose de l'enregistrer une fois la VM créée.
@@ -56,19 +56,19 @@ même VMID peut exister sur des clusters différents sans conflit.
 
 ## Gérer une machine virtuelle
 
-La page de détail d'une VM est organisée en onglets.
+La page de détail d'une VM comporte trois onglets : **Connexion** (actions d'alimentation et console), **Configuration** (avec les sous-sections ci-dessous : Résumé, Disques, Réseau, Matériel, Cloud-init, Snapshots) et **Activité**.
 
-### Vue d'ensemble
+### Connexion
 
-- **Démarrer**, **Éteindre** (arrêt propre, agent invité / ACPI), **Redémarrer**, **Arrêter** (coupure forcée), **Réinitialiser**, **Mettre en pause**, **Reprendre**.
+- **Démarrer**, **Éteindre** (arrêt propre, agent invité / ACPI), **Redémarrer**, **Forcer l'arrêt** (coupure forcée), **Réinitialiser**, **Mettre en pause**, **Reprendre**.
 - **Console** - ouvre la console graphique.
 - **Démarrer sur le CD-ROM** une fois - redémarre sur l'ISO montée pour un seul démarrage.
 - **Renommer** et modifier la **description** (le Markdown est rendu).
 - **Supprimer** - supprime définitivement la VM (boîte de confirmation).
 - **Métriques** - historique CPU, mémoire, disque et réseau sur la dernière heure, le dernier jour ou la dernière semaine.
 
-Préférez **Éteindre** à **Arrêter**. Si l'extinction ne fait rien, l'agent
-QEMU manque probablement dans la VM : installez-le, ou utilisez **Arrêter**.
+Préférez **Éteindre** à **Forcer l'arrêt**. Si l'extinction ne fait rien, l'agent
+QEMU manque probablement dans la VM : installez-le, ou utilisez **Forcer l'arrêt**.
 
 ### Disques
 
@@ -89,8 +89,8 @@ CD-ROM.
 ### Cloud-init
 
 Définissez l'utilisateur, le mot de passe (transmis via l'agent invité, jamais
-stocké), les clés SSH, l'adresse IP, la passerelle et le DNS. **Ajouter une
-clé maintenant** injecte immédiatement une clé dans une VM en marche. Le
+stocké), les clés SSH, l'adresse IP, la passerelle et le DNS. La section **Ajouter une clé SSH** injecte immédiatement une clé dans une VM
+en marche. Le
 sélecteur sous la liste de clés ajoute les clés enregistrées dans votre
 profil en plus de la liste actuelle - les clés déjà présentes sur la VM
 restent modifiables dans la liste et ne sont pas reproposées. Le
@@ -102,7 +102,7 @@ pour savoir ce qui s'applique et quand.
 
 - **Créer** : saisissez un nom (commence par une lettre, puis lettres, chiffres, tirets ou underscores - 2 à 40 caractères), une description optionnelle, et choisissez d'inclure ou non l'état de la RAM.
 - **Consulter** : nom, description, date de création et présence de la RAM ; l'état courant est marqué.
-- **Restaurer** : ramène la VM à l'état du snapshot. Opération destructive - les changements postérieurs sont perdus.
+- **Restaurer** : ramène la VM à l'état du snapshot (la VM est arrêtée puis redémarrée). Opération destructive - les changements postérieurs sont perdus.
 - **Supprimer** : retire définitivement un snapshot et libère son stockage.
 
 Votre administrateur peut fixer un nombre maximal de snapshots par VM. Les
@@ -116,8 +116,8 @@ Chaque action effectuée sur la VM via PVMSS - qui, quoi, quand.
 
 La page console propose deux clients :
 
-- **noVNC** - l'affichage graphique, avec les mêmes actions d'alimentation que la page de détail.
-- **Série** - un terminal texte (xterm.js) pour les invités dotés d'un port série ; vous pouvez activer un port série sur une VM qui n'en a pas.
+- **Graphique** (noVNC) - l'affichage graphique, avec les mêmes actions d'alimentation que la page de détail.
+- **Texte** (terminal série, xterm.js) pour les invités dotés d'un port série ; vous pouvez activer un port série sur une VM qui n'en a pas.
 
 Les deux sont relayés par PVMSS avec un ticket à usage unique ; aucun accès
 direct à Proxmox n'est nécessaire.
@@ -148,7 +148,7 @@ applique côté serveur avant tout appel à Proxmox.
 ## Limitations connues
 
 - Seules les VM KVM/QEMU sont prises en charge ; pas les conteneurs LXC.
-- Les sauvegardes et la migration à chaud se font dans Proxmox, pas dans PVMSS.
+- Les sauvegardes se font dans Proxmox, pas dans PVMSS. Seuls les administrateurs peuvent migrer une VM.
 - Le réseau avancé (règles de pare-feu, SDN) se configure dans Proxmox.
 - Le changement de mot de passe n'est disponible que par l'API pour l'instant.
 

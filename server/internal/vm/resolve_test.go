@@ -257,3 +257,20 @@ func TestResolve_EntityCarriesHardwareFields(t *testing.T) {
 		t.Errorf("network interfaces = %+v, want vmbr0", entity.NetworkInterfaces)
 	}
 }
+
+// TestResolve_PoolLessActorCannotReachPoolLessVM - a pvmss-tagged VM left
+// without a pool (e.g. after a failed cascade delete) must not be reachable
+// by a non-admin identity that also has no pool: "" == "" is not ownership.
+//
+//nolint:paralleltest // serial: shared fake VM fixture
+func TestResolve_PoolLessActorCannotReachPoolLessVM(t *testing.T) {
+	idx := buildResolveIndex(t)
+	machine := idx.ByVMID[100]
+	machine.Pool = ""
+	idx.ByVMID[100] = machine
+
+	_, err := vm.Resolve(idx, auth.Identity{Username: "carol@pve"}, testClusterName, 100)
+	if !errors.Is(err, vm.ErrForbidden) {
+		t.Fatalf("pool-less actor on pool-less VM: err = %v, want ErrForbidden", err)
+	}
+}

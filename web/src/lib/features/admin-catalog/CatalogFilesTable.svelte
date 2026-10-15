@@ -7,7 +7,7 @@
 	 * prefix ("iso:{node}:{storage}:{file}" / "image:{…}").
 	 */
 	import type { AdminImage, AdminISO, ImageSortColumn, ISOSortColumn } from './admin-catalog.svelte';
-	import { formatBytes } from './format';
+	import { formatBytes } from '$lib/shared/format-bytes';
 	import EmptyState from '$lib/shared/ui/EmptyState.svelte';
 	import Pill from '$lib/shared/ui/Pill.svelte';
 	import TableHeader from '$lib/shared/ui/TableHeader.svelte';

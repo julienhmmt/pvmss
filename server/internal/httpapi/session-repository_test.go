@@ -61,3 +61,16 @@ func (r *sessionRepository) DeleteSession(_ context.Context, hash []byte) error 
 
 	return nil
 }
+
+func (r *sessionRepository) DeleteOtherSessions(_ context.Context, cluster, username string, keep []byte) error {
+	r.mutex.Lock()
+	defer r.mutex.Unlock()
+
+	for hash, session := range r.sessions {
+		if session.Identity.Cluster == cluster && session.Identity.Username == username && hash != string(keep) {
+			delete(r.sessions, hash)
+		}
+	}
+
+	return nil
+}

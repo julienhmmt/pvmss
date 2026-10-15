@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { formatBytes } from './format-bytes';
+import { formatBytes, usagePercent } from './format-bytes';
 
 describe('formatBytes', () => {
 	it('formats zero bytes', () => {
@@ -24,5 +24,13 @@ describe('formatBytes', () => {
 
 	it('formats TiB', () => {
 		expect(formatBytes(1099511627776)).toBe('1.0 TiB');
+	});
+});
+
+describe('usagePercent', () => {
+	it('rounds, caps at 100, and treats a zero total as 0', () => {
+		expect(usagePercent(1, 3)).toBe(33);
+		expect(usagePercent(5, 4)).toBe(100);
+		expect(usagePercent(5, 0)).toBe(0);
 	});
 });

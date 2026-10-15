@@ -12,6 +12,7 @@ import (
 	"pvmss/server/internal/store"
 	"pvmss/server/internal/vm"
 	"slices"
+	"sync"
 	"testing"
 	"time"
 )
@@ -654,4 +655,51 @@ type stoppedStatusReader struct{}
 
 func (stoppedStatusReader) VMStatus(context.Context, string, int) (cluster.VMLiveStatus, error) {
 	return cluster.VMLiveStatus{Status: cluster.VMStopped}, nil
+}
+
+// slowCloudInitReader widens the read-modify-write window of the config sync.
+type slowCloudInitReader struct{ cluster.Fake }
+
+func (r slowCloudInitReader) GetCloudInitConfig(ctx context.Context, node string, vmid int) (cluster.CloudInitConfig, error) {
+	config, err := r.Fake.GetCloudInitConfig(ctx, node, vmid)
+	time.Sleep(20 * time.Millisecond)
+
+	return config, err
+}
+
+// Two keys added at once must both land in the cloud-init config: the
+// read-modify-write is serialized per VM.
+//
+//nolint:paralleltest // serial: shared fake dataset
+func TestAddCloudInitSSHKey_ConcurrentAddsKeepEveryKey(t *testing.T) {
+	cluster.ResetFake()
+	t.Cleanup(cluster.ResetFake)
+
+	index := cloudInitIndex(t)
+	st := cloudInitStore(t)
+	keys := []string{"ssh-ed25519 AAAA-one one@x", "ssh-ed25519 AAAA-two two@x", "ssh-ed25519 AAAA-three three@x"}
+
+	var wg sync.WaitGroup
+
+	for _, key := range keys {
+		wg.Go(func() {
+			deps := vm.AddCloudInitSSHKeyDeps{Index: index, Actor: cloudAliceIdentity(), ClusterName: testClusterName, VMID: 101, Reader: slowCloudInitReader{}, Writer: cluster.Fake{}, Audit: st}
+			if err := vm.AddCloudInitSSHKey(context.Background(), deps, cluster.FakeCloudInitUser, key); err != nil {
+				t.Errorf("AddCloudInitSSHKey(%q): %v", key, err)
+			}
+		})
+	}
+
+	wg.Wait()
+
+	config, err := cluster.Fake{}.GetCloudInitConfig(context.Background(), index.ByVMID[101].Node, 101)
+	if err != nil {
+		t.Fatalf("GetCloudInitConfig: %v", err)
+	}
+
+	for _, key := range keys {
+		if !slices.Contains(config.SSHKeys, key) {
+			t.Errorf("key %q lost from cloud-init config: %v", key, config.SSHKeys)
+		}
+	}
 }

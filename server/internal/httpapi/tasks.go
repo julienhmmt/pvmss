@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"pvmss/server/internal/cluster"
 	"pvmss/server/internal/logctx"
+	"sync"
 	"time"
 )
 
@@ -46,6 +47,31 @@ type Tasks struct {
 	invalidator TaskInvalidator
 	refreshers  ClusterRefresherResolver
 	log         *slog.Logger
+
+	mu        sync.Mutex
+	refreshed map[string]struct{} // UPIDs whose ok already triggered a refresh
+}
+
+// maxRefreshedUPIDs bounds the refreshed set; past it the set restarts empty.
+const maxRefreshedUPIDs = 4096
+
+// firstOk reports whether this is the first ok observation of upid, so only
+// that poll pays for an inventory refresh.
+func (h *Tasks) firstOk(upid string) bool {
+	h.mu.Lock()
+	defer h.mu.Unlock()
+
+	if _, seen := h.refreshed[upid]; seen {
+		return false
+	}
+
+	if h.refreshed == nil || len(h.refreshed) >= maxRefreshedUPIDs {
+		h.refreshed = make(map[string]struct{})
+	}
+
+	h.refreshed[upid] = struct{}{}
+
+	return true
 }
 
 // NewTasks creates the handler bound to a single cluster.Creator. Use
@@ -140,7 +166,7 @@ func (h *Tasks) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if status.State == cluster.TaskOK {
+	if status.State == cluster.TaskOK && h.firstOk(upid) {
 		// Invalidate the projection synchronously so the projection is
 		// fresh when the ok response reaches the client - the frontend's
 		// onTaskOk listener reloads the VM list immediately on receiving

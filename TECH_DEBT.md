@@ -11,7 +11,7 @@ documented here so the next reader does not reopen them.
 - **`Identity.IsAdmin` is a login-time snapshot.** Read from Proxmox once at
   login (`Permissions.Modify` on `/`, with the user's own ticket), stored in
   the session. A user whose admin rights are revoked keeps them until the
-  session ends - at most `auth.MaxSessionAge` (8h). Accepted: re-checking
+  session ends - at most `auth.MaxSessionAge` (24h; the idle TTL is 8h). Accepted: re-checking
   live would need the API token to read `/access/permissions?userid=` (extra
   role) on a timer, and 8h is short enough.
 - **No garbage collection of published snippet files.** PVMSS cannot write

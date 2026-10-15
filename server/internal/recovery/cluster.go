@@ -2,14 +2,8 @@ package recovery
 
 import (
 	"context"
-	"crypto/aes"
-	"crypto/cipher"
-	"crypto/rand"
-	"crypto/sha256"
-	"database/sql"
-	"errors"
 	"fmt"
-	"io"
+	"pvmss/server/internal/store"
 	"regexp"
 	"time"
 )
@@ -74,7 +68,7 @@ func MapCluster(env Environ, clusterName string, flags ProxmoxCreds, sessionSecr
 // DO UPDATE (idempotence). This mirrors store.CreateCluster's
 // transaction logic but uses an upsert instead of insert-or-reactivate,
 // so re-running the tool is safe.
-func upsertCluster(ctx context.Context, v04DB *sql.DB, row ClusterRow) error {
+func upsertCluster(ctx context.Context, v04DB dbtx, row ClusterRow) error {
 	_, err := v04DB.ExecContext(ctx, `
 		INSERT INTO clusters (name, url, tls_insecure_skip_verify, token_id, token_secret_ciphertext, created_at)
 		VALUES (?, ?, ?, ?, ?, ?)
@@ -96,46 +90,17 @@ func upsertCluster(ctx context.Context, v04DB *sql.DB, row ClusterRow) error {
 
 //  - Token encryption (scheme, reimplemented - same algorithm) -
 
-// deriveEncryptionKey derives a 32-byte AES key from the session secret
-// via SHA-256. The session secret must be at least 32 bytes.
-func deriveEncryptionKey(secret string) ([]byte, error) {
-	if len(secret) < 32 {
-		return nil, errors.New("session secret must be at least 32 bytes")
-	}
-
-	digest := sha256.Sum256([]byte(secret))
-
-	return digest[:], nil
-}
-
-// encryptToken encrypts a token secret using AES-256-GCM with a random
-// nonce prepended to the ciphertext. This is the exact same scheme as
-// store.encryptToken - the two produce compatible ciphertexts decryptable
-// by either code path.
+// encryptToken encrypts a token secret with the store's own scheme
+// (store.EncryptClusterToken), so the server can decrypt what recovery wrote.
 func encryptToken(secret, sessionSecret string) ([]byte, error) {
 	if secret == "" {
 		return nil, nil // no token to encrypt - empty ciphertext is valid
 	}
 
-	key, err := deriveEncryptionKey(sessionSecret)
+	ciphertext, err := store.EncryptClusterToken(secret, sessionSecret)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("encrypt cluster token: %w", err)
 	}
 
-	block, err := aes.NewCipher(key)
-	if err != nil {
-		return nil, fmt.Errorf("create cipher: %w", err)
-	}
-
-	gcm, err := cipher.NewGCM(block)
-	if err != nil {
-		return nil, fmt.Errorf("create gcm: %w", err)
-	}
-
-	nonce := make([]byte, gcm.NonceSize())
-	if _, err := io.ReadFull(rand.Reader, nonce); err != nil {
-		return nil, fmt.Errorf("generate nonce: %w", err)
-	}
-
-	return gcm.Seal(nonce, nonce, []byte(secret), nil), nil
+	return ciphertext, nil
 }

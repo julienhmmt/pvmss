@@ -3,7 +3,7 @@
 	import { onDestroy, onMount } from 'svelte';
 	import { resolve } from '$app/paths';
 	import { get } from '$lib/shared/api/client';
-	import { formatBytes } from '$lib/shared/format-bytes';
+	import { formatBytes, usagePercent } from '$lib/shared/format-bytes';
 	import Alert from '$lib/shared/ui/Alert.svelte';
 	import Button from '$lib/shared/ui/Button.svelte';
 	import Card from '$lib/shared/ui/Card.svelte';
@@ -150,11 +150,6 @@
 
 	function refreshNode(): void {
 		void loadNode(clusterKey, nodeName);
-	}
-
-	function usagePercent(used: number, total: number): number {
-		if (total <= 0) return 0;
-		return Math.min(100, Math.round((used / total) * 100));
 	}
 
 	function nodeStatusLabel(status: string): string {

@@ -8,7 +8,7 @@
 	import Button from '$lib/shared/ui/Button.svelte';
 	import EmptyState from '$lib/shared/ui/EmptyState.svelte';
 	import ConfirmDialog from '$lib/shared/ui/ConfirmDialog.svelte';
-	import { getToastContext } from '$lib/shared/ui/toast.svelte';
+	import Alert from '$lib/shared/ui/Alert.svelte';
 
 	interface Props {
 		policy: AdminPolicy | null;
@@ -17,7 +17,6 @@
 		errorCode: string | null;
 		saving: boolean;
 		saveError: string | null;
-		saved: boolean;
 		clusterOptions: ClusterOption[];
 		cluster: string;
 		onClusterChange: (value: string) => void;
@@ -33,7 +32,6 @@
 		errorCode,
 		saving,
 		saveError,
-		saved,
 		clusterOptions,
 		cluster,
 		onClusterChange,
@@ -42,8 +40,6 @@
 		onSave
 	}: Props = $props();
 
-	const toast = getToastContext();
-
 	let dirty = $state(false);
 	let pendingCluster: string | null = $state(null);
 	let switchDialogOpen = $state(false);
@@ -51,15 +47,6 @@
 	function handleDirtyChange(value: boolean): void {
 		dirty = value;
 	}
-
-	// Fire a success toast when the store's `saved` flag is true. The store
-	// resets `saved` to false at the start of each save, so this effect only
-	// fires on the false→true transition.
-	$effect(() => {
-		if (saved) {
-			toast.success(m['policy.saved']());
-		}
-	});
 
 	function handleClusterChange(value: string): void {
 		if (dirty) {
@@ -98,6 +85,10 @@
 	{/snippet}
 </PageHeader>
 
+<div class="mb-6 max-w-5xl">
+	<Alert tone="info" role="status">{m['policy.autosaveNote']()}</Alert>
+</div>
+
 <section aria-labelledby="policy-title">
 	{#if loading}
 		<p class="text-muted-foreground" role="status" aria-live="polite">{m['policy.loading']()}</p>
@@ -116,15 +107,13 @@
 			<Button variant="secondary" onclick={onLoad}>{m['policy.retry']()}</Button>
 		</div>
 	{:else if policy !== null}
-		{#key policy}
-			<PolicyForm
-				{policy}
-				{saving}
-				{saveError}
-				{onSave}
-				onDirtyChange={handleDirtyChange}
-			/>
-		{/key}
+		<PolicyForm
+			{policy}
+			{saving}
+			{saveError}
+			{onSave}
+			onDirtyChange={handleDirtyChange}
+		/>
 	{/if}
 </section>
 

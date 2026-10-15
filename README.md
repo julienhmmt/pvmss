@@ -190,8 +190,9 @@ You can rely on `.env` + `env_file` or inline `environment:` entries, but **not 
 | `PVMSS_INVENTORY_MANUAL_REFRESH_MIN_INTERVAL` | Minimum delay between user-triggered refreshes                             | ❌                       | `5s`                   |
 | `PVMSS_INVENTORY_REFRESH_TIMEOUT`             | Timeout for a single inventory refresh                                     | ❌                       | `15s`                  |
 | `PVMSS_MAX_LIST_PAGE_SIZE`                    | Upper bound on list endpoint page size                                     | ❌                       | `100`                  |
-| `PVMSS_TRUSTED_PROXY_HOPS`                    | Number of reverse proxies in front of PVMSS (for client IP / rate limits)  | ❌                       | `1`                    |
+| `PVMSS_TRUSTED_PROXY_HOPS`                    | Number of reverse proxies in front of PVMSS (for client IP / rate limits); set `0` with no proxy | ❌                       | `1`                    |
 | `PVMSS_RATE_LIMIT_MAX`                        | Raises every built-in rate-limit ceiling (per-IP auth, per-user writes); `0` keeps the defaults | ❌                       | `0`                    |
+| `PVMSS_METRICS_PORT`                          | Port of the `GET /metrics` listener on `PVMSS_HOST` (1-65535, different from `PVMSS_PORT`); empty disables it | ❌                       | empty                  |
 | `TZ`                                          | Container timezone                                                         | ❌                       | `UTC`                  |
 
 The Docker image presets `PVMSS_DB_PATH=/data/pvmss.db`, `PVMSS_HOST=0.0.0.0`
@@ -241,7 +242,7 @@ Filebeat, or any SIEM.
 | ------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
 | **Docker / Podman** | Recommended for quick trials or single-node installs. Mount the database volume and expose port `50000`.                                                                                                                                  |
 | **Docker Compose**  | Best experience: one service, reproducible environment, easy env var management.                                                                                                                                                           |
-| **Kubernetes**      | Use [`pvmss-deployment.yaml`](pvmss-deployment.yaml) for namespace + secret + configmap + PVC + Deployment + Service. Apply with `kubectl apply -f pvmss-deployment.yaml`. Provide your own ingress/HTTPRoute (see `pvmss-httproute.yml`). |
+| **Kubernetes**      | Use [`pvmss-deployment.yaml`](pvmss-deployment.yaml) for namespace + secret + PVC + Deployment + Service. Apply with `kubectl apply -f pvmss-deployment.yaml`. Provide your own ingress/HTTPRoute (see `pvmss-httproute.yml`). |
 
 ## Quick start with Docker run
 
@@ -337,13 +338,12 @@ LOG_OUTPUT: "/app/pvmss.log"
 
 ## Start with Kubernetes
 
-Use the file [`pvmss-deployment.yaml`](pvmss-deployment.yaml) to create namespace + secret + configmap + PVC + Deployment + Service.
+Use the file [`pvmss-deployment.yaml`](pvmss-deployment.yaml) to create namespace + secret + PVC + Deployment + Service.
 
 Apply with `kubectl apply -f pvmss-deployment.yaml`. Provide your own ingress/HTTPRoute, an example is provided in `pvmss-httproute.yml` (Gateway API).
 
 A Helm chart lives in [`helm/`](helm/): `helm install pvmss ./helm -f my-values.yaml`.
-`values.yaml` documents every variable; `cloudInit.sshKeySecret` mounts
-PVMSS's SSH key from an existing Secret to publish cloud-init templates.
+`values.yaml` documents every variable.
 
 ## Operations
 
@@ -356,14 +356,7 @@ PVMSS's SSH key from an existing Secret to publish cloud-init templates.
 ## Limitations
 
 - Security hardening is ongoing; no formal penetration test yet.
-- OIDC: the per-cluster toggle exists but sign-in is not implemented (the endpoint returns 501).
-- Password change is API-only (`POST /api/v1/auth/password`); no page yet.
-- LXC containers, backups, live migration / HA, SDN and firewall rules stay in Proxmox.
-
-### Next major features
-
-- OpenID Connect / SSO sign-in.
-- Migration of VMs between Proxmox nodes.
+- No HA-managed VMs, no cross-cluster migration, SDN and firewall rules stay in Proxmox.
 
 Feedback and contributions are welcome through issues or pull requests. Next versions and features will be documented here: <https://github.com/julienhmmt/pvmss/projects?query=is%3Aopen>.
 

@@ -5,8 +5,13 @@ import (
 	"fmt"
 	"net/http"
 	"net/url"
+	"slices"
 	"strings"
 )
+
+// proxmoxPoolsPath is the /pools collection endpoint, shared by the pool
+// list, create and comment-update calls below (delete appends the pool id).
+const proxmoxPoolsPath = "/pools"
 
 // ListPools implements Client.
 func (p Proxmox) ListPools(ctx context.Context) ([]Pool, error) {
@@ -14,7 +19,7 @@ func (p Proxmox) ListPools(ctx context.Context) ([]Pool, error) {
 }
 
 func proxmoxListPools(ctx context.Context, rest proxmoxRESTClient) ([]Pool, error) {
-	raw, err := rest.do(ctx, http.MethodGet, "/pools", nil)
+	raw, err := rest.do(ctx, http.MethodGet, proxmoxPoolsPath, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -126,7 +131,7 @@ func (p Proxmox) CreatePool(ctx context.Context, poolID, comment string) error {
 		form.Set("comment", comment)
 	}
 
-	_, err = rest.do(ctx, http.MethodPost, "/pools", form)
+	_, err = rest.do(ctx, http.MethodPost, proxmoxPoolsPath, form)
 
 	return err
 }
@@ -140,6 +145,26 @@ func (p Proxmox) SetPoolACL(ctx context.Context, username, poolID, role string) 
 		"roles":     {role},
 		"propagate": {"1"},
 	})
+
+	return err
+}
+
+// UpdatePoolComment implements Client. Existence is checked first so an
+// unknown pool returns ErrNotFound, matching the fake. PUT /pools (PVE 8.1+)
+// replaces the deprecated PUT /pools/{poolid}.
+func (p Proxmox) UpdatePoolComment(ctx context.Context, poolID, comment string) error {
+	rest := p.rest()
+
+	pools, err := proxmoxListPools(ctx, rest)
+	if err != nil {
+		return err
+	}
+
+	if !slices.ContainsFunc(pools, func(pool Pool) bool { return pool.Name == poolID }) {
+		return ErrNotFound
+	}
+
+	_, err = rest.do(ctx, http.MethodPut, proxmoxPoolsPath, url.Values{"poolid": {poolID}, "comment": {comment}})
 
 	return err
 }

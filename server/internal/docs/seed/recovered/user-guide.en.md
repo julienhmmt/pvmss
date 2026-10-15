@@ -13,8 +13,7 @@ Proxmox VE, without using the Proxmox interface directly.
 
 ## Home
 
-The home page shows your VM counts (total, running, stopped), your quota
-usage, and the tasks still running. Every long operation (create, delete,
+After you sign in you land on **My VMs**. Your quota usage is shown in the sidebar. Every long operation (create, delete,
 snapshot…) appears in the task tray at the top so you can navigate away while
 it runs.
 
@@ -29,7 +28,7 @@ what is needed; **Detailed** mode exposes every option. Configure:
 - **Profile (optional)**: if your administrator published hardware profiles, pick one to fill CPU, memory, and disk automatically.
 - **Resources**: sockets, cores, memory, and disk size. Values are clamped by the cluster policy and your per-user quota.
 - **Storage**: a storage approved by your administrator; the wizard checks free space live.
-- **Network**: one or more network cards, each with a bridge and a card model (VirtIO, E1000, E1000E, RTL8139, VMXNet3). The Proxmox firewall is always enabled; your administrator may impose an isolation VLAN.
+- **Network**: one or more network cards, each with a bridge and a card model (VirtIO, E1000, RTL8139, VMXNet3). The Proxmox firewall is always enabled; your administrator may impose an isolation VLAN.
 - **Firmware**: UEFI (default on) with an empty EFI key store - Secure Boot is never enabled, because most Linux ISOs are unsigned and would not boot with it. TPM 2.0 for guests that require it.
 - **Cloud-init document**: one of the templates your administrator provides. See the [cloud-init how-to](/docs/cloud-init-howto).
 - **SSH keys** (cloud image source): tick the keys saved on your profile or paste one-off keys in the same field. Pasting exactly one key your profile does not know yet offers to save it once the VM is created.
@@ -54,19 +53,19 @@ exist on different clusters without conflict.
 
 ## Managing a virtual machine
 
-The VM details page is organized in tabs.
+The VM details page has three tabs: **Connect** (power actions and console), **Configuration** (with the sub-sections below: Summary, Disks, Network, Hardware, Cloud-init, Snapshots), and **Activity**.
 
-### Overview
+### Connect
 
-- **Start**, **Shutdown** (graceful, guest agent / ACPI), **Reboot**, **Stop** (hard power off), **Reset**, **Pause**, **Resume**.
+- **Start**, **Shutdown** (graceful, guest agent / ACPI), **Reboot**, **Force stop** (hard power off), **Reset**, **Pause**, **Resume**.
 - **Console** - open the graphical console.
 - **Boot from CD-ROM** once - restart on the mounted ISO for a single boot.
 - **Rename** and edit the **description** (Markdown is rendered).
 - **Delete** - permanently delete the VM (confirmation dialog).
 - **Metrics** - CPU, memory, disk, and network history over the last hour, day, or week.
 
-Prefer **Shutdown** over **Stop**. If shutdown does nothing, the QEMU guest
-agent is probably missing inside the VM: install it, or use **Stop**.
+Prefer **Shutdown** over **Force stop**. If shutdown does nothing, the QEMU guest
+agent is probably missing inside the VM: install it, or use **Force stop**.
 
 ### Disks
 
@@ -85,7 +84,7 @@ curated picker, and load or eject an ISO in the CD-ROM drive.
 ### Cloud-init
 
 Set the user, password (delivered through the guest agent, never stored), SSH
-keys, IP address, gateway, and DNS. **Add key now** injects a key into a
+keys, IP address, gateway, and DNS. The **Add SSH key** section injects a key into a
 running VM immediately. The picker below the key list appends keys saved on
 your profile - keys already on the VM stay editable in the list and are not
 offered again. The VM's cloud-init document is shown here; you can
@@ -96,7 +95,7 @@ switch it to another administrator template or detach it. See the
 
 - **Create**: enter a name (starts with a letter, then letters, digits, hyphens or underscores - 2 to 40 characters), an optional description, and choose whether to include RAM state.
 - **View**: name, description, creation date, and whether RAM was included; the current state is marked.
-- **Rollback**: restores the VM to the snapshot state. This is destructive - changes made after the snapshot are lost.
+- **Restore**: restores the VM to the snapshot state (the VM is stopped, then restarted). This is destructive - changes made after the snapshot are lost.
 - **Delete**: permanently removes a snapshot and frees its storage.
 
 Your administrator may set a maximum number of snapshots per VM. Snapshots
@@ -110,8 +109,8 @@ Every action performed on the VM through PVMSS - who, what, when.
 
 The console page offers two clients:
 
-- **noVNC** - the graphical display, with the same power actions as the details page.
-- **Serial** - a text terminal (xterm.js) for guests with a serial port; you can enable a serial port on a VM that has none.
+- **Graphical** (noVNC) - the graphical display, with the same power actions as the details page.
+- **Text** (serial terminal, xterm.js) for guests with a serial port; you can enable a serial port on a VM that has none.
 
 Both are relayed by PVMSS with a single-use ticket; no direct access to
 Proxmox is needed.
@@ -141,7 +140,7 @@ server-side before any Proxmox call is made.
 ## Known limitations
 
 - Only KVM/QEMU VMs are supported; LXC containers are not.
-- Backups and live migration are handled in Proxmox, not in PVMSS.
+- Backups are handled in Proxmox, not in PVMSS. Only administrators can migrate a VM.
 - Advanced networking (firewall rules, SDN) is configured in Proxmox.
 - Password change is available through the API only for now.
 

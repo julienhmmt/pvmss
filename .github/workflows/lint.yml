@@ -60,8 +60,7 @@ jobs:
             go-version-file: server/go.mod
 
         - name: Run golangci-lint
-          uses: golangci/golangci-lint-action@v9
-          with:
-            version: v2.13.2
-            working-directory: server
-            args: -v --timeout=5m
+          working-directory: server
+          # go tool, not the action's prebuilt binary: those lag go.mod's
+          # go directive and cannot decode its export data
+          run: go tool golangci-lint run -v --timeout=5m ./...

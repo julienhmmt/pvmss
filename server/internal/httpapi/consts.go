@@ -37,4 +37,5 @@ const (
 	msgNotReportedByCluster  = " not reported by the cluster"
 	msgOnNode                = `" on node "`
 	msgInvalidPoolName       = "invalid pool name"
+	msgPoolNotFound          = "pool %q not found"
 )

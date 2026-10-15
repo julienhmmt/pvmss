@@ -980,3 +980,38 @@ func TestRun_IdempotentTwoRuns(t *testing.T) {
 		}
 	}
 }
+
+// A step that fails after earlier writes must leave the v0.4 database as it
+// was: recovery is all-or-nothing, so a re-run starts from a clean state.
+func TestRun_LaterStepFailure_RollsBackEarlierWrites(t *testing.T) {
+	t.Parallel()
+
+	legacyDB := openLegacyDB(t)
+	seedLegacyDB(t, legacyDB, defaultSeed())
+	v04DB := openV04DB(t)
+	ctx := context.Background()
+
+	// Break the tags step on this throwaway test database.
+	if _, err := v04DB.ExecContext(ctx, `ALTER TABLE catalog_tags RENAME TO catalog_tags_gone`); err != nil {
+		t.Fatalf("rename catalog_tags: %v", err)
+	}
+
+	_, err := recovery.Run(ctx, legacyDB, v04DB, recovery.RunOptions{
+		ClusterName:   "default",
+		SessionSecret: "test-session-secret-at-least-32-bytes!!",
+	})
+	if err == nil {
+		t.Fatal("expected the tags step to fail")
+	}
+
+	for _, table := range []string{"clusters", "catalog_nodes"} {
+		var count int
+		if err := v04DB.QueryRowContext(ctx, `SELECT COUNT(*) FROM `+table).Scan(&count); err != nil {
+			t.Fatalf("count %s: %v", table, err)
+		}
+
+		if count != 0 {
+			t.Errorf("%s has %d rows after a failed run, want 0", table, count)
+		}
+	}
+}

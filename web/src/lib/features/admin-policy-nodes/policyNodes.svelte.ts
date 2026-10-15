@@ -9,6 +9,9 @@ import { getContext, setContext } from 'svelte';
 import { m } from '$lib/paraglide/messages.js';
 import type { NodeStatus } from '../cluster/nodes.svelte';
 
+const REFRESH_POLL_MS = 1000;
+const REFRESH_POLL_ATTEMPTS = 15;
+
 export interface NodeCapacity {
 	node: string;
 	status: NodeStatus;
@@ -144,10 +147,10 @@ export class AdminPolicyNodesStore {
 		this.refreshing = true;
 		this.refreshError = null;
 		try {
-			const response = await post<{ refreshedAt: string }>('/api/v1/cluster/refresh');
-			this.refreshedAt = response.refreshedAt;
+			const previous = this.refreshedAt;
+			await post('/api/v1/cluster/refresh');
 			this.clearRefreshDisabled();
-			await this.load();
+			await this.#reloadUntilRefreshed(previous);
 		} catch (error: unknown) {
 			if (error instanceof ApiRequestError && error.code === 'refresh_too_soon') {
 				this.refreshDisabled = true;
@@ -162,12 +165,24 @@ export class AdminPolicyNodesStore {
 	}
 
 	async retryConnection(): Promise<void> {
+		const previous = this.refreshedAt;
 		try {
 			await post('/api/v1/cluster/refresh');
 		} catch {
 			// Ignore; the next load will surface the current state.
 		}
-		await this.load();
+		await this.#reloadUntilRefreshed(previous);
+	}
+
+	// The server answers 202 and refreshes in the background: re-read until
+	// refreshedAt moves past `previous`, or give up after a bounded wait
+	// (a failed refresh never advances it).
+	async #reloadUntilRefreshed(previous: string | null): Promise<void> {
+		for (let attempt = 0; attempt < REFRESH_POLL_ATTEMPTS; attempt++) {
+			await this.load();
+			if (this.error || this.refreshedAt !== previous) return;
+			await new Promise((resolve) => setTimeout(resolve, REFRESH_POLL_MS));
+		}
 	}
 
 	#scheduleReenable(seconds: number): void {

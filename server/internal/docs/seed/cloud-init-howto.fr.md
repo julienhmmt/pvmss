@@ -10,8 +10,10 @@ n'écrivez jamais de YAML vous-même.
 
 Le formulaire **Créer une VM** liste les templates que votre administrateur a
 rendus disponibles pour le cluster. Le sélecteur est masqué quand le cluster
-n'a pas de publication cloud-init - demandez à votre administrateur si vous
-pensiez le voir.
+n'a pas de template cloud-init - le formulaire l'indique au lieu de proposer
+un sélecteur ; demandez à votre administrateur si vous pensiez en voir un. Le
+sélecteur reste aussi masqué quand aucun template n'est présent sur le nœud de
+la VM.
 
 Un template est versionné : quand votre administrateur le modifie, les VM
 existantes gardent la version avec laquelle elles ont été créées. Les
@@ -58,7 +60,8 @@ sudo cloud-init clean --logs --seed && sudo reboot
 ```
 
 Pour ajouter une clé SSH à une VM en marche sans tout cela, utilisez la
-section **Ajouter une clé maintenant** de l'onglet Cloud-init : la clé est
+section **Ajouter une clé SSH** de l'onglet Cloud-init (**Injecter cette clé
+maintenant**) : la clé est
 injectée immédiatement via l'agent invité et enregistrée dans la configuration
 pour les prochains démarrages.
 

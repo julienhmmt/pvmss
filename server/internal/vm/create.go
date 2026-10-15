@@ -377,6 +377,37 @@ func Create(ctx context.Context, actor auth.Identity, clusterName string, req Cr
 		return CreateResult{}, fmt.Errorf("%w: request carries more than one of iso, templateId, image", ErrInvalidSource)
 	}
 
+	release, err := reserveCreate(ctx, policyService, clusterName, actor, req.Name)
+	if err != nil {
+		return CreateResult{}, err
+	}
+
+	result, err := createFromSource(ctx, policyService, deps, clusterName, actor, req)
+	if err != nil {
+		release()
+	}
+
+	return result, err
+}
+
+// reserveCreate validates the name, then checks quota and per-pool name
+// uniqueness against the projection plus creates still in flight, so two
+// quick requests cannot both pass. A malformed name reports ErrInvalidName
+// before the duplicate check runs.
+func reserveCreate(ctx context.Context, policyService *policy.Policy, clusterName string, actor auth.Identity, name string) (func(), error) {
+	if err := ValidateName(name); err != nil {
+		return nil, err
+	}
+
+	release, err := policyService.ReserveCreate(ctx, clusterName, actor, name)
+	if errors.Is(err, policy.ErrNameReserved) {
+		return nil, fmt.Errorf("%w: %q is already used by a VM in your pool", ErrNameTaken, name)
+	}
+
+	return release, err
+}
+
+func createFromSource(ctx context.Context, policyService *policy.Policy, deps CreateDeps, clusterName string, actor auth.Identity, req CreateRequest) (CreateResult, error) {
 	if req.Image != nil {
 		return createFromImage(ctx, policyService, deps, clusterName, actor, req)
 	}

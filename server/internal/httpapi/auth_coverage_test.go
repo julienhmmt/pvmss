@@ -511,6 +511,30 @@ func TestAuthCoverage_ChangePassword_WithRegistrySucceeds(t *testing.T) {
 	})
 }
 
+// The local admin session has no cluster; with a registry there is no
+// account to change, so the handler must refuse instead of panicking.
+//
+//nolint:paralleltest // serial: shared fake auth and session fixtures
+func TestAuthCoverage_ChangePassword_LocalAdminWithRegistryRefused(t *testing.T) {
+	handler, _ := newAuthHandlerWithStore(t)
+
+	login := serveJSON(handler.AdminLogin, "/api/v1/auth/admin-login", `{"password":"pvmss-local-admin"}`)
+	if login.Code != http.StatusOK {
+		t.Fatalf("admin login status = %d: %s", login.Code, login.Body.String())
+	}
+
+	req := httptest.NewRequest(http.MethodPost, "/api/v1/auth/password", strings.NewReader(`{"oldPassword":"pvmss-local-admin","newPassword":"newpass12"}`))
+	req.Header.Set("Content-Type", "application/json")
+	req.AddCookie(login.Result().Cookies()[0])
+
+	rec := httptest.NewRecorder()
+	handler.ChangePassword(rec, req)
+
+	if rec.Code != http.StatusBadRequest {
+		t.Fatalf("status = %d, want %d: %s", rec.Code, http.StatusBadRequest, rec.Body.String())
+	}
+}
+
 //nolint:paralleltest // serial: shared fake auth and session fixtures
 func TestAuthCoverage_Login_UnknownFieldRejected(t *testing.T) {
 	handler := newAuthHandler(t)
@@ -579,4 +603,87 @@ func TestAuthCoverage_Logout_WithSessionSucceeds(t *testing.T) {
 	if rec.Code != http.StatusNoContent {
 		t.Fatalf("status = %d, want %d", rec.Code, http.StatusNoContent)
 	}
+}
+
+// A password change must end every other session of that user, so a stolen
+// cookie stops working, while the session that made the change stays valid.
+//
+//nolint:paralleltest // serial: shared fake auth and session fixtures
+func TestAuthCoverage_ChangePassword_RevokesOtherSessions(t *testing.T) {
+	handler, _ := newAuthHandlerWithStore(t)
+	loginBody := `{"username":"alice","password":"pvmss-alice","cluster":"default"}`
+	current := serveJSON(handler.Login, "/api/v1/auth/login", loginBody).Result().Cookies()[0]
+	other := serveJSON(handler.Login, "/api/v1/auth/login", loginBody).Result().Cookies()[0]
+
+	change := func(oldPassword, newPassword string) int {
+		req := httptest.NewRequest(http.MethodPost, "/api/v1/auth/password", strings.NewReader(`{"oldPassword":"`+oldPassword+`","newPassword":"`+newPassword+`"}`))
+		req.Header.Set("Content-Type", "application/json")
+		req.AddCookie(current)
+
+		rec := httptest.NewRecorder()
+		handler.ChangePassword(rec, req)
+
+		return rec.Code
+	}
+
+	if code := change("pvmss-alice", "newpass12"); code != http.StatusNoContent {
+		t.Fatalf("change status = %d, want %d", code, http.StatusNoContent)
+	}
+
+	t.Cleanup(func() { change("newpass12", "pvmss-alice") })
+
+	principal := func(cookie *http.Cookie) error {
+		req := httptest.NewRequest(http.MethodGet, "/api/v1/auth/me", nil)
+		req.AddCookie(cookie)
+		_, err := handler.Principal(req)
+
+		return err
+	}
+
+	if err := principal(other); err == nil {
+		t.Fatal("other session still valid after password change")
+	}
+
+	if err := principal(current); err != nil {
+		t.Fatalf("current session revoked: %v", err)
+	}
+}
+
+// A browser that lost the CSRF cookie while its session is still valid gets
+// it back from /auth/me, so the client's reload-on-invalid-CSRF recovers
+// instead of looping.
+//
+//nolint:paralleltest // serial: shared fake auth and session fixtures
+func TestAuthCoverage_Me_ReissuesMissingCSRFCookie(t *testing.T) {
+	handler, _ := newAuthHandlerWithStore(t)
+	login := serveJSON(handler.Login, "/api/v1/auth/login", `{"username":"alice","password":"pvmss-alice","cluster":"default"}`)
+
+	var session, csrf *http.Cookie
+
+	for _, cookie := range login.Result().Cookies() {
+		switch cookie.Name {
+		case auth.SessionCookieName:
+			session = cookie
+		case auth.CSRFCookieName:
+			csrf = cookie
+		}
+	}
+
+	req := httptest.NewRequest(http.MethodGet, "/api/v1/auth/me", nil)
+	req.AddCookie(session)
+
+	rec := httptest.NewRecorder()
+	handler.Me(rec, req)
+
+	for _, cookie := range rec.Result().Cookies() {
+		if cookie.Name == auth.CSRFCookieName {
+			if cookie.Value != csrf.Value {
+				t.Fatalf("reissued csrf = %q, want the session's token %q", cookie.Value, csrf.Value)
+			}
+
+			return
+		}
+	}
+
+	t.Fatal("/auth/me did not reissue the missing csrf cookie")
 }
