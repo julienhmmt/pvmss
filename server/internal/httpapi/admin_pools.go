@@ -394,6 +394,10 @@ func (h *AdminPools) ServeDelete(w http.ResponseWriter, r *http.Request) {
 		writeAdminError(w, http.StatusForbidden, "forbidden", msgAdminOnly)
 		return
 	}
+	if errors.Is(err, pools.ErrMembersRemain) {
+		writeAdminError(w, http.StatusConflict, "members_remain", err.Error())
+		return
+	}
 	if errors.Is(err, pools.ErrNotManaged) {
 		writeAdminError(w, http.StatusConflict, "not_managed", fmt.Sprintf("pool %q is not managed by PVMSS", name))
 		return
