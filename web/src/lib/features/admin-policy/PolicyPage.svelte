@@ -8,6 +8,7 @@
 	import Button from '$lib/shared/ui/Button.svelte';
 	import EmptyState from '$lib/shared/ui/EmptyState.svelte';
 	import ConfirmDialog from '$lib/shared/ui/ConfirmDialog.svelte';
+	import Alert from '$lib/shared/ui/Alert.svelte';
 
 	interface Props {
 		policy: AdminPolicy | null;
@@ -83,6 +84,10 @@
 		/>
 	{/snippet}
 </PageHeader>
+
+<div class="mb-6 max-w-5xl">
+	<Alert tone="info" role="status">{m['policy.autosaveNote']()}</Alert>
+</div>
 
 <section aria-labelledby="policy-title">
 	{#if loading}
