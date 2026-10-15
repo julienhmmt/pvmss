@@ -24,8 +24,13 @@ const (
 	// vmStatusRateLimitMaxRequests allows the frontend convergence loop to
 	// poll batch live status every 1.5s for up to 30s per action (20 polls),
 	// with headroom for concurrent actions.
-	vmStatusRateLimitMaxRequests    = 120
-	vmStatusRateLimitWindow         = time.Minute
+	vmStatusRateLimitMaxRequests = 120
+	vmStatusRateLimitWindow      = time.Minute
+	// taskPollRateLimitMaxRequests allows the task tray to poll several
+	// tasks at once (one GET per task per second) without letting one user
+	// hammer the Proxmox task API.
+	taskPollRateLimitMaxRequests    = 300
+	taskPollRateLimitWindow         = time.Minute
 	clusterTestRateLimitMaxRequests = 10
 	clusterTestRateLimitWindow      = time.Minute
 	adminWriteRateLimitMaxRequests  = 60
@@ -200,7 +205,9 @@ func registerVMRoutes(mux *http.ServeMux, cfg RouterConfig, protect protectFunc,
 	}
 
 	if cfg.Tasks != nil {
-		mux.Handle("GET /api/v1/tasks/{upid}", cfg.Tasks)
+		// GET: rate limit only, no CSRF.
+		taskPollLimiter := newUserRateLimiter(cfg.limitMax(taskPollRateLimitMaxRequests), taskPollRateLimitWindow, cfg.TrustedProxyHops, cfg.Store)
+		mux.Handle("GET /api/v1/tasks/{upid}", taskPollLimiter.middleware(cfg.Auth, cfg.Tasks))
 	}
 	// VM detail + actions + delete + patch - all gated by vm.Resolve() inside
 	// the handler. Same reason as GET /vms: not wrapped in auth.Require.
