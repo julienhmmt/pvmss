@@ -140,7 +140,7 @@ func Resolve(source inventory.LookupSource, actor auth.Identity, clusterName str
 		return Entity{}, ErrNotFound
 	}
 
-	if !actor.IsAdmin && machine.Pool != actor.Pool {
+	if !actor.IsAdmin && (actor.Pool == "" || machine.Pool != actor.Pool) {
 		recordResolveFailed(actor, clusterName, vmid, "cross-pool access denied")
 		return Entity{}, ErrForbidden
 	}
