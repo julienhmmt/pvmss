@@ -45,11 +45,10 @@ test.describe('T12 admin policy', () => {
 	test('admin lowers a gabarit and creation is refused before a task is accepted', async ({ page }) => {
 		await signInAdmin(page.request);
 		await page.goto('/admin/policy');
+		// The form autosaves after a short debounce; wait for the PUT to land.
+		const saved = page.waitForResponse((r) => r.url().includes('/api/v1/admin/policy') && r.request().method() === 'PUT');
 		await page.getByLabel('Maximum disk per VM (GB)').fill('10');
-		await page.getByRole('button', { name: 'Save policy' }).click();
-		// Target the toast: the page also renders the cluster-status banner with
-		// role="status", so a bare getByRole('status') is ambiguous.
-		await expect(page.getByTestId('toast').filter({ hasText: 'Policy saved' }).first()).toBeVisible();
+		expect((await saved).ok()).toBe(true);
 
 		await signInAlice(page.request);
 		const response = await page.request.post('/api/v1/vms', {

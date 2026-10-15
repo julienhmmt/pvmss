@@ -2,7 +2,6 @@
 	import type { AdminPolicy, AdminPolicyPatch, Gabarit } from './policy.svelte';
 	import { m } from '$lib/paraglide/messages.js';
 	import Alert from '$lib/shared/ui/Alert.svelte';
-	import Button from '$lib/shared/ui/Button.svelte';
 	import Card from '$lib/shared/ui/Card.svelte';
 	import FormField from '$lib/shared/ui/FormField.svelte';
 	import TextField from '$lib/shared/ui/TextField.svelte';
@@ -23,11 +22,10 @@
 
 	let { policy, saving, saveError, onSave, onDirtyChange }: Props = $props();
 
-	// Captures the server snapshot when the keyed form mounts. The keyed
-	// remount (in PolicyPage) resets both `original` and `form` together
-	// whenever a new policy arrives from the server.
-	// svelte-ignore state_referenced_locally
-	let original = $state<FormState>({ gabarit: { ...policy.gabarit }, maxVmPerUser: policy.quota.maxVmPerUser });
+	// `original` is the last server snapshot. It follows the `policy` prop, so
+	// a successful save resets dirty state without wiping edits typed while the
+	// save was in flight (those stay dirty and are saved next).
+	const original = $derived<FormState>({ gabarit: { ...policy.gabarit }, maxVmPerUser: policy.quota.maxVmPerUser });
 	// svelte-ignore state_referenced_locally
 	let form = $state<FormState>({ gabarit: { ...policy.gabarit }, maxVmPerUser: policy.quota.maxVmPerUser });
 
@@ -143,17 +141,35 @@
 		return serverErrorField === fieldName ? saveError : null;
 	}
 
-	function submit(): void {
-		if (!isValid) return;
-		onSave({ gabarit: { ...form.gabarit }, quota: { maxVmPerUser: form.maxVmPerUser } });
-	}
+	// Autosave: one save DEBOUNCE_MS after the last edit. The effect re-runs on
+	// every edit (form is read) and when `saving` flips, so an edit made during
+	// an in-flight save is queued and sent once the save settles. A patch that
+	// was already sent is not resent, so a failed save is not retried in a loop;
+	// the next edit sends again. An invalid form resets that guard.
+	const DEBOUNCE_MS = 700;
+	let lastSentKey: string | null = null;
 
-	function discard(): void {
-		form = { gabarit: { ...original.gabarit }, maxVmPerUser: original.maxVmPerUser };
-	}
+	$effect(() => {
+		if (!isValid) {
+			lastSentKey = null;
+			return;
+		}
+		if (!isDirty || saving) return;
+		const patch: AdminPolicyPatch = {
+			gabarit: { ...form.gabarit },
+			quota: { maxVmPerUser: form.maxVmPerUser }
+		};
+		const key = JSON.stringify(patch);
+		if (key === lastSentKey) return;
+		const handle = setTimeout(() => {
+			lastSentKey = key;
+			onSave(patch);
+		}, DEBOUNCE_MS);
+		return () => clearTimeout(handle);
+	});
 </script>
 
-<form class="grid max-w-5xl gap-6 lg:grid-cols-[minmax(0,2fr)_minmax(0,1fr)] lg:items-start" onsubmit={(event) => { event.preventDefault(); submit(); }}>
+<form class="grid max-w-5xl gap-6 lg:grid-cols-[minmax(0,2fr)_minmax(0,1fr)] lg:items-start" onsubmit={(event) => event.preventDefault()}>
 	<Card pad="lg">
 		<div class="mb-4 grid gap-1">
 			<h2 class="text-lg font-medium text-foreground">{m['policy.gabarit']()}</h2>
@@ -245,12 +261,6 @@
 		</Card>
 
 		{#if saveError && !serverErrorField}<Alert>{saveError}</Alert>{/if}
-		{#if isDirty}<p class="text-xs text-muted-foreground">{m['policy.unsavedChanges']()}</p>{/if}
-		<div class="flex flex-wrap justify-end gap-2">
-			{#if isDirty}
-				<Button variant="subtle" onclick={discard}>{m['policy.discard']()}</Button>
-			{/if}
-			<Button type="submit" disabled={saving || !isDirty || !isValid}>{saving ? m['policy.saving']() : m['policy.save']()}</Button>
-		</div>
+		{#if saving}<p class="text-xs text-muted-foreground" role="status" aria-live="polite">{m['policy.saving']()}</p>{/if}
 	</div>
 </form>

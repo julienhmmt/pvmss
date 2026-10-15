@@ -26,11 +26,11 @@
 	errorCode={store.errorCode}
 	saving={store.saving}
 	saveError={store.saveError}
-	saved={store.saved}
 	clusterOptions={store.clusterOptions}
 	cluster={store.cluster}
 	onClusterChange={(v) => store.setCluster(v)}
 	onLoad={() => void store.load()}
 	onRetry={() => void store.retryConnection()}
-	onSave={(patch) => void store.save(patch)}
+	// Autosave fires without a user gesture: the failure is shown via store.saveError.
+	onSave={(patch) => store.save(patch).catch(() => undefined)}
 />
