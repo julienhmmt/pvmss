@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { onDestroy } from 'svelte';
 	import type { AdminPolicy, AdminPolicyPatch, Gabarit } from './policy.svelte';
 	import { m } from '$lib/paraglide/messages.js';
 	import Alert from '$lib/shared/ui/Alert.svelte';
@@ -150,6 +151,9 @@
 	const DEBOUNCE_MS = 700;
 	let lastSentKey: string | null = null;
 	let saveTimer: ReturnType<typeof setTimeout> | undefined;
+	// The patch the debounce will send; flushed on unmount so an edit made
+	// just before navigating away is not lost.
+	let pendingPatch: AdminPolicyPatch | null = null;
 
 	function fullPatch(): AdminPolicyPatch {
 		return { gabarit: { ...form.gabarit }, quota: { maxVmPerUser: form.maxVmPerUser } };
@@ -160,11 +164,13 @@
 	function sendPatch(patch: AdminPolicyPatch): void {
 		clearTimeout(saveTimer);
 		saveTimer = undefined;
+		pendingPatch = null;
 		lastSentKey = JSON.stringify(patch);
 		onSave(patch);
 	}
 
 	$effect(() => {
+		pendingPatch = null;
 		if (!isValid) {
 			lastSentKey = null;
 			return;
@@ -172,8 +178,13 @@
 		if (!isDirty || saving) return;
 		const patch = fullPatch();
 		if (JSON.stringify(patch) === lastSentKey) return;
+		pendingPatch = patch;
 		saveTimer = setTimeout(() => sendPatch(patch), DEBOUNCE_MS);
 		return () => clearTimeout(saveTimer);
+	});
+
+	onDestroy(() => {
+		if (pendingPatch) sendPatch(pendingPatch);
 	});
 
 	// Manual fallback: always sends the full patch, even when clean.

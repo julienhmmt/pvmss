@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, it, expect, vi } from 'vitest';
-import { mount, tick } from 'svelte';
+import { mount, tick, unmount } from 'svelte';
 import PolicyForm from './PolicyForm.svelte';
 import type { AdminPolicy, AdminPolicyPatch } from './policy.svelte';
 
@@ -171,5 +171,32 @@ describe('PolicyForm autosave', () => {
 		expect(document.querySelector('button[type="submit"]')).not.toBeNull();
 		const labels = Array.from(document.querySelectorAll('button')).map((b) => b.textContent ?? '');
 		expect(labels.some((text) => text.includes('Annuler les modifications'))).toBe(false);
+	});
+});
+
+describe('PolicyForm unmount', () => {
+	beforeEach(() => {
+		vi.useFakeTimers();
+	});
+
+	afterEach(() => {
+		vi.useRealTimers();
+		document.body.innerHTML = '';
+	});
+
+	it('sends a pending edit when the form unmounts before the debounce', async () => {
+		const onSave = vi.fn();
+		const form = mount(PolicyForm, {
+			target: document.body,
+			props: { policy: buildPolicy(), saving: false, saveError: null, onSave }
+		});
+		setInputValue(getFirstInput(), '6');
+		await tick();
+
+		vi.advanceTimersByTime(DEBOUNCE_MS - 100);
+		await unmount(form);
+
+		expect(onSave).toHaveBeenCalledTimes(1);
+		expect(onSave.mock.calls[0]?.[0]).toMatchObject({ gabarit: { maxSockets: 6 } });
 	});
 });
