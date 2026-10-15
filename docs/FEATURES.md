@@ -164,6 +164,7 @@ Clusters have two names. The **id** (`clusters.name`, e.g. `default` for the env
 | Structured `slog` logging, console or JSON, stdout/stderr/file                                                  | `LOG_*`                                                                      | ✅     |
 | Health endpoint                                                                                                 | `GET /health`                                                                | ✅     |
 | Public version endpoint                                                                                         | `GET /api/v1/public/version`                                                 | ✅     |
+| Prometheus metrics (optional separate listener) and OpenTelemetry tracing / OTLP export                         | `PVMSS_METRICS_PORT`, `OTEL_*`, see [observability.md](observability.md)     | ✅     |
 | SPA error reporting (uncaught errors, unhandled rejections, SvelteKit `handleError`)                            | `POST /api/v1/client-errors`                                                 | ✅     |
 | Background inventory refresh with configurable interval/timeout                                                 | `PVMSS_INVENTORY_*`                                                          | ✅     |
 | Security headers (CSP, HSTS, frame/content-type options), CSRF, rate limiting, trusted proxy hops for client IP | `security_headers.go`, `csrf.go`, `ratelimit.go`, `PVMSS_TRUSTED_PROXY_HOPS` | ✅     |

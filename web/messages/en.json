@@ -953,7 +953,7 @@
   "admin.cloudinit.newTemplateForm": "New template",
   "admin.cloudinit.labelField": "Label",
   "admin.cloudinit.contentField": "Content (must start with #cloud-config)",
-  "admin.cloudinit.contentSyncWarning": "Saving publishes the template over SSH to every node of the cluster, merged on top of the PVMSS baseline. Each version is a new file: VMs keep the version they were created with.",
+  "admin.cloudinit.contentSyncWarning": "Saving creates a new file version, merged on top of the PVMSS baseline: copy its command and run it on the nodes. Each version is a new file: VMs keep the version they were created with.",
   "admin.cloudinit.contentCounter": "{used} / {max} characters",
   "admin.cloudinit.loadError": "failed to load templates",
   "admin.cloudinit.invalidYaml": "The content is not valid YAML: {detail}",

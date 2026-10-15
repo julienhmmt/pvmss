@@ -189,6 +189,7 @@ Utilisez **soit** un `.env` (via `env_file`) **soit** des variables inline, pas 
 | `PVMSS_MAX_LIST_PAGE_SIZE`                    | Taille de page maximale des endpoints de liste                             | ❌                    | `100`              |
 | `PVMSS_TRUSTED_PROXY_HOPS`                    | Nombre de reverse proxies devant PVMSS (IP client / limitation de débit)   | ❌                    | `1`                |
 | `PVMSS_RATE_LIMIT_MAX`                        | Relève tous les plafonds de limitation de débit intégrés (auth par IP, écritures par utilisateur) ; `0` garde les valeurs par défaut | ❌                    | `0`          |
+| `PVMSS_METRICS_PORT`                          | Port de l'écouteur `GET /metrics` sur `PVMSS_HOST` (1-65535, différent de `PVMSS_PORT`) ; vide = désactivé | ❌                    | vide         |
 | `TZ`                                          | Fuseau horaire du conteneur                                                | ❌                    | `UTC`              |
 
 L'image Docker prérègle `PVMSS_DB_PATH=/data/pvmss.db`, `PVMSS_HOST=0.0.0.0` et
@@ -331,13 +332,12 @@ LOG_OUTPUT: "/app/pvmss.log"
 
 ## Démarrer avec Kubernetes
 
-Utilisez le fichier [`pvmss-deployment.yaml`](pvmss-deployment.yaml) pour créer en une seule fois le namespace, le secret, le configmap, le PVC, le Deployment et le Service.
+Utilisez le fichier [`pvmss-deployment.yaml`](pvmss-deployment.yaml) pour créer en une seule fois le namespace, le secret, le PVC, le Deployment et le Service.
 
 Appliquez avec `kubectl apply -f pvmss-deployment.yaml`. Vous devez fournir votre propre ingress/HTTPRoute, un exemple est fourni dans le fichier `pvmss-httproute.yml` (Gateway API).
 
 Un chart Helm est fourni dans [`helm/`](helm/) : `helm install pvmss ./helm -f mes-values.yaml`.
-`values.yaml` documente chaque variable ; `cloudInit.sshKeySecret` monte la clé
-SSH de PVMSS depuis un Secret existant pour publier les modèles cloud-init.
+`values.yaml` documente chaque variable.
 
 ## Exploitation
 
@@ -349,14 +349,7 @@ SSH de PVMSS depuis un Secret existant pour publier les modèles cloud-init.
 ## Limites connues
 
 - Pas encore d'audit de sécurité complet.
-- OIDC : l'interrupteur par cluster existe mais la connexion n'est pas implémentée (l'endpoint répond 501).
-- Le changement de mot de passe n'est disponible que par API (`POST /api/v1/auth/password`), pas encore de page.
-- Conteneurs LXC, sauvegardes, migration à chaud / HA, SDN et règles de pare-feu restent dans Proxmox.
-
-### Prochaines évolutions majeures
-
-- Connexion OpenID Connect / SSO ;
-- Migration de VM entre les nœuds Proxmox ;
+- Pas de gestion de la HA (High Availability) des VM, pas de migration inter-cluster, SDN et règles de pare-feu restent dans Proxmox.
 
 Toute suggestion et contribution sont les bienvenues via issues ou pull requests. Les prochaines versions et ajouts de fonctionnalités seront documentés ici : <https://github.com/julienhmmt/pvmss/projects?query=is%3Aopen>.
 

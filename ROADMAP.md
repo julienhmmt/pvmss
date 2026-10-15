@@ -58,9 +58,9 @@ Since the cutover: the em-dash ban enforced across the whole tree, the
 SonarQube quality gate cleared for both `server` and `web` projects, the
 `graphify` / code-review-graph tooling removed in favor of `tools/pq` (a
 stateless ripgrep-based locator, no index to go stale), personal API tokens
-deactivated (code kept, routes unregistered), and a run of cloud-init work
-culminating in the current `HEAD`: SSH snippet delivery, so cloud-init works
-without a shared filesystem between PVMSS and the Proxmox node. Then the
+removed (schema V37, 2026-10-01), OIDC stubs deleted (2026-10-04), and a run of
+cloud-init work ending with the removal of SSH publishing (2026-09-28): admins
+paste a per-template command on each node, and PVMSS never writes on the nodes. Then the
 "calm workspace" UI pass: admin dashboard with node alerts, node capacity
 page, node and pool detail pages, page widths normalized, and lint/CodeQL
 findings cleaned up.
@@ -78,18 +78,7 @@ findings cleaned up.
 Things structurally implied by the current codebase, not a feature backlog:
 
 - **Tag `v0.4.0`.** The rewrite has been the only codebase since the T16
-  cutover a month ago and has not been tagged.
-- **Decide on personal API tokens.** The code, table, and e2e spec exist;
-  the routes are unregistered and bearer auth is disabled. Either re-enable
-  (restore three lines in `registerAuthRoutes` plus the bearer branch in
-  `Auth.Principal`) or remove the dead surface. See `TECH_DEBT.md`.
-- **OIDC is a stub.** The per-cluster toggle and the login button exist;
-  `POST /api/v1/auth/oidc` returns 501. Either implement it or remove the
-  toggle so it stops looking finished.
-- **Decide on the ADR practice.** `docs/adr/` is empty though `AGENTS.md`
-  and `CONTEXT.md` describe it as "created lazily". At least one design
-  decision (the batch-status rate limit) currently lives only in a code
-  comment. See `TECH_DEBT.md`.
+  cutover (2026-08-12) and has not been tagged.
 
 ## How this file gets updated
 

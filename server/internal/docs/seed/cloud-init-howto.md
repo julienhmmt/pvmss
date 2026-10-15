@@ -8,8 +8,10 @@ cluster. You pick one when you create a VM; you never write YAML yourself.
 ## Choosing a document
 
 The **Create a VM** form lists the templates your administrator made
-available for the cluster. The picker is hidden when the cluster has no
-cloud-init publishing - ask your administrator if you expected to see it.
+available for the cluster. When the cluster has no cloud-init templates, the
+form says so instead of offering a picker - ask your administrator if you
+expected to see one. The picker also stays hidden when no template is on the
+VM's node.
 
 A template is versioned: when your administrator edits it, VMs that already
 exist keep the version they were created with. New VMs get the new version.
@@ -53,8 +55,8 @@ inside the guest, then reboot:
 sudo cloud-init clean --logs --seed && sudo reboot
 ```
 
-To add an SSH key to a running VM without any of this, use the **Add key
-now** section of the Cloud-init tab: it injects the key immediately through
+To add an SSH key to a running VM without any of this, use the **Add SSH key**
+section of the Cloud-init tab (**Inject this key now**): it injects the key immediately through
 the guest agent and also saves it to the config for future boots.
 
 The picker below the key list appends keys saved on your profile to that

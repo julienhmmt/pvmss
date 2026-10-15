@@ -12,16 +12,16 @@ formulaire l'indique - réessayez plus tard ou choisissez un autre cluster.
 
 ## Retrouver ses VM
 
-Une fois connecté, la page d'accueil affiche le nombre de vos VM, votre quota
-et les tâches encore en cours. La page **Mes VM** liste toutes les machines
-virtuelles de votre pool sur l'ensemble des clusters configurés. Utilisez la
+Une fois connecté, vous arrivez sur la page **Mes VM** (la barre latérale
+affiche votre quota et les tâches encore en cours). Elle liste toutes les
+machines virtuelles de votre pool sur l'ensemble des clusters configurés. Utilisez la
 recherche pour filtrer par nom, VMID ou tag, et le sélecteur de cluster pour
 restreindre la vue à un seul cluster. Les filtres sont conservés dans l'URL :
 une vue filtrée peut être mise en favori.
 
 ## Créer une VM
 
-1. Ouvrez **Créer une VM** depuis la page d'accueil ou la page des VM.
+1. Ouvrez **Créer une VM** depuis la page **Mes VM**.
 2. Choisissez une source : une ISO, un template Proxmox ou une image cloud.
 3. Choisissez un profil matériel ou saisissez des valeurs personnalisées ; le
    nœud est choisi pour vous sauf en mode Détaillé.

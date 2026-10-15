@@ -9,8 +9,8 @@ d'administration ; la procédure complète est dans le
 **Clusters** connecte un ou plusieurs environnements Proxmox (URL, token
 d'API, test de connexion) et définit la cible d'écriture cloud-init par
 cluster. Chaque cluster a un identifiant immuable (choisi à la création ; `default` pour le premier) et un libellé modifiable ; l'identifiant ne peut pas être renommé. **Nœuds** approuve les hôtes sur lesquels les utilisateurs peuvent
-créer des VM. **Pools** crée les utilisateurs self-service (utilisateur
-Proxmox + pool + ACL en une étape).
+créer des VM. **Utilisateurs PVMSS** crée les utilisateurs self-service
+(utilisateur Proxmox + pool + ACL en une étape).
 
 ### Modèles cloud-init
 
@@ -32,12 +32,12 @@ Laissez le stockage vide pour désactiver les modèles cloud-init sur le
 cluster. Voir le [guide de configuration cloud-init](/docs/cloud-init-setup)
 pour le détail et le dépannage.
 
-## Catalogue
+## Ressources et provisionnement
 
-La section **Catalogue** permet d'approuver ou masquer les stockages, ISO,
-images cloud, templates de VM et bridges que la création de VM peut
-référencer, et de gérer les profils matériels, tags et templates cloud-init.
-Les ressources découvertes apparaissent automatiquement ; l'interrupteur
+Le groupe **Ressources** permet d'approuver ou masquer les stockages, ISO,
+images cloud, modèles de VM et bridges que la création de VM peut
+référencer. Le groupe **Provisionnement** gère les profils VM, les templates
+cloud-init, la baseline cloud-init et les tags. Les ressources découvertes apparaissent automatiquement ; l'interrupteur
 « activé » contrôle ce que voient les utilisateurs. Quand une ressource
 disparaît de Proxmox, son approbation obsolète est signalée pour que vous
 puissiez la retirer.
