@@ -52,7 +52,7 @@
 				<p class="truncate text-lg font-semibold" data-testid="account-name">{name}</p>
 				<p class="text-sm text-muted-foreground">
 					{m['account.personal']()}
-					{#if session.principal}
+					{#if session.principal?.clusterDisplayName || session.principal?.cluster}
 						· {m['account.signedInOn']({ cluster: session.principal.clusterDisplayName || session.principal.cluster })}
 					{/if}
 				</p>
