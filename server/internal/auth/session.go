@@ -172,6 +172,29 @@ func (m *SessionManager) RevokeOthers(ctx context.Context, r *http.Request, iden
 	return nil
 }
 
+// EnsureCSRFCookie sets the CSRF cookie again when the browser lost it while
+// its session is still valid. Without it every write fails with
+// invalid_csrf_token until the user logs in again.
+func (m *SessionManager) EnsureCSRFCookie(ctx context.Context, w http.ResponseWriter, r *http.Request) error {
+	if _, err := r.Cookie(CSRFCookieName); err == nil {
+		return nil
+	}
+
+	cookie, err := r.Cookie(SessionCookieName)
+	if err != nil {
+		return ErrUnauthenticated
+	}
+
+	session, err := m.repository.FindSession(ctx, m.hash(cookie.Value))
+	if err != nil || !usable(session, time.Now()) {
+		return ErrUnauthenticated
+	}
+
+	http.SetCookie(w, m.csrfCookie(session.CSRFToken, session.ExpiresAt))
+
+	return nil
+}
+
 func (m *SessionManager) cookie(raw string, expires time.Time) *http.Cookie {
 	return &http.Cookie{Name: SessionCookieName, Value: raw, Path: "/", Expires: expires, HttpOnly: true, Secure: m.isSecure, SameSite: http.SameSiteStrictMode} //nolint:gosec // Secure is intentionally conditional for dev HTTP mode
 }

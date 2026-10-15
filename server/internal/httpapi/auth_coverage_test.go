@@ -648,3 +648,42 @@ func TestAuthCoverage_ChangePassword_RevokesOtherSessions(t *testing.T) {
 		t.Fatalf("current session revoked: %v", err)
 	}
 }
+
+// A browser that lost the CSRF cookie while its session is still valid gets
+// it back from /auth/me, so the client's reload-on-invalid-CSRF recovers
+// instead of looping.
+//
+//nolint:paralleltest // serial: shared fake auth and session fixtures
+func TestAuthCoverage_Me_ReissuesMissingCSRFCookie(t *testing.T) {
+	handler, _ := newAuthHandlerWithStore(t)
+	login := serveJSON(handler.Login, "/api/v1/auth/login", `{"username":"alice","password":"pvmss-alice","cluster":"default"}`)
+
+	var session, csrf *http.Cookie
+
+	for _, cookie := range login.Result().Cookies() {
+		switch cookie.Name {
+		case auth.SessionCookieName:
+			session = cookie
+		case auth.CSRFCookieName:
+			csrf = cookie
+		}
+	}
+
+	req := httptest.NewRequest(http.MethodGet, "/api/v1/auth/me", nil)
+	req.AddCookie(session)
+
+	rec := httptest.NewRecorder()
+	handler.Me(rec, req)
+
+	for _, cookie := range rec.Result().Cookies() {
+		if cookie.Name == auth.CSRFCookieName {
+			if cookie.Value != csrf.Value {
+				t.Fatalf("reissued csrf = %q, want the session's token %q", cookie.Value, csrf.Value)
+			}
+
+			return
+		}
+	}
+
+	t.Fatal("/auth/me did not reissue the missing csrf cookie")
+}

@@ -188,6 +188,10 @@ func (h *Auth) Me(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	if err := h.sessions.EnsureCSRFCookie(r.Context(), w, r); err != nil {
+		logctx.FromOr(r.Context(), h.log).WarnContext(r.Context(), "csrf cookie reissue failed", "component", "httpapi", "error", err)
+	}
+
 	identity = h.refreshClusterDisplayName(r.Context(), identity)
 	if identity.DisplayName == "" {
 		identity.DisplayName = userDisplayName(identity.Username)
