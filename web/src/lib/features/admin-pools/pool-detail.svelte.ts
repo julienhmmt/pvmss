@@ -1,4 +1,4 @@
-import { del, get, ApiRequestError } from '$lib/shared/api/client';
+import { del, get, patch, ApiRequestError } from '$lib/shared/api/client';
 import { fetchClusterOptions } from '$lib/shared/clusters';
 import { getContext, setContext } from 'svelte';
 import { m } from '$lib/paraglide/messages.js';
@@ -60,6 +60,8 @@ export class PoolDetailStore {
 	notFound = $state.raw(false);
 	deleting = $state.raw(false);
 	deleteError = $state.raw<string | null>(null);
+	savingComment = $state.raw(false);
+	commentError = $state.raw<string | null>(null);
 	cluster = $state('');
 
 	/** Loads the named pool. The cluster comes from the list page's
@@ -85,6 +87,25 @@ export class PoolDetailStore {
 	async refresh(): Promise<void> {
 		if (this.detail) {
 			await this.load(this.detail.name, this.cluster);
+		}
+	}
+
+	/** Replaces the pool comment; throws so the caller can keep the editor open. */
+	async updateComment(comment: string): Promise<void> {
+		if (!this.detail) return;
+		this.savingComment = true;
+		this.commentError = null;
+		try {
+			const saved = await patch<{ comment: string }>(
+				`/api/v1/admin/pools/${encodeURIComponent(this.detail.name)}?cluster=${encodeURIComponent(this.cluster)}`,
+				{ comment }
+			);
+			this.detail = { ...this.detail, comment: saved.comment };
+		} catch (err) {
+			this.commentError = err instanceof ApiRequestError ? err.message : m['admin.poolDetail.commentError']();
+			throw err;
+		} finally {
+			this.savingComment = false;
 		}
 	}
 

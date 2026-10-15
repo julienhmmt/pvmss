@@ -78,6 +78,10 @@ func (stubClusterClient) DeletePool(_ context.Context, _ string) error {
 	return cluster.ErrNotImplemented
 }
 
+func (stubClusterClient) UpdatePoolComment(_ context.Context, _, _ string) error {
+	return cluster.ErrNotImplemented
+}
+
 func (stubClusterClient) DeleteUser(_ context.Context, _ string) error {
 	return cluster.ErrNotImplemented
 }

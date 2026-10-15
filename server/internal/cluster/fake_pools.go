@@ -119,6 +119,25 @@ func (fake Fake) DeletePool(_ context.Context, poolID string) error {
 	return nil
 }
 
+// UpdatePoolComment replaces a pool's comment.
+func (fake Fake) UpdatePoolComment(_ context.Context, poolID, comment string) error {
+	state := fake.stateOrDefault()
+	if fake.unavailable() {
+		return ErrUnreachable
+	}
+	state.vmMu.Lock()
+	defer state.vmMu.Unlock()
+
+	index := slices.IndexFunc(state.pools, func(pool Pool) bool { return pool.Name == poolID })
+	if index < 0 {
+		return ErrNotFound
+	}
+	state.pools[index].Comment = comment
+	state.record(FakeCall{Action: "update_pool", Name: poolID})
+
+	return nil
+}
+
 // DeleteUser removes a PVE identity. Tests can force a best-effort failure.
 func (fake Fake) DeleteUser(_ context.Context, username string) error {
 	state := fake.stateOrDefault()

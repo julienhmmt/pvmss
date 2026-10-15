@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net/http"
 	"net/url"
+	"slices"
 	"strings"
 )
 
@@ -140,6 +141,26 @@ func (p Proxmox) SetPoolACL(ctx context.Context, username, poolID, role string) 
 		"roles":     {role},
 		"propagate": {"1"},
 	})
+
+	return err
+}
+
+// UpdatePoolComment implements Client. Existence is checked first so an
+// unknown pool returns ErrNotFound, matching the fake. PUT /pools (PVE 8.1+)
+// replaces the deprecated PUT /pools/{poolid}.
+func (p Proxmox) UpdatePoolComment(ctx context.Context, poolID, comment string) error {
+	rest := p.rest()
+
+	pools, err := proxmoxListPools(ctx, rest)
+	if err != nil {
+		return err
+	}
+
+	if !slices.ContainsFunc(pools, func(pool Pool) bool { return pool.Name == poolID }) {
+		return ErrNotFound
+	}
+
+	_, err = rest.do(ctx, http.MethodPut, "/pools", url.Values{"poolid": {poolID}, "comment": {comment}})
 
 	return err
 }
