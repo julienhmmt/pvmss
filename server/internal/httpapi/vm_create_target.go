@@ -198,6 +198,7 @@ type createErrorMapping struct {
 var createErrorMappings = []createErrorMapping{
 	{vm.ErrAdminCannotCreate, http.StatusForbidden, "admin_cannot_create", "administrators cannot create VMs"},
 	{vm.ErrNoPool, http.StatusForbidden, "no_pool", "this account cannot own VMs"},
+	{policy.ErrInventoryNotReady, http.StatusServiceUnavailable, "inventory_not_ready", "inventory is still loading, retry in a few seconds"},
 	{policy.ErrQuotaExceeded, http.StatusBadRequest, "quota_exceeded", ""},
 	{policy.ErrGabaritExceeded, http.StatusBadRequest, "gabarit_exceeded", ""},
 	{policy.ErrNodeCapacityExceeded, http.StatusBadRequest, "capacity_exceeded", ""},

@@ -35,10 +35,17 @@ func auditIPFromContext(ctx context.Context) string {
 
 // CheckQuota refuses a non-administrator whose pool has reached its allowance.
 func (service *Policy) CheckQuota(ctx context.Context, clusterName string, actor auth.Identity) error {
+	return service.checkQuota(ctx, clusterName, actor, 0)
+}
+
+// checkQuota is CheckQuota with inflight creates added to the pool usage.
+func (service *Policy) checkQuota(ctx context.Context, clusterName string, actor auth.Identity, inflight int) error {
 	quota, err := service.Quota(ctx, clusterName, actor)
 	if err != nil {
 		return fmt.Errorf("read quota: %w", err)
 	}
+
+	quota.Used += inflight
 
 	if actor.IsAdmin || quota.Allowed == -1 || quota.Used < quota.Allowed {
 		return nil
