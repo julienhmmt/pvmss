@@ -53,6 +53,31 @@ describe('AdminPolicyNodesStore', () => {
 		expect(fetchMock.mock.calls[0]?.[0]).toBe('/api/v1/admin/policy/nodes/pve-node-02');
 	});
 
+	it('refresh reloads until the background refresh has completed', async () => {
+		vi.useFakeTimers();
+		const before = [fixture({ node: 'pve-node-01', usedVms: 1 })];
+		const after = [fixture({ node: 'pve-node-01', usedVms: 5 })];
+		let gets = 0;
+		vi.stubGlobal('fetch', vi.fn().mockImplementation((url: string, init?: RequestInit) => {
+			if (init?.method === 'POST') return Promise.resolve(jsonResponse(202, { refreshedAt: '2026-09-27T10:05:00Z' }));
+			if (url.startsWith('/api/v1/admin/policy/nodes')) {
+				gets += 1;
+				return Promise.resolve(gets <= 2
+					? jsonResponse(200, { nodes: before, refreshedAt: '2026-09-27T10:00:00Z' })
+					: jsonResponse(200, { nodes: after, refreshedAt: '2026-09-27T10:05:01Z' }));
+			}
+			return Promise.resolve(jsonResponse(200, []));
+		}));
+		const store = new AdminPolicyNodesStore();
+		await store.load();
+		const done = store.refresh();
+		await vi.runAllTimersAsync();
+		await done;
+		vi.useRealTimers();
+		expect(store.refreshedAt).toBe('2026-09-27T10:05:01Z');
+		expect(store.nodes).toEqual(after);
+	});
+
 	describe('sortedNodes', () => {
 		// Saturation ratios: node-01 uncapped (0), node-02 at 50% vCPU,
 		// node-03 at 90% vCPU - usage numbers alone would rank them wrong.

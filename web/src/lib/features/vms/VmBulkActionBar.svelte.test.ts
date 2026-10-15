@@ -77,4 +77,11 @@ describe('VmBulkActionBar', () => {
 		expect(document.querySelector('[data-testid="vm-bulk-confirm"]')).toBeNull();
 		expect(submit).toHaveBeenCalledWith('start');
 	});
+
+	it('offers every bulk action the server accepts, including pause and resume', () => {
+		setup();
+		const values = [...document.querySelectorAll('[data-testid="vm-bulk-action-bar"] option')].map((o) => (o as HTMLOptionElement).value);
+
+		expect(values).toEqual(['start', 'stop', 'shutdown', 'reboot', 'reset', 'pause', 'resume']);
+	});
 });

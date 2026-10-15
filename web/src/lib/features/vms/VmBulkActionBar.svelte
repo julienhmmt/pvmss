@@ -19,7 +19,9 @@
 		{ value: 'stop', label: () => m['vms.action.stop']() },
 		{ value: 'shutdown', label: () => m['vms.action.shutdown']() },
 		{ value: 'reboot', label: () => m['vms.action.reboot']() },
-		{ value: 'reset', label: () => m['vms.action.reset']() }
+		{ value: 'reset', label: () => m['vms.action.reset']() },
+		{ value: 'pause', label: () => m['vms.action.pause']() },
+		{ value: 'resume', label: () => m['vms.action.resume']() }
 	] as const;
 
 	/** Copy for each confirmation kind `bulkConfirmationKind` can return. */

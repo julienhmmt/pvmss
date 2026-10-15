@@ -326,6 +326,11 @@ func (h *Auth) ChangePassword(w http.ResponseWriter, r *http.Request) {
 		}
 		client = selected
 	}
+	if client == nil {
+		// Local admin session: no cluster account behind it.
+		writeAuthError(w, http.StatusBadRequest, "invalid_request", "password change requires a cluster account")
+		return
+	}
 	if err := client.ChangePassword(r.Context(), identity.Username, request.OldPassword, request.NewPassword); err != nil {
 		SetErrorMsg(w, "password change failed", err)
 		writeAuthError(w, http.StatusUnauthorized, "invalid_credentials", msgInvalidCredentials)

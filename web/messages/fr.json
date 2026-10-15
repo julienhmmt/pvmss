@@ -454,6 +454,7 @@
   "vms.detail.errorUpdateNetwork": "Échec de la mise à jour du réseau",
   "vms.detail.errorUpdateHardware": "Échec de la mise à jour du matériel",
   "vms.detail.errorAction": "Échec de l'action",
+  "vms.detail.errorNotConverged": "L'action a été envoyée, mais la machine n'a pas encore atteint l'état attendu.",
   "vms.detail.errorDelete": "Échec de la suppression",
   "vms.detail.errorUpdate": "Échec de la mise à jour",
   "vms.detail.errorRetrofit": "Échec du bascule du firmware",
