@@ -19,7 +19,7 @@ import (
 func createFromImage(ctx context.Context, policyService *policy.Policy, deps CreateDeps, clusterName string, actor auth.Identity, req CreateRequest) (CreateResult, error) {
 	defaultImageHardware(&req)
 
-	plan, err := planCreate(ctx, policyService, deps, clusterName, actor, req)
+	plan, err := planCreate(ctx, policyService, deps, clusterName, req)
 	if err != nil {
 		return CreateResult{}, err
 	}
