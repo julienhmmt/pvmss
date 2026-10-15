@@ -243,16 +243,14 @@
 				{/snippet}
 			</FormField>
 		</Card>
-	</div>
 
-	<footer class="col-span-full flex flex-wrap items-center justify-end gap-x-4 gap-y-2">
-		{#if saveError && !serverErrorField}<div class="w-full"><Alert>{saveError}</Alert></div>{/if}
+		{#if saveError && !serverErrorField}<Alert>{saveError}</Alert>{/if}
 		{#if isDirty}<p class="text-xs text-muted-foreground">{m['policy.unsavedChanges']()}</p>{/if}
 		<div class="flex flex-wrap justify-end gap-2">
 			{#if isDirty}
-				<Button variant="ghost" onclick={discard}>{m['policy.discard']()}</Button>
+				<Button variant="subtle" onclick={discard}>{m['policy.discard']()}</Button>
 			{/if}
 			<Button type="submit" disabled={saving || !isDirty || !isValid}>{saving ? m['policy.saving']() : m['policy.save']()}</Button>
 		</div>
-	</footer>
+	</div>
 </form>
