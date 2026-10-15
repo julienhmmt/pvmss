@@ -17,7 +17,7 @@ unlocks both the standard user surface and everything under `/admin`.
 5. Optional but recommended: create **VM profiles** so users can pick pre-approved hardware shapes, define **Tags**, and write **Cloud-init templates**.
 6. Set the **Policy** (per-cluster gabarit and quota) and **Node capacity** caps.
 7. Optionally enable **cloud-init documents** (see below).
-8. Create as many **User pools** as you need from `/admin/pools`.
+8. Create as many **PVMSS users** as you need from `/admin/pools`.
 9. Tell your users the portal is available so they can start creating VMs.
 10. Watch the **Audit log** (`/admin/settings`) to trace every VM write back to the acting user.
 
@@ -88,9 +88,9 @@ PVMSS supports connecting to more than one Proxmox environment at the same time.
 
 `/admin/nodes` lists every Proxmox VE host per cluster with live CPU and memory consumption, VM count, and online/offline status. Search, filter by status or enabled state, and sort the table. Toggle a node to approve or hide it for VM creation; disabling a node that runs VMs asks for confirmation and never touches those VMs. A background worker refreshes node metrics on `PVMSS_INVENTORY_REFRESH_INTERVAL`; the admin pages read this cache, so navigation stays instant even on large clusters.
 
-## Catalog: resources exposed to users
+## Resources and provisioning: what users can pick
 
-The **Catalog** area of the admin nav controls what VM creation may reference. Discovered resources appear automatically; toggle the enabled switch to control what users see. Every catalog page has a cluster selector, search, filters, and sortable columns.
+The **Resources** and **Provisioning** groups of the admin nav control what VM creation may reference. Discovered resources appear automatically; toggle the enabled switch to control what users see. Every catalog page has a cluster selector, search, filters, and sortable columns.
 
 - **Storages** (`/admin/storages`) - approve the storage backends that may host VM disks, grouped by node, with usage bars.
 - **ISOs** (`/admin/isos`) - approve the ISO images users may boot from.
@@ -114,9 +114,9 @@ At creation, users pick a bridge and a card model per NIC; the Proxmox per-VM fi
 
 The policy's **Isolation VLAN tag** applies one VLAN to every NIC created through PVMSS on that cluster; leave it at 0 to disable.
 
-## User pools
+## PVMSS users
 
-`/admin/pools` is where you create self-service users. Each pool provisions:
+`/admin/pools` (**PVMSS users**) is where you create self-service users. Each pool provisions:
 
 - a dedicated Proxmox user,
 - a dedicated Proxmox pool for that user, and
@@ -186,7 +186,7 @@ Built-in pages are seeded once, when missing, and never overwritten on restart, 
 
 - PVMSS targets Proxmox VE 8.x/9.x clusters (and standalone nodes).
 - User accounts are provisioned through `/admin/pools` on the Proxmox side.
-- Advanced cluster operations (live migration, HA, backup orchestration) are performed directly in Proxmox.
+- Administrators can migrate one VM at a time from **Infrastructure > Nodes**. HA, cross-cluster migration and backup orchestration are performed directly in Proxmox.
 - Administrators create VMs through the same self-service UI as users, or directly in Proxmox.
 - Backups and LXC containers are managed in Proxmox, not in PVMSS.
 - Password change is API-only for now (`POST /api/v1/auth/password`).

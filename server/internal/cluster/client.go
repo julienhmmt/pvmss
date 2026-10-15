@@ -91,6 +91,8 @@ type Client interface {
 	CreatePool(ctx context.Context, poolID, comment string) error
 	SetPoolACL(ctx context.Context, username, poolID, role string) error
 	DeletePool(ctx context.Context, poolID string) error
+	// UpdatePoolComment replaces a pool's comment. ErrNotFound on an unknown pool.
+	UpdatePoolComment(ctx context.Context, poolID, comment string) error
 	DeleteUser(ctx context.Context, username string) error
 	// StorageFreeSpace returns the available bytes on a storage backend on a
 	// node. Used by the create path's live disk-space
@@ -659,4 +661,15 @@ type TerminalRelay interface {
 type Pool struct {
 	Name    string
 	Comment string
+}
+
+// CloneNetworkInterfaces deep-copies interfaces, including each address list.
+func CloneNetworkInterfaces(interfaces []NetworkInterface) []NetworkInterface {
+	cloned := make([]NetworkInterface, len(interfaces))
+	for i, iface := range interfaces {
+		cloned[i] = iface
+		cloned[i].IPAddresses = append([]string(nil), iface.IPAddresses...)
+	}
+
+	return cloned
 }

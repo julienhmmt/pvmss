@@ -46,7 +46,7 @@ func createFromTemplate(ctx context.Context, policyService *policy.Policy, deps 
 	// otherwise shrink the clone to 1 vCPU / 128 MB).
 	hardwareOverride := defaultTemplateHardware(&req)
 
-	plan, err := planCreate(ctx, policyService, deps, clusterName, actor, req)
+	plan, err := planCreate(ctx, policyService, deps, clusterName, req)
 	if err != nil {
 		return CreateResult{}, err
 	}

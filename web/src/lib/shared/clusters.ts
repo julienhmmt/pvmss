@@ -9,7 +9,7 @@ const ADMIN_CLUSTER_STORAGE_KEY = 'pvmss.adminCluster';
 
 function adminStorage(): Storage | null {
 	try {
-		return typeof sessionStorage !== 'undefined' ? sessionStorage : null;
+		return typeof sessionStorage === 'undefined' ? null : sessionStorage;
 	} catch {
 		return null;
 	}

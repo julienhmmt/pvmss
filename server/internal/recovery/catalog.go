@@ -196,7 +196,7 @@ func splitISOVolid(name string) (storage, file string, ok bool) {
 
 //  - Upsert helpers -
 
-func upsertNode(ctx context.Context, v04DB *sql.DB, cluster string, r NodeRow) error {
+func upsertNode(ctx context.Context, v04DB dbtx, cluster string, r NodeRow) error {
 	_, err := v04DB.ExecContext(ctx, `
 		INSERT INTO catalog_nodes (cluster, name, enabled) VALUES (?, ?, ?)
 		ON CONFLICT(cluster, name) DO UPDATE SET enabled = excluded.enabled`,
@@ -208,7 +208,7 @@ func upsertNode(ctx context.Context, v04DB *sql.DB, cluster string, r NodeRow) e
 	return nil
 }
 
-func upsertStorage(ctx context.Context, v04DB *sql.DB, cluster string, r StorageRow) error {
+func upsertStorage(ctx context.Context, v04DB dbtx, cluster string, r StorageRow) error {
 	_, err := v04DB.ExecContext(ctx, `
 		INSERT INTO catalog_storages (cluster, name, node, enabled) VALUES (?, ?, ?, ?)
 		ON CONFLICT(cluster, name, node) DO UPDATE SET enabled = excluded.enabled`,
@@ -220,7 +220,7 @@ func upsertStorage(ctx context.Context, v04DB *sql.DB, cluster string, r Storage
 	return nil
 }
 
-func upsertBridge(ctx context.Context, v04DB *sql.DB, cluster string, r BridgeRow) error {
+func upsertBridge(ctx context.Context, v04DB dbtx, cluster string, r BridgeRow) error {
 	_, err := v04DB.ExecContext(ctx, `
 		INSERT INTO catalog_bridges (cluster, node, name, enabled) VALUES (?, ?, ?, ?)
 		ON CONFLICT(cluster, node, name) DO UPDATE SET enabled = excluded.enabled`,
@@ -232,7 +232,7 @@ func upsertBridge(ctx context.Context, v04DB *sql.DB, cluster string, r BridgeRo
 	return nil
 }
 
-func upsertISO(ctx context.Context, v04DB *sql.DB, cluster string, r ISORow) error {
+func upsertISO(ctx context.Context, v04DB dbtx, cluster string, r ISORow) error {
 	_, err := v04DB.ExecContext(ctx, `
 		INSERT INTO catalog_isos (cluster, node, storage, file, enabled) VALUES (?, ?, ?, ?, ?)
 		ON CONFLICT(cluster, node, storage, file) DO UPDATE SET enabled = excluded.enabled`,

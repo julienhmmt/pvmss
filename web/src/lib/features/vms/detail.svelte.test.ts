@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, afterEach, beforeEach } from 'vitest';
 import { VmDetailStore, type VmDetailEntity } from './detail.svelte';
-import { ACTION_POLL_MS } from './converge';
+import { ACTION_CONVERGE_TIMEOUT_MS, ACTION_POLL_MS } from './converge';
 
 function jsonResponse(status: number, body: unknown): Response {
 	return new Response(JSON.stringify(body), {
@@ -184,6 +184,21 @@ describe('VmDetailStore.action', () => {
 
 		expect(store.entity?.status).toBe('running');
 		expect(store.actionInFlight).toBe(false);
+	});
+
+	it('reports an error when the VM never reaches the target status', async () => {
+		vi.stubGlobal('fetch', vi.fn().mockImplementation((_url: string, init?: RequestInit) =>
+			Promise.resolve(init?.method === 'POST'
+				? jsonResponse(200, { status: 'ok' })
+				: jsonResponse(200, { status: 'running', uptime: 10 }))));
+
+		const store = makeStore({ ...baseEntity, status: 'running' });
+		const promise = store.action('shutdown');
+		await vi.advanceTimersByTimeAsync(ACTION_CONVERGE_TIMEOUT_MS + ACTION_POLL_MS);
+		await promise;
+
+		expect(store.entity?.status).toBe('running');
+		expect(store.actionError).not.toBeNull();
 	});
 
 	it('does nothing when actionInFlight is already true', async () => {

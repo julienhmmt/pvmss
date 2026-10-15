@@ -7,7 +7,7 @@ the full walkthrough is the [Administrator guide](/docs/admin-guide).
 
 **Clusters** connects one or more Proxmox environments (URL, API token,
 connection test) and sets the per-cluster cloud-init write target. Each cluster has an immutable id (chosen at creation; `default` for the first one) and an editable label; the id cannot be renamed. **Nodes**
-approves the hosts users may create VMs on. **Pools** creates self-service
+approves the hosts users may create VMs on. **PVMSS users** creates self-service
 users (Proxmox user + pool + ACL in one step).
 
 ### Cloud-init templates
@@ -29,11 +29,12 @@ Leave the storage empty to disable cloud-init templates on the cluster. See
 the [cloud-init setup guide](/docs/cloud-init-setup) for details and
 troubleshooting.
 
-## Catalog
+## Resources and provisioning
 
-The **Catalog** section lets you approve or hide the storages, ISOs, cloud
-images, VM templates, and bridges that VM creation may reference, and manage
-hardware profiles, tags, and cloud-init templates. Discovered resources appear
+The **Resources** group lets you approve or hide the storages, ISOs, cloud
+images, VM templates, and bridges that VM creation may reference. The
+**Provisioning** group manages VM profiles, cloud-init templates, the
+cloud-init baseline, and tags. Discovered resources appear
 automatically; toggle the enabled switch to control what users see. When a
 resource disappears from Proxmox, its stale approval is flagged so you can
 remove it.

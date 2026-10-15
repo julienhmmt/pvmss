@@ -4,8 +4,11 @@
 	import PolicyPage from '$lib/features/admin-policy/PolicyPage.svelte';
 	import { setAdminPolicyContext } from '$lib/features/admin-policy/policy.svelte';
 	import { saveAdminCluster } from '$lib/shared/clusters';
+	import { m } from '$lib/paraglide/messages.js';
+	import { getToastContext } from '$lib/shared/ui/toast.svelte';
 
 	const store = setAdminPolicyContext();
+	const toast = getToastContext();
 
 	onMount(() => {
 		// Deep links from dashboard alerts carry a ?cluster= hint; assigning it
@@ -26,11 +29,11 @@
 	errorCode={store.errorCode}
 	saving={store.saving}
 	saveError={store.saveError}
-	saved={store.saved}
 	clusterOptions={store.clusterOptions}
 	cluster={store.cluster}
 	onClusterChange={(v) => store.setCluster(v)}
 	onLoad={() => void store.load()}
 	onRetry={() => void store.retryConnection()}
-	onSave={(patch) => void store.save(patch)}
+	// One success toast per save (autosave or manual). Failures show inline via store.saveError.
+	onSave={(patch) => store.save(patch).then(() => toast.success(m['policy.saved']()), () => undefined)}
 />

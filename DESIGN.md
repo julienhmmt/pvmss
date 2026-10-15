@@ -53,11 +53,11 @@ typography:
     fontWeight: 400
     lineHeight: "1.25rem"
 rounded:
-  sm: "0.5rem"
-  md: "0.6rem"
-  lg: "0.75rem"
-  control: "0.625rem"
-  xl: "1.125rem"
+  sm: "0.25rem"
+  md: "0.3rem"
+  lg: "0.375rem"
+  control: "0.25rem"
+  xl: "0.5rem"
 spacing:
   content-max: "100rem"
   content-reading: "60rem"
@@ -139,7 +139,7 @@ get a usable machine.
 - Single orange accent (oklch 56% 0.16 51deg) used sparingly
 - OKLCH color space for all semantic colors with soft background variants
 - Archivo Variable as the sole typeface (headings, body, labels, data)
-- 12px base radius (0.75rem) with 10px control radius (0.625rem)
+- 6px base radius (0.375rem) with 4px control radius (0.25rem)
 - Two-layer soft card shadows, not hard drop shadows
 - Responsive tables that collapse to stacked cards on mobile
 - Reduced-motion support on all animations
@@ -398,10 +398,10 @@ nav items.
 
 Two radius values carry the whole system, and the split is deliberate:
 
-- **Cards, tiles, and panels** use the base radius (0.75rem, `--radius` /
+- **Cards, tiles, and panels** use the base radius (0.375rem, `--radius` /
   `rounded.lg`).
 - **Every interactive control** - button, input, select, icon button, tab,
-  radio card - uses the single control radius (0.625rem, `--radius-control` /
+  radio card - uses the single control radius (0.25rem, `--radius-control` /
   `rounded.control`). A button next to a field then reads as one control set
   rather than two different materials.
 
@@ -409,13 +409,13 @@ Nothing in between: there is no "small card" radius and no pill-radius button
 (the status pill is the one intentional full-radius exception). Borders are
 always 1px and always warm (`--border`, or `--border-subtle` for internal
 hairlines); there are no thick borders and no colored side-stripes. The
-`--radius-sm` (0.5rem) and `--radius-xl` (1.125rem) steps exist in the token
+`--radius-sm` (0.25rem) and `--radius-xl` (0.5rem) steps exist in the token
 layer but are not used by the current component set - do not reach for them
 without a reason.
 
 ### Shape Rules
 
-**The Two-Radius Rule.** Cards get 0.75rem, controls get 0.625rem. Introducing
+**The Two-Radius Rule.** Cards get 0.375rem, controls get 0.25rem. Introducing
 a third radius for a one-off is drift.
 
 ## Components
@@ -425,7 +425,7 @@ the feedback, and every variant maps to intent rather than to colour.
 
 ### Buttons
 
-- **Shape:** `--radius-control` (0.625rem) - the same radius as inputs, so a
+- **Shape:** `--radius-control` (0.25rem) - the same radius as inputs, so a
   button next to a field reads as one control set. inline-flex, items-center,
   gap-2, fixed heights (sm 2rem / md 2.5rem / lg 2.75rem, plus square `icon`
   and `icon-sm` sizes) so a row of mixed controls aligns without hand-tuning.
@@ -455,7 +455,7 @@ component in two semantics - which one a call site needs is a semantics decision
 
 ### Inputs / Fields
 
-- **Style:** 1px solid warm border, warm paper background, 0.625rem radius,
+- **Style:** 1px solid warm border, warm paper background, 0.25rem radius,
   0.5rem 0.75rem padding. Applied via `.pv-input` class.
 - **Focus:** Border shifts to ring color, 2px box-shadow ring offset by 2px
   background. Matches Button focus ring.
@@ -472,7 +472,7 @@ The creation form uses **radio cards** - full-width `<label>` wrappers around a
 visually-hidden radio input. This is the pattern for any "choose one of N
 prepared options" control.
 
-- **Rest:** 1px warm border, card surface, 8px radius.
+- **Rest:** 1px warm border, card surface, 6px radius.
 - **Selected:** accent border, accent-soft background, radio indicator fills
   with accent and a check icon.
 - **Focus:** `:focus-within` draws a 3px focus ring offset 3px (so keyboard
@@ -481,7 +481,7 @@ prepared options" control.
 
 ### Cards / Containers
 
-- **Corner Style:** Radius lg (0.75rem)
+- **Corner Style:** Radius lg (0.375rem)
 - **Background:** Card White (#ffffff) in light, `oklch(21% 0.006 56deg)` in dark
 - **Shadow Strategy:** `.shadow-card` - two-layer soft, warm-tinted
 - **Border:** 1px solid warm border

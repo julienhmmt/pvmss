@@ -59,7 +59,7 @@ func MapTags(ctx context.Context, legacyDB *sql.DB) ([]TagRow, error) {
 	return out, nil
 }
 
-func upsertTag(ctx context.Context, v04DB *sql.DB, cluster string, r TagRow) error {
+func upsertTag(ctx context.Context, v04DB dbtx, cluster string, r TagRow) error {
 	_, err := v04DB.ExecContext(ctx, `
 		INSERT INTO catalog_tags (cluster, name, color, created_at)
 		VALUES (?, ?, ?, ?)

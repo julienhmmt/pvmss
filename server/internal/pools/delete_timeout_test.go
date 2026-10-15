@@ -3,6 +3,7 @@ package pools
 
 import (
 	"context"
+	"errors"
 	"pvmss/server/internal/auth"
 	"pvmss/server/internal/cluster"
 	"pvmss/server/internal/inventory"
@@ -18,7 +19,9 @@ type timeoutRefresher struct{}
 
 func (timeoutRefresher) Refresh(context.Context) (time.Time, error) { return time.Time{}, nil }
 
-func TestDelete_BoundedWaitThenProceed(t *testing.T) {
+// A member still in the pool after the bounded wait must stop the cascade:
+// deleting the pool would leave that VM without an owner.
+func TestDelete_BoundedWaitRefusesWhenMembersRemain(t *testing.T) {
 	cluster.ResetFake()
 	t.Cleanup(cluster.ResetFake)
 	client := cluster.Fake{}
@@ -32,12 +35,9 @@ func TestDelete_BoundedWaitThenProceed(t *testing.T) {
 	t.Cleanup(func() { maxDeleteWait = previous })
 
 	started := time.Now()
-	result, err := Delete(context.Background(), CascadeDeps{Actor: auth.Identity{Username: "admin", IsAdmin: true}, Client: client, Projection: projection, ClusterName: "default", Writer: client, Audit: timeoutAudit{}, Refresher: timeoutRefresher{}}, "stuck")
-	if err != nil {
-		t.Fatalf("Delete: %v", err)
-	}
-	if result.Status != "deleted" {
-		t.Fatalf("result = %+v", result)
+	_, err := Delete(context.Background(), CascadeDeps{Actor: auth.Identity{Username: "admin", IsAdmin: true}, Client: client, Projection: projection, ClusterName: "default", Writer: client, Audit: timeoutAudit{}, Refresher: timeoutRefresher{}}, "stuck")
+	if !errors.Is(err, ErrMembersRemain) {
+		t.Fatalf("Delete err = %v, want ErrMembersRemain", err)
 	}
 	if time.Since(started) > time.Second {
 		t.Fatalf("bounded delete took too long: %v", time.Since(started))
@@ -48,7 +48,8 @@ func TestDelete_BoundedWaitThenProceed(t *testing.T) {
 	}
 	for _, pool := range pools {
 		if pool.Name == "stuck" {
-			t.Fatal("pool still exists after bounded wait")
+			return
 		}
 	}
+	t.Fatal("pool was deleted while a member remained")
 }

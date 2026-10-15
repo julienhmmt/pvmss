@@ -176,7 +176,7 @@ func (fake Fake) GuestNetworkInterfaces(_ context.Context, node string, vmid int
 		return nil, ErrNotFound
 	}
 	running := state.vms[idx].Status == VMRunning
-	nics := cloneNetworkInterfaces(state.vms[idx].NetworkInterfaces)
+	nics := CloneNetworkInterfaces(state.vms[idx].NetworkInterfaces)
 	state.vmMu.Unlock()
 
 	state.record(FakeCall{Node: node, VMID: vmid, Action: "guest_network_interfaces"})

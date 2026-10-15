@@ -150,7 +150,7 @@
 						<TableHeader text={m['policy.colRam']()} column="ram" tooltip={m['policy.dimensionTooltip']()} activeColumn={sortBy} {sortDir} {onSort} />
 						<TableHeader text={m['policy.colDisk']()} column="disk" tooltip={m['policy.dimensionTooltip']()} activeColumn={sortBy} {sortDir} {onSort} />
 						<TableHeader text={m['policy.realLoad']()} column="load" tooltip={m['policy.realLoadTooltip']()} activeColumn={sortBy} {sortDir} {onSort} />
-						<th scope="col" class="font-medium">{m['policy.actions']()}</th>
+						<th scope="col" class="text-right font-medium">{m['policy.actions']()}</th>
 					</tr>
 				</thead>
 				<tbody>
@@ -158,7 +158,7 @@
 						{@const isOpen = expanded === node.node}
 						<tr class="group transition-colors hover:bg-muted/40" class:opacity-60={node.status === 'offline'}>
 							<th scope="row" class="text-left" data-label={m['policy.node']()}>
-								<span class="inline-flex items-center gap-2">
+								<span class="flex flex-wrap items-center gap-x-2 gap-y-1">
 									<a
 										href="{resolve('/admin/nodes/[cluster]/[node]', { cluster, node: node.node })}?from=policy"
 										class="pv-focus rounded-sm font-mono text-primary underline decoration-primary/40 underline-offset-2 hover:decoration-primary"
@@ -179,8 +179,9 @@
 							<td data-label={m['policy.colRam']()}><CapacityCell used={node.usedRamGb} cap={node.maxRamGb} unit="GB" /></td>
 							<td data-label={m['policy.colDisk']()}><CapacityCell used={node.usedDiskGb} cap={node.maxDiskGb} unit="GB" /></td>
 							<td data-label={m['policy.realLoad']()}><NodeLoadCell {node} /></td>
-							<td data-label={m['policy.actions']()}>
+							<td data-label={m['policy.actions']()} class="text-right">
 								<Button
+									class="whitespace-nowrap"
 									variant="secondary"
 									size="sm"
 									label={`${isOpen ? m['policy.closeEdit']() : m['policy.edit']()} ${node.node}`}

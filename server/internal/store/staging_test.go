@@ -2,6 +2,8 @@ package store_test
 
 import (
 	"context"
+	"errors"
+	"os"
 	"path/filepath"
 	"pvmss/server/internal/config"
 	"pvmss/server/internal/store"
@@ -70,6 +72,40 @@ func TestImportStaging_ExpiresAfterTTL(t *testing.T) {
 
 	if !store.IsExpired(err) {
 		t.Errorf("error after TTL = %v, want an ExpiredError", err)
+	}
+}
+
+// An expired upload is a full database copy: expiry must remove the file,
+// both when the token is looked up and when a later Stage purges it.
+//
+//nolint:paralleltest // serial: shared staging map
+func TestImportStaging_ExpiryRemovesTempFile(t *testing.T) {
+	st := newStagingStore(t)
+	s := st.Staging()
+
+	looked := filepath.Join(t.TempDir(), "looked.db")
+	purged := filepath.Join(t.TempDir(), "purged.db")
+
+	for _, path := range []string{looked, purged} {
+		if err := os.WriteFile(path, []byte("db"), 0o600); err != nil {
+			t.Fatalf("WriteFile: %v", err)
+		}
+	}
+
+	lookedToken := s.Stage(looked, store.ImportPreview{})
+	s.Stage(purged, store.ImportPreview{})
+	s.AdvanceTime(6 * time.Minute)
+
+	if _, err := s.Lookup(lookedToken); !store.IsExpired(err) {
+		t.Fatalf("Lookup err = %v, want expired", err)
+	}
+
+	s.Stage(filepath.Join(t.TempDir(), "fresh.db"), store.ImportPreview{})
+
+	for _, path := range []string{looked, purged} {
+		if _, err := os.Stat(path); !errors.Is(err, os.ErrNotExist) {
+			t.Errorf("%s still on disk after expiry (stat err = %v)", filepath.Base(path), err)
+		}
 	}
 }
 

@@ -85,7 +85,7 @@ func MapProfiles(ctx context.Context, legacyDB *sql.DB) ([]ProfileRow, []SkipRea
 	return out, skips, rows.Err()
 }
 
-func upsertProfile(ctx context.Context, v04DB *sql.DB, cluster string, r ProfileRow) error {
+func upsertProfile(ctx context.Context, v04DB dbtx, cluster string, r ProfileRow) error {
 	_, err := v04DB.ExecContext(ctx, `
 		INSERT INTO catalog_profiles (cluster, id, label, cpu_cores, memory_mb, disk_gb, bus, enabled)
 		VALUES (?, ?, ?, ?, ?, ?, ?, ?)

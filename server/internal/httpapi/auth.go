@@ -188,6 +188,10 @@ func (h *Auth) Me(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	if err := h.sessions.EnsureCSRFCookie(r.Context(), w, r); err != nil {
+		logctx.FromOr(r.Context(), h.log).WarnContext(r.Context(), "csrf cookie reissue failed", "component", "httpapi", "error", err)
+	}
+
 	identity = h.refreshClusterDisplayName(r.Context(), identity)
 	if identity.DisplayName == "" {
 		identity.DisplayName = userDisplayName(identity.Username)
@@ -326,11 +330,21 @@ func (h *Auth) ChangePassword(w http.ResponseWriter, r *http.Request) {
 		}
 		client = selected
 	}
+	if client == nil {
+		// Local admin session: no cluster account behind it.
+		writeAuthError(w, http.StatusBadRequest, "invalid_request", "password change requires a cluster account")
+		return
+	}
 	if err := client.ChangePassword(r.Context(), identity.Username, request.OldPassword, request.NewPassword); err != nil {
 		SetErrorMsg(w, "password change failed", err)
 		writeAuthError(w, http.StatusUnauthorized, "invalid_credentials", msgInvalidCredentials)
 
 		return
+	}
+
+	// The password already changed: a failed revocation is logged, not returned.
+	if err := h.sessions.RevokeOthers(r.Context(), r, identity); err != nil {
+		logctx.FromOr(r.Context(), h.log).WarnContext(r.Context(), "other sessions revocation failed", "component", "httpapi", "error", err)
 	}
 
 	w.WriteHeader(http.StatusNoContent)

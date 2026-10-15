@@ -19,7 +19,7 @@ sous `/admin`.
 5. Optionnel mais recommandé : créez des **profils de VM** pour proposer des gabarits matériels pré-approuvés, définissez des **Tags** et rédigez des **templates cloud-init**.
 6. Réglez la **Politique** (gabarit et quota par cluster) et la **Capacité des nœuds**.
 7. Activez éventuellement les **documents cloud-init** (voir plus bas).
-8. Créez autant de **pools utilisateurs** que nécessaire depuis `/admin/pools`.
+8. Créez autant d'**utilisateurs PVMSS** que nécessaire depuis `/admin/pools`.
 9. Informez vos utilisateurs que le portail est disponible.
 10. Surveillez le **journal d'audit** (`/admin/settings`) pour retracer chaque écriture jusqu'à l'utilisateur qui l'a faite.
 
@@ -90,9 +90,9 @@ PVMSS peut se connecter à plusieurs environnements Proxmox simultanément. Chaq
 
 `/admin/nodes` liste chaque hôte Proxmox VE par cluster avec la consommation CPU et mémoire en direct, le nombre de VM et l'état en ligne / hors ligne. Recherchez, filtrez par état ou activation, triez la table. Basculez un nœud pour l'approuver ou le masquer à la création de VM ; désactiver un nœud qui héberge des VM demande confirmation et ne touche jamais ces VM. Un travail de fond rafraîchit les métriques selon `PVMSS_INVENTORY_REFRESH_INTERVAL` ; les pages admin lisent ce cache, la navigation reste instantanée même sur de gros clusters.
 
-## Catalogue : ressources exposées aux utilisateurs
+## Ressources et provisionnement : ce que les utilisateurs peuvent choisir
 
-La zone **Catalogue** contrôle ce que la création de VM peut référencer. Les ressources découvertes apparaissent automatiquement ; l'interrupteur « activé » contrôle ce que voient les utilisateurs. Chaque page du catalogue a un sélecteur de cluster, une recherche, des filtres et des colonnes triables.
+Les groupes **Ressources** et **Provisionnement** du menu admin contrôlent ce que la création de VM peut référencer. Les ressources découvertes apparaissent automatiquement ; l'interrupteur « activé » contrôle ce que voient les utilisateurs. Chaque page du catalogue a un sélecteur de cluster, une recherche, des filtres et des colonnes triables.
 
 - **Stockages** (`/admin/storages`) - approuver les stockages pouvant héberger des disques de VM, regroupés par nœud, avec barres d'usage.
 - **ISO** (`/admin/isos`) - approuver les images ISO de démarrage.
@@ -116,9 +116,9 @@ Les approbations sont réconciliées avec la découverte en direct. Quand une re
 
 Le **tag VLAN d'isolation** de la politique applique un VLAN à chaque NIC créée via PVMSS sur ce cluster ; laissez 0 pour désactiver.
 
-## Pools utilisateurs
+## Utilisateurs PVMSS
 
-`/admin/pools` crée les utilisateurs self-service. Chaque pool provisionne :
+**Utilisateurs PVMSS** (`/admin/pools`) crée les utilisateurs self-service. Chaque pool provisionne :
 
 - un utilisateur Proxmox dédié,
 - un pool Proxmox dédié à cet utilisateur,
@@ -188,7 +188,7 @@ Les pages intégrées sont insérées une seule fois, si elles manquent, et jama
 
 - PVMSS cible les clusters Proxmox VE 8.x/9.x (et les nœuds autonomes).
 - Les comptes sont provisionnés via `/admin/pools` côté Proxmox.
-- Les opérations avancées de cluster (migration à chaud, HA, orchestration des sauvegardes) se font directement dans Proxmox.
+- Les administrateurs peuvent migrer une VM à la fois depuis **Infrastructure > Nœuds**. La HA, la migration entre clusters et l'orchestration des sauvegardes se font directement dans Proxmox.
 - Les administrateurs créent des VM via la même interface self-service que les utilisateurs, ou directement dans Proxmox.
 - Sauvegardes et conteneurs LXC sont gérés dans Proxmox, pas dans PVMSS.
 - Le changement de mot de passe n'est disponible que par API pour l'instant (`POST /api/v1/auth/password`).

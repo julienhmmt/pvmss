@@ -7,6 +7,7 @@ import (
 	"pvmss/server/internal/auth"
 	"pvmss/server/internal/cluster"
 	"pvmss/server/internal/inventory"
+	"pvmss/server/internal/logctx"
 	"slices"
 	"time"
 )
@@ -24,6 +25,9 @@ var (
 	// the start call. A var so tests can shorten it.
 	MaxBootStartWait = 60 * time.Second
 )
+
+// bootRestoreTimeout bounds the boot-order restore call.
+const bootRestoreTimeout = 30 * time.Second
 
 // cdromBootKey is the boot-order key of the VM's fixed CD-ROM drive
 // (cluster.cdromDiskKey - duplicated here because that constant is unexported).
@@ -50,8 +54,8 @@ type BootDependencies struct {
 // that qemu reads at start. Restoring the original order only after the guest
 // reports running is therefore race-free: the in-flight boot already consumed
 // the CD-first order, and the next reboot boots from disk again. The restore
-// is best-effort: a failed restore leaves CD-first order, which the next
-// boot-cdrom call or an admin can fix.
+// is best-effort: a failed restore is logged at Error and leaves CD-first
+// order, which the next boot-cdrom call or an admin can fix.
 func BootFromCDROM(ctx context.Context, deps BootDependencies) error {
 	entity, err := Resolve(deps.Index, deps.Actor, deps.ClusterName, deps.VMID)
 	if err != nil {
@@ -74,8 +78,9 @@ func BootFromCDROM(ctx context.Context, deps BootDependencies) error {
 
 	// Restore the original boot order on every path: once the guest is up the
 	// boot config was already consumed, and on start failure the CD-first
-	// order must not linger.
-	defer func() { _ = deps.Writer.SetBootOrder(ctx, entity.Node, entity.VMID, original) }()
+	// order must not linger. The restore outlives a cancelled request: a
+	// client that disconnects must not leave the VM booting from the CD.
+	defer restoreBootOrder(ctx, deps, entity, original)
 
 	if err := deps.Writer.Action(ctx, entity.Node, entity.VMID, "start"); err != nil {
 		return fmt.Errorf("cluster start: %w", err)
@@ -97,6 +102,15 @@ func BootFromCDROM(ctx context.Context, deps BootDependencies) error {
 	}
 
 	return nil
+}
+
+func restoreBootOrder(ctx context.Context, deps BootDependencies, entity Entity, original []string) {
+	restoreCtx, cancel := context.WithTimeout(context.WithoutCancel(ctx), bootRestoreTimeout)
+	defer cancel()
+
+	if err := deps.Writer.SetBootOrder(restoreCtx, entity.Node, entity.VMID, original); err != nil {
+		logctx.From(ctx).ErrorContext(ctx, "boot order restore failed", "component", "vm", "cluster", deps.ClusterName, "vmid", entity.VMID, "node", entity.Node, "error", err)
+	}
 }
 
 // BootOrderCDFirst builds the boot order with the CD-ROM (ide2) first, keeping

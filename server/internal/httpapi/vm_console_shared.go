@@ -151,7 +151,8 @@ func acceptConsoleWebSocket(
 	parsePath func(r *http.Request) (string, int, bool),
 	writeError consoleErrorFn,
 ) (ticket vm.ConsoleTicket, conn *websocket.Conn, ok bool) {
-	if _, err := env.auth.Principal(r); err != nil {
+	principal, err := env.auth.Principal(r)
+	if err != nil {
 		writeError(w, http.StatusUnauthorized, "unauthenticated", "authentication required")
 		return vm.ConsoleTicket{}, nil, false
 	}
@@ -168,7 +169,7 @@ func acceptConsoleWebSocket(
 		return vm.ConsoleTicket{}, nil, false
 	}
 
-	consumed, err := env.tickets.Consume(params.kind, token, clusterName, vmid)
+	consumed, err := env.tickets.Consume(params.kind, token, principal.Username, clusterName, vmid)
 	if err != nil {
 		writeError(w, http.StatusBadRequest, "invalid_ticket", params.invalidTicketMsg)
 		return vm.ConsoleTicket{}, nil, false

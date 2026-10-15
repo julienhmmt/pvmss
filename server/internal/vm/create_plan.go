@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"log/slog"
-	"pvmss/server/internal/auth"
 	"pvmss/server/internal/catalog"
 	"pvmss/server/internal/policy"
 	"pvmss/server/internal/store"
@@ -42,26 +41,6 @@ type nicPlan struct {
 	model  string
 }
 
-// checkName validates the hostname form then checks per-pool name
-// uniqueness. A malformed name reports ErrInvalidName
-// before the duplicate check runs. Extracted from planCreate to keep its
-// cyclomatic complexity under gocyclo's ceiling.
-func checkName(policyService *policy.Policy, pool, name string) error {
-	if err := ValidateName(name); err != nil {
-		return err
-	}
-
-	// per-pool name uniqueness. The name is the only
-	// identifier the user manipulates in the portal; two VMs with the same
-	// name in one user's list are indistinguishable. Checked before any
-	// VMID is consumed, like every other rejection.
-	if policyService.PoolHasName(pool, name) {
-		return fmt.Errorf("%w: %q is already used by a VM in your pool", ErrNameTaken, name)
-	}
-
-	return nil
-}
-
 // resolveUEFI defaults UEFI to true when the request omits it (modern OSes expect UEFI boot).
 // An explicit false selects legacy SeaBIOS.
 //
@@ -96,20 +75,10 @@ func checkUEFICompat(req CreateRequest) error {
 	return nil
 }
 
-// planCreate runs all pre-allocation validation: quota, name, catalog,
-// hardware ranges, gabarit, resource resolution, node capacity, and live
-// disk-space check. Name uniqueness by pool
-// is checked after ValidateName so a malformed name reports ErrInvalidName
-// before the duplicate check runs.
-func planCreate(ctx context.Context, policyService *policy.Policy, deps CreateDeps, clusterName string, actor auth.Identity, req CreateRequest) (createPlan, error) {
-	if err := policyService.CheckQuota(ctx, clusterName, actor); err != nil {
-		return createPlan{}, err
-	}
-
-	if err := checkName(policyService, actor.Pool, req.Name); err != nil {
-		return createPlan{}, err
-	}
-
+// planCreate runs the pre-allocation validation that follows the quota and
+// name reservation (reserveCreate): catalog, hardware ranges, gabarit,
+// resource resolution, node capacity, and live disk-space check.
+func planCreate(ctx context.Context, policyService *policy.Policy, deps CreateDeps, clusterName string, req CreateRequest) (createPlan, error) {
 	// TPM 2.0 requires UEFI - reject the impossible
 	// combination early, before any VMID or catalog work.
 	if err := checkUEFICompat(req); err != nil {

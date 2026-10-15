@@ -1,6 +1,9 @@
 package store
 
-import "testing"
+import (
+	"testing"
+	"time"
+)
 
 const (
 	severityCritical = "critical"
@@ -50,5 +53,21 @@ func TestDeriveSeverity(t *testing.T) {
 				t.Errorf("deriveSeverity(%q) = %q, want %q", tc.action, got, tc.want)
 			}
 		})
+	}
+}
+
+// Audit timestamps are compared as strings (ORDER BY, From/To filters, the
+// retention cutoff), so their text order must match time order.
+func TestAuditTimestamp_SortsChronologically(t *testing.T) {
+	t.Parallel()
+
+	base := time.Date(2026, 10, 15, 12, 0, 0, 0, time.UTC)
+	times := []time.Time{base, base.Add(120 * time.Millisecond), base.Add(123400 * time.Microsecond), base.Add(time.Second)}
+
+	for i := 1; i < len(times); i++ {
+		earlier, later := auditTimestamp(times[i-1]), auditTimestamp(times[i])
+		if earlier >= later {
+			t.Errorf("auditTimestamp(%v) = %q does not sort before %q", times[i-1], earlier, later)
+		}
 	}
 }

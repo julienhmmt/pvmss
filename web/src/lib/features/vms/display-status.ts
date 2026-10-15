@@ -81,11 +81,10 @@ export function displayStatus(vm: MachineDisplayInput, deps: DisplayStatusDeps):
 		if (STOPPING_ACTIONS.has(inFlightAction)) return 'stopping';
 	}
 
-	for (const task of tray.tasks) {
-		if (task.cluster === vm.cluster && task.vmid === vm.vmid && task.kind === 'vm_create') {
-			return 'provisioning';
-		}
-	}
+	const hasCreateTask = tray.tasks.some(
+		(task) => task.cluster === vm.cluster && task.vmid === vm.vmid && task.kind === 'vm_create'
+	);
+	if (hasCreateTask) return 'provisioning';
 
 	const outcome = ledger?.get(vm.cluster, vm.vmid);
 	// Both outcomes are creation-time signals. Once the server reports the

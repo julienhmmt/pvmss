@@ -88,6 +88,15 @@ type auditRow struct {
 	Severity   string
 }
 
+// auditTimeLayout is fixed-width (always nine fractional digits) so the
+// stored strings sort in time order. RFC3339Nano trims trailing zeros, which
+// put ".12Z" after ".1234Z".
+const auditTimeLayout = "2006-01-02T15:04:05.000000000Z07:00"
+
+func auditTimestamp(t time.Time) string {
+	return t.UTC().Format(auditTimeLayout)
+}
+
 // insertAuditRow writes one audit_log row with all columns. It never returns
 // an error that breaks the caller: on insert failure it logs the error via
 // the store logger and returns nil. The rule lives here, not in
@@ -96,7 +105,7 @@ type auditRow struct {
 func (s *Store) insertAuditRow(ctx context.Context, row auditRow) error {
 	_, err := s.db.ExecContext(ctx,
 		`INSERT INTO audit_log (actor, cluster, vmid, action, timestamp, target_type, target_id, detail, ip_address, severity) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-		row.Actor, row.Cluster, row.VMID, row.Action, time.Now().UTC().Format(time.RFC3339Nano),
+		row.Actor, row.Cluster, row.VMID, row.Action, auditTimestamp(time.Now()),
 		row.TargetType, row.TargetID, row.Detail, row.IPAddress, row.Severity)
 	if err != nil {
 		s.log().ErrorContext(ctx, "audit log insert failed", "component", "store", "actor", row.Actor, "action", row.Action, "error", err)
@@ -335,8 +344,8 @@ func (s *Store) ListAuditLog(ctx context.Context, f AuditFilter) (AuditPage, err
 // incarnation of the VM when f.CurrentIncarnation is set. Proxmox reuses VMIDs:
 // keep only rows at or after the latest vm_create and strictly after the latest
 // delete of this cluster+vmid. Compared by id (AUTOINCREMENT insertion order),
-// not timestamp: RFC3339Nano trims fractional seconds, so the strings do not
-// sort chronologically. Callers must ensure f.VMID is non-nil.
+// not timestamp: rows written before the fixed-width auditTimeLayout carry
+// RFC3339Nano strings that do not sort chronologically. Callers must ensure f.VMID is non-nil.
 func appendIncarnationClauses(clauses []string, args []any, f AuditFilter) ([]string, []any) {
 	if !f.CurrentIncarnation || f.Cluster == "" {
 		return clauses, args
@@ -393,12 +402,12 @@ func buildAuditWhere(f AuditFilter) (string, []any) {
 
 	if f.From != nil {
 		clauses = append(clauses, "timestamp >= ?")
-		args = append(args, f.From.UTC().Format(time.RFC3339Nano))
+		args = append(args, auditTimestamp(*f.From))
 	}
 
 	if f.To != nil {
 		clauses = append(clauses, "timestamp <= ?")
-		args = append(args, f.To.UTC().Format(time.RFC3339Nano))
+		args = append(args, auditTimestamp(*f.To))
 	}
 
 	if f.Severity != nil && *f.Severity != "" {
@@ -461,7 +470,7 @@ func (s *Store) SetAuditConfig(ctx context.Context, retentionDays int) error {
 // older than 30 days from now (UTC). Safe to run concurrently with reads and
 // inserts - SQLite serializes writers, and the DELETE is a single statement.
 func (s *Store) PruneAuditLog(ctx context.Context, retentionDays int) (int64, error) {
-	cutoff := time.Now().UTC().Add(-time.Duration(retentionDays) * 24 * time.Hour).Format(time.RFC3339Nano)
+	cutoff := auditTimestamp(time.Now().Add(-time.Duration(retentionDays) * 24 * time.Hour))
 
 	res, err := s.db.ExecContext(ctx,
 		`DELETE FROM audit_log WHERE timestamp < ?`, cutoff)
@@ -481,7 +490,7 @@ func (s *Store) PruneAuditLog(ctx context.Context, retentionDays int) (int64, er
 // retentionDays, without deleting them. Used by the UI confirmation flow so
 // the admin sees the impact before confirming a retention change.
 func (s *Store) CountAuditPrunePreview(ctx context.Context, retentionDays int) (int64, error) {
-	cutoff := time.Now().UTC().Add(-time.Duration(retentionDays) * 24 * time.Hour).Format(time.RFC3339Nano)
+	cutoff := auditTimestamp(time.Now().Add(-time.Duration(retentionDays) * 24 * time.Hour))
 
 	var n int64
 

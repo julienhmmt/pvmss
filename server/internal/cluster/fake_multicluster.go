@@ -32,7 +32,7 @@ func secondaryVMs() []VM {
 		vms[index].Disks = slices.Clone(vms[index].Disks)
 		vms[index].Tags = slices.Clone(vms[index].Tags)
 		vms[index].BootOrder = slices.Clone(vms[index].BootOrder)
-		vms[index].NetworkInterfaces = cloneNetworkInterfaces(vms[index].NetworkInterfaces)
+		vms[index].NetworkInterfaces = CloneNetworkInterfaces(vms[index].NetworkInterfaces)
 	}
 	for index := range vms {
 		if vms[index].VMID != 101 {

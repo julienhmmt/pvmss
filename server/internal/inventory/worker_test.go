@@ -93,6 +93,10 @@ func (c *callCountClient) DeletePool(_ context.Context, _ string) error {
 	return cluster.ErrNotImplemented
 }
 
+func (c *callCountClient) UpdatePoolComment(_ context.Context, _, _ string) error {
+	return cluster.ErrNotImplemented
+}
+
 func (c *callCountClient) DeleteUser(_ context.Context, _ string) error {
 	return cluster.ErrNotImplemented
 }
@@ -482,6 +486,10 @@ func (hungClient) SetPoolACL(_ context.Context, _, _, _ string) error {
 }
 
 func (hungClient) DeletePool(_ context.Context, _ string) error {
+	return cluster.ErrNotImplemented
+}
+
+func (hungClient) UpdatePoolComment(_ context.Context, _, _ string) error {
 	return cluster.ErrNotImplemented
 }
 

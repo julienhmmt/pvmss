@@ -17,6 +17,7 @@ import (
 	"pvmss/server/internal/store"
 	"pvmss/server/internal/vm"
 	"slices"
+	"strings"
 )
 
 // AdminPools serves the admin pool list, provisioning, and cascade endpoints.
@@ -204,7 +205,7 @@ func (h *AdminPools) ServeDetail(w http.ResponseWriter, r *http.Request) {
 	}
 	detail, err := pools.Detail(r.Context(), client, projection, h.store, clusterName, name)
 	if errors.Is(err, pools.ErrNotFound) {
-		writeAdminError(w, http.StatusNotFound, "not_found", fmt.Sprintf("pool %q not found", name))
+		writeAdminError(w, http.StatusNotFound, "not_found", fmt.Sprintf(msgPoolNotFound, name))
 		return
 	}
 	if err != nil {
@@ -311,6 +312,48 @@ func (h *AdminPools) ServeCreate(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
+// ServeUpdate handles PATCH /api/v1/admin/pools/{name}: edits the pool comment.
+func (h *AdminPools) ServeUpdate(w http.ResponseWriter, r *http.Request) {
+	if _, ok := h.adminActor(w, r); !ok {
+		return
+	}
+	name := r.PathValue("name")
+	var request updatePoolRequest
+	if err := decodeJSON(w, r, &request); err != nil {
+		writeAdminError(w, http.StatusBadRequest, "invalid_request", msgInvalidRequestBody)
+		return
+	}
+	comment := strings.TrimSpace(request.Comment)
+	if len(comment) > maxPoolCommentLength || strings.ContainsAny(comment, "\r\n") {
+		writeAdminError(w, http.StatusBadRequest, "invalid_comment", "comment must be a single line of at most 255 characters")
+		return
+	}
+	clusterName, err := h.resolveClusterName(r)
+	if err != nil {
+		writeAdminError(w, http.StatusNotFound, "cluster_not_found", msgClusterNotFound)
+		return
+	}
+	client, err := h.clientFor(clusterName)
+	if err != nil {
+		writeAdminError(w, http.StatusNotFound, "cluster_not_found", msgClusterNotFound)
+		return
+	}
+	err = client.UpdatePoolComment(r.Context(), name, comment)
+	if errors.Is(err, cluster.ErrNotFound) {
+		writeAdminError(w, http.StatusNotFound, "not_found", fmt.Sprintf(msgPoolNotFound, name))
+		return
+	}
+	if err != nil {
+		SetErrorMsg(w, "admin pool update failed for "+name, err)
+		writeAdminError(w, http.StatusBadGateway, "update_failed", "pool update failed")
+		return
+	}
+	h.recordAdminAction(r, "admin.pools.update", "pool", name,
+		fmt.Sprintf("updated comment of pool %s on cluster %s", name, clusterName),
+		[]any{map[string]any{auditKeyCluster: clusterName, auditKeyName: name, "comment": comment}})
+	writeAdminJSON(w, http.StatusOK, updatePoolRequest{Comment: comment})
+}
+
 // ServeDelete handles DELETE /api/v1/admin/pools/{name}.
 func (h *AdminPools) ServeDelete(w http.ResponseWriter, r *http.Request) {
 	actor, ok := h.adminActor(w, r)
@@ -344,11 +387,15 @@ func (h *AdminPools) ServeDelete(w http.ResponseWriter, r *http.Request) {
 	}
 	result, err := pools.Delete(r.Context(), pools.CascadeDeps{Actor: actor, Client: client, Projection: projection, ClusterName: clusterName, Writer: writer, Audit: h.audit, Refresher: h.refresher, Managed: h.store}, name)
 	if errors.Is(err, pools.ErrNotFound) {
-		writeAdminError(w, http.StatusNotFound, "not_found", fmt.Sprintf("pool %q not found", name))
+		writeAdminError(w, http.StatusNotFound, "not_found", fmt.Sprintf(msgPoolNotFound, name))
 		return
 	}
 	if errors.Is(err, pools.ErrForbidden) {
 		writeAdminError(w, http.StatusForbidden, "forbidden", msgAdminOnly)
+		return
+	}
+	if errors.Is(err, pools.ErrMembersRemain) {
+		writeAdminError(w, http.StatusConflict, "members_remain", err.Error())
 		return
 	}
 	if errors.Is(err, pools.ErrNotManaged) {
@@ -374,6 +421,13 @@ type deletePoolResponse struct {
 
 type createPoolRequest struct {
 	Name    string `json:"name"`
+	Comment string `json:"comment"`
+}
+
+// maxPoolCommentLength bounds the single-line pool comment sent to Proxmox.
+const maxPoolCommentLength = 255
+
+type updatePoolRequest struct {
 	Comment string `json:"comment"`
 }
 

@@ -67,16 +67,17 @@ func TestClientIP_OneHopTwoEntries_SelectsProxyClaim(t *testing.T) {
 	}
 }
 
-func TestClientIP_HopsExceedsXFFLength_FallsBackToFirst(t *testing.T) {
+func TestClientIP_HopsExceedsXFFLength_FallsBackToRemoteAddr(t *testing.T) {
 	t.Parallel()
 
 	r := &http.Request{
 		RemoteAddr: "10.0.0.1:54321",
 		Header:     http.Header{testXFFHeader: []string{testClientIP}},
 	}
-	// hops=3 but only 1 entry: clamp to index 0.
-	if got := clientIP(r, 3); got != testClientIP {
-		t.Fatalf("clientIP hops=3 short XFF = %q, want 203.0.113.5", got)
+	// hops=3 but only 1 entry: the request skipped trusted proxies, so the
+	// header is client-written and must not pick the rate-limit key.
+	if got := clientIP(r, 3); got != "10.0.0.1" {
+		t.Fatalf("clientIP hops=3 short XFF = %q, want RemoteAddr 10.0.0.1", got)
 	}
 }
 

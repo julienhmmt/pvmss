@@ -3,6 +3,7 @@ package pools
 
 import (
 	"context"
+	"fmt"
 	"log/slog"
 	"pvmss/server/internal/auth"
 	"pvmss/server/internal/cluster"
@@ -70,7 +71,9 @@ func Delete(ctx context.Context, deps CascadeDeps, name string) (DeleteResult, e
 	stopMembers(ctx, deps, members)
 	pauseCascade(ctx, len(members) > 0)
 	deleteMembers(ctx, deps, members)
-	waitForEmpty(ctx, projection, name, len(members) > 0)
+	if !waitForEmpty(ctx, projection, name, len(members) > 0) {
+		return DeleteResult{}, fmt.Errorf("%w: %v", ErrMembersRemain, remainingVMIDs(projection, name))
+	}
 	if err := client.DeletePool(ctx, name); err != nil {
 		return DeleteResult{}, err
 	}
@@ -154,9 +157,10 @@ func deleteMembers(ctx context.Context, deps CascadeDeps, members []cluster.VM) 
 	}
 }
 
-func waitForEmpty(ctx context.Context, projection *inventory.Projection, name string, needed bool) {
+// waitForEmpty reports whether the pool emptied before the bounded wait ended.
+func waitForEmpty(ctx context.Context, projection *inventory.Projection, name string, needed bool) bool {
 	if !needed || poolEmpty(projection, name) {
-		return
+		return true
 	}
 	deadline := time.NewTimer(maxDeleteWait)
 	defer deadline.Stop()
@@ -166,14 +170,12 @@ func waitForEmpty(ctx context.Context, projection *inventory.Projection, name st
 		select {
 		case <-ticker.C:
 			if poolEmpty(projection, name) {
-				return
+				return true
 			}
 		case <-deadline.C:
-			slog.Default().WarnContext(ctx, "pool cascade wait expired; deleting pool anyway", "pool", name)
-			return
+			return false
 		case <-ctx.Done():
-			slog.Default().WarnContext(ctx, "pool cascade context ended; deleting pool anyway", "pool", name, "error", ctx.Err())
-			return
+			return false
 		}
 	}
 }
@@ -181,6 +183,18 @@ func waitForEmpty(ctx context.Context, projection *inventory.Projection, name st
 func poolEmpty(projection *inventory.Projection, name string) bool {
 	index := projection.Load()
 	return index != nil && len(index.ByPool[name]) == 0
+}
+
+func remainingVMIDs(projection *inventory.Projection, name string) []int {
+	index := projection.Load()
+	if index == nil {
+		return nil
+	}
+	vmids := make([]int, 0, len(index.ByPool[name]))
+	for _, member := range index.ByPool[name] {
+		vmids = append(vmids, member.VMID)
+	}
+	return vmids
 }
 
 func deletePoolUser(ctx context.Context, client cluster.Client, name string) bool {

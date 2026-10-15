@@ -484,7 +484,7 @@ export class VmDetailStore {
 			await post<ActionResponse>(`${this.#basePath}/actions`, { action: kind });
 			// Converge: poll live status until it matches the optimistic target.
 			// No load() - the projection is stale until the 30s inventory tick.
-			await convergeSingle(
+			const converged = await convergeSingle(
 				{ cluster: this.cluster, vmid: this.entity.vmid },
 				target,
 				(status, lock) => {
@@ -497,6 +497,9 @@ export class VmDetailStore {
 					}
 				},
 			);
+			// Timed out: the last live reading is already shown; say so
+			// instead of letting the caller toast a success.
+			if (!converged) this.actionError = m['vms.detail.errorNotConverged']();
 		} catch (err) {
 			// Revert the optimistic flip on failure.
 			if (this.entity !== null) {

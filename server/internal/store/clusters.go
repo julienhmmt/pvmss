@@ -322,7 +322,23 @@ func (s *Store) encryptToken(secret string) ([]byte, error) {
 	if len(s.encryptionKey) == 0 {
 		return nil, errors.New("cluster token encryption key is not configured")
 	}
-	block, err := aes.NewCipher(s.encryptionKey)
+	return sealToken(s.encryptionKey, secret)
+}
+
+// EncryptClusterToken encrypts a cluster token secret with the key derived
+// from sessionSecret, the same scheme the store uses, so the recovery CLI
+// writes ciphertexts the server can read.
+func EncryptClusterToken(secret, sessionSecret string) ([]byte, error) {
+	key, err := deriveEncryptionKey(sessionSecret)
+	if err != nil {
+		return nil, err
+	}
+	return sealToken(key, secret)
+}
+
+// sealToken is AES-256-GCM with a random nonce prepended to the ciphertext.
+func sealToken(key []byte, secret string) ([]byte, error) {
+	block, err := aes.NewCipher(key)
 	if err != nil {
 		return nil, fmt.Errorf("create token cipher: %w", err)
 	}

@@ -11,3 +11,9 @@ export function formatBytes(bytes: number): string {
 	}
 	return `${value.toFixed(1)} ${units[unitIndex]}`;
 }
+
+/** Share of total used, as a whole percent capped at 100 (0 when total is 0). */
+export function usagePercent(used: number, total: number): number {
+	if (total <= 0) return 0;
+	return Math.min(100, Math.round((used / total) * 100));
+}

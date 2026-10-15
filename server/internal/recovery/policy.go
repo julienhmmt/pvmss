@@ -3,7 +3,6 @@ package recovery
 import (
 	"context"
 	"database/sql"
-	"errors"
 	"fmt"
 )
 
@@ -78,51 +77,28 @@ func mapNodeLimits(ctx context.Context, legacyDB *sql.DB) ([]NodeLimitsRow, erro
 // (shipped defaults) by reading them first and re-inserting.
 // This is the literal implementation of the three no-source fields
 // are never written by this function.
-func upsertVMLimits(ctx context.Context, v04DB *sql.DB, cluster string, row VMLimitsRow) error {
-	var existingSockets, existingCores, existingMemoryMB int
-
-	err := v04DB.QueryRowContext(ctx,
-		`SELECT max_sockets, max_cores, max_memory_mb FROM vm_limits WHERE cluster = ?`,
-		cluster).Scan(&existingSockets, &existingCores, &existingMemoryMB)
-
-	switch {
-	case err == nil:
-		// Row exists - update only the four copied fields, preserve the rest.
-		_, err = v04DB.ExecContext(ctx, `
-			UPDATE vm_limits SET
-				max_disk_per_vm_gb = ?,
-				max_network_cards = ?,
-				max_snapshots = ?,
-				max_vm_per_user = ?
-			WHERE cluster = ?`,
-			row.MaxDiskPerVMGB, row.MaxNetworkCards, row.MaxSnapshots,
-			row.MaxVMPerUser, cluster)
-		if err != nil {
-			return fmt.Errorf("update vm_limits: %w", err)
-		}
-
-		return nil
-
-	case errIsNoRows(err):
-		// No row yet - insert with the defaults for the three no-source fields.
-		_, err = v04DB.ExecContext(ctx, `
-			INSERT INTO vm_limits (
-				cluster, max_sockets, max_cores, max_memory_mb,
-				max_disk_per_vm_gb, max_network_cards, max_snapshots,
-				max_vm_per_user
-			) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
-			cluster, defaultMaxSockets, defaultMaxCores, defaultMaxMemoryMB,
-			row.MaxDiskPerVMGB, row.MaxNetworkCards, row.MaxSnapshots,
-			row.MaxVMPerUser)
-		if err != nil {
-			return fmt.Errorf("insert vm_limits: %w", err)
-		}
-
-		return nil
-
-	default:
-		return fmt.Errorf("query existing vm_limits: %w", err)
+func upsertVMLimits(ctx context.Context, v04DB dbtx, cluster string, row VMLimitsRow) error {
+	// Insert with the defaults for the three no-source fields; an existing
+	// row keeps them and gets only the four copied fields.
+	_, err := v04DB.ExecContext(ctx, `
+		INSERT INTO vm_limits (
+			cluster, max_sockets, max_cores, max_memory_mb,
+			max_disk_per_vm_gb, max_network_cards, max_snapshots,
+			max_vm_per_user
+		) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+		ON CONFLICT(cluster) DO UPDATE SET
+			max_disk_per_vm_gb = excluded.max_disk_per_vm_gb,
+			max_network_cards = excluded.max_network_cards,
+			max_snapshots = excluded.max_snapshots,
+			max_vm_per_user = excluded.max_vm_per_user`,
+		cluster, defaultMaxSockets, defaultMaxCores, defaultMaxMemoryMB,
+		row.MaxDiskPerVMGB, row.MaxNetworkCards, row.MaxSnapshots,
+		row.MaxVMPerUser)
+	if err != nil {
+		return fmt.Errorf("upsert vm_limits: %w", err)
 	}
+
+	return nil
 }
 
 // the shipped defaults for the three fields that have no legacy source.
@@ -132,7 +108,7 @@ const (
 	defaultMaxMemoryMB = 16384
 )
 
-func upsertNodeLimits(ctx context.Context, v04DB *sql.DB, cluster string, row NodeLimitsRow) error {
+func upsertNodeLimits(ctx context.Context, v04DB dbtx, cluster string, row NodeLimitsRow) error {
 	_, err := v04DB.ExecContext(ctx, `
 		INSERT INTO node_limits (cluster, node, max_vms, max_vcpus, max_ram_gb, max_disk_gb)
 		VALUES (?, ?, ?, ?, ?, ?)
@@ -147,11 +123,4 @@ func upsertNodeLimits(ctx context.Context, v04DB *sql.DB, cluster string, row No
 	}
 
 	return nil
-}
-
-// errIsNoRows checks if an error is sql.ErrNoRows without importing database/sql
-// in the helper (the package already imports it above, but this keeps the
-// check local and readable).
-func errIsNoRows(err error) bool {
-	return errors.Is(err, sql.ErrNoRows)
 }

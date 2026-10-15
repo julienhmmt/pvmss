@@ -95,7 +95,7 @@ func (fake Fake) Snapshot(_ context.Context) (Snapshot, error) {
 		vms[i].Tags = append([]string(nil), vm.Tags...)
 		vms[i].BootOrder = append([]string(nil), vm.BootOrder...)
 		vms[i].Disks = append([]Disk(nil), vm.Disks...)
-		vms[i].NetworkInterfaces = cloneNetworkInterfaces(vm.NetworkInterfaces)
+		vms[i].NetworkInterfaces = CloneNetworkInterfaces(vm.NetworkInterfaces)
 		for diskIndex := range vms[i].Disks {
 			vms[i].Disks[diskIndex].IsBoot = false
 		}

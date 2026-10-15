@@ -23,6 +23,9 @@
 	deleting={store.deleting}
 	deleteError={store.deleteError}
 	onRefresh={() => void store.refresh()}
+	savingComment={store.savingComment}
+	commentError={store.commentError}
+	onUpdateComment={(comment) => store.updateComment(comment)}
 	onDelete={() => store.remove()}
 	onDeleted={() => void goto(resolve('/admin/pools'))}
 />

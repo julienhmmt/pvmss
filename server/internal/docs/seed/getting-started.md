@@ -12,15 +12,15 @@ pick another cluster.
 
 ## Finding your VMs
 
-Once authenticated, the home page shows your VM counts, your quota, and any
-task still running. The **My VMs** page lists every virtual machine your pool
-owns across all configured clusters. Use the search box to filter by name,
+Once signed in, you land on the **My VMs** page (the sidebar shows your quota
+and any task still running). It lists every virtual machine your pool owns
+across all configured clusters. Use the search box to filter by name,
 VMID, or tag, and the cluster selector to narrow the view to one cluster.
 Filters are kept in the URL, so a filtered view can be bookmarked.
 
 ## Creating a VM
 
-1. Open **Create a VM** from the home page or the VMs page.
+1. Open **Create a VM** from the **My VMs** page.
 2. Pick a source: an ISO, a Proxmox template, or a cloud image.
 3. Pick a hardware profile or enter custom values; the node is chosen for
    you unless you switch to Detailed mode.

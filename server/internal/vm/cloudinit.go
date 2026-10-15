@@ -10,8 +10,10 @@ import (
 	"pvmss/server/internal/cloudinit"
 	"pvmss/server/internal/cluster"
 	"pvmss/server/internal/inventory"
+	"pvmss/server/internal/logctx"
 	"pvmss/server/internal/store"
 	"slices"
+	"sync"
 	"time"
 )
 
@@ -452,21 +454,39 @@ func AddCloudInitSSHKey(ctx context.Context, deps AddCloudInitSSHKeyDeps, user, 
 	// future duplicate/rebuild flows. A read or write failure here must not
 	// hide the successful agent injection, which is what actually put the key
 	// on the guest.
-	current, err := deps.Reader.GetCloudInitConfig(ctx, entity.Node, deps.VMID)
-	if err == nil {
-		if slices.Contains(current.SSHKeys, key) {
-			return recordSSHKeyAudit(ctx, deps, user, key)
-		}
-
-		current.SSHKeys = append(current.SSHKeys, key)
-		if err := deps.Writer.SetCloudInitConfig(ctx, entity.Node, deps.VMID, current); err != nil {
-			// The key is already live in the guest; surface a softer note only
-			// if we can attribute it, but never fail the whole operation.
-			return recordSSHKeyAudit(ctx, deps, user, key)
-		}
-	}
+	syncSSHKeyToConfig(ctx, deps, entity.Node, key)
 
 	return recordSSHKeyAudit(ctx, deps, user, key)
+}
+
+// sshKeySyncLocks serializes the sshkeys read-modify-write per VM, so two
+// keys added at once both land in the config.
+//
+// shortcut: per-process locks, valid for the single-replica deployment.
+var sshKeySyncLocks sync.Map // "cluster/vmid" -> *sync.Mutex
+
+func syncSSHKeyToConfig(ctx context.Context, deps AddCloudInitSSHKeyDeps, node, key string) {
+	lock, _ := sshKeySyncLocks.LoadOrStore(fmt.Sprintf("%s/%d", deps.ClusterName, deps.VMID), &sync.Mutex{})
+	mu, _ := lock.(*sync.Mutex)
+
+	mu.Lock()
+	defer mu.Unlock()
+
+	current, err := deps.Reader.GetCloudInitConfig(ctx, node, deps.VMID)
+	if err != nil {
+		logctx.From(ctx).WarnContext(ctx, "cloud-init ssh key config sync failed", "component", "vm", "cluster", deps.ClusterName, "vmid", deps.VMID, "error", err)
+
+		return
+	}
+
+	if slices.Contains(current.SSHKeys, key) {
+		return
+	}
+
+	current.SSHKeys = append(current.SSHKeys, key)
+	if err := deps.Writer.SetCloudInitConfig(ctx, node, deps.VMID, current); err != nil {
+		logctx.From(ctx).WarnContext(ctx, "cloud-init ssh key config sync failed", "component", "vm", "cluster", deps.ClusterName, "vmid", deps.VMID, "error", err)
+	}
 }
 
 // ensureVMRunning refuses a stopped guest before an agent call. An unreachable

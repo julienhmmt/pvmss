@@ -18,8 +18,9 @@ import (
 // - trustedProxyHops=1 → index 1 → "10.0.0.1" (trust proxy1, take its claim)
 // - trustedProxyHops=2 → index 0 → "203.0.113.5" (trust both, take the client)
 //
-// If the XFF chain is shorter than trustedProxyHops, the leftmost entry
-// (original client claim) is returned. If XFF is absent or
+// If the XFF chain is shorter than trustedProxyHops, the request did not pass
+// through every trusted proxy, so the header is client-written and
+// RemoteAddr is used. If XFF is absent or
 // trustedProxyHops is 0, RemoteAddr is used.
 func clientIP(r *http.Request, trustedProxyHops int) string {
 	if trustedProxyHops > 0 {
@@ -29,9 +30,7 @@ func clientIP(r *http.Request, trustedProxyHops int) string {
 				hops[i] = strings.TrimSpace(hops[i])
 			}
 
-			idx := max(len(hops)-trustedProxyHops, 0)
-
-			if idx < len(hops) && hops[idx] != "" {
+			if idx := len(hops) - trustedProxyHops; idx >= 0 && hops[idx] != "" {
 				return hops[idx]
 			}
 		}
