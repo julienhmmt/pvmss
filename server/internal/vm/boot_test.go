@@ -45,10 +45,16 @@ type bootWriter struct {
 	orders    [][]string
 	actions   []string
 	failStart bool
+	// cancelOnStart simulates the client disconnecting during start.
+	cancelOnStart context.CancelFunc
 }
 
 func (w *bootWriter) Action(ctx context.Context, node string, vmid int, action string) error {
 	w.actions = append(w.actions, action)
+	if w.cancelOnStart != nil && action == actionStart {
+		w.cancelOnStart()
+	}
+
 	if w.failStart && action == actionStart {
 		return errors.New("start rejected")
 	}
@@ -57,6 +63,10 @@ func (w *bootWriter) Action(ctx context.Context, node string, vmid int, action s
 }
 
 func (w *bootWriter) SetBootOrder(ctx context.Context, node string, vmid int, order []string) error {
+	if err := ctx.Err(); err != nil {
+		return err
+	}
+
 	w.orders = append(w.orders, append([]string(nil), order...))
 
 	return w.Fake.SetBootOrder(ctx, node, vmid, order)
@@ -168,6 +178,34 @@ func TestBootFromCDROM_StartFails_RestoresOrder(t *testing.T) {
 	}
 
 	// The deferred restore must have put the original (empty) order back.
+	if len(writer.orders) != 2 || len(writer.orders[1]) != 0 {
+		t.Fatalf("boot orders = %v, want CD-first then restore", writer.orders)
+	}
+}
+
+// A client that disconnects after start must not leave the VM CD-first: the
+// restore runs on a context the request cannot cancel.
+//
+//nolint:paralleltest // serial: shared fake dataset
+func TestBootFromCDROM_CancelledRequest_StillRestoresOrder(t *testing.T) {
+	cluster.ResetFake()
+	t.Cleanup(cluster.ResetFake)
+
+	original := vm.BootPollInterval
+	vm.BootPollInterval = time.Millisecond
+
+	t.Cleanup(func() { vm.BootPollInterval = original })
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	writer := &bootWriter{Fake: cluster.Fake{}, cancelOnStart: cancel}
+
+	_ = vm.BootFromCDROM(ctx, vm.BootDependencies{
+		Index: buildResolveIndex(t), Actor: aliceIdentity(), ClusterName: testClusterName, VMID: 101,
+		Writer: writer, Audit: noopAudit{}, Refresher: noopRefresher{}, StatusReader: cluster.Fake{},
+	})
+
 	if len(writer.orders) != 2 || len(writer.orders[1]) != 0 {
 		t.Fatalf("boot orders = %v, want CD-first then restore", writer.orders)
 	}
