@@ -386,3 +386,29 @@ func handlerForMethod(handler *httpapi.AdminPools, method string) http.HandlerFu
 		return handler.ServeDelete
 	}
 }
+
+func TestAdminPools_UpdateComment(t *testing.T) {
+	handler, authHandler := newAdminPoolsHandler(t)
+	cookie := adminCookie(t, authHandler)
+
+	if rec := adminPoolsRequest(t, handler.ServeCreate, http.MethodPost, "/api/v1/admin/pools", cookie, `{"name":"team-c"}`); rec.Code != http.StatusCreated {
+		t.Fatalf("create status = %d", rec.Code)
+	}
+	update := adminPoolsRequest(t, handler.ServeUpdate, http.MethodPatch, "/api/v1/admin/pools/pvmss-team-c?cluster=default", cookie, `{"comment":"  equipe C  "}`)
+	if update.Code != http.StatusOK {
+		t.Fatalf("update status = %d body=%s", update.Code, update.Body.String())
+	}
+	rows := listAdminPools(t, handler, cookie, "/api/v1/admin/pools?cluster=default&search=pvmss-team-c")
+	if len(rows) != 1 || rows[0].Comment != "equipe C" {
+		t.Fatalf("rows = %+v", rows)
+	}
+
+	invalid := adminPoolsRequest(t, handler.ServeUpdate, http.MethodPatch, "/api/v1/admin/pools/pvmss-team-c?cluster=default", cookie, `{"comment":"a\nb"}`)
+	if invalid.Code != http.StatusBadRequest {
+		t.Fatalf("invalid status = %d", invalid.Code)
+	}
+	missing := adminPoolsRequest(t, handler.ServeUpdate, http.MethodPatch, "/api/v1/admin/pools/pool-nope?cluster=default", cookie, `{"comment":"x"}`)
+	if missing.Code != http.StatusNotFound {
+		t.Fatalf("missing status = %d", missing.Code)
+	}
+}

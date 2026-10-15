@@ -100,11 +100,14 @@ func registerAdminPolicyRoutes(mux *http.ServeMux, adminProtect adminRouteProtec
 }
 
 // registerAdminPoolRoutes wires the admin pool endpoints (create, list,
-// detail, cascade delete). Admin-only.
+// detail, comment update, cascade delete). Admin-only.
+//
+//nolint:dupl // registration blocks for distinct handlers stay symmetric on purpose
 func registerAdminPoolRoutes(mux *http.ServeMux, adminProtect adminRouteProtect, h *AdminPools) {
 	mux.Handle("GET /api/v1/admin/pools", adminProtect(http.MethodGet, http.HandlerFunc(h.ServeList)))
 	mux.Handle("GET /api/v1/admin/pools/{name}", adminProtect(http.MethodGet, http.HandlerFunc(h.ServeDetail)))
 	mux.Handle("POST /api/v1/admin/pools", adminProtect(http.MethodPost, http.HandlerFunc(h.ServeCreate)))
+	mux.Handle("PATCH /api/v1/admin/pools/{name}", adminProtect(http.MethodPatch, http.HandlerFunc(h.ServeUpdate)))
 	mux.Handle("DELETE /api/v1/admin/pools/{name}", adminProtect(http.MethodDelete, http.HandlerFunc(h.ServeDelete)))
 }
 

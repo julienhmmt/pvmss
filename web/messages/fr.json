@@ -1137,6 +1137,8 @@
   "admin.pools.newPool": "Créer un utilisateur PVMSS",
   "admin.pools.search": "Rechercher des utilisateurs PVMSS",
   "admin.pools.comment": "Commentaire du pool",
+  "admin.poolDetail.addComment": "Ajouter un commentaire",
+  "admin.poolDetail.commentError": "Échec de la mise à jour du commentaire du pool.",
   "admin.pools.running": "En cours",
   "admin.pools.noPools": "Aucun utilisateur PVMSS pour le moment",
   "admin.pools.noSearchResults": "Aucun utilisateur PVMSS ne correspond à votre recherche",
