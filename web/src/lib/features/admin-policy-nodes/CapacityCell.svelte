@@ -33,5 +33,8 @@
 		{/if}
 	</div>
 {:else}
-	<span class="text-muted-foreground">{used}{suffix} · {m['policy.uncapped']()}</span>
+	<div class="flex flex-col whitespace-nowrap">
+		<span class="tabular-nums">{used}{suffix}</span>
+		<span class="text-xs text-muted-foreground">{m['policy.uncapped']()}</span>
+	</div>
 {/if}
