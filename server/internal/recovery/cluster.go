@@ -6,7 +6,6 @@ import (
 	"crypto/cipher"
 	"crypto/rand"
 	"crypto/sha256"
-	"database/sql"
 	"errors"
 	"fmt"
 	"io"
@@ -74,7 +73,7 @@ func MapCluster(env Environ, clusterName string, flags ProxmoxCreds, sessionSecr
 // DO UPDATE (idempotence). This mirrors store.CreateCluster's
 // transaction logic but uses an upsert instead of insert-or-reactivate,
 // so re-running the tool is safe.
-func upsertCluster(ctx context.Context, v04DB *sql.DB, row ClusterRow) error {
+func upsertCluster(ctx context.Context, v04DB dbtx, row ClusterRow) error {
 	_, err := v04DB.ExecContext(ctx, `
 		INSERT INTO clusters (name, url, tls_insecure_skip_verify, token_id, token_secret_ciphertext, created_at)
 		VALUES (?, ?, ?, ?, ?, ?)
