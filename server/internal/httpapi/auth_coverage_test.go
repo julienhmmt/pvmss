@@ -604,3 +604,47 @@ func TestAuthCoverage_Logout_WithSessionSucceeds(t *testing.T) {
 		t.Fatalf("status = %d, want %d", rec.Code, http.StatusNoContent)
 	}
 }
+
+// A password change must end every other session of that user, so a stolen
+// cookie stops working, while the session that made the change stays valid.
+//
+//nolint:paralleltest // serial: shared fake auth and session fixtures
+func TestAuthCoverage_ChangePassword_RevokesOtherSessions(t *testing.T) {
+	handler, _ := newAuthHandlerWithStore(t)
+	loginBody := `{"username":"alice","password":"pvmss-alice","cluster":"default"}`
+	current := serveJSON(handler.Login, "/api/v1/auth/login", loginBody).Result().Cookies()[0]
+	other := serveJSON(handler.Login, "/api/v1/auth/login", loginBody).Result().Cookies()[0]
+
+	change := func(oldPassword, newPassword string) int {
+		req := httptest.NewRequest(http.MethodPost, "/api/v1/auth/password", strings.NewReader(`{"oldPassword":"`+oldPassword+`","newPassword":"`+newPassword+`"}`))
+		req.Header.Set("Content-Type", "application/json")
+		req.AddCookie(current)
+
+		rec := httptest.NewRecorder()
+		handler.ChangePassword(rec, req)
+
+		return rec.Code
+	}
+
+	if code := change("pvmss-alice", "newpass12"); code != http.StatusNoContent {
+		t.Fatalf("change status = %d, want %d", code, http.StatusNoContent)
+	}
+
+	t.Cleanup(func() { change("newpass12", "pvmss-alice") })
+
+	principal := func(cookie *http.Cookie) error {
+		req := httptest.NewRequest(http.MethodGet, "/api/v1/auth/me", nil)
+		req.AddCookie(cookie)
+		_, err := handler.Principal(req)
+
+		return err
+	}
+
+	if err := principal(other); err == nil {
+		t.Fatal("other session still valid after password change")
+	}
+
+	if err := principal(current); err != nil {
+		t.Fatalf("current session revoked: %v", err)
+	}
+}

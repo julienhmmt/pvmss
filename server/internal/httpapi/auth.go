@@ -338,6 +338,11 @@ func (h *Auth) ChangePassword(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// The password already changed: a failed revocation is logged, not returned.
+	if err := h.sessions.RevokeOthers(r.Context(), r, identity); err != nil {
+		logctx.FromOr(r.Context(), h.log).WarnContext(r.Context(), "other sessions revocation failed", "component", "httpapi", "error", err)
+	}
+
 	w.WriteHeader(http.StatusNoContent)
 }
 
