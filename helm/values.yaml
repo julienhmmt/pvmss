@@ -32,6 +32,9 @@ persistence:
 
 # DEPLOYMENT
 deployment:
+  # Must stay 1: SQLite, rate-limit counters and in-flight create reservations
+  # live in one process. More replicas multiply the rate limits and break the
+  # quota check.
   replicaCount: 1
   strategy: Recreate
   image:
@@ -65,6 +68,9 @@ deployment:
     # Set to "false" only when the HTTPRoute/Ingress does not terminate TLS.
     PVMSS_COOKIE_SECURE: "true"
     # Reverse proxies in front of PVMSS (client IP for rate limits / audit).
+    # Number of proxies that append to X-Forwarded-For in front of PVMSS.
+    # Set "0" when nothing proxies: otherwise clients can pick their own IP
+    # and bypass the login rate limit.
     PVMSS_TRUSTED_PROXY_HOPS: "1"
     # PVMSS_INVENTORY_REFRESH_INTERVAL: "30s"
     # PVMSS_INVENTORY_MANUAL_REFRESH_MIN_INTERVAL: "5s"
