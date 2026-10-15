@@ -205,7 +205,7 @@ func (h *AdminPools) ServeDetail(w http.ResponseWriter, r *http.Request) {
 	}
 	detail, err := pools.Detail(r.Context(), client, projection, h.store, clusterName, name)
 	if errors.Is(err, pools.ErrNotFound) {
-		writeAdminError(w, http.StatusNotFound, "not_found", fmt.Sprintf("pool %q not found", name))
+		writeAdminError(w, http.StatusNotFound, "not_found", fmt.Sprintf(msgPoolNotFound, name))
 		return
 	}
 	if err != nil {
@@ -340,7 +340,7 @@ func (h *AdminPools) ServeUpdate(w http.ResponseWriter, r *http.Request) {
 	}
 	err = client.UpdatePoolComment(r.Context(), name, comment)
 	if errors.Is(err, cluster.ErrNotFound) {
-		writeAdminError(w, http.StatusNotFound, "not_found", fmt.Sprintf("pool %q not found", name))
+		writeAdminError(w, http.StatusNotFound, "not_found", fmt.Sprintf(msgPoolNotFound, name))
 		return
 	}
 	if err != nil {
@@ -387,7 +387,7 @@ func (h *AdminPools) ServeDelete(w http.ResponseWriter, r *http.Request) {
 	}
 	result, err := pools.Delete(r.Context(), pools.CascadeDeps{Actor: actor, Client: client, Projection: projection, ClusterName: clusterName, Writer: writer, Audit: h.audit, Refresher: h.refresher, Managed: h.store}, name)
 	if errors.Is(err, pools.ErrNotFound) {
-		writeAdminError(w, http.StatusNotFound, "not_found", fmt.Sprintf("pool %q not found", name))
+		writeAdminError(w, http.StatusNotFound, "not_found", fmt.Sprintf(msgPoolNotFound, name))
 		return
 	}
 	if errors.Is(err, pools.ErrForbidden) {
