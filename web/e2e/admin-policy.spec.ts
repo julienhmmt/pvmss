@@ -49,6 +49,7 @@ test.describe('T12 admin policy', () => {
 		const saved = page.waitForResponse((r) => r.url().includes('/api/v1/admin/policy') && r.request().method() === 'PUT');
 		await page.getByLabel('Maximum disk per VM (GB)').fill('10');
 		expect((await saved).ok()).toBe(true);
+		await expect(page.getByTestId('toast').filter({ hasText: 'Policy saved' }).first()).toBeVisible();
 
 		await signInAlice(page.request);
 		const response = await page.request.post('/api/v1/vms', {

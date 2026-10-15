@@ -142,9 +142,33 @@ describe('PolicyForm autosave', () => {
 		expect(onSave).toHaveBeenCalledTimes(1);
 	});
 
-	it('renders no manual save or discard controls', () => {
+	it('manual save sends the full patch even when the form is clean', async () => {
+		const onSave = mountForm();
+		await tick();
+		(document.querySelector('form') as HTMLFormElement).requestSubmit();
+		await tick();
+		expect(onSave).toHaveBeenCalledTimes(1);
+		expect(onSave).toHaveBeenCalledWith({
+			gabarit: { maxSockets: 4, maxCores: 8, maxMemoryMB: 16384, maxDiskPerVmGb: 500, maxNetworkCards: 4, maxSnapshots: 5, isolationVlanTag: 0 },
+			quota: { maxVmPerUser: -1 }
+		});
+	});
+
+	it('manual save cancels the pending debounce so only one save is sent', async () => {
+		const onSave = mountForm();
+		setInputValue(getFirstInput(), '6');
+		await tick();
+		(document.querySelector('form') as HTMLFormElement).requestSubmit();
+		await tick();
+		vi.advanceTimersByTime(DEBOUNCE_MS * 3);
+		expect(onSave).toHaveBeenCalledTimes(1);
+		const patch = onSave.mock.calls[0]?.[0] as AdminPolicyPatch | undefined;
+		expect(patch?.gabarit?.maxSockets).toBe(6);
+	});
+
+	it('renders the manual save button and no discard control', () => {
 		mountForm();
-		expect(document.querySelector('button[type="submit"]')).toBeNull();
+		expect(document.querySelector('button[type="submit"]')).not.toBeNull();
 		const labels = Array.from(document.querySelectorAll('button')).map((b) => b.textContent ?? '');
 		expect(labels.some((text) => text.includes('Annuler les modifications'))).toBe(false);
 	});

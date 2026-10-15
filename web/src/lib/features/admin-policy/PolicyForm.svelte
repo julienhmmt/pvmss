@@ -2,6 +2,7 @@
 	import type { AdminPolicy, AdminPolicyPatch, Gabarit } from './policy.svelte';
 	import { m } from '$lib/paraglide/messages.js';
 	import Alert from '$lib/shared/ui/Alert.svelte';
+	import Button from '$lib/shared/ui/Button.svelte';
 	import Card from '$lib/shared/ui/Card.svelte';
 	import FormField from '$lib/shared/ui/FormField.svelte';
 	import TextField from '$lib/shared/ui/TextField.svelte';
@@ -148,6 +149,20 @@
 	// the next edit sends again. An invalid form resets that guard.
 	const DEBOUNCE_MS = 700;
 	let lastSentKey: string | null = null;
+	let saveTimer: ReturnType<typeof setTimeout> | undefined;
+
+	function fullPatch(): AdminPolicyPatch {
+		return { gabarit: { ...form.gabarit }, quota: { maxVmPerUser: form.maxVmPerUser } };
+	}
+
+	// Sends now, cancels any pending debounce, and records the key so the
+	// effect does not resend the same patch.
+	function sendPatch(patch: AdminPolicyPatch): void {
+		clearTimeout(saveTimer);
+		saveTimer = undefined;
+		lastSentKey = JSON.stringify(patch);
+		onSave(patch);
+	}
 
 	$effect(() => {
 		if (!isValid) {
@@ -155,21 +170,20 @@
 			return;
 		}
 		if (!isDirty || saving) return;
-		const patch: AdminPolicyPatch = {
-			gabarit: { ...form.gabarit },
-			quota: { maxVmPerUser: form.maxVmPerUser }
-		};
-		const key = JSON.stringify(patch);
-		if (key === lastSentKey) return;
-		const handle = setTimeout(() => {
-			lastSentKey = key;
-			onSave(patch);
-		}, DEBOUNCE_MS);
-		return () => clearTimeout(handle);
+		const patch = fullPatch();
+		if (JSON.stringify(patch) === lastSentKey) return;
+		saveTimer = setTimeout(() => sendPatch(patch), DEBOUNCE_MS);
+		return () => clearTimeout(saveTimer);
 	});
+
+	// Manual fallback: always sends the full patch, even when clean.
+	function saveNow(): void {
+		if (!isValid || saving) return;
+		sendPatch(fullPatch());
+	}
 </script>
 
-<form class="grid max-w-5xl gap-6 lg:grid-cols-[minmax(0,2fr)_minmax(0,1fr)] lg:items-start" onsubmit={(event) => event.preventDefault()}>
+<form class="grid max-w-5xl gap-6 lg:grid-cols-[minmax(0,2fr)_minmax(0,1fr)] lg:items-start" onsubmit={(event) => { event.preventDefault(); saveNow(); }}>
 	<Card pad="lg">
 		<div class="mb-4 grid gap-1">
 			<h2 class="text-lg font-medium text-foreground">{m['policy.gabarit']()}</h2>
@@ -261,6 +275,8 @@
 		</Card>
 
 		{#if saveError && !serverErrorField}<Alert>{saveError}</Alert>{/if}
-		{#if saving}<p class="text-xs text-muted-foreground" role="status" aria-live="polite">{m['policy.saving']()}</p>{/if}
+		<div class="flex flex-wrap justify-end gap-2">
+			<Button type="submit" disabled={saving || !isValid}>{saving ? m['policy.saving']() : m['policy.save']()}</Button>
+		</div>
 	</div>
 </form>
