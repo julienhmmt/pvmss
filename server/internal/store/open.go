@@ -24,6 +24,8 @@ func Open(cfg config.Configuration) (*Store, error) {
 		return nil, fmt.Errorf("create database directory %q: %w", dir, err)
 	}
 
+	removeStaleImports(dir)
+
 	dsn := fmt.Sprintf("file:%s?_pragma=journal_mode(WAL)&_pragma=busy_timeout(5000)", cfg.DBPath)
 
 	db, err := sql.Open("sqlite", dsn)

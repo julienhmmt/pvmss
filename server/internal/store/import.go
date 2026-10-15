@@ -56,6 +56,9 @@ var excludedImportTables = map[string]string{
 	"vm_baseline_state":      "per-VM runtime state",
 }
 
+// importTempPattern names staged upload copies next to the live database.
+const importTempPattern = "pvmss-import-*.db"
+
 // ExcludedImportTables returns a copy of the excluded tables and reasons.
 func ExcludedImportTables() map[string]string {
 	return maps.Clone(excludedImportTables)
@@ -122,7 +125,7 @@ func (s *Store) ValidateImport(ctx context.Context, upload io.Reader) (ImportPre
 
 	dir := filepath.Dir(livePath)
 
-	tmpFile, err := os.CreateTemp(dir, "pvmss-import-*.db")
+	tmpFile, err := os.CreateTemp(dir, importTempPattern)
 	if err != nil {
 		return ImportPreview{}, fmt.Errorf("create import temp file: %w", err)
 	}

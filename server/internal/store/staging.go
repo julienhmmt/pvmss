@@ -4,6 +4,8 @@ import (
 	"crypto/rand"
 	"encoding/hex"
 	"errors"
+	"os"
+	"path/filepath"
 	"sync"
 	"time"
 )
@@ -49,7 +51,7 @@ func (s *ImportStaging) Stage(tempPath string, preview ImportPreview) string {
 	defer s.mu.Unlock()
 
 	// Lazily purge expired entries - no background goroutine.
-	s.purgeExpiredLocked()
+	removeTempFiles(s.purgeExpiredLocked())
 
 	s.entries[token] = StagingEntry{
 		TempPath:  tempPath,
@@ -79,6 +81,8 @@ func (s *ImportStaging) Lookup(token string) (StagingEntry, error) {
 
 	if s.now().After(entry.expiresAt) {
 		delete(s.entries, token)
+		removeTempFiles([]string{entry.TempPath})
+
 		return StagingEntry{}, ErrStagingExpired
 	}
 
@@ -103,14 +107,37 @@ func (s *ImportStaging) AdvanceTime(d time.Duration) {
 	s.now = func() time.Time { return base.Add(d) }
 }
 
-// purgeExpiredLocked removes expired entries. Caller must hold s.mu.
-func (s *ImportStaging) purgeExpiredLocked() {
+// purgeExpiredLocked removes expired entries and returns their temp file
+// paths. Caller must hold s.mu.
+func (s *ImportStaging) purgeExpiredLocked() []string {
 	now := s.now()
+
+	var paths []string
+
 	for token, entry := range s.entries {
 		if now.After(entry.expiresAt) {
+			paths = append(paths, entry.TempPath)
 			delete(s.entries, token)
 		}
 	}
+
+	return paths
+}
+
+// removeTempFiles deletes expired upload copies: each is a full database
+// copy that must not outlive its preview. Best-effort: a file already gone
+// is fine, and a leftover is swept at the next start (removeStaleImports).
+func removeTempFiles(paths []string) {
+	for _, path := range paths {
+		_ = os.Remove(path)
+	}
+}
+
+// removeStaleImports deletes upload copies left by a previous process: the
+// staging map lives in memory, so no token can reach them after a restart.
+func removeStaleImports(dir string) {
+	paths, _ := filepath.Glob(filepath.Join(dir, importTempPattern))
+	removeTempFiles(paths)
 }
 
 // newToken returns a random 16-byte hex string. Panics only on rand failure,
