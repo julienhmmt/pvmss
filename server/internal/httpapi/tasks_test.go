@@ -443,3 +443,33 @@ func TestTasks_WithRegistry_InvalidatesNamedClusterProjection(t *testing.T) {
 		t.Errorf("default invalidations = %d, want 0", alphaInvalidator.refreshed.Load())
 	}
 }
+
+// Polling a task that is already ok must not refresh the inventory again:
+// only the first ok observation pays for a refresh.
+//
+//nolint:paralleltest // serial: shared fake task fixture
+func TestTasks_RepeatedOkPollRefreshesOnce(t *testing.T) {
+	handler, authHandler, projection := newTasksHandler(t)
+	cookie := loginCookie(t, authHandler, `{"username":"alice","password":"pvmss-alice"}`)
+
+	upid, err := (cluster.Fake{}).CreateSnapshot(context.Background(), cluster.FakeNode01, 101, "once", "", false)
+	if err != nil {
+		t.Fatalf("CreateSnapshot: %v", err)
+	}
+
+	for range 3 {
+		getTask(t, handler, upid, cookie)
+	}
+
+	afterOk := projection.Load()
+
+	for range 2 {
+		if response := getTask(t, handler, upid, cookie); response.Code != http.StatusOK {
+			t.Fatalf("repeat poll status = %d: %s", response.Code, response.Body.String())
+		}
+	}
+
+	if projection.Load() != afterOk {
+		t.Fatal("a repeated ok poll refreshed the inventory again")
+	}
+}
