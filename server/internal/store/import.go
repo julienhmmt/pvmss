@@ -6,7 +6,6 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"maps"
 	"os"
 	"path/filepath"
 	"sort"
@@ -58,11 +57,6 @@ var excludedImportTables = map[string]string{
 
 // importTempPattern names staged upload copies next to the live database.
 const importTempPattern = "pvmss-import-*.db"
-
-// ExcludedImportTables returns a copy of the excluded tables and reasons.
-func ExcludedImportTables() map[string]string {
-	return maps.Clone(excludedImportTables)
-}
 
 // ImportableTables returns a copy of the import allowlist. Tests use this to
 // verify the list matches the live schema without hardcoding an exhaustive
