@@ -1,0 +1,354 @@
+package cluster
+
+import (
+	"context"
+	"fmt"
+	"net/http"
+	"net/url"
+	"strconv"
+	"strings"
+)
+
+// NextVMID implements Creator via GET /cluster/nextid - the single
+// allocation point, delegated to Proxmox's own cluster-wide counter
+// rather than reimplemented client-side. The endpoint returns the smallest
+// free ID at call time without reserving it, so two concurrent creations can
+// collide; the caller handles ErrVMIDTaken by retrying.
+func (p Proxmox) NextVMID(ctx context.Context) (int, error) {
+	raw, err := p.rest().do(ctx, http.MethodGet, "/cluster/nextid", nil)
+	if err != nil {
+		return 0, err
+	}
+
+	var value any
+	if err := decodeData(raw, &value); err != nil {
+		return 0, fmt.Errorf("decode next vmid: %w", err)
+	}
+
+	switch v := value.(type) {
+	case string:
+		n, err := strconv.Atoi(v)
+		if err != nil {
+			return 0, fmt.Errorf("parse next vmid %q: %w", v, err)
+		}
+
+		return n, nil
+	case float64:
+		return int(v), nil
+	default:
+		return 0, fmt.Errorf("unexpected next vmid payload: %v", value)
+	}
+}
+
+// CreateVM implements Creator via POST /nodes/{node}/qemu. spec's Sockets
+// and CPUCores values become the Proxmox form's sockets and cores keys -
+// matching how VM.CPUCores is itself derived elsewhere (fake.go's
+// UpdateHardware: CPUCores = sockets * cores). Proxmox's own start=1 param
+// folds the initial boot into the same task rather than a separate Action
+// call, exactly.
+func (p Proxmox) CreateVM(ctx context.Context, spec VMSpec) (string, error) {
+	form := url.Values{
+		"vmid":    {strconv.Itoa(spec.VMID)},
+		"name":    {spec.Name},
+		"sockets": {strconv.Itoa(spec.Sockets)},
+		"cores":   {strconv.Itoa(spec.CPUCores)},
+		"memory":  {strconv.Itoa(spec.MemoryMB)},
+	}
+
+	if spec.Pool != "" {
+		form.Set("pool", spec.Pool)
+	}
+
+	if len(spec.Tags) > 0 {
+		form.Set("tags", strings.Join(spec.Tags, ";"))
+	}
+
+	setDiskFormKeys(form, spec)
+
+	// Enable the QEMU guest agent. Without agent=1 in the config, every
+	// /agent/* endpoint returns an error - which silently disables
+	// SetCloudInitPassword and AddSSHKey on every VM PVMSS creates - and
+	// shutdown/reboot fall back to ACPI alone.
+	form.Set("agent", "1")
+
+	// ostype tunes Proxmox's own defaults (clock source, default drivers).
+	// Every catalog entry PVMSS exposes is Linux.
+	form.Set("ostype", "l26")
+
+	// Explicit boot order built only from the devices this spec actually
+	// created - a hardcoded order naming a device that is absent makes the
+	// VM unbootable.
+	setBootOrderForm(form, spec)
+
+	for i, nic := range spec.Network {
+		if nic.Bridge == "" {
+			continue
+		}
+
+		// Pass VLAN, Firewall, MAC, and RateMbps through to
+		// the encoder. Firewall is always true (imposed, not exposed).
+		// VLAN is the admin-imposed isolation tag.
+		form.Set(fmt.Sprintf("net%d", i), encodeNetValue(NetworkInterface{
+			Model: nic.Model, Bridge: nic.Bridge, VLAN: nic.VLAN,
+			Firewall: true, MAC: nic.MAC, RateMbps: nic.RateMbps,
+		}))
+	}
+
+	// Always provision a serial port (serial0) backed by a socket. This makes
+	// the PVMSS Text/serial console work out of the box for every VM - without
+	// it, Proxmox opens the termproxy tunnel and immediately closes it (EOF),
+	// which surfaces as a black screen in the serial console. A socket-backed
+	// serial port needs no host device and is safe to add unconditionally.
+	form.Set("serial0", "socket")
+
+	if spec.ISO != nil {
+		form.Set(cdromDiskKey, fmt.Sprintf("%s:iso/%s,media=cdrom", spec.ISO.Storage, spec.ISO.File))
+	}
+
+	// UEFI (bios=ovmf) and TPM 2.0.
+	setUEFIFormKeys(form, spec)
+
+	if spec.StartAfterCreate {
+		form.Set("start", "1")
+	}
+
+	raw, err := p.rest().do(ctx, http.MethodPost, fmt.Sprintf("/nodes/%s/qemu", url.PathEscape(spec.Node)), form)
+	if err != nil {
+		return "", wrapVMIDCollision(err)
+	}
+
+	var upid string
+	if err := decodeData(raw, &upid); err != nil {
+		return "", fmt.Errorf("decode create task: %w", err)
+	}
+
+	return upid, nil
+}
+
+// setDiskFormKeys emits the primary disk form key (<bus>0) and, for cloud
+// images, the import-from source and the cloud-init drive. Extracted from
+// CreateVM to keep its cyclomatic complexity under gocyclo's ceiling.
+func setDiskFormKeys(form url.Values, spec VMSpec) {
+	if spec.Disk.Storage == "" {
+		return
+	}
+
+	// import-from requires Proxmox's special <storage>:0 target syntax -
+	// a non-zero size is rejected outright by check_drive_param
+	// ("'import-from' requires special syntax"). The import lands at the
+	// source image's size; the vm layer grows the disk to the requested
+	// size after the create task completes (createFromImage).
+	sizeGB := spec.Disk.SizeGB
+	if spec.Image != nil {
+		sizeGB = 0
+	}
+
+	diskValue := fmt.Sprintf("%s:%d,discard=on", spec.Disk.Storage, sizeGB)
+
+	// A cloud image imports as the primary disk via import-from
+	// (PVE ≥ 7.2): Proxmox copies the image onto the target storage.
+	// The source must be a PVE-managed volume of vtype 'import' (not
+	//  'iso' - .img files are rejected) and must be passed as a volid,
+	// not an absolute path (absolute paths are root@pam-only).
+	// Cloud images live in the storage's import/ directory with
+	// .qcow2/.raw/.vmdk extensions → volid <storage>:import/<file>.
+	if spec.Image != nil {
+		diskValue += ",import-from=" + spec.Image.Storage + ":import/" + spec.Image.File
+	}
+
+	// Iothread is gated on SCSI - it is not supported
+	// on virtio/IDE/SATA and Proxmox silently ignores the option there,
+	// but emitting it only where it works keeps the form clean. The
+	// controller must be virtio-scsi-single for iothread to be honored;
+	// virtio-scsi-pci makes Proxmox drop it with a warning.
+	if spec.Disk.Bus == string(DiskBusSCSI) {
+		diskValue += ",iothread=1"
+
+		form.Set("scsihw", scsiController)
+	}
+
+	form.Set(spec.Disk.Bus+"0", diskValue)
+
+	// A cloud image needs its cloud-init drive from the moment the VM
+	// exists - ProxMate and pegaprox both attach it in the very same
+	// create call as the imported disk ("<storage>:cloudinit" on a fixed
+	// IDE slot), never as a later follow-up. PVMSS previously only
+	// attached it lazily, on the first SetCloudInitConfig/
+	// AttachCloudInitSnippet call after the create task finished -
+	// functionally idempotent (EnsureCloudInitDrive no-ops once this is
+	// set) but one more round trip that can fail on its own. Attaching
+	// it here removes that gap for the one path that always needs
+	// cloud-init: an imported cloud image has no installer.
+	if spec.Image != nil {
+		form.Set(cloudInitDiskKey, spec.Disk.Storage+":cloudinit")
+	}
+}
+
+// setBootOrderForm emits boot=order=<devices> built only from the devices the
+// spec actually created. A hardcoded order naming an absent device
+// makes the VM unbootable, so the disk bus key is added only when storage is
+// set and the cdrom key only when an ISO is mounted. When an ISO is present,
+// the CD-ROM goes first so the VM boots from the installer on a fresh empty
+// disk - a disk-first order makes the VM fail to boot and Proxmox stops it.
+// After installation the user removes the ISO or changes the boot order.
+func setBootOrderForm(form url.Values, spec VMSpec) {
+	var bootOrder []string
+
+	if spec.ISO != nil {
+		bootOrder = append(bootOrder, cdromDiskKey)
+	}
+
+	if spec.Disk.Storage != "" {
+		bootOrder = append(bootOrder, spec.Disk.Bus+"0")
+	}
+
+	if len(bootOrder) > 0 {
+		form.Set("boot", "order="+strings.Join(bootOrder, ";"))
+	}
+}
+
+// resolveUEFIMachine forces q35 (UEFI requires q35 - pegaprox rule) unless
+// the caller already specified a non-i440fx/pc machine type. Shared with the
+// fake dataset so it mirrors the real create path exactly.
+func resolveUEFIMachine(machine string) string {
+	if machine == "" || machine == "i440fx" || machine == "pc" {
+		return "q35"
+	}
+
+	return machine
+}
+
+// setUEFIFormKeys emits the UEFI/TPM form keys when BIOS is ovmf: machine is
+// forced to q35 (pegaprox rule), efidisk0 is provisioned on the disk's
+// storage, and tpmstate0 is added when TPM is set - never omitted silently
+// (the pegaprox preset bug where tpm_version was set without tpm_storage).
+// Extracted from CreateVM to keep its cyclomatic complexity under gocyclo's
+// ceiling.
+//
+// Secure Boot is never enabled, hence the hardcoded pre-enrolled-keys=0.
+// That option is what copies Microsoft's keys into the EFI vars, which turns
+// signature verification on. PVMSS creates VMs from an arbitrary
+// administrator-approved ISO, and most Linux install media is unsigned -
+// Arch's official image states outright that it does not support Secure Boot.
+// An unsigned ISO then never reaches its installer: OVMF refuses the
+// bootloader and drops to the UEFI shell, with no way to recover from inside
+// the guest. Only media signed with Microsoft's CA (Windows, and the big
+// enterprise distros) boots, and PVMSS cannot know which of its approved ISOs
+// those are. With an empty key store the firmware stays in Setup Mode, so
+// UEFI still works (GPT, EFI vars, q35) and any EFI bootloader runs. An
+// operator who genuinely needs Secure Boot for a Windows guest sets it in
+// Proxmox itself, where the ISO's signing can be verified by hand.
+func setUEFIFormKeys(form url.Values, spec VMSpec) {
+	if spec.BIOS != biosOVMF {
+		return
+	}
+
+	form.Set("bios", biosOVMF)
+	form.Set("machine", resolveUEFIMachine(spec.Machine))
+
+	efiStorage := spec.Disk.Storage
+	if efiStorage == "" {
+		efiStorage = "local-lvm"
+	}
+
+	form.Set("efidisk0", efiStorage+":1,efitype=4m,pre-enrolled-keys=0")
+
+	if spec.TPM {
+		form.Set("tpmstate0", efiStorage+":1,version=v2.0")
+	}
+}
+
+// wrapVMIDCollision inspects a Proxmox error for a VMID-already-exists
+// rejection and wraps it with ErrVMIDTaken so the caller can retry with a
+// fresh VMID. Proxmox returns HTTP 500 with a body like
+// {"errors":{"vmid":"VMID '100' already exists"}}; the low-level client
+// flattens that into a single error string, so a substring match is the
+// only detection available without re-parsing the raw body.
+func wrapVMIDCollision(err error) error {
+	if err == nil {
+		return nil
+	}
+
+	if strings.Contains(err.Error(), "already exists") {
+		return fmt.Errorf("%w: %w", ErrVMIDTaken, err)
+	}
+
+	return err
+}
+
+// TaskStatus implements Creator. The node a task ran on is embedded in its
+// own UPID ("UPID:<node>:..."), which is how the Proxmox API itself expects
+// task status to be looked up - there is no node-independent endpoint.
+func (p Proxmox) TaskStatus(ctx context.Context, upid string) (TaskStatus, error) {
+	node, err := proxmoxUPIDNode(upid)
+	if err != nil {
+		return TaskStatus{}, err
+	}
+
+	rest := p.rest()
+
+	raw, err := rest.do(ctx, http.MethodGet, fmt.Sprintf("/nodes/%s/tasks/%s/status", url.PathEscape(node), url.PathEscape(upid)), nil)
+	if err != nil {
+		return TaskStatus{}, err
+	}
+
+	var status struct {
+		Status     string `json:"status"`     // "running" | "stopped"
+		ExitStatus string `json:"exitstatus"` // "OK" on success; present only once stopped
+	}
+	if err := decodeData(raw, &status); err != nil {
+		return TaskStatus{}, fmt.Errorf("decode task status: %w", err)
+	}
+
+	// Best-effort: a log fetch failure should not hide the actual task state.
+	log, _ := proxmoxTaskLog(ctx, rest, node, upid)
+
+	result := TaskStatus{UPID: upid, Log: log}
+
+	switch {
+	case status.Status == string(VMRunning):
+		result.State = TaskRunning
+	case status.ExitStatus == "OK" || strings.HasPrefix(status.ExitStatus, "WARNINGS"):
+		// PVE returns WARNINGS for benign conditions (NUMA mismatch, local
+		// disks) - both references accept it as success.
+		result.State = TaskOK
+		if strings.HasPrefix(status.ExitStatus, "WARNINGS") {
+			result.Warnings = status.ExitStatus
+		}
+	default:
+		result.State = TaskError
+		result.ExitMessage = status.ExitStatus
+	}
+
+	return result, nil
+}
+
+func proxmoxUPIDNode(upid string) (string, error) {
+	parts := strings.Split(upid, ":")
+	if len(parts) < 2 || parts[0] != "UPID" || parts[1] == "" {
+		return "", fmt.Errorf("%w: malformed upid %q", ErrNotFound, upid)
+	}
+
+	return parts[1], nil
+}
+
+func proxmoxTaskLog(ctx context.Context, rest proxmoxRESTClient, node, upid string) ([]string, error) {
+	raw, err := rest.do(ctx, http.MethodGet, fmt.Sprintf("/nodes/%s/tasks/%s/log", url.PathEscape(node), url.PathEscape(upid)), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	var rows []struct {
+		T string `json:"t"`
+	}
+	if err := decodeData(raw, &rows); err != nil {
+		return nil, fmt.Errorf("decode task log: %w", err)
+	}
+
+	lines := make([]string, 0, len(rows))
+	for _, row := range rows {
+		lines = append(lines, row.T)
+	}
+
+	return lines, nil
+}

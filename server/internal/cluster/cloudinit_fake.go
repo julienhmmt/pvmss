@@ -1,0 +1,50 @@
+package cluster
+
+// Demo cloud-init fixture constants, defined once to avoid repeating the
+// literals across the fake's seeded configs (go:S1192).
+const (
+	// A syntactically valid key: the form sends existing keys back on save, and
+	// the server rejects anything ssh.ParseAuthorizedKey cannot read.
+	fakeSSHKey       = "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIAECAwQFBgcICQoLDA0ODxAREhMUFRYXGBkaGxwdHh8g alice@laptop"
+	fakeSearchDomain = "example.internal"
+)
+
+// originalFakeCloudInitConfigs returns the initial structured state used by the fake browser demo.
+// Agent is true: the demo VMs mirror what the real create path provisions (agent=1).
+func originalFakeCloudInitConfigs() map[fakeCloudInitKey]CloudInitConfig {
+	return map[fakeCloudInitKey]CloudInitConfig{
+		{node: FakeNode01, vmid: 100}: {
+			User:         FakeCloudInitUser,
+			SSHKeys:      []string{fakeSSHKey},
+			IPMode:       CloudInitIPModeDHCP,
+			DNSServer:    FakeCloudInitDNS,
+			SearchDomain: fakeSearchDomain,
+			Agent:        true,
+		},
+		{node: FakeNode01, vmid: 101}: {
+			User:         FakeCloudInitUser,
+			SSHKeys:      []string{fakeSSHKey},
+			IPMode:       CloudInitIPModeStatic,
+			IPAddress:    "10.0.0.42/24",
+			Gateway:      FakeCloudInitDNS,
+			DNSServer:    FakeCloudInitDNS,
+			SearchDomain: fakeSearchDomain,
+			Agent:        true,
+		},
+		{node: FakeNode01, vmid: 102}: {
+			User:         FakeCloudInitUser,
+			SSHKeys:      []string{fakeSSHKey},
+			IPMode:       CloudInitIPModeDHCP,
+			DNSServer:    FakeCloudInitDNS,
+			SearchDomain: fakeSearchDomain,
+			Agent:        true,
+		},
+	}
+}
+
+func cloneCloudInitConfig(config CloudInitConfig) CloudInitConfig {
+	config.SSHKeys = append([]string(nil), config.SSHKeys...)
+	config.Password = ""
+
+	return config
+}

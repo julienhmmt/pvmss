@@ -12,22 +12,36 @@
       true,
       {
         "ignoreAtRules": [
-          "custom-variant",
-          "theme",
-          "layer",
           "apply",
           "config",
-          "plugin"
+          "custom-variant",
+          "layer",
+          "plugin",
+          "reference",
+          "screen",
+          "source",
+          "tailwind",
+          "theme",
+          "utility",
+          "variant"
         ]
       }
     ],
     "lightness-notation": null,
     "hue-degree-notation": null,
     "import-notation": null,
+    "color-hex-length": "long",
+    "alpha-value-notation": "number",
+    "comment-empty-line-before": null,
+    "at-rule-prelude-no-invalid": null,
+    "no-descending-specificity": null,
     "property-no-vendor-prefix": [
       true,
       {
         "ignoreProperties": [
+          "-webkit-appearance",
+          "-webkit-box-shadow",
+          "-webkit-text-fill-color",
           "-webkit-text-size-adjust"
         ]
       }

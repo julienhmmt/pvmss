@@ -1,0 +1,89 @@
+package policy
+
+import (
+	"context"
+	"fmt"
+	"pvmss/server/internal/cluster"
+	"slices"
+	"time"
+)
+
+// RefreshedAt reports when the inventory projection last populated; the zero
+// Time means it never has.
+func (service *Policy) RefreshedAt() time.Time {
+	if service.projection == nil || service.projection.Load() == nil {
+		return time.Time{}
+	}
+
+	return service.projection.Load().RefreshedAt
+}
+
+// NodeCapacities returns the live discovery set joined with configured capacité
+// and current pvmss-tagged usage.
+func (service *Policy) NodeCapacities(ctx context.Context, clusterName string) ([]Capacity, error) {
+	nodes, err := service.discoveredNodes(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	approvals, err := service.store.CatalogNodesEnabled(ctx, clusterName)
+	if err != nil {
+		return nil, err
+	}
+
+	approved := make(map[string]bool, len(approvals))
+	for _, row := range approvals {
+		approved[row.Name] = row.Enabled
+	}
+
+	result := make([]Capacity, 0, len(nodes))
+	for _, node := range nodes {
+		capacity, err := service.NodeCapacity(ctx, clusterName, node.Name)
+		if err != nil {
+			return nil, err
+		}
+
+		capacity.Approved = approved[node.Name]
+		capacity.PhysicalVCPUs = node.CPUCores
+		capacity.PhysicalRAMGB = int(node.MemoryTotal / bytesPerGB)
+		capacity.Status = node.Status
+		capacity.CPUUsage = node.CPUUsage
+		capacity.MemoryUsedGB = int(node.MemoryUsed / bytesPerGB)
+		capacity.StorageUsedGB = int(node.StorageUsed / bytesPerGB)
+		capacity.StorageTotalGB = int(node.StorageTotal / bytesPerGB)
+		result = append(result, capacity)
+	}
+
+	slices.SortFunc(result, func(left, right Capacity) int { return compareNode(left.Node, right.Node) })
+
+	return result, nil
+}
+
+func (service *Policy) discoveredNodes(ctx context.Context) ([]cluster.Node, error) {
+	if service.client != nil {
+		snapshot, err := service.client.Snapshot(ctx)
+		if err != nil {
+			return nil, fmt.Errorf("discover nodes: %w", err)
+		}
+
+		return snapshot.Nodes, nil
+	}
+
+	if service.projection != nil && service.projection.Load() != nil {
+		return service.projection.Load().Nodes, nil
+	}
+
+	return nil, nil
+}
+
+func compareNode(left, right string) int {
+	if left < right {
+		return -1
+	}
+
+	if left > right {
+		return 1
+	}
+
+	return 0
+}

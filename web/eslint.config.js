@@ -1,0 +1,77 @@
+import js from '@eslint/js';
+import svelte from 'eslint-plugin-svelte';
+import globals from 'globals';
+import tseslint from 'typescript-eslint';
+
+/** @type {import('eslint').Linter.Config[]} */
+export default [
+  js.configs.recommended,
+  ...tseslint.configs.recommendedTypeChecked,
+  ...svelte.configs['flat/recommended'],
+  {
+    languageOptions: {
+      globals: {
+        ...globals.browser,
+        ...globals.node
+      },
+      parserOptions: {
+        project: ['./tsconfig.json', './tsconfig.e2e.json'],
+        tsconfigRootDir: import.meta.dirname
+      }
+    }
+  },
+  {
+    files: ['**/*.svelte', '**/*.svelte.ts', '**/*.svelte.js'],
+    languageOptions: {
+      parserOptions: {
+        parser: tseslint.parser
+      }
+    }
+  },
+  {
+    // .svelte templates and root .js configs sit outside every tsconfig, so
+    // type-aware rules have no program to query there.
+    files: ['**/*.svelte', '**/*.js'],
+    ...tseslint.configs.disableTypeChecked
+  },
+  {
+    rules: {
+      '@typescript-eslint/no-explicit-any': 'warn',
+      '@typescript-eslint/no-unused-vars': ['warn', { argsIgnorePattern: '^_' }],
+      // Static-adapter SPA with no base path: resolve() adds churn without value.
+      'svelte/no-navigation-without-resolve': 'off',
+      // Reactivity is driven by $state reassignment; the rule fires on non-reactive
+      // local/infra collections (timers, URL builders, throwaway copies).
+      'svelte/prefer-svelte-reactivity': 'warn'
+    }
+  },
+  {
+    // Core rule crashes on generic call expressions (`f<T>(x)`) parsed with
+    // type information; TS already rejects the ASI footguns it guards.
+    files: ['**/*.ts'],
+    rules: {
+      'no-unexpected-multiline': 'off'
+    }
+  },
+  {
+    // Bare reads in $effect (e.g. `foo; bar;`) are the Svelte reactive-dependency
+    // idiom; the rule misreads them as dead expressions. Keep it on for plain .ts.
+    files: ['**/*.svelte'],
+    rules: {
+      '@typescript-eslint/no-unused-expressions': 'off'
+    }
+  },
+  {
+    // Generated (SvelteKit output, build artifacts, ambient .d.ts, i18n) - not our source.
+    ignores: [
+      '.svelte-kit/',
+      'build/',
+      'node_modules/',
+      'test-results/',
+      'playwright-report/',
+      '**/*.d.ts',
+      'src/paraglide/',
+      'src/lib/paraglide/'
+    ]
+  }
+];

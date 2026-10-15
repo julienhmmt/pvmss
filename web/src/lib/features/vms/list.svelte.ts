@@ -1,0 +1,459 @@
+import { getContext, setContext } from 'svelte';
+import { SvelteMap, SvelteURLSearchParams } from 'svelte/reactivity';
+import type { TrackedTask } from '$lib/features/tasks/tasks.svelte';
+import { get, post, ApiRequestError } from '$lib/shared/api/client';
+import { STALE_REFRESH_MS } from '$lib/shared/visibility-refresh';
+import { m } from '$lib/paraglide/messages.js';
+import type { VmAction } from './detail.svelte';
+import { optimisticStatus } from './detail.svelte';
+import { convergeBatch } from './converge';
+import { isRecentlyDeletedVm } from './recently-deleted';
+
+export type VmStatus = 'running' | 'stopped' | 'paused';
+export type VmScope = 'mine' | 'all';
+export type VmSortBy = 'vmid' | 'name' | 'node' | 'status' | 'cpu' | 'memory';
+export type VmSortDir = 'asc' | 'desc';
+export type VmEmptyReason = 'no_vms_owned' | 'no_match';
+
+export interface VmListItem {
+	cluster: string;
+	clusterDisplayName: string;
+	vmid: number;
+	name: string;
+	node: string;
+	status: VmStatus;
+	pool: string;
+	tags: string[];
+	/** Proxmox kernel family ("l26", "win11"), not a distribution. */
+	ostype: string;
+	cpuCores: number;
+	memoryTotal: number;
+}
+
+export interface VmQuota {
+	used: number;
+	allowed: number;
+}
+
+export interface VmListResult {
+	items: VmListItem[];
+	total: number;
+	page: number;
+	pageSize: number;
+	availableNodes: string[];
+	emptyReason?: VmEmptyReason;
+	quota?: VmQuota;
+}
+
+export interface VmListStoreOptions {
+	scope: VmScope;
+	/** Raw query string (page.url.search) - the URL is the source of truth on load (FR-007). */
+	initialQuery: string;
+	/** Pushes query-string changes into the URL without a navigation (goto replaceState). */
+	navigate: (queryString: string) => void;
+}
+
+/** Result of a per-row power action triggered from the list view. */
+export interface RowActionResult {
+	ok: boolean;
+	error?: string;
+}
+
+const DEFAULT_SORT_BY: VmSortBy = 'name';
+const DEFAULT_SORT_DIR: VmSortDir = 'asc';
+const DEFAULT_PAGE_SIZE = 10;
+const SEARCH_DEBOUNCE_MS = 300;
+
+/**
+ * Ceiling on the requests the "needs attention" filter may make. That filter
+ * matches states derived client-side (display-status.ts), so it is only
+ * correct over the whole list and every page has to be fetched.
+ *
+ * ponytail: a self-service user's own machines sit far inside this bound at
+ * pageSize 10. Upgrade path: persist `partial` / `failed` server-side so the
+ * filter can be a real query parameter and the loop can go.
+ */
+const MAX_ATTENTION_PAGES = 50;
+
+/** Ghost-row convergence after a create: ~5 x 4 s covers Proxmox's lag. */
+export const INCOMPLETE_RETRY_MS = 4000;
+const INCOMPLETE_RETRIES = 5;
+
+export const SORTABLE_COLUMNS: readonly VmSortBy[] = ['name', 'vmid', 'node', 'status', 'cpu', 'memory'] as const;
+
+/**
+ * State and URL synchronization for the single VM-list view (FR-007: search,
+ * filter, sort, and page live in the URL so a reload or shared link
+ * reproduces the exact view). One store instance per consuming screen;
+ * screens differ only in the scope they pass (FR-010).
+ */
+export class VmListStore {
+	readonly scope: VmScope;
+	result = $state.raw<VmListResult | null>(null);
+	loading = $state.raw(false);
+	error = $state.raw<string | null>(null);
+	errorCode = $state.raw<string | null>(null);
+	/** `Date.now()` of the last completed `load()` - `refreshIfStale()` uses
+	 *  it to skip refreshes younger than one server inventory tick. */
+	lastLoadedAt = 0;
+
+	cluster = $state('');
+	search = $state('');
+	status = $state<VmStatus | ''>('');
+	/**
+	 * "Needs attention" filter. Not a server status: the states it matches are
+	 * derived client-side, so this loads every page and lets the view filter.
+	 * Mutually exclusive with `status` - the filter row is one select.
+	 */
+	attention = $state(false);
+	node = $state('');
+	sortBy = $state<VmSortBy>(DEFAULT_SORT_BY);
+	sortDir = $state<VmSortDir>(DEFAULT_SORT_DIR);
+	page = $state(1);
+	pageSize = $state(DEFAULT_PAGE_SIZE);
+
+	#navigate: (queryString: string) => void;
+	#searchTimer: ReturnType<typeof setTimeout> | null = null;
+	#loads: SvelteMap<string, Promise<void>> = new SvelteMap();
+	#disposed: boolean = false;
+	/** Row power actions still converging via batch live-status - a
+	 *  visibility refresh must not stomp their optimistic state. */
+	#rowActionsInFlight = 0;
+
+	constructor(options: VmListStoreOptions) {
+		this.scope = options.scope;
+		this.#navigate = options.navigate;
+		const params = new SvelteURLSearchParams(options.initialQuery);
+		this.cluster = params.get('cluster') ?? '';
+		this.search = params.get('search') ?? '';
+		this.status = (params.get('status') ?? '') as VmStatus | '';
+		this.attention = params.get('attention') === '1';
+		this.node = params.get('node') ?? '';
+		this.sortBy = (params.get('sortBy') ?? DEFAULT_SORT_BY) as VmSortBy;
+		this.sortDir = (params.get('sortDir') ?? DEFAULT_SORT_DIR) as VmSortDir;
+		this.page = Math.max(1, Number(params.get('page')) || 1);
+		this.pageSize = Number(params.get('pageSize')) || DEFAULT_PAGE_SIZE;
+	}
+
+	/** Builds the query string for the current state; only non-default values appear. */
+	queryString(): string {
+		const params = new SvelteURLSearchParams();
+		if (this.cluster !== '') params.set('cluster', this.cluster);
+		if (this.search !== '') params.set('search', this.search);
+		if (this.status !== '') params.set('status', this.status);
+		if (this.attention) params.set('attention', '1');
+		if (this.node !== '') params.set('node', this.node);
+		if (this.sortBy !== DEFAULT_SORT_BY) params.set('sortBy', this.sortBy);
+		if (this.sortDir !== DEFAULT_SORT_DIR) params.set('sortDir', this.sortDir);
+		if (this.page !== 1) params.set('page', String(this.page));
+		if (this.pageSize !== DEFAULT_PAGE_SIZE) params.set('pageSize', String(this.pageSize));
+		if (this.scope !== 'mine') params.set('scope', this.scope);
+		return params.toString();
+	}
+
+	load(): Promise<void> {
+		const query: string = this.queryString();
+		const pending: Promise<void> | undefined = this.#loads.get(query);
+		if (pending !== undefined) return pending;
+		const request: Promise<void> = this.#load(query).finally(() => this.#loads.delete(query));
+		this.#loads.set(query, request);
+		return request;
+	}
+
+	async #load(query: string): Promise<void> {
+		this.loading = true;
+		this.error = null;
+		this.errorCode = null;
+		try {
+			const params: SvelteURLSearchParams = new SvelteURLSearchParams(query);
+			const result: VmListResult = params.get('attention') === '1'
+				? await this.#fetchEveryPage(query) : await this.#fetchPage(Number(params.get('page') ?? 1), query);
+			if (query !== this.queryString() || this.#disposed) return;
+			// Proxmox destroy runs asynchronously (server/internal/cluster/proxmox_writer.go),
+			// so the inventory cache can still report a just-deleted VM for a short
+			// window. Hide anything this tab deleted itself until that window passes.
+			const items = result.items.filter((item) => !isRecentlyDeletedVm(item.cluster, item.vmid));
+			const hidden = result.items.length - items.length;
+			// Keep total/quota consistent with the hidden rows, otherwise the last
+			// deletion shows a "no match" state with a stale "1 machine" count.
+			const total = Math.max(0, result.total - hidden);
+			this.result = {
+				...result,
+				items,
+				total,
+				...(result.quota && { quota: { ...result.quota, used: Math.max(0, result.quota.used - hidden) } }),
+				...(hidden > 0 && total === 0 && { emptyReason: 'no_vms_owned' as const })
+			};
+		} catch (err) {
+			if (query !== this.queryString() || this.#disposed) return;
+			if (err instanceof ApiRequestError) {
+				this.error = err.message;
+				this.errorCode = err.code;
+			} else {
+				this.error = m['vms.list.errorLoading']();
+				this.errorCode = null;
+			}
+		} finally {
+			if (query === this.queryString()) {
+				this.loading = false;
+				this.lastLoadedAt = Date.now();
+			}
+		}
+	}
+
+	loadAfterTask(task: TrackedTask): Promise<void> {
+		return task.kind === 'vm_create' ? this.loadUntilComplete(task) : this.load();
+	}
+
+	/**
+	 * Loads the list, then re-reads while the created row is incomplete or its
+	 * status differs. Proxmox's /cluster/resources lags a few seconds behind a
+	 * finished vm_create task, so the first load after the task shows a ghost
+	 * row. Each retry forces an inventory refresh first; a throttled 429 is
+	 * ignored - only the rows themselves prove the list is fresh. Bounded.
+	 */
+	async loadUntilComplete(target: Pick<TrackedTask, 'cluster' | 'vmid' | 'expectedStatus'>): Promise<void> {
+		const query: string = this.queryString();
+		await this.load();
+		for (let attempt: number = 0; attempt < INCOMPLETE_RETRIES && this.#hasIncompleteRow(target); attempt++) {
+			await new Promise<void>((resolve) => setTimeout(resolve, INCOMPLETE_RETRY_MS));
+			if (this.#disposed || query !== this.queryString()) return;
+			try {
+				await post('/api/v1/cluster/refresh');
+			} catch (error: unknown) {
+				// Throttled or failed: still re-read below.
+				if (!(error instanceof ApiRequestError && error.status === 429)) console.warn('[vm-list] refresh failed:', error);
+			}
+			await this.load();
+		}
+	}
+
+	#hasIncompleteRow(target: Pick<TrackedTask, 'cluster' | 'vmid' | 'expectedStatus'>): boolean {
+		const row: VmListItem | null = this.#findRow(target.cluster, target.vmid);
+		if (row === null) return this.page === 1 && this.search === '' && this.status === '' && this.node === ''
+			&& !this.attention && (this.cluster === '' || this.cluster === target.cluster);
+		const incomplete: boolean = row.name === '' || row.cpuCores === 0 || row.memoryTotal === 0;
+		return incomplete || (target.expectedStatus !== undefined && row.status !== target.expectedStatus);
+	}
+
+	/**
+	 * Reloads the list when the last load is older than `minIntervalMs`
+	 * (default: one server inventory tick). Called when the tab regains
+	 * visibility via `onVisibleRefresh`. Skips while a load, a row action's
+	 * convergence, or a search debounce is in flight so the refresh never
+	 * stomps user-initiated work.
+	 */
+	async refreshIfStale(minIntervalMs: number = STALE_REFRESH_MS): Promise<void> {
+		if (this.loading || this.#rowActionsInFlight > 0 || this.#searchTimer !== null) return;
+		if (Date.now() - this.lastLoadedAt <= minIntervalMs) return;
+		await this.load();
+	}
+
+	/** One page of the list, with the current query applied. */
+	async #fetchPage(page: number, queryString: string = this.queryString()): Promise<VmListResult> {
+		const params: SvelteURLSearchParams = new SvelteURLSearchParams(queryString);
+		params.delete('page');
+		if (page !== 1) params.set('page', String(page));
+		const query = params.toString();
+		return get<VmListResult>(`/api/v1/vms${query === '' ? '' : `?${query}`}`);
+	}
+
+	/**
+	 * Every page, concatenated. Only the "needs attention" filter needs this:
+	 * the states it matches are derived client-side, so a single page would
+	 * silently hide a failed machine sitting on page 2. Returns one page of
+	 * results whose `pageSize` covers everything fetched, so the view renders
+	 * no pagination over a set that is already complete.
+	 */
+	async #fetchEveryPage(query: string = this.queryString()): Promise<VmListResult> {
+		const first: VmListResult = await this.#fetchPage(1, query);
+		const pageCount = Math.min(
+			Math.max(1, Math.ceil(first.total / first.pageSize)),
+			MAX_ATTENTION_PAGES
+		);
+		const items = [...first.items];
+		for (let page = 2; page <= pageCount; page += 1) {
+			const next: VmListResult = await this.#fetchPage(page, query);
+			items.push(...next.items);
+		}
+		return { ...first, items, page: 1, pageSize: Math.max(items.length, 1) };
+	}
+
+	/**
+	 * Every machine matching the current filters, across all pages - backs
+	 * the bulk "select all" affordance so a selection is never silently
+	 * scoped to the page on screen. Same fetch and same ceiling as the
+	 * attention filter (MAX_ATTENTION_PAGES); recently-deleted rows are
+	 * dropped, matching what `load()` renders.
+	 */
+	async fetchAllMatching(): Promise<VmListItem[]> {
+		const result = await this.#fetchEveryPage();
+		return result.items.filter((item) => !isRecentlyDeletedVm(item.cluster, item.vmid));
+	}
+
+	/** Debounced search input - one field matches name, tag, or ID (FR-002). */
+	applySearch(value: string): void {
+		this.search = value;
+		if (this.#searchTimer !== null) clearTimeout(this.#searchTimer);
+		this.#searchTimer = setTimeout(() => {
+			this.#searchTimer = null;
+			this.page = 1;
+			this.#syncAndLoad();
+		}, SEARCH_DEBOUNCE_MS);
+	}
+
+	/**
+	 * Cancels a pending debounced search. Call when the page unmounts: a timer
+	 * that fires after the user opened a VM would replaceState the URL back to
+	 * the list and hijack that navigation.
+	 */
+	dispose(): void {
+		this.#disposed = true;
+		if (this.#searchTimer !== null) clearTimeout(this.#searchTimer);
+		this.#searchTimer = null;
+	}
+
+	/** Clears the search and the status filter in one step (the list's
+	 *  "Clear filters" action), keeping the cluster scope. */
+	clearFilters(): void {
+		if (this.#searchTimer !== null) clearTimeout(this.#searchTimer);
+		this.#searchTimer = null;
+		this.search = '';
+		this.status = '';
+		this.attention = false;
+		this.node = '';
+		this.page = 1;
+		this.#syncAndLoad();
+	}
+
+	setCluster(value: string): void {
+		this.cluster = value;
+		this.page = 1;
+		this.#syncAndLoad();
+	}
+
+	setStatus(value: VmStatus | ''): void {
+		this.status = value;
+		this.attention = false;
+		this.page = 1;
+		this.#syncAndLoad();
+	}
+
+	/** The filter row is one select, so the two filters clear each other. */
+	setAttention(value: boolean): void {
+		this.attention = value;
+		this.status = '';
+		this.page = 1;
+		this.#syncAndLoad();
+	}
+
+	setNode(value: string): void {
+		this.node = value;
+		this.page = 1;
+		this.#syncAndLoad();
+	}
+
+	/** Clicking the active column reverses direction; a new column resets to asc. */
+	setSort(column: VmSortBy): void {
+		if (this.sortBy === column) {
+			this.sortDir = this.sortDir === 'asc' ? 'desc' : 'asc';
+		} else {
+			this.sortBy = column;
+			this.sortDir = 'asc';
+		}
+		this.page = 1;
+		this.#syncAndLoad();
+	}
+
+	setPage(page: number): void {
+		this.page = page;
+		this.#syncAndLoad();
+	}
+
+	setPageSize(pageSize: number): void {
+		this.pageSize = pageSize;
+		this.page = 1;
+		this.#syncAndLoad();
+	}
+
+	#syncAndLoad(): void {
+		this.#navigate(this.queryString());
+		void this.load();
+	}
+
+	/**
+	 * Triggers a power action on a single VM from the list view, then converges
+	 * via the batch live-status endpoint (ADR 0001) - replacing the old `load()`
+	 * that overwrote the optimistic flip with a stale projection read.
+	 * Returns a result object so the caller can fire the appropriate toast
+	 * without coupling the store to the toast queue.
+	 */
+	async rowAction(cluster: string, vmid: number, action: VmAction): Promise<RowActionResult> {
+		const target = optimisticStatus(action);
+
+		// Capture the previous status BEFORE the optimistic flip - the row in
+		// `this.result` will be patched to `target` next, so reading it back in
+		// the catch block would just return `target` (a no-op revert).
+		const row = this.#findRow(cluster, vmid);
+		if (row === null) {
+			// Row is gone (e.g. deleted concurrently) - nothing to flip or revert.
+			return { ok: false, error: m['vms.detail.errorAction']() };
+		}
+		const previousStatus = row.status;
+
+		// Optimistic flip: patch the row's status immediately.
+		this.#patchRowStatus(cluster, vmid, target);
+		this.#rowActionsInFlight += 1;
+
+		try {
+			await post<{ status: string }>(
+				`/api/v1/vms/${encodeURIComponent(cluster)}/${vmid}/actions`,
+				{ action }
+			);
+			// Converge: poll batch live status until it matches the optimistic target.
+			await convergeBatch({ cluster, vmid }, target, (status) => {
+				this.#patchRowStatus(cluster, vmid, status);
+			});
+			return { ok: true };
+		} catch (err) {
+			// Revert to the captured previous status.
+			this.#patchRowStatus(cluster, vmid, previousStatus);
+			return {
+				ok: false,
+				error: err instanceof ApiRequestError ? err.message : m['vms.detail.errorAction']()
+			};
+		} finally {
+			this.#rowActionsInFlight -= 1;
+		}
+	}
+
+	/** Finds a row by cluster+vmid in the current result set. */
+	#findRow(cluster: string, vmid: number): VmListItem | null {
+		if (this.result === null) return null;
+		return this.result.items.find((r) => r.cluster === cluster && r.vmid === vmid) ?? null;
+	}
+
+	/** Patches a single row's status in-place without reloading the list. */
+	#patchRowStatus(cluster: string, vmid: number, status: VmStatus): void {
+		if (this.result === null) return;
+		this.result = {
+			...this.result,
+			items: this.result.items.map((r) =>
+				r.cluster === cluster && r.vmid === vmid ? { ...r, status } : r,
+			),
+		};
+	}
+}
+
+const VM_LIST_CONTEXT_KEY = Symbol('vm-list');
+
+/** Called once, by the route that owns this state (constitution VII: no module singletons). */
+export function setVmListContext(options: VmListStoreOptions): VmListStore {
+	const store = new VmListStore(options);
+	setContext(VM_LIST_CONTEXT_KEY, store);
+	return store;
+}
+
+export function getVmListContext(): VmListStore {
+	return getContext<VmListStore>(VM_LIST_CONTEXT_KEY);
+}
