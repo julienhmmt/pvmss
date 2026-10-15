@@ -117,6 +117,7 @@ func (s *ImportStaging) purgeExpiredLocked() []string {
 	for token, entry := range s.entries {
 		if now.After(entry.expiresAt) {
 			paths = append(paths, entry.TempPath)
+
 			delete(s.entries, token)
 		}
 	}
