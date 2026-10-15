@@ -302,7 +302,7 @@ func (fake Fake) UpdateNetwork(_ context.Context, node string, vmid int, interfa
 		return ErrNotFound
 	}
 
-	state.vms[idx].NetworkInterfaces = cloneNetworkInterfaces(interfaces)
+	state.vms[idx].NetworkInterfaces = CloneNetworkInterfaces(interfaces)
 
 	state.record(FakeCall{Node: node, VMID: vmid, Action: "update_network"})
 
@@ -445,16 +445,6 @@ func nextBusIndex(disks []Disk, bus DiskBus) int {
 	}
 
 	return index
-}
-
-func cloneNetworkInterfaces(interfaces []NetworkInterface) []NetworkInterface {
-	cloned := make([]NetworkInterface, len(interfaces))
-	for i, iface := range interfaces {
-		cloned[i] = iface
-		cloned[i].IPAddresses = append([]string(nil), iface.IPAddresses...)
-	}
-
-	return cloned
 }
 
 // FakeCalls returns a copy of the recorded write calls since the last reset.

@@ -166,7 +166,7 @@ func Resolve(source inventory.LookupSource, actor auth.Identity, clusterName str
 		BootOrder:         append([]string(nil), machine.BootOrder...),
 		Disks:             disks,
 		CDROM:             machine.CDROM,
-		NetworkInterfaces: cloneNetworkInterfaces(machine.NetworkInterfaces),
+		NetworkInterfaces: cluster.CloneNetworkInterfaces(machine.NetworkInterfaces),
 		HasSerial:         machine.HasSerial,
 		Agent:             machine.Agent,
 	}, nil
@@ -188,14 +188,4 @@ func isBootDisk(disk cluster.Disk, bootOrder []string) bool {
 	}
 
 	return slices.Contains(bootOrder, disk.Key)
-}
-
-func cloneNetworkInterfaces(interfaces []cluster.NetworkInterface) []cluster.NetworkInterface {
-	cloned := make([]cluster.NetworkInterface, len(interfaces))
-	for i, iface := range interfaces {
-		cloned[i] = iface
-		cloned[i].IPAddresses = append([]string(nil), iface.IPAddresses...)
-	}
-
-	return cloned
 }

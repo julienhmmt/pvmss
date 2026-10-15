@@ -662,3 +662,14 @@ type Pool struct {
 	Name    string
 	Comment string
 }
+
+// CloneNetworkInterfaces deep-copies interfaces, including each address list.
+func CloneNetworkInterfaces(interfaces []NetworkInterface) []NetworkInterface {
+	cloned := make([]NetworkInterface, len(interfaces))
+	for i, iface := range interfaces {
+		cloned[i] = iface
+		cloned[i].IPAddresses = append([]string(nil), iface.IPAddresses...)
+	}
+
+	return cloned
+}
