@@ -46,7 +46,7 @@ describe('convergeSingle', () => {
 			onTick,
 		);
 
-		await vi.waitFor(() => expect(promise).resolves.toBeUndefined());
+		await vi.waitFor(() => expect(promise).resolves.toBe(true));
 
 		expect(onTick).toHaveBeenCalledWith('running', undefined);
 		expect(get).toHaveBeenCalledTimes(1);
@@ -70,7 +70,7 @@ describe('convergeSingle', () => {
 		await vi.advanceTimersByTimeAsync(ACTION_POLL_MS);
 		await vi.advanceTimersByTimeAsync(ACTION_POLL_MS);
 
-		await vi.waitFor(() => expect(promise).resolves.toBeUndefined());
+		await vi.waitFor(() => expect(promise).resolves.toBe(true));
 
 		expect(onTick).toHaveBeenLastCalledWith('running', undefined);
 		expect(get).toHaveBeenCalledTimes(3);
@@ -90,7 +90,7 @@ describe('convergeSingle', () => {
 		// Advance past the timeout.
 		await vi.advanceTimersByTimeAsync(ACTION_CONVERGE_TIMEOUT_MS + ACTION_POLL_MS);
 
-		await vi.waitFor(() => expect(promise).resolves.toBeUndefined());
+		await vi.waitFor(() => expect(promise).resolves.toBe(false));
 
 		// The loop ended without converging - no error thrown.
 		expect(onTick).toHaveBeenLastCalledWith('stopped', undefined);
@@ -111,7 +111,7 @@ describe('convergeSingle', () => {
 		await vi.advanceTimersByTimeAsync(ACTION_POLL_MS);
 		await vi.advanceTimersByTimeAsync(ACTION_POLL_MS);
 
-		await vi.waitFor(() => expect(promise).resolves.toBeUndefined());
+		await vi.waitFor(() => expect(promise).resolves.toBe(true));
 
 		// The error was swallowed, the loop continued, and converged on the second read.
 		expect(onTick).toHaveBeenCalledWith('running', undefined);
@@ -136,7 +136,7 @@ describe('convergeSingle', () => {
 		controller.abort();
 		resolveGet({ status: 'stopped', uptime: 0 });
 
-		await vi.waitFor(() => expect(promise).resolves.toBeUndefined());
+		await vi.waitFor(() => expect(promise).resolves.toBe(false));
 	});
 
 	it('aborts the delay wait when the signal fires during the poll interval', async () => {
@@ -157,7 +157,7 @@ describe('convergeSingle', () => {
 		await vi.advanceTimersByTimeAsync(0);
 		controller.abort();
 
-		await vi.waitFor(() => expect(promise).resolves.toBeUndefined());
+		await vi.waitFor(() => expect(promise).resolves.toBe(false));
 	});
 });
 

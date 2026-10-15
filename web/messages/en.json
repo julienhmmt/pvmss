@@ -454,6 +454,7 @@
   "vms.detail.errorUpdateNetwork": "failed to update network",
   "vms.detail.errorUpdateHardware": "failed to update hardware",
   "vms.detail.errorAction": "action failed",
+  "vms.detail.errorNotConverged": "The action was sent, but the machine has not reached the expected state yet.",
   "vms.detail.errorDelete": "delete failed",
   "vms.detail.errorUpdate": "update failed",
   "vms.detail.errorRetrofit": "firmware retrofit failed",

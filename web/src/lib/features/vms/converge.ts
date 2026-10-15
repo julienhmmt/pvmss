@@ -60,23 +60,24 @@ export async function convergeSingle(
 	targetStatus: VmStatus,
 	onTick: (status: VmStatus, lock?: string) => void,
 	signal?: AbortSignal,
-): Promise<void> {
+): Promise<boolean> {
 	const deadline = Date.now() + ACTION_CONVERGE_TIMEOUT_MS;
 	const path = `/api/v1/vms/${encodeURIComponent(target.cluster)}/${target.vmid}/status`;
 
 	while (Date.now() < deadline) {
-		if (signal?.aborted) return;
+		if (signal?.aborted) return false;
 
 		try {
 			const live = await get<LiveStatusResponse>(path);
 			onTick(live.status, live.lock);
-			if (live.status === targetStatus) return;
+			if (live.status === targetStatus) return true;
 		} catch {
 			// Intermediate read error: preserve optimistic state, retry next tick.
 		}
 
 		await delay(ACTION_POLL_MS, signal);
 	}
+	return false;
 }
 
 /**

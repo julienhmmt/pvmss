@@ -511,6 +511,30 @@ func TestAuthCoverage_ChangePassword_WithRegistrySucceeds(t *testing.T) {
 	})
 }
 
+// The local admin session has no cluster; with a registry there is no
+// account to change, so the handler must refuse instead of panicking.
+//
+//nolint:paralleltest // serial: shared fake auth and session fixtures
+func TestAuthCoverage_ChangePassword_LocalAdminWithRegistryRefused(t *testing.T) {
+	handler, _ := newAuthHandlerWithStore(t)
+
+	login := serveJSON(handler.AdminLogin, "/api/v1/auth/admin-login", `{"password":"pvmss-local-admin"}`)
+	if login.Code != http.StatusOK {
+		t.Fatalf("admin login status = %d: %s", login.Code, login.Body.String())
+	}
+
+	req := httptest.NewRequest(http.MethodPost, "/api/v1/auth/password", strings.NewReader(`{"oldPassword":"pvmss-local-admin","newPassword":"newpass12"}`))
+	req.Header.Set("Content-Type", "application/json")
+	req.AddCookie(login.Result().Cookies()[0])
+
+	rec := httptest.NewRecorder()
+	handler.ChangePassword(rec, req)
+
+	if rec.Code != http.StatusBadRequest {
+		t.Fatalf("status = %d, want %d: %s", rec.Code, http.StatusBadRequest, rec.Body.String())
+	}
+}
+
 //nolint:paralleltest // serial: shared fake auth and session fixtures
 func TestAuthCoverage_Login_UnknownFieldRejected(t *testing.T) {
 	handler := newAuthHandler(t)
