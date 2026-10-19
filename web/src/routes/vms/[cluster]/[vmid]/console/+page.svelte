@@ -101,7 +101,7 @@
 	<title>{m['vms.console.title']({ name: vmStore.entity?.name || `VM ${vmid}` })}</title>
 </svelte:head>
 
-<section class="flex min-h-[calc(100vh-11rem)] w-full flex-col">
+<section class="flex h-[calc(100vh-11rem)] min-h-[28rem] w-full flex-col">
 	<div class="mb-3 flex items-center gap-3">
 		<Button
 			variant="secondary"
@@ -240,7 +240,7 @@
 	{/if}
 	{/if}
 
-	<div class="mt-3 flex-1 overflow-hidden">
+	<div class="mt-3 min-h-0 flex-1 overflow-hidden">
 		<svelte:boundary>
 			{#if mode === 'graphical'}
 				<VmConsole />
