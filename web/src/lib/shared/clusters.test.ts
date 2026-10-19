@@ -5,9 +5,9 @@ import {
 	saveAdminCluster,
 	type ClusterOption
 } from './clusters';
-import { AdminCatalogStore } from '$lib/features/admin-catalog/admin-catalog.svelte';
-import { AdminPolicyStore } from '$lib/features/admin-policy/policy.svelte';
-import { AdminBaselineStore } from '$lib/features/admin-baseline/baseline.svelte';
+import { AdminCatalogStore } from '#lib/features/admin-catalog/admin-catalog.svelte.js';
+import { AdminPolicyStore } from '#lib/features/admin-policy/policy.svelte.js';
+import { AdminBaselineStore } from '#lib/features/admin-baseline/baseline.svelte.js';
 
 const options: ClusterOption[] = [
 	{ name: 'default', displayName: 'Default' },

@@ -1,13 +1,13 @@
-import { get, post, put, del, ApiRequestError } from '$lib/shared/api/client';
+import { get, post, put, del, ApiRequestError } from '#lib/shared/api/client.js';
 import {
 	fetchClusterOptions,
 	resolveInitialAdminCluster,
 	saveAdminCluster,
 	type ClusterOption
-} from '$lib/shared/clusters';
+} from '#lib/shared/clusters.js';
 import { setContext, getContext } from 'svelte';
 import { SvelteSet } from 'svelte/reactivity';
-import { m } from '$lib/paraglide/messages.js';
+import { m } from '#lib/paraglide/messages.js';
 
 export interface AdminNode {
 	name: string;

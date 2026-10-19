@@ -61,6 +61,7 @@ type adminClusterDTO struct {
 
 type createClusterRequest struct {
 	Name                  string `json:"name"`
+	DisplayName           string `json:"displayName"`
 	URL                   string `json:"url"`
 	TLSInsecureSkipVerify bool   `json:"tlsInsecureSkipVerify"`
 	TokenID               string `json:"tokenId"`
@@ -134,7 +135,7 @@ func (handler *AdminClusters) ServeCreate(w http.ResponseWriter, r *http.Request
 		writeAdminError(w, http.StatusBadRequest, "invalid_request", msg)
 		return
 	}
-	row := store.ClusterRow{Name: request.Name, URL: request.URL, TLSInsecureSkipVerify: request.TLSInsecureSkipVerify, TokenID: request.TokenID, TokenSecret: request.TokenSecret}
+	row := store.ClusterRow{Name: request.Name, DisplayName: request.DisplayName, URL: request.URL, TLSInsecureSkipVerify: request.TLSInsecureSkipVerify, TokenID: request.TokenID, TokenSecret: request.TokenSecret}
 	if err := handler.store.CreateCluster(r.Context(), row); err != nil {
 		handler.writeStoreFailure(w, err)
 		return

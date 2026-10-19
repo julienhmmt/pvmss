@@ -6,9 +6,9 @@
 	 * the bare usage with "No cap": a bar without a bound would be a lie.
 	 * At or above the cap an error pill makes the state non-colour-only.
 	 */
-	import { m } from '$lib/paraglide/messages.js';
-	import NodeUsageBar from '$lib/shared/ui/NodeUsageBar.svelte';
-	import Pill from '$lib/shared/ui/Pill.svelte';
+	import { m } from '#lib/paraglide/messages.js';
+	import NodeUsageBar from '#lib/shared/ui/NodeUsageBar.svelte';
+	import Pill from '#lib/shared/ui/Pill.svelte';
 
 	interface Props {
 		/** Current pvmss-tagged usage of the dimension. */

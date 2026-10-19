@@ -1,14 +1,14 @@
 <script lang="ts">
 	import PolicyForm from './PolicyForm.svelte';
 	import type { AdminPolicy, AdminPolicyPatch } from './policy.svelte';
-	import type { ClusterOption } from '$lib/shared/clusters';
-	import { m } from '$lib/paraglide/messages.js';
-	import PageHeader from '$lib/shared/ui/PageHeader.svelte';
-	import ClusterSelector from '$lib/shared/ui/ClusterSelector.svelte';
-	import Button from '$lib/shared/ui/Button.svelte';
-	import EmptyState from '$lib/shared/ui/EmptyState.svelte';
-	import ConfirmDialog from '$lib/shared/ui/ConfirmDialog.svelte';
-	import Alert from '$lib/shared/ui/Alert.svelte';
+	import type { ClusterOption } from '#lib/shared/clusters.js';
+	import { m } from '#lib/paraglide/messages.js';
+	import PageHeader from '#lib/shared/ui/PageHeader.svelte';
+	import ClusterSelector from '#lib/shared/ui/ClusterSelector.svelte';
+	import Button from '#lib/shared/ui/Button.svelte';
+	import EmptyState from '#lib/shared/ui/EmptyState.svelte';
+	import ConfirmDialog from '#lib/shared/ui/ConfirmDialog.svelte';
+	import Alert from '#lib/shared/ui/Alert.svelte';
 
 	interface Props {
 		policy: AdminPolicy | null;

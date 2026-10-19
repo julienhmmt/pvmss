@@ -1,7 +1,7 @@
 import { getContext, setContext } from 'svelte';
 import RFB from '@novnc/novnc';
-import { ApiRequestError } from '$lib/shared/api/client';
-import { m } from '$lib/paraglide/messages.js';
+import { ApiRequestError } from '#lib/shared/api/client.js';
+import { m } from '#lib/paraglide/messages.js';
 import { buildConsoleWebSocketURL, consoleTicketErrorMessage, fetchConsoleTicket } from './console';
 
 /** Connection states the console UI reflects. */

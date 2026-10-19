@@ -1,5 +1,5 @@
 import { beforeAll, describe, expect, it } from 'vitest';
-import { setLocale } from '$lib/paraglide/runtime.js';
+import { setLocale } from '#lib/paraglide/runtime.js';
 import { contextLabel } from './context-label';
 
 beforeAll(() => setLocale('en', { reload: false }));

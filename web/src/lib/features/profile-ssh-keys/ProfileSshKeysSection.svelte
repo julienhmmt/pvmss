@@ -6,17 +6,17 @@
 	 * messages; the form is disabled once the profile is full (max 10).
 	 */
 	import { onMount } from 'svelte';
-	import { m } from '$lib/paraglide/messages.js';
+	import { m } from '#lib/paraglide/messages.js';
 	import { ProfileSshKeysStore } from './profile-ssh-keys.svelte';
 	import { profileKeyErrorMessage } from './ssh-key-identity';
 	import { PROFILE_SSH_KEY_MAX, type ProfileSshKey } from './types';
-	import FormField from '$lib/shared/ui/FormField.svelte';
-	import Card from '$lib/shared/ui/Card.svelte';
-	import TextField from '$lib/shared/ui/TextField.svelte';
-	import Textarea from '$lib/shared/ui/Textarea.svelte';
-	import Button from '$lib/shared/ui/Button.svelte';
-	import ConfirmDialog from '$lib/shared/ui/ConfirmDialog.svelte';
-	import Skeleton from '$lib/shared/ui/Skeleton.svelte';
+	import FormField from '#lib/shared/ui/FormField.svelte';
+	import Card from '#lib/shared/ui/Card.svelte';
+	import TextField from '#lib/shared/ui/TextField.svelte';
+	import Textarea from '#lib/shared/ui/Textarea.svelte';
+	import Button from '#lib/shared/ui/Button.svelte';
+	import ConfirmDialog from '#lib/shared/ui/ConfirmDialog.svelte';
+	import Skeleton from '#lib/shared/ui/Skeleton.svelte';
 
 	const store = new ProfileSshKeysStore();
 

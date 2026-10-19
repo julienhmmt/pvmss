@@ -1,12 +1,12 @@
 <script lang="ts">
 	import { goto } from '$app/navigation';
 	import { resolve } from '$app/paths';
-	import { m } from '$lib/paraglide/messages.js';
+	import { m } from '#lib/paraglide/messages.js';
 	import BrandPanel from './BrandPanel.svelte';
 	import Button from './Button.svelte';
 	import Card from './Card.svelte';
 	import ErrorIcon from './icons/ErrorIcon.svelte';
-	import { getErrorMessage } from '$lib/shared/error/error-messages';
+	import { getErrorMessage } from '#lib/shared/error/error-messages.js';
 
 	interface Props {
 		status: number;

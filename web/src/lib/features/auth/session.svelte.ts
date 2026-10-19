@@ -1,4 +1,4 @@
-import { get, post } from '$lib/shared/api/client';
+import { get, post } from '#lib/shared/api/client.js';
 import { setContext, getContext } from 'svelte';
 import type { Principal } from './login.svelte';
 

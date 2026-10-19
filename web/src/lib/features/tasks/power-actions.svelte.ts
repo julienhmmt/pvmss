@@ -1,6 +1,6 @@
 import { getContext, setContext } from 'svelte';
 import { SvelteMap } from 'svelte/reactivity';
-import type { VmAction } from '$lib/features/vms/detail.svelte';
+import type { VmAction } from '#lib/features/vms/detail.svelte.js';
 
 /** One power action in flight on one machine. */
 export interface PowerActionEntry {

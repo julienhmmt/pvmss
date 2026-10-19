@@ -1,7 +1,7 @@
-import { get } from '$lib/shared/api/client';
-import { m } from '$lib/paraglide/messages.js';
-import type { VmListItem, VmListResult } from '$lib/features/vms/list.svelte';
-import type { VmAuditEntry } from '$lib/features/vms/detail.svelte';
+import { get } from '#lib/shared/api/client.js';
+import { m } from '#lib/paraglide/messages.js';
+import type { VmListItem, VmListResult } from '#lib/features/vms/list.svelte.js';
+import type { VmAuditEntry } from '#lib/features/vms/detail.svelte.js';
 
 /** One row of the "Recent updates" timeline. */
 export interface ActivityEntry {

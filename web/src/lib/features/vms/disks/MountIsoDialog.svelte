@@ -1,10 +1,10 @@
 <script lang="ts">
 	import { getVmDetailContext } from '../detail.svelte';
-	import Alert from '$lib/shared/ui/Alert.svelte';
-	import Dialog from '$lib/shared/ui/Dialog.svelte';
-	import Select from '$lib/shared/ui/Select.svelte';
-	import { m } from '$lib/paraglide/messages.js';
-	import Button from '$lib/shared/ui/Button.svelte';
+	import Alert from '#lib/shared/ui/Alert.svelte';
+	import Dialog from '#lib/shared/ui/Dialog.svelte';
+	import Select from '#lib/shared/ui/Select.svelte';
+	import { m } from '#lib/paraglide/messages.js';
+	import Button from '#lib/shared/ui/Button.svelte';
 
 	const store = getVmDetailContext();
 

@@ -1,18 +1,18 @@
 <script lang="ts">
 	import { getVmDetailContext, type VmAction } from './detail.svelte';
-	import Alert from '$lib/shared/ui/Alert.svelte';
-	import ConfirmDialog from '$lib/shared/ui/ConfirmDialog.svelte';
-	import { getToastContext } from '$lib/shared/ui/toast.svelte';
-	import { m } from '$lib/paraglide/messages.js';
-	import PlayIcon from '$lib/shared/ui/icons/PlayIcon.svelte';
-	import PowerOffIcon from '$lib/shared/ui/icons/PowerOffIcon.svelte';
-	import StopIcon from '$lib/shared/ui/icons/StopIcon.svelte';
-	import RestartIcon from '$lib/shared/ui/icons/RestartIcon.svelte';
-	import ResetIcon from '$lib/shared/ui/icons/ResetIcon.svelte';
-	import PauseIcon from '$lib/shared/ui/icons/PauseIcon.svelte';
-	import TrashIcon from '$lib/shared/ui/icons/TrashIcon.svelte';
+	import Alert from '#lib/shared/ui/Alert.svelte';
+	import ConfirmDialog from '#lib/shared/ui/ConfirmDialog.svelte';
+	import { getToastContext } from '#lib/shared/ui/toast.svelte.js';
+	import { m } from '#lib/paraglide/messages.js';
+	import PlayIcon from '#lib/shared/ui/icons/PlayIcon.svelte';
+	import PowerOffIcon from '#lib/shared/ui/icons/PowerOffIcon.svelte';
+	import StopIcon from '#lib/shared/ui/icons/StopIcon.svelte';
+	import RestartIcon from '#lib/shared/ui/icons/RestartIcon.svelte';
+	import ResetIcon from '#lib/shared/ui/icons/ResetIcon.svelte';
+	import PauseIcon from '#lib/shared/ui/icons/PauseIcon.svelte';
+	import TrashIcon from '#lib/shared/ui/icons/TrashIcon.svelte';
 	import type { Component } from 'svelte';
-	import Button from '$lib/shared/ui/Button.svelte';
+	import Button from '#lib/shared/ui/Button.svelte';
 
 	const store = getVmDetailContext();
 	const toast = getToastContext();
@@ -71,9 +71,11 @@
 	interface Props {
 		onDelete?: () => void;
 		hideDelete?: boolean;
+		/** Icon-only, and only the actions that apply to the current status (console header). */
+		compact?: boolean;
 	}
 
-	let { onDelete = () => {}, hideDelete = false }: Props = $props();
+	let { onDelete = () => {}, hideDelete = false, compact = false }: Props = $props();
 
 	/** The forceful action awaiting confirmation, if any. */
 	let pending = $state<VmAction | null>(null);
@@ -127,6 +129,7 @@
 <div class="flex flex-wrap items-center gap-2" data-testid="vm-action-bar">
 	{#each ACTIONS as action (action.kind)}
 		{@const applicable = isApplicable(action)}
+		{#if !compact || applicable}
 		<Button
 			size="sm"
 			variant={applicable ? BUTTON_VARIANT[action.variant] : 'secondary'}
@@ -137,8 +140,9 @@
 			label={action.label()}
 		>
 			<action.icon class="h-4 w-4" />
-			{action.label()}
+			{#if !compact}{action.label()}{/if}
 		</Button>
+		{/if}
 	{/each}
 
 	{#if !hideDelete}

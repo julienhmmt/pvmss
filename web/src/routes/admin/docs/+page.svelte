@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
-	import { setAdminDocsContext } from '$lib/features/admin-docs/docs.svelte';
-	import DocsAdminPage from '$lib/features/admin-docs/DocsAdminPage.svelte';
+	import { setAdminDocsContext } from '#lib/features/admin-docs/docs.svelte.js';
+	import DocsAdminPage from '#lib/features/admin-docs/DocsAdminPage.svelte';
 
 	const store = setAdminDocsContext();
 

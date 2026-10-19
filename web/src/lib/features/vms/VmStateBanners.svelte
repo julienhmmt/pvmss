@@ -8,11 +8,11 @@
 	 */
 	import { resolve } from '$app/paths';
 	import type { MachineDisplayStatus } from './display-status';
-	import Alert from '$lib/shared/ui/Alert.svelte';
-	import Button from '$lib/shared/ui/Button.svelte';
-	import ButtonLink from '$lib/shared/ui/ButtonLink.svelte';
-	import Card from '$lib/shared/ui/Card.svelte';
-	import { m } from '$lib/paraglide/messages.js';
+	import Alert from '#lib/shared/ui/Alert.svelte';
+	import Button from '#lib/shared/ui/Button.svelte';
+	import ButtonLink from '#lib/shared/ui/ButtonLink.svelte';
+	import Card from '#lib/shared/ui/Card.svelte';
+	import { m } from '#lib/paraglide/messages.js';
 
 	interface Props {
 		status: MachineDisplayStatus;

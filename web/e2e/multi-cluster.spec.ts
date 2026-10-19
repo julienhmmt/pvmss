@@ -46,7 +46,7 @@ test.describe('T15 multi-cluster', () => {
 		const existing = page.locator('tr', { hasText: 'e2e-tertiary' });
 		if ((await existing.count()) === 0) {
 			await page.getByRole('button', { name: 'Add cluster' }).click();
-			await page.getByLabel('Name').fill('e2e-tertiary');
+			await page.getByRole('textbox', { name: 'Name', exact: true }).fill('e2e-tertiary');
 			await page.getByLabel('URL').fill('https://pve-e.invalid:8006/api2/json');
 			await page.getByLabel('Token ID').fill('pvmss@pve!service');
 			await page.getByLabel(/Token secret/).fill('e2e-service-secret');

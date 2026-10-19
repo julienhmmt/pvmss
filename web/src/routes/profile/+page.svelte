@@ -5,18 +5,18 @@
 	 * theme and locale stores, so a change here is the same change the
 	 * sidebar controls make, persisted the same way.
 	 */
-	import { getSessionContext } from '$lib/features/auth/session.svelte';
-	import { getThemeContext } from '$lib/features/chrome/theme.svelte';
-	import { getLocaleContext } from '$lib/features/chrome/locale.svelte';
-	import type { Locale } from '$lib/paraglide/runtime.js';
-	import PageHeader from '$lib/shared/ui/PageHeader.svelte';
-	import Button from '$lib/shared/ui/Button.svelte';
-	import Card from '$lib/shared/ui/Card.svelte';
-	import Select from '$lib/shared/ui/Select.svelte';
-	import ProfilePasswordSection from '$lib/features/auth/ProfilePasswordSection.svelte';
-	import ProfileSshKeysSection from '$lib/features/profile-ssh-keys/ProfileSshKeysSection.svelte';
-	import { accountInitials } from '$lib/shared/initials';
-	import { m } from '$lib/paraglide/messages.js';
+	import { getSessionContext } from '#lib/features/auth/session.svelte.js';
+	import { getThemeContext } from '#lib/features/chrome/theme.svelte.js';
+	import { getLocaleContext } from '#lib/features/chrome/locale.svelte.js';
+	import type { Locale } from '#lib/paraglide/runtime.js';
+	import PageHeader from '#lib/shared/ui/PageHeader.svelte';
+	import Button from '#lib/shared/ui/Button.svelte';
+	import Card from '#lib/shared/ui/Card.svelte';
+	import Select from '#lib/shared/ui/Select.svelte';
+	import ProfilePasswordSection from '#lib/features/auth/ProfilePasswordSection.svelte';
+	import ProfileSshKeysSection from '#lib/features/profile-ssh-keys/ProfileSshKeysSection.svelte';
+	import { accountInitials } from '#lib/shared/initials.js';
+	import { m } from '#lib/paraglide/messages.js';
 
 	const session = getSessionContext();
 	const theme = getThemeContext();

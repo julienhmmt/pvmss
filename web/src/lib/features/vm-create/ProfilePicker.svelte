@@ -3,7 +3,7 @@
 	 * ProfilePicker - card-style radio group for picking a VM profile.
 	 * Always renders two columns of shared RadioCards.
 	 */
-	import RadioCard from '$lib/shared/ui/RadioCard.svelte';
+	import RadioCard from '#lib/shared/ui/RadioCard.svelte';
 
 	interface Profile {
 		id: string;

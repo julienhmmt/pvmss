@@ -228,7 +228,6 @@ Built with bun; the Go binary serves the build output (catch-all to
   to the executable
 - **Build**: multi-stage - `golang:1.27.2-alpine` builds a static CGO-free
   binary, `oven/bun:1-alpine` builds the SPA
-- Kubernetes manifests: `pvmss-deployment.yaml`, `pvmss-httproute.yml`
 - Helm chart: `helm/`
 
 ## Configuration
@@ -432,7 +431,7 @@ the vault for how the two relate.
 - Follow `.devin/rules/ui-quality.md` for admin page and form layouts.
 - Use `.devin/skills/todo-planning.md` to track multi-step work.
 - Additional skills live in `.devin/skills/` (golang-*, svelte-code-writer,
-  tailwind-design-system, typescript-advanced-types, speckit.*) - check them
+  tailwind-design-system, typescript-advanced-types) - check them
   before starting matching work.
 - Admin features are SvelteKit routes under `web/src/routes/admin/`, backed by
   the `admin_*.go` handlers in `server/internal/httpapi/`.

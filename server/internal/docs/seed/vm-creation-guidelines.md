@@ -19,7 +19,7 @@ cloud-init). Avoid generic names like `vm1` - a descriptive name
   template's node, the disk cannot be smaller than the template's, and the
   wizard tells you when the target storage forces a full copy instead of a
   linked clone.
-- **Cloud image** - imports an approved cloud image as the primary disk and
+- **Cloud image** (temporarily disabled: not reliable yet) - imports an approved cloud image as the primary disk and
   requires the cloud-init fields (user, SSH keys, network). The VM starts
   only after the import finishes and cloud-init is applied. SSH keys go
   through a shared picker: the keys saved on your profile are listed as

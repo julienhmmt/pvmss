@@ -8,11 +8,11 @@
 	import { onMount } from 'svelte';
 	import { getVmDetailContext } from './detail.svelte';
 	import { MetricsStore, type MetricsRange } from './metrics.svelte';
-	import Alert from '$lib/shared/ui/Alert.svelte';
-	import Card from '$lib/shared/ui/Card.svelte';
-	import LineChart from '$lib/shared/ui/LineChart.svelte';
-	import Skeleton from '$lib/shared/ui/Skeleton.svelte';
-	import { m } from '$lib/paraglide/messages.js';
+	import Alert from '#lib/shared/ui/Alert.svelte';
+	import Card from '#lib/shared/ui/Card.svelte';
+	import LineChart from '#lib/shared/ui/LineChart.svelte';
+	import Skeleton from '#lib/shared/ui/Skeleton.svelte';
+	import { m } from '#lib/paraglide/messages.js';
 
 	const detail = getVmDetailContext();
 	const isRunning = $derived(detail.entity?.status === 'running');

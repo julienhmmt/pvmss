@@ -1,6 +1,6 @@
-import { ApiRequestError, withCSRF } from '$lib/shared/api/client';
+import { ApiRequestError, withCSRF } from '#lib/shared/api/client.js';
 import { setContext, getContext } from 'svelte';
-import { m } from '$lib/paraglide/messages.js';
+import { m } from '#lib/paraglide/messages.js';
 
 export interface TablePreview {
 	name: string;

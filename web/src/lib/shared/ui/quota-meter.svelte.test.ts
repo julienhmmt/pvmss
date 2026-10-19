@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { quotaMeterView } from './quota-meter.svelte';
-import type { VmQuota } from '$lib/features/vms/list.svelte';
+import type { VmQuota } from '#lib/features/vms/list.svelte.js';
 
 // T005 (US1/US2): quotaMeterView - pure presentation math for the sidebar /
 // list quota meter. Tested without a DOM. The contract (data-model.md):

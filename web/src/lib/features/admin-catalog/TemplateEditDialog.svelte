@@ -1,5 +1,5 @@
 <script lang="ts">
-	import Dialog from '$lib/shared/ui/Dialog.svelte';
+	import Dialog from '#lib/shared/ui/Dialog.svelte';
 	import TemplateEditForm from './TemplateEditForm.svelte';
 	import type { AdminTemplate, AdminTemplatePatch } from './admin-catalog.svelte';
 

@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { page } from '$app/state';
-	import { m } from '$lib/paraglide/messages.js';
-	import ErrorScreen from '$lib/shared/ui/ErrorScreen.svelte';
+	import { m } from '#lib/paraglide/messages.js';
+	import ErrorScreen from '#lib/shared/ui/ErrorScreen.svelte';
 </script>
 
 <svelte:head>

@@ -13,6 +13,20 @@ async function signInAlice(request: APIRequestContext): Promise<void> {
 	expect(response.status()).toBe(200);
 }
 
+// Cloud-init documents apply to template clones only: ISO installs ignore the
+// cloud-init drive and cloud images are disabled, so the simple mode (ISO) shows
+// no picker. Detailed mode with a template source is the path that offers it.
+async function openTemplateCreate(page: import('@playwright/test').Page): Promise<void> {
+	await page.goto('/vms/create');
+	await page.getByRole('button', { name: /Detailed/ }).click();
+	await page.getByLabel('Source').selectOption('template');
+	// The picker lists documents present on the clone's node, so it waits for a
+	// template. admin-catalog (earlier in the suite) approves debian-12-cloud.
+	const template = page.getByLabel('Template');
+	const value = await template.locator('option', { hasText: 'debian-12-cloud' }).getAttribute('value');
+	await template.selectOption(value ?? '');
+}
+
 const templateContent = '#cloud-config\npackages:\n  - nginx\n';
 
 test.describe('T18 admin cloud-init templates', () => {
@@ -25,7 +39,7 @@ test.describe('T18 admin cloud-init templates', () => {
 		await deleteVmsByPrefix(request, 'cit-e2e-');
 	});
 
-	test('create a template, use it during simple-mode VM creation, then disable it (SC-001..SC-006)', async ({ page }) => {
+	test('create a template, use it on a detailed-mode template clone, then disable it (SC-001..SC-006)', async ({ page }) => {
 		// Default locale is French; pin English so the English selectors match.
 		await page.addInitScript(() => localStorage.setItem('pvmss-locale', 'en'));
 		// SC-001: create a template as admin (only admins manage templates).
@@ -44,8 +58,7 @@ test.describe('T18 admin cloud-init templates', () => {
 		// VM creation requires a pool-owning account (admins have no pool),
 		// so alice performs the creation steps.
 		await signInAlice(page.request);
-		await page.goto('/vms/create');
-		await page.getByRole('button', { name: /Simple/ }).click();
+		await openTemplateCreate(page);
 		const picker = page.getByLabel('Cloud-init document');
 		await expect(picker).toBeVisible();
 		await expect(picker.locator('option', { hasText: 'Web server' })).toHaveCount(1);
@@ -53,14 +66,11 @@ test.describe('T18 admin cloud-init templates', () => {
 		// SC-003: select it during simple-mode VM creation and confirm the
 		// resulting VM uses the template's published file.
 		await page.getByLabel('Name').fill('cit-e2e-01');
-		await page.getByRole('radio', { name: /small/i }).check();
 		await picker.selectOption({ label: 'Web server' });
-		await page.getByRole('button', { name: 'Create this machine' }).click();
-		// The creation is accepted asynchronously; wait for the success toast
-		// so the VM is guaranteed to exist before we look for it. The task can
-		// take longer than the default 5s assertion timeout.
-		await expect(page.getByText('cit-e2e-01').first()).toBeVisible({ timeout: 20000 });
-		await expect(page.getByText('created').first()).toBeVisible({ timeout: 20000 });
+		await page.getByRole('tab', { name: 'Review' }).click();
+		await page.getByRole('button', { name: 'Create VM' }).click();
+		await expect(page).toHaveURL(/\/vms$/);
+		await expect(page.getByText('VM "cit-e2e-01" created')).toBeVisible({ timeout: 20000 });
 
 		// The VM list should now contain the new VM; filter by name so it
 		// surfaces regardless of pagination, then open its detail.
@@ -103,8 +113,7 @@ test.describe('T18 admin cloud-init templates', () => {
 		await expect(templateRow.getByRole('switch', { name: 'Enable Web server' })).toBeVisible();
 
 		await signInAlice(page.request);
-		await page.goto('/vms/create');
-		await page.getByRole('button', { name: /Simple/ }).click();
+		await openTemplateCreate(page);
 		// The picker is only rendered when at least one enabled template exists;
 		// with the sole template disabled, the field should be absent.
 		await expect(page.getByLabel('Cloud-init document')).toHaveCount(0);

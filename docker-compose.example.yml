@@ -4,7 +4,7 @@
 # one is missing or malformed (LOG_LEVEL is lowercase only).
 services:
   pvmss:
-    image: jhmmt/pvmss:latest
+    image: jhmmt/pvmss:0.4
     container_name: pvmss
     restart: unless-stopped
     ports:

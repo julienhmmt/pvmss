@@ -6,7 +6,7 @@
 	 * dash: zeros from the inventory would read as "idle", which is false.
 	 */
 	import type { NodeCapacity } from './policyNodes.svelte';
-	import { m } from '$lib/paraglide/messages.js';
+	import { m } from '#lib/paraglide/messages.js';
 
 	interface Props {
 		node: NodeCapacity;

@@ -1,13 +1,13 @@
 <script lang="ts">
 	import { getAdminBaselineContext } from './baseline.svelte';
-	import CloudInitDocumentStatus from '$lib/features/admin-cloudinit-templates/CloudInitDocumentStatus.svelte';
-	import PageHeader from '$lib/shared/ui/PageHeader.svelte';
-	import Button from '$lib/shared/ui/Button.svelte';
-	import ClusterSelector from '$lib/shared/ui/ClusterSelector.svelte';
-	import Card from '$lib/shared/ui/Card.svelte';
-	import Skeleton from '$lib/shared/ui/Skeleton.svelte';
-	import ErrorState from '$lib/shared/ui/ErrorState.svelte';
-	import { m } from '$lib/paraglide/messages.js';
+	import CloudInitDocumentStatus from '#lib/features/admin-cloudinit-templates/CloudInitDocumentStatus.svelte';
+	import PageHeader from '#lib/shared/ui/PageHeader.svelte';
+	import Button from '#lib/shared/ui/Button.svelte';
+	import ClusterSelector from '#lib/shared/ui/ClusterSelector.svelte';
+	import Card from '#lib/shared/ui/Card.svelte';
+	import Skeleton from '#lib/shared/ui/Skeleton.svelte';
+	import ErrorState from '#lib/shared/ui/ErrorState.svelte';
+	import { m } from '#lib/paraglide/messages.js';
 
 	const store = getAdminBaselineContext();
 

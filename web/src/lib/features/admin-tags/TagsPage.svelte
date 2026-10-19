@@ -2,22 +2,22 @@
 	// Proxmox pve-tag charset; the HTML pattern uses the v flag, where - must be escaped.
 	const TAG_NAME_PATTERN = String.raw`[a-z0-9_][a-z0-9_+.\-]{0,49}`;
 	import type { AdminTag } from './tags.svelte';
-	import type { ClusterOption } from '$lib/shared/clusters';
-	import Alert from '$lib/shared/ui/Alert.svelte';
-	import PageHeader from '$lib/shared/ui/PageHeader.svelte';
-	import ClusterSelector from '$lib/shared/ui/ClusterSelector.svelte';
-	import Button from '$lib/shared/ui/Button.svelte';
-	import TableCard from '$lib/shared/ui/TableCard.svelte';
-	import TableSkeleton from '$lib/shared/ui/TableSkeleton.svelte';
-	import EmptyState from '$lib/shared/ui/EmptyState.svelte';
-	import ConfirmDialog from '$lib/shared/ui/ConfirmDialog.svelte';
-	import Dialog from '$lib/shared/ui/Dialog.svelte';
-	import FormField from '$lib/shared/ui/FormField.svelte';
-	import TextField from '$lib/shared/ui/TextField.svelte';
-	import Select from '$lib/shared/ui/Select.svelte';
-	import ColorPicker from '$lib/shared/ui/ColorPicker.svelte';
-	import TableHeader from '$lib/shared/ui/TableHeader.svelte';
-	import { m } from '$lib/paraglide/messages.js';
+	import type { ClusterOption } from '#lib/shared/clusters.js';
+	import Alert from '#lib/shared/ui/Alert.svelte';
+	import PageHeader from '#lib/shared/ui/PageHeader.svelte';
+	import ClusterSelector from '#lib/shared/ui/ClusterSelector.svelte';
+	import Button from '#lib/shared/ui/Button.svelte';
+	import TableCard from '#lib/shared/ui/TableCard.svelte';
+	import TableSkeleton from '#lib/shared/ui/TableSkeleton.svelte';
+	import EmptyState from '#lib/shared/ui/EmptyState.svelte';
+	import ConfirmDialog from '#lib/shared/ui/ConfirmDialog.svelte';
+	import Dialog from '#lib/shared/ui/Dialog.svelte';
+	import FormField from '#lib/shared/ui/FormField.svelte';
+	import TextField from '#lib/shared/ui/TextField.svelte';
+	import Select from '#lib/shared/ui/Select.svelte';
+	import ColorPicker from '#lib/shared/ui/ColorPicker.svelte';
+	import TableHeader from '#lib/shared/ui/TableHeader.svelte';
+	import { m } from '#lib/paraglide/messages.js';
 
 	type TagSortColumn = 'name' | 'vmCount';
 

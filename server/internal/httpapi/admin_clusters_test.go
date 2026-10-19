@@ -241,7 +241,7 @@ func TestAdminClusters_CreateValidatesAndReactivates(t *testing.T) {
 	}
 
 	// New cluster: 201, correct shape, untested.
-	response := create(`{"name":"tertiary","url":"https://pve-d.example.com:8006/api2/json","tlsInsecureSkipVerify":true,"tokenId":"pvmss@pve!service","tokenSecret":"tertiary-secret"}`)
+	response := create(`{"name":"tertiary","displayName":"Tertiary","url":"https://pve-d.example.com:8006/api2/json","tlsInsecureSkipVerify":true,"tokenId":"pvmss@pve!service","tokenSecret":"tertiary-secret"}`)
 	if response.Code != http.StatusCreated {
 		t.Fatalf("create status = %d, want 201: %s", response.Code, response.Body.String())
 	}
@@ -249,7 +249,7 @@ func TestAdminClusters_CreateValidatesAndReactivates(t *testing.T) {
 	if err := json.Unmarshal(response.Body.Bytes(), &created); err != nil {
 		t.Fatalf("decode created: %v", err)
 	}
-	if created.Name != "tertiary" || created.RemovedAt != nil || created.LastTestStatus != nil || !created.TokenSet || !created.TLSInsecureSkipVerify {
+	if created.Name != "tertiary" || created.RemovedAt != nil || created.LastTestStatus != nil || !created.TokenSet || !created.TLSInsecureSkipVerify || created.DisplayName != "Tertiary" {
 		t.Fatalf("created cluster = %+v, unexpected shape", created)
 	}
 

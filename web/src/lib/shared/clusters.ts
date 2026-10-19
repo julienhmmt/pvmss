@@ -1,4 +1,4 @@
-import { get } from '$lib/shared/api/client';
+import { get } from '#lib/shared/api/client.js';
 
 export interface ClusterOption {
 	name: string;

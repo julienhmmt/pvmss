@@ -14,28 +14,28 @@
 	import { displayStatus, type MachineDisplayStatus } from './display-status';
 	import { compactBytes, rowAction, rowHint } from './machine-row';
 	import MachineStatusPill from './MachineStatusPill.svelte';
-	import { getTaskTrayContext } from '$lib/features/tasks/tasks.svelte';
-	import { getTaskOutcomeLedgerContext } from '$lib/features/tasks/task-outcome-ledger.svelte';
-	import { getPowerActionsContext } from '$lib/features/tasks/power-actions.svelte';
-	import Alert from '$lib/shared/ui/Alert.svelte';
-	import { getToastContext } from '$lib/shared/ui/toast.svelte';
+	import { getTaskTrayContext } from '#lib/features/tasks/tasks.svelte.js';
+	import { getTaskOutcomeLedgerContext } from '#lib/features/tasks/task-outcome-ledger.svelte.js';
+	import { getPowerActionsContext } from '#lib/features/tasks/power-actions.svelte.js';
+	import Alert from '#lib/shared/ui/Alert.svelte';
+	import { getToastContext } from '#lib/shared/ui/toast.svelte.js';
 	import { resolve } from '$app/paths';
-	import { m } from '$lib/paraglide/messages.js';
-	import { post } from '$lib/shared/api/client';
-	import EmptyState from '$lib/shared/ui/EmptyState.svelte';
-	import Button from '$lib/shared/ui/Button.svelte';
-	import ButtonLink from '$lib/shared/ui/ButtonLink.svelte';
-	import Card from '$lib/shared/ui/Card.svelte';
-	import Toolbar from '$lib/shared/ui/Toolbar.svelte';
-	import TextField from '$lib/shared/ui/TextField.svelte';
-	import Select from '$lib/shared/ui/Select.svelte';
-	import OsMark from '$lib/shared/ui/OsMark.svelte';
-	import AllowanceMeter from '$lib/shared/ui/AllowanceMeter.svelte';
-	import Skeleton from '$lib/shared/ui/Skeleton.svelte';
-	import SortButton from '$lib/shared/ui/SortButton.svelte';
-	import Pill from '$lib/shared/ui/Pill.svelte';
-	import SearchIcon from '$lib/shared/ui/icons/SearchIcon.svelte';
-	import ChevronDownIcon from '$lib/shared/ui/icons/ChevronDownIcon.svelte';
+	import { m } from '#lib/paraglide/messages.js';
+	import { post } from '#lib/shared/api/client.js';
+	import EmptyState from '#lib/shared/ui/EmptyState.svelte';
+	import Button from '#lib/shared/ui/Button.svelte';
+	import ButtonLink from '#lib/shared/ui/ButtonLink.svelte';
+	import Card from '#lib/shared/ui/Card.svelte';
+	import Toolbar from '#lib/shared/ui/Toolbar.svelte';
+	import TextField from '#lib/shared/ui/TextField.svelte';
+	import Select from '#lib/shared/ui/Select.svelte';
+	import OsMark from '#lib/shared/ui/OsMark.svelte';
+	import AllowanceMeter from '#lib/shared/ui/AllowanceMeter.svelte';
+	import Skeleton from '#lib/shared/ui/Skeleton.svelte';
+	import SortButton from '#lib/shared/ui/SortButton.svelte';
+	import Pill from '#lib/shared/ui/Pill.svelte';
+	import SearchIcon from '#lib/shared/ui/icons/SearchIcon.svelte';
+	import ChevronDownIcon from '#lib/shared/ui/icons/ChevronDownIcon.svelte';
 
 	const store = getVmListContext();
 	const bulk = getVmBulkContext();
@@ -86,6 +86,10 @@
 
 	function detailHref(machine: VmListItem): string {
 		return resolve('/vms/[cluster]/[vmid]', { cluster: machine.cluster, vmid: String(machine.vmid) });
+	}
+
+	function consoleHref(machine: VmListItem): string {
+		return resolve('/vms/[cluster]/[vmid]/console', { cluster: machine.cluster, vmid: String(machine.vmid) });
 	}
 
 	/** Tags minus the internal marker; the cluster no longer rides here - it
@@ -465,7 +469,20 @@
 								<div class="max-[699px]:order-3">
 									<MachineStatusPill {status} pending={busy || status === 'provisioning'} />
 								</div>
-								<div class="relative z-10 flex justify-end max-[699px]:order-4 max-[699px]:col-span-2 max-[699px]:justify-start max-[699px]:pl-[50px] max-[369px]:pl-0">
+								<div class="relative z-10 flex justify-end max-[699px]:order-4 max-[699px]:col-span-2 max-[699px]:justify-start max-[699px]:pl-[50px] max-[369px]:pl-0 gap-2">
+									{#if status === 'running' && !busy}
+										<ButtonLink
+											variant="secondary"
+											size="sm"
+											href={consoleHref(machine)}
+											target="_blank"
+											rel="noopener noreferrer"
+											aria-label={m['vms.list.actionConsoleFor']({ name: machine.name })}
+											data-testid="vm-row-console"
+										>
+											{m['vms.list.actionConsole']()}
+										</ButtonLink>
+									{/if}
 									{#if action === 'start'}
 										<Button
 											variant="secondary"

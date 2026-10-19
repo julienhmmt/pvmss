@@ -16,8 +16,8 @@ imported below - follow it in full:
   `pq api <dir>` for a package's surface. The graphify and code-review-graph
   workflows were removed on 2026-09-11.
 - **Skills**: project skills live in `.devin/skills/` (golang-*,
-  svelte-code-writer, tailwind-design-system, todo-planning,
-  backend-refactor). Invoke the matching skill at the start of matching tasks
+  svelte-code-writer, tailwind-design-system, todo-planning). Invoke the
+  matching skill at the start of matching tasks
 - e.g. `svelte-code-writer` whenever creating or editing `.svelte` files.
 - **Rules**: `.devin/rules/coding-style.md` (Go/TS style) and
   `.devin/rules/ui-quality.md` (admin pages, forms) apply to all code you write.

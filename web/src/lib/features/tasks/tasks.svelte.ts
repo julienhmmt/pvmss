@@ -1,7 +1,7 @@
 import { getContext, setContext } from 'svelte';
 import { SvelteMap } from 'svelte/reactivity';
-import { get, post, ApiRequestError } from '$lib/shared/api/client';
-import { m } from '$lib/paraglide/messages.js';
+import { get, post, ApiRequestError } from '#lib/shared/api/client.js';
+import { m } from '#lib/paraglide/messages.js';
 
 export type TaskKind = 'vm_create' | 'vm_snapshot_create' | 'vm_snapshot_rollback' | 'vm_snapshot_delete' | 'vm_migrate';
 

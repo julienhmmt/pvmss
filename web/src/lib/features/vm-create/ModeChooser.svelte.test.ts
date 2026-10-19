@@ -1,7 +1,7 @@
 import { describe, it, expect, afterEach, vi } from 'vitest';
 import { mount } from 'svelte';
 import ModeChooser from './ModeChooser.svelte';
-import { m } from '$lib/paraglide/messages.js';
+import { m } from '#lib/paraglide/messages.js';
 
 function cards(): HTMLButtonElement[] {
 	return [...document.body.querySelectorAll('button')];

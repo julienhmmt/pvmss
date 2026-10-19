@@ -1,6 +1,6 @@
-import { get, ApiRequestError } from '$lib/shared/api/client';
+import { get, ApiRequestError } from '#lib/shared/api/client.js';
 import { setContext, getContext } from 'svelte';
-import { m } from '$lib/paraglide/messages.js';
+import { m } from '#lib/paraglide/messages.js';
 import type { DashboardAlert } from './dashboard-alerts';
 
 export interface NodeSummary {

@@ -8,17 +8,17 @@
 	 */
 	import { onMount } from 'svelte';
 	import { resolve } from '$app/paths';
-	import { getTaskTrayContext, type TaskKind } from '$lib/features/tasks/tasks.svelte';
-	import { getPowerActionsContext } from '$lib/features/tasks/power-actions.svelte';
-	import { ActivityStore, activityMessage } from '$lib/features/activity/activity.svelte';
-	import type { VmAction } from '$lib/features/vms/detail.svelte';
-	import PageHeader from '$lib/shared/ui/PageHeader.svelte';
-	import Card from '$lib/shared/ui/Card.svelte';
-	import EmptyState from '$lib/shared/ui/EmptyState.svelte';
-	import Button from '$lib/shared/ui/Button.svelte';
-	import ButtonLink from '$lib/shared/ui/ButtonLink.svelte';
-	import Skeleton from '$lib/shared/ui/Skeleton.svelte';
-	import { m } from '$lib/paraglide/messages.js';
+	import { getTaskTrayContext, type TaskKind } from '#lib/features/tasks/tasks.svelte.js';
+	import { getPowerActionsContext } from '#lib/features/tasks/power-actions.svelte.js';
+	import { ActivityStore, activityMessage } from '#lib/features/activity/activity.svelte.js';
+	import type { VmAction } from '#lib/features/vms/detail.svelte.js';
+	import PageHeader from '#lib/shared/ui/PageHeader.svelte';
+	import Card from '#lib/shared/ui/Card.svelte';
+	import EmptyState from '#lib/shared/ui/EmptyState.svelte';
+	import Button from '#lib/shared/ui/Button.svelte';
+	import ButtonLink from '#lib/shared/ui/ButtonLink.svelte';
+	import Skeleton from '#lib/shared/ui/Skeleton.svelte';
+	import { m } from '#lib/paraglide/messages.js';
 
 	const tray = getTaskTrayContext();
 	const powerActions = getPowerActionsContext();

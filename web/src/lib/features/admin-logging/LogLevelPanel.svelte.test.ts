@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { flushSync, mount, unmount } from 'svelte';
-import { m } from '$lib/paraglide/messages.js';
+import { m } from '#lib/paraglide/messages.js';
 import LogLevelHarness from './LogLevelHarness.test.svelte';
 
 function jsonResponse(status: number, body: unknown): Response {

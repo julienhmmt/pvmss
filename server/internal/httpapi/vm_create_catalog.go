@@ -101,14 +101,17 @@ func loadClusterDiscovery(ctx context.Context, client cluster.Client, data *cata
 
 	data.isos = isos
 
-	images, err := client.ListCloudImages(ctx)
-	if err != nil {
-		return fmt.Errorf("image discovery: %w", err)
-	}
-
-	for _, image := range images {
-		data.images = append(data.images, catalog.Image{Storage: image.Storage, Node: image.Node, File: image.File, SizeBytes: image.SizeBytes})
-	}
+	// Cloud images (.img) are disabled for now: they do not work reliably yet.
+	// With no live image discovered, the user catalog lists no image and the
+	// create wizard hides the image source. Uncomment to re-enable.
+	// images, err := client.ListCloudImages(ctx)
+	// if err != nil {
+	// 	return fmt.Errorf("image discovery: %w", err)
+	// }
+	//
+	// for _, image := range images {
+	// 	data.images = append(data.images, catalog.Image{Storage: image.Storage, Node: image.Node, File: image.File, SizeBytes: image.SizeBytes})
+	// }
 
 	return nil
 }

@@ -12,12 +12,12 @@
 	import { canConnect, type MachineDisplayStatus } from './display-status';
 	import { connectState, isWindowsOs, primaryAddress, sshCommand } from './connection';
 	import { compactBytes } from './machine-row';
-	import { get } from '$lib/shared/api/client';
-	import Button from '$lib/shared/ui/Button.svelte';
-	import ButtonLink from '$lib/shared/ui/ButtonLink.svelte';
-	import Card from '$lib/shared/ui/Card.svelte';
-	import CopyButton from '$lib/shared/ui/CopyButton.svelte';
-	import { m } from '$lib/paraglide/messages.js';
+	import { get } from '#lib/shared/api/client.js';
+	import Button from '#lib/shared/ui/Button.svelte';
+	import ButtonLink from '#lib/shared/ui/ButtonLink.svelte';
+	import Card from '#lib/shared/ui/Card.svelte';
+	import CopyButton from '#lib/shared/ui/CopyButton.svelte';
+	import { m } from '#lib/paraglide/messages.js';
 
 	interface Props {
 		status: MachineDisplayStatus;
@@ -147,7 +147,7 @@
 			<h2 id="connect-console-title" class="text-sm font-semibold">{m['vms.detail.connect.consoleTitle']()}</h2>
 			<p class="text-sm text-muted-foreground">{m['vms.detail.connect.consoleBody']()}</p>
 			{#if running}
-				<ButtonLink href={consoleHref} variant="secondary" block target="_blank" rel="noopener noreferrer" data-testid="vm-console-open">
+				<ButtonLink href={consoleHref} variant="primary" block target="_blank" rel="noopener noreferrer" data-testid="vm-console-open">
 					{m['vms.detail.connect.consoleOpen']()}
 				</ButtonLink>
 			{:else}

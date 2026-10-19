@@ -6,8 +6,8 @@
 	 * unlimited and unavailable render text only - no fake 0–100 bar.
 	 */
 	import { quotaMeterView } from './quota-meter.svelte';
-	import type { VmQuota } from '$lib/features/vms/list.svelte';
-	import { m } from '$lib/paraglide/messages.js';
+	import type { VmQuota } from '#lib/features/vms/list.svelte.js';
+	import { m } from '#lib/paraglide/messages.js';
 
 	interface Props {
 		quota: VmQuota | null | undefined;

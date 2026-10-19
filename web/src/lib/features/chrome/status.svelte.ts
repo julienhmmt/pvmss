@@ -1,5 +1,5 @@
 import { getContext, setContext } from 'svelte';
-import { get, post } from '$lib/shared/api/client';
+import { get, post } from '#lib/shared/api/client.js';
 
 /** Server-side health check entry (subset of httpapi.CheckResult). */
 export interface CheckResult {

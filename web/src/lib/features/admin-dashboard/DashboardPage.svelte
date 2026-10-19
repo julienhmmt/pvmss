@@ -4,15 +4,15 @@
 	import DashboardAttention from './DashboardAttention.svelte';
 	import { goto } from '$app/navigation';
 	import { resolve } from '$app/paths';
-	import Alert from '$lib/shared/ui/Alert.svelte';
-	import PageHeader from '$lib/shared/ui/PageHeader.svelte';
-	import Button from '$lib/shared/ui/Button.svelte';
-	import Card from '$lib/shared/ui/Card.svelte';
-	import Skeleton from '$lib/shared/ui/Skeleton.svelte';
-	import EmptyState from '$lib/shared/ui/EmptyState.svelte';
-	import { formatBytes, usagePercent } from '$lib/shared/format-bytes';
-	import { m } from '$lib/paraglide/messages.js';
-	import { post } from '$lib/shared/api/client';
+	import Alert from '#lib/shared/ui/Alert.svelte';
+	import PageHeader from '#lib/shared/ui/PageHeader.svelte';
+	import Button from '#lib/shared/ui/Button.svelte';
+	import Card from '#lib/shared/ui/Card.svelte';
+	import Skeleton from '#lib/shared/ui/Skeleton.svelte';
+	import EmptyState from '#lib/shared/ui/EmptyState.svelte';
+	import { formatBytes, usagePercent } from '#lib/shared/format-bytes.js';
+	import { m } from '#lib/paraglide/messages.js';
+	import { post } from '#lib/shared/api/client.js';
 
 	const store = getDashboardContext();
 

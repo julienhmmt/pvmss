@@ -1,12 +1,12 @@
 import { afterEach, describe, it, expect, vi } from 'vitest';
-import { ApiRequestError } from '$lib/shared/api/client';
+import { ApiRequestError } from '#lib/shared/api/client.js';
 import { VmCreateStore, type VmCreateCatalog } from './create.svelte';
 
 // The cloud-image message keys are not compiled into src/lib/paraglide yet
 // (the translations land in web/messages/*.json in a follow-up). Add only the
 // missing keys over the real module so the image-mode paths are testable;
 // remove this mock once the keys exist in the message files.
-vi.mock('$lib/paraglide/messages.js', async (importOriginal) => {
+vi.mock('#lib/paraglide/messages.js', async (importOriginal) => {
 	const actual = await importOriginal<Record<string, unknown>>();
 	const messages = actual as { m: Record<string, (inputs?: Record<string, unknown>) => string> };
 	return {
@@ -130,13 +130,25 @@ describe('VmCreateStore.buildRequest in simple mode', () => {
 		store.name = 'web-05';
 		store.profileId = 'small';
 		store.cloudInitTemplateId = 'ci-01';
-		store.isoFile = 'debian-12.iso';
 
 		expect(store.buildRequest()).toMatchObject({
 			node: 'pve-node-01',
-			cloudInitTemplateId: 'ci-01',
-			iso: { storage: 'local', file: 'debian-12.iso' }
+			cloudInitTemplateId: 'ci-01'
 		});
+	});
+
+	it('drops the cloud-init template on an ISO install', () => {
+		// The installer ignores the cloud-init drive; the server refuses the pair.
+		const store = new VmCreateStore();
+		store.catalog = catalog();
+		store.name = 'web-05';
+		store.profileId = 'small';
+		store.cloudInitTemplateId = 'ci-01';
+		store.isoFile = 'debian-12.iso';
+
+		const request = store.buildRequest();
+		expect(request).toMatchObject({ iso: { storage: 'local', file: 'debian-12.iso' } });
+		expect(request).not.toHaveProperty('cloudInitTemplateId');
 	});
 
 	it('never sends a secureBoot field - the EFI disk always gets an empty key store', () => {
@@ -718,5 +730,29 @@ describe('VmCreateStore cloud-init document (ticket 04)', () => {
 		store.cloudInitTemplateId = 'web-server';
 
 		expect(store.buildRequest().cloudInitTemplateId).toBe('web-server');
+	});
+});
+
+describe('VmCreateStore.cloudInitTemplatesOnNode on a template clone', () => {
+	it("filters on the template's node, not the first catalog node", () => {
+		// A clone stays on its template's node, so the document must be there.
+		const store = new VmCreateStore();
+		store.sourceType = 'template';
+		store.templateId = 9000;
+		store.catalog = {
+			cluster: 'default',
+			nodes: ['pve-node-01', 'pve-node-02'],
+			storages: [],
+			bridges: [],
+			isos: [],
+			images: [],
+			profiles: [],
+			templates: [{ vmid: 9000, node: 'pve-node-02', name: 'tmpl', cloudInitCapable: true, diskSizeGB: 8, diskStorage: 'local-lvm' }],
+			cloudInitTemplates: [{ id: 'ci-02', label: 'Web', nodes: ['pve-node-02'] }],
+			cloudInitWriteEnabled: true,
+			tags: []
+		};
+
+		expect(store.cloudInitTemplatesOnNode().map((t) => t.id)).toEqual(['ci-02']);
 	});
 });

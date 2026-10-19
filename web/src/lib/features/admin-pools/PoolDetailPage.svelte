@@ -1,20 +1,20 @@
 <script lang="ts">
 	import type { PoolDetail, PoolMemberVM } from './pool-detail.svelte';
 	import { resolve } from '$app/paths';
-	import { formatBytes } from '$lib/shared/format-bytes';
+	import { formatBytes } from '#lib/shared/format-bytes.js';
 	import DeletePoolConfirm from './DeletePoolConfirm.svelte';
-	import Alert from '$lib/shared/ui/Alert.svelte';
-	import Button from '$lib/shared/ui/Button.svelte';
-	import Card from '$lib/shared/ui/Card.svelte';
-	import CopyButton from '$lib/shared/ui/CopyButton.svelte';
-	import EmptyState from '$lib/shared/ui/EmptyState.svelte';
-	import Meter from '$lib/shared/ui/Meter.svelte';
-	import PageHeader from '$lib/shared/ui/PageHeader.svelte';
-	import Pill from '$lib/shared/ui/Pill.svelte';
-	import Skeleton from '$lib/shared/ui/Skeleton.svelte';
-	import StatCard from '$lib/shared/ui/StatCard.svelte';
-	import TextField from '$lib/shared/ui/TextField.svelte';
-	import { m } from '$lib/paraglide/messages.js';
+	import Alert from '#lib/shared/ui/Alert.svelte';
+	import Button from '#lib/shared/ui/Button.svelte';
+	import Card from '#lib/shared/ui/Card.svelte';
+	import CopyButton from '#lib/shared/ui/CopyButton.svelte';
+	import EmptyState from '#lib/shared/ui/EmptyState.svelte';
+	import Meter from '#lib/shared/ui/Meter.svelte';
+	import PageHeader from '#lib/shared/ui/PageHeader.svelte';
+	import Pill from '#lib/shared/ui/Pill.svelte';
+	import Skeleton from '#lib/shared/ui/Skeleton.svelte';
+	import StatCard from '#lib/shared/ui/StatCard.svelte';
+	import TextField from '#lib/shared/ui/TextField.svelte';
+	import { m } from '#lib/paraglide/messages.js';
 
 	interface Props {
 		detail: PoolDetail | null;

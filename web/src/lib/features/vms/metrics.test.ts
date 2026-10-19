@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { buildMetricsHistoryURL, buildMetricsStreamURL, fetchMetricsHistory, parseMetricsStreamMessage } from './metrics';
-import { ApiRequestError } from '$lib/shared/api/client';
+import { ApiRequestError } from '#lib/shared/api/client.js';
 
 function jsonResponse(status: number, body: unknown): Response {
 	return new Response(JSON.stringify(body), { status, headers: { 'Content-Type': 'application/json' } });

@@ -8,7 +8,7 @@
 	 * blocks elsewhere are untouched - this is an ADDITIONAL channel.
 	 */
 	import { getToastContext, type ToastVariant } from './toast.svelte';
-	import { m } from '$lib/paraglide/messages.js';
+	import { m } from '#lib/paraglide/messages.js';
 	import CloseIcon from './icons/CloseIcon.svelte';
 
 	const region = getToastContext();

@@ -42,7 +42,7 @@ L'inventaire complet, route par route, est dans [docs/FEATURES.md](docs/FEATURES
 
 - Connexion avec ses identifiants Proxmox sur le cluster de son choix.
 - **Mes VM** : liste multi-cluster, recherche/filtre/tri reflétés dans l'URL, statut en direct, actions d'alimentation groupées avec résultat par VM, bouton console sur chaque ligne.
-- **Assistant de création** (mode Simple / Détaillé) depuis trois sources : une **ISO** approuvée, un **template** Proxmox (clone lié ou complet) ou une **image cloud** (`import-from` + cloud-init). Profils matériels ou valeurs libres, placement automatique avec score de capacité, multi-NIC (bridge + modèle), UEFI (sans Secure Boot) / TPM 2.0, tags curés, démarrage sur CD-ROM.
+- **Assistant de création** (mode Simple / Détaillé) depuis trois sources : une **ISO** approuvée, un **template** Proxmox (clone lié ou complet) ou une **image cloud** (`import-from` + cloud-init) (images cloud temporairement désactivées : elles ne fonctionnent pas encore correctement). Profils matériels ou valeurs libres, placement automatique avec score de capacité, multi-NIC (bridge + modèle), UEFI (sans Secure Boot) / TPM 2.0, tags curés, démarrage sur CD-ROM.
 - **Exploitation d'une VM** : 7 actions d'alimentation, renommage, description Markdown, suppression ; disques (ajout / agrandissement / détachement) ; cartes réseau (bridge, modèle, VLAN, débit) ; CPU/RAM/tags/CD-ROM ; snapshots (création / restauration / suppression, RAM optionnelle) ; historique de métriques (heure/jour/semaine) et flux temps réel ; journal d'activité par VM.
 - **Consoles** : noVNC et série (xterm.js), toutes deux relayées par PVMSS avec ticket à usage unique ; actions d'alimentation depuis la console.
 - **Cloud-init** : formulaire natif (utilisateur, mot de passe via agent invité, clés SSH, IP/DNS), injection « ajouter une clé maintenant », **modèles cloud-init** de l'administrateur choisis à la création ou changés ensuite sur la VM (les utilisateurs n'écrivent jamais de YAML).
@@ -51,7 +51,7 @@ L'inventaire complet, route par route, est dans [docs/FEATURES.md](docs/FEATURES
 ### Administrateurs
 
 - **Clusters** : connexion à plusieurs environnements Proxmox, test de connectivité, stockage de snippets par cluster pour les modèles cloud-init.
-- **Catalogue** : approbation des nœuds, stockages, ISO, images cloud, templates de VM, bridges ; CRUD des profils matériels, tags, modèles cloud-init (publiés sur chaque nœud, état par nœud, « publier partout ») ; approbations obsolètes réconciliées avec la découverte en direct.
+- **Catalogue** : approbation des nœuds, stockages, ISO, templates de VM (images cloud temporairement désactivées), bridges ; CRUD des profils matériels, tags, modèles cloud-init (publiés sur chaque nœud, état par nœud, « publier partout ») ; approbations obsolètes réconciliées avec la découverte en direct.
 - **Pools** : création d'un utilisateur self-service = utilisateur Proxmox + pool + ACL en une étape ; suppression en cascade.
 - **Migration** : déplacement d'une VM gérée par PVMSS vers un autre nœud approuvé et en ligne du même cluster depuis la page du nœud (contrôle préalable, confirmation explicite, progression dans le tiroir des tâches).
 - **Politique** : gabarit par cluster (sockets, cœurs, mémoire, disque par VM, NIC, snapshots, VLAN d'isolation) et quota (VM par utilisateur) ; plafonds de capacité par nœud avec usage en direct.
@@ -167,30 +167,30 @@ gardent le leur. Procédure complète et dépannage :
 
 Utilisez **soit** un `.env` (via `env_file`) **soit** des variables inline, pas les deux. Variables essentielles :
 
-| Variable                                      | Description                                                                | Requis                | Valeur par défaut  |
-| --------------------------------------------- | -------------------------------------------------------------------------- | --------------------- | ------------------ |
-| `PVMSS_PORT`                                  | Port TCP d'écoute du serveur HTTP (1–65535)                                | ✅                    | -                  |
-| `PVMSS_DB_PATH`                               | Chemin vers le fichier SQLite (volume persistant requis)                   | ✅                    | -                  |
-| `SESSION_SECRET`                              | Secret de 32+ octets pour sessions/cookies                                 | ✅                    | -                  |
-| `PVMSS_CLUSTER_SOURCE`                        | `proxmox` pour un vrai cluster, `fake` pour la démo (aucun défaut, exprès) | ✅                    | -                  |
-| `LOG_LEVEL`                                   | `debug`, `info`, `warn`, `error` - minuscules uniquement                   | ✅                    | -                  |
-| `LOG_FORMAT`                                  | `console` (lisible humainment) ou `json` (pour SIEM/collecte)              | ✅                    | -                  |
-| `LOG_OUTPUT`                                  | `stdout`, `stderr`, ou un chemin de fichier accessible en écriture         | ✅                    | -                  |
-| `PROXMOX_URL`                                 | URL complète de l'API (`https://host:8006/api2/json`)                      | si source = `proxmox` | -                  |
-| `PROXMOX_API_TOKEN_NAME`                      | Nom du token Proxmox (`user@pve!token`)                                    | si source = `proxmox` | -                  |
-| `PROXMOX_API_TOKEN_VALUE`                     | Valeur du token ci-dessus                                                  | si source = `proxmox` | -                  |
-| `ADMIN_PASSWORD_HASH`                         | Hash bcrypt de l'admin local ; désactivé si vide                           | ❌                    | -                  |
-| `PVMSS_HOST`                                  | Adresse d'écoute (`0.0.0.0` pour toutes les interfaces)                    | ❌                    | `127.0.0.1`        |
-| `PVMSS_WEB_DIR`                               | Répertoire contenant le SPA compilé                                        | ❌                    | relatif au binaire |
-| `PVMSS_COOKIE_SECURE`                         | Drapeau `Secure` sur les cookies d'auth (garder `true` en production)      | ❌                    | `true`             |
-| `PVMSS_INVENTORY_REFRESH_INTERVAL`            | Période de rafraîchissement de l'inventaire                                | ❌                    | `30s`              |
-| `PVMSS_INVENTORY_MANUAL_REFRESH_MIN_INTERVAL` | Délai minimum entre deux rafraîchissements manuels                         | ❌                    | `5s`               |
-| `PVMSS_INVENTORY_REFRESH_TIMEOUT`             | Timeout d'un rafraîchissement d'inventaire                                 | ❌                    | `15s`              |
-| `PVMSS_MAX_LIST_PAGE_SIZE`                    | Taille de page maximale des endpoints de liste                             | ❌                    | `100`              |
-| `PVMSS_TRUSTED_PROXY_HOPS`                    | Nombre de reverse proxies devant PVMSS (IP client / limitation de débit) ; `0` sans proxy | ❌                    | `1`                |
-| `PVMSS_RATE_LIMIT_MAX`                        | Relève tous les plafonds de limitation de débit intégrés (auth par IP, écritures par utilisateur) ; `0` garde les valeurs par défaut | ❌                    | `0`          |
-| `PVMSS_METRICS_PORT`                          | Port de l'écouteur `GET /metrics` sur `PVMSS_HOST` (1-65535, différent de `PVMSS_PORT`) ; vide = désactivé | ❌                    | vide         |
-| `TZ`                                          | Fuseau horaire du conteneur                                                | ❌                    | `UTC`              |
+| Variable                                      | Description                                                                                                                          | Requis                | Valeur par défaut  |
+| --------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------ | --------------------- | ------------------ |
+| `PVMSS_PORT`                                  | Port TCP d'écoute du serveur HTTP (1–65535)                                                                                          | ✅                    | -                  |
+| `PVMSS_DB_PATH`                               | Chemin vers le fichier SQLite (volume persistant requis)                                                                             | ✅                    | -                  |
+| `SESSION_SECRET`                              | Secret de 32+ octets pour sessions/cookies                                                                                           | ✅                    | -                  |
+| `PVMSS_CLUSTER_SOURCE`                        | `proxmox` pour un vrai cluster, `fake` pour la démo (aucun défaut, exprès)                                                           | ✅                    | -                  |
+| `LOG_LEVEL`                                   | `debug`, `info`, `warn`, `error` - minuscules uniquement                                                                             | ✅                    | -                  |
+| `LOG_FORMAT`                                  | `console` (lisible humainment) ou `json` (pour SIEM/collecte)                                                                        | ✅                    | -                  |
+| `LOG_OUTPUT`                                  | `stdout`, `stderr`, ou un chemin de fichier accessible en écriture                                                                   | ✅                    | -                  |
+| `PROXMOX_URL`                                 | URL complète de l'API (`https://host:8006/api2/json`)                                                                                | si source = `proxmox` | -                  |
+| `PROXMOX_API_TOKEN_NAME`                      | Nom du token Proxmox (`user@pve!token`)                                                                                              | si source = `proxmox` | -                  |
+| `PROXMOX_API_TOKEN_VALUE`                     | Valeur du token ci-dessus                                                                                                            | si source = `proxmox` | -                  |
+| `ADMIN_PASSWORD_HASH`                         | Hash bcrypt de l'admin local ; désactivé si vide                                                                                     | ❌                    | -                  |
+| `PVMSS_HOST`                                  | Adresse d'écoute (`0.0.0.0` pour toutes les interfaces)                                                                              | ❌                    | `127.0.0.1`        |
+| `PVMSS_WEB_DIR`                               | Répertoire contenant le SPA compilé                                                                                                  | ❌                    | relatif au binaire |
+| `PVMSS_COOKIE_SECURE`                         | Drapeau `Secure` sur les cookies d'auth (garder `true` en production)                                                                | ❌                    | `true`             |
+| `PVMSS_INVENTORY_REFRESH_INTERVAL`            | Période de rafraîchissement de l'inventaire                                                                                          | ❌                    | `30s`              |
+| `PVMSS_INVENTORY_MANUAL_REFRESH_MIN_INTERVAL` | Délai minimum entre deux rafraîchissements manuels                                                                                   | ❌                    | `5s`               |
+| `PVMSS_INVENTORY_REFRESH_TIMEOUT`             | Timeout d'un rafraîchissement d'inventaire                                                                                           | ❌                    | `15s`              |
+| `PVMSS_MAX_LIST_PAGE_SIZE`                    | Taille de page maximale des endpoints de liste                                                                                       | ❌                    | `100`              |
+| `PVMSS_TRUSTED_PROXY_HOPS`                    | Nombre de reverse proxies devant PVMSS (IP client / limitation de débit) ; `0` sans proxy                                            | ❌                    | `1`                |
+| `PVMSS_RATE_LIMIT_MAX`                        | Relève tous les plafonds de limitation de débit intégrés (auth par IP, écritures par utilisateur) ; `0` garde les valeurs par défaut | ❌                    | `0`                |
+| `PVMSS_METRICS_PORT`                          | Port de l'écouteur `GET /metrics` sur `PVMSS_HOST` (1-65535, différent de `PVMSS_PORT`) ; vide = désactivé                           | ❌                    | vide               |
+| `TZ`                                          | Fuseau horaire du conteneur                                                                                                          | ❌                    | `UTC`              |
 
 L'image Docker prérègle `PVMSS_DB_PATH=/data/pvmss.db`, `PVMSS_HOST=0.0.0.0` et
 `PVMSS_WEB_DIR=/app/web/build` : ces trois-là peuvent rester vides en conteneur.
@@ -232,11 +232,11 @@ Le format JSON est une ligne par événement, avec un champ `component` (main, c
 
 ## Options de déploiement
 
-| Plateforme          | Détails                                                                                                                                                                                                                                                    |
-| ------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **Docker / Podman** | Idéal pour tester ou déployer sur un seul hôte. Montez le volume de base de données et exposez `50000`.                                                                                                                                                    |
-| **Docker Compose**  | Expérience recommandée : service unique, variables centralisées, environnement reproductible.                                                                                                                                                              |
-| **Kubernetes**      | Utilisez [`pvmss-deployment.yaml`](pvmss-deployment.yaml) (namespace + secret + configmap + PVC + Deployment + Service). Appliquez via `kubectl apply -f pvmss-deployment.yaml`. L'ingress/HTTPRoute reste à votre charge (exemple `pvmss-httproute.yml`). |
+| Plateforme          | Détails                                                                                                 |
+| ------------------- | ------------------------------------------------------------------------------------------------------- |
+| **Docker / Podman** | Idéal pour tester ou déployer sur un seul hôte. Montez le volume de base de données et exposez `50000`. |
+| **Docker Compose**  | Expérience recommandée : service unique, variables centralisées, environnement reproductible.           |
+| **Kubernetes**      | Utilisez le chart Helm dans [`helm/`](helm/) : `helm install pvmss ./helm -f mes-values.yaml`.          |
 
 ## Démarrage rapide avec Docker run
 
@@ -258,7 +258,7 @@ docker run -d \
   -e PVMSS_DB_PATH="/data/pvmss.db" \
   -e SESSION_SECRET="$(openssl rand -hex 32)" \
   -e TZ=Europe/Paris \
-  jhmmt/pvmss:latest
+  jhmmt/pvmss:0.4
 ```
 
 Pour écrire les logs JSON dans un fichier à l'intérieur du conteneur au lieu de stdout, surchargez :
@@ -278,7 +278,7 @@ L'application sera accessible sur <http://localhost:50000>. En HTTP en clair sur
 ```yaml
 services:
   pvmss:
-    image: jhmmt/pvmss:latest
+    image: jhmmt/pvmss:0.4
     container_name: pvmss
     restart: unless-stopped
     ports:
@@ -331,10 +331,6 @@ LOG_OUTPUT: "/app/pvmss.log"
 3. Se connecter avec le compte admin, sur la page "Login", cliquez sur "Connexion administrateur".
 
 ## Démarrer avec Kubernetes
-
-Utilisez le fichier [`pvmss-deployment.yaml`](pvmss-deployment.yaml) pour créer en une seule fois le namespace, le secret, le PVC, le Deployment et le Service.
-
-Appliquez avec `kubectl apply -f pvmss-deployment.yaml`. Vous devez fournir votre propre ingress/HTTPRoute, un exemple est fourni dans le fichier `pvmss-httproute.yml` (Gateway API).
 
 Un chart Helm est fourni dans [`helm/`](helm/) : `helm install pvmss ./helm -f mes-values.yaml`.
 `values.yaml` documente chaque variable.

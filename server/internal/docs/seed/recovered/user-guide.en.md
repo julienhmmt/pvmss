@@ -22,7 +22,7 @@ it runs.
 Open the wizard via "Create a VM" after signing in. **Simple** mode asks only
 what is needed; **Detailed** mode exposes every option. Configure:
 
-- **Source**: an **ISO** image, a Proxmox **template** to clone, or a **cloud image** to import - all from the administrator-approved lists. A template clone stays on the template's node; a cloud image requires the cloud-init fields.
+- **Source**: an **ISO** image, a Proxmox **template** to clone, or a **cloud image** to import (temporarily disabled) - all from the administrator-approved lists. A template clone stays on the template's node; a cloud image requires the cloud-init fields.
 - **Name and description**: a lowercase, hyphenated, unique name within your pool. A clear name (like `web-prod-01`) makes the list searchable and the activity log readable.
 - **Cluster and node**: the node is chosen automatically (least loaded approved node with enough storage) unless you pick one in Detailed mode.
 - **Profile (optional)**: if your administrator published hardware profiles, pick one to fill CPU, memory, and disk automatically.
@@ -30,8 +30,7 @@ what is needed; **Detailed** mode exposes every option. Configure:
 - **Storage**: a storage approved by your administrator; the wizard checks free space live.
 - **Network**: one or more network cards, each with a bridge and a card model (VirtIO, E1000, RTL8139, VMXNet3). The Proxmox firewall is always enabled; your administrator may impose an isolation VLAN.
 - **Firmware**: UEFI (default on) with an empty EFI key store - Secure Boot is never enabled, because most Linux ISOs are unsigned and would not boot with it. TPM 2.0 for guests that require it.
-- **Cloud-init document**: one of the templates your administrator provides. See the [cloud-init how-to](/docs/cloud-init-howto).
-- **SSH keys** (cloud image source): tick the keys saved on your profile or paste one-off keys in the same field. Pasting exactly one key your profile does not know yet offers to save it once the VM is created.
+- **Cloud-init document**: one of the templates your administrator provides, for template clones only (not offered for ISO installs). See the [cloud-init how-to](/docs/cloud-init-howto).
 - **Startup**: choose whether the VM starts automatically after creation.
 - **Tags**: pick from the administrator-curated list.
 

@@ -1,8 +1,8 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
-	import { setAppInfoContext } from '$lib/features/admin-appinfo/appinfo.svelte';
-	import AppInfoPage from '$lib/features/admin-appinfo/AppInfoPage.svelte';
-	import { m } from '$lib/paraglide/messages.js';
+	import { setAppInfoContext } from '#lib/features/admin-appinfo/appinfo.svelte.js';
+	import AppInfoPage from '#lib/features/admin-appinfo/AppInfoPage.svelte';
+	import { m } from '#lib/paraglide/messages.js';
 
 	const store = setAppInfoContext();
 

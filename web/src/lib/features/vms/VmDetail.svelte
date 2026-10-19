@@ -2,9 +2,9 @@
 	import { getVmDetailContext } from './detail.svelte';
 	import VmActionBar from './VmActionBar.svelte';
 	import DeleteVmDialog from './DeleteVmDialog.svelte';
-	import Alert from '$lib/shared/ui/Alert.svelte';
-	import Tabs from '$lib/shared/ui/Tabs.svelte';
-	import Skeleton from '$lib/shared/ui/Skeleton.svelte';
+	import Alert from '#lib/shared/ui/Alert.svelte';
+	import Tabs from '#lib/shared/ui/Tabs.svelte';
+	import Skeleton from '#lib/shared/ui/Skeleton.svelte';
 	import VmDisksTab from './disks/VmDisksTab.svelte';
 	import VmNetworkTab from './network/VmNetworkTab.svelte';
 	import VmHardwareTab from './hardware/VmHardwareTab.svelte';
@@ -17,22 +17,22 @@
 	import MachineStatusPill from './MachineStatusPill.svelte';
 	import { displayStatus } from './display-status';
 	import { compactBytes } from './machine-row';
-	import { getTaskTrayContext } from '$lib/features/tasks/tasks.svelte';
-	import { getTaskOutcomeLedgerContext } from '$lib/features/tasks/task-outcome-ledger.svelte';
-	import { getPowerActionsContext } from '$lib/features/tasks/power-actions.svelte';
-	import { getToastContext } from '$lib/shared/ui/toast.svelte';
+	import { getTaskTrayContext } from '#lib/features/tasks/tasks.svelte.js';
+	import { getTaskOutcomeLedgerContext } from '#lib/features/tasks/task-outcome-ledger.svelte.js';
+	import { getPowerActionsContext } from '#lib/features/tasks/power-actions.svelte.js';
+	import { getToastContext } from '#lib/shared/ui/toast.svelte.js';
 	import { page } from '$app/state';
 	import { goto } from '$app/navigation';
 	import { resolve } from '$app/paths';
-	import Button from '$lib/shared/ui/Button.svelte';
-	import ButtonLink from '$lib/shared/ui/ButtonLink.svelte';
-	import Card from '$lib/shared/ui/Card.svelte';
-	import Pill from '$lib/shared/ui/Pill.svelte';
-	import OsMark from '$lib/shared/ui/OsMark.svelte';
-	import ConfirmDialog from '$lib/shared/ui/ConfirmDialog.svelte';
-	import Textarea from '$lib/shared/ui/Textarea.svelte';
-	import { getSessionContext } from '$lib/features/auth/session.svelte';
-	import { m } from '$lib/paraglide/messages.js';
+	import Button from '#lib/shared/ui/Button.svelte';
+	import ButtonLink from '#lib/shared/ui/ButtonLink.svelte';
+	import Card from '#lib/shared/ui/Card.svelte';
+	import Pill from '#lib/shared/ui/Pill.svelte';
+	import OsMark from '#lib/shared/ui/OsMark.svelte';
+	import ConfirmDialog from '#lib/shared/ui/ConfirmDialog.svelte';
+	import Textarea from '#lib/shared/ui/Textarea.svelte';
+	import { getSessionContext } from '#lib/features/auth/session.svelte.js';
+	import { m } from '#lib/paraglide/messages.js';
 
 	const store = getVmDetailContext();
 	const session = getSessionContext();
@@ -87,12 +87,12 @@
 	const configTab: ConfigTab = $derived(parseSub(page.url.searchParams.get('sub')));
 
 	function syncTabUrl(tab: MainTab, sub: ConfigTab): void {
-		const url = new URL(page.url);
+		const url = new URL(page.url.href);
 		if (tab === 'connect') url.searchParams.delete('tab');
 		else url.searchParams.set('tab', tab);
 		if (sub === 'overview') url.searchParams.delete('sub');
 		else url.searchParams.set('sub', sub);
-		void goto(`${url.pathname}${url.search}`, { replaceState: true, noScroll: true, keepFocus: true });
+		void goto(`${url.pathname}${url.search}`, { replace: true, reset: false });
 	}
 
 	function selectTab(id: string): void {

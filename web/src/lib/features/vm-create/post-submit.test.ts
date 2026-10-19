@@ -1,8 +1,8 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { handleAccepted, type PostSubmitDeps } from './post-submit';
-import { TaskTrayStore } from '$lib/features/tasks/tasks.svelte';
-import { TaskOutcomeLedger } from '$lib/features/tasks/task-outcome-ledger.svelte';
-import { ToastRegion } from '$lib/shared/ui/toast.svelte';
+import { TaskTrayStore } from '#lib/features/tasks/tasks.svelte.js';
+import { TaskOutcomeLedger } from '#lib/features/tasks/task-outcome-ledger.svelte.js';
+import { ToastRegion } from '#lib/shared/ui/toast.svelte.js';
 import type { VmCreateAccepted } from './create.svelte';
 
 function jsonResponse(status: number, body: unknown): Response {

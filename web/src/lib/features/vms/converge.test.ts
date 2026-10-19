@@ -2,13 +2,13 @@ import { describe, it, expect, vi, afterEach, beforeEach } from 'vitest';
 import { convergeSingle, convergeBatch, ACTION_POLL_MS, ACTION_CONVERGE_TIMEOUT_MS } from './converge';
 
 // Mock the API client so the convergence loop never hits the network.
-vi.mock('$lib/shared/api/client', () => ({
+vi.mock('#lib/shared/api/client.js', () => ({
 	get: vi.fn(),
 	post: vi.fn(),
 }));
 
 // Import after mock so the mock is in effect.
-const { get, post } = await import('$lib/shared/api/client');
+const { get, post } = await import('#lib/shared/api/client.js');
 
 function mockGet(status: string): void {
 	vi.mocked(get).mockResolvedValueOnce({ status, uptime: 0 });

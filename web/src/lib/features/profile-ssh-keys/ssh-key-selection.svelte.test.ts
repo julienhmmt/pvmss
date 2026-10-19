@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { SshKeySelection } from './ssh-key-selection.svelte';
 import { PROFILE_SSH_KEY_MAX, type ProfileSshKey } from './types';
-import { m } from '$lib/paraglide/messages.js';
+import { m } from '#lib/paraglide/messages.js';
 
 function profileKey(id: string, blob: string, comment = '', label?: string): ProfileSshKey {
 	return {

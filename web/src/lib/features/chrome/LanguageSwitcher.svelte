@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { getLocaleContext } from './locale.svelte';
-	import { m } from '$lib/paraglide/messages.js';
-	import type { Locale } from '$lib/paraglide/runtime.js';
+	import { m } from '#lib/paraglide/messages.js';
+	import type { Locale } from '#lib/paraglide/runtime.js';
 
 	/**
 	 * LanguageSwitcher - FR/EN as compact two-letter code buttons. A third

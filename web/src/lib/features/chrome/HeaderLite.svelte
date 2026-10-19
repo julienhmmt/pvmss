@@ -7,9 +7,9 @@
 	 */
 	import LanguageSwitcher from './LanguageSwitcher.svelte';
 	import ThemeToggle from './ThemeToggle.svelte';
-	import Logo from '$lib/shared/ui/Logo.svelte';
+	import Logo from '#lib/shared/ui/Logo.svelte';
 	import { resolve } from '$app/paths';
-	import { m } from '$lib/paraglide/messages.js';
+	import { m } from '#lib/paraglide/messages.js';
 </script>
 
 <header

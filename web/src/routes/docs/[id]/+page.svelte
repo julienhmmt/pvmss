@@ -3,17 +3,17 @@
 	import { goto } from '$app/navigation';
 	import { resolve } from '$app/paths';
 	import { page } from '$app/state';
-	import { fetchDocPage, type DocRendered } from '$lib/features/docs/docs.svelte';
-	import { getLocaleContext } from '$lib/features/chrome/locale.svelte';
-	import { m } from '$lib/paraglide/messages.js';
-	import Alert from '$lib/shared/ui/Alert.svelte';
-	import Card from '$lib/shared/ui/Card.svelte';
-	import EmptyState from '$lib/shared/ui/EmptyState.svelte';
-	import PageHeader from '$lib/shared/ui/PageHeader.svelte';
-	import Select from '$lib/shared/ui/Select.svelte';
-	import Skeleton from '$lib/shared/ui/Skeleton.svelte';
-	import type { Locale } from '$lib/paraglide/runtime.js';
-	import { ApiRequestError } from '$lib/shared/api/client';
+	import { fetchDocPage, type DocRendered } from '#lib/features/docs/docs.svelte.js';
+	import { getLocaleContext } from '#lib/features/chrome/locale.svelte.js';
+	import { m } from '#lib/paraglide/messages.js';
+	import Alert from '#lib/shared/ui/Alert.svelte';
+	import Card from '#lib/shared/ui/Card.svelte';
+	import EmptyState from '#lib/shared/ui/EmptyState.svelte';
+	import PageHeader from '#lib/shared/ui/PageHeader.svelte';
+	import Select from '#lib/shared/ui/Select.svelte';
+	import Skeleton from '#lib/shared/ui/Skeleton.svelte';
+	import type { Locale } from '#lib/paraglide/runtime.js';
+	import { ApiRequestError } from '#lib/shared/api/client.js';
 
 	const id = page.params.id ?? '';
 	const locale = getLocaleContext();
@@ -48,9 +48,9 @@
 	}
 
 	function updateURLLang(lang: Locale): void {
-		const url = new URL(page.url);
+		const url = new URL(page.url.href);
 		url.searchParams.set('lang', lang);
-		void goto(url, { replaceState: true, keepFocus: true, noScroll: true });
+		void goto(url, { replace: true, reset: false });
 	}
 
 	onMount(() => {

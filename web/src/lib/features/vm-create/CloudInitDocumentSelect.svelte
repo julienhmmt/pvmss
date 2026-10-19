@@ -1,8 +1,9 @@
 <script lang="ts">
 	import { getVmCreateContext } from './create.svelte';
-	import { m } from '$lib/paraglide/messages.js';
-	import FormField from '$lib/shared/ui/FormField.svelte';
-	import Select from '$lib/shared/ui/Select.svelte';
+	import { m } from '#lib/paraglide/messages.js';
+	import FormField from '#lib/shared/ui/FormField.svelte';
+	import Select from '#lib/shared/ui/Select.svelte';
+	import Alert from '#lib/shared/ui/Alert.svelte';
 
 	// Cloud-init document picker: the cluster's admin templates whose file the
 	// administrator placed on the VM's node. Users never write cloud-init YAML themselves. Bound
@@ -33,7 +34,10 @@
 	const visible = $derived(writeEnabled && templates.length > 0);
 </script>
 
-{#if !writeEnabled}
+{#if form.isoFile !== ''}
+	<!-- ISO installs skip cloud-init for now: the installer ignores the cloud-init drive. -->
+	<Alert tone="info" role="status">{m['vms.create.cloudinitIsoUnsupported']()}</Alert>
+{:else if !writeEnabled}
 	<p class="text-xs text-muted-foreground">{m['vms.create.cloudinitDisabledHint']()}</p>
 {:else if visible}
 	<FormField label={m['vms.create.cloudinitDocument']()} hint={m['common.optional']()} {error}>
