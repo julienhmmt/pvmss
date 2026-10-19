@@ -1,16 +1,16 @@
 <script lang="ts">
 	import { untrack } from 'svelte';
-	import Alert from '$lib/shared/ui/Alert.svelte';
-	import Dialog from '$lib/shared/ui/Dialog.svelte';
-	import Button from '$lib/shared/ui/Button.svelte';
-	import FormField from '$lib/shared/ui/FormField.svelte';
-	import FormSection from '$lib/shared/ui/FormSection.svelte';
-	import TextField from '$lib/shared/ui/TextField.svelte';
-	import Select from '$lib/shared/ui/Select.svelte';
-	import Checkbox from '$lib/shared/ui/Checkbox.svelte';
-	import Pill from '$lib/shared/ui/Pill.svelte';
+	import Alert from '#lib/shared/ui/Alert.svelte';
+	import Dialog from '#lib/shared/ui/Dialog.svelte';
+	import Button from '#lib/shared/ui/Button.svelte';
+	import FormField from '#lib/shared/ui/FormField.svelte';
+	import FormSection from '#lib/shared/ui/FormSection.svelte';
+	import TextField from '#lib/shared/ui/TextField.svelte';
+	import Select from '#lib/shared/ui/Select.svelte';
+	import Checkbox from '#lib/shared/ui/Checkbox.svelte';
+	import Pill from '#lib/shared/ui/Pill.svelte';
 	import type { AdminCluster, ClusterInput, SnippetStorage } from './clusters.svelte';
-	import { m } from '$lib/paraglide/messages.js';
+	import { m } from '#lib/paraglide/messages.js';
 
 	interface Props {
 		open: boolean;

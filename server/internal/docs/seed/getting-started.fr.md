@@ -22,7 +22,7 @@ une vue filtrée peut être mise en favori.
 ## Créer une VM
 
 1. Ouvrez **Créer une VM** depuis la page **Mes VM**.
-2. Choisissez une source : une ISO, un template Proxmox ou une image cloud.
+2. Choisissez une source : une ISO ou un template Proxmox (images cloud temporairement désactivées).
 3. Choisissez un profil matériel ou saisissez des valeurs personnalisées ; le
    nœud est choisi pour vous sauf en mode Détaillé.
 4. Choisissez éventuellement un document cloud-init (un template fourni par

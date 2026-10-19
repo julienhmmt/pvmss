@@ -12,8 +12,8 @@
 	 * distinction the data does not carry. The family is the tile's
 	 * accessible name, so the anchor is not sighted-only.
 	 */
-	import { osFamily, type OsFamily } from '$lib/shared/os-family';
-	import { m } from '$lib/paraglide/messages.js';
+	import { osFamily, type OsFamily } from '#lib/shared/os-family.js';
+	import { m } from '#lib/paraglide/messages.js';
 
 	type Size = 'sm' | 'lg';
 

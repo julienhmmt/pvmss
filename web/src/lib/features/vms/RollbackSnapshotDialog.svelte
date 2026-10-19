@@ -1,11 +1,11 @@
 <script lang="ts">
-	import Alert from '$lib/shared/ui/Alert.svelte';
-	import Dialog from '$lib/shared/ui/Dialog.svelte';
-	import Button from '$lib/shared/ui/Button.svelte';
+	import Alert from '#lib/shared/ui/Alert.svelte';
+	import Dialog from '#lib/shared/ui/Dialog.svelte';
+	import Button from '#lib/shared/ui/Button.svelte';
 	import { VmSnapshotsStore } from './snapshots.svelte';
 	import type { RollbackDiffEntry, VmSnapshot } from './snapshots.svelte';
-	import { ApiRequestError } from '$lib/shared/api/client';
-	import { m } from '$lib/paraglide/messages.js';
+	import { ApiRequestError } from '#lib/shared/api/client.js';
+	import { m } from '#lib/paraglide/messages.js';
 
 	interface Props {
 		open?: boolean;

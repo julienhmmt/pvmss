@@ -1,13 +1,13 @@
 import { afterEach, beforeAll, describe, expect, it, vi } from 'vitest';
 import { flushSync, mount, tick } from 'svelte';
-import { setLocale } from '$lib/paraglide/runtime.js';
+import { setLocale } from '#lib/paraglide/runtime.js';
 import VmActionBar from './VmActionBar.svelte';
 import VmHardwareTab from './hardware/VmHardwareTab.svelte';
 import AddDiskDialog from './disks/AddDiskDialog.svelte';
 import ResizeDiskDialog from './disks/ResizeDiskDialog.svelte';
 import EditNetworkInterfaceDialog from './network/EditNetworkInterfaceDialog.svelte';
 import { VmDetailStore, type VmDetailEntity, type HardwareOptions } from './detail.svelte';
-import { ToastRegion } from '$lib/shared/ui/toast.svelte';
+import { ToastRegion } from '#lib/shared/ui/toast.svelte.js';
 
 let storeInstance: VmDetailStore;
 const toast = new ToastRegion();
@@ -17,8 +17,8 @@ vi.mock('./detail.svelte', async (importOriginal) => {
 	return { ...original, getVmDetailContext: () => storeInstance };
 });
 
-vi.mock('$lib/shared/ui/toast.svelte', async (importOriginal) => {
-	const original = await importOriginal<typeof import('$lib/shared/ui/toast.svelte')>();
+vi.mock('#lib/shared/ui/toast.svelte.js', async (importOriginal) => {
+	const original = await importOriginal<typeof import('#lib/shared/ui/toast.svelte.js')>();
 	return { ...original, getToastContext: () => toast };
 });
 

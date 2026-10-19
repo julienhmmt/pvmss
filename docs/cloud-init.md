@@ -48,8 +48,17 @@ qm set <vmid> --cicustom vendor=<storage>:snippets/pvmss-tpl-…yml
   a VM still uses.
 - The baseline (qemu-guest-agent) is merged under every template and also
   exists alone as `pvmss-baseline-<hash>.yml` (Admin > Cloud-init baseline),
-  for cloud-image VMs created without a template. Without that file on the
+  for cloud-image VMs created without a template (cloud images are temporarily disabled). Without that file on the
   node, such VMs boot on the native keys only (no guest agent install).
+
+### Not with ISO installs
+
+Templates apply to template clones only (cloud images are temporarily disabled). An ISO
+installer ignores the cloud-init drive, so the create wizard hides the
+template picker when an ISO is chosen and the server refuses an ISO request
+carrying `cloudInitTemplateId` (`invalid_source`). A VM installed from ISO
+with `cloud-init` in the guest can still pick a template later from its
+cloud-init tab.
 
 ## Setup, step by step
 
@@ -97,7 +106,8 @@ PVMSS_EOF
 ```
 
 The quoted here-document writes the content verbatim (no `$` expansion).
-Do the same for the baseline if you create cloud-image VMs without a
+Once cloud images are enabled again, do the same for the baseline if you
+create cloud-image VMs without a
 template (**Admin > Cloud-init baseline**).
 
 ### 5. Verify

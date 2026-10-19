@@ -1,9 +1,9 @@
 <script lang="ts">
 	import { getDbOpsContext } from './dbOps.svelte';
-	import Alert from '$lib/shared/ui/Alert.svelte';
-	import Button from '$lib/shared/ui/Button.svelte';
-	import Card from '$lib/shared/ui/Card.svelte';
-	import { m } from '$lib/paraglide/messages.js';
+	import Alert from '#lib/shared/ui/Alert.svelte';
+	import Button from '#lib/shared/ui/Button.svelte';
+	import Card from '#lib/shared/ui/Card.svelte';
+	import { m } from '#lib/paraglide/messages.js';
 
 	const store = getDbOpsContext();
 </script>

@@ -21,7 +21,7 @@ Filters are kept in the URL, so a filtered view can be bookmarked.
 ## Creating a VM
 
 1. Open **Create a VM** from the **My VMs** page.
-2. Pick a source: an ISO, a Proxmox template, or a cloud image.
+2. Pick a source: an ISO or a Proxmox template (cloud images are temporarily disabled).
 3. Pick a hardware profile or enter custom values; the node is chosen for
    you unless you switch to Detailed mode.
 4. Optionally pick a cloud-init document (a template provided by your

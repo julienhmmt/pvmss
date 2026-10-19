@@ -2,18 +2,18 @@
 	import { onMount } from 'svelte';
 	import { page } from '$app/state';
 	import { goto } from '$app/navigation';
-	import { setAuditLogContext } from '$lib/features/admin-audit/auditLog.svelte';
-	import { setAuditRetentionContext } from '$lib/features/admin-audit/auditRetention.svelte';
-	import { setLogLevelContext } from '$lib/features/admin-logging/logLevel.svelte';
-	import LogLevelPanel from '$lib/features/admin-logging/LogLevelPanel.svelte';
-	import { setDbOpsContext } from '$lib/features/admin-db/dbOps.svelte';
-	import AuditLogPanel from '$lib/features/admin-audit/AuditLogPanel.svelte';
-	import AuditRetentionPanel from '$lib/features/admin-audit/AuditRetentionPanel.svelte';
-	import ExportPanel from '$lib/features/admin-db/ExportPanel.svelte';
-	import ImportPanel from '$lib/features/admin-db/ImportPanel.svelte';
-	import PageHeader from '$lib/shared/ui/PageHeader.svelte';
-	import Tabs from '$lib/shared/ui/Tabs.svelte';
-	import { m } from '$lib/paraglide/messages.js';
+	import { setAuditLogContext } from '#lib/features/admin-audit/auditLog.svelte.js';
+	import { setAuditRetentionContext } from '#lib/features/admin-audit/auditRetention.svelte.js';
+	import { setLogLevelContext } from '#lib/features/admin-logging/logLevel.svelte.js';
+	import LogLevelPanel from '#lib/features/admin-logging/LogLevelPanel.svelte';
+	import { setDbOpsContext } from '#lib/features/admin-db/dbOps.svelte.js';
+	import AuditLogPanel from '#lib/features/admin-audit/AuditLogPanel.svelte';
+	import AuditRetentionPanel from '#lib/features/admin-audit/AuditRetentionPanel.svelte';
+	import ExportPanel from '#lib/features/admin-db/ExportPanel.svelte';
+	import ImportPanel from '#lib/features/admin-db/ImportPanel.svelte';
+	import PageHeader from '#lib/shared/ui/PageHeader.svelte';
+	import Tabs from '#lib/shared/ui/Tabs.svelte';
+	import { m } from '#lib/paraglide/messages.js';
 
 	type SettingsTab = 'audit' | 'logging' | 'database';
 
@@ -35,10 +35,10 @@
 	function selectTab(id: string): void {
 		const tab: SettingsTab = parseTab(id);
 		if (tab === activeTab) return;
-		const url = new URL(page.url);
+		const url = new URL(page.url.href);
 		if (tab === 'audit') url.searchParams.delete('tab');
 		else url.searchParams.set('tab', tab);
-		void goto(`${url.pathname}${url.search}`, { replaceState: true, noScroll: true, keepFocus: true });
+		void goto(`${url.pathname}${url.search}`, { replace: true, reset: false });
 	}
 
 	const auditStore = setAuditLogContext();

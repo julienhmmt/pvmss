@@ -1,13 +1,13 @@
 <script lang="ts">
 	import { getVmDetailContext, type VmNetworkInterface } from '../detail.svelte';
 	import EditNetworkInterfaceDialog from './EditNetworkInterfaceDialog.svelte';
-	import { m } from '$lib/paraglide/messages.js';
-	import Alert from '$lib/shared/ui/Alert.svelte';
-	import Button from '$lib/shared/ui/Button.svelte';
-	import Card from '$lib/shared/ui/Card.svelte';
-	import CopyChip from '$lib/shared/ui/CopyChip.svelte';
-	import EmptyState from '$lib/shared/ui/EmptyState.svelte';
-	import TableSkeleton from '$lib/shared/ui/TableSkeleton.svelte';
+	import { m } from '#lib/paraglide/messages.js';
+	import Alert from '#lib/shared/ui/Alert.svelte';
+	import Button from '#lib/shared/ui/Button.svelte';
+	import Card from '#lib/shared/ui/Card.svelte';
+	import CopyChip from '#lib/shared/ui/CopyChip.svelte';
+	import EmptyState from '#lib/shared/ui/EmptyState.svelte';
+	import TableSkeleton from '#lib/shared/ui/TableSkeleton.svelte';
 
 	const store = getVmDetailContext();
 

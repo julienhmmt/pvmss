@@ -1,7 +1,7 @@
 <script lang="ts">
-	import CopyButton from '$lib/shared/ui/CopyButton.svelte';
+	import CopyButton from '#lib/shared/ui/CopyButton.svelte';
 	import { presentCount, type CloudInitDocument } from './cloudInitTemplates.svelte';
-	import { m } from '$lib/paraglide/messages.js';
+	import { m } from '#lib/paraglide/messages.js';
 
 	interface Props {
 		document: CloudInitDocument | null;

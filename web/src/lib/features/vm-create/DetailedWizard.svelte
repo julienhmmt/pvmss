@@ -6,9 +6,9 @@
 	import StepDisk from './_steps/StepDisk.svelte';
 	import StepNetwork from './_steps/StepNetwork.svelte';
 	import StepReview from './_steps/StepReview.svelte';
-	import Button from '$lib/shared/ui/Button.svelte';
-	import Skeleton from '$lib/shared/ui/Skeleton.svelte';
-	import { m } from '$lib/paraglide/messages.js';
+	import Button from '#lib/shared/ui/Button.svelte';
+	import Skeleton from '#lib/shared/ui/Skeleton.svelte';
+	import { m } from '#lib/paraglide/messages.js';
 
 	// Detailed-mode wizard (V09): five steps - Base, Hardware, Disk, Network,
 	// Review - over the shared create store. Cloud-init is T08's step, not

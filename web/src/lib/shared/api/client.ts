@@ -1,4 +1,4 @@
-import { resolveErrorMessage } from '$lib/features/chrome/errorMessage';
+import { resolveErrorMessage } from '#lib/features/chrome/errorMessage.js';
 
 interface ErrorEnvelope {
 	code: string;

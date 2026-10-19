@@ -2,14 +2,14 @@ import { describe, it, expect, beforeAll, afterEach, vi } from 'vitest';
 import { mount, tick } from 'svelte';
 import VmCdromCard from './VmCdromCard.svelte';
 import { getVmDetailContext, type VmCdrom, type VmDetailStore } from '../detail.svelte';
-import { getToastContext } from '$lib/shared/ui/toast.svelte';
-import { setLocale } from '$lib/paraglide/runtime.js';
+import { getToastContext } from '#lib/shared/ui/toast.svelte.js';
+import { setLocale } from '#lib/paraglide/runtime.js';
 
 vi.mock('../detail.svelte', async (importOriginal) => {
 	const mod = await importOriginal<typeof import('../detail.svelte')>();
 	return { ...mod, getVmDetailContext: vi.fn() };
 });
-vi.mock('$lib/shared/ui/toast.svelte', () => ({ getToastContext: vi.fn() }));
+vi.mock('#lib/shared/ui/toast.svelte.js', () => ({ getToastContext: vi.fn() }));
 
 async function render(cdrom: VmCdrom): Promise<void> {
 	const store = { entity: { name: 'vm', status: 'running', cdrom }, cdromInFlight: false } as unknown as VmDetailStore;

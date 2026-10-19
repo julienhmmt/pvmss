@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { resolve } from '$app/paths';
-	import { m } from '$lib/paraglide/messages.js';
+	import { m } from '#lib/paraglide/messages.js';
 	import Logo from './Logo.svelte';
 	import WarningIcon from './icons/WarningIcon.svelte';
 	import ErrorIcon from './icons/ErrorIcon.svelte';

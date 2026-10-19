@@ -1,9 +1,9 @@
 import { getContext, setContext } from 'svelte';
-import { get, post, ApiRequestError } from '$lib/shared/api/client';
-import { fetchClusterOptions, type ClusterOption } from '$lib/shared/clusters';
-import { m } from '$lib/paraglide/messages.js';
-import { SshKeySelection } from '$lib/features/profile-ssh-keys/ssh-key-selection.svelte';
-import { loadProfileSshKeys } from '$lib/features/profile-ssh-keys/profile-ssh-keys.svelte';
+import { get, post, ApiRequestError } from '#lib/shared/api/client.js';
+import { fetchClusterOptions, type ClusterOption } from '#lib/shared/clusters.js';
+import { m } from '#lib/paraglide/messages.js';
+import { SshKeySelection } from '#lib/features/profile-ssh-keys/ssh-key-selection.svelte.js';
+import { loadProfileSshKeys } from '#lib/features/profile-ssh-keys/profile-ssh-keys.svelte.js';
 
 export interface CatalogStorage {
 	name: string;
@@ -585,7 +585,7 @@ export class VmCreateStore {
 
 	/** Emits cloudInitTemplateId on the request when a template is chosen. */
 	applyCloudInitDocument(request: VMCreateRequest): void {
-		if (this.cloudInitTemplateId !== '') {
+		if (this.cloudInitTemplateId !== '' && this.isoFile === '') {
 			request.cloudInitTemplateId = this.cloudInitTemplateId;
 		}
 	}
@@ -603,6 +603,9 @@ export class VmCreateStore {
 	}
 
 	effectiveNode(): string {
+		// A clone stays on its template's node (templateId is reset when the source changes).
+		const template = this.templateId !== 0 ? this.catalog?.templates.find((t) => t.vmid === this.templateId) : undefined;
+		if (template) return template.node;
 		return this.nodeAdjusted && this.node !== '' ? this.node : this.autoNode();
 	}
 

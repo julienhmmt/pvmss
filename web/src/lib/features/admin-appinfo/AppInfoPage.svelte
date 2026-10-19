@@ -1,13 +1,13 @@
 <script lang="ts">
 	import { getAppInfoContext, type ConfigField } from './appinfo.svelte';
-	import PageHeader from '$lib/shared/ui/PageHeader.svelte';
-	import Button from '$lib/shared/ui/Button.svelte';
-	import Card from '$lib/shared/ui/Card.svelte';
-	import Pill from '$lib/shared/ui/Pill.svelte';
-	import StatusDot from '$lib/shared/ui/StatusDot.svelte';
-	import Skeleton from '$lib/shared/ui/Skeleton.svelte';
-	import ErrorState from '$lib/shared/ui/ErrorState.svelte';
-	import { m } from '$lib/paraglide/messages.js';
+	import PageHeader from '#lib/shared/ui/PageHeader.svelte';
+	import Button from '#lib/shared/ui/Button.svelte';
+	import Card from '#lib/shared/ui/Card.svelte';
+	import Pill from '#lib/shared/ui/Pill.svelte';
+	import StatusDot from '#lib/shared/ui/StatusDot.svelte';
+	import Skeleton from '#lib/shared/ui/Skeleton.svelte';
+	import ErrorState from '#lib/shared/ui/ErrorState.svelte';
+	import { m } from '#lib/paraglide/messages.js';
 
 	const store = getAppInfoContext();
 

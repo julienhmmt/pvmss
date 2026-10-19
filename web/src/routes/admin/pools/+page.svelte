@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
-	import PoolsPage from '$lib/features/admin-pools/PoolsPage.svelte';
-	import { setAdminPoolsContext } from '$lib/features/admin-pools/pools.svelte';
+	import PoolsPage from '#lib/features/admin-pools/PoolsPage.svelte';
+	import { setAdminPoolsContext } from '#lib/features/admin-pools/pools.svelte.js';
 
 	const store = setAdminPoolsContext();
 

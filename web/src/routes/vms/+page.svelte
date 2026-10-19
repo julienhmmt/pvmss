@@ -3,22 +3,22 @@
 	import { goto } from '$app/navigation';
 	import { resolve } from '$app/paths';
 	import { page } from '$app/state';
-	import { setVmListContext } from '$lib/features/vms/list.svelte';
-	import { setVmBulkContext } from '$lib/features/vms/bulk.svelte';
-	import { getTaskTrayContext } from '$lib/features/tasks/tasks.svelte';
-	import { getSessionContext } from '$lib/features/auth/session.svelte';
-	import MachineList from '$lib/features/vms/MachineList.svelte';
-	import VmBulkActionBar from '$lib/features/vms/VmBulkActionBar.svelte';
-	import ClusterSelector from '$lib/shared/ui/ClusterSelector.svelte';
-	import PageHeader from '$lib/shared/ui/PageHeader.svelte';
-	import Button from '$lib/shared/ui/Button.svelte';
-	import ButtonLink from '$lib/shared/ui/ButtonLink.svelte';
-	import { fetchClusterOptions, type ClusterOption } from '$lib/shared/clusters';
-	import { onVisibleRefresh } from '$lib/shared/visibility-refresh';
-	import { m } from '$lib/paraglide/messages.js';
+	import { setVmListContext } from '#lib/features/vms/list.svelte.js';
+	import { setVmBulkContext } from '#lib/features/vms/bulk.svelte.js';
+	import { getTaskTrayContext } from '#lib/features/tasks/tasks.svelte.js';
+	import { getSessionContext } from '#lib/features/auth/session.svelte.js';
+	import MachineList from '#lib/features/vms/MachineList.svelte';
+	import VmBulkActionBar from '#lib/features/vms/VmBulkActionBar.svelte';
+	import ClusterSelector from '#lib/shared/ui/ClusterSelector.svelte';
+	import PageHeader from '#lib/shared/ui/PageHeader.svelte';
+	import Button from '#lib/shared/ui/Button.svelte';
+	import ButtonLink from '#lib/shared/ui/ButtonLink.svelte';
+	import { fetchClusterOptions, type ClusterOption } from '#lib/shared/clusters.js';
+	import { onVisibleRefresh } from '#lib/shared/visibility-refresh.js';
+	import { m } from '#lib/paraglide/messages.js';
 
 	// Wiring only: the list state, URL sync, and rendering all live in
-	// $lib/features/vms (FR-010) - this page just picks the scope.
+	// #lib/features/vms (FR-010) - this page just picks the scope.
 	let clusterOptions = $state<ClusterOption[]>([]);
 	const session = getSessionContext();
 
@@ -31,9 +31,8 @@
 			const base = resolve('/vms');
 			const target = queryString === '' ? base : `${base}?${queryString}`;
 			void goto(target, {
-				replaceState: true,
-				noScroll: true,
-				keepFocus: true
+				replace: true,
+				reset: false
 			});
 		}
 	});

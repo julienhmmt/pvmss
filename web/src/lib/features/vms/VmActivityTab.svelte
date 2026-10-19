@@ -1,13 +1,13 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
 	import { getVmDetailContext } from './detail.svelte';
-	import { activityMessage } from '$lib/features/activity/activity.svelte';
-	import { m } from '$lib/paraglide/messages.js';
-	import Alert from '$lib/shared/ui/Alert.svelte';
-	import Button from '$lib/shared/ui/Button.svelte';
-	import Card from '$lib/shared/ui/Card.svelte';
-	import EmptyState from '$lib/shared/ui/EmptyState.svelte';
-	import TableSkeleton from '$lib/shared/ui/TableSkeleton.svelte';
+	import { activityMessage } from '#lib/features/activity/activity.svelte.js';
+	import { m } from '#lib/paraglide/messages.js';
+	import Alert from '#lib/shared/ui/Alert.svelte';
+	import Button from '#lib/shared/ui/Button.svelte';
+	import Card from '#lib/shared/ui/Card.svelte';
+	import EmptyState from '#lib/shared/ui/EmptyState.svelte';
+	import TableSkeleton from '#lib/shared/ui/TableSkeleton.svelte';
 
 	const store = getVmDetailContext();
 

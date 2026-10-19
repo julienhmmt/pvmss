@@ -1,14 +1,14 @@
 <script lang="ts">
 	import { resolve } from '$app/paths';
-	import { m } from '$lib/paraglide/messages.js';
-	import { CAPABILITIES } from '$lib/features/capabilities/capability-data';
-	import CapabilityIcon from '$lib/features/capabilities/CapabilityIcon.svelte';
-	import FeatureCard from '$lib/features/capabilities/FeatureCard.svelte';
-	import FeatureAdminIcon from '$lib/shared/ui/icons/FeatureAdminIcon.svelte';
-	import FeatureMultiClusterIcon from '$lib/shared/ui/icons/FeatureMultiClusterIcon.svelte';
-	import FeatureQuotasIcon from '$lib/shared/ui/icons/FeatureQuotasIcon.svelte';
-	import FeatureSelfServiceIcon from '$lib/shared/ui/icons/FeatureSelfServiceIcon.svelte';
-	import { getSessionContext } from '$lib/features/auth/session.svelte';
+	import { m } from '#lib/paraglide/messages.js';
+	import { CAPABILITIES } from '#lib/features/capabilities/capability-data.js';
+	import CapabilityIcon from '#lib/features/capabilities/CapabilityIcon.svelte';
+	import FeatureCard from '#lib/features/capabilities/FeatureCard.svelte';
+	import FeatureAdminIcon from '#lib/shared/ui/icons/FeatureAdminIcon.svelte';
+	import FeatureMultiClusterIcon from '#lib/shared/ui/icons/FeatureMultiClusterIcon.svelte';
+	import FeatureQuotasIcon from '#lib/shared/ui/icons/FeatureQuotasIcon.svelte';
+	import FeatureSelfServiceIcon from '#lib/shared/ui/icons/FeatureSelfServiceIcon.svelte';
+	import { getSessionContext } from '#lib/features/auth/session.svelte.js';
 
 	/**
 	 * HomeCapabilities - combined product feature + capability grid, the pitch

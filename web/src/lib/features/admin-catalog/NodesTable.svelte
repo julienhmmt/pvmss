@@ -1,14 +1,14 @@
 <script lang="ts">
 	import { resolve } from '$app/paths';
 	import type { AdminNode, NodeSortColumn } from './admin-catalog.svelte';
-	import { formatBytes } from '$lib/shared/format-bytes';
-	import EmptyState from '$lib/shared/ui/EmptyState.svelte';
-	import Pill from '$lib/shared/ui/Pill.svelte';
-	import StatusDot from '$lib/shared/ui/StatusDot.svelte';
-	import NodeUsageBar from '$lib/shared/ui/NodeUsageBar.svelte';
-	import TableHeader from '$lib/shared/ui/TableHeader.svelte';
+	import { formatBytes } from '#lib/shared/format-bytes.js';
+	import EmptyState from '#lib/shared/ui/EmptyState.svelte';
+	import Pill from '#lib/shared/ui/Pill.svelte';
+	import StatusDot from '#lib/shared/ui/StatusDot.svelte';
+	import NodeUsageBar from '#lib/shared/ui/NodeUsageBar.svelte';
+	import TableHeader from '#lib/shared/ui/TableHeader.svelte';
 	import ApprovalCell from './ApprovalCell.svelte';
-	import { m } from '$lib/paraglide/messages.js';
+	import { m } from '#lib/paraglide/messages.js';
 
 	interface Props {
 		clusterKey: string;

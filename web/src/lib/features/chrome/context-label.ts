@@ -1,4 +1,4 @@
-import { m } from '$lib/paraglide/messages.js';
+import { m } from '#lib/paraglide/messages.js';
 
 /** The two halves of the context header: where the user is, and what screen. */
 export interface ContextLabel {

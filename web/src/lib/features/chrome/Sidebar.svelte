@@ -14,19 +14,19 @@
 	import { onMount } from 'svelte';
 	import { page } from '$app/state';
 	import { resolve } from '$app/paths';
-	import { getSessionContext } from '$lib/features/auth/session.svelte';
+	import { getSessionContext } from '#lib/features/auth/session.svelte.js';
 	import { ADMIN_NAV_GROUPS, type SidebarIconName } from './admin-nav-items.svelte';
 	import { SidebarNavigationState } from './sidebar-navigation.svelte';
 	import { getChromeContext } from './chrome.svelte';
-	import { getTaskTrayContext } from '$lib/features/tasks/tasks.svelte';
-	import { getPowerActionsContext } from '$lib/features/tasks/power-actions.svelte';
-	import { get } from '$lib/shared/api/client';
-	import type { VmListItem, VmListResult } from '$lib/features/vms/list.svelte';
+	import { getTaskTrayContext } from '#lib/features/tasks/tasks.svelte.js';
+	import { getPowerActionsContext } from '#lib/features/tasks/power-actions.svelte.js';
+	import { get } from '#lib/shared/api/client.js';
+	import type { VmListItem, VmListResult } from '#lib/features/vms/list.svelte.js';
 	import { goto } from '$app/navigation';
-	import { m } from '$lib/paraglide/messages.js';
+	import { m } from '#lib/paraglide/messages.js';
 	import SidebarIcon from './SidebarIcon.svelte';
-	import { accountInitials } from '$lib/shared/initials';
-	import Logo from '$lib/shared/ui/Logo.svelte';
+	import { accountInitials } from '#lib/shared/initials.js';
+	import Logo from '#lib/shared/ui/Logo.svelte';
 	import LanguageSwitcher from './LanguageSwitcher.svelte';
 	import ThemeToggle from './ThemeToggle.svelte';
 

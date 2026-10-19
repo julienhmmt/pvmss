@@ -12,7 +12,7 @@ Two audiences share one portal:
 
 **End users** - developers and team members who need VMs without Proxmox access. They log in with their Proxmox credentials, pick a profile, and get a running machine. Their context: they want a VM fast, they don't want to understand Proxmox, and they want to manage their own machines (start, stop, snapshot, console) without filing tickets. Primary task: create and manage my VMs.
 
-**Admins** - infrastructure operators who configure the portal itself. They approve nodes, storages, bridges, ISOs, VM templates, and cloud images from the Proxmox cluster. They set quotas, gabarit limits, and per-node capacity. They manage cloud-init templates and the per-cluster cloud-init snippet storage, hardware profiles, tags, pools, documentation, the audit log, and multi-cluster connections. Their context: they know Proxmox, they want control without logging into Proxmox for every change, and they need to enforce policy. Primary task: keep the catalog and policy in sync with the cluster.
+**Admins** - infrastructure operators who configure the portal itself. They approve nodes, storages, bridges, ISOs, and VM templates from the Proxmox cluster. They set quotas, gabarit limits, and per-node capacity. They manage cloud-init templates and the per-cluster cloud-init snippet storage, hardware profiles, tags, pools, documentation, the audit log, and multi-cluster connections. Their context: they know Proxmox, they want control without logging into Proxmox for every change, and they need to enforce policy. Primary task: keep the catalog and policy in sync with the cluster.
 
 ## Product Purpose
 
@@ -32,13 +32,13 @@ PVMSS is self-hosted by a single organization for its own teams - one operator, 
 
 - **Deployment**: Docker image (distroless, non-root) or Kubernetes via the Helm chart; configuration is environment variables only, validated at startup.
 - **Clusters**: one or more Proxmox clusters behind a single portal, selectable per user; `PVMSS_CLUSTER_SOURCE` chooses the live `proxmox` source or the `fake` demo source.
-- **Admin rituals**: approving catalog items (nodes, storages, bridges, ISOs, templates, cloud images), setting quotas and gabarit limits, curating hardware profiles, authoring cloud-init templates, and running the copy-paste snippet publish command on chosen nodes (PVMSS never writes on the nodes itself).
+- **Admin rituals**: approving catalog items (nodes, storages, bridges, ISOs, templates; cloud images are temporarily disabled), setting quotas and gabarit limits, curating hardware profiles, authoring cloud-init templates, and running the copy-paste snippet publish command on chosen nodes (PVMSS never writes on the nodes itself).
 - **User rituals**: sign in with Proxmox credentials, create from a starting point, connect over SSH or the in-browser console, manage power and snapshots.
 - **Locale**: bilingual English + French across every screen and state.
 
 ## Capabilities and Constraints
 
-**Capabilities** - VM lifecycle for end users: create (ISO, Proxmox template clone, or cloud-image import), list and search across clusters, live status, bulk power actions, snapshot, in-browser console, activity and audit history. Admin: cluster connections, approved catalog, hardware profiles, quotas and per-node capacity, pools, tags, cloud-init templates, documentation, audit log.
+**Capabilities** - VM lifecycle for end users: create (ISO, Proxmox template clone, or cloud-image import - temporarily disabled, not reliable yet), list and search across clusters, live status, bulk power actions, snapshot, in-browser console, activity and audit history. Admin: cluster connections, approved catalog, hardware profiles, quotas and per-node capacity, pools, tags, cloud-init templates, documentation, audit log.
 
 **Constraints**:
 

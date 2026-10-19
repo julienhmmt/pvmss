@@ -16,8 +16,8 @@
 	 *
 	 * `pending` is forwarded to Pill so the dot pulses for in-flight states.
 	 */
-	import Pill from '$lib/shared/ui/Pill.svelte';
-	import { m } from '$lib/paraglide/messages.js';
+	import Pill from '#lib/shared/ui/Pill.svelte';
+	import { m } from '#lib/paraglide/messages.js';
 	import type { MachineDisplayStatus } from './display-status';
 
 	type Tone = 'ok' | 'off' | 'warn' | 'error';

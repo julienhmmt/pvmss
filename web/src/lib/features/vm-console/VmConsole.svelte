@@ -1,8 +1,8 @@
 <script lang="ts">
 	import { onMount, onDestroy } from 'svelte';
 	import { getConsoleContext } from './console.svelte';
-	import { m } from '$lib/paraglide/messages.js';
-	import Button from '$lib/shared/ui/Button.svelte';
+	import { m } from '#lib/paraglide/messages.js';
+	import Button from '#lib/shared/ui/Button.svelte';
 
 	// Test-only: throws during component initialization to exercise the
 	// <svelte:boundary> failed snippet in +page.svelte (SC-004). Svelte 5

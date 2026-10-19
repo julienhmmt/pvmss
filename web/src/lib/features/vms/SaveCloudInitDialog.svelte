@@ -1,8 +1,8 @@
 <script lang="ts">
-	import Dialog from '$lib/shared/ui/Dialog.svelte';
-	import Checkbox from '$lib/shared/ui/Checkbox.svelte';
-	import { m } from '$lib/paraglide/messages.js';
-	import Button from '$lib/shared/ui/Button.svelte';
+	import Dialog from '#lib/shared/ui/Dialog.svelte';
+	import Checkbox from '#lib/shared/ui/Checkbox.svelte';
+	import { m } from '#lib/paraglide/messages.js';
+	import Button from '#lib/shared/ui/Button.svelte';
 
 	interface Props {
 		open?: boolean;

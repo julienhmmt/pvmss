@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { SearchStore } from './search.svelte';
-import type { VmListResult } from '$lib/features/vms/list.svelte';
+import type { VmListResult } from '#lib/features/vms/list.svelte.js';
 
 function jsonResponse(status: number, body: unknown): Response {
 	return new Response(JSON.stringify(body), {

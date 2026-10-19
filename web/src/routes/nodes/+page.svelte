@@ -1,11 +1,11 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
-	import { setNodesContext } from '$lib/features/cluster/nodes.svelte';
-	import AuthRequired from '$lib/features/auth/AuthRequired.svelte';
-	import NodeList from '$lib/features/cluster/NodeList.svelte';
-	import ErrorState from '$lib/shared/ui/ErrorState.svelte';
-	import TableSkeleton from '$lib/shared/ui/TableSkeleton.svelte';
-	import { m } from '$lib/paraglide/messages.js';
+	import { setNodesContext } from '#lib/features/cluster/nodes.svelte.js';
+	import AuthRequired from '#lib/features/auth/AuthRequired.svelte';
+	import NodeList from '#lib/features/cluster/NodeList.svelte';
+	import ErrorState from '#lib/shared/ui/ErrorState.svelte';
+	import TableSkeleton from '#lib/shared/ui/TableSkeleton.svelte';
+	import { m } from '#lib/paraglide/messages.js';
 
 	const nodesStore = setNodesContext();
 

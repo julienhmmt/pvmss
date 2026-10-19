@@ -1,6 +1,6 @@
-import { get, post, del, ApiRequestError } from '$lib/shared/api/client';
-import { apiPath } from '$lib/shared/api/paths';
-import { m } from '$lib/paraglide/messages.js';
+import { get, post, del, ApiRequestError } from '#lib/shared/api/client.js';
+import { apiPath } from '#lib/shared/api/paths.js';
+import { m } from '#lib/paraglide/messages.js';
 import { PROFILE_SSH_KEY_MAX, type ProfileSshKey } from './types';
 import type { SshKeySelection } from './ssh-key-selection.svelte';
 

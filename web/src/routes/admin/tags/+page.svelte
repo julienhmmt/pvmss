@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
-	import { setAdminTagsContext } from '$lib/features/admin-tags/tags.svelte';
-	import TagsPage from '$lib/features/admin-tags/TagsPage.svelte';
+	import { setAdminTagsContext } from '#lib/features/admin-tags/tags.svelte.js';
+	import TagsPage from '#lib/features/admin-tags/TagsPage.svelte';
 
 	const store = setAdminTagsContext();
 

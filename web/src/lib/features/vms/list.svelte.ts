@@ -1,9 +1,9 @@
 import { getContext, setContext } from 'svelte';
 import { SvelteMap, SvelteURLSearchParams } from 'svelte/reactivity';
-import type { TrackedTask } from '$lib/features/tasks/tasks.svelte';
-import { get, post, ApiRequestError } from '$lib/shared/api/client';
-import { STALE_REFRESH_MS } from '$lib/shared/visibility-refresh';
-import { m } from '$lib/paraglide/messages.js';
+import type { TrackedTask } from '#lib/features/tasks/tasks.svelte.js';
+import { get, post, ApiRequestError } from '#lib/shared/api/client.js';
+import { STALE_REFRESH_MS } from '#lib/shared/visibility-refresh.js';
+import { m } from '#lib/paraglide/messages.js';
 import type { VmAction } from './detail.svelte';
 import { optimisticStatus } from './detail.svelte';
 import { convergeBatch } from './converge';

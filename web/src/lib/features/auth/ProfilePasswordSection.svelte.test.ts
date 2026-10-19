@@ -1,9 +1,9 @@
 import { afterEach, beforeAll, describe, expect, it, vi } from 'vitest';
 import { flushSync, mount, tick } from 'svelte';
-import { setLocale } from '$lib/paraglide/runtime.js';
+import { setLocale } from '#lib/paraglide/runtime.js';
 import ProfilePasswordSection from './ProfilePasswordSection.svelte';
 import { SessionStore } from './session.svelte';
-import { ToastRegion } from '$lib/shared/ui/toast.svelte';
+import { ToastRegion } from '#lib/shared/ui/toast.svelte.js';
 
 let sessionStore: SessionStore;
 let toast: ToastRegion;
@@ -13,8 +13,8 @@ vi.mock('./session.svelte', async (importOriginal) => {
 	return { ...original, getSessionContext: () => sessionStore };
 });
 
-vi.mock('$lib/shared/ui/toast.svelte', async (importOriginal) => {
-	const original = await importOriginal<typeof import('$lib/shared/ui/toast.svelte')>();
+vi.mock('#lib/shared/ui/toast.svelte.js', async (importOriginal) => {
+	const original = await importOriginal<typeof import('#lib/shared/ui/toast.svelte.js')>();
 	return { ...original, getToastContext: () => toast };
 });
 

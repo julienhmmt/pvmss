@@ -1,10 +1,10 @@
 <script lang="ts">
 	import type { AdminTemplate, AdminTemplatePatch } from './admin-catalog.svelte';
-	import { m } from '$lib/paraglide/messages.js';
-	import Button from '$lib/shared/ui/Button.svelte';
-	import Checkbox from '$lib/shared/ui/Checkbox.svelte';
-	import FormField from '$lib/shared/ui/FormField.svelte';
-	import TextField from '$lib/shared/ui/TextField.svelte';
+	import { m } from '#lib/paraglide/messages.js';
+	import Button from '#lib/shared/ui/Button.svelte';
+	import Checkbox from '#lib/shared/ui/Checkbox.svelte';
+	import FormField from '#lib/shared/ui/FormField.svelte';
+	import TextField from '#lib/shared/ui/TextField.svelte';
 
 	interface Props {
 		template: AdminTemplate;

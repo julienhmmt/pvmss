@@ -5,8 +5,8 @@
 	 * With nothing critical or warning to act on it leads with one reassuring
 	 * line, then still lists any informational rows below it.
 	 */
-	import Card from '$lib/shared/ui/Card.svelte';
-	import { m } from '$lib/paraglide/messages.js';
+	import Card from '#lib/shared/ui/Card.svelte';
+	import { m } from '#lib/paraglide/messages.js';
 	import { alertHref, alertMessage, type DashboardAlert } from './dashboard-alerts';
 
 	interface Props {

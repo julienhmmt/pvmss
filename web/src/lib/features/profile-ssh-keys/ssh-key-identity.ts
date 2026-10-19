@@ -1,4 +1,4 @@
-import { m } from '$lib/paraglide/messages.js';
+import { m } from '#lib/paraglide/messages.js';
 import { PROFILE_SSH_KEY_MAX } from './types';
 
 /** The identity of an SSH public key: its first two whitespace-separated

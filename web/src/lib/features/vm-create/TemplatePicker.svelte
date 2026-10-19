@@ -4,9 +4,9 @@
 	 * Used by both the simple wizard and the detailed wizard's Base step.
 	 */
 	import { getVmCreateContext } from './create.svelte';
-	import { m } from '$lib/paraglide/messages.js';
-	import FormField from '$lib/shared/ui/FormField.svelte';
-	import Select from '$lib/shared/ui/Select.svelte';
+	import { m } from '#lib/paraglide/messages.js';
+	import FormField from '#lib/shared/ui/FormField.svelte';
+	import Select from '#lib/shared/ui/Select.svelte';
 
 	interface Props {
 		error?: string | null;

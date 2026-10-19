@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
-	import { setAdminProfilesContext } from '$lib/features/admin-profiles/profiles.svelte';
-	import ProfilesPage from '$lib/features/admin-profiles/ProfilesPage.svelte';
+	import { setAdminProfilesContext } from '#lib/features/admin-profiles/profiles.svelte.js';
+	import ProfilesPage from '#lib/features/admin-profiles/ProfilesPage.svelte';
 
 	const store = setAdminProfilesContext();
 

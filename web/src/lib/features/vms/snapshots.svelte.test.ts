@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { TaskTrayStore } from '$lib/features/tasks/tasks.svelte';
+import { TaskTrayStore } from '#lib/features/tasks/tasks.svelte.js';
 import { VmSnapshotsStore } from './snapshots.svelte';
 
 function jsonResponse(status: number, body: unknown): Response {

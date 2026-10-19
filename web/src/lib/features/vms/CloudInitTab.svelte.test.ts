@@ -2,9 +2,9 @@ import { afterEach, describe, expect, it, vi, type Mock } from 'vitest';
 import { mount } from 'svelte';
 import CloudInitTab from './CloudInitTab.svelte';
 import { VmDetailStore } from './detail.svelte';
-import { SshKeySelection } from '$lib/features/profile-ssh-keys/ssh-key-selection.svelte';
-import type { ProfileSshKey } from '$lib/features/profile-ssh-keys/types';
-import { ToastRegion } from '$lib/shared/ui/toast.svelte';
+import { SshKeySelection } from '#lib/features/profile-ssh-keys/ssh-key-selection.svelte.js';
+import type { ProfileSshKey } from '#lib/features/profile-ssh-keys/types.js';
+import { ToastRegion } from '#lib/shared/ui/toast.svelte.js';
 
 let vmStoreInstance: VmDetailStore;
 const toast = new ToastRegion();
@@ -14,8 +14,8 @@ vi.mock('./detail.svelte', async (importOriginal) => {
 	return { ...original, getVmDetailContext: () => vmStoreInstance };
 });
 
-vi.mock('$lib/shared/ui/toast.svelte', async (importOriginal) => {
-	const original = await importOriginal<typeof import('$lib/shared/ui/toast.svelte')>();
+vi.mock('#lib/shared/ui/toast.svelte.js', async (importOriginal) => {
+	const original = await importOriginal<typeof import('#lib/shared/ui/toast.svelte.js')>();
 	return { ...original, getToastContext: () => toast };
 });
 

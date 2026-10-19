@@ -1,5 +1,5 @@
-import { get } from '$lib/shared/api/client';
-import { apiPath } from '$lib/shared/api/paths';
+import { get } from '#lib/shared/api/client.js';
+import { apiPath } from '#lib/shared/api/paths.js';
 
 /** The three timeframes GET .../metrics/history accepts. */
 export type MetricsRange = 'hour' | 'day' | 'week';

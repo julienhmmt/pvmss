@@ -3,17 +3,17 @@
 	import { goto } from '$app/navigation';
 	import { resolve } from '$app/paths';
 	import { page } from '$app/state';
-	import Button from '$lib/shared/ui/Button.svelte';
-	import { setConsoleContext } from '$lib/features/vm-console/console.svelte';
-	import { setSerialConsoleContext } from '$lib/features/vm-console/serial.svelte';
-	import VmConsole from '$lib/features/vm-console/VmConsole.svelte';
-	import VmSerialConsole from '$lib/features/vm-console/VmSerialConsole.svelte';
-	import ConsoleToolbar from '$lib/features/vm-console/ConsoleToolbar.svelte';
-	import { setVmDetailContext } from '$lib/features/vms/detail.svelte';
-	import VmActionBar from '$lib/features/vms/VmActionBar.svelte';
-	import Pill from '$lib/shared/ui/Pill.svelte';
-	import CopyButton from '$lib/shared/ui/CopyButton.svelte';
-	import { m } from '$lib/paraglide/messages.js';
+	import Button from '#lib/shared/ui/Button.svelte';
+	import { setConsoleContext } from '#lib/features/vm-console/console.svelte.js';
+	import { setSerialConsoleContext } from '#lib/features/vm-console/serial.svelte.js';
+	import VmConsole from '#lib/features/vm-console/VmConsole.svelte';
+	import VmSerialConsole from '#lib/features/vm-console/VmSerialConsole.svelte';
+	import ConsoleToolbar from '#lib/features/vm-console/ConsoleToolbar.svelte';
+	import { setVmDetailContext } from '#lib/features/vms/detail.svelte.js';
+	import VmActionBar from '#lib/features/vms/VmActionBar.svelte';
+	import Pill from '#lib/shared/ui/Pill.svelte';
+	import CopyButton from '#lib/shared/ui/CopyButton.svelte';
+	import { m } from '#lib/paraglide/messages.js';
 
 	/** Live-status poll cadence while the console is open. */
 	const LIVE_STATUS_POLL_MS = 5000;
@@ -101,8 +101,8 @@
 	<title>{m['vms.console.title']({ name: vmStore.entity?.name || `VM ${vmid}` })}</title>
 </svelte:head>
 
-<section class="flex min-h-[calc(100vh-11rem)] w-full flex-col">
-	<div class="mb-3 flex items-center gap-3">
+<section class="flex h-[calc(100vh-11rem)] min-h-[28rem] w-full flex-col">
+	<div class="mb-3 flex flex-wrap items-center gap-3">
 		<Button
 			variant="secondary"
 			size="sm"
@@ -124,13 +124,13 @@
 				label={consoleStateLabel(mode === 'graphical' ? store.state : serialStore.state)}
 			/>
 		</span>
+		<div class="ml-auto" data-testid="vm-console-action-bar">
+			<VmActionBar hideDelete compact />
+		</div>
 	</div>
 
-	<div class="mb-3" data-testid="vm-console-action-bar">
-		<VmActionBar hideDelete />
-	</div>
-
-	<div class="mb-3 inline-flex w-fit rounded-lg border border-border bg-muted/40 p-0.5" role="group" aria-label={m['vms.console.modeLabel']()} data-testid="vm-console-mode-switcher">
+	<div class="flex flex-wrap items-center gap-2">
+	<div class="inline-flex w-fit rounded-lg border border-border bg-muted/40 p-0.5" role="group" aria-label={m['vms.console.modeLabel']()} data-testid="vm-console-mode-switcher">
 		<button
 			type="button"
 			class="rounded-md px-3 py-1.5 text-sm font-medium {mode === 'graphical'
@@ -159,7 +159,7 @@
 		<ConsoleToolbar />
 	{:else}
 		<div
-			class="flex flex-wrap items-center gap-2 rounded-[var(--radius-control)] border border-border bg-muted/40 px-2 py-1.5"
+			class="flex flex-1 flex-wrap items-center gap-2 rounded-[var(--radius-control)] border border-border bg-muted/40 px-2 py-1.5"
 			data-testid="vm-serial-console-toolbar"
 		>
 			<Button
@@ -183,6 +183,10 @@
 				{m['vms.console.serial.reconnect']()}
 			</Button>
 		</div>
+	{/if}
+	</div>
+
+	{#if mode === 'text'}
 		{#if vmStore.entity && vmStore.entity.hasSerial === false}
 			<div class="flex flex-wrap items-center gap-3 rounded-md border border-border bg-muted/40 p-3 text-sm" data-testid="vm-serial-console-enable">
 				<p class="text-muted-foreground">{m['vms.console.serial.noSerial']()}</p>
@@ -240,7 +244,7 @@
 	{/if}
 	{/if}
 
-	<div class="mt-3 flex-1 overflow-hidden">
+	<div class="mt-3 min-h-0 flex-1 overflow-hidden">
 		<svelte:boundary>
 			{#if mode === 'graphical'}
 				<VmConsole />

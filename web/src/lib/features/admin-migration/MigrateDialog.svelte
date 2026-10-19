@@ -6,15 +6,15 @@
 	 * task keeps running in the tray when the dialog is closed.
 	 */
 	import { onMount, tick } from 'svelte';
-	import { ApiRequestError } from '$lib/shared/api/client';
-	import Alert from '$lib/shared/ui/Alert.svelte';
-	import Button from '$lib/shared/ui/Button.svelte';
-	import Dialog from '$lib/shared/ui/Dialog.svelte';
-	import Pill from '$lib/shared/ui/Pill.svelte';
-	import RadioCard from '$lib/shared/ui/RadioCard.svelte';
-	import Skeleton from '$lib/shared/ui/Skeleton.svelte';
-	import { getTaskTrayContext, type TaskToast } from '$lib/features/tasks/tasks.svelte';
-	import { m } from '$lib/paraglide/messages.js';
+	import { ApiRequestError } from '#lib/shared/api/client.js';
+	import Alert from '#lib/shared/ui/Alert.svelte';
+	import Button from '#lib/shared/ui/Button.svelte';
+	import Dialog from '#lib/shared/ui/Dialog.svelte';
+	import Pill from '#lib/shared/ui/Pill.svelte';
+	import RadioCard from '#lib/shared/ui/RadioCard.svelte';
+	import Skeleton from '#lib/shared/ui/Skeleton.svelte';
+	import { getTaskTrayContext, type TaskToast } from '#lib/features/tasks/tasks.svelte.js';
+	import { m } from '#lib/paraglide/messages.js';
 	import {
 		fetchMigrationPreflight,
 		startMigration,

@@ -1,5 +1,5 @@
 import { beforeAll, describe, expect, it, vi } from 'vitest';
-import { setLocale } from '$lib/paraglide/runtime.js';
+import { setLocale } from '#lib/paraglide/runtime.js';
 import { ADMIN_NAV_GROUPS } from './admin-nav-items.svelte';
 import { SidebarNavigationState } from './sidebar-navigation.svelte';
 

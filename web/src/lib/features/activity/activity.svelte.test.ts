@@ -1,5 +1,5 @@
 import { afterEach, beforeAll, describe, expect, it, vi } from 'vitest';
-import { setLocale } from '$lib/paraglide/runtime.js';
+import { setLocale } from '#lib/paraglide/runtime.js';
 import { ActivityStore, activityMessage, mergeActivity } from './activity.svelte';
 
 beforeAll(() => setLocale('en', { reload: false }));

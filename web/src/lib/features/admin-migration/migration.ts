@@ -1,4 +1,4 @@
-import { get, post } from '$lib/shared/api/client';
+import { get, post } from '#lib/shared/api/client.js';
 
 export type MigrationWarning = 'vms' | 'vcpus' | 'ram' | 'disk';
 export type MigrationExclusionReason = 'offline' | 'not_allowed';

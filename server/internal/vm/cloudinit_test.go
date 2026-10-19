@@ -30,6 +30,7 @@ const (
 	testActionSetCloudInitPassword = "set_cloudinit_password"
 	// testStorageLocal is the fake-local storage name the fixtures share.
 	testStorageLocal = "local"
+	testISOFile      = "debian-12-generic-amd64.iso"
 	// testUserUbuntu is the cloud-init user the fixtures share.
 	testUserUbuntu = "ubuntu"
 	// testActionCreate is the fake's VM-create action name.

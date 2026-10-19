@@ -1,8 +1,8 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
-	import { setAdminBaselineContext } from '$lib/features/admin-baseline/baseline.svelte';
-	import BaselinePage from '$lib/features/admin-baseline/BaselinePage.svelte';
-	import { m } from '$lib/paraglide/messages.js';
+	import { setAdminBaselineContext } from '#lib/features/admin-baseline/baseline.svelte.js';
+	import BaselinePage from '#lib/features/admin-baseline/BaselinePage.svelte';
+	import { m } from '#lib/paraglide/messages.js';
 
 	const store = setAdminBaselineContext();
 

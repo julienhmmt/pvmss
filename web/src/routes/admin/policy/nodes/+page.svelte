@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
-	import PolicyNodesPage from '$lib/features/admin-policy-nodes/PolicyNodesPage.svelte';
-	import { setAdminPolicyNodesContext } from '$lib/features/admin-policy-nodes/policyNodes.svelte';
+	import PolicyNodesPage from '#lib/features/admin-policy-nodes/PolicyNodesPage.svelte';
+	import { setAdminPolicyNodesContext } from '#lib/features/admin-policy-nodes/policyNodes.svelte.js';
 
 	const store = setAdminPolicyNodesContext();
 

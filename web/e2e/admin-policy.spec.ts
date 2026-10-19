@@ -44,7 +44,11 @@ test.describe('T12 admin policy', () => {
 
 	test('admin lowers a gabarit and creation is refused before a task is accepted', async ({ page }) => {
 		await signInAdmin(page.request);
+		// Fill only after the policy loaded: the load resets the form and would
+		// discard an earlier edit, so no PUT would ever be sent.
+		const loaded = page.waitForResponse((r) => r.url().includes('/api/v1/admin/policy') && r.request().method() === 'GET');
 		await page.goto('/admin/policy');
+		await loaded;
 		// The form autosaves after a short debounce; wait for the PUT to land.
 		const saved = page.waitForResponse((r) => r.url().includes('/api/v1/admin/policy') && r.request().method() === 'PUT');
 		await page.getByLabel('Maximum disk per VM (GB)').fill('10');

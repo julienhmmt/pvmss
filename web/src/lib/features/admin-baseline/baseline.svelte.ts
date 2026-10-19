@@ -1,14 +1,14 @@
-import { get, ApiRequestError } from '$lib/shared/api/client';
+import { get, ApiRequestError } from '#lib/shared/api/client.js';
 import {
 	fetchClusterOptions,
 	resolveInitialAdminCluster,
 	saveAdminCluster,
 	type ClusterOption
-} from '$lib/shared/clusters';
+} from '#lib/shared/clusters.js';
 import { setContext, getContext } from 'svelte';
-import { m } from '$lib/paraglide/messages.js';
+import { m } from '#lib/paraglide/messages.js';
 
-import type { CloudInitDocument } from '$lib/features/admin-cloudinit-templates/cloudInitTemplates.svelte';
+import type { CloudInitDocument } from '#lib/features/admin-cloudinit-templates/cloudInitTemplates.svelte.js';
 
 export interface BaselineState {
 	/** The generated baseline: placed on its own for image VMs without a

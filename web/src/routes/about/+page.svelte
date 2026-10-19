@@ -1,16 +1,16 @@
 <script lang="ts">
 	import { goto } from '$app/navigation';
 	import { resolve } from '$app/paths';
-	import { m } from '$lib/paraglide/messages.js';
-	import Button from '$lib/shared/ui/Button.svelte';
-	import PageHeader from '$lib/shared/ui/PageHeader.svelte';
-	import { CAPABILITIES } from '$lib/features/capabilities/capability-data';
-	import CapabilityIcon from '$lib/features/capabilities/CapabilityIcon.svelte';
-	import { getSessionContext } from '$lib/features/auth/session.svelte';
-	import FeatureAdminIcon from '$lib/shared/ui/icons/FeatureAdminIcon.svelte';
-	import FeatureSelfServiceIcon from '$lib/shared/ui/icons/FeatureSelfServiceIcon.svelte';
-	import StepNumberIcon from '$lib/shared/ui/icons/StepNumberIcon.svelte';
-	import ButtonLink from '$lib/shared/ui/ButtonLink.svelte';
+	import { m } from '#lib/paraglide/messages.js';
+	import Button from '#lib/shared/ui/Button.svelte';
+	import PageHeader from '#lib/shared/ui/PageHeader.svelte';
+	import { CAPABILITIES } from '#lib/features/capabilities/capability-data.js';
+	import CapabilityIcon from '#lib/features/capabilities/CapabilityIcon.svelte';
+	import { getSessionContext } from '#lib/features/auth/session.svelte.js';
+	import FeatureAdminIcon from '#lib/shared/ui/icons/FeatureAdminIcon.svelte';
+	import FeatureSelfServiceIcon from '#lib/shared/ui/icons/FeatureSelfServiceIcon.svelte';
+	import StepNumberIcon from '#lib/shared/ui/icons/StepNumberIcon.svelte';
+	import ButtonLink from '#lib/shared/ui/ButtonLink.svelte';
 
 	/**
 	 * /about - public product overview page. No auth required.

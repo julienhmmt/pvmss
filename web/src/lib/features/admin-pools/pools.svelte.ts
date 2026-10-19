@@ -1,12 +1,12 @@
-import { del, get, post, ApiRequestError } from '$lib/shared/api/client';
+import { del, get, post, ApiRequestError } from '#lib/shared/api/client.js';
 import {
 	fetchClusterOptions,
 	resolveInitialAdminCluster,
 	saveAdminCluster,
 	type ClusterOption
-} from '$lib/shared/clusters';
+} from '#lib/shared/clusters.js';
 import { getContext, setContext } from 'svelte';
-import { m } from '$lib/paraglide/messages.js';
+import { m } from '#lib/paraglide/messages.js';
 
 export interface AdminPool {
 	name: string;

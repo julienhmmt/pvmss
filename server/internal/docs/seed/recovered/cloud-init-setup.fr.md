@@ -43,9 +43,15 @@ qm set <vmid> --cicustom vendor=<stockage>:snippets/pvmss-tpl-…yml
   été créées : ne supprimez pas un ancien fichier qu'une VM utilise encore.
 - La baseline (qemu-guest-agent) est fusionnée sous chaque modèle et existe
   aussi seule sous le nom `pvmss-baseline-<hash>.yml` (Admin > Baseline
-  cloud-init), pour les VM cloud-image créées sans modèle. Sans ce fichier sur
+  cloud-init), pour les VM cloud-image créées sans modèle (images cloud temporairement désactivées). Sans ce fichier sur
   le nœud, ces VM démarrent avec les seules clés natives (pas d'installation
   de l'agent invité).
+
+### Pas avec une installation ISO
+
+Les modèles s'appliquent aux clones de template uniquement. Un installateur
+ISO ignore le lecteur cloud-init : l'assistant de création masque le choix du
+modèle pour une ISO et le serveur refuse une telle demande (`invalid_source`).
 
 ## Mise en place, pas à pas
 

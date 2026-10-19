@@ -1,7 +1,7 @@
-import { get, put, ApiRequestError } from '$lib/shared/api/client';
+import { get, put, ApiRequestError } from '#lib/shared/api/client.js';
 import { setContext, getContext } from 'svelte';
 import { SvelteURLSearchParams } from 'svelte/reactivity';
-import { m } from '$lib/paraglide/messages.js';
+import { m } from '#lib/paraglide/messages.js';
 
 export interface AuditConfig {
 	retentionDays: number;

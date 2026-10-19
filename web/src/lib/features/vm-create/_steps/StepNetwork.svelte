@@ -1,9 +1,9 @@
 <script lang="ts">
 	import { getVmCreateContext } from '../create.svelte';
-	import { m } from '$lib/paraglide/messages.js';
-	import FormField from '$lib/shared/ui/FormField.svelte';
-	import Select from '$lib/shared/ui/Select.svelte';
-	import Tooltip from '$lib/shared/ui/Tooltip.svelte';
+	import { m } from '#lib/paraglide/messages.js';
+	import FormField from '#lib/shared/ui/FormField.svelte';
+	import Select from '#lib/shared/ui/Select.svelte';
+	import Tooltip from '#lib/shared/ui/Tooltip.svelte';
 
 	interface Props {
 		showErrors?: boolean;

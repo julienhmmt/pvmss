@@ -7,7 +7,7 @@ import {
 	type TaskTraySnapshot,
 	type TaskOutcomeLedger
 } from './display-status';
-import type { TrackedTask } from '$lib/features/tasks/tasks.svelte';
+import type { TrackedTask } from '#lib/features/tasks/tasks.svelte.js';
 
 const vm = (overrides: Partial<MachineDisplayInput> = {}): MachineDisplayInput => ({
 	cluster: 'default',

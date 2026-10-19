@@ -2,7 +2,7 @@ import { afterEach, describe, expect, it } from 'vitest';
 import { mount, flushSync } from 'svelte';
 import SshKeyPicker from './SshKeyPicker.svelte';
 import { SshKeySelection } from './ssh-key-selection.svelte';
-import { m } from '$lib/paraglide/messages.js';
+import { m } from '#lib/paraglide/messages.js';
 import type { ProfileSshKey } from './types';
 
 function profileKey(id: string, label: string, blob: string): ProfileSshKey {

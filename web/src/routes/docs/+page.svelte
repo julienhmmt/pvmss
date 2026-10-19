@@ -1,14 +1,14 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
 	import { resolve } from '$app/paths';
-	import { get, ApiRequestError } from '$lib/shared/api/client';
-	import { getSessionContext } from '$lib/features/auth/session.svelte';
-	import { getLocaleContext } from '$lib/features/chrome/locale.svelte';
-	import { m } from '$lib/paraglide/messages.js';
-	import type { Locale } from '$lib/paraglide/runtime.js';
-	import { fetchDocPage, type DocSummary } from '$lib/features/docs/docs.svelte';
-	import Alert from '$lib/shared/ui/Alert.svelte';
-	import PageHeader from '$lib/shared/ui/PageHeader.svelte';
+	import { get, ApiRequestError } from '#lib/shared/api/client.js';
+	import { getSessionContext } from '#lib/features/auth/session.svelte.js';
+	import { getLocaleContext } from '#lib/features/chrome/locale.svelte.js';
+	import { m } from '#lib/paraglide/messages.js';
+	import type { Locale } from '#lib/paraglide/runtime.js';
+	import { fetchDocPage, type DocSummary } from '#lib/features/docs/docs.svelte.js';
+	import Alert from '#lib/shared/ui/Alert.svelte';
+	import PageHeader from '#lib/shared/ui/PageHeader.svelte';
 
 	// Help & guides (DESIGN.md §6.5): the seeded documentation as a stack of
 	// numbered accordions (first one open), each body fetched when opened,
@@ -131,7 +131,7 @@
 									<p role="status" class="text-sm text-muted-foreground">{m['help.loadingArticle']()}</p>
 								{/if}
 								<a
-									href={resolve(`/docs/${page.id}?lang=${page.lang}`)}
+									href={`${resolve('/docs/[id]', { id: page.id })}?lang=${page.lang}`}
 									class="pv-focus mt-4 inline-block rounded text-sm font-medium text-primary underline-offset-2 hover:underline"
 									data-testid="help-open-page"
 								>

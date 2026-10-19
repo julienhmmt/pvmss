@@ -1,7 +1,7 @@
-import { del, get, patch, ApiRequestError } from '$lib/shared/api/client';
-import { fetchClusterOptions } from '$lib/shared/clusters';
+import { del, get, patch, ApiRequestError } from '#lib/shared/api/client.js';
+import { fetchClusterOptions } from '#lib/shared/clusters.js';
 import { getContext, setContext } from 'svelte';
-import { m } from '$lib/paraglide/messages.js';
+import { m } from '#lib/paraglide/messages.js';
 
 /** PoolMemberVM is one member VM row on the pool detail page. */
 export interface PoolMemberVM {

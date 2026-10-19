@@ -1,11 +1,11 @@
 import { goto } from '$app/navigation';
 import { resolve } from '$app/paths';
-import { m } from '$lib/paraglide/messages.js';
-import type { TaskTrayStore } from '$lib/features/tasks/tasks.svelte';
-import type { TaskOutcomeLedger } from '$lib/features/tasks/task-outcome-ledger.svelte';
-import type { ToastRegion } from '$lib/shared/ui/toast.svelte';
-import { saveProfileKeyAfterSuccess } from '$lib/features/profile-ssh-keys/profile-save';
-import type { ProfileKeyToSave } from '$lib/features/profile-ssh-keys/types';
+import { m } from '#lib/paraglide/messages.js';
+import type { TaskTrayStore } from '#lib/features/tasks/tasks.svelte.js';
+import type { TaskOutcomeLedger } from '#lib/features/tasks/task-outcome-ledger.svelte.js';
+import type { ToastRegion } from '#lib/shared/ui/toast.svelte.js';
+import { saveProfileKeyAfterSuccess } from '#lib/features/profile-ssh-keys/profile-save.js';
+import type { ProfileKeyToSave } from '#lib/features/profile-ssh-keys/types.js';
 import type { VmCreateAccepted } from './create.svelte';
 
 /** Dependencies the post-submit helper needs from its caller. Grouped so

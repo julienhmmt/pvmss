@@ -1,14 +1,14 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
-	import { setAdminCatalogContext } from '$lib/features/admin-catalog/admin-catalog.svelte';
-	import CatalogFilesTable from '$lib/features/admin-catalog/CatalogFilesTable.svelte';
-	import CatalogListStates from '$lib/features/admin-catalog/CatalogListStates.svelte';
-	import CatalogToolbar from '$lib/features/admin-catalog/CatalogToolbar.svelte';
-	import ClusterSelector from '$lib/shared/ui/ClusterSelector.svelte';
-	import PageHeader from '$lib/shared/ui/PageHeader.svelte';
-	import TableCard from '$lib/shared/ui/TableCard.svelte';
-	import { getToastContext } from '$lib/shared/ui/toast.svelte';
-	import { m } from '$lib/paraglide/messages.js';
+	import { setAdminCatalogContext } from '#lib/features/admin-catalog/admin-catalog.svelte.js';
+	import CatalogFilesTable from '#lib/features/admin-catalog/CatalogFilesTable.svelte';
+	import CatalogListStates from '#lib/features/admin-catalog/CatalogListStates.svelte';
+	import CatalogToolbar from '#lib/features/admin-catalog/CatalogToolbar.svelte';
+	import ClusterSelector from '#lib/shared/ui/ClusterSelector.svelte';
+	import PageHeader from '#lib/shared/ui/PageHeader.svelte';
+	import TableCard from '#lib/shared/ui/TableCard.svelte';
+	import { getToastContext } from '#lib/shared/ui/toast.svelte.js';
+	import { m } from '#lib/paraglide/messages.js';
 
 	const store = setAdminCatalogContext();
 	const toast = getToastContext();

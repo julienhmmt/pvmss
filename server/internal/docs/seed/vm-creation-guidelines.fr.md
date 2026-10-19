@@ -20,7 +20,7 @@ lisible.
   du template, le disque ne peut pas être plus petit que celui du template, et
   l'assistant vous prévient quand le stockage cible impose une copie complète
   au lieu d'un clone lié.
-- **Image cloud** - importe une image cloud approuvée comme disque principal
+- **Image cloud** (temporairement désactivée : pas encore fiable) - importe une image cloud approuvée comme disque principal
   et exige les champs cloud-init (utilisateur, clés SSH, réseau). La VM ne
   démarre qu'une fois l'import terminé et cloud-init appliqué. Les clés SSH
   passent par un sélecteur partagé : les clés enregistrées dans votre profil

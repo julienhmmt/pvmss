@@ -1,14 +1,14 @@
 <script lang="ts">
 	import type { ClusterNode, NodeStatus } from './nodes.svelte';
-	import { m } from '$lib/paraglide/messages.js';
-	import { formatBytes } from '$lib/shared/format-bytes';
-	import Alert from '$lib/shared/ui/Alert.svelte';
-	import EmptyState from '$lib/shared/ui/EmptyState.svelte';
-	import NodeUsageBar from '$lib/shared/ui/NodeUsageBar.svelte';
-	import PageHeader from '$lib/shared/ui/PageHeader.svelte';
-	import Button from '$lib/shared/ui/Button.svelte';
-	import StatusDot from '$lib/shared/ui/StatusDot.svelte';
-	import TableCard from '$lib/shared/ui/TableCard.svelte';
+	import { m } from '#lib/paraglide/messages.js';
+	import { formatBytes } from '#lib/shared/format-bytes.js';
+	import Alert from '#lib/shared/ui/Alert.svelte';
+	import EmptyState from '#lib/shared/ui/EmptyState.svelte';
+	import NodeUsageBar from '#lib/shared/ui/NodeUsageBar.svelte';
+	import PageHeader from '#lib/shared/ui/PageHeader.svelte';
+	import Button from '#lib/shared/ui/Button.svelte';
+	import StatusDot from '#lib/shared/ui/StatusDot.svelte';
+	import TableCard from '#lib/shared/ui/TableCard.svelte';
 
 	interface Props {
 		nodes: ClusterNode[];

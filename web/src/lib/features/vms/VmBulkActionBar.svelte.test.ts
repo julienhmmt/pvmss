@@ -3,7 +3,7 @@ import { mount, tick } from 'svelte';
 import VmBulkActionBar from './VmBulkActionBar.svelte';
 import { VmBulkSelection, getVmBulkContext } from './bulk.svelte';
 import { VmListStore, getVmListContext, type VmListItem, type VmListResult } from './list.svelte';
-import { setLocale } from '$lib/paraglide/runtime.js';
+import { setLocale } from '#lib/paraglide/runtime.js';
 
 vi.mock('./list.svelte', async (importOriginal) => {
 	const mod = await importOriginal<typeof import('./list.svelte')>();

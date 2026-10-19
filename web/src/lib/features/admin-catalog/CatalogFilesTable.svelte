@@ -7,12 +7,12 @@
 	 * prefix ("iso:{node}:{storage}:{file}" / "image:{…}").
 	 */
 	import type { AdminImage, AdminISO, ImageSortColumn, ISOSortColumn } from './admin-catalog.svelte';
-	import { formatBytes } from '$lib/shared/format-bytes';
-	import EmptyState from '$lib/shared/ui/EmptyState.svelte';
-	import Pill from '$lib/shared/ui/Pill.svelte';
-	import TableHeader from '$lib/shared/ui/TableHeader.svelte';
+	import { formatBytes } from '#lib/shared/format-bytes.js';
+	import EmptyState from '#lib/shared/ui/EmptyState.svelte';
+	import Pill from '#lib/shared/ui/Pill.svelte';
+	import TableHeader from '#lib/shared/ui/TableHeader.svelte';
 	import ApprovalCell from './ApprovalCell.svelte';
-	import { m } from '$lib/paraglide/messages.js';
+	import { m } from '#lib/paraglide/messages.js';
 
 	type FileItem = AdminISO | AdminImage;
 	// ISOs and cloud images share one column set - the union stays correct

@@ -1,11 +1,11 @@
 <script lang="ts">
 	import type { AdminBridge, BridgeSortColumn } from './admin-catalog.svelte';
-	import EmptyState from '$lib/shared/ui/EmptyState.svelte';
-	import Pill from '$lib/shared/ui/Pill.svelte';
-	import StatusDot from '$lib/shared/ui/StatusDot.svelte';
-	import TableHeader from '$lib/shared/ui/TableHeader.svelte';
+	import EmptyState from '#lib/shared/ui/EmptyState.svelte';
+	import Pill from '#lib/shared/ui/Pill.svelte';
+	import StatusDot from '#lib/shared/ui/StatusDot.svelte';
+	import TableHeader from '#lib/shared/ui/TableHeader.svelte';
 	import ApprovalCell from './ApprovalCell.svelte';
-	import { m } from '$lib/paraglide/messages.js';
+	import { m } from '#lib/paraglide/messages.js';
 
 	interface Props {
 		bridges: AdminBridge[];

@@ -1,9 +1,9 @@
 import { getContext, setContext } from 'svelte';
 import { SvelteURLSearchParams } from 'svelte/reactivity';
-import { get, ApiRequestError } from '$lib/shared/api/client';
-import { fetchClusterOptions, type ClusterOption } from '$lib/shared/clusters';
-import { m } from '$lib/paraglide/messages.js';
-import type { VmListResult, VmStatus } from '$lib/features/vms/list.svelte';
+import { get, ApiRequestError } from '#lib/shared/api/client.js';
+import { fetchClusterOptions, type ClusterOption } from '#lib/shared/clusters.js';
+import { m } from '#lib/paraglide/messages.js';
+import type { VmListResult, VmStatus } from '#lib/features/vms/list.svelte.js';
 
 const DEFAULT_PAGE_SIZE = 15;
 const SEARCH_DEBOUNCE_MS = 300;

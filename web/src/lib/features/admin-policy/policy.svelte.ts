@@ -1,12 +1,12 @@
-import { get, post, put, ApiRequestError } from '$lib/shared/api/client';
+import { get, post, put, ApiRequestError } from '#lib/shared/api/client.js';
 import {
 	fetchClusterOptions,
 	resolveInitialAdminCluster,
 	saveAdminCluster,
 	type ClusterOption
-} from '$lib/shared/clusters';
+} from '#lib/shared/clusters.js';
 import { getContext, setContext } from 'svelte';
-import { m } from '$lib/paraglide/messages.js';
+import { m } from '#lib/paraglide/messages.js';
 
 export interface Gabarit {
 	maxSockets: number;

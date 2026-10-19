@@ -35,7 +35,7 @@ pour le détail et le dépannage.
 ## Ressources et provisionnement
 
 Le groupe **Ressources** permet d'approuver ou masquer les stockages, ISO,
-images cloud, modèles de VM et bridges que la création de VM peut
+images cloud (temporairement désactivées), modèles de VM et bridges que la création de VM peut
 référencer. Le groupe **Provisionnement** gère les profils VM, les templates
 cloud-init, la baseline cloud-init et les tags. Les ressources découvertes apparaissent automatiquement ; l'interrupteur
 « activé » contrôle ce que voient les utilisateurs. Quand une ressource

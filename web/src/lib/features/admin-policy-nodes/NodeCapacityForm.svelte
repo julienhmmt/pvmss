@@ -8,12 +8,12 @@
 	 * Server rejections map back to the offending field by dimension word.
 	 */
 	import { translateNodeCapacityError, type NodeCapacity, type NodeCapacityPatch } from './policyNodes.svelte';
-	import { m } from '$lib/paraglide/messages.js';
-	import Alert from '$lib/shared/ui/Alert.svelte';
-	import Button from '$lib/shared/ui/Button.svelte';
-	import Checkbox from '$lib/shared/ui/Checkbox.svelte';
-	import FormField from '$lib/shared/ui/FormField.svelte';
-	import TextField from '$lib/shared/ui/TextField.svelte';
+	import { m } from '#lib/paraglide/messages.js';
+	import Alert from '#lib/shared/ui/Alert.svelte';
+	import Button from '#lib/shared/ui/Button.svelte';
+	import Checkbox from '#lib/shared/ui/Checkbox.svelte';
+	import FormField from '#lib/shared/ui/FormField.svelte';
+	import TextField from '#lib/shared/ui/TextField.svelte';
 
 	type Dimension = 'vms' | 'vcpus' | 'ram' | 'disk';
 

@@ -78,7 +78,9 @@ async function ensureCloudImage(request: APIRequestContext): Promise<void> {
 	await signInAlice(request);
 }
 
-test.describe('profile SSH keys', () => {
+// Cloud images are temporarily disabled (server refuses image creation), and
+// these flows create image VMs. Re-enable with cloudImagesDisabled in vm/create.go.
+test.describe.skip('profile SSH keys', () => {
 	test.describe.configure({ mode: 'serial' });
 
 	test.beforeEach(async ({ page }) => {

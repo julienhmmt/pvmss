@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { VmCreateStore } from './create.svelte';
-import type { ProfileSshKey } from '$lib/features/profile-ssh-keys/types';
+import type { ProfileSshKey } from '#lib/features/profile-ssh-keys/types.js';
 
 function jsonResponse(status: number, body: unknown): Response {
 	return new Response(JSON.stringify(body), { status, headers: { 'Content-Type': 'application/json' } });

@@ -1,10 +1,10 @@
 <script lang="ts">
 	import { untrack } from 'svelte';
-	import Dialog from '$lib/shared/ui/Dialog.svelte';
-	import Button from '$lib/shared/ui/Button.svelte';
-	import FormField from '$lib/shared/ui/FormField.svelte';
-	import TextField from '$lib/shared/ui/TextField.svelte';
-	import { m } from '$lib/paraglide/messages.js';
+	import Dialog from '#lib/shared/ui/Dialog.svelte';
+	import Button from '#lib/shared/ui/Button.svelte';
+	import FormField from '#lib/shared/ui/FormField.svelte';
+	import TextField from '#lib/shared/ui/TextField.svelte';
+	import { m } from '#lib/paraglide/messages.js';
 
 	interface Props {
 		open?: boolean;

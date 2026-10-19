@@ -1,6 +1,6 @@
-import { post, ApiRequestError } from '$lib/shared/api/client';
-import { fetchClusterOptions, type ClusterOption } from '$lib/shared/clusters';
-import { m } from '$lib/paraglide/messages.js';
+import { post, ApiRequestError } from '#lib/shared/api/client.js';
+import { fetchClusterOptions, type ClusterOption } from '#lib/shared/clusters.js';
+import { m } from '#lib/paraglide/messages.js';
 
 /** Server error codes (server/internal/httpapi/auth.go) mapped to translated
  * copy. Falls back to a generic translated message for unknown codes so the

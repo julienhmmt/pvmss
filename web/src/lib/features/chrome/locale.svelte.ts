@@ -1,5 +1,5 @@
 import { getContext, setContext } from 'svelte';
-import { setLocale as paraglideSetLocale, type Locale } from '$lib/paraglide/runtime.js';
+import { setLocale as paraglideSetLocale, type Locale } from '#lib/paraglide/runtime.js';
 
 /**
  * Supported interface locales. Adding a third locale is one more message file

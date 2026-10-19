@@ -9,8 +9,8 @@
 	import { onMount } from 'svelte';
 	import { goto } from '$app/navigation';
 	import { resolve } from '$app/paths';
-	import { getSessionContext } from '$lib/features/auth/session.svelte';
-	import { m } from '$lib/paraglide/messages.js';
+	import { getSessionContext } from '#lib/features/auth/session.svelte.js';
+	import { m } from '#lib/paraglide/messages.js';
 
 	let { children }: { children: Snippet } = $props();
 

@@ -1,6 +1,6 @@
-import { get, put, ApiRequestError } from '$lib/shared/api/client';
+import { get, put, ApiRequestError } from '#lib/shared/api/client.js';
 import { setContext, getContext } from 'svelte';
-import { m } from '$lib/paraglide/messages.js';
+import { m } from '#lib/paraglide/messages.js';
 
 export const LOG_LEVELS = ['debug', 'info', 'warn', 'error'] as const;
 export type LogLevel = (typeof LOG_LEVELS)[number];

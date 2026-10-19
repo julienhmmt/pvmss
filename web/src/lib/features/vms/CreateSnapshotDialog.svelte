@@ -1,13 +1,13 @@
 <script lang="ts">
-	import Dialog from '$lib/shared/ui/Dialog.svelte';
-	import FormField from '$lib/shared/ui/FormField.svelte';
-	import TextField from '$lib/shared/ui/TextField.svelte';
-	import Textarea from '$lib/shared/ui/Textarea.svelte';
-	import Checkbox from '$lib/shared/ui/Checkbox.svelte';
-	import Button from '$lib/shared/ui/Button.svelte';
+	import Dialog from '#lib/shared/ui/Dialog.svelte';
+	import FormField from '#lib/shared/ui/FormField.svelte';
+	import TextField from '#lib/shared/ui/TextField.svelte';
+	import Textarea from '#lib/shared/ui/Textarea.svelte';
+	import Checkbox from '#lib/shared/ui/Checkbox.svelte';
+	import Button from '#lib/shared/ui/Button.svelte';
 	import type { VmStatus } from './list.svelte';
 	import { VmSnapshotsStore } from './snapshots.svelte';
-	import { m } from '$lib/paraglide/messages.js';
+	import { m } from '#lib/paraglide/messages.js';
 
 	interface Props {
 		open?: boolean;

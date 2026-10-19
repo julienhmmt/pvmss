@@ -3,10 +3,10 @@
 	import { goto } from '$app/navigation';
 	import { resolve } from '$app/paths';
 	import { page } from '$app/state';
-	import { setVmDetailContext } from '$lib/features/vms/detail.svelte';
-	import { onVisibleRefresh } from '$lib/shared/visibility-refresh';
-	import VmDetail from '$lib/features/vms/VmDetail.svelte';
-	import { m } from '$lib/paraglide/messages.js';
+	import { setVmDetailContext } from '#lib/features/vms/detail.svelte.js';
+	import { onVisibleRefresh } from '#lib/shared/visibility-refresh.js';
+	import VmDetail from '#lib/features/vms/VmDetail.svelte';
+	import { m } from '#lib/paraglide/messages.js';
 
 	const cluster = page.params.cluster ?? '';
 	const vmid = Number(page.params.vmid);

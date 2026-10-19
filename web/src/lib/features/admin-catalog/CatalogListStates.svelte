@@ -9,11 +9,11 @@
 	import { goto } from '$app/navigation';
 	import { resolve } from '$app/paths';
 	import type { Snippet } from 'svelte';
-	import Alert from '$lib/shared/ui/Alert.svelte';
-	import Button from '$lib/shared/ui/Button.svelte';
-	import EmptyState from '$lib/shared/ui/EmptyState.svelte';
-	import TableSkeleton from '$lib/shared/ui/TableSkeleton.svelte';
-	import { m } from '$lib/paraglide/messages.js';
+	import Alert from '#lib/shared/ui/Alert.svelte';
+	import Button from '#lib/shared/ui/Button.svelte';
+	import EmptyState from '#lib/shared/ui/EmptyState.svelte';
+	import TableSkeleton from '#lib/shared/ui/TableSkeleton.svelte';
+	import { m } from '#lib/paraglide/messages.js';
 
 	interface Props {
 		loading: boolean;

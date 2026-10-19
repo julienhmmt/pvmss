@@ -41,36 +41,6 @@ func findRepoRootForCutover(t *testing.T) string {
 	return ""
 }
 
-// TestCutoverReadiness_DeploymentManifestReferencesV04 asserts that
-// pvmss-deployment.yaml references the v0.4 binary entrypoint and web
-// build path, not the legacy pvmss-backend / frontend paths.
-func TestCutoverReadiness_DeploymentManifestReferencesV04(t *testing.T) {
-	t.Parallel()
-
-	repoRoot := findRepoRootForCutover(t)
-	manifest := filepath.Join(repoRoot, "pvmss-deployment.yaml")
-
-	content, err := os.ReadFile(manifest) //nolint:gosec // test reads known fixture path
-	if err != nil {
-		t.Fatalf("read %s: %v", manifest, err)
-	}
-
-	text := string(content)
-
-	// Must NOT reference the legacy binary name
-	if strings.Contains(text, "pvmss-backend") {
-		t.Error("pvmss-deployment.yaml still references legacy binary 'pvmss-backend'")
-	}
-	// Must NOT reference the legacy frontend path
-	if strings.Contains(text, "/app/frontend") {
-		t.Error("pvmss-deployment.yaml still references legacy path '/app/frontend'")
-	}
-	// Must reference the v0.4 binary
-	if !strings.Contains(text, "pvmss") {
-		t.Error("pvmss-deployment.yaml does not reference the v0.4 binary")
-	}
-}
-
 // TestCutoverReadiness_HelmChartReferencesV04 asserts that helm/ templates
 // and values do not reference legacy paths.
 func TestCutoverReadiness_HelmChartReferencesV04(t *testing.T) {

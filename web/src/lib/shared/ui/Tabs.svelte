@@ -12,7 +12,7 @@
 	 * Keyboard behaviour is the same in both: arrow keys move the selection,
 	 * only the active tab is in the tab order.
 	 */
-	import { m } from '$lib/paraglide/messages.js';
+	import { m } from '#lib/paraglide/messages.js';
 
 	type Look = 'segmented' | 'underline';
 

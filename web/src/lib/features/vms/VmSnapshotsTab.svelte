@@ -1,18 +1,18 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
-	import { getTaskTrayContext } from '$lib/features/tasks/tasks.svelte';
+	import { getTaskTrayContext } from '#lib/features/tasks/tasks.svelte.js';
 	import { getVmDetailContext } from './detail.svelte';
 	import CreateSnapshotDialog from './CreateSnapshotDialog.svelte';
 	import DeleteSnapshotDialog from './DeleteSnapshotDialog.svelte';
 	import RollbackSnapshotDialog from './RollbackSnapshotDialog.svelte';
 	import { VmSnapshotsStore, type VmSnapshot } from './snapshots.svelte';
-	import { m } from '$lib/paraglide/messages.js';
-	import Alert from '$lib/shared/ui/Alert.svelte';
-	import Card from '$lib/shared/ui/Card.svelte';
-	import EmptyState from '$lib/shared/ui/EmptyState.svelte';
-	import Pill from '$lib/shared/ui/Pill.svelte';
-	import Button from '$lib/shared/ui/Button.svelte';
-	import TableSkeleton from '$lib/shared/ui/TableSkeleton.svelte';
+	import { m } from '#lib/paraglide/messages.js';
+	import Alert from '#lib/shared/ui/Alert.svelte';
+	import Card from '#lib/shared/ui/Card.svelte';
+	import EmptyState from '#lib/shared/ui/EmptyState.svelte';
+	import Pill from '#lib/shared/ui/Pill.svelte';
+	import Button from '#lib/shared/ui/Button.svelte';
+	import TableSkeleton from '#lib/shared/ui/TableSkeleton.svelte';
 
 	const vmStore = getVmDetailContext();
 	const tray = getTaskTrayContext();

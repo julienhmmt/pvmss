@@ -1,4 +1,4 @@
-import { get } from '$lib/shared/api/client';
+import { get } from '#lib/shared/api/client.js';
 
 /** DocSummary mirrors the docSummaryDTO from GET /api/v1/docs. */
 export interface DocSummary {

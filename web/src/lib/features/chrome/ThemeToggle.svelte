@@ -1,8 +1,8 @@
 <script lang="ts">
 	import { getThemeContext } from './theme.svelte';
-	import { m } from '$lib/paraglide/messages.js';
-	import SunIcon from '$lib/shared/ui/icons/SunIcon.svelte';
-	import MoonIcon from '$lib/shared/ui/icons/MoonIcon.svelte';
+	import { m } from '#lib/paraglide/messages.js';
+	import SunIcon from '#lib/shared/ui/icons/SunIcon.svelte';
+	import MoonIcon from '#lib/shared/ui/icons/MoonIcon.svelte';
 
 	/** ThemeToggle - explicit icon button: shows the current mode, click to toggle.
 	 *  Keeps a recognizable sun/moon glyph rather than an unlabeled switch. */

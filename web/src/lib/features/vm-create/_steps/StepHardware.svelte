@@ -1,9 +1,9 @@
 <script lang="ts">
 	import { getVmCreateContext, gabaritCeiling } from '../create.svelte';
-	import { m } from '$lib/paraglide/messages.js';
-	import Checkbox from '$lib/shared/ui/Checkbox.svelte';
-	import FormField from '$lib/shared/ui/FormField.svelte';
-	import TextField from '$lib/shared/ui/TextField.svelte';
+	import { m } from '#lib/paraglide/messages.js';
+	import Checkbox from '#lib/shared/ui/Checkbox.svelte';
+	import FormField from '#lib/shared/ui/FormField.svelte';
+	import TextField from '#lib/shared/ui/TextField.svelte';
 	import ProfilePicker from '../ProfilePicker.svelte';
 
 	interface Props {

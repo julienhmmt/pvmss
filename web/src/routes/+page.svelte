@@ -2,12 +2,12 @@
 	import { onMount } from 'svelte';
 	import { goto } from '$app/navigation';
 	import { resolve } from '$app/paths';
-	import HomeCapabilities from '$lib/features/home/HomeCapabilities.svelte';
-	import HomeCta from '$lib/features/home/HomeCta.svelte';
-	import HomeHowItWorks from '$lib/features/home/HomeHowItWorks.svelte';
-	import Logo from '$lib/shared/ui/Logo.svelte';
-	import { getSessionContext } from '$lib/features/auth/session.svelte';
-	import { m } from '$lib/paraglide/messages.js';
+	import HomeCapabilities from '#lib/features/home/HomeCapabilities.svelte';
+	import HomeCta from '#lib/features/home/HomeCta.svelte';
+	import HomeHowItWorks from '#lib/features/home/HomeHowItWorks.svelte';
+	import Logo from '#lib/shared/ui/Logo.svelte';
+	import { getSessionContext } from '#lib/features/auth/session.svelte.js';
+	import { m } from '#lib/paraglide/messages.js';
 
 	const session = getSessionContext();
 
@@ -18,7 +18,7 @@
 		if (session.principal?.isAdmin) {
 			void goto(resolve('/admin'));
 		} else if (session.principal) {
-			void goto(resolve('/vms'), { replaceState: true });
+			void goto(resolve('/vms'), { replace: true });
 		}
 	});
 </script>

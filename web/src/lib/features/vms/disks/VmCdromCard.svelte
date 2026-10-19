@@ -1,14 +1,14 @@
 <script lang="ts">
 	import { getVmDetailContext } from '../detail.svelte';
-	import Alert from '$lib/shared/ui/Alert.svelte';
-	import { getToastContext } from '$lib/shared/ui/toast.svelte';
+	import Alert from '#lib/shared/ui/Alert.svelte';
+	import { getToastContext } from '#lib/shared/ui/toast.svelte.js';
 	import MountIsoDialog from './MountIsoDialog.svelte';
-	import Dialog from '$lib/shared/ui/Dialog.svelte';
-	import Card from '$lib/shared/ui/Card.svelte';
-	import DiscIcon from '$lib/shared/ui/icons/DiscIcon.svelte';
-	import SpinnerIcon from '$lib/shared/ui/icons/SpinnerIcon.svelte';
-	import { m } from '$lib/paraglide/messages.js';
-	import Button from '$lib/shared/ui/Button.svelte';
+	import Dialog from '#lib/shared/ui/Dialog.svelte';
+	import Card from '#lib/shared/ui/Card.svelte';
+	import DiscIcon from '#lib/shared/ui/icons/DiscIcon.svelte';
+	import SpinnerIcon from '#lib/shared/ui/icons/SpinnerIcon.svelte';
+	import { m } from '#lib/paraglide/messages.js';
+	import Button from '#lib/shared/ui/Button.svelte';
 
 	const store = getVmDetailContext();
 	const toast = getToastContext();

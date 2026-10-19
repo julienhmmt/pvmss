@@ -1,8 +1,8 @@
 import { getContext, setContext } from 'svelte';
 import { Terminal } from '@xterm/xterm';
 import { FitAddon } from '@xterm/addon-fit';
-import { ApiRequestError } from '$lib/shared/api/client';
-import { m } from '$lib/paraglide/messages.js';
+import { ApiRequestError } from '#lib/shared/api/client.js';
+import { m } from '#lib/paraglide/messages.js';
 import { buildSerialWebSocketURL, consoleTicketErrorMessage, fetchSerialTicket } from './console';
 
 /** Connection states the serial console UI reflects. Mirrors ConsoleState. */

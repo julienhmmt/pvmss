@@ -1,4 +1,4 @@
-import { m } from '$lib/paraglide/messages.js';
+import { m } from '#lib/paraglide/messages.js';
 
 /** Localized title and description for an HTTP error status. */
 export interface ErrorMessage {

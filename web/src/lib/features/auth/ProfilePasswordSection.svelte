@@ -1,14 +1,14 @@
 <script lang="ts">
 	import { tick } from 'svelte';
-	import { post, ApiRequestError } from '$lib/shared/api/client';
+	import { post, ApiRequestError } from '#lib/shared/api/client.js';
 	import { getSessionContext } from './session.svelte';
-	import { getToastContext } from '$lib/shared/ui/toast.svelte';
-	import Alert from '$lib/shared/ui/Alert.svelte';
-	import Button from '$lib/shared/ui/Button.svelte';
-	import Card from '$lib/shared/ui/Card.svelte';
-	import FormField from '$lib/shared/ui/FormField.svelte';
-	import TextField from '$lib/shared/ui/TextField.svelte';
-	import { m } from '$lib/paraglide/messages.js';
+	import { getToastContext } from '#lib/shared/ui/toast.svelte.js';
+	import Alert from '#lib/shared/ui/Alert.svelte';
+	import Button from '#lib/shared/ui/Button.svelte';
+	import Card from '#lib/shared/ui/Card.svelte';
+	import FormField from '#lib/shared/ui/FormField.svelte';
+	import TextField from '#lib/shared/ui/TextField.svelte';
+	import { m } from '#lib/paraglide/messages.js';
 
 	const MIN_PASSWORD_LENGTH = 8;
 

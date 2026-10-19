@@ -19,7 +19,7 @@
 	 */
 	import type { Snippet } from 'svelte';
 	import { nextFieldId } from './field-id';
-	import { m } from '$lib/paraglide/messages.js';
+	import { m } from '#lib/paraglide/messages.js';
 
 	interface FieldChildProps {
 		/** Control id; also used by the label's `for`. */

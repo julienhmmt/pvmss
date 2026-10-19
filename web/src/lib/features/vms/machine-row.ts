@@ -1,4 +1,4 @@
-import { m } from '$lib/paraglide/messages.js';
+import { m } from '#lib/paraglide/messages.js';
 import type { MachineDisplayStatus } from './display-status';
 
 /** The explanation line under a row, when its state needs one. */

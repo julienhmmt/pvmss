@@ -1,10 +1,10 @@
 <script lang="ts">
 	import { getVmCreateContext, type VmSource } from '../create.svelte';
-	import { m } from '$lib/paraglide/messages.js';
-	import { getTaskOutcomeLedgerContext } from '$lib/features/tasks/task-outcome-ledger.svelte';
-	import FormField from '$lib/shared/ui/FormField.svelte';
-	import TextField from '$lib/shared/ui/TextField.svelte';
-	import Select from '$lib/shared/ui/Select.svelte';
+	import { m } from '#lib/paraglide/messages.js';
+	import { getTaskOutcomeLedgerContext } from '#lib/features/tasks/task-outcome-ledger.svelte.js';
+	import FormField from '#lib/shared/ui/FormField.svelte';
+	import TextField from '#lib/shared/ui/TextField.svelte';
+	import Select from '#lib/shared/ui/Select.svelte';
 	import TemplatePicker from '../TemplatePicker.svelte';
 	import ImagePicker from '../ImagePicker.svelte';
 	import ImageCloudInitFields from '../ImageCloudInitFields.svelte';

@@ -6,9 +6,9 @@
 	 * cluster no longer reports) cannot be toggled and instead offers the
 	 * Remove action that forgets the stale row.
 	 */
-	import Switch from '$lib/shared/ui/Switch.svelte';
-	import Button from '$lib/shared/ui/Button.svelte';
-	import { m } from '$lib/paraglide/messages.js';
+	import Switch from '#lib/shared/ui/Switch.svelte';
+	import Button from '#lib/shared/ui/Button.svelte';
+	import { m } from '#lib/paraglide/messages.js';
 
 	interface Props {
 		enabled: boolean;

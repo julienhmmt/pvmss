@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { keyIdentity, keyComment, profileKeyErrorMessage } from './ssh-key-identity';
-import { m } from '$lib/paraglide/messages.js';
+import { m } from '#lib/paraglide/messages.js';
 
 describe('keyIdentity', () => {
 	it('returns the type and blob fields joined by one space', () => {

@@ -32,7 +32,7 @@ troubleshooting.
 ## Resources and provisioning
 
 The **Resources** group lets you approve or hide the storages, ISOs, cloud
-images, VM templates, and bridges that VM creation may reference. The
+images (temporarily disabled), VM templates, and bridges that VM creation may reference. The
 **Provisioning** group manages VM profiles, cloud-init templates, the
 cloud-init baseline, and tags. Discovered resources appear
 automatically; toggle the enabled switch to control what users see. When a

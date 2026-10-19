@@ -2,7 +2,7 @@ import { describe, it, expect, afterEach, vi } from 'vitest';
 import { mount, flushSync } from 'svelte';
 import CloudInitDocumentSelect from './CloudInitDocumentSelect.svelte';
 import { VmCreateStore, type VmCreateCatalog } from './create.svelte';
-import { m } from '$lib/paraglide/messages.js';
+import { m } from '#lib/paraglide/messages.js';
 
 vi.mock('./create.svelte', async (importOriginal) => {
 	const original = await importOriginal<typeof import('./create.svelte')>();

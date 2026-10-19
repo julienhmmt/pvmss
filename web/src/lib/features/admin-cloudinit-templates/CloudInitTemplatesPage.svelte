@@ -1,18 +1,18 @@
 <script lang="ts">
 	import type { AdminCloudInitTemplate } from './cloudInitTemplates.svelte';
 	import CloudInitDocumentStatus from './CloudInitDocumentStatus.svelte';
-	import type { ClusterOption } from '$lib/shared/clusters';
+	import type { ClusterOption } from '#lib/shared/clusters.js';
 	import CloudInitTemplateFormDialog from './CloudInitTemplateFormDialog.svelte';
-	import Alert from '$lib/shared/ui/Alert.svelte';
-	import PageHeader from '$lib/shared/ui/PageHeader.svelte';
-	import ClusterSelector from '$lib/shared/ui/ClusterSelector.svelte';
-	import Button from '$lib/shared/ui/Button.svelte';
-	import ConfirmDialog from '$lib/shared/ui/ConfirmDialog.svelte';
-	import Switch from '$lib/shared/ui/Switch.svelte';
-	import TableCard from '$lib/shared/ui/TableCard.svelte';
-	import TableSkeleton from '$lib/shared/ui/TableSkeleton.svelte';
-	import EmptyState from '$lib/shared/ui/EmptyState.svelte';
-	import { m } from '$lib/paraglide/messages.js';
+	import Alert from '#lib/shared/ui/Alert.svelte';
+	import PageHeader from '#lib/shared/ui/PageHeader.svelte';
+	import ClusterSelector from '#lib/shared/ui/ClusterSelector.svelte';
+	import Button from '#lib/shared/ui/Button.svelte';
+	import ConfirmDialog from '#lib/shared/ui/ConfirmDialog.svelte';
+	import Switch from '#lib/shared/ui/Switch.svelte';
+	import TableCard from '#lib/shared/ui/TableCard.svelte';
+	import TableSkeleton from '#lib/shared/ui/TableSkeleton.svelte';
+	import EmptyState from '#lib/shared/ui/EmptyState.svelte';
+	import { m } from '#lib/paraglide/messages.js';
 
 	interface Props {
 		templates: AdminCloudInitTemplate[];

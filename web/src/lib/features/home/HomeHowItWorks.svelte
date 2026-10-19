@@ -1,7 +1,7 @@
 <script lang="ts">
-	import { m } from '$lib/paraglide/messages.js';
-	import StepNumberIcon from '$lib/shared/ui/icons/StepNumberIcon.svelte';
-	import { getSessionContext } from '$lib/features/auth/session.svelte';
+	import { m } from '#lib/paraglide/messages.js';
+	import StepNumberIcon from '#lib/shared/ui/icons/StepNumberIcon.svelte';
+	import { getSessionContext } from '#lib/features/auth/session.svelte.js';
 
 	const session = getSessionContext();
 

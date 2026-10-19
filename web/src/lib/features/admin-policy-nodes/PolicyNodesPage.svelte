@@ -4,18 +4,18 @@
 	import NodeLoadCell from './NodeLoadCell.svelte';
 	import { resolve } from '$app/paths';
 	import type { NodeCapacity, NodeCapacityPatch, NodeCapacitySortColumn } from './policyNodes.svelte';
-	import type { ClusterOption } from '$lib/shared/clusters';
+	import type { ClusterOption } from '#lib/shared/clusters.js';
 	import type { NodeStatus } from '../cluster/nodes.svelte';
-	import { m } from '$lib/paraglide/messages.js';
-	import Alert from '$lib/shared/ui/Alert.svelte';
-	import PageHeader from '$lib/shared/ui/PageHeader.svelte';
-	import ClusterSelector from '$lib/shared/ui/ClusterSelector.svelte';
-	import Button from '$lib/shared/ui/Button.svelte';
-	import Pill from '$lib/shared/ui/Pill.svelte';
-	import TableCard from '$lib/shared/ui/TableCard.svelte';
-	import TableSkeleton from '$lib/shared/ui/TableSkeleton.svelte';
-	import EmptyState from '$lib/shared/ui/EmptyState.svelte';
-	import TableHeader from '$lib/shared/ui/TableHeader.svelte';
+	import { m } from '#lib/paraglide/messages.js';
+	import Alert from '#lib/shared/ui/Alert.svelte';
+	import PageHeader from '#lib/shared/ui/PageHeader.svelte';
+	import ClusterSelector from '#lib/shared/ui/ClusterSelector.svelte';
+	import Button from '#lib/shared/ui/Button.svelte';
+	import Pill from '#lib/shared/ui/Pill.svelte';
+	import TableCard from '#lib/shared/ui/TableCard.svelte';
+	import TableSkeleton from '#lib/shared/ui/TableSkeleton.svelte';
+	import EmptyState from '#lib/shared/ui/EmptyState.svelte';
+	import TableHeader from '#lib/shared/ui/TableHeader.svelte';
 
 	interface Props {
 		nodes: NodeCapacity[];
