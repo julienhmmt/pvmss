@@ -29,7 +29,7 @@
 	};
 
 	function vmHref(machine: VmListItem): string {
-		return resolve(`/vms/${encodeURIComponent(machine.cluster)}/${machine.vmid}`);
+		return resolve('/vms/[cluster]/[vmid]', { cluster: encodeURIComponent(machine.cluster), vmid: String(machine.vmid) });
 	}
 
 	const statusOptions = $derived([

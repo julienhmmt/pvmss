@@ -48,9 +48,9 @@
 	}
 
 	function updateURLLang(lang: Locale): void {
-		const url = new URL(page.url);
+		const url = new URL(page.url.href);
 		url.searchParams.set('lang', lang);
-		void goto(url, { replaceState: true, keepFocus: true, noScroll: true });
+		void goto(url, { replace: true, reset: false });
 	}
 
 	onMount(() => {

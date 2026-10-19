@@ -87,12 +87,12 @@
 	const configTab: ConfigTab = $derived(parseSub(page.url.searchParams.get('sub')));
 
 	function syncTabUrl(tab: MainTab, sub: ConfigTab): void {
-		const url = new URL(page.url);
+		const url = new URL(page.url.href);
 		if (tab === 'connect') url.searchParams.delete('tab');
 		else url.searchParams.set('tab', tab);
 		if (sub === 'overview') url.searchParams.delete('sub');
 		else url.searchParams.set('sub', sub);
-		void goto(`${url.pathname}${url.search}`, { replaceState: true, noScroll: true, keepFocus: true });
+		void goto(`${url.pathname}${url.search}`, { replace: true, reset: false });
 	}
 
 	function selectTab(id: string): void {

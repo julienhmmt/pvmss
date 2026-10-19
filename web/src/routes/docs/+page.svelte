@@ -131,7 +131,7 @@
 									<p role="status" class="text-sm text-muted-foreground">{m['help.loadingArticle']()}</p>
 								{/if}
 								<a
-									href={resolve(`/docs/${page.id}?lang=${page.lang}`)}
+									href={`${resolve('/docs/[id]', { id: page.id })}?lang=${page.lang}`}
 									class="pv-focus mt-4 inline-block rounded text-sm font-medium text-primary underline-offset-2 hover:underline"
 									data-testid="help-open-page"
 								>

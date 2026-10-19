@@ -35,10 +35,10 @@
 	function selectTab(id: string): void {
 		const tab: SettingsTab = parseTab(id);
 		if (tab === activeTab) return;
-		const url = new URL(page.url);
+		const url = new URL(page.url.href);
 		if (tab === 'audit') url.searchParams.delete('tab');
 		else url.searchParams.set('tab', tab);
-		void goto(`${url.pathname}${url.search}`, { replaceState: true, noScroll: true, keepFocus: true });
+		void goto(`${url.pathname}${url.search}`, { replace: true, reset: false });
 	}
 
 	const auditStore = setAuditLogContext();

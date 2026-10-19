@@ -1,4 +1,4 @@
-import type { HandleClientError } from '@sveltejs/kit';
+import type { HandleClientError } from '@sveltejs/kit/hooks';
 import { installClientErrorReporting, reportClientError } from '$lib/shared/api/client-errors';
 
 installClientErrorReporting();

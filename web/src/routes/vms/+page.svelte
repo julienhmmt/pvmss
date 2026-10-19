@@ -31,9 +31,8 @@
 			const base = resolve('/vms');
 			const target = queryString === '' ? base : `${base}?${queryString}`;
 			void goto(target, {
-				replaceState: true,
-				noScroll: true,
-				keepFocus: true
+				replace: true,
+				reset: false
 			});
 		}
 	});

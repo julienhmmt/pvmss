@@ -11,7 +11,7 @@
 		initialQuery: page.url.search,
 		navigate: (queryString: string) => {
 			const base = resolve('/search');
-			void goto(queryString === '' ? base : `${base}?${queryString}`, { noScroll: true, keepFocus: true });
+			void goto(queryString === '' ? base : `${base}?${queryString}`, { reset: false });
 		}
 	});
 

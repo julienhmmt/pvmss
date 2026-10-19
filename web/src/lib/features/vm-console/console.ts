@@ -56,7 +56,7 @@ export function consoleTicketErrorMessage(err: unknown, fallback: () => string):
  * Builds the same-origin path to the console route, for the pop-out window.
  */
 export function buildConsolePopoutURL(cluster: string, vmid: number): string {
-	return resolve(`/vms/${encodeURIComponent(cluster)}/${vmid}/console`);
+	return resolve('/vms/[cluster]/[vmid]/console', { cluster: encodeURIComponent(cluster), vmid: String(vmid) });
 }
 
 /**

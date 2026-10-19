@@ -18,7 +18,7 @@
 		if (session.principal?.isAdmin) {
 			void goto(resolve('/admin'));
 		} else if (session.principal) {
-			void goto(resolve('/vms'), { replaceState: true });
+			void goto(resolve('/vms'), { replace: true });
 		}
 	});
 </script>
