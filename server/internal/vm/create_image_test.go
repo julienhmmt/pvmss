@@ -301,7 +301,7 @@ func TestCreate_Image_SourceMutualExclusion(t *testing.T) {
 		{
 			name: "image and iso",
 			mut: func(req *vm.CreateRequest) {
-				req.ISO = &vm.ISORequest{Storage: testStorageLocal, File: "debian-12-generic-amd64.iso"}
+				req.ISO = &vm.ISORequest{Storage: testStorageLocal, File: testISOFile}
 			},
 		},
 		{

@@ -9,8 +9,10 @@ import (
 // The image-mode code stays tested while cloud images are disabled in prod.
 func init() { cloudImagesDisabled = false }
 
+//nolint:paralleltest // flips the package-level cloudImagesDisabled switch
 func TestCreate_Image_RejectedWhileDisabled(t *testing.T) {
 	cloudImagesDisabled = true
+
 	t.Cleanup(func() { cloudImagesDisabled = false })
 
 	_, err := Create(t.Context(), auth.Identity{}, "default", CreateRequest{Image: &ImageRequest{}}, CreateDeps{})

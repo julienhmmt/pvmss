@@ -50,7 +50,7 @@ func findCloneCall(vmid int) *cluster.FakeCall {
 func TestCreate_TemplateClone_RejectsMutualExclusion(t *testing.T) {
 	fixture := newCreateFixture(t)
 	req := templateRequest(9000)
-	req.ISO = &vm.ISORequest{Storage: cluster.FakeStorageLocal, File: "debian-12-generic-amd64.iso"}
+	req.ISO = &vm.ISORequest{Storage: cluster.FakeStorageLocal, File: testISOFile}
 
 	_, err := fixture.create(t, aliceIdentity(), req)
 	if !errors.Is(err, vm.ErrInvalidSource) {
@@ -710,7 +710,7 @@ func TestCreate_TemplateClone_UnreadableFallsBackToStoredDisk(t *testing.T) {
 func TestCreate_ISO_RejectsCloudInitTemplate(t *testing.T) {
 	fixture := newCreateFixture(t)
 	req := detailedRequest()
-	req.ISO = &vm.ISORequest{Storage: cluster.FakeStorageLocal, File: "debian-12-generic-amd64.iso"}
+	req.ISO = &vm.ISORequest{Storage: cluster.FakeStorageLocal, File: testISOFile}
 	req.CloudInitTemplateID = "any"
 
 	_, err := fixture.create(t, aliceIdentity(), req)
