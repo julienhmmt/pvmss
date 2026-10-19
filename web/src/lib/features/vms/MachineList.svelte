@@ -88,6 +88,10 @@
 		return resolve('/vms/[cluster]/[vmid]', { cluster: machine.cluster, vmid: String(machine.vmid) });
 	}
 
+	function consoleHref(machine: VmListItem): string {
+		return resolve('/vms/[cluster]/[vmid]/console', { cluster: machine.cluster, vmid: String(machine.vmid) });
+	}
+
 	/** Tags minus the internal marker; the cluster no longer rides here - it
 	 *  is either the chip beside the name or implied by the active filter. */
 	function visibleTags(machine: VmListItem): string[] {
@@ -465,7 +469,20 @@
 								<div class="max-[699px]:order-3">
 									<MachineStatusPill {status} pending={busy || status === 'provisioning'} />
 								</div>
-								<div class="relative z-10 flex justify-end max-[699px]:order-4 max-[699px]:col-span-2 max-[699px]:justify-start max-[699px]:pl-[50px] max-[369px]:pl-0">
+								<div class="relative z-10 flex justify-end max-[699px]:order-4 max-[699px]:col-span-2 max-[699px]:justify-start max-[699px]:pl-[50px] max-[369px]:pl-0 gap-2">
+									{#if status === 'running' && !busy}
+										<ButtonLink
+											variant="secondary"
+											size="sm"
+											href={consoleHref(machine)}
+											target="_blank"
+											rel="noopener noreferrer"
+											aria-label={m['vms.list.actionConsoleFor']({ name: machine.name })}
+											data-testid="vm-row-console"
+										>
+											{m['vms.list.actionConsole']()}
+										</ButtonLink>
+									{/if}
 									{#if action === 'start'}
 										<Button
 											variant="secondary"

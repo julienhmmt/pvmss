@@ -1824,6 +1824,8 @@
   "vms.list.columnResources": "Resources",
   "vms.list.resourcesCompute": "{cpu} vCPU · {memory} RAM",
   "vms.list.actionStart": "Start",
+  "vms.list.actionConsole": "Console",
+  "vms.list.actionConsoleFor": "Open the console of {name} in a new tab",
   "vms.list.actionDetails": "View details",
   "vms.list.actionDetailsFor": "View details of {name}",
   "vms.list.actionStartFor": "Start {name}",
