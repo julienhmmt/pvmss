@@ -9,7 +9,6 @@
 	 * mounted on every viewport.
 	 */
 	import { page } from '$app/state';
-	import { getSessionContext } from '$lib/features/auth/session.svelte';
 	import { contextLabel } from './context-label';
 	import { untrack } from 'svelte';
 	import { getTaskTrayContext } from '$lib/features/tasks/tasks.svelte';
@@ -22,7 +21,6 @@
 	const tray = getTaskTrayContext();
 	const chrome = getChromeContext();
 	const toast = getToastContext();
-	const session = getSessionContext();
 	const context = $derived(contextLabel(page.url.pathname));
 
 	let dismissTimer: ReturnType<typeof setTimeout> | null = null;
