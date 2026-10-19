@@ -170,30 +170,30 @@ theirs. Full procedure and troubleshooting: [docs/cloud-init.md](docs/cloud-init
 
 You can rely on `.env` + `env_file` or inline `environment:` entries, but **not both**. The needed variables are listed below:
 
-| Variable                                      | Description                                                                | Required                 | Default                |
-| --------------------------------------------- | -------------------------------------------------------------------------- | ------------------------ | ---------------------- |
-| `PVMSS_PORT`                                  | TCP port the HTTP server listens on (1–65535)                              | ✅                       | - |
-| `PVMSS_DB_PATH`                               | Path to the SQLite database file (must be on a persistent volume)          | ✅                       | - |
-| `SESSION_SECRET`                              | 32+ byte secret to encrypt sessions/cookies                                | ✅                       | - |
-| `PVMSS_CLUSTER_SOURCE`                        | `proxmox` for a real cluster, `fake` for demo data (no default, on purpose) | ✅                       | - |
-| `LOG_LEVEL`                                   | `debug`, `info`, `warn`, `error` - lowercase only                          | ✅                       | - |
-| `LOG_FORMAT`                                  | `console` (human readable) or `json` (machine/SIEM)                        | ✅                       | - |
-| `LOG_OUTPUT`                                  | `stdout`, `stderr`, or a writable file path                                | ✅                       | - |
-| `PROXMOX_URL`                                 | Full API URL (`https://host:8006/api2/json`)                               | when source is `proxmox` | - |
-| `PROXMOX_API_TOKEN_NAME`                      | Proxmox token name (`user@pve!token`)                                      | when source is `proxmox` | - |
-| `PROXMOX_API_TOKEN_VALUE`                     | Token secret that matches the name above                                   | when source is `proxmox` | - |
-| `ADMIN_PASSWORD_HASH`                         | Bcrypt hash for the local admin login; disabled when empty                 | ❌                       | - |
-| `PVMSS_HOST`                                  | Address to bind (`0.0.0.0` for all interfaces)                             | ❌                       | `127.0.0.1`            |
-| `PVMSS_WEB_DIR`                               | Directory holding the built SPA                                            | ❌                       | relative to the binary |
-| `PVMSS_COOKIE_SECURE`                         | `Secure` flag on auth cookies (keep `true` in production)                  | ❌                       | `true`                 |
-| `PVMSS_INVENTORY_REFRESH_INTERVAL`            | Background inventory refresh period                                        | ❌                       | `30s`                  |
-| `PVMSS_INVENTORY_MANUAL_REFRESH_MIN_INTERVAL` | Minimum delay between user-triggered refreshes                             | ❌                       | `5s`                   |
-| `PVMSS_INVENTORY_REFRESH_TIMEOUT`             | Timeout for a single inventory refresh                                     | ❌                       | `15s`                  |
-| `PVMSS_MAX_LIST_PAGE_SIZE`                    | Upper bound on list endpoint page size                                     | ❌                       | `100`                  |
-| `PVMSS_TRUSTED_PROXY_HOPS`                    | Number of reverse proxies in front of PVMSS (for client IP / rate limits); set `0` with no proxy | ❌                       | `1`                    |
-| `PVMSS_RATE_LIMIT_MAX`                        | Raises every built-in rate-limit ceiling (per-IP auth, per-user writes); `0` keeps the defaults | ❌                       | `0`                    |
+| Variable                                      | Description                                                                                                  | Required                 | Default                |
+| --------------------------------------------- | ------------------------------------------------------------------------------------------------------------ | ------------------------ | ---------------------- |
+| `PVMSS_PORT`                                  | TCP port the HTTP server listens on (1–65535)                                                                | ✅                       | -                      |
+| `PVMSS_DB_PATH`                               | Path to the SQLite database file (must be on a persistent volume)                                            | ✅                       | -                      |
+| `SESSION_SECRET`                              | 32+ byte secret to encrypt sessions/cookies                                                                  | ✅                       | -                      |
+| `PVMSS_CLUSTER_SOURCE`                        | `proxmox` for a real cluster, `fake` for demo data (no default, on purpose)                                  | ✅                       | -                      |
+| `LOG_LEVEL`                                   | `debug`, `info`, `warn`, `error` - lowercase only                                                            | ✅                       | -                      |
+| `LOG_FORMAT`                                  | `console` (human readable) or `json` (machine/SIEM)                                                          | ✅                       | -                      |
+| `LOG_OUTPUT`                                  | `stdout`, `stderr`, or a writable file path                                                                  | ✅                       | -                      |
+| `PROXMOX_URL`                                 | Full API URL (`https://host:8006/api2/json`)                                                                 | when source is `proxmox` | -                      |
+| `PROXMOX_API_TOKEN_NAME`                      | Proxmox token name (`user@pve!token`)                                                                        | when source is `proxmox` | -                      |
+| `PROXMOX_API_TOKEN_VALUE`                     | Token secret that matches the name above                                                                     | when source is `proxmox` | -                      |
+| `ADMIN_PASSWORD_HASH`                         | Bcrypt hash for the local admin login; disabled when empty                                                   | ❌                       | -                      |
+| `PVMSS_HOST`                                  | Address to bind (`0.0.0.0` for all interfaces)                                                               | ❌                       | `127.0.0.1`            |
+| `PVMSS_WEB_DIR`                               | Directory holding the built SPA                                                                              | ❌                       | relative to the binary |
+| `PVMSS_COOKIE_SECURE`                         | `Secure` flag on auth cookies (keep `true` in production)                                                    | ❌                       | `true`                 |
+| `PVMSS_INVENTORY_REFRESH_INTERVAL`            | Background inventory refresh period                                                                          | ❌                       | `30s`                  |
+| `PVMSS_INVENTORY_MANUAL_REFRESH_MIN_INTERVAL` | Minimum delay between user-triggered refreshes                                                               | ❌                       | `5s`                   |
+| `PVMSS_INVENTORY_REFRESH_TIMEOUT`             | Timeout for a single inventory refresh                                                                       | ❌                       | `15s`                  |
+| `PVMSS_MAX_LIST_PAGE_SIZE`                    | Upper bound on list endpoint page size                                                                       | ❌                       | `100`                  |
+| `PVMSS_TRUSTED_PROXY_HOPS`                    | Number of reverse proxies in front of PVMSS (for client IP / rate limits); set `0` with no proxy             | ❌                       | `1`                    |
+| `PVMSS_RATE_LIMIT_MAX`                        | Raises every built-in rate-limit ceiling (per-IP auth, per-user writes); `0` keeps the defaults              | ❌                       | `0`                    |
 | `PVMSS_METRICS_PORT`                          | Port of the `GET /metrics` listener on `PVMSS_HOST` (1-65535, different from `PVMSS_PORT`); empty disables it | ❌                       | empty                  |
-| `TZ`                                          | Container timezone                                                         | ❌                       | `UTC`                  |
+| `TZ`                                          | Container timezone                                                                                           | ❌                       | `UTC`                  |
 
 The Docker image presets `PVMSS_DB_PATH=/data/pvmss.db`, `PVMSS_HOST=0.0.0.0`
 and `PVMSS_WEB_DIR=/app/web/build`, so those three can be left unset in a
@@ -238,11 +238,11 @@ Filebeat, or any SIEM.
 
 ## Deployment options
 
-| Platform            | Notes                                                                                                                                                                                                                                      |
-| ------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| **Docker / Podman** | Recommended for quick trials or single-node installs. Mount the database volume and expose port `50000`.                                                                                                                                  |
-| **Docker Compose**  | Best experience: one service, reproducible environment, easy env var management.                                                                                                                                                           |
-| **Kubernetes**      | Use [`pvmss-deployment.yaml`](pvmss-deployment.yaml) for namespace + secret + PVC + Deployment + Service. Apply with `kubectl apply -f pvmss-deployment.yaml`. Provide your own ingress/HTTPRoute (see `pvmss-httproute.yml`). |
+| Platform            | Notes                                                                                                    |
+| ------------------- | -------------------------------------------------------------------------------------------------------- |
+| **Docker / Podman** | Recommended for quick trials or single-node installs. Mount the database volume and expose port `50000`. |
+| **Docker Compose**  | Best experience: one service, reproducible environment, easy env var management.                         |
+| **Kubernetes**      | Use the Helm chart in [`helm/`](helm/): `helm install pvmss ./helm -f my-values.yaml`.                   |
 
 ## Quick start with Docker run
 
@@ -337,10 +337,6 @@ LOG_OUTPUT: "/app/pvmss.log"
 3. Login with the admin credentials configured earlier, on the page "Login", click on "Administrator login".
 
 ## Start with Kubernetes
-
-Use the file [`pvmss-deployment.yaml`](pvmss-deployment.yaml) to create namespace + secret + PVC + Deployment + Service.
-
-Apply with `kubectl apply -f pvmss-deployment.yaml`. Provide your own ingress/HTTPRoute, an example is provided in `pvmss-httproute.yml` (Gateway API).
 
 A Helm chart lives in [`helm/`](helm/): `helm install pvmss ./helm -f my-values.yaml`.
 `values.yaml` documents every variable.

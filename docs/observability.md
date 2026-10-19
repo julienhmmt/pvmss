@@ -181,8 +181,7 @@ metrics:
 ```
 
 This sets `PVMSS_METRICS_PORT`, adds a `metrics` container and Service port,
-and renders a ServiceMonitor. With `pvmss-deployment.yaml`, uncomment the
-`PVMSS_METRICS_PORT` env var.
+and renders a ServiceMonitor.
 
 ### Example alerts
 
