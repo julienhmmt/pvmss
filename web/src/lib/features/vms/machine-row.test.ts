@@ -1,5 +1,5 @@
 import { beforeAll, describe, expect, it } from 'vitest';
-import { setLocale } from '$lib/paraglide/runtime.js';
+import { setLocale } from '#lib/paraglide/runtime.js';
 import { compactBytes, rowAction, rowHint } from './machine-row';
 import type { MachineDisplayStatus } from './display-status';
 

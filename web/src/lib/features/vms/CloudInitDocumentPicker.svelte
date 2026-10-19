@@ -1,11 +1,11 @@
 <script lang="ts">
 	import { onMount, untrack } from 'svelte';
 	import type { CloudInitStore } from './cloudinit.svelte';
-	import { m } from '$lib/paraglide/messages.js';
-	import Alert from '$lib/shared/ui/Alert.svelte';
-	import Button from '$lib/shared/ui/Button.svelte';
-	import FormField from '$lib/shared/ui/FormField.svelte';
-	import Select from '$lib/shared/ui/Select.svelte';
+	import { m } from '#lib/paraglide/messages.js';
+	import Alert from '#lib/shared/ui/Alert.svelte';
+	import Button from '#lib/shared/ui/Button.svelte';
+	import FormField from '#lib/shared/ui/FormField.svelte';
+	import Select from '#lib/shared/ui/Select.svelte';
 
 	// The VM's cloud-init document: users switch between the templates whose
 	// file the administrator placed on the VM's node (or none). They never

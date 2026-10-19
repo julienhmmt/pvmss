@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { resolveErrorMessage, KNOWN_ERROR_CODES } from './errorMessage';
-import { m } from '$lib/paraglide/messages.js';
-import { getLocale, setLocale } from '$lib/paraglide/runtime.js';
+import { m } from '#lib/paraglide/messages.js';
+import { getLocale, setLocale } from '#lib/paraglide/runtime.js';
 
 // T012 (US1): resolveErrorMessage - a known `code` resolves to the matching
 // localized message; an unlisted `code` resolves to the generic localized

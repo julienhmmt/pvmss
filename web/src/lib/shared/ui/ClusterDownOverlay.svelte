@@ -1,8 +1,8 @@
 <script lang="ts">
 	import type { Snippet } from 'svelte';
-	import { getStatusContext } from '$lib/features/chrome/status.svelte';
-	import { m } from '$lib/paraglide/messages.js';
-	import { post } from '$lib/shared/api/client';
+	import { getStatusContext } from '#lib/features/chrome/status.svelte.js';
+	import { m } from '#lib/paraglide/messages.js';
+	import { post } from '#lib/shared/api/client.js';
 	import Button from './Button.svelte';
 
 	/**

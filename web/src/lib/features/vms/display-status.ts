@@ -1,6 +1,6 @@
 import type { VmStatus } from './list.svelte';
 import type { VmAction } from './detail.svelte';
-import type { TrackedTask } from '$lib/features/tasks/tasks.svelte';
+import type { TrackedTask } from '#lib/features/tasks/tasks.svelte.js';
 
 /**
  * The seven end-user-facing machine states (DESIGN.md §7). These are not

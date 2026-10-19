@@ -11,7 +11,7 @@
  * implementation.
  */
 
-import { get, post } from '$lib/shared/api/client';
+import { get, post } from '#lib/shared/api/client.js';
 import type { VmStatus } from './list.svelte';
 
 /** Poll interval for live-status reads during convergence. */

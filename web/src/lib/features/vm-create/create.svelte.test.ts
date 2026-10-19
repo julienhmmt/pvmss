@@ -1,12 +1,12 @@
 import { afterEach, describe, it, expect, vi } from 'vitest';
-import { ApiRequestError } from '$lib/shared/api/client';
+import { ApiRequestError } from '#lib/shared/api/client.js';
 import { VmCreateStore, type VmCreateCatalog } from './create.svelte';
 
 // The cloud-image message keys are not compiled into src/lib/paraglide yet
 // (the translations land in web/messages/*.json in a follow-up). Add only the
 // missing keys over the real module so the image-mode paths are testable;
 // remove this mock once the keys exist in the message files.
-vi.mock('$lib/paraglide/messages.js', async (importOriginal) => {
+vi.mock('#lib/paraglide/messages.js', async (importOriginal) => {
 	const actual = await importOriginal<Record<string, unknown>>();
 	const messages = actual as { m: Record<string, (inputs?: Record<string, unknown>) => string> };
 	return {

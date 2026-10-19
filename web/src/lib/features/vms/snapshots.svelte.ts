@@ -1,7 +1,7 @@
-import { del, get, post, ApiRequestError } from '$lib/shared/api/client';
-import { m } from '$lib/paraglide/messages.js';
+import { del, get, post, ApiRequestError } from '#lib/shared/api/client.js';
+import { m } from '#lib/paraglide/messages.js';
 import { SvelteSet } from 'svelte/reactivity';
-import type { TaskKind, TaskTrayStore } from '$lib/features/tasks/tasks.svelte';
+import type { TaskKind, TaskTrayStore } from '#lib/features/tasks/tasks.svelte.js';
 
 export interface VmSnapshot {
 	name: string;

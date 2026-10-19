@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { getStatusContext, type Severity } from './status.svelte';
-	import { m } from '$lib/paraglide/messages.js';
+	import { m } from '#lib/paraglide/messages.js';
 
 	/**
 	 * StatusBanner - one component, three severities (info / degraded /

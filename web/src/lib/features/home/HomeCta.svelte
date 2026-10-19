@@ -1,8 +1,8 @@
 <script lang="ts">
 	import { resolve } from '$app/paths';
-	import { getSessionContext } from '$lib/features/auth/session.svelte';
-	import { m } from '$lib/paraglide/messages.js';
-	import ButtonLink from '$lib/shared/ui/ButtonLink.svelte';
+	import { getSessionContext } from '#lib/features/auth/session.svelte.js';
+	import { m } from '#lib/paraglide/messages.js';
+	import ButtonLink from '#lib/shared/ui/ButtonLink.svelte';
 
 	/**
 	 * HomeCta - reads T02's session store (initialized/username/isAdmin) and

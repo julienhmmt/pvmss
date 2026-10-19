@@ -1,8 +1,8 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
-	import ClustersPage from '$lib/features/admin-clusters/ClustersPage.svelte';
-	import { AdminClustersStore } from '$lib/features/admin-clusters/clusters.svelte';
-	import { m } from '$lib/paraglide/messages.js';
+	import ClustersPage from '#lib/features/admin-clusters/ClustersPage.svelte';
+	import { AdminClustersStore } from '#lib/features/admin-clusters/clusters.svelte.js';
+	import { m } from '#lib/paraglide/messages.js';
 
 	const store = new AdminClustersStore();
 

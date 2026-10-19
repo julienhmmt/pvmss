@@ -4,8 +4,8 @@
 	 * shortcuts. Opened by pressing `?` outside of form fields. Closes on
 	 * Escape or backdrop click.
 	 */
-	import Dialog from '$lib/shared/ui/Dialog.svelte';
-	import { m } from '$lib/paraglide/messages.js';
+	import Dialog from '#lib/shared/ui/Dialog.svelte';
+	import { m } from '#lib/paraglide/messages.js';
 
 	interface Props {
 		open?: boolean;

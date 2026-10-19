@@ -1,12 +1,12 @@
 <script lang="ts">
 	import { getVmCreateContext } from '../create.svelte';
-	import { getTaskTrayContext } from '$lib/features/tasks/tasks.svelte';
-	import { getTaskOutcomeLedgerContext } from '$lib/features/tasks/task-outcome-ledger.svelte';
+	import { getTaskTrayContext } from '#lib/features/tasks/tasks.svelte.js';
+	import { getTaskOutcomeLedgerContext } from '#lib/features/tasks/task-outcome-ledger.svelte.js';
 	import { handleAccepted } from '../post-submit';
-	import Alert from '$lib/shared/ui/Alert.svelte';
-	import { getToastContext } from '$lib/shared/ui/toast.svelte';
-	import { m } from '$lib/paraglide/messages.js';
-	import Button from '$lib/shared/ui/Button.svelte';
+	import Alert from '#lib/shared/ui/Alert.svelte';
+	import { getToastContext } from '#lib/shared/ui/toast.svelte.js';
+	import { m } from '#lib/paraglide/messages.js';
+	import Button from '#lib/shared/ui/Button.svelte';
 
 	// Review step (V09): shows the exact request the server will receive - 
 	// there is no second, expert-only endpoint (FR-001) and no hidden fields.

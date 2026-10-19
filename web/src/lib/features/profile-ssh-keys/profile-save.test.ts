@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { saveProfileKeyAfterSuccess } from './profile-save';
-import { ToastRegion } from '$lib/shared/ui/toast.svelte';
-import { m } from '$lib/paraglide/messages.js';
+import { ToastRegion } from '#lib/shared/ui/toast.svelte.js';
+import { m } from '#lib/paraglide/messages.js';
 
 function jsonResponse(status: number, body: unknown): Response {
 	return new Response(JSON.stringify(body), { status, headers: { 'Content-Type': 'application/json' } });

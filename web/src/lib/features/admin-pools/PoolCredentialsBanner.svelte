@@ -1,10 +1,10 @@
 <script lang="ts">
 	import type { CreatedPoolCredentials } from './pools.svelte';
-	import Alert from '$lib/shared/ui/Alert.svelte';
-	import Button from '$lib/shared/ui/Button.svelte';
-	import Card from '$lib/shared/ui/Card.svelte';
-	import CopyButton from '$lib/shared/ui/CopyButton.svelte';
-	import { m } from '$lib/paraglide/messages.js';
+	import Alert from '#lib/shared/ui/Alert.svelte';
+	import Button from '#lib/shared/ui/Button.svelte';
+	import Card from '#lib/shared/ui/Card.svelte';
+	import CopyButton from '#lib/shared/ui/CopyButton.svelte';
+	import { m } from '#lib/paraglide/messages.js';
 
 	interface Props {
 		credentials: CreatedPoolCredentials;

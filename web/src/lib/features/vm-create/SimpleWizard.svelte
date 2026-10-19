@@ -1,25 +1,25 @@
 <script lang="ts">
 	import { tick } from 'svelte';
 	import { getVmCreateContext, gabaritCeiling, type SimpleSource } from './create.svelte';
-	import { getTaskTrayContext } from '$lib/features/tasks/tasks.svelte';
-	import { getTaskOutcomeLedgerContext } from '$lib/features/tasks/task-outcome-ledger.svelte';
+	import { getTaskTrayContext } from '#lib/features/tasks/tasks.svelte.js';
+	import { getTaskOutcomeLedgerContext } from '#lib/features/tasks/task-outcome-ledger.svelte.js';
 	import { handleAccepted } from './post-submit';
-	import Alert from '$lib/shared/ui/Alert.svelte';
-	import { getToastContext } from '$lib/shared/ui/toast.svelte';
-	import { m } from '$lib/paraglide/messages.js';
-	import FormField from '$lib/shared/ui/FormField.svelte';
-	import FormSection from '$lib/shared/ui/FormSection.svelte';
-	import TextField from '$lib/shared/ui/TextField.svelte';
-	import Select from '$lib/shared/ui/Select.svelte';
+	import Alert from '#lib/shared/ui/Alert.svelte';
+	import { getToastContext } from '#lib/shared/ui/toast.svelte.js';
+	import { m } from '#lib/paraglide/messages.js';
+	import FormField from '#lib/shared/ui/FormField.svelte';
+	import FormSection from '#lib/shared/ui/FormSection.svelte';
+	import TextField from '#lib/shared/ui/TextField.svelte';
+	import Select from '#lib/shared/ui/Select.svelte';
 	import TemplatePicker from './TemplatePicker.svelte';
 	import ImagePicker from './ImagePicker.svelte';
 	import ImageCloudInitFields from './ImageCloudInitFields.svelte';
 	import CloudInitDocumentSelect from './CloudInitDocumentSelect.svelte';
-	import Card from '$lib/shared/ui/Card.svelte';
-	import Checkbox from '$lib/shared/ui/Checkbox.svelte';
-	import Button from '$lib/shared/ui/Button.svelte';
-	import Skeleton from '$lib/shared/ui/Skeleton.svelte';
-	import RadioCard from '$lib/shared/ui/RadioCard.svelte';
+	import Card from '#lib/shared/ui/Card.svelte';
+	import Checkbox from '#lib/shared/ui/Checkbox.svelte';
+	import Button from '#lib/shared/ui/Button.svelte';
+	import Skeleton from '#lib/shared/ui/Skeleton.svelte';
+	import RadioCard from '#lib/shared/ui/RadioCard.svelte';
 
 	// Simple mode, Calm workspace layout (DESIGN.md §6.2): a single-page form
 	// with every section visible and a live, sticky summary rail that holds

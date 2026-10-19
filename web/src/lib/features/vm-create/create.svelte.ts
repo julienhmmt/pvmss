@@ -1,9 +1,9 @@
 import { getContext, setContext } from 'svelte';
-import { get, post, ApiRequestError } from '$lib/shared/api/client';
-import { fetchClusterOptions, type ClusterOption } from '$lib/shared/clusters';
-import { m } from '$lib/paraglide/messages.js';
-import { SshKeySelection } from '$lib/features/profile-ssh-keys/ssh-key-selection.svelte';
-import { loadProfileSshKeys } from '$lib/features/profile-ssh-keys/profile-ssh-keys.svelte';
+import { get, post, ApiRequestError } from '#lib/shared/api/client.js';
+import { fetchClusterOptions, type ClusterOption } from '#lib/shared/clusters.js';
+import { m } from '#lib/paraglide/messages.js';
+import { SshKeySelection } from '#lib/features/profile-ssh-keys/ssh-key-selection.svelte.js';
+import { loadProfileSshKeys } from '#lib/features/profile-ssh-keys/profile-ssh-keys.svelte.js';
 
 export interface CatalogStorage {
 	name: string;

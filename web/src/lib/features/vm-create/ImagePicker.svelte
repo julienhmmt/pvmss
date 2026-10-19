@@ -5,9 +5,9 @@
 	 * size, the disk floor the server enforces (code "disk_below_image").
 	 */
 	import { getVmCreateContext } from './create.svelte';
-	import { m } from '$lib/paraglide/messages.js';
-	import FormField from '$lib/shared/ui/FormField.svelte';
-	import Select from '$lib/shared/ui/Select.svelte';
+	import { m } from '#lib/paraglide/messages.js';
+	import FormField from '#lib/shared/ui/FormField.svelte';
+	import Select from '#lib/shared/ui/Select.svelte';
 
 	interface Props {
 		error?: string | null;

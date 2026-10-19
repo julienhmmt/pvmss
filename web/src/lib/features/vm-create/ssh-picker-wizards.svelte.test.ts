@@ -3,10 +3,10 @@ import { mount } from 'svelte';
 import StepBase from './_steps/StepBase.svelte';
 import SimpleWizard from './SimpleWizard.svelte';
 import { VmCreateStore, type VmCreateCatalog } from './create.svelte';
-import { TaskTrayStore } from '$lib/features/tasks/tasks.svelte';
-import { TaskOutcomeLedger } from '$lib/features/tasks/task-outcome-ledger.svelte';
-import { ToastRegion } from '$lib/shared/ui/toast.svelte';
-import type { ProfileSshKey } from '$lib/features/profile-ssh-keys/types';
+import { TaskTrayStore } from '#lib/features/tasks/tasks.svelte.js';
+import { TaskOutcomeLedger } from '#lib/features/tasks/task-outcome-ledger.svelte.js';
+import { ToastRegion } from '#lib/shared/ui/toast.svelte.js';
+import type { ProfileSshKey } from '#lib/features/profile-ssh-keys/types.js';
 
 let storeInstance: VmCreateStore;
 const tray = new TaskTrayStore();
@@ -18,18 +18,18 @@ vi.mock('./create.svelte', async (importOriginal) => {
 	return { ...original, getVmCreateContext: () => storeInstance };
 });
 
-vi.mock('$lib/features/tasks/tasks.svelte', async (importOriginal) => {
-	const original = await importOriginal<typeof import('$lib/features/tasks/tasks.svelte')>();
+vi.mock('#lib/features/tasks/tasks.svelte.js', async (importOriginal) => {
+	const original = await importOriginal<typeof import('#lib/features/tasks/tasks.svelte.js')>();
 	return { ...original, getTaskTrayContext: () => tray };
 });
 
-vi.mock('$lib/shared/ui/toast.svelte', async (importOriginal) => {
-	const original = await importOriginal<typeof import('$lib/shared/ui/toast.svelte')>();
+vi.mock('#lib/shared/ui/toast.svelte.js', async (importOriginal) => {
+	const original = await importOriginal<typeof import('#lib/shared/ui/toast.svelte.js')>();
 	return { ...original, getToastContext: () => toast };
 });
 
-vi.mock('$lib/features/tasks/task-outcome-ledger.svelte', async (importOriginal) => {
-	const original = await importOriginal<typeof import('$lib/features/tasks/task-outcome-ledger.svelte')>();
+vi.mock('#lib/features/tasks/task-outcome-ledger.svelte.js', async (importOriginal) => {
+	const original = await importOriginal<typeof import('#lib/features/tasks/task-outcome-ledger.svelte.js')>();
 	return { ...original, getTaskOutcomeLedgerContext: () => outcomeLedger };
 });
 

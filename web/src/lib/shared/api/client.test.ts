@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { ApiRequestError, del, get, patch, post, put } from './client';
-import { m } from '$lib/paraglide/messages.js';
-import { setLocale } from '$lib/paraglide/runtime.js';
+import { m } from '#lib/paraglide/messages.js';
+import { setLocale } from '#lib/paraglide/runtime.js';
 
 function jsonResponse(status: number, body: unknown): Response {
 	return new Response(JSON.stringify(body), { status, headers: { 'Content-Type': 'application/json' } });

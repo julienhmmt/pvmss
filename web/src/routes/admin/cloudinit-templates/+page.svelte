@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
-	import { setAdminCloudInitTemplatesContext } from '$lib/features/admin-cloudinit-templates/cloudInitTemplates.svelte';
-	import CloudInitTemplatesPage from '$lib/features/admin-cloudinit-templates/CloudInitTemplatesPage.svelte';
+	import { setAdminCloudInitTemplatesContext } from '#lib/features/admin-cloudinit-templates/cloudInitTemplates.svelte.js';
+	import CloudInitTemplatesPage from '#lib/features/admin-cloudinit-templates/CloudInitTemplatesPage.svelte';
 
 	const store = setAdminCloudInitTemplatesContext();
 

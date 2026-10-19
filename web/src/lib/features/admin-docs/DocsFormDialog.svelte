@@ -1,12 +1,12 @@
 <script lang="ts">
-	import Button from '$lib/shared/ui/Button.svelte';
-	import Dialog from '$lib/shared/ui/Dialog.svelte';
-	import FormField from '$lib/shared/ui/FormField.svelte';
-	import TextField from '$lib/shared/ui/TextField.svelte';
-	import Textarea from '$lib/shared/ui/Textarea.svelte';
-	import Select from '$lib/shared/ui/Select.svelte';
-	import Checkbox from '$lib/shared/ui/Checkbox.svelte';
-	import { m } from '$lib/paraglide/messages.js';
+	import Button from '#lib/shared/ui/Button.svelte';
+	import Dialog from '#lib/shared/ui/Dialog.svelte';
+	import FormField from '#lib/shared/ui/FormField.svelte';
+	import TextField from '#lib/shared/ui/TextField.svelte';
+	import Textarea from '#lib/shared/ui/Textarea.svelte';
+	import Select from '#lib/shared/ui/Select.svelte';
+	import Checkbox from '#lib/shared/ui/Checkbox.svelte';
+	import { m } from '#lib/paraglide/messages.js';
 	import type { AdminDocPage } from './docs.svelte';
 
 	interface Props {

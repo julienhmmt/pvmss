@@ -3,15 +3,15 @@
 	import { getVmDetailContext } from './detail.svelte';
 	import type { CloudInitConfigUpdate } from './cloudinit.types';
 	import { CloudInitStore } from './cloudinit.svelte';
-	import { SshKeySelection } from '$lib/features/profile-ssh-keys/ssh-key-selection.svelte';
-	import { loadProfileSshKeys } from '$lib/features/profile-ssh-keys/profile-ssh-keys.svelte';
-	import { saveProfileKeyAfterSuccess } from '$lib/features/profile-ssh-keys/profile-save';
-	import { getToastContext } from '$lib/shared/ui/toast.svelte';
+	import { SshKeySelection } from '#lib/features/profile-ssh-keys/ssh-key-selection.svelte.js';
+	import { loadProfileSshKeys } from '#lib/features/profile-ssh-keys/profile-ssh-keys.svelte.js';
+	import { saveProfileKeyAfterSuccess } from '#lib/features/profile-ssh-keys/profile-save.js';
+	import { getToastContext } from '#lib/shared/ui/toast.svelte.js';
 	import CloudInitForm from './CloudInitForm.svelte';
 	import CloudInitDocumentPicker from './CloudInitDocumentPicker.svelte';
 	import SaveCloudInitDialog from './SaveCloudInitDialog.svelte';
-	import Card from '$lib/shared/ui/Card.svelte';
-	import { m } from '$lib/paraglide/messages.js';
+	import Card from '#lib/shared/ui/Card.svelte';
+	import { m } from '#lib/paraglide/messages.js';
 
 	interface Props {
 		/** Optional override for tests - production callers use the default,

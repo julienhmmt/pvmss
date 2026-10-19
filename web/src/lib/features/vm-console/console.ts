@@ -1,6 +1,6 @@
 import { resolve } from '$app/paths';
-import { post, ApiRequestError } from '$lib/shared/api/client';
-import { apiPath } from '$lib/shared/api/paths';
+import { post, ApiRequestError } from '#lib/shared/api/client.js';
+import { apiPath } from '#lib/shared/api/paths.js';
 
 /** VNC ticket response from POST /api/v1/vms/:cluster/:vmid/vnc-ticket. */
 export interface VncTicketResponse {

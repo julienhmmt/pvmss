@@ -3,9 +3,9 @@ import { mount } from 'svelte';
 import CloudInitForm from './CloudInitForm.svelte';
 import { CloudInitStore } from './cloudinit.svelte';
 import type { CloudInitConfigUpdate } from './cloudinit.types';
-import { SshKeySelection } from '$lib/features/profile-ssh-keys/ssh-key-selection.svelte';
-import type { ProfileSshKey } from '$lib/features/profile-ssh-keys/types';
-import { m } from '$lib/paraglide/messages.js';
+import { SshKeySelection } from '#lib/features/profile-ssh-keys/ssh-key-selection.svelte.js';
+import type { ProfileSshKey } from '#lib/features/profile-ssh-keys/types.js';
+import { m } from '#lib/paraglide/messages.js';
 
 function profileKey(id: string, label: string, blob: string): ProfileSshKey {
 	return { id, label, publicKey: `ssh-ed25519 ${blob} ${label}`, fingerprint: `SHA256:${id}`, createdAt: '2026-09-29T10:00:00Z' };

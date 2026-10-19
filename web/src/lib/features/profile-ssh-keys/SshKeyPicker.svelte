@@ -8,10 +8,10 @@
 	 * An empty profile degrades to the bare textarea - the same UX the
 	 * SSH-key field always had (D7).
 	 */
-	import { m } from '$lib/paraglide/messages.js';
-	import Checkbox from '$lib/shared/ui/Checkbox.svelte';
-	import Textarea from '$lib/shared/ui/Textarea.svelte';
-	import TextField from '$lib/shared/ui/TextField.svelte';
+	import { m } from '#lib/paraglide/messages.js';
+	import Checkbox from '#lib/shared/ui/Checkbox.svelte';
+	import Textarea from '#lib/shared/ui/Textarea.svelte';
+	import TextField from '#lib/shared/ui/TextField.svelte';
 	import type { SshKeySelection } from './ssh-key-selection.svelte';
 
 	interface Props {

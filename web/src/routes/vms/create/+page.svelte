@@ -1,19 +1,19 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
-	import { setVmCreateContext, type CreateMode } from '$lib/features/vm-create/create.svelte';
-	import Alert from '$lib/shared/ui/Alert.svelte';
-	import { getSessionContext } from '$lib/features/auth/session.svelte';
-	import SimpleWizard from '$lib/features/vm-create/SimpleWizard.svelte';
-	import DetailedWizard from '$lib/features/vm-create/DetailedWizard.svelte';
-	import ModeChooser from '$lib/features/vm-create/ModeChooser.svelte';
-	import ClusterSelector from '$lib/shared/ui/ClusterSelector.svelte';
-	import PageHeader from '$lib/shared/ui/PageHeader.svelte';
-	import Card from '$lib/shared/ui/Card.svelte';
-	import EmptyState from '$lib/shared/ui/EmptyState.svelte';
-	import Button from '$lib/shared/ui/Button.svelte';
-	import ButtonLink from '$lib/shared/ui/ButtonLink.svelte';
+	import { setVmCreateContext, type CreateMode } from '#lib/features/vm-create/create.svelte.js';
+	import Alert from '#lib/shared/ui/Alert.svelte';
+	import { getSessionContext } from '#lib/features/auth/session.svelte.js';
+	import SimpleWizard from '#lib/features/vm-create/SimpleWizard.svelte';
+	import DetailedWizard from '#lib/features/vm-create/DetailedWizard.svelte';
+	import ModeChooser from '#lib/features/vm-create/ModeChooser.svelte';
+	import ClusterSelector from '#lib/shared/ui/ClusterSelector.svelte';
+	import PageHeader from '#lib/shared/ui/PageHeader.svelte';
+	import Card from '#lib/shared/ui/Card.svelte';
+	import EmptyState from '#lib/shared/ui/EmptyState.svelte';
+	import Button from '#lib/shared/ui/Button.svelte';
+	import ButtonLink from '#lib/shared/ui/ButtonLink.svelte';
 	import { resolve } from '$app/paths';
-	import { m } from '$lib/paraglide/messages.js';
+	import { m } from '#lib/paraglide/messages.js';
 
 	const form = setVmCreateContext();
 	const session = getSessionContext();

@@ -7,10 +7,10 @@
 	 * the markup is written once.
 	 */
 	import { AdminCatalogStore } from './admin-catalog.svelte';
-	import TextField from '$lib/shared/ui/TextField.svelte';
-	import Select from '$lib/shared/ui/Select.svelte';
-	import Button from '$lib/shared/ui/Button.svelte';
-	import { m } from '$lib/paraglide/messages.js';
+	import TextField from '#lib/shared/ui/TextField.svelte';
+	import Select from '#lib/shared/ui/Select.svelte';
+	import Button from '#lib/shared/ui/Button.svelte';
+	import { m } from '#lib/paraglide/messages.js';
 
 	type CatalogKind = 'nodes' | 'bridges' | 'storages' | 'isos' | 'images' | 'templates';
 

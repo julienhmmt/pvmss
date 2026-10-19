@@ -1,5 +1,5 @@
-import { get, post, put, del, ApiRequestError } from '$lib/shared/api/client';
-import { m } from '$lib/paraglide/messages.js';
+import { get, post, put, del, ApiRequestError } from '#lib/shared/api/client.js';
+import { m } from '#lib/paraglide/messages.js';
 
 export interface AdminCluster {
 	name: string;

@@ -13,8 +13,8 @@
 	 * already uses - rather than Select's `placeholder` prop, which renders a
 	 * disabled "choose one" prompt, a different semantic than "all of them".
 	 */
-	import type { ClusterOption } from '$lib/shared/clusters';
-	import { m } from '$lib/paraglide/messages.js';
+	import type { ClusterOption } from '#lib/shared/clusters.js';
+	import { m } from '#lib/paraglide/messages.js';
 	import Select from './Select.svelte';
 
 	interface Props {

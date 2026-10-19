@@ -4,7 +4,7 @@
 	 * (MAC address, IP) and copies it on click, briefly showing "Copied!".
 	 * For a labelled copy action next to a field, use CopyButton instead.
 	 */
-	import { m } from '$lib/paraglide/messages.js';
+	import { m } from '#lib/paraglide/messages.js';
 
 	interface Props {
 		/** Value displayed on the chip and written to the clipboard. */

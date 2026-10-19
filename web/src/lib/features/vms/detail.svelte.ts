@@ -1,7 +1,7 @@
 import { getContext, setContext } from 'svelte';
-import { get, post, del, patch, put, ApiRequestError } from '$lib/shared/api/client';
-import { STALE_REFRESH_MS } from '$lib/shared/visibility-refresh';
-import { m } from '$lib/paraglide/messages.js';
+import { get, post, del, patch, put, ApiRequestError } from '#lib/shared/api/client.js';
+import { STALE_REFRESH_MS } from '#lib/shared/visibility-refresh.js';
+import { m } from '#lib/paraglide/messages.js';
 import type { VmStatus } from './list.svelte';
 import { convergeSingle } from './converge';
 import { markVmDeleted } from './recently-deleted';

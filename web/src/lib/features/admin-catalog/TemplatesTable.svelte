@@ -1,11 +1,11 @@
 <script lang="ts">
 	import type { AdminTemplate, TemplateSortColumn } from './admin-catalog.svelte';
-	import EmptyState from '$lib/shared/ui/EmptyState.svelte';
-	import Pill from '$lib/shared/ui/Pill.svelte';
-	import TableHeader from '$lib/shared/ui/TableHeader.svelte';
-	import Button from '$lib/shared/ui/Button.svelte';
+	import EmptyState from '#lib/shared/ui/EmptyState.svelte';
+	import Pill from '#lib/shared/ui/Pill.svelte';
+	import TableHeader from '#lib/shared/ui/TableHeader.svelte';
+	import Button from '#lib/shared/ui/Button.svelte';
 	import ApprovalCell from './ApprovalCell.svelte';
-	import { m } from '$lib/paraglide/messages.js';
+	import { m } from '#lib/paraglide/messages.js';
 
 	interface Props {
 		templates: AdminTemplate[];

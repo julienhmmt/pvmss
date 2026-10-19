@@ -1,23 +1,23 @@
 <script lang="ts">
 	import type { AdminPool, CreatedPoolCredentials } from './pools.svelte';
 	import { resolve } from '$app/paths';
-	import type { ClusterOption } from '$lib/shared/clusters';
+	import type { ClusterOption } from '#lib/shared/clusters.js';
 	import CreatePoolDialog from './CreatePoolDialog.svelte';
 	import DeletePoolConfirm from './DeletePoolConfirm.svelte';
 	import PoolVmBar from './PoolVmBar.svelte';
 	import PoolCredentialsBanner from './PoolCredentialsBanner.svelte';
-	import Alert from '$lib/shared/ui/Alert.svelte';
-	import PageHeader from '$lib/shared/ui/PageHeader.svelte';
-	import Button from '$lib/shared/ui/Button.svelte';
-	import TableCard from '$lib/shared/ui/TableCard.svelte';
-	import TableSkeleton from '$lib/shared/ui/TableSkeleton.svelte';
-	import EmptyState from '$lib/shared/ui/EmptyState.svelte';
-	import TableHeader from '$lib/shared/ui/TableHeader.svelte';
-	import ClusterSelector from '$lib/shared/ui/ClusterSelector.svelte';
-	import SearchIcon from '$lib/shared/ui/icons/SearchIcon.svelte';
-	import TextField from '$lib/shared/ui/TextField.svelte';
-	import TrashIcon from '$lib/shared/ui/icons/TrashIcon.svelte';
-	import { m } from '$lib/paraglide/messages.js';
+	import Alert from '#lib/shared/ui/Alert.svelte';
+	import PageHeader from '#lib/shared/ui/PageHeader.svelte';
+	import Button from '#lib/shared/ui/Button.svelte';
+	import TableCard from '#lib/shared/ui/TableCard.svelte';
+	import TableSkeleton from '#lib/shared/ui/TableSkeleton.svelte';
+	import EmptyState from '#lib/shared/ui/EmptyState.svelte';
+	import TableHeader from '#lib/shared/ui/TableHeader.svelte';
+	import ClusterSelector from '#lib/shared/ui/ClusterSelector.svelte';
+	import SearchIcon from '#lib/shared/ui/icons/SearchIcon.svelte';
+	import TextField from '#lib/shared/ui/TextField.svelte';
+	import TrashIcon from '#lib/shared/ui/icons/TrashIcon.svelte';
+	import { m } from '#lib/paraglide/messages.js';
 
 	type PoolSortColumn = 'name' | 'total' | 'running' | 'stopped';
 

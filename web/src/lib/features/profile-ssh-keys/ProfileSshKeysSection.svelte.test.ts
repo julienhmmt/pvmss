@@ -3,7 +3,7 @@ import { mount, flushSync } from 'svelte';
 import ProfileSshKeysSection from './ProfileSshKeysSection.svelte';
 import { profileKeyErrorMessage } from './ssh-key-identity';
 import { PROFILE_SSH_KEY_MAX, type ProfileSshKey } from './types';
-import { m } from '$lib/paraglide/messages.js';
+import { m } from '#lib/paraglide/messages.js';
 
 function jsonResponse(status: number, body: unknown): Response {
 	return new Response(JSON.stringify(body), { status, headers: { 'Content-Type': 'application/json' } });

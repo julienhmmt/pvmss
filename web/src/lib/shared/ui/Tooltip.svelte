@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { nextFieldId } from '$lib/shared/ui/field-id';
+	import { nextFieldId } from '#lib/shared/ui/field-id.js';
 
 	interface Props {
 		text: string;

@@ -1,8 +1,8 @@
 <script lang="ts">
 	import { getConsoleContext } from './console.svelte';
 	import { openConsolePopout } from './console';
-	import { m } from '$lib/paraglide/messages.js';
-	import Button from '$lib/shared/ui/Button.svelte';
+	import { m } from '#lib/paraglide/messages.js';
+	import Button from '#lib/shared/ui/Button.svelte';
 
 	const store = getConsoleContext();
 

@@ -9,14 +9,18 @@
 	 * mounted on every viewport.
 	 */
 	import { page } from '$app/state';
+<<<<<<< HEAD
+=======
+	import { getSessionContext } from '#lib/features/auth/session.svelte.js';
+>>>>>>> 1e81dc8f (refactor(web): use #lib subpath imports)
 	import { contextLabel } from './context-label';
 	import { untrack } from 'svelte';
-	import { getTaskTrayContext } from '$lib/features/tasks/tasks.svelte';
-	import { getToastContext } from '$lib/shared/ui/toast.svelte';
+	import { getTaskTrayContext } from '#lib/features/tasks/tasks.svelte.js';
+	import { getToastContext } from '#lib/shared/ui/toast.svelte.js';
 	import { getChromeContext } from './chrome.svelte';
-	import MenuIcon from '$lib/shared/ui/icons/MenuIcon.svelte';
-	import Logo from '$lib/shared/ui/Logo.svelte';
-	import { m } from '$lib/paraglide/messages.js';
+	import MenuIcon from '#lib/shared/ui/icons/MenuIcon.svelte';
+	import Logo from '#lib/shared/ui/Logo.svelte';
+	import { m } from '#lib/paraglide/messages.js';
 
 	const tray = getTaskTrayContext();
 	const chrome = getChromeContext();

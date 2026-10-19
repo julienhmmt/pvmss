@@ -1,11 +1,11 @@
 <script lang="ts">
 	import { goto } from '$app/navigation';
 	import { resolve } from '$app/paths';
-	import { m } from '$lib/paraglide/messages.js';
-	import BrandPanel from '$lib/shared/ui/BrandPanel.svelte';
-	import Button from '$lib/shared/ui/Button.svelte';
-	import Card from '$lib/shared/ui/Card.svelte';
-	import WarningIcon from '$lib/shared/ui/icons/WarningIcon.svelte';
+	import { m } from '#lib/paraglide/messages.js';
+	import BrandPanel from '#lib/shared/ui/BrandPanel.svelte';
+	import Button from '#lib/shared/ui/Button.svelte';
+	import Card from '#lib/shared/ui/Card.svelte';
+	import WarningIcon from '#lib/shared/ui/icons/WarningIcon.svelte';
 </script>
 
 <div class="grid w-full flex-1 grid-cols-1 lg:grid-cols-2">

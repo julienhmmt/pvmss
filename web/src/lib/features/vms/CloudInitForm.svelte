@@ -2,16 +2,16 @@
 	import { untrack } from 'svelte';
 	import type { CloudInitConfigUpdate, CloudInitIPMode } from './cloudinit.types';
 	import type { CloudInitStore } from './cloudinit.svelte';
-	import type { SshKeySelection } from '$lib/features/profile-ssh-keys/ssh-key-selection.svelte';
-	import { m } from '$lib/paraglide/messages.js';
-	import Alert from '$lib/shared/ui/Alert.svelte';
-	import FormField from '$lib/shared/ui/FormField.svelte';
-	import TextField from '$lib/shared/ui/TextField.svelte';
-	import Textarea from '$lib/shared/ui/Textarea.svelte';
-	import Select from '$lib/shared/ui/Select.svelte';
-	import Button from '$lib/shared/ui/Button.svelte';
-	import Skeleton from '$lib/shared/ui/Skeleton.svelte';
-	import SshKeyPicker from '$lib/features/profile-ssh-keys/SshKeyPicker.svelte';
+	import type { SshKeySelection } from '#lib/features/profile-ssh-keys/ssh-key-selection.svelte.js';
+	import { m } from '#lib/paraglide/messages.js';
+	import Alert from '#lib/shared/ui/Alert.svelte';
+	import FormField from '#lib/shared/ui/FormField.svelte';
+	import TextField from '#lib/shared/ui/TextField.svelte';
+	import Textarea from '#lib/shared/ui/Textarea.svelte';
+	import Select from '#lib/shared/ui/Select.svelte';
+	import Button from '#lib/shared/ui/Button.svelte';
+	import Skeleton from '#lib/shared/ui/Skeleton.svelte';
+	import SshKeyPicker from '#lib/features/profile-ssh-keys/SshKeyPicker.svelte';
 
 	interface Props {
 		store: CloudInitStore;

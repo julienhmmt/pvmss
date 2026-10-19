@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeAll, afterEach } from 'vitest';
 import { mount } from 'svelte';
 import OsMark from './OsMark.svelte';
-import { setLocale } from '$lib/paraglide/runtime.js';
+import { setLocale } from '#lib/paraglide/runtime.js';
 
 function tileFor(ostype: string, size?: 'sm' | 'lg'): Element {
 	document.body.innerHTML = '';

@@ -2,8 +2,8 @@
 	import { onMount, onDestroy } from 'svelte';
 	import '@xterm/xterm/css/xterm.css';
 	import { getSerialConsoleContext } from './serial.svelte';
-	import { m } from '$lib/paraglide/messages.js';
-	import Button from '$lib/shared/ui/Button.svelte';
+	import { m } from '#lib/paraglide/messages.js';
+	import Button from '#lib/shared/ui/Button.svelte';
 
 	const store = getSerialConsoleContext();
 

@@ -1,4 +1,4 @@
-import { m } from '$lib/paraglide/messages.js';
+import { m } from '#lib/paraglide/messages.js';
 
 /**
  * Bounded, explicitly-listed set of server error `code` values already shipped

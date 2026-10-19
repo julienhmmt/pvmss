@@ -1,10 +1,10 @@
 <script lang="ts">
 	import { getLogLevelContext, LOG_LEVELS, type LogLevel } from './logLevel.svelte';
-	import Alert from '$lib/shared/ui/Alert.svelte';
-	import Button from '$lib/shared/ui/Button.svelte';
-	import Card from '$lib/shared/ui/Card.svelte';
-	import Select from '$lib/shared/ui/Select.svelte';
-	import { m } from '$lib/paraglide/messages.js';
+	import Alert from '#lib/shared/ui/Alert.svelte';
+	import Button from '#lib/shared/ui/Button.svelte';
+	import Card from '#lib/shared/ui/Card.svelte';
+	import Select from '#lib/shared/ui/Select.svelte';
+	import { m } from '#lib/paraglide/messages.js';
 
 	const store = getLogLevelContext();
 

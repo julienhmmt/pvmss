@@ -5,11 +5,11 @@
 		type BulkConfirmationKind
 	} from './bulk.svelte';
 	import { getVmListContext } from './list.svelte';
-	import Alert from '$lib/shared/ui/Alert.svelte';
-	import Select from '$lib/shared/ui/Select.svelte';
-	import Button from '$lib/shared/ui/Button.svelte';
-	import ConfirmDialog from '$lib/shared/ui/ConfirmDialog.svelte';
-	import { m } from '$lib/paraglide/messages.js';
+	import Alert from '#lib/shared/ui/Alert.svelte';
+	import Select from '#lib/shared/ui/Select.svelte';
+	import Button from '#lib/shared/ui/Button.svelte';
+	import ConfirmDialog from '#lib/shared/ui/ConfirmDialog.svelte';
+	import { m } from '#lib/paraglide/messages.js';
 
 	const bulk = getVmBulkContext();
 	const list = getVmListContext();

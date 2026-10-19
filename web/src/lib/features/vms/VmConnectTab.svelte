@@ -12,12 +12,12 @@
 	import { canConnect, type MachineDisplayStatus } from './display-status';
 	import { connectState, isWindowsOs, primaryAddress, sshCommand } from './connection';
 	import { compactBytes } from './machine-row';
-	import { get } from '$lib/shared/api/client';
-	import Button from '$lib/shared/ui/Button.svelte';
-	import ButtonLink from '$lib/shared/ui/ButtonLink.svelte';
-	import Card from '$lib/shared/ui/Card.svelte';
-	import CopyButton from '$lib/shared/ui/CopyButton.svelte';
-	import { m } from '$lib/paraglide/messages.js';
+	import { get } from '#lib/shared/api/client.js';
+	import Button from '#lib/shared/ui/Button.svelte';
+	import ButtonLink from '#lib/shared/ui/ButtonLink.svelte';
+	import Card from '#lib/shared/ui/Card.svelte';
+	import CopyButton from '#lib/shared/ui/CopyButton.svelte';
+	import { m } from '#lib/paraglide/messages.js';
 
 	interface Props {
 		status: MachineDisplayStatus;

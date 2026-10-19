@@ -7,7 +7,7 @@
 	 * a radio would dead-click when it is already the selected value.
 	 */
 	import type { CreateMode } from './create.svelte';
-	import { m } from '$lib/paraglide/messages.js';
+	import { m } from '#lib/paraglide/messages.js';
 
 	interface Mode {
 		id: CreateMode;

@@ -3,9 +3,9 @@
 	import { afterNavigate, goto } from '$app/navigation';
 	import { resolve } from '$app/paths';
 	import { page } from '$app/state';
-	import { setSearchContext } from '$lib/features/search/search.svelte';
-	import SearchPage from '$lib/features/search/SearchPage.svelte';
-	import { m } from '$lib/paraglide/messages.js';
+	import { setSearchContext } from '#lib/features/search/search.svelte.js';
+	import SearchPage from '#lib/features/search/SearchPage.svelte';
+	import { m } from '#lib/paraglide/messages.js';
 
 	const store = setSearchContext({
 		initialQuery: page.url.search,

@@ -1,18 +1,18 @@
 <script lang="ts">
 	import { resolve } from '$app/paths';
-	import { m } from '$lib/paraglide/messages.js';
+	import { m } from '#lib/paraglide/messages.js';
 	import { getSearchContext } from './search.svelte';
-	import type { VmListItem, VmStatus } from '$lib/features/vms/list.svelte';
-	import Alert from '$lib/shared/ui/Alert.svelte';
-	import EmptyState from '$lib/shared/ui/EmptyState.svelte';
-	import Card from '$lib/shared/ui/Card.svelte';
-	import ClusterSelector from '$lib/shared/ui/ClusterSelector.svelte';
-	import PageHeader from '$lib/shared/ui/PageHeader.svelte';
-	import Pill from '$lib/shared/ui/Pill.svelte';
-	import Select from '$lib/shared/ui/Select.svelte';
-	import Skeleton from '$lib/shared/ui/Skeleton.svelte';
-	import TextField from '$lib/shared/ui/TextField.svelte';
-	import SearchIcon from '$lib/shared/ui/icons/SearchIcon.svelte';
+	import type { VmListItem, VmStatus } from '#lib/features/vms/list.svelte.js';
+	import Alert from '#lib/shared/ui/Alert.svelte';
+	import EmptyState from '#lib/shared/ui/EmptyState.svelte';
+	import Card from '#lib/shared/ui/Card.svelte';
+	import ClusterSelector from '#lib/shared/ui/ClusterSelector.svelte';
+	import PageHeader from '#lib/shared/ui/PageHeader.svelte';
+	import Pill from '#lib/shared/ui/Pill.svelte';
+	import Select from '#lib/shared/ui/Select.svelte';
+	import Skeleton from '#lib/shared/ui/Skeleton.svelte';
+	import TextField from '#lib/shared/ui/TextField.svelte';
+	import SearchIcon from '#lib/shared/ui/icons/SearchIcon.svelte';
 
 	const store = getSearchContext();
 

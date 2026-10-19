@@ -1,6 +1,6 @@
 import { afterEach, beforeAll, describe, expect, it, vi } from 'vitest';
 import { mount, tick } from 'svelte';
-import { setLocale } from '$lib/paraglide/runtime.js';
+import { setLocale } from '#lib/paraglide/runtime.js';
 import ClustersPage from './ClustersPage.svelte';
 import { AdminClustersStore, type AdminCluster } from './clusters.svelte';
 

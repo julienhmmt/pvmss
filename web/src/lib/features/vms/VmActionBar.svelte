@@ -1,18 +1,18 @@
 <script lang="ts">
 	import { getVmDetailContext, type VmAction } from './detail.svelte';
-	import Alert from '$lib/shared/ui/Alert.svelte';
-	import ConfirmDialog from '$lib/shared/ui/ConfirmDialog.svelte';
-	import { getToastContext } from '$lib/shared/ui/toast.svelte';
-	import { m } from '$lib/paraglide/messages.js';
-	import PlayIcon from '$lib/shared/ui/icons/PlayIcon.svelte';
-	import PowerOffIcon from '$lib/shared/ui/icons/PowerOffIcon.svelte';
-	import StopIcon from '$lib/shared/ui/icons/StopIcon.svelte';
-	import RestartIcon from '$lib/shared/ui/icons/RestartIcon.svelte';
-	import ResetIcon from '$lib/shared/ui/icons/ResetIcon.svelte';
-	import PauseIcon from '$lib/shared/ui/icons/PauseIcon.svelte';
-	import TrashIcon from '$lib/shared/ui/icons/TrashIcon.svelte';
+	import Alert from '#lib/shared/ui/Alert.svelte';
+	import ConfirmDialog from '#lib/shared/ui/ConfirmDialog.svelte';
+	import { getToastContext } from '#lib/shared/ui/toast.svelte.js';
+	import { m } from '#lib/paraglide/messages.js';
+	import PlayIcon from '#lib/shared/ui/icons/PlayIcon.svelte';
+	import PowerOffIcon from '#lib/shared/ui/icons/PowerOffIcon.svelte';
+	import StopIcon from '#lib/shared/ui/icons/StopIcon.svelte';
+	import RestartIcon from '#lib/shared/ui/icons/RestartIcon.svelte';
+	import ResetIcon from '#lib/shared/ui/icons/ResetIcon.svelte';
+	import PauseIcon from '#lib/shared/ui/icons/PauseIcon.svelte';
+	import TrashIcon from '#lib/shared/ui/icons/TrashIcon.svelte';
 	import type { Component } from 'svelte';
-	import Button from '$lib/shared/ui/Button.svelte';
+	import Button from '#lib/shared/ui/Button.svelte';
 
 	const store = getVmDetailContext();
 	const toast = getToastContext();

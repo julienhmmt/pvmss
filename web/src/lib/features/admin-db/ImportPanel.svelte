@@ -1,10 +1,10 @@
 <script lang="ts">
-	import Alert from '$lib/shared/ui/Alert.svelte';
-	import Card from '$lib/shared/ui/Card.svelte';
-	import Dialog from '$lib/shared/ui/Dialog.svelte';
-	import Button from '$lib/shared/ui/Button.svelte';
+	import Alert from '#lib/shared/ui/Alert.svelte';
+	import Card from '#lib/shared/ui/Card.svelte';
+	import Dialog from '#lib/shared/ui/Dialog.svelte';
+	import Button from '#lib/shared/ui/Button.svelte';
 	import { getDbOpsContext } from './dbOps.svelte';
-	import { m } from '$lib/paraglide/messages.js';
+	import { m } from '#lib/paraglide/messages.js';
 
 	const store = getDbOpsContext();
 

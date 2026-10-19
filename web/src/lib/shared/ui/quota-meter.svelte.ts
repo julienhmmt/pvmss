@@ -1,4 +1,4 @@
-import type { VmQuota } from '$lib/features/vms/list.svelte';
+import type { VmQuota } from '#lib/features/vms/list.svelte.js';
 
 /**
  * quotaMeterView - pure presentation projection for a quota / usage meter.

@@ -1,11 +1,11 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
 	import { page } from '$app/state';
-	import PolicyPage from '$lib/features/admin-policy/PolicyPage.svelte';
-	import { setAdminPolicyContext } from '$lib/features/admin-policy/policy.svelte';
-	import { saveAdminCluster } from '$lib/shared/clusters';
-	import { m } from '$lib/paraglide/messages.js';
-	import { getToastContext } from '$lib/shared/ui/toast.svelte';
+	import PolicyPage from '#lib/features/admin-policy/PolicyPage.svelte';
+	import { setAdminPolicyContext } from '#lib/features/admin-policy/policy.svelte.js';
+	import { saveAdminCluster } from '#lib/shared/clusters.js';
+	import { m } from '#lib/paraglide/messages.js';
+	import { getToastContext } from '#lib/shared/ui/toast.svelte.js';
 
 	const store = setAdminPolicyContext();
 	const toast = getToastContext();

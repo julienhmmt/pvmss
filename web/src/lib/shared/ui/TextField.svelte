@@ -13,7 +13,7 @@
 	import type { HTMLInputAttributes } from 'svelte/elements';
 	import EyeIcon from './icons/EyeIcon.svelte';
 	import EyeOffIcon from './icons/EyeOffIcon.svelte';
-	import { m } from '$lib/paraglide/messages.js';
+	import { m } from '#lib/paraglide/messages.js';
 
 	type InputType = 'text' | 'password' | 'email' | 'url' | 'number' | 'search' | 'tel' | 'date' | 'datetime-local';
 	type InputMode = 'numeric' | 'decimal' | 'tel' | 'email' | 'url' | 'search';

@@ -3,7 +3,7 @@ import { mount, tick } from 'svelte';
 import MachineList from './MachineList.svelte';
 import { VmListStore, getVmListContext, type VmListItem, type VmListResult, type VmQuota } from './list.svelte';
 import { VmBulkSelection, getVmBulkContext } from './bulk.svelte';
-import { setLocale } from '$lib/paraglide/runtime.js';
+import { setLocale } from '#lib/paraglide/runtime.js';
 
 vi.mock('./list.svelte', async (importOriginal) => {
 	const mod = await importOriginal<typeof import('./list.svelte')>();
@@ -16,7 +16,7 @@ vi.mock('./bulk.svelte', async (importOriginal) => {
 // Rows derive their display status from the tray; an empty one is enough
 // here - the ledger and power-action getters already degrade gracefully
 // outside the app shell.
-vi.mock('$lib/features/tasks/tasks.svelte', () => ({
+vi.mock('#lib/features/tasks/tasks.svelte.js', () => ({
 	getTaskTrayContext: vi.fn(() => ({ tasks: [] }))
 }));
 

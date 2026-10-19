@@ -3,8 +3,8 @@
 	import { goto } from '$app/navigation';
 	import { resolve } from '$app/paths';
 	import { onMount } from 'svelte';
-	import PoolDetailPage from '$lib/features/admin-pools/PoolDetailPage.svelte';
-	import { setAdminPoolDetailContext } from '$lib/features/admin-pools/pool-detail.svelte';
+	import PoolDetailPage from '#lib/features/admin-pools/PoolDetailPage.svelte';
+	import { setAdminPoolDetailContext } from '#lib/features/admin-pools/pool-detail.svelte.js';
 
 	const store = setAdminPoolDetailContext();
 	const poolName: string = $derived(page.params.name ?? '');

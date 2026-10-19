@@ -25,7 +25,6 @@ export default defineConfig({
 	resolve: {
 		conditions: ['browser', 'svelte'],
 		alias: {
-			$lib: path.resolve('./src/lib'),
 			'$app/paths': path.resolve('./src/test/app-paths.ts'),
 			'$app/navigation': path.resolve('./src/test/app-navigation.ts'),
 			'$app/state': path.resolve('./src/test/app-state.ts')

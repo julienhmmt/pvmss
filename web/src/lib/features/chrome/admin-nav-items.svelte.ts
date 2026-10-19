@@ -1,5 +1,5 @@
 import { resolve } from '$app/paths';
-import { m } from '$lib/paraglide/messages.js';
+import { m } from '#lib/paraglide/messages.js';
 
 /**
  * Sidebar icon names used for main and admin navigation.

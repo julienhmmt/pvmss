@@ -1,7 +1,7 @@
-import { post, ApiRequestError } from '$lib/shared/api/client';
-import { apiPath } from '$lib/shared/api/paths';
-import { m } from '$lib/paraglide/messages.js';
-import type { ToastRegion } from '$lib/shared/ui/toast.svelte';
+import { post, ApiRequestError } from '#lib/shared/api/client.js';
+import { apiPath } from '#lib/shared/api/paths.js';
+import { m } from '#lib/paraglide/messages.js';
+import type { ToastRegion } from '#lib/shared/ui/toast.svelte.js';
 import { profileKeyErrorMessage } from './ssh-key-identity';
 import type { ProfileKeyToSave, ProfileSshKey } from './types';
 

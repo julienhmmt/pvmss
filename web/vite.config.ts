@@ -29,9 +29,7 @@ export default defineConfig({
 		sveltekit({
 			preprocess: vitePreprocess(),
 			adapter: adapter({ fallback: 'index.html' }),
-			compilerOptions: { runes: true },
-			// shortcut: Kit 3 dropped the built-in $lib; move to #lib subpath imports when convenient
-			alias: { $lib: 'src/lib' }
+			compilerOptions: { runes: true }
 		}),
 		paraglideVitePlugin({
 			project: './project.inlang',

@@ -1,19 +1,19 @@
 <script lang="ts">
 	import type { AdminDocPage, DocCreateInput, DocUpdateInput } from './docs.svelte';
 	import DocsFormDialog from './DocsFormDialog.svelte';
-	import Alert from '$lib/shared/ui/Alert.svelte';
-	import PageHeader from '$lib/shared/ui/PageHeader.svelte';
-	import Button from '$lib/shared/ui/Button.svelte';
-	import ConfirmDialog from '$lib/shared/ui/ConfirmDialog.svelte';
-	import Pill from '$lib/shared/ui/Pill.svelte';
-	import Select from '$lib/shared/ui/Select.svelte';
-	import Switch from '$lib/shared/ui/Switch.svelte';
-	import TableCard from '$lib/shared/ui/TableCard.svelte';
-	import TableSkeleton from '$lib/shared/ui/TableSkeleton.svelte';
-	import EmptyState from '$lib/shared/ui/EmptyState.svelte';
-	import TableHeader from '$lib/shared/ui/TableHeader.svelte';
-	import TextField from '$lib/shared/ui/TextField.svelte';
-	import { m } from '$lib/paraglide/messages.js';
+	import Alert from '#lib/shared/ui/Alert.svelte';
+	import PageHeader from '#lib/shared/ui/PageHeader.svelte';
+	import Button from '#lib/shared/ui/Button.svelte';
+	import ConfirmDialog from '#lib/shared/ui/ConfirmDialog.svelte';
+	import Pill from '#lib/shared/ui/Pill.svelte';
+	import Select from '#lib/shared/ui/Select.svelte';
+	import Switch from '#lib/shared/ui/Switch.svelte';
+	import TableCard from '#lib/shared/ui/TableCard.svelte';
+	import TableSkeleton from '#lib/shared/ui/TableSkeleton.svelte';
+	import EmptyState from '#lib/shared/ui/EmptyState.svelte';
+	import TableHeader from '#lib/shared/ui/TableHeader.svelte';
+	import TextField from '#lib/shared/ui/TextField.svelte';
+	import { m } from '#lib/paraglide/messages.js';
 
 	type DocSortColumn = 'title' | 'id' | 'category' | 'lang';
 

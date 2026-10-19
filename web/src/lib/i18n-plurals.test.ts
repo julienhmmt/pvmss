@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
-import { m } from '$lib/paraglide/messages.js';
-import { setLocale } from '$lib/paraglide/runtime.js';
+import { m } from '#lib/paraglide/messages.js';
+import { setLocale } from '#lib/paraglide/runtime.js';
 
 describe('machine-count plurals', () => {
 	it('EN: 1 machine, 2 machines', async () => {

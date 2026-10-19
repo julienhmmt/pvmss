@@ -11,11 +11,11 @@
 	 */
 	import { onMount } from 'svelte';
 	import { getVmCreateContext } from './create.svelte';
-	import { m } from '$lib/paraglide/messages.js';
-	import FormField from '$lib/shared/ui/FormField.svelte';
-	import TextField from '$lib/shared/ui/TextField.svelte';
-	import Select from '$lib/shared/ui/Select.svelte';
-	import SshKeyPicker from '$lib/features/profile-ssh-keys/SshKeyPicker.svelte';
+	import { m } from '#lib/paraglide/messages.js';
+	import FormField from '#lib/shared/ui/FormField.svelte';
+	import TextField from '#lib/shared/ui/TextField.svelte';
+	import Select from '#lib/shared/ui/Select.svelte';
+	import SshKeyPicker from '#lib/features/profile-ssh-keys/SshKeyPicker.svelte';
 
 	interface Props {
 		showErrors?: boolean;

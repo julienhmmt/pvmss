@@ -3,17 +3,17 @@
 	import { goto } from '$app/navigation';
 	import { resolve } from '$app/paths';
 	import { page } from '$app/state';
-	import Button from '$lib/shared/ui/Button.svelte';
-	import { setConsoleContext } from '$lib/features/vm-console/console.svelte';
-	import { setSerialConsoleContext } from '$lib/features/vm-console/serial.svelte';
-	import VmConsole from '$lib/features/vm-console/VmConsole.svelte';
-	import VmSerialConsole from '$lib/features/vm-console/VmSerialConsole.svelte';
-	import ConsoleToolbar from '$lib/features/vm-console/ConsoleToolbar.svelte';
-	import { setVmDetailContext } from '$lib/features/vms/detail.svelte';
-	import VmActionBar from '$lib/features/vms/VmActionBar.svelte';
-	import Pill from '$lib/shared/ui/Pill.svelte';
-	import CopyButton from '$lib/shared/ui/CopyButton.svelte';
-	import { m } from '$lib/paraglide/messages.js';
+	import Button from '#lib/shared/ui/Button.svelte';
+	import { setConsoleContext } from '#lib/features/vm-console/console.svelte.js';
+	import { setSerialConsoleContext } from '#lib/features/vm-console/serial.svelte.js';
+	import VmConsole from '#lib/features/vm-console/VmConsole.svelte';
+	import VmSerialConsole from '#lib/features/vm-console/VmSerialConsole.svelte';
+	import ConsoleToolbar from '#lib/features/vm-console/ConsoleToolbar.svelte';
+	import { setVmDetailContext } from '#lib/features/vms/detail.svelte.js';
+	import VmActionBar from '#lib/features/vms/VmActionBar.svelte';
+	import Pill from '#lib/shared/ui/Pill.svelte';
+	import CopyButton from '#lib/shared/ui/CopyButton.svelte';
+	import { m } from '#lib/paraglide/messages.js';
 
 	/** Live-status poll cadence while the console is open. */
 	const LIVE_STATUS_POLL_MS = 5000;

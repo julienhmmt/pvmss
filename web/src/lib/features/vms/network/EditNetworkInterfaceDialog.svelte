@@ -1,11 +1,11 @@
 <script lang="ts">
 	import { getVmDetailContext, type VmNetworkInterface } from '../detail.svelte';
-	import Dialog from '$lib/shared/ui/Dialog.svelte';
-	import FormField from '$lib/shared/ui/FormField.svelte';
-	import TextField from '$lib/shared/ui/TextField.svelte';
-	import Select from '$lib/shared/ui/Select.svelte';
-	import Button from '$lib/shared/ui/Button.svelte';
-	import { m } from '$lib/paraglide/messages.js';
+	import Dialog from '#lib/shared/ui/Dialog.svelte';
+	import FormField from '#lib/shared/ui/FormField.svelte';
+	import TextField from '#lib/shared/ui/TextField.svelte';
+	import Select from '#lib/shared/ui/Select.svelte';
+	import Button from '#lib/shared/ui/Button.svelte';
+	import { m } from '#lib/paraglide/messages.js';
 
 	const store = getVmDetailContext();
 

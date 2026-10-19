@@ -1,9 +1,9 @@
 <script lang="ts">
 	import { getVmDetailContext, type VmDisk } from '../detail.svelte';
-	import Alert from '$lib/shared/ui/Alert.svelte';
-	import Dialog from '$lib/shared/ui/Dialog.svelte';
-	import Button from '$lib/shared/ui/Button.svelte';
-	import { m } from '$lib/paraglide/messages.js';
+	import Alert from '#lib/shared/ui/Alert.svelte';
+	import Dialog from '#lib/shared/ui/Dialog.svelte';
+	import Button from '#lib/shared/ui/Button.svelte';
+	import { m } from '#lib/paraglide/messages.js';
 
 	const store = getVmDetailContext();
 

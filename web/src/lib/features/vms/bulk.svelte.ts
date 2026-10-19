@@ -1,6 +1,6 @@
 import { getContext, setContext } from 'svelte';
 import { SvelteMap } from 'svelte/reactivity';
-import { post } from '$lib/shared/api/client';
+import { post } from '#lib/shared/api/client.js';
 import type { VmListItem } from './list.svelte';
 
 /**
