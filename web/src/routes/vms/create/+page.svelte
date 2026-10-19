@@ -95,10 +95,7 @@
 				<EmptyState title={m['vms.create.blocked.noCatalogTitle']()} description={m['vms.create.blocked.noCatalogBody']()} dataTestid="vm-create-no-catalog" />
 			</Card>
 		{:else if chosen === null}
-			<div class="mx-auto flex w-full max-w-2xl flex-col gap-4">
-				<p class="text-sm text-muted-foreground">{m['vms.create.modePrompt']()}</p>
-				<ModeChooser onSelect={chooseMode} />
-			</div>
+			<div class="w-full max-w-3xl"><ModeChooser onSelect={chooseMode} /></div>
 		{:else}
 			<div class="mb-5 flex flex-wrap items-center justify-between gap-3">
 				<button
