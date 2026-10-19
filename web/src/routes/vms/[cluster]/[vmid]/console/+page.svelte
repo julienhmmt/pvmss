@@ -102,7 +102,7 @@
 </svelte:head>
 
 <section class="flex h-[calc(100vh-11rem)] min-h-[28rem] w-full flex-col">
-	<div class="mb-3 flex items-center gap-3">
+	<div class="mb-3 flex flex-wrap items-center gap-3">
 		<Button
 			variant="secondary"
 			size="sm"
@@ -124,13 +124,13 @@
 				label={consoleStateLabel(mode === 'graphical' ? store.state : serialStore.state)}
 			/>
 		</span>
+		<div class="ml-auto" data-testid="vm-console-action-bar">
+			<VmActionBar hideDelete compact />
+		</div>
 	</div>
 
-	<div class="mb-3" data-testid="vm-console-action-bar">
-		<VmActionBar hideDelete />
-	</div>
-
-	<div class="mb-3 inline-flex w-fit rounded-lg border border-border bg-muted/40 p-0.5" role="group" aria-label={m['vms.console.modeLabel']()} data-testid="vm-console-mode-switcher">
+	<div class="flex flex-wrap items-center gap-2">
+	<div class="inline-flex w-fit rounded-lg border border-border bg-muted/40 p-0.5" role="group" aria-label={m['vms.console.modeLabel']()} data-testid="vm-console-mode-switcher">
 		<button
 			type="button"
 			class="rounded-md px-3 py-1.5 text-sm font-medium {mode === 'graphical'
@@ -159,7 +159,7 @@
 		<ConsoleToolbar />
 	{:else}
 		<div
-			class="flex flex-wrap items-center gap-2 rounded-[var(--radius-control)] border border-border bg-muted/40 px-2 py-1.5"
+			class="flex flex-1 flex-wrap items-center gap-2 rounded-[var(--radius-control)] border border-border bg-muted/40 px-2 py-1.5"
 			data-testid="vm-serial-console-toolbar"
 		>
 			<Button
@@ -183,6 +183,10 @@
 				{m['vms.console.serial.reconnect']()}
 			</Button>
 		</div>
+	{/if}
+	</div>
+
+	{#if mode === 'text'}
 		{#if vmStore.entity && vmStore.entity.hasSerial === false}
 			<div class="flex flex-wrap items-center gap-3 rounded-md border border-border bg-muted/40 p-3 text-sm" data-testid="vm-serial-console-enable">
 				<p class="text-muted-foreground">{m['vms.console.serial.noSerial']()}</p>

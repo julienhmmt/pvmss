@@ -25,7 +25,7 @@
 	sitting straight on the paper ground read as faint smudges, and the row
 	needs to look like one control cluster rather than seven loose buttons. -->
 <div
-	class="flex flex-wrap items-center gap-2 rounded-[var(--radius-control)] border border-border bg-muted/40 px-2 py-1.5"
+	class="flex flex-1 flex-wrap items-center gap-2 rounded-[var(--radius-control)] border border-border bg-muted/40 px-2 py-1.5"
 	data-testid="vm-console-toolbar"
 >
 	<Button
@@ -48,42 +48,32 @@
 		Ctrl+Alt+Del
 	</Button>
 
-	<Button
-		variant="secondary"
-		size="sm"
-		disabled={store.state !== 'connected'}
-		onclick={() => store.disconnect()}
-		data-testid="vm-console-disconnect"
-		title={m['vms.console.disconnect']()}
-	>
-		{m['vms.console.disconnect']()}
-	</Button>
-
-	<!-- Reconnect is the only way back once the socket drops, so it carries the
-	     accent while the session is down and steps back to the bordered shape
-	     once it is up and reconnecting is only a refresh. -->
-	<Button
-		variant={store.state === 'connected' ? 'secondary' : 'primary'}
-		size="sm"
-		disabled={store.state === 'connecting' || store.state === 'idle'}
-		onclick={() => store.reconnect()}
-		data-testid="vm-console-reconnect-btn"
-		title={m['vms.console.reconnect']()}
-	>
-		{m['vms.console.reconnect']()}
-	</Button>
-
-	<Button variant="secondary" size="sm" onclick={popout} data-testid="vm-console-popout">
-		{m['vms.console.popout']()}
-	</Button>
-
-	{#if popoutBlocked}
-		<span class="text-xs text-destructive" data-testid="vm-console-popout-blocked">
-			{m['vms.console.popoutBlocked']()}
-		</span>
+	<!-- One toggle: disconnect while up; reconnect (accented, the only way
+	     back) once the socket drops. -->
+	{#if store.state === 'connected'}
+		<Button
+			variant="secondary"
+			size="sm"
+			onclick={() => store.disconnect()}
+			data-testid="vm-console-disconnect"
+			title={m['vms.console.disconnect']()}
+		>
+			{m['vms.console.disconnect']()}
+		</Button>
+	{:else}
+		<Button
+			variant="primary"
+			size="sm"
+			disabled={store.state === 'connecting' || store.state === 'idle'}
+			onclick={() => store.reconnect()}
+			data-testid="vm-console-reconnect-btn"
+			title={m['vms.console.reconnect']()}
+		>
+			{m['vms.console.reconnect']()}
+		</Button>
 	{/if}
 
-	<div class="mx-2 h-5 w-px bg-border"></div>
+	<div class="mx-1 h-5 w-px bg-border"></div>
 
 	<Button
 		variant="secondary"
@@ -118,4 +108,14 @@
 			{store.error}
 		</p>
 	{/if}
+	<Button variant="secondary" size="sm" class="ml-auto" onclick={popout} data-testid="vm-console-popout">
+		{m['vms.console.popout']()}
+	</Button>
+
+	{#if popoutBlocked}
+		<span class="text-xs text-destructive" data-testid="vm-console-popout-blocked">
+			{m['vms.console.popoutBlocked']()}
+		</span>
+	{/if}
+
 </div>
