@@ -701,3 +701,24 @@ func TestCreate_TemplateClone_UnreadableFallsBackToStoredDisk(t *testing.T) {
 		t.Error("clone call not recorded")
 	}
 }
+
+// TestCreate_ISO_RejectsCloudInitTemplate - cloud-init is off for ISO
+// installs, so an ISO request carrying a template id is refused before any
+// cluster call.
+//
+//nolint:paralleltest // serial: shared fake VM and database fixtures
+func TestCreate_ISO_RejectsCloudInitTemplate(t *testing.T) {
+	fixture := newCreateFixture(t)
+	req := detailedRequest()
+	req.ISO = &vm.ISORequest{Storage: cluster.FakeStorageLocal, File: "debian-12-generic-amd64.iso"}
+	req.CloudInitTemplateID = "any"
+
+	_, err := fixture.create(t, aliceIdentity(), req)
+	if !errors.Is(err, vm.ErrInvalidSource) {
+		t.Fatalf("error = %v, want ErrInvalidSource", err)
+	}
+
+	if calls := cluster.FakeCalls(); len(calls) != 0 {
+		t.Fatalf("rejected request reached the cluster: %+v", calls)
+	}
+}

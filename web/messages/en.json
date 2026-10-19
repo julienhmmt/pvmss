@@ -341,6 +341,7 @@
   "vms.create.chooseNode": "Choose a node",
   "vms.create.chooseStorage": "Choose storage",
   "vms.create.cloudinitDocument": "Cloud-init document (optional)",
+  "vms.create.cloudinitIsoUnsupported": "Cloud-init is not available with an ISO install: the installer ignores it. Install the OS manually, or pick a cloud image or a template to use cloud-init.",
   "vms.create.cloudinitNone": "None",
   "vms.create.cloudinitDisabledHint": "Cloud-init templates are not enabled on this cluster.",
   "vms.create.reviewCloudinitDocument": "Cloud-init document",

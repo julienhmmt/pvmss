@@ -51,6 +51,15 @@ qm set <vmid> --cicustom vendor=<storage>:snippets/pvmss-tpl-…yml
   for cloud-image VMs created without a template. Without that file on the
   node, such VMs boot on the native keys only (no guest agent install).
 
+### Not with ISO installs
+
+Templates apply to template clones (and cloud images) only. An ISO
+installer ignores the cloud-init drive, so the create wizard hides the
+template picker when an ISO is chosen and the server refuses an ISO request
+carrying `cloudInitTemplateId` (`invalid_source`). A VM installed from ISO
+with `cloud-init` in the guest can still pick a template later from its
+cloud-init tab.
+
 ## Setup, step by step
 
 ### 1. Enable the Snippets content type on the storage (once, any node)

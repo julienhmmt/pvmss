@@ -585,7 +585,7 @@ export class VmCreateStore {
 
 	/** Emits cloudInitTemplateId on the request when a template is chosen. */
 	applyCloudInitDocument(request: VMCreateRequest): void {
-		if (this.cloudInitTemplateId !== '') {
+		if (this.cloudInitTemplateId !== '' && this.isoFile === '') {
 			request.cloudInitTemplateId = this.cloudInitTemplateId;
 		}
 	}

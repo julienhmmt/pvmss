@@ -20,7 +20,7 @@
 	// The review shows the chosen document's label - the raw request JSON
 	// only carries the id.
 	const cloudInitDocumentLabel = $derived(
-		form.cloudInitTemplateId !== ''
+		form.cloudInitTemplateId !== '' && form.isoFile === ''
 			? (form.catalog?.cloudInitTemplates.find((t) => t.id === form.cloudInitTemplateId)?.label ?? form.cloudInitTemplateId)
 			: null
 	);

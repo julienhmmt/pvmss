@@ -130,13 +130,25 @@ describe('VmCreateStore.buildRequest in simple mode', () => {
 		store.name = 'web-05';
 		store.profileId = 'small';
 		store.cloudInitTemplateId = 'ci-01';
-		store.isoFile = 'debian-12.iso';
 
 		expect(store.buildRequest()).toMatchObject({
 			node: 'pve-node-01',
-			cloudInitTemplateId: 'ci-01',
-			iso: { storage: 'local', file: 'debian-12.iso' }
+			cloudInitTemplateId: 'ci-01'
 		});
+	});
+
+	it('drops the cloud-init template on an ISO install', () => {
+		// The installer ignores the cloud-init drive; the server refuses the pair.
+		const store = new VmCreateStore();
+		store.catalog = catalog();
+		store.name = 'web-05';
+		store.profileId = 'small';
+		store.cloudInitTemplateId = 'ci-01';
+		store.isoFile = 'debian-12.iso';
+
+		const request = store.buildRequest();
+		expect(request).toMatchObject({ iso: { storage: 'local', file: 'debian-12.iso' } });
+		expect(request).not.toHaveProperty('cloudInitTemplateId');
 	});
 
 	it('never sends a secureBoot field - the EFI disk always gets an empty key store', () => {
