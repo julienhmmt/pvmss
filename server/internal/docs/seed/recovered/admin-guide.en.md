@@ -13,7 +13,7 @@ unlocks both the standard user surface and everything under `/admin`.
 1. Open the administration panel on `/admin` (an administrator account is required).
 2. Check **Application Info** (`/admin/appinfo`) to confirm the instance is connected to the right Proxmox environment.
 3. Add or verify your **Clusters** (`/admin/clusters`) and run the connection **Test**.
-4. Approve the resources users may use: **Nodes**, **Storages**, **ISOs**, **VM templates**, **Cloud images**, and **Bridges**.
+4. Approve the resources users may use: **Nodes**, **Storages**, **ISOs**, **VM templates** and **Bridges** (cloud images are temporarily disabled).
 5. Optional but recommended: create **VM profiles** so users can pick pre-approved hardware shapes, define **Tags**, and write **Cloud-init templates**.
 6. Set the **Policy** (per-cluster gabarit and quota) and **Node capacity** caps.
 7. Optionally enable **cloud-init documents** (see below).
@@ -95,7 +95,7 @@ The **Resources** and **Provisioning** groups of the admin nav control what VM c
 - **Storages** (`/admin/storages`) - approve the storage backends that may host VM disks, grouped by node, with usage bars.
 - **ISOs** (`/admin/isos`) - approve the ISO images users may boot from.
 - **VM templates** (`/admin/templates`) - approve the Proxmox templates users may clone, with optional per-template overrides. A clone stays on the template's node; the wizard warns when the target storage forces a full copy.
-- **Cloud images** (`/admin/images`) - approve cloud images discovered under a storage's `import/` content directory. PVMSS never downloads images from the internet: place them on the storage yourself.
+- **Cloud images** (`/admin/images`) - temporarily disabled (no menu entry, page redirects to ISOs) because cloud images do not work reliably yet. approve cloud images discovered under a storage's `import/` content directory. PVMSS never downloads images from the internet: place them on the storage yourself.
 - **Bridges** (`/admin/bridges`) - approve the network bridges (VMBR) available for VM network cards. Open vSwitch bridges are not listed.
 - **Cloud-init templates** (`/admin/cloudinit-templates`) - create, enable, disable, and edit admin-curated `#cloud-config` documents users can pick at creation time.
 - **Profiles** (`/admin/profiles`) - define pre-approved hardware profiles (sockets, cores, memory, disk, bus), so users can pick a known-good shape instead of free-typing values.

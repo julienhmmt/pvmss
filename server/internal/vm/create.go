@@ -67,6 +67,11 @@ var (
 	ErrDiskBelowImage = errors.New("disk size below cloud image")
 )
 
+// cloudImagesDisabled turns off cloud-image (.img) creation: it does not work
+// reliably yet, so only ISO and template clone are accepted. Set to false to
+// re-enable (the image-mode tests flip it in cloud_images_enabled_test.go).
+var cloudImagesDisabled = true
+
 // Fixed technical safety ceilings - hardcoded anti-abuse bounds,
 // not admin-configurable.
 const (
@@ -345,6 +350,10 @@ type TemplateReader interface {
 // log-don't-fail rule the task-status handler already applies to a failed
 // post-completion invalidation (tasks.go).
 func Create(ctx context.Context, actor auth.Identity, clusterName string, req CreateRequest, deps CreateDeps) (CreateResult, error) {
+	if req.Image != nil && cloudImagesDisabled {
+		return CreateResult{}, fmt.Errorf("%w: cloud images are disabled", ErrInvalidSource)
+	}
+
 	policyService := selectPolicyService(deps.Store, deps.Services)
 
 	// Administrators (local or cluster) cannot create VMs through the
@@ -375,6 +384,12 @@ func Create(ctx context.Context, actor auth.Identity, clusterName string, req Cr
 
 	if sources > 1 {
 		return CreateResult{}, fmt.Errorf("%w: request carries more than one of iso, templateId, image", ErrInvalidSource)
+	}
+
+	// Cloud-init is off for ISO installs for now: the installer ignores the
+	// cloud-init drive, so the document would only act after the install.
+	if req.ISO != nil && req.CloudInitTemplateID != "" {
+		return CreateResult{}, fmt.Errorf("%w: cloud-init is not supported with an iso", ErrInvalidSource)
 	}
 
 	release, err := reserveCreate(ctx, policyService, clusterName, actor, req.Name)

@@ -42,7 +42,7 @@ The complete, route-by-route inventory lives in [docs/FEATURES.md](docs/FEATURES
 
 - Sign in with Proxmox credentials on the cluster of your choice.
 - **My VMs**: cross-cluster list, search/filter/sort mirrored in the URL, live status, bulk power actions with per-VM results, console button in every row.
-- **Create a VM** wizard (Simple / Detailed) from three sources: an approved **ISO**, a Proxmox **template** (linked or full clone), or a **cloud image** (`import-from` + cloud-init). Hardware profiles or custom CPU/RAM/disk, auto-placement with capacity scoring, multi-NIC (bridge + model), UEFI (no Secure Boot) / TPM 2.0, curated tags, boot from CD-ROM.
+- **Create a VM** wizard (Simple / Detailed) from three sources: an approved **ISO**, a Proxmox **template** (linked or full clone), or a **cloud image** (`import-from` + cloud-init) (cloud images are temporarily disabled: they do not work reliably yet). Hardware profiles or custom CPU/RAM/disk, auto-placement with capacity scoring, multi-NIC (bridge + model), UEFI (no Secure Boot) / TPM 2.0, curated tags, boot from CD-ROM.
 - **Operate a VM**: 7 power actions, rename, Markdown description, delete; disks (add / grow / detach); NIC edit (bridge, model, VLAN, rate); CPU/RAM/tags/CD-ROM; snapshots (create / rollback / delete, RAM optional); metrics history (hour/day/week) and live stream; per-VM activity log.
 - **Consoles**: noVNC and serial (xterm.js), both proxied through PVMSS with single-use tickets; power actions from the console page.
 - **Cloud-init**: native form (user, password via guest agent, SSH keys, IP/DNS), "add key now" injection, administrator **cloud-init templates** picked at creation or switched later on the VM (users never write YAML).
@@ -51,7 +51,7 @@ The complete, route-by-route inventory lives in [docs/FEATURES.md](docs/FEATURES
 ### Administrators
 
 - **Clusters**: connect several Proxmox environments, test connectivity, per-cluster snippet storage for cloud-init templates.
-- **Catalog**: approve nodes, storages, ISOs, cloud images, VM templates, bridges; CRUD for hardware profiles, tags, cloud-init templates (published to every node, per-node status, "publish all"); stale approvals reconciled against live discovery.
+- **Catalog**: approve nodes, storages, ISOs, cloud images (temporarily disabled), VM templates, bridges; CRUD for hardware profiles, tags, cloud-init templates (published to every node, per-node status, "publish all"); stale approvals reconciled against live discovery.
 - **Pools**: create a self-service user = Proxmox user + pool + ACL in one step; cascade delete.
 - **Migration**: move a PVMSS-managed VM to another approved, online node of the same cluster from the node page (preflight, explicit confirmation, progress in the task tray).
 - **Policy**: per-cluster gabarit (sockets, cores, memory, disk per VM, NICs, snapshots, isolation VLAN) and quota (VMs per user); per-node capacity caps with live usage.

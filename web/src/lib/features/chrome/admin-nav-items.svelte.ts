@@ -55,7 +55,8 @@ export const ADMIN_NAV_GROUPS: readonly AdminNavGroup[] = [
 			{ href: resolve('/admin/storages'), label: () => m['chrome.adminNav.storages']() },
 			{ href: resolve('/admin/isos'), label: () => m['chrome.adminNav.isos']() },
 			{ href: resolve('/admin/templates'), label: () => m['chrome.adminNav.templates']() },
-			{ href: resolve('/admin/images'), label: () => m['chrome.adminNav.images']() },
+			// Cloud images (.img) are disabled for now: they do not work reliably yet.
+			// { href: resolve('/admin/images'), label: () => m['chrome.adminNav.images']() },
 			{ href: resolve('/admin/bridges'), label: () => m['chrome.adminNav.bridges']() }
 		]
 	},

@@ -38,7 +38,7 @@ PVMSS is self-hosted by a single organization for its own teams - one operator, 
 
 ## Capabilities and Constraints
 
-**Capabilities** - VM lifecycle for end users: create (ISO, Proxmox template clone, or cloud-image import), list and search across clusters, live status, bulk power actions, snapshot, in-browser console, activity and audit history. Admin: cluster connections, approved catalog, hardware profiles, quotas and per-node capacity, pools, tags, cloud-init templates, documentation, audit log.
+**Capabilities** - VM lifecycle for end users: create (ISO, Proxmox template clone, or cloud-image import - temporarily disabled, not reliable yet), list and search across clusters, live status, bulk power actions, snapshot, in-browser console, activity and audit history. Admin: cluster connections, approved catalog, hardware profiles, quotas and per-node capacity, pools, tags, cloud-init templates, documentation, audit log.
 
 **Constraints**:
 

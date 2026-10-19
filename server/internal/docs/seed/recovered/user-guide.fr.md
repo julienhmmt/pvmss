@@ -24,7 +24,7 @@ Ouvrez l'assistant via « Créer une VM » après connexion. Le mode **Simple**
 ne demande que l'essentiel ; le mode **Détaillé** expose toutes les options.
 Configurez :
 
-- **Source** : une image **ISO**, un **template** Proxmox à cloner ou une **image cloud** à importer - tous issus des listes approuvées par l'administrateur. Un clone reste sur le nœud du template ; une image cloud exige les champs cloud-init.
+- **Source** : une image **ISO**, un **template** Proxmox à cloner ou une **image cloud** à importer (temporairement désactivée) - tous issus des listes approuvées par l'administrateur. Un clone reste sur le nœud du template ; une image cloud exige les champs cloud-init.
 - **Nom et description** : un nom en minuscules, avec tirets, unique dans votre pool. Un nom clair (`web-prod-01`) rend la liste cherchable et le journal d'activité lisible.
 - **Cluster et nœud** : le nœud est choisi automatiquement (nœud approuvé le moins chargé avec assez de stockage) sauf si vous en choisissez un en mode Détaillé.
 - **Profil (optionnel)** : si votre administrateur a publié des profils matériels, choisissez-en un pour remplir CPU, mémoire et disque.
