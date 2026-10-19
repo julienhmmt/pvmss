@@ -603,6 +603,9 @@ export class VmCreateStore {
 	}
 
 	effectiveNode(): string {
+		// A clone stays on its template's node (templateId is reset when the source changes).
+		const template = this.templateId !== 0 ? this.catalog?.templates.find((t) => t.vmid === this.templateId) : undefined;
+		if (template) return template.node;
 		return this.nodeAdjusted && this.node !== '' ? this.node : this.autoNode();
 	}
 

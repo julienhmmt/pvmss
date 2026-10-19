@@ -732,3 +732,27 @@ describe('VmCreateStore cloud-init document (ticket 04)', () => {
 		expect(store.buildRequest().cloudInitTemplateId).toBe('web-server');
 	});
 });
+
+describe('VmCreateStore.cloudInitTemplatesOnNode on a template clone', () => {
+	it("filters on the template's node, not the first catalog node", () => {
+		// A clone stays on its template's node, so the document must be there.
+		const store = new VmCreateStore();
+		store.sourceType = 'template';
+		store.templateId = 9000;
+		store.catalog = {
+			cluster: 'default',
+			nodes: ['pve-node-01', 'pve-node-02'],
+			storages: [],
+			bridges: [],
+			isos: [],
+			images: [],
+			profiles: [],
+			templates: [{ vmid: 9000, node: 'pve-node-02', name: 'tmpl', cloudInitCapable: true, diskSizeGB: 8, diskStorage: 'local-lvm' }],
+			cloudInitTemplates: [{ id: 'ci-02', label: 'Web', nodes: ['pve-node-02'] }],
+			cloudInitWriteEnabled: true,
+			tags: []
+		};
+
+		expect(store.cloudInitTemplatesOnNode().map((t) => t.id)).toEqual(['ci-02']);
+	});
+});
