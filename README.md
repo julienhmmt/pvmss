@@ -264,7 +264,7 @@ docker run -d \
   -e PVMSS_DB_PATH="/data/pvmss.db" \
   -e SESSION_SECRET="$(openssl rand -hex 32)" \
   -e TZ=Europe/Paris \
-  jhmmt/pvmss:latest
+  jhmmt/pvmss:0.4
 ```
 
 To write JSON logs to a file inside the container instead of stdout, override:
@@ -284,7 +284,7 @@ The application will be available at <http://localhost:50000>. Over plain HTTP o
 ```yaml
 services:
   pvmss:
-    image: jhmmt/pvmss:latest
+    image: jhmmt/pvmss:0.4
     container_name: pvmss
     restart: unless-stopped
     ports:
