@@ -15,7 +15,7 @@ sous `/admin`.
 1. Ouvrez le panneau d'administration sur `/admin` (compte administrateur requis).
 2. Vérifiez **Infos application** (`/admin/appinfo`) pour confirmer que l'instance est connectée au bon environnement Proxmox.
 3. Ajoutez ou vérifiez vos **Clusters** (`/admin/clusters`) et lancez le **Test** de connexion.
-4. Approuvez les ressources utilisables : **Nœuds**, **Stockages**, **ISO**, **Templates de VM**, **Images cloud** et **Bridges**.
+4. Approuvez les ressources utilisables : **Nœuds**, **Stockages**, **ISO**, **Templates de VM** et **Bridges** (images cloud temporairement désactivées).
 5. Optionnel mais recommandé : créez des **profils de VM** pour proposer des gabarits matériels pré-approuvés, définissez des **Tags** et rédigez des **templates cloud-init**.
 6. Réglez la **Politique** (gabarit et quota par cluster) et la **Capacité des nœuds**.
 7. Activez éventuellement les **documents cloud-init** (voir plus bas).
@@ -97,7 +97,7 @@ Les groupes **Ressources** et **Provisionnement** du menu admin contrôlent ce q
 - **Stockages** (`/admin/storages`) - approuver les stockages pouvant héberger des disques de VM, regroupés par nœud, avec barres d'usage.
 - **ISO** (`/admin/isos`) - approuver les images ISO de démarrage.
 - **Templates de VM** (`/admin/templates`) - approuver les templates Proxmox clonables, avec surcharges optionnelles par template. Un clone reste sur le nœud du template ; l'assistant prévient quand le stockage cible impose une copie complète.
-- **Images cloud** (`/admin/images`) - temporairement désactivées (pas d'entrée de menu, la page redirige vers les ISO) car elles ne fonctionnent pas encore correctement. approuver les images cloud découvertes dans le contenu `import/` d'un stockage. PVMSS ne télécharge jamais d'image depuis Internet : déposez-les vous-même sur le stockage.
+- **Images cloud** (`/admin/images`) - temporairement désactivées (pas d'entrée de menu, la page redirige vers les ISO) car elles ne fonctionnent pas encore correctement. Une fois réactivée, elle sert à approuver les images cloud découvertes dans le contenu `import/` d'un stockage. PVMSS ne télécharge jamais d'image depuis Internet : déposez-les vous-même sur le stockage.
 - **Bridges** (`/admin/bridges`) - approuver les bridges réseau (VMBR) pour les cartes réseau. Les bridges Open vSwitch ne sont pas listés.
 - **Templates cloud-init** (`/admin/cloudinit-templates`) - créer, activer, désactiver et modifier des documents `#cloud-config` que les utilisateurs peuvent choisir à la création.
 - **Profils** (`/admin/profiles`) - définir des profils matériels pré-approuvés (sockets, cœurs, mémoire, disque, bus).

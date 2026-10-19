@@ -30,8 +30,7 @@ what is needed; **Detailed** mode exposes every option. Configure:
 - **Storage**: a storage approved by your administrator; the wizard checks free space live.
 - **Network**: one or more network cards, each with a bridge and a card model (VirtIO, E1000, RTL8139, VMXNet3). The Proxmox firewall is always enabled; your administrator may impose an isolation VLAN.
 - **Firmware**: UEFI (default on) with an empty EFI key store - Secure Boot is never enabled, because most Linux ISOs are unsigned and would not boot with it. TPM 2.0 for guests that require it.
-- **Cloud-init document**: one of the templates your administrator provides. See the [cloud-init how-to](/docs/cloud-init-howto).
-- **SSH keys** (cloud image source): tick the keys saved on your profile or paste one-off keys in the same field. Pasting exactly one key your profile does not know yet offers to save it once the VM is created.
+- **Cloud-init document**: one of the templates your administrator provides, for template clones only (not offered for ISO installs). See the [cloud-init how-to](/docs/cloud-init-howto).
 - **Startup**: choose whether the VM starts automatically after creation.
 - **Tags**: pick from the administrator-curated list.
 

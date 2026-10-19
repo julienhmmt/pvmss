@@ -32,8 +32,7 @@ Configurez :
 - **Stockage** : un stockage approuvé ; l'assistant vérifie l'espace libre en direct.
 - **Réseau** : une ou plusieurs cartes, chacune avec un bridge et un modèle (VirtIO, E1000, RTL8139, VMXNet3). Le pare-feu Proxmox est toujours activé ; votre administrateur peut imposer un VLAN d'isolation.
 - **Firmware** : UEFI (activé par défaut) avec un magasin de clés EFI vide - Secure Boot n'est jamais activé, car la plupart des ISO Linux ne sont pas signés et ne démarreraient pas avec. TPM 2.0 pour les invités qui l'exigent.
-- **Document cloud-init** : l'un des templates fournis par votre administrateur. Voir le [guide cloud-init](/docs/cloud-init-howto).
-- **Clés SSH** (source image cloud) : cochez les clés enregistrées dans votre profil ou collez des clés ponctuelles dans le même champ. Coller exactement une clé absente de votre profil propose de l'enregistrer une fois la VM créée.
+- **Document cloud-init** : l'un des templates fournis par votre administrateur, pour les clones de template uniquement (non proposé pour une installation ISO). Voir le [guide cloud-init](/docs/cloud-init-howto).
 - **Démarrage** : choisissez si la VM démarre automatiquement après création.
 - **Tags** : à choisir dans la liste curée par l'administrateur.
 

@@ -95,7 +95,7 @@ The **Resources** and **Provisioning** groups of the admin nav control what VM c
 - **Storages** (`/admin/storages`) - approve the storage backends that may host VM disks, grouped by node, with usage bars.
 - **ISOs** (`/admin/isos`) - approve the ISO images users may boot from.
 - **VM templates** (`/admin/templates`) - approve the Proxmox templates users may clone, with optional per-template overrides. A clone stays on the template's node; the wizard warns when the target storage forces a full copy.
-- **Cloud images** (`/admin/images`) - temporarily disabled (no menu entry, page redirects to ISOs) because cloud images do not work reliably yet. approve cloud images discovered under a storage's `import/` content directory. PVMSS never downloads images from the internet: place them on the storage yourself.
+- **Cloud images** (`/admin/images`) - temporarily disabled (no menu entry, page redirects to ISOs) because cloud images do not work reliably yet. Once re-enabled, it approves cloud images discovered under a storage's `import/` content directory. PVMSS never downloads images from the internet: place them on the storage yourself.
 - **Bridges** (`/admin/bridges`) - approve the network bridges (VMBR) available for VM network cards. Open vSwitch bridges are not listed.
 - **Cloud-init templates** (`/admin/cloudinit-templates`) - create, enable, disable, and edit admin-curated `#cloud-config` documents users can pick at creation time.
 - **Profiles** (`/admin/profiles`) - define pre-approved hardware profiles (sockets, cores, memory, disk, bus), so users can pick a known-good shape instead of free-typing values.
