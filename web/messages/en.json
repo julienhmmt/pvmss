@@ -1949,7 +1949,7 @@
   "vms.detail.connect.notRunningBody": "Start the machine first. Connection details appear once it is running.",
   "vms.detail.connect.consoleTitle": "Or stay in your browser.",
   "vms.detail.connect.consoleBody": "The console shows the machine's screen, as if a monitor were plugged in.",
-  "vms.detail.connect.consoleOpen": "Open browser console",
+  "vms.detail.connect.consoleOpen": "Open the console",
   "vms.detail.connect.installingTitle": "Installation in progress",
   "vms.detail.connect.installingBody": "This machine is booting from the ISO. Finish the installation in the console, then eject the ISO.",
   "vms.detail.connect.ejectIso": "Eject the ISO",
