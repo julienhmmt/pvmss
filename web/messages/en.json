@@ -2253,5 +2253,7 @@
   "admin.clusterDetail.inventory": "Inventory",
   "admin.clusterDetail.inventoryUnavailable": "Live inventory is unavailable right now.",
   "admin.clusterDetail.vms": "VMs",
-  "admin.clusterDetail.vmsRunning": "Running VMs"
+  "admin.clusterDetail.vmsRunning": "Running VMs",
+  "admin.clusters.details": "Cluster details",
+  "admin.clusters.detailsLabel": "Details of {name}"
 }

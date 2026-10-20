@@ -2253,5 +2253,7 @@
   "admin.clusterDetail.inventory": "Inventaire",
   "admin.clusterDetail.inventoryUnavailable": "L'inventaire en direct est indisponible pour le moment.",
   "admin.clusterDetail.vms": "VMs",
-  "admin.clusterDetail.vmsRunning": "VMs démarrées"
+  "admin.clusterDetail.vmsRunning": "VMs démarrées",
+  "admin.clusters.details": "Détails du cluster",
+  "admin.clusters.detailsLabel": "Détails de {name}"
 }

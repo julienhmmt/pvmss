@@ -5,6 +5,7 @@
 	import Alert from '#lib/shared/ui/Alert.svelte';
 	import PageHeader from '#lib/shared/ui/PageHeader.svelte';
 	import Button from '#lib/shared/ui/Button.svelte';
+	import ButtonLink from '#lib/shared/ui/ButtonLink.svelte';
 	import ConfirmDialog from '#lib/shared/ui/ConfirmDialog.svelte';
 	import EmptyState from '#lib/shared/ui/EmptyState.svelte';
 	import Pill from '#lib/shared/ui/Pill.svelte';
@@ -135,6 +136,7 @@
 -->
 							<td data-label={m['common.actions']()}>
 								<div class="flex flex-wrap gap-2">
+									<ButtonLink variant="secondary" size="sm" href={resolve('/admin/clusters/[name]', { name: cluster.name })} label={m['admin.clusters.detailsLabel']({ name: cluster.name })}>{m['admin.clusters.details']()}</ButtonLink>
 									<Button variant="secondary" size="sm" disabled={store.busy !== null} label={m['admin.clusters.testLabel']({ name: cluster.name })} onclick={() => void store.test(cluster.name)}>{m['admin.clusters.test']()}</Button>
 									<Button variant="secondary" size="sm" disabled={store.busy !== null} label={m['admin.clusters.editLabel']({ name: cluster.name })} onclick={() => void openForm(cluster)}>{m['common.edit']()}</Button>
 									<Button variant="destructive" size="sm" disabled={store.busy !== null} label={m['admin.clusters.removeLabel']({ name: cluster.name })} onclick={() => (pendingDelete = cluster)}>{m['admin.clusters.remove']()}</Button>
