@@ -19,7 +19,7 @@ function buildProps(detail: PoolDetail | null, overrides: Record<string, unknown
 			commentError: null,
 			onUpdateComment: async () => {},
 			onRefresh: noop,
-			onDelete: async () => {},
+			onDelete: () => Promise.resolve(true),
 			onDeleted: noop,
 			...overrides
 		}
@@ -117,7 +117,7 @@ describe('PoolDetailPage', () => {
 	});
 
 	it('opens the delete confirmation and calls onDelete', async () => {
-		const onDelete = vi.fn(async () => {});
+		const onDelete = vi.fn(() => Promise.resolve(false));
 		const onDeleted = vi.fn();
 		mount(PoolDetailPage, buildProps(detail(), { onDelete, onDeleted }));
 
@@ -133,7 +133,7 @@ describe('PoolDetailPage', () => {
 		await tick();
 
 		expect(onDelete).toHaveBeenCalled();
-		expect(onDeleted).toHaveBeenCalled();
+		expect(onDeleted).toHaveBeenCalledWith(false);
 		document.body.innerHTML = '';
 	});
 });

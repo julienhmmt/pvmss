@@ -109,14 +109,16 @@ export class PoolDetailStore {
 		}
 	}
 
-	async remove(): Promise<void> {
-		if (!this.detail) return;
+	/** Resolves to whether the Proxmox account was deleted too. */
+	async remove(): Promise<boolean> {
+		if (!this.detail) return true;
 		this.deleting = true;
 		this.deleteError = null;
 		try {
-			await del<DeletePoolResponse>(
+			const result = await del<DeletePoolResponse>(
 				`/api/v1/admin/pools/${encodeURIComponent(this.detail.name)}?cluster=${encodeURIComponent(this.cluster)}`
 			);
+			return result.userDeleted;
 		} catch (err) {
 			this.deleteError = err instanceof ApiRequestError ? err.message : m['admin.pools.deleteError']();
 			throw err;

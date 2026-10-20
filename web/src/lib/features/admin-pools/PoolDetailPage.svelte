@@ -26,8 +26,8 @@
 		commentError: string | null;
 		onRefresh: () => void;
 		onUpdateComment: (comment: string) => Promise<void>;
-		onDelete: () => Promise<void>;
-		onDeleted: () => void;
+		onDelete: () => Promise<boolean>;
+		onDeleted: (userDeleted: boolean) => void;
 	}
 
 	let {
@@ -118,8 +118,7 @@
 
 	async function confirmDelete(): Promise<void> {
 		try {
-			await onDelete();
-			onDeleted();
+			onDeleted(await onDelete());
 		} catch {
 			// error is set on the store; dialog stays open
 		}

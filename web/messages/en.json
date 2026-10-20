@@ -1165,7 +1165,7 @@
   "admin.pools.loadError": "Failed to load PVMSS users.",
   "admin.pools.created": "PVMSS user {name} created",
   "admin.pools.deleted": "PVMSS user {name} deleted",
-  "admin.pools.deletedUserFailed": "The VM pool {name} was deleted, but PVMSS could not delete the Proxmox sign-in account.",
+  "admin.pools.deletedUserFailed": "VMs and pool {name} were deleted, but PVMSS could not delete the Proxmox account {name}@pve. Delete it manually in Proxmox (Datacenter > Permissions > Users), otherwise it can still log in.",
   "admin.pools.createError": "Failed to create a PVMSS user.",
   "admin.pools.deleteError": "Failed to delete the PVMSS user.",
   "admin.pools.origin": "Origin",

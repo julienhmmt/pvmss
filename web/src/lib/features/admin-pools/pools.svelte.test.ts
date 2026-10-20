@@ -69,6 +69,17 @@ describe('PoolsStore', () => {
 		expect(store.announce).toBe(m['admin.pools.deleted']({ name: 'pvmss-carol' }));
 	});
 
+	it('keeps a visible warning when the Proxmox account survives the delete', async () => {
+		stubFetch(jsonResponse(200, { status: 'deleted', userDeleted: false }));
+		const store = new PoolsStore();
+		store.cluster = 'musclegrid';
+
+		await store.remove('pvmss-carol');
+		expect(store.userDeleteWarning).toBe(m['admin.pools.deletedUserFailed']({ name: 'pvmss-carol' }));
+		store.dismissUserDeleteWarning();
+		expect(store.userDeleteWarning).toBeNull();
+	});
+
 	it('dismissCredentials clears the createdCredentials state', async () => {
 		stubFetch(
 			jsonResponse(201, { name: 'pvmss-carol', username: 'pvmss-carol', password: 'gen-pw', comment: '', managed: true })

@@ -1165,7 +1165,7 @@
   "admin.pools.loadError": "Échec du chargement des utilisateurs PVMSS.",
   "admin.pools.created": "Utilisateur PVMSS {name} créé",
   "admin.pools.deleted": "Utilisateur PVMSS {name} supprimé",
-  "admin.pools.deletedUserFailed": "Le pool de VMs {name} a été supprimé, mais PVMSS n'a pas pu supprimer le compte Proxmox de connexion.",
+  "admin.pools.deletedUserFailed": "Les VMs et le pool {name} ont été supprimés, mais PVMSS n'a pas pu supprimer le compte Proxmox {name}@pve. Supprimez-le manuellement dans Proxmox (Datacenter > Permissions > Utilisateurs), sinon il peut toujours se connecter.",
   "admin.pools.createError": "Échec de la création de l'utilisateur PVMSS.",
   "admin.pools.deleteError": "Échec de la suppression de l'utilisateur PVMSS.",
   "admin.pools.origin": "Origine",
