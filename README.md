@@ -43,14 +43,15 @@ The complete, route-by-route inventory lives in [docs/FEATURES.md](docs/FEATURES
 - Sign in with Proxmox credentials on the cluster of your choice.
 - **My VMs**: cross-cluster list, search/filter/sort mirrored in the URL, live status, bulk power actions with per-VM results, console button in every row.
 - **Create a VM** wizard (Simple / Detailed) from three sources: an approved **ISO**, a Proxmox **template** (linked or full clone), or a **cloud image** (`import-from` + cloud-init) (cloud images are temporarily disabled: they do not work reliably yet). Hardware profiles or custom CPU/RAM/disk, auto-placement with capacity scoring, multi-NIC (bridge + model), UEFI (no Secure Boot) / TPM 2.0, curated tags, boot from CD-ROM.
+- **Sign-in on VMs**: PVMSS adds no SSH key or password (cloud-init is paused). A template clone keeps the sign-in built into its Proxmox template; an ISO install gets the account the user creates during installation. See [VM templates carry the sign-in](#vm-templates-carry-the-sign-in).
 - **Operate a VM**: 7 power actions, rename, Markdown description, delete; disks (add / grow / detach); NIC edit (bridge, model, VLAN, rate); CPU/RAM/tags/CD-ROM; snapshots (create / rollback / delete, RAM optional); metrics history (hour/day/week) and live stream; per-VM activity log.
 - **Consoles**: noVNC and serial (xterm.js), both proxied through PVMSS with single-use tickets; power actions from the console page.
-- **Cloud-init**: native form (user, password via guest agent, SSH keys, IP/DNS), "add key now" injection, administrator **cloud-init templates** picked at creation or switched later on the VM (users never write YAML).
+- **Cloud-init** (paused for now): native form (user, password via guest agent, SSH keys, IP/DNS), "add key now" injection, administrator **cloud-init templates** picked at creation or switched later on the VM (users never write YAML).
 - Nodes page with live capacity, in-app documentation, EN + FR, keyboard-first and WCAG 2.1 AA target.
 
 ### Administrators
 
-- **Clusters**: connect several Proxmox environments, test connectivity, per-cluster snippet storage for cloud-init templates.
+- **Clusters**: connect several Proxmox environments, test connectivity, per-cluster snippet storage for cloud-init templates (paused).
 - **Catalog**: approve nodes, storages, ISOs, cloud images (temporarily disabled), VM templates, bridges; CRUD for hardware profiles, tags, cloud-init templates (published to every node, per-node status, "publish all"); stale approvals reconciled against live discovery.
 - **Pools**: create a self-service user = Proxmox user + pool + ACL in one step; cascade delete.
 - **Migration**: move a PVMSS-managed VM to another approved, online node of the same cluster from the node page (preflight, explicit confirmation, progress in the task tray).
@@ -140,7 +141,26 @@ profile: create the ones your users need. Each profile has a label, the
 resource values above, and an enabled flag (only enabled profiles are offered).
 Per-cluster limits (gabarit) in **Admin > Policy** still cap every value.
 
+### VM templates carry the sign-in
+
+PVMSS adds no SSH key and no password to the VMs it creates while cloud-init
+is paused. A clone keeps exactly what its Proxmox template carries, so build
+every template you approve with the sign-in users need:
+
+1. In the template's **Cloud-Init** tab in Proxmox, set the user and an SSH
+   public key or a password (or bake an account into the image).
+2. Install and enable `qemu-guest-agent`, so VMs report their address and the
+   **Connect** tab can show the SSH command.
+3. Convert it (`qm template <vmid>`) and approve it in **Admin > VM templates**.
+
+Every VM cloned from one template shares that sign-in: hand it to the users
+of that template, or keep one template per team. ISO installs are unaffected:
+users create their own account during installation, from the browser console.
+
 ### Cloud-init templates (optional)
+
+> **Paused since 2026-10-20**: cloud-init is not reliable or viable yet and too complex to set up. Hidden in the UI and refused by the API; see
+> [docs/cloud-init.md](docs/cloud-init.md).
 
 Administrators write cloud-init templates in **Admin › Cloud-init**; users
 pick one when they create a VM (or switch later on the VM's cloud-init tab).

@@ -26,11 +26,11 @@ test.describe('PVMSS user administration', () => {
 		await expect(page.getByRole('row', { name: /alice/ })).toHaveCount(0);
 
 		const userRow = page.getByRole('row', { name: /pvmss-e2eteam@pve/ });
-		await userRow.getByRole('button', { name: /Delete PVMSS user/ }).click();
-		const deleteDialog = page.getByRole('dialog', { name: 'Delete PVMSS user?' });
+		await userRow.getByRole('button', { name: 'Delete user “pvmss-e2eteam”' }).click();
+		const deleteDialog = page.getByRole('dialog', { name: 'Delete user “e2eteam”?' });
 		await expect(deleteDialog).toBeVisible();
 		// The confirm names the account it will delete, not a bare "Delete user".
-		await deleteDialog.getByRole('button', { name: /Delete PVMSS user/ }).click();
+		await deleteDialog.getByRole('button', { name: 'Delete user “e2eteam”' }).click();
 		await expect(page.getByRole('row', { name: /pvmss-e2eteam@pve/ })).toHaveCount(0);
 	});
 });

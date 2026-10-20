@@ -7,8 +7,7 @@ shown here are the portal defaults.
 ## Naming
 
 VM names are hostnames: lowercase, hyphenated, at most 63 characters, and
-unique within your pool (the name becomes the guest's DNS label through
-cloud-init). Avoid generic names like `vm1` - a descriptive name
+unique within your pool. Avoid generic names like `vm1` - a descriptive name
 (`web-prod-01`) makes the VMs list searchable and the activity log readable.
 
 ## Sources
@@ -18,17 +17,8 @@ cloud-init). Avoid generic names like `vm1` - a descriptive name
 - **Template** - clones an approved Proxmox template. The VM stays on the
   template's node, the disk cannot be smaller than the template's, and the
   wizard tells you when the target storage forces a full copy instead of a
-  linked clone.
-- **Cloud image** (temporarily disabled: not reliable yet) - imports an approved cloud image as the primary disk and
-  requires the cloud-init fields (user, SSH keys, network). The VM starts
-  only after the import finishes and cloud-init is applied. SSH keys go
-  through a shared picker: the keys saved on your profile are listed as
-  checkboxes - all ticked when you have three or fewer, unticked beyond
-  that - and one-off keys can be pasted below. Paste exactly one key your
-  profile does not know and the wizard offers to save it once the VM is
-  created; that save is best-effort and never makes the creation fail.
-  Whatever the source, keys are copied into the VM at creation time:
-  editing your profile later never changes existing machines.
+  linked clone. The clone keeps the sign-in built into the template (SSH key
+  or password): PVMSS adds none, so ask your administrator for it.
 
 ## Resources
 
@@ -57,14 +47,7 @@ that the specific ISO is signed.
 
 Enable **TPM 2.0** for guests that require it (Windows 11).
 
-## Cloud-init
-
-Prefer a **cloud-init document** over a manual post-install setup. Pick one of
-the templates your administrator provides; the VM keeps the version it was
-created with. See the [cloud-init how-to](/docs/cloud-init-howto).
-
 ## After creation
 
 New VMs appear in **My VMs** as soon as the create task finishes. The first
-boot may take a minute while cloud-init runs; the console shows live boot
-output.
+boot may take a minute; the console shows live boot output.

@@ -78,6 +78,10 @@ func extractRoutePatterns(t *testing.T) []extractedRoute {
 			method := parts[0]
 			path := parts[1]
 
+			if httpapi.IsPausedCloudInitRoute(pattern) {
+				continue
+			}
+
 			routes = append(routes, extractedRoute{
 				Pattern:    pattern,
 				Method:     method,

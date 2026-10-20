@@ -24,7 +24,7 @@ Ouvrez l'assistant via « Créer une VM » après connexion. Le mode **Simple**
 ne demande que l'essentiel ; le mode **Détaillé** expose toutes les options.
 Configurez :
 
-- **Source** : une image **ISO**, un **template** Proxmox à cloner ou une **image cloud** à importer (temporairement désactivée) - tous issus des listes approuvées par l'administrateur. Un clone reste sur le nœud du template ; une image cloud exige les champs cloud-init.
+- **Source** : une image **ISO** ou un **template** Proxmox à cloner - tous deux issus des listes approuvées par l'administrateur. Un clone reste sur le nœud du template et garde les accès intégrés au template (voir **Se connecter à sa VM** plus bas).
 - **Nom et description** : un nom en minuscules, avec tirets, unique dans votre pool. Un nom clair (`web-prod-01`) rend la liste cherchable et le journal d'activité lisible.
 - **Cluster et nœud** : le nœud est choisi automatiquement (nœud approuvé le moins chargé avec assez de stockage) sauf si vous en choisissez un en mode Détaillé.
 - **Profil (optionnel)** : si votre administrateur a publié des profils matériels, choisissez-en un pour remplir CPU, mémoire et disque.
@@ -32,13 +32,27 @@ Configurez :
 - **Stockage** : un stockage approuvé ; l'assistant vérifie l'espace libre en direct.
 - **Réseau** : une ou plusieurs cartes, chacune avec un bridge et un modèle (VirtIO, E1000, RTL8139, VMXNet3). Le pare-feu Proxmox est toujours activé ; votre administrateur peut imposer un VLAN d'isolation.
 - **Firmware** : UEFI (activé par défaut) avec un magasin de clés EFI vide - Secure Boot n'est jamais activé, car la plupart des ISO Linux ne sont pas signés et ne démarreraient pas avec. TPM 2.0 pour les invités qui l'exigent.
-- **Document cloud-init** : l'un des templates fournis par votre administrateur, pour les clones de template uniquement (non proposé pour une installation ISO). Voir le [guide cloud-init](/docs/cloud-init-howto).
 - **Démarrage** : choisissez si la VM démarre automatiquement après création.
 - **Tags** : à choisir dans la liste curée par l'administrateur.
 
 L'étape **Récapitulatif** résume tout avant validation. Quand vous atteignez
 votre quota (VM max) ou une limite de gabarit, la demande est refusée avant
 tout appel à Proxmox.
+
+## Se connecter à sa VM
+
+PVMSS n'ajoute ni clé SSH ni mot de passe à votre VM.
+
+- **Clone de template** - connectez-vous avec les accès que votre
+  administrateur a intégrés au template (une clé SSH ou un mot de passe).
+  Toutes les VM clonées du même template les partagent ; demandez-les à votre
+  administrateur si vous ne les avez pas.
+- **Installation ISO** - installez le système depuis la console du navigateur
+  et créez votre propre compte pendant l'installation.
+
+Une fois la VM démarrée et son adresse signalée par l'agent invité, l'onglet
+**Connexion** affiche la commande SSH. La console du navigateur fonctionne
+dans tous les cas.
 
 ## Retrouver une machine virtuelle
 
@@ -55,7 +69,7 @@ même VMID peut exister sur des clusters différents sans conflit.
 
 ## Gérer une machine virtuelle
 
-La page de détail d'une VM comporte trois onglets : **Connexion** (actions d'alimentation et console), **Configuration** (avec les sous-sections ci-dessous : Résumé, Disques, Réseau, Matériel, Cloud-init, Snapshots) et **Activité**.
+La page de détail d'une VM comporte trois onglets : **Connexion** (actions d'alimentation et console), **Configuration** (avec les sous-sections ci-dessous : Résumé, Disques, Réseau, Matériel, Snapshots) et **Activité**.
 
 ### Connexion
 
@@ -84,18 +98,6 @@ Modifiez chaque carte réseau : bridge, modèle, tag VLAN et limite de débit
 Modifiez sockets, cœurs et mémoire dans les limites de la politique, choisissez
 les tags dans le sélecteur curé, et chargez ou éjectez une ISO dans le lecteur
 CD-ROM.
-
-### Cloud-init
-
-Définissez l'utilisateur, le mot de passe (transmis via l'agent invité, jamais
-stocké), les clés SSH, l'adresse IP, la passerelle et le DNS. La section **Ajouter une clé SSH** injecte immédiatement une clé dans une VM
-en marche. Le
-sélecteur sous la liste de clés ajoute les clés enregistrées dans votre
-profil en plus de la liste actuelle - les clés déjà présentes sur la VM
-restent modifiables dans la liste et ne sont pas reproposées. Le
-document cloud-init de la VM est affiché ici ; vous pouvez choisir un autre
-template administrateur ou le détacher. Voir le [guide cloud-init](/docs/cloud-init-howto)
-pour savoir ce qui s'applique et quand.
 
 ### Snapshots
 
@@ -136,13 +138,8 @@ applique côté serveur avant tout appel à Proxmox.
 ## Bonnes pratiques
 
 - Utilisez des noms de VM descriptifs, avec tirets.
-- Préférez un document cloud-init à une configuration manuelle après installation.
 - Partez d'un profil quand l'un d'eux correspond à votre besoin.
 - Ne conservez que les snapshots qui marquent une étape significative.
-- Enregistrez vos clés publiques SSH dans votre [profil](/profile) : l'assistant
-  de création et l'onglet cloud-init de la VM les proposent à cocher, et une
-  clé copiée dans une VM continue de fonctionner même si vous la modifiez ou
-  la supprimez ensuite du profil.
 
 ## Limitations connues
 

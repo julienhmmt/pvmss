@@ -45,7 +45,7 @@ PVMSS is self-hosted by a single organization for its own teams - one operator, 
 - Users never get direct Proxmox access; ownership is enforced server-side, not by list filtering.
 - PVMSS never writes on the nodes. The Proxmox API cannot write snippets, so cloud-init files are published by an admin running a copy-paste command; presence is read live per node and never stored.
 - The server is deliberately dependency-light: stdlib routing, SQLite for persistence, no CGO.
-- Only PVMSS administrators author cloud-init YAML; end users cannot.
+- Only PVMSS administrators author cloud-init YAML; end users cannot. Cloud-init is paused since 2026-10-20 (not reliable or viable yet, too complex to set up).
 
 **Terminology** is defined in `CONTEXT.md` (projection, live status, UPID, lock); feature status lives in `docs/FEATURES.md`, workflows in `WORKFLOWS.md`.
 

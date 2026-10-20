@@ -8,6 +8,9 @@ async function signIn(request: import('@playwright/test').APIRequestContext, use
 
 // REPORT.md #2: inject an SSH key into the running guest via the QEMU guest
 // agent, without a reboot, and reject a malformed key before it reaches the agent.
+// Cloud-init is paused (server cloudInitPaused): its routes are not registered.
+test.skip(true, 'cloud-init is paused');
+
 test('injects an SSH key post-boot via the guest agent without a reboot', async ({ page }) => {
 	// page.request shares the page session cookie, so both the UI click and the
 	// direct API calls below authenticate with the same alice session.

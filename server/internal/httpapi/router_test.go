@@ -89,6 +89,10 @@ const cloudInitRoutePath = "/api/v1/vms/default/101/cloudinit"
 // TestRouter_CloudInitRoutesAreSpecific verifies that cloudinit routes require
 // the exact (vm, node) pair and reject near-miss paths.
 func TestRouter_CloudInitRoutesAreSpecific(t *testing.T) {
+	if httpapi.CloudInitPaused {
+		t.Skip("cloud-init is paused")
+	}
+
 	t.Parallel()
 
 	logger := slog.New(slog.NewJSONHandler(os.Stdout, nil))

@@ -349,7 +349,21 @@ func (service *Policy) poolVMCount(pool string) int {
 		return 0
 	}
 
-	return len(service.projection.Load().ByPool[pool])
+	return ManagedPoolVMCount(service.projection.Load(), pool)
+}
+
+// ManagedPoolVMCount counts the VMs of pool that carry the pvmss tag: only
+// those count toward the pool quota, like pvmssUsage for node capacity.
+func ManagedPoolVMCount(index *inventory.Index, pool string) int {
+	count := 0
+
+	for _, machine := range index.ByPool[pool] {
+		if slices.Contains(machine.Tags, "pvmss") {
+			count++
+		}
+	}
+
+	return count
 }
 
 // PoolHasName reports whether any VM in the given pool already carries name

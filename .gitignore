@@ -1,48 +1,37 @@
-*.log
+# OS / editors
 .DS_Store
+
+# Secrets and local config
+.env
+
+# Agents and local tooling
 .agents/
 .claude/
 .devin/
-.env
-.pnpm-store/
 .scratch/
-.specify/
-bun.lockb
-coverage.out
-graph-questions.txt
-graphify-out/
-node_modules/
-package-lock.json
-proxmox_host_key.pub
-pvmss_snippets_ed25519
-pvmss_snippets_ed25519.pub
-pvmss_ed25519
-pvmss_ed25519.pub
-settings.dev.json
-skills-lock.json
-tmp/
+/tools/
+/sonar-projects/
 
-# binaries
-pvmss
-server/pvmss
-server/pvmss-checklist
-server/pvmss-recover
+# Binaries
+/pvmss
 
-# Git worktrees
-.worktrees/
-
-# Database
+# Local database (SQLite WAL mode)
 pvmss.db
 pvmss.db-shm
 pvmss.db-wal
-golint.txt
 
-# Local SonarQube analysis cache and token
+# Dependencies (bun only; ignore stray npm/pnpm artifacts)
+node_modules/
+.pnpm-store/
+package-lock.json
+bun.lockb
+
+# Test, lint and analysis output
+*.log
+coverage.out
+golint.txt
+web/coverage/
 .sonar/
 
-# Prototype web files
-web/prototype/
-
-# Tests file for web
-web/coverage
-_to_delete/
+# Scratch
+tmp/

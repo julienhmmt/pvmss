@@ -11,7 +11,8 @@ async function signInAlice(request: APIRequestContext): Promise<void> {
 
 test.describe.configure({ mode: 'serial' });
 
-test.describe('T08 VM cloud-init', () => {
+// Cloud-init is paused (server cloudInitPaused): its routes are not registered.
+test.describe.skip('T08 VM cloud-init', () => {
 	test('edits structured config with explicit confirmation and reloads', async ({ page }) => {
 		await signInAlice(page.request);
 		await page.goto('/vms/default/102');

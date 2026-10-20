@@ -15,13 +15,12 @@ sous `/admin`.
 1. Ouvrez le panneau d'administration sur `/admin` (compte administrateur requis).
 2. Vérifiez **Infos application** (`/admin/appinfo`) pour confirmer que l'instance est connectée au bon environnement Proxmox.
 3. Ajoutez ou vérifiez vos **Clusters** (`/admin/clusters`) et lancez le **Test** de connexion.
-4. Approuvez les ressources utilisables : **Nœuds**, **Stockages**, **ISO**, **Templates de VM** et **Bridges** (images cloud temporairement désactivées).
-5. Optionnel mais recommandé : créez des **profils de VM** pour proposer des gabarits matériels pré-approuvés, définissez des **Tags** et rédigez des **templates cloud-init**.
+4. Approuvez les ressources utilisables : **Nœuds**, **Stockages**, **ISO**, **Templates de VM** et **Bridges**. Préparez chaque template avec les accès dont les utilisateurs auront besoin (voir **Les templates de VM portent les accès** plus bas).
+5. Optionnel mais recommandé : créez des **profils de VM** pour proposer des gabarits matériels pré-approuvés et définissez des **Tags**.
 6. Réglez la **Politique** (gabarit et quota par cluster) et la **Capacité des nœuds**.
-7. Activez éventuellement les **documents cloud-init** (voir plus bas).
-8. Créez autant d'**utilisateurs PVMSS** que nécessaire depuis `/admin/pools`.
-9. Informez vos utilisateurs que le portail est disponible.
-10. Surveillez le **journal d'audit** (`/admin/settings`) pour retracer chaque écriture jusqu'à l'utilisateur qui l'a faite.
+7. Créez autant d'**utilisateurs PVMSS** que nécessaire depuis `/admin/pools`.
+8. Informez vos utilisateurs que le portail est disponible.
+9. Surveillez le **journal d'audit** (`/admin/settings`) pour retracer chaque écriture jusqu'à l'utilisateur qui l'a faite.
 
 ## Tableau de bord
 
@@ -83,8 +82,7 @@ PVMSS peut se connecter à plusieurs environnements Proxmox simultanément. Chaq
 - Un cluster est identifié par un nom ; les VM sont toujours adressées par `cluster` + `VMID`, deux clusters peuvent donc réutiliser les mêmes VMID sans conflit.
 - Le **Test** vérifie la connectivité et les identifiants avant d'exposer le cluster ; il rapporte la version de Proxmox et le nombre de nœuds et de VM.
 - La **vérification TLS** peut être désactivée par cluster pour un labo auto-signé ; gardez-la active en production.
-- **Stockage de snippets** active les modèles cloud-init pour ce cluster (voir la section dédiée). Le badge du cluster affiche « cloud-init : activé » une fois ce champ renseigné.
-- Nœuds, stockages, ISO, images, templates, bridges, templates cloud-init et politique sont gérés par cluster.
+- Nœuds, stockages, ISO, templates, bridges et politique sont gérés par cluster.
 
 ## Nœuds
 
@@ -96,10 +94,8 @@ Les groupes **Ressources** et **Provisionnement** du menu admin contrôlent ce q
 
 - **Stockages** (`/admin/storages`) - approuver les stockages pouvant héberger des disques de VM, regroupés par nœud, avec barres d'usage.
 - **ISO** (`/admin/isos`) - approuver les images ISO de démarrage.
-- **Templates de VM** (`/admin/templates`) - approuver les templates Proxmox clonables, avec surcharges optionnelles par template. Un clone reste sur le nœud du template ; l'assistant prévient quand le stockage cible impose une copie complète.
-- **Images cloud** (`/admin/images`) - temporairement désactivées (pas d'entrée de menu, la page redirige vers les ISO) car elles ne fonctionnent pas encore correctement. Une fois réactivée, elle sert à approuver les images cloud découvertes dans le contenu `import/` d'un stockage. PVMSS ne télécharge jamais d'image depuis Internet : déposez-les vous-même sur le stockage.
+- **Templates de VM** (`/admin/templates`) - approuver les templates Proxmox clonables, avec surcharges optionnelles par template. Un clone reste sur le nœud du template ; l'assistant prévient quand le stockage cible impose une copie complète. Un clone garde les accès du template : PVMSS n'en ajoute aucun.
 - **Bridges** (`/admin/bridges`) - approuver les bridges réseau (VMBR) pour les cartes réseau. Les bridges Open vSwitch ne sont pas listés.
-- **Templates cloud-init** (`/admin/cloudinit-templates`) - créer, activer, désactiver et modifier des documents `#cloud-config` que les utilisateurs peuvent choisir à la création.
 - **Profils** (`/admin/profiles`) - définir des profils matériels pré-approuvés (sockets, cœurs, mémoire, disque, bus).
 - **Tags** (`/admin/tags`) - gérer les étiquettes attachables aux VM, chacune avec une couleur. Un tag est immuable une fois créé (seule sa couleur change) ; le tag `pvmss` est réservé et ne peut pas être supprimé.
 
@@ -146,32 +142,40 @@ Au-delà des réglages de la politique, l'application elle-même impose :
 - **Nom de pool** - 1 à 32 caractères alphanumériques minuscules avec tirets internes (stocké en `pvmss-<nom>`).
 - **Listes** - au plus `PVMSS_MAX_LIST_PAGE_SIZE` entrées par page (défaut 100).
 
-## Activer les documents cloud-init
+## Les templates de VM portent les accès
 
-Seuls les administrateurs écrivent les documents cloud-init (**Admin › Cloud-init**) ; les utilisateurs en choisissent un à la création d'une VM ou en changent depuis l'onglet Cloud-init de la VM. L'API REST de Proxmox ne sait pas écrire de fichiers `snippets`, donc PVMSS n'écrit jamais sur les nœuds : pour chaque modèle, fusionné avec la base qemu-guest-agent dans un fichier immuable `pvmss-tpl-<id>-<hash>.yml`, il affiche une commande que l'administrateur colle, en root, sur les nœuds qui doivent le proposer. PVMSS lit via l'API quels nœuds listent le fichier et ne propose le modèle que sur ces nœuds. Modifier un modèle donne un nouveau fichier et une nouvelle commande ; les VM existantes gardent leur version.
+PVMSS n'ajoute ni clé SSH ni mot de passe aux VM qu'il crée : cloud-init
+(clés par VM, templates cloud-init administrateur, images cloud) est en pause
+tant qu'il n'est pas fiable. Un clone garde exactement ce que porte son
+template Proxmox : préparez donc chaque template approuvé avec les accès dont
+les utilisateurs auront besoin :
 
-1. Dans Proxmox, activez le type de contenu **Snippets** sur un stockage (Centre de données › Stockage › Éditer ; `local` convient).
-2. **Infrastructure › Clusters › Modifier** : choisissez ce stockage de snippets. Le badge passe à « cloud-init : activé ».
-3. **Admin › Cloud-init** : écrivez le modèle, ouvrez **Commande à coller**, copiez-la et collez-la dans un shell root sur chaque nœud qui doit proposer le modèle, puis cliquez sur **Vérifier** (« Sur n/m nœuds »).
-4. Vérifiez une VM : créez-en une avec le modèle, puis sur le nœud lancez `qm config <vmid> | grep cicustom`.
+1. Construisez le template dans Proxmox (par exemple depuis une image cloud :
+   importez le disque, ajoutez un lecteur Cloud-Init).
+2. Dans l'onglet **Cloud-Init** du template, renseignez l'utilisateur et une
+   clé SSH publique ou un mot de passe - ou intégrez un compte directement
+   dans l'image.
+3. Installez et activez `qemu-guest-agent`, pour que les VM signalent leur
+   adresse et que l'onglet **Connexion** affiche la commande SSH.
+4. Convertissez-le (`qm template <vmid>`) et approuvez-le dans **Templates de
+   VM**.
 
-Une création portant un modèle dont le fichier n'est pas sur le nœud de la VM est refusée avec `cloudinit_not_published` avant qu'un VMID soit consommé. Les VM cloud-image créées sans modèle reçoivent la baseline seule (`pvmss-baseline-<hash>.yml`, **Admin › Baseline cloud-init**) ; si elle n'est pas sur le nœud, la VM démarre quand même avec ses clés natives.
-
-Les anciennes versions restent sur les nœuds jusqu'à ce que vous les supprimiez. Les fichiers par VM des versions précédentes (`pvmss-<vmid>.yml`) restent sur le nœud quand leur VM est supprimée : supprimez-les à la main.
-
-Voir le [guide de configuration cloud-init](/docs/cloud-init-setup) pour la procédure complète et le dépannage.
+Toutes les VM clonées d'un même template partagent ces accès : transmettez-les
+aux utilisateurs autorisés à utiliser ce template, ou gardez un template par
+équipe. Les installations ISO ne sont pas concernées - l'utilisateur crée son
+propre compte pendant l'installation, depuis la console du navigateur.
 
 ## Documentation (ce CMS)
 
 Cette page fait partie de celles gérées sous **Documentation** (`/admin/docs`). Les administrateurs peuvent créer, modifier, activer/désactiver et supprimer des pages Markdown en anglais et en français. Les pages intégrées sont marquées **système** et ne peuvent pas être supprimées, mais leur contenu est modifiable. Chaque page a une audience `user` (publique) ou `admin` (administrateurs) ; les pages admin sont masquées aux non-administrateurs et refusées en accès direct.
 
-Les pages intégrées sont insérées une seule fois, si elles manquent, et jamais écrasées au redémarrage : vos modifications survivent aux mises à jour. Pour récupérer un texte intégré plus récent, supprimez la page et redémarrez, ou collez le nouveau contenu depuis la release.
+Les pages intégrées sont insérées une seule fois, si elles manquent, et jamais écrasées au redémarrage : vos modifications survivent aux mises à jour. Pour récupérer un texte intégré plus récent, collez le nouveau contenu de la release dans la page.
 
 ## Paramètres, audit et maintenance
 
 `/admin/settings` expose les commandes d'exploitation :
 
-- **Journal d'audit** - chaque écriture (création de VM, action d'alimentation, modification, suppression, changement cloud-init, changements de catalogue et de politique, connexions) est enregistrée avec l'utilisateur, l'IP, la sévérité et la cible. Filtrez et paginez ; chaque VM affiche aussi ses propres entrées dans son onglet Activité.
+- **Journal d'audit** - chaque écriture (création de VM, action d'alimentation, modification, suppression, changements de catalogue et de politique, connexions) est enregistrée avec l'utilisateur, l'IP, la sévérité et la cible. Filtrez et paginez ; chaque VM affiche aussi ses propres entrées dans son onglet Activité.
 - **Rétention** - nombre de jours de conservation des lignes d'audit, avec aperçu du nombre de lignes qu'une purge supprimerait avant de l'appliquer.
 - **Export / import de la base** - sauvegardez la base SQLite ou restaurez-en une. L'import est en deux temps : l'envoi renvoie un aperçu table par table, rien n'est écrit avant confirmation.
 
@@ -182,7 +186,7 @@ Les pages intégrées sont insérées une seule fois, si elles manquent, et jama
 - Gardez des permissions Proxmox simples : un token de service avec le rôle `PVMSS_Service` pour le backend, des administrateurs humains avec le rôle `PVMSS_Admin`, et des utilisateurs confinés à leur pool `PVMSSUser`. Voir `/docs/proxmox-permissions` pour les commandes `pveum` exactes.
 - N'accordez pas de privilèges Proxmox étendus aux utilisateurs self-service.
 - Passez régulièrement en revue les pools et désactivez ou supprimez les comptes inutilisés.
-- Les documents cloud-init sont stockés en clair ; rappelez aux utilisateurs de n'y mettre aucun secret.
+- Les accès d'un template sont partagés par toutes les VM qui en sont clonées ; préférez les clés SSH aux mots de passe et renouvelez-les quand un utilisateur part.
 
 ## Limitations connues
 
@@ -191,5 +195,4 @@ Les pages intégrées sont insérées une seule fois, si elles manquent, et jama
 - Les administrateurs peuvent migrer une VM à la fois depuis **Infrastructure > Nœuds**. La HA, la migration entre clusters et l'orchestration des sauvegardes se font directement dans Proxmox.
 - Les administrateurs créent des VM via la même interface self-service que les utilisateurs, ou directement dans Proxmox.
 - Sauvegardes et conteneurs LXC sont gérés dans Proxmox, pas dans PVMSS.
-- Le changement de mot de passe n'est disponible que par API pour l'instant (`POST /api/v1/auth/password`).
 - Les tokens API personnels sont désactivés dans cette version : leurs routes ne sont pas enregistrées, la page des tokens ne peut ni créer ni lister de jetons.

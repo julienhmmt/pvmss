@@ -14,7 +14,7 @@
 	import TemplatePicker from './TemplatePicker.svelte';
 	import ImagePicker from './ImagePicker.svelte';
 	import ImageCloudInitFields from './ImageCloudInitFields.svelte';
-	import CloudInitDocumentSelect from './CloudInitDocumentSelect.svelte';
+	// import CloudInitDocumentSelect from './CloudInitDocumentSelect.svelte';
 	import Card from '#lib/shared/ui/Card.svelte';
 	import Checkbox from '#lib/shared/ui/Checkbox.svelte';
 	import Button from '#lib/shared/ui/Button.svelte';
@@ -368,7 +368,8 @@
 					<p class="border-t border-border pt-3 text-xs text-muted-foreground">{m['vms.create.fieldNote.access']()}</p>
 				{/if}
 
-				<CloudInitDocumentSelect error={cloudInitDocumentError} />
+				<!-- Cloud-init is disabled for now: not reliable or viable yet, too complex to set up.
+				<CloudInitDocumentSelect error={cloudInitDocumentError} /> -->
 
 				<FormField label={m['vms.create.tags']()} hint={m['vms.create.tagsHelp']()}>
 					{#if catalogTags.length === 0}

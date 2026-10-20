@@ -90,6 +90,10 @@ const (
 	categoryGuides         = "Guides"
 )
 
+// pausedPages are seeded disabled while cloud-init is paused (cloudInitPaused
+// in httpapi/router.go); an admin can enable them from Admin > Documentation.
+var pausedPages = map[string]bool{idCloudInitHowto: true, idCloudInitSetup: true}
+
 // seedPage describes one built-in page to insert.
 type seedPage struct {
 	id        string
@@ -208,7 +212,7 @@ func insertSeedRow(ctx context.Context, st *store.Store, v seedVariant, stamp st
 
 	row := store.DocumentationPageRow{
 		ID: v.id, Lang: v.lang, Title: v.title, Category: v.category, BodyMD: v.bodyMD,
-		Audience: v.audience, Enabled: true, IsSystem: true, SortOrder: v.sortOrder,
+		Audience: v.audience, Enabled: !pausedPages[v.id], IsSystem: true, SortOrder: v.sortOrder,
 		CreatedAt: stamp, UpdatedAt: stamp,
 	}
 

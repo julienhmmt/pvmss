@@ -22,7 +22,7 @@ it runs.
 Open the wizard via "Create a VM" after signing in. **Simple** mode asks only
 what is needed; **Detailed** mode exposes every option. Configure:
 
-- **Source**: an **ISO** image, a Proxmox **template** to clone, or a **cloud image** to import (temporarily disabled) - all from the administrator-approved lists. A template clone stays on the template's node; a cloud image requires the cloud-init fields.
+- **Source**: an **ISO** image or a Proxmox **template** to clone - both from the administrator-approved lists. A template clone stays on the template's node and keeps the sign-in built into the template (see **Signing in to your VM** below).
 - **Name and description**: a lowercase, hyphenated, unique name within your pool. A clear name (like `web-prod-01`) makes the list searchable and the activity log readable.
 - **Cluster and node**: the node is chosen automatically (least loaded approved node with enough storage) unless you pick one in Detailed mode.
 - **Profile (optional)**: if your administrator published hardware profiles, pick one to fill CPU, memory, and disk automatically.
@@ -30,13 +30,25 @@ what is needed; **Detailed** mode exposes every option. Configure:
 - **Storage**: a storage approved by your administrator; the wizard checks free space live.
 - **Network**: one or more network cards, each with a bridge and a card model (VirtIO, E1000, RTL8139, VMXNet3). The Proxmox firewall is always enabled; your administrator may impose an isolation VLAN.
 - **Firmware**: UEFI (default on) with an empty EFI key store - Secure Boot is never enabled, because most Linux ISOs are unsigned and would not boot with it. TPM 2.0 for guests that require it.
-- **Cloud-init document**: one of the templates your administrator provides, for template clones only (not offered for ISO installs). See the [cloud-init how-to](/docs/cloud-init-howto).
 - **Startup**: choose whether the VM starts automatically after creation.
 - **Tags**: pick from the administrator-curated list.
 
 The **Review** step summarizes everything before you submit. When you
 reach your quota (max VMs) or a gabarit limit, the request is rejected before
 any Proxmox call is made.
+
+## Signing in to your VM
+
+PVMSS does not add an SSH key or a password to your VM.
+
+- **Template clone** - sign in with the access your administrator built into
+  the template (an SSH key or a password). Every VM cloned from the same
+  template shares it; ask your administrator if you do not have it.
+- **ISO install** - install the system from the browser console and create
+  your own account during the installation.
+
+Once the VM runs and its guest agent reports an address, the **Connect** tab
+shows the SSH command. The browser console works in every case.
 
 ## Finding a virtual machine
 
@@ -52,7 +64,7 @@ exist on different clusters without conflict.
 
 ## Managing a virtual machine
 
-The VM details page has three tabs: **Connect** (power actions and console), **Configuration** (with the sub-sections below: Summary, Disks, Network, Hardware, Cloud-init, Snapshots), and **Activity**.
+The VM details page has three tabs: **Connect** (power actions and console), **Configuration** (with the sub-sections below: Summary, Disks, Network, Hardware, Snapshots), and **Activity**.
 
 ### Connect
 
@@ -79,16 +91,6 @@ Edit each network card: bridge, model, VLAN tag, and rate limit (Mbps).
 
 Change sockets, cores, and memory within policy limits, set tags from the
 curated picker, and load or eject an ISO in the CD-ROM drive.
-
-### Cloud-init
-
-Set the user, password (delivered through the guest agent, never stored), SSH
-keys, IP address, gateway, and DNS. The **Add SSH key** section injects a key into a
-running VM immediately. The picker below the key list appends keys saved on
-your profile - keys already on the VM stay editable in the list and are not
-offered again. The VM's cloud-init document is shown here; you can
-switch it to another administrator template or detach it. See the
-[cloud-init how-to](/docs/cloud-init-howto) for what applies when.
 
 ### Snapshots
 
@@ -129,12 +131,8 @@ server-side before any Proxmox call is made.
 ## Best practices
 
 - Use descriptive, hyphenated VM names.
-- Prefer a cloud-init document over manual post-install setup.
 - Start from a profile when one fits your workload.
 - Keep snapshots for meaningful checkpoints only.
-- Save your SSH public keys on your [profile](/profile): the create wizard
-  and the VM cloud-init tab offer them as checkboxes, and a key copied into
-  a VM keeps working even if you later edit or remove it from the profile.
 
 ## Known limitations
 

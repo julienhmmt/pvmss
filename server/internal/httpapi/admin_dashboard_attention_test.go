@@ -43,6 +43,8 @@ type dashboardAlertDTO struct {
 	ClusterKey string `json:"clusterKey"`
 	Subject    string `json:"subject"`
 	Percent    int    `json:"percent"`
+	Used       int    `json:"used"`
+	Limit      int    `json:"limit"`
 }
 
 type dashboardStorageDTO struct {
@@ -80,8 +82,8 @@ func attentionIndex() *inventory.Index {
 			{Name: "n2", Status: cluster.NodeOffline, CPUCores: 8, MemoryTotal: 64 * gib},
 		},
 		VMs: []cluster.VM{
-			{VMID: 100, Name: "a", Node: "n1", Pool: "pvmss-p1", Status: cluster.VMRunning},
-			{VMID: 101, Name: "b", Node: "n1", Pool: "pvmss-p1", Status: cluster.VMStopped},
+			{VMID: 100, Name: "a", Node: "n1", Pool: "pvmss-p1", Tags: []string{"pvmss"}, Status: cluster.VMRunning},
+			{VMID: 101, Name: "b", Node: "n1", Pool: "pvmss-p1", Tags: []string{"pvmss"}, Status: cluster.VMStopped},
 		},
 		Storages: []cluster.Storage{
 			{Name: dashSharedName, Node: "n1", PluginType: "rbd", Total: 100 * gib, Used: 96 * gib},
@@ -138,7 +140,7 @@ func wantAttentionAlerts(clusterLabel string) []dashboardAlertDTO {
 		{Kind: kindNodeOffline, Severity: sevCritical, Cluster: clusterLabel, ClusterKey: dashCluster, Subject: "n2"},
 		{Kind: "storage_full", Severity: sevCritical, Cluster: clusterLabel, ClusterKey: dashCluster, Subject: dashSharedName, Percent: 96},
 		{Kind: "node_cpu", Severity: sevWarning, Cluster: clusterLabel, ClusterKey: dashCluster, Subject: "n1", Percent: 95},
-		{Kind: "pool_at_quota", Severity: sevWarning, Cluster: clusterLabel, ClusterKey: dashCluster, Subject: "pvmss-p1", Percent: 100},
+		{Kind: "pool_at_quota", Severity: sevWarning, Cluster: clusterLabel, ClusterKey: dashCluster, Subject: "pvmss-p1", Percent: 100, Used: 2, Limit: 2},
 		{Kind: "storage_full", Severity: sevWarning, Cluster: clusterLabel, ClusterKey: dashCluster, Subject: testStorageLocalLVM, Percent: 86},
 	}
 }

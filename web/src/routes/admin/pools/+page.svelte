@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { page } from '$app/state';
 	import { onMount } from 'svelte';
 	import PoolsPage from '#lib/features/admin-pools/PoolsPage.svelte';
 	import { setAdminPoolsContext } from '#lib/features/admin-pools/pools.svelte.js';
@@ -6,6 +7,9 @@
 	const store = setAdminPoolsContext();
 
 	onMount(() => {
+		// Set by the detail page when the pool was deleted but its Proxmox account was not.
+		const failed = page.url.searchParams.get('userDeleteFailed');
+		if (failed) store.warnUserDeleteFailed(failed);
 		void store.load();
 	});
 </script>
@@ -19,6 +23,8 @@
 	deleting={store.deleting}
 	deleteError={store.deleteError}
 	announce={store.announce}
+	userDeleteWarning={store.userDeleteWarning}
+	onDismissUserDeleteWarning={() => store.dismissUserDeleteWarning()}
 	credentials={store.createdCredentials}
 	clusterOptions={store.clusterOptions}
 	cluster={store.cluster}

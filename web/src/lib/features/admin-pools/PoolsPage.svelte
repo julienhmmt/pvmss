@@ -30,6 +30,8 @@
 		deleting: string | null;
 		deleteError: string | null;
 		announce: string | null;
+		userDeleteWarning: string | null;
+		onDismissUserDeleteWarning: () => void;
 		credentials: CreatedPoolCredentials | null;
 		clusterOptions: ClusterOption[];
 		cluster: string;
@@ -49,6 +51,8 @@
 		deleteError,
 		deleting,
 		announce,
+		userDeleteWarning,
+		onDismissUserDeleteWarning,
 		credentials,
 		clusterOptions,
 		cluster,
@@ -170,6 +174,15 @@
 		<Button onclick={openCreate}>{m['admin.pools.newPool']()}</Button>
 	{/snippet}
 </PageHeader>
+
+{#if userDeleteWarning}
+	<Alert tone="warning" class="mb-4" data-testid="pool-user-delete-warning">
+		<div class="flex items-start justify-between gap-3">
+			<span>{userDeleteWarning}</span>
+			<Button variant="ghost" size="sm" onclick={onDismissUserDeleteWarning}>{m['common.dismiss']()}</Button>
+		</div>
+	</Alert>
+{/if}
 
 {#if credentials}
 	<PoolCredentialsBanner {credentials} onDismiss={onDismissCredentials} />

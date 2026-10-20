@@ -1,5 +1,15 @@
 # Cloud-init templates - setup and operations
 
+> **Paused since 2026-10-20**: cloud-init is not reliable or viable yet and too complex to set up. The admin pages (`/admin/cloudinit-templates`,
+> `/admin/baseline`) redirect to `/admin`, their API routes and the per-VM
+> cloud-init writes are not registered, the create wizard and the VM page
+> hide every cloud-init control, and `POST /api/v1/vms` refuses a
+> `cloudInitTemplateId`. The data stays in the database. To bring it back:
+> set `cloudInitPaused` to `false` in `server/internal/httpapi/router.go`,
+> delete the two `+page.ts` redirects under `web/src/routes/admin/`, and
+> uncomment the blocks marked "Cloud-init is disabled for now" in `web/`.
+> The procedure below describes the feature when enabled.
+
 PVMSS administrators write cloud-init templates; users pick one when they
 create a VM. The Proxmox REST API cannot write `snippets` files (its
 `upload` and `download-url` endpoints accept `iso`, `vztmpl` and `import`

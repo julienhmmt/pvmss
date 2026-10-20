@@ -83,7 +83,7 @@ helm-upgrade: ## Met à jour l'application avec Helm
 	helm upgrade --install pvmss ./helm
 	@echo "$(GREEN)✓ Application mise à jour$(NC)"
 
-up: ## Démarre les conteneurs dev en arrière-plan
+up: ## Démarre l'environnement dev (pvmss, web, SonarQube) en arrière-plan
 	$(COMPOSE_DEV) up -d
 
 down: ## Arrête et supprime les conteneurs dev
@@ -226,7 +226,7 @@ lint: server-lint web-lint ## Lance le lint sur server/ (Go) et web/ (SvelteKit)
 # SonarQube local analysis
 # =============================================================================
 
-COMPOSE_SONAR := docker compose -f docker-compose.sonarqube.yml
+COMPOSE_SONAR := $(COMPOSE_DEV)
 
 sonar-up: ## Start the SonarQube server (http://localhost:9000)
 	@echo "$(BLUE)Starting SonarQube...$(NC)"
@@ -235,7 +235,7 @@ sonar-up: ## Start the SonarQube server (http://localhost:9000)
 
 sonar-down: ## Stop the SonarQube server
 	@echo "$(BLUE)Stopping SonarQube...$(NC)"
-	$(COMPOSE_SONAR) down
+	$(COMPOSE_SONAR) stop sonarqube
 	@echo "$(GREEN)✓ SonarQube stopped$(NC)"
 
 sonar-logs: ## Follow SonarQube logs
@@ -284,7 +284,8 @@ sonar-query: ## Query SonarQube results (usage: make sonar-query CMD="summary")
 
 sonar-clean: sonar-down ## Stop SonarQube and remove its data and local token
 	@echo "$(BLUE)Cleaning SonarQube data...$(NC)"
-	$(COMPOSE_SONAR) down -v
+	$(COMPOSE_SONAR) rm -sf sonarqube
+	docker volume rm -f pvmss_sonarqube_data pvmss_sonarqube_logs pvmss_sonarqube_extensions pvmss_sonar_cache
 	rm -rf .sonar
 	@echo "$(GREEN)✓ SonarQube data cleaned$(NC)"
 

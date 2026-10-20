@@ -6,7 +6,6 @@
 	import Alert from '#lib/shared/ui/Alert.svelte';
 	import Button from '#lib/shared/ui/Button.svelte';
 	import Card from '#lib/shared/ui/Card.svelte';
-	import CopyButton from '#lib/shared/ui/CopyButton.svelte';
 	import EmptyState from '#lib/shared/ui/EmptyState.svelte';
 	import Meter from '#lib/shared/ui/Meter.svelte';
 	import PageHeader from '#lib/shared/ui/PageHeader.svelte';
@@ -27,8 +26,8 @@
 		commentError: string | null;
 		onRefresh: () => void;
 		onUpdateComment: (comment: string) => Promise<void>;
-		onDelete: () => Promise<void>;
-		onDeleted: () => void;
+		onDelete: () => Promise<boolean>;
+		onDeleted: (userDeleted: boolean) => void;
 	}
 
 	let {
@@ -111,14 +110,15 @@
 		}
 	}
 
+	const hasActivityDetail = $derived(detail?.activity.some((entry) => activitySummary(entry) !== '') ?? false);
+
 	function vmHref(vm: PoolMemberVM): { cluster: string; vmid: string } {
 		return { cluster: detail?.cluster ?? '', vmid: String(vm.vmid) };
 	}
 
 	async function confirmDelete(): Promise<void> {
 		try {
-			await onDelete();
-			onDeleted();
+			onDeleted(await onDelete());
 		} catch {
 			// error is set on the store; dialog stays open
 		}
@@ -176,11 +176,11 @@
 		</div>
 
 		<Card pad="none" title={m['admin.poolDetail.accountTitle']()} titleId="pool-account-section">
-			<div class="grid gap-5 p-5 lg:grid-cols-2">
-				<dl class="grid grid-cols-1 content-start gap-y-4 text-sm sm:grid-cols-2 sm:gap-x-5">
+			<div class="divide-y divide-border">
+				<dl class="grid grid-cols-1 gap-x-6 gap-y-4 p-5 text-sm sm:grid-cols-2 lg:grid-cols-4">
 					<div>
 						<dt class="text-xs text-muted-foreground">{m['admin.pools.username']()}</dt>
-						<dd class="mt-1 flex items-center gap-1.5 font-mono">{detail.username}<CopyButton value={detail.username} /></dd>
+						<dd class="mt-1 break-all font-mono">{detail.username}</dd>
 					</div>
 					<div>
 						<dt class="text-xs text-muted-foreground">{m['admin.pools.poolName']()}</dt>
@@ -200,7 +200,7 @@
 							{/if}
 						</dd>
 					</div>
-					<div class="sm:col-span-2">
+					<div class="sm:col-span-2 lg:col-span-4">
 						<dt class="text-xs text-muted-foreground">{m['admin.pools.comment']()}</dt>
 						{#if editingComment}
 							<dd class="mt-1">
@@ -237,7 +237,7 @@
 						{/if}
 					</div>
 				</dl>
-				<div class="content-start">
+				<div class="p-5">
 					<p class="mb-2 text-xs text-muted-foreground">{m['admin.poolDetail.allowance']()}</p>
 					<Meter quota={detail.quota} />
 				</div>
@@ -302,7 +302,7 @@
 								<th class="font-medium">{m['admin.audit.actor']()}</th>
 								<th class="font-medium">{m['admin.audit.action']()}</th>
 								<th class="font-medium">{m['admin.audit.columnVm']()}</th>
-								<th class="font-medium">{m['admin.audit.detail']()}</th>
+								{#if hasActivityDetail}<th class="font-medium">{m['admin.audit.detail']()}</th>{/if}
 							</tr>
 						</thead>
 						<tbody>
@@ -312,7 +312,7 @@
 									<td class="font-mono text-xs">{entry.actor}</td>
 									<td><code class="text-xs">{entry.action}</code></td>
 									<td class="font-mono tabular-nums">{entry.vmid ?? '—'}</td>
-									<td class="max-w-72 truncate text-xs text-muted-foreground" title={activitySummary(entry)}>{activitySummary(entry) || '—'}</td>
+									{#if hasActivityDetail}<td class="max-w-72 truncate text-xs text-muted-foreground" title={activitySummary(entry)}>{activitySummary(entry) || '—'}</td>{/if}
 								</tr>
 							{/each}
 						</tbody>

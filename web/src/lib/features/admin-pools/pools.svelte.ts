@@ -46,6 +46,8 @@ export class PoolsStore {
 	deleteError = $state.raw<string | null>(null);
 	searchTerm = $state.raw('');
 	announce = $state.raw<string | null>(null);
+	/** Set when the pool is gone but its Proxmox account survived: the admin must remove it by hand. */
+	userDeleteWarning = $state.raw<string | null>(null);
 	createdCredentials = $state.raw<CreatedPoolCredentials | null>(null);
 	clusterOptions = $state.raw<ClusterOption[]>([]);
 	cluster = $state('default');
@@ -126,6 +128,14 @@ export class PoolsStore {
 		}
 	}
 
+	warnUserDeleteFailed(name: string): void {
+		this.userDeleteWarning = m['admin.pools.deletedUserFailed']({ name });
+	}
+
+	dismissUserDeleteWarning(): void {
+		this.userDeleteWarning = null;
+	}
+
 	dismissCredentials(): void {
 		this.createdCredentials = null;
 	}
@@ -140,6 +150,7 @@ export class PoolsStore {
 			this.announce = result.userDeleted
 				? m['admin.pools.deleted']({ name })
 				: m['admin.pools.deletedUserFailed']({ name });
+			this.userDeleteWarning = result.userDeleted ? null : m['admin.pools.deletedUserFailed']({ name });
 		} catch (error) {
 			this.deleteError = error instanceof ApiRequestError ? error.message : m['admin.pools.deleteError']();
 			throw error;
