@@ -1603,7 +1603,7 @@
   "admin.dashboard.alert.nodeCpu": "Node {subject} CPU at {percent}%",
   "admin.dashboard.alert.nodeMemory": "Node {subject} memory at {percent}%",
   "admin.dashboard.alert.storageFull": "Storage {subject} is {percent}% full",
-  "admin.dashboard.alert.poolAtQuota": "Pool {subject} has reached its VM quota",
+  "admin.dashboard.alert.poolAtQuota": "Pool {subject} has reached its VM quota ({used}/{limit})",
   "admin.dashboard.severityCritical": "Critical",
   "admin.dashboard.severityWarning": "Warning",
   "admin.dashboard.severityInfo": "Info",

@@ -16,6 +16,8 @@ export interface DashboardAlert {
 	clusterKey?: string;
 	subject?: string;
 	percent?: number;
+	used?: number;
+	limit?: number;
 }
 
 /** Appends non-empty params as a query string, or returns the path alone. */
@@ -65,7 +67,11 @@ export function alertMessage(alert: DashboardAlert): string {
 		case 'storage_full':
 			return m['admin.dashboard.alert.storageFull']({ subject, percent });
 		case 'pool_at_quota':
-			return m['admin.dashboard.alert.poolAtQuota']({ subject });
+			return m['admin.dashboard.alert.poolAtQuota']({
+				subject,
+				used: alert.used ?? 0,
+				limit: alert.limit ?? 0
+			});
 	}
 }
 
