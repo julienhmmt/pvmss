@@ -6,9 +6,10 @@
 	import FormField from '#lib/shared/ui/FormField.svelte';
 	import FormSection from '#lib/shared/ui/FormSection.svelte';
 	import TextField from '#lib/shared/ui/TextField.svelte';
-	import Select from '#lib/shared/ui/Select.svelte';
+	// Cloud-init disabled: Select, Pill and the snippet storage props feed the commented-out section.
+	// import Select from '#lib/shared/ui/Select.svelte';
 	import Checkbox from '#lib/shared/ui/Checkbox.svelte';
-	import Pill from '#lib/shared/ui/Pill.svelte';
+	// import Pill from '#lib/shared/ui/Pill.svelte';
 	import type { AdminCluster, ClusterInput, SnippetStorage } from './clusters.svelte';
 	import { m } from '#lib/paraglide/messages.js';
 
@@ -28,8 +29,8 @@
 		editing,
 		saving,
 		error,
-		snippetStorages,
-		snippetStoragesLoading,
+		// snippetStorages,
+		// snippetStoragesLoading,
 		onClose,
 		onSubmit
 	}: Props = $props();
@@ -118,6 +119,7 @@
 			/>
 		</FormSection>
 
+<!-- Cloud-init is disabled for now: not reliable or viable yet, too complex to set up.
 		<FormSection legend={m['admin.clusters.cloudinitSection']()} description={m['admin.clusters.cloudinitHint']()} variant="panel">
 			{#snippet actions()}
 				{#if editing}
@@ -148,6 +150,7 @@
 			</FormField>
 
 		</FormSection>
+-->
 
 		{#if error}
 			<Alert>{error}</Alert>

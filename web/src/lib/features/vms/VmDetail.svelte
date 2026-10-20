@@ -8,7 +8,7 @@
 	import VmDisksTab from './disks/VmDisksTab.svelte';
 	import VmNetworkTab from './network/VmNetworkTab.svelte';
 	import VmHardwareTab from './hardware/VmHardwareTab.svelte';
-	import CloudInitTab from './CloudInitTab.svelte';
+	// import CloudInitTab from './CloudInitTab.svelte';
 	import VmSnapshotsTab from './VmSnapshotsTab.svelte';
 	import VmActivityTab from './VmActivityTab.svelte';
 	import VmMetricsRow from './VmMetricsRow.svelte';
@@ -65,7 +65,8 @@
 		{ id: 'disks', label: () => m['vms.detail.tabDisks']() },
 		{ id: 'network', label: () => m['vms.detail.tabNetwork']() },
 		{ id: 'hardware', label: () => m['vms.detail.tabHardware']() },
-		{ id: 'cloudinit', label: () => m['vms.detail.tabCloudinit']() },
+		// Cloud-init is disabled for now: not reliable or viable yet, too complex to set up.
+		// { id: 'cloudinit', label: () => m['vms.detail.tabCloudinit']() },
 		{ id: 'snapshots', label: () => m['vms.detail.tabSnapshots']() }
 	];
 	type ConfigTab = 'overview' | 'disks' | 'network' | 'hardware' | 'cloudinit' | 'snapshots';
@@ -76,7 +77,7 @@
 	}
 
 	function parseSub(raw: string | null): ConfigTab {
-		if (raw === 'disks' || raw === 'network' || raw === 'hardware' || raw === 'cloudinit' || raw === 'snapshots') return raw;
+		if (raw === 'disks' || raw === 'network' || raw === 'hardware' || raw === 'snapshots') return raw;
 		return 'overview';
 	}
 
@@ -472,11 +473,12 @@
 			<VmHardwareTab />
 		</div>
 
+		<!-- Cloud-init is disabled for now: not reliable or viable yet, too complex to set up.
 		<div id="panel-cloudinit" role="tabpanel" aria-labelledby="tab-cloudinit" hidden={configTab !== 'cloudinit'} class="mt-4">
 			{#if activeTab === 'configuration' && configTab === 'cloudinit'}
 				<CloudInitTab />
 			{/if}
-		</div>
+		</div> -->
 
 		<div id="panel-snapshots" role="tabpanel" aria-labelledby="tab-snapshots" hidden={configTab !== 'snapshots'} class="mt-4">
 			{#if activeTab === 'configuration' && configTab === 'snapshots'}

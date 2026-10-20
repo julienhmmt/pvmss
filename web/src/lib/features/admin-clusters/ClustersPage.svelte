@@ -135,7 +135,9 @@
 						<th scope="col" class="font-medium">{m['common.status']()}</th>
 						<th scope="col" class="font-medium">{m['admin.clusters.version']()}</th>
 						<th scope="col" class="font-medium">{m['admin.clusters.nodesVms']()}</th>
+<!-- Cloud-init is disabled for now: not reliable or viable yet, too complex to set up.
 						<th scope="col" class="font-medium">{m['admin.clusters.cloudinitSection']()}</th>
+-->
 						<th scope="col" class="font-medium">{m['common.actions']()}</th>
 					</tr>
 				</thead>
@@ -157,6 +159,7 @@
 							</td>
 							<td class="text-muted-foreground" data-label={m['admin.clusters.version']()}>{cluster.proxmoxVersion ?? ' - '}</td>
 							<td data-label={m['admin.clusters.nodesVms']()}>{cluster.nodeCount} / {cluster.vmCount}</td>
+<!-- Cloud-init is disabled for now: not reliable or viable yet, too complex to set up.
 							<td class="text-muted-foreground" data-label={m['admin.clusters.cloudinitSection']()}>
 								{#if cluster.cloudInitWriteEnabled}
 									{m['admin.clusters.cloudinitOn']()}
@@ -164,6 +167,7 @@
 									{m['admin.clusters.cloudinitOff']()}
 								{/if}
 							</td>
+-->
 							<td data-label={m['common.actions']()}>
 								<div class="flex flex-wrap gap-2">
 									<Button variant="secondary" size="sm" disabled={store.busy !== null} label={m['admin.clusters.testLabel']({ name: cluster.name })} onclick={() => void store.test(cluster.name)}>{m['admin.clusters.test']()}</Button>
