@@ -2238,5 +2238,20 @@
   "admin.migrate.progress": "Migration en cours. Vous pouvez fermer cette fenêtre ; la tâche continue et reste suivie dans la zone des tâches.",
   "admin.migrate.startError": "Impossible de démarrer la migration.",
   "admin.migrate.done": "Terminé",
-  "activity.kind.vm_migrate": "En cours de migration"
+  "activity.kind.vm_migrate": "En cours de migration",
+  "admin.clusterDetail.pageTitle": "Admin - Cluster {name} - PVMSS",
+  "admin.clusterDetail.eyebrow": "Cluster",
+  "admin.clusterDetail.description": "Paramètres de connexion, dernier test et inventaire en direct de ce cluster Proxmox.",
+  "admin.clusterDetail.notFound": "Ce cluster n'existe pas ou a été supprimé.",
+  "admin.clusterDetail.id": "Identifiant",
+  "admin.clusterDetail.tokenSet": "Défini",
+  "admin.clusterDetail.tokenMissing": "Non défini",
+  "admin.clusterDetail.tls": "Certificat TLS",
+  "admin.clusterDetail.tlsVerified": "Vérifié",
+  "admin.clusterDetail.tlsSkipped": "Vérification désactivée",
+  "admin.clusterDetail.lastTest": "Dernier test de connexion",
+  "admin.clusterDetail.inventory": "Inventaire",
+  "admin.clusterDetail.inventoryUnavailable": "L'inventaire en direct est indisponible pour le moment.",
+  "admin.clusterDetail.vms": "VMs",
+  "admin.clusterDetail.vmsRunning": "VMs démarrées"
 }

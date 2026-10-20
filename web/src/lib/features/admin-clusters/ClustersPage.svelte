@@ -1,6 +1,7 @@
 <script lang="ts">
 	import ClusterFormDialog from './ClusterFormDialog.svelte';
-	import type { AdminCluster, AdminClustersStore, ClusterInput, SnippetStorage } from './clusters.svelte';
+	import { statusHint, statusLabel, statusTone, type AdminCluster, type AdminClustersStore, type ClusterInput, type SnippetStorage } from './clusters.svelte';
+	import { resolve } from '$app/paths';
 	import Alert from '#lib/shared/ui/Alert.svelte';
 	import PageHeader from '#lib/shared/ui/PageHeader.svelte';
 	import Button from '#lib/shared/ui/Button.svelte';
@@ -40,42 +41,6 @@
 			// Non-fatal: the picker falls back to free text.
 		} finally {
 			snippetStoragesLoading = false;
-		}
-	}
-
-	function statusLabel(status: AdminCluster['lastTestStatus']): string {
-		switch (status) {
-			case 'ok':
-				return m['common.statusOk']();
-			case 'unreachable':
-				return m['common.statusUnreachable']();
-			case 'error':
-				return m['common.statusError']();
-			default:
-				return m['common.untested']();
-		}
-	}
-
-	function statusTone(status: AdminCluster['lastTestStatus']): 'ok' | 'error' | 'off' {
-		switch (status) {
-			case 'ok':
-				return 'ok';
-			case 'unreachable':
-			case 'error':
-				return 'error';
-			default:
-				return 'off';
-		}
-	}
-
-	function statusHint(status: AdminCluster['lastTestStatus']): string | null {
-		switch (status) {
-			case 'unreachable':
-				return m['admin.clusters.unreachableHint']();
-			case 'error':
-				return m['admin.clusters.errorHint']();
-			default:
-				return null;
 		}
 	}
 
@@ -145,7 +110,7 @@
 					{#each store.clusters as cluster (cluster.name)}
 						<tr class="align-top">
 							<td data-label={m['common.name']()}>
-								<div class="font-medium">{cluster.displayName || cluster.name}</div>
+								<a class="font-medium hover:underline" href={resolve('/admin/clusters/[name]', { name: cluster.name })}>{cluster.displayName || cluster.name}</a>
 								<div class="text-xs text-muted-foreground">{cluster.name}</div>
 								<div class="max-w-xs truncate text-xs text-muted-foreground" title={cluster.url}>{cluster.url}</div>
 							</td>

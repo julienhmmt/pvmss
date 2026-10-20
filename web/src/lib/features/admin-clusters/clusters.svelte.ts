@@ -45,6 +45,31 @@ export interface SnippetStorage {
 	type: string;
 }
 
+export function statusLabel(status: AdminCluster['lastTestStatus']): string {
+	switch (status) {
+		case 'ok':
+			return m['common.statusOk']();
+		case 'unreachable':
+			return m['common.statusUnreachable']();
+		case 'error':
+			return m['common.statusError']();
+		default:
+			return m['common.untested']();
+	}
+}
+
+export function statusTone(status: AdminCluster['lastTestStatus']): 'ok' | 'error' | 'off' {
+	if (status === 'ok') return 'ok';
+	if (status === 'unreachable' || status === 'error') return 'error';
+	return 'off';
+}
+
+export function statusHint(status: AdminCluster['lastTestStatus']): string | null {
+	if (status === 'unreachable') return m['admin.clusters.unreachableHint']();
+	if (status === 'error') return m['admin.clusters.errorHint']();
+	return null;
+}
+
 export class AdminClustersStore {
 	clusters = $state.raw<AdminCluster[]>([]);
 	loading = $state.raw(false);
