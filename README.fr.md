@@ -43,6 +43,7 @@ L'inventaire complet, route par route, est dans [docs/FEATURES.md](docs/FEATURES
 - Connexion avec ses identifiants Proxmox sur le cluster de son choix.
 - **Mes VM** : liste multi-cluster, recherche/filtre/tri reflétés dans l'URL, statut en direct, actions d'alimentation groupées avec résultat par VM, bouton console sur chaque ligne.
 - **Assistant de création** (mode Simple / Détaillé) depuis trois sources : une **ISO** approuvée, un **template** Proxmox (clone lié ou complet) ou une **image cloud** (`import-from` + cloud-init) (images cloud temporairement désactivées : elles ne fonctionnent pas encore correctement). Profils matériels ou valeurs libres, placement automatique avec score de capacité, multi-NIC (bridge + modèle), UEFI (sans Secure Boot) / TPM 2.0, tags curés, démarrage sur CD-ROM.
+- **Accès aux VM** : PVMSS n'ajoute ni clé SSH ni mot de passe (cloud-init est en pause). Un clone de template garde les accès intégrés à son template Proxmox ; une installation ISO reçoit le compte créé par l'utilisateur pendant l'installation. Voir [Les modèles de VM portent les accès](#les-modèles-de-vm-portent-les-accès).
 - **Exploitation d'une VM** : 7 actions d'alimentation, renommage, description Markdown, suppression ; disques (ajout / agrandissement / détachement) ; cartes réseau (bridge, modèle, VLAN, débit) ; CPU/RAM/tags/CD-ROM ; snapshots (création / restauration / suppression, RAM optionnelle) ; historique de métriques (heure/jour/semaine) et flux temps réel ; journal d'activité par VM.
 - **Consoles** : noVNC et série (xterm.js), toutes deux relayées par PVMSS avec ticket à usage unique ; actions d'alimentation depuis la console.
 - **Cloud-init** (en pause pour le moment) : formulaire natif (utilisateur, mot de passe via agent invité, clés SSH, IP/DNS), injection « ajouter une clé maintenant », **modèles cloud-init** de l'administrateur choisis à la création ou changés ensuite sur la VM (les utilisateurs n'écrivent jamais de YAML).
@@ -132,6 +133,25 @@ Persistez tout le répertoire `/data` (un volume), pas le seul fichier `pvmss.db
 #### Tags
 
 Le tag `pvmss` est utilisé par défaut pour les VMs créées via PVMSS, il ne peut pas et ne doit pas être supprimé. Seul les tags créés par l'admin via PVMSS peuvent être utilisés.
+
+### Les modèles de VM portent les accès
+
+PVMSS n'ajoute ni clé SSH ni mot de passe aux VM qu'il crée tant que
+cloud-init est en pause. Un clone garde exactement ce que porte son modèle
+Proxmox : préparez donc chaque modèle approuvé avec les accès nécessaires :
+
+1. Dans l'onglet **Cloud-Init** du modèle dans Proxmox, renseignez
+   l'utilisateur et une clé SSH publique ou un mot de passe (ou intégrez un
+   compte dans l'image).
+2. Installez et activez `qemu-guest-agent`, pour que les VM signalent leur
+   adresse et que l'onglet **Connexion** affiche la commande SSH.
+3. Convertissez-le (`qm template <vmid>`) et approuvez-le dans **Admin >
+   Modèles de VM**.
+
+Toutes les VM clonées d'un même modèle partagent ces accès : transmettez-les
+aux utilisateurs de ce modèle, ou gardez un modèle par équipe. Les
+installations ISO ne sont pas concernées : l'utilisateur crée son propre
+compte pendant l'installation, depuis la console du navigateur.
 
 ### Modèles cloud-init (optionnel)
 

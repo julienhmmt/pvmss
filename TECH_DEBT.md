@@ -48,7 +48,13 @@ Cloud-init is not reliable or viable yet and too complex to set up. Paused, not 
 `web/src/routes/admin/{cloudinit-templates,baseline}`, commented-out UI blocks
 marked "Cloud-init is disabled for now", and skipped tests/e2e specs. The VM
 cloud-init read (`GET …/cloudinit`, SSH user on the Connect tab) and the
-console password stay. Deciding it: rework the feature, or delete the code,
+console password stay. Consequence for users: PVMSS gives a VM no SSH key
+or password, so template clones rely on the sign-in built into the template
+(documented in README and the in-app guides) and the `/profile` SSH-key
+section is hidden. The `cloud-init-howto` and `cloud-init-setup` built-in
+docs are seeded disabled (`pausedPages` in `docs/seed/seed.go`); databases
+seeded before that keep them enabled with the old texts until an admin edits
+or disables them. Deciding it: rework the feature, or delete the code,
 the tables and `docs/cloud-init.md`.
 
 ## Still open (low priority)

@@ -6,35 +6,30 @@ the full walkthrough is the [Administrator guide](/docs/admin-guide).
 ## Infrastructure
 
 **Clusters** connects one or more Proxmox environments (URL, API token,
-connection test) and sets the per-cluster cloud-init write target. Each cluster has an immutable id (chosen at creation; `default` for the first one) and an editable label; the id cannot be renamed. **Nodes**
+connection test). Each cluster has an immutable id (chosen at creation; `default` for the first one) and an editable label; the id cannot be renamed. **Nodes**
 approves the hosts users may create VMs on. **PVMSS users** creates self-service
 users (Proxmox user + pool + ACL in one step).
 
-### Cloud-init templates
+### VM templates carry the sign-in
 
-Cloud-init documents are written only by administrators (**Admin >
-Cloud-init**). The Proxmox REST API cannot write snippets, so PVMSS never
-writes on the nodes: for each template it shows a command that the
-administrator pastes, as root, on the nodes that must offer it. PVMSS reads
-through the API which nodes have the file, and offers the template only on
-those nodes.
+PVMSS adds no SSH key and no password to the VMs it creates (cloud-init is
+paused). A clone keeps exactly what its Proxmox template carries, so build
+every approved template with the sign-in users will need:
 
-1. In Proxmox, enable the **Snippets** content type on a storage (`local`
-   works).
-2. In **Infrastructure > Clusters > Edit**, select that snippet storage.
-3. Write the template, copy its command, paste it on the chosen nodes, click
-   **Verify**.
+- in the template's **Cloud-Init** tab in Proxmox, set the user and either an
+  SSH public key or a password, or bake an account into the image itself;
+- install and enable `qemu-guest-agent`, so the VM reports its address and
+  the **Connect** tab can show the SSH command.
 
-Leave the storage empty to disable cloud-init templates on the cluster. See
-the [cloud-init setup guide](/docs/cloud-init-setup) for details and
-troubleshooting.
+Every VM cloned from one template shares that sign-in. Hand it to your users,
+or keep one template per team. ISO installs are unaffected: users create
+their own account during the installation, from the browser console.
 
 ## Resources and provisioning
 
-The **Resources** group lets you approve or hide the storages, ISOs, cloud
-images (temporarily disabled), VM templates, and bridges that VM creation may reference. The
-**Provisioning** group manages VM profiles, cloud-init templates, the
-cloud-init baseline, and tags. Discovered resources appear
+The **Resources** group lets you approve or hide the storages, ISOs, VM
+templates, and bridges that VM creation may reference. The
+**Provisioning** group manages VM profiles and tags. Discovered resources appear
 automatically; toggle the enabled switch to control what users see. When a
 resource disappears from Proxmox, its stale approval is flagged so you can
 remove it.

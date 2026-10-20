@@ -22,13 +22,22 @@ une vue filtrée peut être mise en favori.
 ## Créer une VM
 
 1. Ouvrez **Créer une VM** depuis la page **Mes VM**.
-2. Choisissez une source : une ISO ou un template Proxmox (images cloud temporairement désactivées).
+2. Choisissez une source : une ISO ou un template Proxmox.
 3. Choisissez un profil matériel ou saisissez des valeurs personnalisées ; le
    nœud est choisi pour vous sauf en mode Détaillé.
-4. Choisissez éventuellement un document cloud-init (un template fourni par
-   votre administrateur).
-5. Validez - le portail provisionne la VM et affiche la progression dans le
-   tiroir des tâches.
+4. Donnez-lui un nom et validez - le portail provisionne la VM et affiche la
+   progression dans le tiroir des tâches.
+
+## Se connecter à sa VM
+
+PVMSS n'ajoute ni clé SSH ni mot de passe à votre VM :
+
+- **Template** - le système embarque les accès que votre équipe a intégrés au
+  template (une clé SSH ou un mot de passe). Demandez-les à votre
+  administrateur si vous ne les avez pas. L'onglet **Connexion** de la VM
+  affiche la commande SSH dès que la machine signale son adresse.
+- **ISO** - vous installez le système vous-même depuis la console du
+  navigateur et choisissez votre compte pendant l'installation.
 
 ## Déplacer une VM
 
