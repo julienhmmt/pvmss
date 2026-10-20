@@ -1,9 +1,5 @@
-<<<<<<< HEAD
 /* eslint-disable svelte/prefer-svelte-reactivity -- every Set here is a local, per-call lookup, never reactive state */
-import { m } from '$lib/paraglide/messages.js';
-=======
 import { m } from '#lib/paraglide/messages.js';
->>>>>>> 1e81dc8f (refactor(web): use #lib subpath imports)
 import { keyComment, keyIdentity } from './ssh-key-identity';
 import { PROFILE_SSH_KEY_MAX, type ProfileKeyToSave, type ProfileSshKey } from './types';
 
