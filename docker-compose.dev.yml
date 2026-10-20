@@ -39,7 +39,7 @@ services:
       dockerfile: Dockerfile.web-dev
     working_dir: /app
     restart: unless-stopped
-    container_name: web-dev
+    container_name: pvmss-web-dev
     env_file:
       - .env
     environment:
