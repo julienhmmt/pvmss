@@ -126,7 +126,7 @@ describe('PoolDetailPage', () => {
 		await tick();
 
 		const confirmButton = Array.from(document.querySelectorAll('button')).find((button) =>
-			button.textContent?.includes('pvmss-alice')
+			button.textContent?.includes('« alice »') || button.textContent?.includes('“alice”')
 		);
 		expect(confirmButton).toBeDefined();
 		confirmButton?.click();

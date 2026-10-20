@@ -14,20 +14,23 @@
 	}
 
 	let { open = $bindable(false), poolName, deleting, error, onClose, onConfirm }: Props = $props();
+
+	// Pools are always created as "pvmss-<name>" (server PoolPrefix); show the name the admin typed.
+	const name = $derived(poolName.replace(/^pvmss-/, ''));
 </script>
 
 <Dialog bind:open labelledBy="delete-pool-title" {onClose}>
-	<h2 id="delete-pool-title" class="mb-4 text-lg font-semibold">{m['admin.pools.deleteTitle']()}</h2>
+	<h2 id="delete-pool-title" class="mb-2 text-lg font-semibold">{m['admin.pools.deleteTitle']({ name })}</h2>
 	<p class="text-sm text-muted-foreground">
 		{m['admin.pools.deleteConfirm']({ poolName })}
 	</p>
 	{#if error}
 		<Alert class="mt-3">{error}</Alert>
 	{/if}
-	<div class="mt-6 flex justify-end gap-2">
-		<Button variant="ghost" onclick={onClose}>{m['common.cancel']()}</Button>
-		<Button variant="destructive" disabled={deleting} onclick={onConfirm}>
-			{deleting ? m['common.deleting']() : m['admin.pools.deletePoolLabel']({ name: poolName })}
+	<div class="mt-6 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+		<Button variant="secondary" disabled={deleting} onclick={onClose}>{m['common.cancel']()}</Button>
+		<Button variant="destructive" loading={deleting} onclick={onConfirm}>
+			{deleting ? m['common.deleting']() : m['admin.pools.deletePoolLabel']({ name })}
 		</Button>
 	</div>
 </Dialog>
