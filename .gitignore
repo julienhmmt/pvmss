@@ -3,30 +3,17 @@
 
 # Secrets and local config
 .env
-settings.dev.json
-proxmox_host_key.pub
-pvmss_ed25519
-pvmss_ed25519.pub
-pvmss_snippets_ed25519
-pvmss_snippets_ed25519.pub
 
 # Agents and local tooling
 .agents/
 .claude/
 .devin/
 .scratch/
-.specify/
-graphify-out/
-graph-questions.txt
-skills-lock.json
 /tools/
 /sonar-projects/
 
-# Binaries (anchored so server/cmd/pvmss/ stays visible)
+# Binaries
 /pvmss
-/server/pvmss
-/server/pvmss-checklist
-/server/pvmss-recover
 
 # Local database (SQLite WAL mode)
 pvmss.db
