@@ -104,6 +104,8 @@ This is the core of the product. Everything else exists to support it.
 
 ### Create a VM with a cloud-init template
 
+**Paused since 2026-10-20**: cloud-init is not reliable or viable yet and too complex to set up. Not reachable in the UI or the API; see `docs/cloud-init.md`.
+
 |                 |                                                                                                                                                                                                                                                                                                                                                                                                 |
 | --------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | **Audience**    | end user                                                                                                                                                                                                                                                                                                                                                                                        |
@@ -115,6 +117,8 @@ This is the core of the product. Everything else exists to support it.
 | **Safety nets** | Users never send YAML (`cloudInitFileId` is rejected as an unknown field). No snippet storage → 409 `cloudinit_write_unavailable`; template not on the VM's node → 409 `cloudinit_not_published`, both before a VMID is spent. The published file is immutable: later template edits publish a new file and never touch the VM.                                                                      |
 
 ### Place cloud-init templates on the nodes
+
+**Paused since 2026-10-20**: cloud-init is not reliable or viable yet and too complex to set up. Not reachable in the UI or the API; see `docs/cloud-init.md`.
 
 |                 |                                                                                                                                                                                                                                                                                                                                                                                                                |
 | --------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |

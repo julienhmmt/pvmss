@@ -333,6 +333,11 @@ func (h *VMCreate) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	if cloudInitPaused && req.CloudInitTemplateID != "" {
+		h.writeCreateError(w, http.StatusBadRequest, codeInvalidRequest, "cloud-init templates are paused")
+		return
+	}
+
 	target, ok := h.resolveCreateTarget(w, req.Cluster)
 	if !ok {
 		return

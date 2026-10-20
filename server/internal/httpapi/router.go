@@ -16,6 +16,11 @@ import (
 	"go.opentelemetry.io/otel/trace"
 )
 
+// cloudInitPaused turns off the cloud-init features (admin templates, the
+// baseline view, per-VM cloud-init writes, templates at create): they are not
+// reliable or viable yet and too complex to set up. Flip to false to restore.
+const cloudInitPaused = true
+
 const (
 	authRateLimitMaxRequests    = 10
 	authRateLimitWindow         = time.Minute
@@ -230,10 +235,14 @@ func registerVMRoutes(mux *http.ServeMux, cfg RouterConfig, protect protectFunc,
 
 	if cfg.VMCloudInit != nil {
 		mux.Handle("GET /api/v1/vms/{cluster}/{vmid}/cloudinit", cfg.VMCloudInit)
-		mux.Handle("PUT /api/v1/vms/{cluster}/{vmid}/cloudinit", protect(cfg.VMCloudInit, vmWriteLimiter))
-		mux.Handle("GET /api/v1/vms/{cluster}/{vmid}/cloudinit/document", cfg.VMCloudInit)
-		mux.Handle("PUT /api/v1/vms/{cluster}/{vmid}/cloudinit/document", protect(cfg.VMCloudInit, vmWriteLimiter))
-		mux.Handle("POST /api/v1/vms/{cluster}/{vmid}/cloudinit/ssh-keys", protect(cfg.VMCloudInit, vmWriteLimiter))
+		// The read stays: the Connect tab shows the SSH user from it.
+		if !cloudInitPaused {
+			mux.Handle("PUT /api/v1/vms/{cluster}/{vmid}/cloudinit", protect(cfg.VMCloudInit, vmWriteLimiter))
+			mux.Handle("GET /api/v1/vms/{cluster}/{vmid}/cloudinit/document", cfg.VMCloudInit)
+			mux.Handle("PUT /api/v1/vms/{cluster}/{vmid}/cloudinit/document", protect(cfg.VMCloudInit, vmWriteLimiter))
+			mux.Handle("POST /api/v1/vms/{cluster}/{vmid}/cloudinit/ssh-keys", protect(cfg.VMCloudInit, vmWriteLimiter))
+		}
+
 		mux.Handle("POST /api/v1/vms/{cluster}/{vmid}/console-password", protect(cfg.VMCloudInit, vmWriteLimiter))
 	}
 

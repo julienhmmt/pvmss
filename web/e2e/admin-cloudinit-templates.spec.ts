@@ -29,7 +29,8 @@ async function openTemplateCreate(page: import('@playwright/test').Page): Promis
 
 const templateContent = '#cloud-config\npackages:\n  - nginx\n';
 
-test.describe('T18 admin cloud-init templates', () => {
+// Cloud-init is paused (server cloudInitPaused): its routes are not registered.
+test.describe.skip('T18 admin cloud-init templates', () => {
 	test.describe.configure({ mode: 'serial' });
 
 	// This spec creates its VM through the UI; delete it afterwards so it does

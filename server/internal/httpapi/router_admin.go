@@ -39,7 +39,7 @@ func registerAdminRoutes(mux *http.ServeMux, cfg RouterConfig, adminProtect admi
 		registerAdminDocsRoutes(mux, adminProtect, cfg.AdminDocs)
 	}
 
-	if cfg.AdminBaseline != nil {
+	if cfg.AdminBaseline != nil && !cloudInitPaused {
 		registerAdminBaselineRoutes(mux, adminProtect, cfg.AdminBaseline)
 	}
 
@@ -84,11 +84,13 @@ func registerAdminCatalogRoutes(mux *http.ServeMux, adminProtect adminRouteProte
 	mux.Handle("POST /api/v1/admin/tags", adminProtect(http.MethodPost, http.HandlerFunc(h.ServeTagCreate)))
 	mux.Handle("PUT /api/v1/admin/tags/{name}/color", adminProtect(http.MethodPut, http.HandlerFunc(h.ServeTagColor)))
 	mux.Handle("DELETE /api/v1/admin/tags/{name}", adminProtect(http.MethodDelete, http.HandlerFunc(h.ServeTagDelete)))
-	mux.Handle("GET /api/v1/admin/cloudinit-templates", adminProtect(http.MethodGet, http.HandlerFunc(h.ServeCloudInitTemplates)))
-	mux.Handle("POST /api/v1/admin/cloudinit-templates", adminProtect(http.MethodPost, http.HandlerFunc(h.ServeCloudInitTemplateCreate)))
-	mux.Handle("PUT /api/v1/admin/cloudinit-templates/{id}", adminProtect(http.MethodPut, http.HandlerFunc(h.ServeCloudInitTemplateUpdate)))
-	mux.Handle("DELETE /api/v1/admin/cloudinit-templates/{id}", adminProtect(http.MethodDelete, http.HandlerFunc(h.ServeCloudInitTemplateDelete)))
-	mux.Handle("POST /api/v1/admin/cloudinit-templates/{id}/toggle", adminProtect(http.MethodPost, http.HandlerFunc(h.ServeCloudInitTemplateToggle)))
+	if !cloudInitPaused {
+		mux.Handle("GET /api/v1/admin/cloudinit-templates", adminProtect(http.MethodGet, http.HandlerFunc(h.ServeCloudInitTemplates)))
+		mux.Handle("POST /api/v1/admin/cloudinit-templates", adminProtect(http.MethodPost, http.HandlerFunc(h.ServeCloudInitTemplateCreate)))
+		mux.Handle("PUT /api/v1/admin/cloudinit-templates/{id}", adminProtect(http.MethodPut, http.HandlerFunc(h.ServeCloudInitTemplateUpdate)))
+		mux.Handle("DELETE /api/v1/admin/cloudinit-templates/{id}", adminProtect(http.MethodDelete, http.HandlerFunc(h.ServeCloudInitTemplateDelete)))
+		mux.Handle("POST /api/v1/admin/cloudinit-templates/{id}/toggle", adminProtect(http.MethodPost, http.HandlerFunc(h.ServeCloudInitTemplateToggle)))
+	}
 }
 
 // registerAdminPolicyRoutes wires the admin policy endpoints (gabarits,

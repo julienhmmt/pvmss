@@ -185,6 +185,13 @@ Packages under `server/internal/`:
 | `telemetry/` | OTel tracing and metrics, Prometheus `/metrics`               |
 | `logctx/`    | Request-scoped log attributes (requestId, user, span IDs)     |
 
+**Cloud-init is paused since 2026-10-20** (cloud-init is not reliable or viable yet and too complex to set up): `cloudInitPaused`
+in `server/internal/httpapi/router.go` leaves the admin template/baseline
+routes and the per-VM cloud-init writes unregistered and makes `POST
+/api/v1/vms` refuse `cloudInitTemplateId`; the web hides every cloud-init
+control and redirects `/admin/cloudinit-templates` and `/admin/baseline`.
+The rest of this paragraph describes the feature when enabled.
+
 Cloud-init documents are authored by PVMSS administrators only
 (`catalog_cloudinit_templates`, per cluster). **PVMSS never writes on the
 nodes**: the Proxmox API cannot write snippets (`upload`/`download-url`

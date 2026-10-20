@@ -728,6 +728,10 @@ func TestVMCreateCatalog_CloudInitTemplatesHiddenWithoutWriteTarget(t *testing.T
 //
 //nolint:paralleltest // serial: shared fake VM and database fixtures
 func TestVMCreate_WithCloudInitTemplate_Success(t *testing.T) {
+	if httpapi.CloudInitPaused {
+		t.Skip("cloud-init is paused")
+	}
+
 	handler, authHandler, st := newVMCreateHandler(t)
 	cookie := loginCookie(t, authHandler, `{"username":"alice","password":"pvmss-alice"}`)
 	tmplID := createCatalogTemplate(t, st)
@@ -762,6 +766,10 @@ func TestVMCreate_WithCloudInitTemplate_Success(t *testing.T) {
 //
 //nolint:paralleltest // serial: shared fake VM and database fixtures
 func TestVMCreate_WithCloudInitTemplate_NotPublishedOnNode409(t *testing.T) {
+	if httpapi.CloudInitPaused {
+		t.Skip("cloud-init is paused")
+	}
+
 	handler, authHandler, st := newVMCreateHandler(t)
 	cookie := loginCookie(t, authHandler, `{"username":"alice","password":"pvmss-alice"}`)
 
@@ -791,6 +799,10 @@ func TestVMCreate_WithCloudInitTemplate_NotPublishedOnNode409(t *testing.T) {
 //
 //nolint:paralleltest // serial: shared fake VM and database fixtures
 func TestVMCreate_WithCloudInitTemplate_WriteUnavailable409(t *testing.T) {
+	if httpapi.CloudInitPaused {
+		t.Skip("cloud-init is paused")
+	}
+
 	handler, authHandler, st := newVMCreateHandlerWithClient(t, snippetWriteUnavailableClient{})
 	cookie := loginCookie(t, authHandler, `{"username":"alice","password":"pvmss-alice"}`)
 	tmplID := createCatalogTemplate(t, st)
@@ -813,6 +825,10 @@ func TestVMCreate_WithCloudInitTemplate_WriteUnavailable409(t *testing.T) {
 //
 //nolint:paralleltest // serial: shared fake VM and database fixtures
 func TestVMCreate_UnknownCloudInitTemplate_Returns400(t *testing.T) {
+	if httpapi.CloudInitPaused {
+		t.Skip("cloud-init is paused")
+	}
+
 	handler, authHandler, _ := newVMCreateHandler(t)
 	cookie := loginCookie(t, authHandler, `{"username":"alice","password":"pvmss-alice"}`)
 
@@ -862,5 +878,25 @@ func TestVMCreate_CloudInitFileID_Rejected(t *testing.T) {
 	rec := postVMCreate(t, handler, `{"cluster":"default","name":"web-30","profileId":"medium","cloudInitFileId":"dev-box"}`, cookie)
 	if rec.Code != http.StatusBadRequest {
 		t.Fatalf("status = %d, want %d: %s", rec.Code, http.StatusBadRequest, rec.Body.String())
+	}
+}
+
+//nolint:paralleltest // serial: shared fake VM and database fixtures
+func TestVMCreate_CloudInitTemplate_RejectedWhilePaused(t *testing.T) {
+	if !httpapi.CloudInitPaused {
+		t.Skip("cloud-init is not paused")
+	}
+
+	handler, authHandler, _ := newVMCreateHandler(t)
+	cookie := loginCookie(t, authHandler, `{"username":"alice","password":"pvmss-alice"}`)
+
+	rec := postVMCreate(t, handler,
+		`{"cluster":"default","name":"web-23","profileId":"medium","cloudInitTemplateId":"any"}`, cookie)
+	if rec.Code != http.StatusBadRequest {
+		t.Fatalf("status = %d, want %d: %s", rec.Code, http.StatusBadRequest, rec.Body.String())
+	}
+
+	if calls := cluster.FakeCalls(); len(calls) != 0 {
+		t.Fatalf("rejected request reached the cluster: %+v", calls)
 	}
 }

@@ -41,6 +41,16 @@ documented here so the next reader does not reopen them.
   tab reads `ostype` from the detail DTO and shows an RDP card for `w*`
   types, so hand-created Windows VMs are covered.
 
+## Cloud-init paused (2026-10-20)
+
+Cloud-init is not reliable or viable yet and too complex to set up. Paused, not removed: `cloudInitPaused` in
+`server/internal/httpapi/router.go`, two `+page.ts` redirects under
+`web/src/routes/admin/{cloudinit-templates,baseline}`, commented-out UI blocks
+marked "Cloud-init is disabled for now", and skipped tests/e2e specs. The VM
+cloud-init read (`GET …/cloudinit`, SSH user on the Connect tab) and the
+console password stay. Deciding it: rework the feature, or delete the code,
+the tables and `docs/cloud-init.md`.
+
 ## Still open (low priority)
 
 | Item | Note |
