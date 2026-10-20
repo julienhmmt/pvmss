@@ -46,3 +46,7 @@ web/prototype/
 # Tests file for web
 web/coverage
 _to_delete/
+
+# Local tooling, kept out of the repo
+/tools/
+/sonar-projects/
