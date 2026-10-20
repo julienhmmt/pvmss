@@ -29,7 +29,7 @@ services:
           cpus: '1'
           memory: 256M
 
-  web-dev:
+  pvmss-web-dev:
     # Bun installs deps; Node runs the Vite dev server. Bun cannot run Vite's
     # WebSocket dev-proxy (its http.request emits 'response' instead of
     # 'upgrade' for 101), which breaks the VNC console WebSocket. See
@@ -39,15 +39,15 @@ services:
       dockerfile: Dockerfile.web-dev
     working_dir: /app
     restart: unless-stopped
-    container_name: web-dev
+    container_name: pvmss-web-dev
     env_file:
       - .env
     environment:
       # Vite proxy target - the Go backend on the docker network.
       VITE_BACKEND_URL: http://pvmss-dev:50000
       # ORIGIN controls the public base for Vite asset URLs and HMR.
-      # For OrbStack TLS access via https://web-dev.pvmss.orb.local (standard port),
-      # set ORIGIN=https://web-dev.pvmss.orb.local (no port) in your local .env
+      # For OrbStack TLS access via https://pvmss-web-dev.pvmss.orb.local (standard port),
+      # set ORIGIN=https://pvmss-web-dev.pvmss.orb.local (no port) in your local .env
       # (or shell). This makes the HMR client connect via wss://... without :5173.
       # With ORIGIN set, open the app on that URL only: asset URLs and HMR are
       # built from it, so another host (localhost, 127.0.0.1) gets CORS-blocked
@@ -63,5 +63,50 @@ services:
     depends_on:
       - pvmss-dev
 
+  # SonarQube Community Build for local analysis (make sonar-*).
+  sonarqube:
+    image: sonarqube:26.6.0.123539-community
+    container_name: pvmss-sonarqube
+    restart: unless-stopped
+    ports:
+      - "9000:9000"
+    environment:
+      # Disable Elasticsearch bootstrap checks so the container starts locally
+      # without tuning vm.max_map_count on Docker Desktop / OrbStack.
+      SONAR_ES_BOOTSTRAP_CHECKS_DISABLE: "true"
+    volumes:
+      - sonarqube_data:/opt/sonarqube/data
+      - sonarqube_logs:/opt/sonarqube/logs
+      - sonarqube_extensions:/opt/sonarqube/extensions
+    ulimits:
+      nofile:
+        soft: 65536
+        hard: 65536
+    deploy:
+      resources:
+        limits:
+          cpus: "2"
+          memory: 4G
+
+  # One-shot scanner, only run via tools/sonar-scan.sh (profile keeps it out of `up`).
+  sonar-scanner:
+    image: sonarsource/sonar-scanner-cli:12.1.0.3233_8.0.1
+    container_name: pvmss-sonar-scanner
+    restart: "no"
+    environment:
+      SONAR_HOST_URL: http://sonarqube:9000
+    volumes:
+      - .:/usr/src
+      - sonar_cache:/opt/sonar-scanner/.sonar
+    working_dir: /usr/src
+    depends_on:
+      - sonarqube
+    profiles:
+      - scan
+
 volumes:
   pvmss_dev_data: {}
+  sonarqube_data:
+  sonarqube_logs:
+  sonarqube_extensions:
+  sonar_cache:

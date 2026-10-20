@@ -1,9 +1,11 @@
 <script lang="ts">
 	import ClusterFormDialog from './ClusterFormDialog.svelte';
-	import type { AdminCluster, AdminClustersStore, ClusterInput, SnippetStorage } from './clusters.svelte';
+	import { statusHint, statusLabel, statusTone, type AdminCluster, type AdminClustersStore, type ClusterInput, type SnippetStorage } from './clusters.svelte';
+	import { resolve } from '$app/paths';
 	import Alert from '#lib/shared/ui/Alert.svelte';
 	import PageHeader from '#lib/shared/ui/PageHeader.svelte';
 	import Button from '#lib/shared/ui/Button.svelte';
+	import ButtonLink from '#lib/shared/ui/ButtonLink.svelte';
 	import ConfirmDialog from '#lib/shared/ui/ConfirmDialog.svelte';
 	import EmptyState from '#lib/shared/ui/EmptyState.svelte';
 	import Pill from '#lib/shared/ui/Pill.svelte';
@@ -40,42 +42,6 @@
 			// Non-fatal: the picker falls back to free text.
 		} finally {
 			snippetStoragesLoading = false;
-		}
-	}
-
-	function statusLabel(status: AdminCluster['lastTestStatus']): string {
-		switch (status) {
-			case 'ok':
-				return m['common.statusOk']();
-			case 'unreachable':
-				return m['common.statusUnreachable']();
-			case 'error':
-				return m['common.statusError']();
-			default:
-				return m['common.untested']();
-		}
-	}
-
-	function statusTone(status: AdminCluster['lastTestStatus']): 'ok' | 'error' | 'off' {
-		switch (status) {
-			case 'ok':
-				return 'ok';
-			case 'unreachable':
-			case 'error':
-				return 'error';
-			default:
-				return 'off';
-		}
-	}
-
-	function statusHint(status: AdminCluster['lastTestStatus']): string | null {
-		switch (status) {
-			case 'unreachable':
-				return m['admin.clusters.unreachableHint']();
-			case 'error':
-				return m['admin.clusters.errorHint']();
-			default:
-				return null;
 		}
 	}
 
@@ -135,7 +101,9 @@
 						<th scope="col" class="font-medium">{m['common.status']()}</th>
 						<th scope="col" class="font-medium">{m['admin.clusters.version']()}</th>
 						<th scope="col" class="font-medium">{m['admin.clusters.nodesVms']()}</th>
+<!-- Cloud-init is disabled for now: not reliable or viable yet, too complex to set up.
 						<th scope="col" class="font-medium">{m['admin.clusters.cloudinitSection']()}</th>
+-->
 						<th scope="col" class="font-medium">{m['common.actions']()}</th>
 					</tr>
 				</thead>
@@ -143,7 +111,7 @@
 					{#each store.clusters as cluster (cluster.name)}
 						<tr class="align-top">
 							<td data-label={m['common.name']()}>
-								<div class="font-medium">{cluster.displayName || cluster.name}</div>
+								<a class="font-medium hover:underline" href={resolve('/admin/clusters/[name]', { name: cluster.name })}>{cluster.displayName || cluster.name}</a>
 								<div class="text-xs text-muted-foreground">{cluster.name}</div>
 								<div class="max-w-xs truncate text-xs text-muted-foreground" title={cluster.url}>{cluster.url}</div>
 							</td>
@@ -157,6 +125,7 @@
 							</td>
 							<td class="text-muted-foreground" data-label={m['admin.clusters.version']()}>{cluster.proxmoxVersion ?? ' - '}</td>
 							<td data-label={m['admin.clusters.nodesVms']()}>{cluster.nodeCount} / {cluster.vmCount}</td>
+<!-- Cloud-init is disabled for now: not reliable or viable yet, too complex to set up.
 							<td class="text-muted-foreground" data-label={m['admin.clusters.cloudinitSection']()}>
 								{#if cluster.cloudInitWriteEnabled}
 									{m['admin.clusters.cloudinitOn']()}
@@ -164,8 +133,10 @@
 									{m['admin.clusters.cloudinitOff']()}
 								{/if}
 							</td>
+-->
 							<td data-label={m['common.actions']()}>
 								<div class="flex flex-wrap gap-2">
+									<ButtonLink variant="secondary" size="sm" href={resolve('/admin/clusters/[name]', { name: cluster.name })} label={m['admin.clusters.detailsLabel']({ name: cluster.name })}>{m['admin.clusters.details']()}</ButtonLink>
 									<Button variant="secondary" size="sm" disabled={store.busy !== null} label={m['admin.clusters.testLabel']({ name: cluster.name })} onclick={() => void store.test(cluster.name)}>{m['admin.clusters.test']()}</Button>
 									<Button variant="secondary" size="sm" disabled={store.busy !== null} label={m['admin.clusters.editLabel']({ name: cluster.name })} onclick={() => void openForm(cluster)}>{m['common.edit']()}</Button>
 									<Button variant="destructive" size="sm" disabled={store.busy !== null} label={m['admin.clusters.removeLabel']({ name: cluster.name })} onclick={() => (pendingDelete = cluster)}>{m['admin.clusters.remove']()}</Button>

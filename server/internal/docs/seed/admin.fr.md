@@ -7,37 +7,33 @@ d'administration ; la procédure complète est dans le
 ## Infrastructure
 
 **Clusters** connecte un ou plusieurs environnements Proxmox (URL, token
-d'API, test de connexion) et définit la cible d'écriture cloud-init par
-cluster. Chaque cluster a un identifiant immuable (choisi à la création ; `default` pour le premier) et un libellé modifiable ; l'identifiant ne peut pas être renommé. **Nœuds** approuve les hôtes sur lesquels les utilisateurs peuvent
+d'API, test de connexion). Chaque cluster a un identifiant immuable (choisi à la création ; `default` pour le premier) et un libellé modifiable ; l'identifiant ne peut pas être renommé. **Nœuds** approuve les hôtes sur lesquels les utilisateurs peuvent
 créer des VM. **Utilisateurs PVMSS** crée les utilisateurs self-service
 (utilisateur Proxmox + pool + ACL en une étape).
 
-### Modèles cloud-init
+### Les modèles de VM portent les accès
 
-Seuls les administrateurs écrivent les documents cloud-init (**Admin >
-Cloud-init**). L'API REST de Proxmox ne peut pas écrire de snippets, donc
-PVMSS n'écrit jamais sur les nœuds : pour chaque modèle, il affiche une
-commande que l'administrateur colle, en root, sur les nœuds qui doivent le
-proposer. PVMSS lit via l'API quels nœuds ont le fichier et ne propose le
-modèle que sur ces nœuds.
+PVMSS n'ajoute ni clé SSH ni mot de passe aux VM qu'il crée (cloud-init est
+en pause). Un clone garde exactement ce que porte son modèle Proxmox :
+préparez donc chaque modèle approuvé avec les accès dont les utilisateurs
+auront besoin :
 
-1. Dans Proxmox, activez le type de contenu **Snippets** sur un stockage
-   (`local` convient).
-2. Dans **Infrastructure > Clusters > Modifier**, choisissez ce stockage de
-   snippets.
-3. Écrivez le modèle, copiez sa commande, collez-la sur les nœuds choisis,
-   cliquez sur **Vérifier**.
+- dans l'onglet **Cloud-Init** du modèle dans Proxmox, renseignez
+  l'utilisateur et une clé SSH publique ou un mot de passe, ou intégrez un
+  compte directement dans l'image ;
+- installez et activez `qemu-guest-agent`, pour que la VM signale son adresse
+  et que l'onglet **Connexion** affiche la commande SSH.
 
-Laissez le stockage vide pour désactiver les modèles cloud-init sur le
-cluster. Voir le [guide de configuration cloud-init](/docs/cloud-init-setup)
-pour le détail et le dépannage.
+Toutes les VM clonées d'un même modèle partagent ces accès. Transmettez-les
+à vos utilisateurs, ou gardez un modèle par équipe. Les installations depuis
+une ISO ne sont pas concernées : l'utilisateur crée son propre compte pendant
+l'installation, depuis la console du navigateur.
 
 ## Ressources et provisionnement
 
 Le groupe **Ressources** permet d'approuver ou masquer les stockages, ISO,
-images cloud (temporairement désactivées), modèles de VM et bridges que la création de VM peut
-référencer. Le groupe **Provisionnement** gère les profils VM, les templates
-cloud-init, la baseline cloud-init et les tags. Les ressources découvertes apparaissent automatiquement ; l'interrupteur
+modèles de VM et bridges que la création de VM peut
+référencer. Le groupe **Provisionnement** gère les profils VM et les tags. Les ressources découvertes apparaissent automatiquement ; l'interrupteur
 « activé » contrôle ce que voient les utilisateurs. Quand une ressource
 disparaît de Proxmox, son approbation obsolète est signalée pour que vous
 puissiez la retirer.

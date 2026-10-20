@@ -17,6 +17,8 @@ function buildProps(pools: AdminPool[], onSearch = noop) {
 			deleting: null,
 			deleteError: null,
 			announce: null,
+			userDeleteWarning: null,
+			onDismissUserDeleteWarning: () => {},
 			credentials: null,
 			clusterOptions: [],
 			cluster: '',

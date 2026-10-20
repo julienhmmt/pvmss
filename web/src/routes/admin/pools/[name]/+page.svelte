@@ -27,5 +27,6 @@
 	commentError={store.commentError}
 	onUpdateComment={(comment) => store.updateComment(comment)}
 	onDelete={() => store.remove()}
-	onDeleted={() => void goto(resolve('/admin/pools'))}
+	onDeleted={(userDeleted) =>
+		void goto(userDeleted ? resolve('/admin/pools') : `${resolve('/admin/pools')}?userDeleteFailed=${encodeURIComponent(poolName)}`)}
 />

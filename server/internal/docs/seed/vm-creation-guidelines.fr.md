@@ -7,8 +7,7 @@ via la politique ; les valeurs indiquées ici sont celles par défaut.
 ## Nommage
 
 Les noms de VM sont des noms d'hôte : minuscules, tirets, 63 caractères au
-plus, uniques dans votre pool (le nom devient le libellé DNS de l'invité via
-cloud-init). Évitez les noms génériques comme `vm1` - un nom descriptif
+plus, uniques dans votre pool. Évitez les noms génériques comme `vm1` - un nom descriptif
 (`web-prod-01`) rend la liste des VM cherchable et le journal d'activité
 lisible.
 
@@ -19,19 +18,9 @@ lisible.
 - **Template** - clone d'un template Proxmox approuvé. La VM reste sur le nœud
   du template, le disque ne peut pas être plus petit que celui du template, et
   l'assistant vous prévient quand le stockage cible impose une copie complète
-  au lieu d'un clone lié.
-- **Image cloud** (temporairement désactivée : pas encore fiable) - importe une image cloud approuvée comme disque principal
-  et exige les champs cloud-init (utilisateur, clés SSH, réseau). La VM ne
-  démarre qu'une fois l'import terminé et cloud-init appliqué. Les clés SSH
-  passent par un sélecteur partagé : les clés enregistrées dans votre profil
-  sont proposées à cocher - toutes cochées si vous en avez trois ou moins,
-  décochées au-delà - et des clés ponctuelles peuvent être collées en
-  dessous. Si vous collez exactement une clé inconnue de votre profil,
-  l'assistant propose de l'enregistrer une fois la VM créée ; cet
-  enregistrement n'est pas bloquant et ne fait jamais échouer la création.
-  Quelle que soit la source, les clés sont copiées dans la VM au moment de
-  la création : modifier votre profil ensuite ne change jamais les machines
-  existantes.
+  au lieu d'un clone lié. Le clone garde les accès intégrés au template (clé
+  SSH ou mot de passe) : PVMSS n'en ajoute aucun, demandez-les à votre
+  administrateur.
 
 ## Ressources
 
@@ -61,14 +50,8 @@ où vous pouvez vérifier que l'ISO concernée est bien signée.
 
 Activez le **TPM 2.0** pour les invités qui l'exigent (Windows 11).
 
-## Cloud-init
-
-Préférez un **document cloud-init** à une configuration manuelle après
-installation. Choisissez l'un des templates fournis par votre administrateur ; la VM
-garde la version avec laquelle elle a été créée. Voir le [guide cloud-init](/docs/cloud-init-howto).
-
 ## Après la création
 
 Les nouvelles VM apparaissent dans **Mes VM** dès la fin de la tâche de
-création. Le premier démarrage peut prendre une minute pendant que cloud-init
-s'exécute ; la console affiche la sortie de démarrage en direct.
+création. Le premier démarrage peut prendre une minute ; la console affiche
+la sortie de démarrage en direct.

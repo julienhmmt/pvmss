@@ -8,7 +8,7 @@
 	import TemplatePicker from '../TemplatePicker.svelte';
 	import ImagePicker from '../ImagePicker.svelte';
 	import ImageCloudInitFields from '../ImageCloudInitFields.svelte';
-	import CloudInitDocumentSelect from '../CloudInitDocumentSelect.svelte';
+	// import CloudInitDocumentSelect from '../CloudInitDocumentSelect.svelte';
 
 	interface Props {
 		showErrors?: boolean;
@@ -202,5 +202,6 @@
 
 	<!-- The document picker self-hides for the image source (image cloud-init
 	     is the native-fields block) and when the cluster has no write target. -->
-	<CloudInitDocumentSelect />
+	<!-- Cloud-init is disabled for now: not reliable or viable yet, too complex to set up.
+	<CloudInitDocumentSelect /> -->
 </div>

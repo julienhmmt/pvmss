@@ -78,6 +78,10 @@ func TestRegisterAdminRoutes_AllGroupsRegistered(t *testing.T) {
 	}
 
 	for _, pattern := range wantRoutes {
+		if IsPausedCloudInitRoute(pattern) {
+			continue
+		}
+
 		req := httptest.NewRequestWithContext(context.Background(), methodFromPattern(pattern), pathFromPattern(pattern), nil)
 
 		_, pattern2 := mux.Handler(req)
