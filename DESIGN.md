@@ -940,7 +940,7 @@ can reach `/about` from the footer, so `/about` must stand on its own.
 
 **Home (`/`, `features/home/`)** - a scroll page that pitches:
 
-1. **Hero** - eyebrow pill, product name, `h1` "Your Proxmox VMs,
+1. **Hero** - product name, `h1` "Your Proxmox VMs,
    self-served.", subtitle, CTAs, three check badges; beside it a miniature of
    the machine list (sample rows, one booting on a loop).
 2. **How it works** - three numbered steps joined by a connector that draws on

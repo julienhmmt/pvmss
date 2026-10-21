@@ -31,7 +31,7 @@
 		<p class="mt-3 text-muted-foreground">{m['about.architecture.description']()}</p>
 	</div>
 	<div class="pv-dot-grid mt-10 rounded-2xl border border-border bg-muted/40 px-6 py-10 sm:px-10" {@attach reveal()}>
-		<div class="flex flex-col items-center md:flex-row md:items-center">
+		<div class="flex flex-col items-center justify-center md:flex-row">
 			{@render node(m['about.architecture.browser'](), m['about.architecture.browserDetail'](), false)}
 			{@render connector('0s')}
 			<div class="relative w-full max-w-64 md:w-auto md:flex-1">

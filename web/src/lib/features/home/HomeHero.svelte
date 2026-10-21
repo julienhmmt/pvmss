@@ -8,11 +8,7 @@
 
 <section class="mx-auto grid w-full max-w-6xl items-center gap-14 px-1 pt-6 pb-10 lg:grid-cols-[1.05fr_1fr] lg:pt-14">
 	<div class="fade-in flex flex-col items-center text-center lg:items-start lg:text-left">
-		<p class="inline-flex items-center gap-2 rounded-full border border-border bg-card px-3 py-1 text-xs font-medium text-muted-foreground">
-			<span class="pv-pulse h-1.5 w-1.5 rounded-full bg-primary"></span>
-			{m['home.hero.eyebrow']()}
-		</p>
-		<p class="mt-6 text-sm font-semibold tracking-wide text-primary">{m['shell.title']()}</p>
+		<p class="text-sm font-semibold tracking-wide text-primary">{m['shell.title']()}</p>
 		<h1 class="mt-2 text-4xl font-semibold tracking-tight text-balance sm:text-5xl lg:text-6xl">
 			{m['home.hero.title']()}
 		</h1>

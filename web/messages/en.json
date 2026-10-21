@@ -119,7 +119,6 @@
   "home.steps.2.description": "Select an approved node, ISO, storage, bridge, or template from the catalog.",
   "home.steps.3.title": "Launch your VM",
   "home.steps.3.description": "Review your choices and create your VM - quota and policy checks run automatically.",
-  "home.hero.eyebrow": "Open source · Self-hosted · Multi-cluster",
   "home.hero.title": "Your Proxmox VMs, self-served.",
   "home.hero.badge.1": "No Proxmox UI access needed",
   "home.hero.badge.2": "Console in the browser",

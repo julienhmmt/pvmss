@@ -119,7 +119,6 @@
   "home.steps.2.description": "Sélectionnez un nœud, une ISO, un stockage, un pont ou un modèle approuvés dans le catalogue.",
   "home.steps.3.title": "Lancer votre VM",
   "home.steps.3.description": "Vérifiez vos choix et créez votre VM - les contrôles de quotas et de politiques sont automatiques.",
-  "home.hero.eyebrow": "Open source · Auto-hébergé · Multi-cluster",
   "home.hero.title": "Vos VM Proxmox, en libre-service.",
   "home.hero.badge.1": "Aucun accès à l'interface Proxmox",
   "home.hero.badge.2": "Console dans le navigateur",
