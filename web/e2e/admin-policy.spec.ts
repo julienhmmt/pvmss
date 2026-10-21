@@ -20,8 +20,34 @@ async function savePolicy(request: APIRequestContext, body: object): Promise<voi
 	expect(response.status()).toBe(200);
 }
 
+// The demo seed approves no bridge, so on a fresh database no node can host
+// a VM. Approve what pve-node-02 needs (admin-catalog.spec.ts does the same
+// through the UI) so this file does not depend on running after it. Toggles
+// are idempotent and left on: later specs rely on that approved state.
+async function approveNode02Hosting(request: APIRequestContext): Promise<void> {
+	// Listing runs discovery; an undiscovered resource cannot be toggled (404).
+	for (const path of ['/api/v1/admin/storages?cluster=default', '/api/v1/admin/bridges?cluster=default']) {
+		expect((await request.get(path)).status(), path).toBe(200);
+	}
+	// pve-node-02 is online and carries ceph-data (images) and vmbr2 in the
+	// fake dataset; pve-node-03 is offline and has no VM-capable storage.
+	for (const [path, body] of [
+		['/api/v1/admin/nodes/toggle', { cluster: 'default', name: 'pve-node-02', enabled: true }],
+		['/api/v1/admin/storages/toggle', { cluster: 'default', name: 'ceph-data', node: 'pve-node-02', enabled: true }],
+		['/api/v1/admin/bridges/toggle', { cluster: 'default', name: 'vmbr2', node: 'pve-node-02', enabled: true }]
+	] as const) {
+		const response = await request.post(path, { headers: await csrfHeaders(request), data: body });
+		expect(response.status(), path).toBe(200);
+	}
+}
+
 test.describe('T12 admin policy', () => {
 	test.describe.configure({ mode: 'serial' });
+
+	test.beforeAll(async ({ request }) => {
+		await signInAdmin(request);
+		await approveNode02Hosting(request);
+	});
 
 	// Policy is global server state. Restore the defaults after the file so a
 	// failure part-way through a test cannot leave a lowered gabarit or quota
@@ -84,25 +110,6 @@ test.describe('T12 admin policy', () => {
 
 	test('node capacity is enforced for creation and hardware growth', async ({ page }) => {
 		await signInAdmin(page.request);
-		// Load the storages and bridges pages first: they run discovery, and a
-		// resource that has not been discovered yet cannot be toggled (404).
-		// Wait for each page to settle: they sync the URL after loading, and a
-		// navigation started meanwhile is aborted.
-		await page.goto('/admin/storages', { waitUntil: 'networkidle' });
-		await page.goto('/admin/bridges', { waitUntil: 'networkidle' });
-		// pve-node-02 is online and carries ceph-data (images) and vmbr2 in the
-		// fake dataset; pve-node-03 is offline and has no VM-capable storage.
-		for (const [path, body] of [
-			['/api/v1/admin/nodes/toggle', { cluster: 'default', name: 'pve-node-02', enabled: true }],
-			['/api/v1/admin/storages/toggle', { cluster: 'default', name: 'ceph-data', node: 'pve-node-02', enabled: true }],
-			['/api/v1/admin/bridges/toggle', { cluster: 'default', name: 'vmbr2', node: 'pve-node-02', enabled: true }]
-		] as const) {
-			const response = await page.request.post(path, {
-				headers: await csrfHeaders(page.request),
-				data: body
-			});
-			expect(response.status(), path).toBe(200);
-		}
 		await page.goto('/admin/policy/nodes');
 		await expect(page.getByRole('heading', { name: 'Node capacity' })).toBeVisible();
 		const nodesResponse = await page.request.get('/api/v1/admin/policy/nodes?cluster=default');
