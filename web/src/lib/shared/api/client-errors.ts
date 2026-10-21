@@ -1,4 +1,4 @@
-import { post } from './client';
+import { ApiRequestError, post } from './client';
 
 let installed = false;
 
@@ -8,7 +8,13 @@ let installed = false;
  * dropped report (offline, 429) is acceptable.
  */
 export function reportClientError(error: unknown): void {
-	const message = error instanceof Error ? error.message : String(error);
+	// The log wants the server's words and reference, not the localized text.
+	const message =
+		error instanceof ApiRequestError
+			? `${error.code}: ${error.serverMessage}${error.requestId ? ` (requestId ${error.requestId})` : ''}`
+			: error instanceof Error
+				? error.message
+				: String(error);
 	const stack = error instanceof Error ? error.stack : undefined;
 	void post('/api/v1/client-errors', { message, stack, path: globalThis.location?.pathname }).catch(() => {
 		// Swallowed on purpose - see the docblock.

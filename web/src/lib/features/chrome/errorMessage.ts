@@ -47,10 +47,8 @@ const ERROR_CODE_MAP: Record<string, () => string> = {
 	last_cluster: () => m['error.last_cluster'](),
 	protected_tag: () => m['error.protected_tag'](),
 	boot_disk_protected: () => m['error.boot_disk_protected'](),
-	task_failed: () => m['error.task_failed'](),
 	shutdown_timeout: () => m['error.shutdown_timeout'](),
 	expired: () => m['error.expired'](),
-	migration_blocked: () => m['error.migration_blocked'](),
 	empty_targets: () => m['error.empty_targets'](),
 	import_failed: () => m['error.import_failed'](),
 	iso_not_approved: () => m['error.not_approved'](),
@@ -79,7 +77,10 @@ const DETAIL_CODES: ReadonlySet<string> = new Set([
 	'page_size_too_large',
 	'out_of_range',
 	'empty_patch',
-	'bus_full'
+	'bus_full',
+	// Proxmox's own exit message / the blocking reason is the content here.
+	'task_failed',
+	'migration_blocked'
 ]);
 
 function isDetailCode(code: string): boolean {

@@ -32,6 +32,8 @@ describe('resolveErrorMessage', () => {
 			m['error.validation']({ detail: 'name must be 3-32 characters' })
 		);
 		expect(resolveErrorMessage('hardware_exceeds_limit', 'memory 8192 exceeds 4096')).toContain('memory 8192 exceeds 4096');
+		// Proxmox's own reason is the content of a failed task.
+		expect(resolveErrorMessage('task_failed', 'storage full')).toContain('storage full');
 	});
 
 	it('gives an unknown code a generic sentence with the request reference, never the raw text', async () => {
