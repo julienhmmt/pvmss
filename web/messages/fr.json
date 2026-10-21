@@ -1617,8 +1617,6 @@
   "auth.requiredDescription": "Veuillez vous connecter pour accéder à cette page.",
   "auth.warningBrandTitle": "Avertissement",
   "auth.warningBrandDescription": "Cette page requiert une authentification.",
-  "error.brandTitle": "Erreur",
-  "error.brandDescription": "Quelque chose s'est mal passé.",
   "error.notFoundTitle": "Page introuvable",
   "error.notFoundDescription": "La page que vous cherchez n'existe pas ou a été déplacée.",
   "error.forbiddenTitle": "Accès refusé",

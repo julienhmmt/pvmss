@@ -1617,8 +1617,6 @@
   "auth.requiredDescription": "Please sign in to access this page.",
   "auth.warningBrandTitle": "Warning",
   "auth.warningBrandDescription": "This page requires authentication.",
-  "error.brandTitle": "Error",
-  "error.brandDescription": "Something went wrong.",
   "error.notFoundTitle": "Page not found",
   "error.notFoundDescription": "The page you are looking for does not exist or has been moved.",
   "error.forbiddenTitle": "Access denied",

@@ -3,7 +3,6 @@
 	import { m } from '#lib/paraglide/messages.js';
 	import Logo from './Logo.svelte';
 	import WarningIcon from './icons/WarningIcon.svelte';
-	import ErrorIcon from './icons/ErrorIcon.svelte';
 
 	interface Props {
 		mode?: 'login' | 'warning' | 'error';
@@ -30,14 +29,6 @@
 				<div>
 					<h2 class="text-3xl font-semibold leading-tight tracking-tight">{m['auth.warningBrandTitle']()}</h2>
 					<p class="mt-3 text-sm text-[oklch(98.7%_0.022_95.277deg)]/80">{m['auth.warningBrandDescription']()}</p>
-				</div>
-			</div>
-		{:else if mode === 'error'}
-			<div class="flex max-w-md flex-col gap-6">
-				<ErrorIcon class="h-16 w-16" />
-				<div>
-					<h2 class="text-3xl font-semibold leading-tight tracking-tight">{m['error.brandTitle']()}</h2>
-					<p class="mt-3 text-sm text-[oklch(98.7%_0.022_95.277deg)]/80">{m['error.brandDescription']()}</p>
 				</div>
 			</div>
 		{:else}
