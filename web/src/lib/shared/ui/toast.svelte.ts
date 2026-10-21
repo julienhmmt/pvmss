@@ -19,11 +19,13 @@ export interface ToastEntry {
 export interface ToastInput {
 	variant: ToastVariant;
 	message: string;
-	/** Override the default 4000ms auto-dismiss; 0 = sticky. */
+	/** Override the default auto-dismiss (4s, 10s for errors); 0 = sticky. */
 	duration?: number;
 }
 
 const DEFAULT_DURATION_MS = 4000;
+/** Errors stay longer: they are often the only trace of a failed action. */
+const ERROR_DURATION_MS = 10_000;
 
 /**
  * ToastRegion - the global toast queue (FR-019). One instance per app shell,
@@ -47,20 +49,30 @@ export class ToastRegion {
 			id,
 			variant: input.variant,
 			message: input.message,
-			duration: input.duration ?? DEFAULT_DURATION_MS
+			duration: input.duration ?? (input.variant === 'error' ? ERROR_DURATION_MS : DEFAULT_DURATION_MS)
 		};
-		const next = [...this.items, entry];
-		// Trim the oldest entries beyond the cap.
+		let next = [...this.items, entry];
+		// Trim beyond the cap, oldest success/info first so an unread error survives.
 		while (next.length > this.#maxItems) {
-			const dropped = next.shift();
-			if (dropped) this.#clearTimer(dropped.id);
+			const dropped = next.find((item) => item.variant !== 'error') ?? next[0];
+			if (!dropped) break;
+			this.#clearTimer(dropped.id);
+			next = next.filter((item) => item !== dropped);
 		}
 		this.items = next;
-		if (entry.duration > 0) {
-			const timer = setTimeout(() => this.dismiss(id), entry.duration);
-			this.#timers.set(id, timer);
-		}
+		this.#schedule(entry);
 		return id;
+	}
+
+	/** Stops the auto-dismiss while the user hovers or focuses the toast. */
+	hold(id: number): void {
+		this.#clearTimer(id);
+	}
+
+	/** Restarts the full auto-dismiss once the user leaves the toast. */
+	release(id: number): void {
+		const entry = this.items.find((item) => item.id === id);
+		if (entry && !this.#timers.has(id)) this.#schedule(entry);
 	}
 
 	/** Convenience wrappers for the three variants. */
@@ -84,6 +96,12 @@ export class ToastRegion {
 	clear(): void {
 		for (const id of this.#timers.keys()) this.#clearTimer(id);
 		this.items = [];
+	}
+
+	#schedule(entry: ToastEntry): void {
+		if (entry.duration > 0) {
+			this.#timers.set(entry.id, setTimeout(() => this.dismiss(entry.id), entry.duration));
+		}
 	}
 
 	#clearTimer(id: number): void {
