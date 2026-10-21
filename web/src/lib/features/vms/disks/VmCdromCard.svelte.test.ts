@@ -36,6 +36,23 @@ describe('VmCdromCard', () => {
 		}
 	});
 
+	it.each([
+		['absent', 'No drive'],
+		['empty', 'Empty'],
+		['mounted', 'ISO mounted'],
+		['occupied', 'Cloud-init drive']
+	] as const)('labels the %s state instead of printing the enum', async (state, label) => {
+		await render({ state });
+
+		expect(document.querySelector('[data-testid="vm-cdrom-state"]')?.textContent).toContain(label);
+	});
+
+	it('falls back to the raw value for a state it does not know', async () => {
+		await render({ state: 'ejected' as VmCdrom['state'] });
+
+		expect(document.querySelector('[data-testid="vm-cdrom-state"]')?.textContent).toContain('ejected');
+	});
+
 	it('keeps the controls enabled for an empty drive', async () => {
 		await render({ state: 'empty' });
 
