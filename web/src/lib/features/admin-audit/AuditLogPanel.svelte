@@ -10,6 +10,7 @@
 	import EmptyState from '#lib/shared/ui/EmptyState.svelte';
 	import Pill from '#lib/shared/ui/Pill.svelte';
 	import { m } from '#lib/paraglide/messages.js';
+	import { activityMessage, auditTarget, isKnownAction } from '#lib/features/activity/activity.svelte.js';
 
 	const store = getAuditLogContext();
 
@@ -168,8 +169,15 @@
 							<td data-label={m['admin.audit.actor']()}>{entry.actor}</td>
 							<td data-label={m['common.cluster']()}>{entry.cluster}</td>
 							<td data-label={m['admin.audit.columnVm']()}>{entry.vmid ?? ''}</td>
-							<td class="font-mono" data-label={m['admin.audit.action']()}>{entry.action}</td>
-							<td data-label={m['admin.audit.target']()}>{entry.targetType ? `${entry.targetType}:${entry.targetId}` : ''}</td>
+							<td data-label={m['admin.audit.action']()}>
+								{#if isKnownAction(entry.action)}
+									{activityMessage(entry.action)}
+								{:else}
+									<!-- A missing label stays visible as the raw code, muted so review spots it. -->
+									<span class="font-mono text-muted-foreground" data-testid="audit-action-unknown">{entry.action}</span>
+								{/if}
+							</td>
+							<td data-label={m['admin.audit.target']()}>{auditTarget(entry.targetType, entry.targetId)}</td>
 							<td data-label={m['admin.audit.severity']()}>
 								<Pill tone={severityTone(entry.severity)} label={severityLabel(entry.severity)} />
 							</td>

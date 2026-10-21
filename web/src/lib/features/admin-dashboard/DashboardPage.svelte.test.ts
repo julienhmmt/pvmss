@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { mount } from 'svelte';
 import { goto } from '$app/navigation';
+import { m } from '#lib/paraglide/messages.js';
 import DashboardPage from './DashboardPage.svelte';
 import { getDashboardContext } from './dashboard.svelte';
 
@@ -78,6 +79,16 @@ describe('DashboardPage VM summary', () => {
 
 		expect(document.querySelector('[data-testid="dashboard-create-user"]')?.getAttribute('href')).toBe('/admin/pools?create=1');
 		expect(document.querySelectorAll('[data-testid="dashboard-quick-action-slot"]')).toHaveLength(4);
+	});
+
+	it('names recent changes in plain language', () => {
+		const recentChanges = [{ id: 1, actor: 'alice', cluster: 'default', vmid: 101, action: 'console_open', timestamp: '2026-01-01T00:00:00Z', targetType: 'vm', targetId: '101' }];
+		vi.mocked(getDashboardContext).mockReturnValue({ ...store, summary: { ...store.summary, recentChanges } });
+		mount(DashboardPage, { target: document.body });
+
+		const list = document.querySelector('[data-testid="dashboard-recent-changes"]')?.textContent ?? '';
+		expect(list).toContain(m['activity.action.console_open']());
+		expect(list).not.toContain('console_open');
 	});
 
 	it('lists only the five fullest storages', () => {

@@ -52,6 +52,21 @@ describe('AuditLogPanel', () => {
 		await unmount(app);
 	});
 
+	it('shows plain-language actions and targets, raw codes only when unknown', async () => {
+		const rows = [{ ...entry, action: 'console_open' }, { ...entry, id: 2, action: 'mystery_op', targetType: 'mystery', targetId: 'x' }];
+		vi.stubGlobal('fetch', vi.fn().mockResolvedValue(jsonResponse(200, auditPage(rows))));
+		const app = mount(AuditLogHarness, { target: document.body });
+		await settle();
+
+		const text = document.body.querySelector('tbody')?.textContent ?? '';
+		expect(text).toContain(m['activity.action.console_open']());
+		expect(text).toContain('VM 101');
+		expect(text).not.toContain('console_open');
+		expect(text).not.toContain('vm:101');
+		expect(document.body.querySelector('[data-testid="audit-action-unknown"]')?.textContent).toBe('mystery_op');
+		await unmount(app);
+	});
+
 	it('renders the empty state only when there are no entries', async () => {
 		vi.stubGlobal('fetch', vi.fn().mockResolvedValue(jsonResponse(200, auditPage([]))));
 		const app = mount(AuditLogHarness, { target: document.body });

@@ -1,6 +1,6 @@
 import { afterEach, beforeAll, describe, expect, it, vi } from 'vitest';
 import { setLocale } from '#lib/paraglide/runtime.js';
-import { ActivityStore, activityMessage, mergeActivity } from './activity.svelte';
+import { ActivityStore, activityMessage, auditTarget, isKnownAction, mergeActivity } from './activity.svelte';
 
 beforeAll(() => setLocale('en', { reload: false }));
 afterEach(() => vi.unstubAllGlobals());
@@ -27,6 +27,22 @@ describe('activityMessage', () => {
 	it('names known actions and keeps unknown ones visible', () => {
 		expect(activityMessage('shutdown')).toBe('Shut down');
 		expect(activityMessage('mystery_op')).toContain('mystery_op');
+	});
+
+	it('names admin and auth audit codes from the same catalog', () => {
+		expect(activityMessage('admin.clusters.create')).toBe('Cluster added');
+		expect(activityMessage('auth.login_failed')).toBe('Sign-in failed');
+		expect(isKnownAction('console_open')).toBe(true);
+		expect(isKnownAction('mystery_op')).toBe(false);
+	});
+});
+
+describe('auditTarget', () => {
+	it('names the target type instead of printing type:id', () => {
+		expect(auditTarget('vm', '123')).toBe('VM 123');
+		expect(auditTarget('db', '')).toBe('Database');
+		expect(auditTarget('mystery', 'x')).toBe('mystery:x');
+		expect(auditTarget('', '')).toBe('');
 	});
 });
 

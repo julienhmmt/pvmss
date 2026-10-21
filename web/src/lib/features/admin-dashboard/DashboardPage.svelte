@@ -14,6 +14,7 @@
 	import EmptyState from '#lib/shared/ui/EmptyState.svelte';
 	import { formatBytes, usagePercent } from '#lib/shared/format-bytes.js';
 	import { m } from '#lib/paraglide/messages.js';
+	import { activityMessage, auditTarget } from '#lib/features/activity/activity.svelte.js';
 	import { post } from '#lib/shared/api/client.js';
 
 	const store = getDashboardContext();
@@ -253,9 +254,9 @@
 								<time class="w-36 shrink-0 whitespace-nowrap font-mono text-xs text-muted-foreground tabular-nums" datetime={change.timestamp}>
 									{new Date(change.timestamp).toLocaleString(undefined, { dateStyle: 'short', timeStyle: 'short' })}
 								</time>
-								<span class="shrink-0 font-mono text-xs font-semibold">{change.action}</span>
+								<span class="shrink-0 text-xs font-semibold">{activityMessage(change.action)}</span>
 								<span class="min-w-0 flex-1 truncate text-muted-foreground">
-									{change.actor}{#if change.vmid !== null} · VM {change.vmid}{:else if change.targetId} · {change.targetId}{/if}
+									{change.actor}{#if change.vmid !== null} · VM {change.vmid}{:else if change.targetType} · {auditTarget(change.targetType, change.targetId)}{/if}
 								</span>
 							</li>
 						{/each}
