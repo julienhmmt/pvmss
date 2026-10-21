@@ -6,16 +6,16 @@ code are in the "Logging and observability" section of `AGENTS.md`.
 
 ## Configuration
 
-| Variable | Effect |
-| --- | --- |
-| `LOG_LEVEL` | Startup level: `debug`, `info`, `warn`, `error` (lowercase). Required. |
-| `LOG_FORMAT` | `json` for production (Loki, ELK, `jq`), `console` for a terminal. Required. |
-| `LOG_OUTPUT` | `stdout`, `stderr` or a file path. Required. |
-| `PVMSS_METRICS_PORT` | Empty (default): no metrics listener. A port (1-65535, not `PVMSS_PORT`): serve `GET /metrics` on `PVMSS_HOST:<port>`. |
+| Variable                      | Effect                                                                                                                                                  |
+| ----------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `LOG_LEVEL`                   | Startup level: `debug`, `info`, `warn`, `error` (lowercase). Required.                                                                                  |
+| `LOG_FORMAT`                  | `json` for production (Loki, ELK, `jq`), `console` for a terminal. Required.                                                                            |
+| `LOG_OUTPUT`                  | `stdout`, `stderr` or a file path. Required.                                                                                                            |
+| `PVMSS_METRICS_PORT`          | Empty (default): no metrics listener. A port (1-65535, not `PVMSS_PORT`): serve `GET /metrics` on `PVMSS_HOST:<port>`.                                  |
 | `OTEL_EXPORTER_OTLP_ENDPOINT` | Turns on OTLP/HTTP export of traces and metrics (for example `http://otel-collector:4318`). `OTEL_EXPORTER_OTLP_TRACES_ENDPOINT` also works for traces. |
-| `OTEL_SERVICE_NAME` | Service name on spans and metrics. Default `pvmss`. |
-| `OTEL_SDK_DISABLED` | `true` forces telemetry export off even when an endpoint is set. |
-| `OTEL_EXPORTER_OTLP_HEADERS` | Auth headers for the collector. The OpenTelemetry SDK reads it; PVMSS never logs it. |
+| `OTEL_SERVICE_NAME`           | Service name on spans and metrics. Default `pvmss`.                                                                                                     |
+| `OTEL_SDK_DISABLED`           | `true` forces telemetry export off even when an endpoint is set.                                                                                        |
+| `OTEL_EXPORTER_OTLP_HEADERS`  | Auth headers for the collector. The OpenTelemetry SDK reads it; PVMSS never logs it.                                                                    |
 
 The first four rows are validated at startup by `server/internal/config/load.go`
 (the server refuses to boot on a bad value). The `OTEL_*` variables are the
@@ -31,12 +31,12 @@ once, is audited, and is not persisted: a restart returns to `LOG_LEVEL`. At
 
 ## What each level shows
 
-| Level | What you see |
-| --- | --- |
-| `error` | Something is broken: a 5xx (from the access log), a database failure, a cluster that just became unreachable. |
-| `warn` | Degraded or refused: failed logins, 403, CSRF rejects, 429, a cluster that is still down (reminder every 5 minutes), Proxmox retries. |
-| `info` | Startup banner, "server ready", shutdown, logins and logouts, every write request, every audited action, cluster recovery. |
-| `debug` | Every GET request, every Proxmox call (templated path, status, duration), every successful inventory refresh. |
+| Level   | What you see                                                                                                                          |
+| ------- | ------------------------------------------------------------------------------------------------------------------------------------- |
+| `error` | Something is broken: a 5xx (from the access log), a database failure, a cluster that just became unreachable.                         |
+| `warn`  | Degraded or refused: failed logins, 403, CSRF rejects, 429, a cluster that is still down (reminder every 5 minutes), Proxmox retries. |
+| `info`  | Startup banner, "server ready", shutdown, logins and logouts, every write request, every audited action, cluster recovery.            |
+| `debug` | Every GET request, every Proxmox call (templated path, status, duration), every successful inventory refresh.                         |
 
 Every request produces one access-log line (`message` = `http request`) with
 `method`, `route` (the route pattern, never the URL or query string),
@@ -154,17 +154,17 @@ metrics over OTLP. The metrics port has **no authentication** and is not routed
 by the HTTPRoute: keep it cluster-internal and, on a shared cluster, restrict
 it with a NetworkPolicy. The main port answers `/metrics` with 404.
 
-| Metric (Prometheus name) | Type | Labels |
-| --- | --- | --- |
-| `http_server_request_duration_seconds` | histogram | `http_route`, `http_request_method`, `http_response_status_code` |
-| `pvmss_inventory_refresh_duration_seconds` | histogram | `cluster` |
-| `pvmss_inventory_refresh_failures_total` | counter | `cluster` |
-| `pvmss_inventory_last_success_seconds` | gauge (unix time) | `cluster` |
-| `pvmss_proxmox_request_duration_seconds` | histogram | `cluster`, `method`, `status_class` |
-| `pvmss_vms` | gauge | `cluster`, `status` |
-| `pvmss_vm_actions_total` | counter | `action`, `result` |
-| `pvmss_auth_logins_total` | counter | `result` |
-| `go_*` (Go runtime: memory, GC, goroutines) | various | none |
+| Metric (Prometheus name)                    | Type              | Labels                                                           |
+| ------------------------------------------- | ----------------- | ---------------------------------------------------------------- |
+| `http_server_request_duration_seconds`      | histogram         | `http_route`, `http_request_method`, `http_response_status_code` |
+| `pvmss_inventory_refresh_duration_seconds`  | histogram         | `cluster`                                                        |
+| `pvmss_inventory_refresh_failures_total`    | counter           | `cluster`                                                        |
+| `pvmss_inventory_last_success_seconds`      | gauge (unix time) | `cluster`                                                        |
+| `pvmss_proxmox_request_duration_seconds`    | histogram         | `cluster`, `method`, `status_class`                              |
+| `pvmss_vms`                                 | gauge             | `cluster`, `status`                                              |
+| `pvmss_vm_actions_total`                    | counter           | `action`, `result`                                               |
+| `pvmss_auth_logins_total`                   | counter           | `result`                                                         |
+| `go_*` (Go runtime: memory, GC, goroutines) | various           | none                                                             |
 
 Labels are limited to a fixed allowlist; `vmid`, `user` and `node` are never
 labels.
@@ -176,7 +176,7 @@ metrics:
   enabled: true
   port: 9464
   serviceMonitor:
-    enabled: true      # needs the Prometheus Operator CRDs
+    enabled: true # needs the Prometheus Operator CRDs
     interval: 30s
 ```
 

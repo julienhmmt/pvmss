@@ -212,6 +212,7 @@ cluster on first boot only; afterwards the admin UI owns clusters.
 | `PVMSS_INVENTORY_MANUAL_REFRESH_MIN_INTERVAL` | `5s`                                                            |
 | `PVMSS_INVENTORY_REFRESH_TIMEOUT`             | `15s`                                                           |
 | `PVMSS_MAX_LIST_PAGE_SIZE`                    | `100`                                                           |
+| `PVMSS_MAX_LOCAL_ADMINS`                      | `5` (range 1-50; excludes the bootstrap admin)                  |
 | `PVMSS_DB_RESET_ON_INCOMPATIBLE`              | `false` (dev compose: `true`; old DB is renamed, never deleted) |
 | `PVMSS_TRUSTED_PROXY_HOPS`                    | `1`                                                             |
 | `PVMSS_RATE_LIMIT_MAX`                        | `0` (built-in ceilings; positive raises them, used by e2e)      |
@@ -220,6 +221,18 @@ cluster on first boot only; afterwards the admin UI owns clusters.
 Tracing/OTLP use the standard `OTEL_*` variables read by the SDK (see
 `docs/observability.md`). `LOG_LEVEL` is only the startup level; admins can
 change it at runtime (Admin > Settings).
+
+**Administrator sign-in.** There are two paths. A Proxmox user is an
+administrator when their ACL grants `Permissions.Modify` on `/` (the
+`PVEAdmin` or `Administrator` role); only the `pve` and `pam` realms are
+supported, OIDC is not. PVMSS local administrators are independent of any
+cluster. `ADMIN_PASSWORD_HASH` seeds the immutable bootstrap owner (`admin`,
+provider `bootstrap`); DB-backed accounts (`local_accounts`, capped by
+`PVMSS_MAX_LOCAL_ADMINS`) are created and managed by that owner under Admin >
+Settings > Accounts. They get the full admin surface but every account route
+answers `owner_only` to them. Local passwords are 8+ characters and at most 72
+bytes (bcrypt); five consecutive failures lock an account for 15 minutes.
+Resetting, disabling or deleting an account revokes its sessions.
 
 No longer read (startup warns for the SSH ones): `PVMSS_OFFLINE`, `PVMSS_ENV`,
 `JWT_SECRET`, `PROXMOX_VERIFY_SSL`, `LOG_FILE_PATH`, `PVMSS_SSH_KEY_FILE`,

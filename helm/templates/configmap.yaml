@@ -1,6 +1,5 @@
 {{/*
-  settings.json ConfigMap removed in v2.
-  All user-editable configuration is now stored in the SQLite database (pvmss.db).
-  The database is persisted via the pvmss-db-pvc PersistentVolumeClaim.
-  No ConfigMap is needed for application settings.
+  settings.json ConfigMap was removed in v0.4.
+  All application configuration is stored in the embedded SQLite database (/data/pvmss.db),
+  persisted via the db PersistentVolumeClaim.
 */}}

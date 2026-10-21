@@ -12,25 +12,25 @@ this document is the implementer-facing extract that stays in the repo.
 
 ## 1. Light ramp (Layer B)
 
-| Role | Mockup token | CSS variable (`app.css`) | Light value |
-| --- | --- | --- | --- |
-| Accent | `--or` | `--primary` | `oklch(66% 0.185 44deg)` |
-| Accent hover | `--or-600` | primary hover | `oklch(59% 0.17 44deg)` |
-| Accent active | `--or-700` | primary active / nav current text | `oklch(51% 0.15 44deg)` |
-| Accent tint | `--or-tint` | `--sidebar-accent` (selected nav fill) | `oklch(96.5% 0.022 44deg)` |
-| Accent tint 2 | `--or-tint2` | option-card selected fill | `oklch(93% 0.045 44deg)` |
-| Ink | `--ink` | `--foreground` | `#1c1a19` |
-| Ink 2 | `--ink-2` | `--muted-foreground` | `#5f5854` |
-| Ink 3 | `--ink-3` | `--muted-foreground-subtle` | `#8d8681` (contrast-checked on `--card`, see §5) |
-| Ground | `--bg` | `--background` | `#f7f6f4` |
-| Surface | `--surf` | `--card` / `--popover` | `#ffffff` |
-| Line | `--line` | `--border` | `#e8e4e0` |
-| Line 2 | `--line-2` | `--border-subtle` | `#f1eeeb` |
-| Radius | `--r` | `--radius` | `0.75rem` (12 px) |
-| Radius sm | `--r-sm` | `--radius-sm` | `0.5rem` (8 px) |
-| Radius lg | `--r-lg` | `--radius-xl` | `1.125rem` (18 px) |
-| Mono | `--mono` | `--font-mono` | `ui-monospace, "SF Mono", "JetBrains Mono", Menlo, monospace` |
-| Sans | Archivo | `--font-sans` | `'Archivo Variable', sans-serif` (self-hosted via `@fontsource-variable/archivo`) |
+| Role          | Mockup token | CSS variable (`app.css`)               | Light value                                                                       |
+| ------------- | ------------ | -------------------------------------- | --------------------------------------------------------------------------------- |
+| Accent        | `--or`       | `--primary`                            | `oklch(66% 0.185 44deg)`                                                          |
+| Accent hover  | `--or-600`   | primary hover                          | `oklch(59% 0.17 44deg)`                                                           |
+| Accent active | `--or-700`   | primary active / nav current text      | `oklch(51% 0.15 44deg)`                                                           |
+| Accent tint   | `--or-tint`  | `--sidebar-accent` (selected nav fill) | `oklch(96.5% 0.022 44deg)`                                                        |
+| Accent tint 2 | `--or-tint2` | option-card selected fill              | `oklch(93% 0.045 44deg)`                                                          |
+| Ink           | `--ink`      | `--foreground`                         | `#1c1a19`                                                                         |
+| Ink 2         | `--ink-2`    | `--muted-foreground`                   | `#5f5854`                                                                         |
+| Ink 3         | `--ink-3`    | `--muted-foreground-subtle`            | `#8d8681` (contrast-checked on `--card`, see §5)                                  |
+| Ground        | `--bg`       | `--background`                         | `#f7f6f4`                                                                         |
+| Surface       | `--surf`     | `--card` / `--popover`                 | `#ffffff`                                                                         |
+| Line          | `--line`     | `--border`                             | `#e8e4e0`                                                                         |
+| Line 2        | `--line-2`   | `--border-subtle`                      | `#f1eeeb`                                                                         |
+| Radius        | `--r`        | `--radius`                             | `0.75rem` (12 px)                                                                 |
+| Radius sm     | `--r-sm`     | `--radius-sm`                          | `0.5rem` (8 px)                                                                   |
+| Radius lg     | `--r-lg`     | `--radius-xl`                          | `1.125rem` (18 px)                                                                |
+| Mono          | `--mono`     | `--font-mono`                          | `ui-monospace, "SF Mono", "JetBrains Mono", Menlo, monospace`                     |
+| Sans          | Archivo      | `--font-sans`                          | `'Archivo Variable', sans-serif` (self-hosted via `@fontsource-variable/archivo`) |
 
 Semantic status (mockup `--ok*` / `--warn*` / `--off*`) maps onto the existing
 `success` / `warning` / `muted` soft triples already in `app.css`. The existing
@@ -44,34 +44,34 @@ ramp so the warm-paper character survives at night. Goal: keep the orange
 accent perceptually similar, drop ground/surface to warm near-blacks, and keep
 the two mute steps distinct.
 
-| Role | CSS variable | Dark value | Derivation note |
-| --- | --- | --- | --- |
-| Ground | `--background` | `oklch(17% 0.006 49deg)` | warm near-black, same hue as light ink |
-| Surface | `--card` / `--popover` | `oklch(21% 0.006 56deg)` | one step lighter than ground |
-| Ink | `--foreground` | `oklch(96% 0.004 95deg)` | warm off-white |
-| Ink 2 | `--muted-foreground` | `oklch(72% 0.01 56deg)` | one mute step down |
-| Ink 3 | `--muted-foreground-subtle` | `oklch(60% 0.012 56deg)` | second mute step (contrast-checked, §5) |
-| Accent | `--primary` | `oklch(72% 0.17 44deg)` | lifted L so orange reads on dark ground |
-| Accent hover | primary hover | `oklch(78% 0.15 44deg)` | |
-| Accent active | primary active | `oklch(82% 0.13 44deg)` | |
-| Accent tint | `--sidebar-accent` | `oklch(26% 0.03 44deg)` | low-L orange-tinted fill for selected nav |
-| Line | `--border` | `oklch(100% 0 0deg / 10%)` | white hairline on dark |
-| Line 2 | `--border-subtle` | `oklch(100% 0 0deg / 6%)` | fainter hairline |
-| Secondary / muted / accent fills | `--secondary` / `--muted` / `--accent` | `oklch(25% 0.006 56deg)` | shared dark surface |
+| Role                             | CSS variable                           | Dark value                 | Derivation note                           |
+| -------------------------------- | -------------------------------------- | -------------------------- | ----------------------------------------- |
+| Ground                           | `--background`                         | `oklch(17% 0.006 49deg)`   | warm near-black, same hue as light ink    |
+| Surface                          | `--card` / `--popover`                 | `oklch(21% 0.006 56deg)`   | one step lighter than ground              |
+| Ink                              | `--foreground`                         | `oklch(96% 0.004 95deg)`   | warm off-white                            |
+| Ink 2                            | `--muted-foreground`                   | `oklch(72% 0.01 56deg)`    | one mute step down                        |
+| Ink 3                            | `--muted-foreground-subtle`            | `oklch(60% 0.012 56deg)`   | second mute step (contrast-checked, §5)   |
+| Accent                           | `--primary`                            | `oklch(72% 0.17 44deg)`    | lifted L so orange reads on dark ground   |
+| Accent hover                     | primary hover                          | `oklch(78% 0.15 44deg)`    |                                           |
+| Accent active                    | primary active                         | `oklch(82% 0.13 44deg)`    |                                           |
+| Accent tint                      | `--sidebar-accent`                     | `oklch(26% 0.03 44deg)`    | low-L orange-tinted fill for selected nav |
+| Line                             | `--border`                             | `oklch(100% 0 0deg / 10%)` | white hairline on dark                    |
+| Line 2                           | `--border-subtle`                      | `oklch(100% 0 0deg / 6%)`  | fainter hairline                          |
+| Secondary / muted / accent fills | `--secondary` / `--muted` / `--accent` | `oklch(25% 0.006 56deg)`   | shared dark surface                       |
 
 ## 3. Mockup → `app.css` variable map
 
-| Mockup class | Role | Implementation |
-| --- | --- | --- |
-| `.crd` | Card | `Card.svelte` primitive (surface, 1 px `--border`, `--radius`, soft shadow) |
-| `.pill` + `.p-ok` `.p-off` `.p-w` | Status chip | `Pill.svelte` (ok/off/warn via success/warning/muted soft; text name + dot) |
-| `.mt` | Quota/usage meter | `Meter.svelte` (`role="meter"` when bounded; no fake 0–100 for unlimited) |
-| `.nvi` `[data-on="1"]` | Sidebar nav item | `Sidebar.svelte` row; active = `--sidebar-accent` fill + `--or-700` text + `aria-current="page"` |
-| `.opt` `[data-on="1"]` | Selectable profile card | `OptionCard.svelte` (native radio, visually restyled) |
-| `.b` + variants | Button | retune existing `Button.svelte` (≈10 px radius, `font-weight:600`, primary/secondary/ghost/sm; keep destructive) |
-| `.inp` `.lbl` `.hint` | Form field | retune existing input styling via tokens (no new class) |
-| `.tb` | Table | retune existing table styling via tokens (no vertical rules, `--border-subtle` row tops) |
-| `.m` | Mono run | `.mono` utility + `--font-mono` token |
+| Mockup class                      | Role                    | Implementation                                                                                                   |
+| --------------------------------- | ----------------------- | ---------------------------------------------------------------------------------------------------------------- |
+| `.crd`                            | Card                    | `Card.svelte` primitive (surface, 1 px `--border`, `--radius`, soft shadow)                                      |
+| `.pill` + `.p-ok` `.p-off` `.p-w` | Status chip             | `Pill.svelte` (ok/off/warn via success/warning/muted soft; text name + dot)                                      |
+| `.mt`                             | Quota/usage meter       | `Meter.svelte` (`role="meter"` when bounded; no fake 0–100 for unlimited)                                        |
+| `.nvi` `[data-on="1"]`            | Sidebar nav item        | `Sidebar.svelte` row; active = `--sidebar-accent` fill + `--or-700` text + `aria-current="page"`                 |
+| `.opt` `[data-on="1"]`            | Selectable profile card | `OptionCard.svelte` (native radio, visually restyled)                                                            |
+| `.b` + variants                   | Button                  | retune existing `Button.svelte` (≈10 px radius, `font-weight:600`, primary/secondary/ghost/sm; keep destructive) |
+| `.inp` `.lbl` `.hint`             | Form field              | retune existing input styling via tokens (no new class)                                                          |
+| `.tb`                             | Table                   | retune existing table styling via tokens (no vertical rules, `--border-subtle` row tops)                         |
+| `.m`                              | Mono run                | `.mono` utility + `--font-mono` token                                                                            |
 
 ## 4. Chrome geometry (desktop)
 

@@ -8,6 +8,7 @@
 	import Card from '#lib/shared/ui/Card.svelte';
 	import Button from '#lib/shared/ui/Button.svelte';
 	import FormField from '#lib/shared/ui/FormField.svelte';
+	import Select from '#lib/shared/ui/Select.svelte';
 	import TextField from '#lib/shared/ui/TextField.svelte';
 	import UserIcon from '#lib/shared/ui/icons/UserIcon.svelte';
 	import LockIcon from '#lib/shared/ui/icons/LockIcon.svelte';
@@ -83,16 +84,51 @@
 							id="login-cluster"
 							disabled={form.pveDisabled}
 						/>
-						<FormField label={m['login.username']()} hint={m['login.usernameRealmHint']()} required>
-							{#snippet children({ id, describedBy, invalid })}
+						<div class="grid gap-4 sm:grid-cols-2">
+							<FormField label={m['login.username']()} hint={m['login.usernameRealmHint']()} required>
+								{#snippet children({ id, describedBy, invalid })}
+									<TextField
+										{id}
+										describedBy={withError(describedBy)}
+										{invalid}
+										bind:value={form.username}
+										autocomplete="username"
+										disabled={form.pveDisabled}
+										required
+									>
+										{#snippet leading()}
+											<UserIcon />
+										{/snippet}
+									</TextField>
+								{/snippet}
+							</FormField>
+							<FormField label={m['login.realm']()} hint={m['login.realmHint']()}>
+								{#snippet children({ id, describedBy })}
+									<Select
+										{id}
+										describedBy={describedBy}
+										bind:value={() => form.realm, (value) => (form.realm = value === 'pam' ? 'pam' : 'pve')}
+										options={[
+											{ value: 'pve', label: m['login.realmPve']() },
+											{ value: 'pam', label: m['login.realmPam']() }
+										]}
+										disabled={form.pveDisabled}
+									/>
+								{/snippet}
+							</FormField>
+						</div>
+					{:else}
+						<FormField
+							label={m['login.localUsername']()}
+							hint={m['login.localUsernameHint']()}
+						>
+							{#snippet children({ id, describedBy })}
 								<TextField
 									{id}
-									describedBy={withError(describedBy)}
-									{invalid}
-									bind:value={form.username}
+									describedBy={describedBy}
+									bind:value={form.localUsername}
 									autocomplete="username"
-									disabled={form.pveDisabled}
-									required
+									placeholder="admin"
 								>
 									{#snippet leading()}
 										<UserIcon />

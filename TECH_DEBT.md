@@ -14,6 +14,13 @@ documented here so the next reader does not reopen them.
   session ends - at most `auth.MaxSessionAge` (24h; the idle TTL is 8h). Accepted: re-checking
   live would need the API token to read `/access/permissions?userid=` (extra
   role) on a timer, and 8h is short enough.
+- **No Proxmox OIDC realm sign-in.** The realm picker and the API accept `pve`
+  and `pam` only; anything else answers `realm_unsupported`. Supporting OIDC
+  means a different Proxmox flow (the browser is redirected to the identity
+  provider, so PVMSS cannot collect a password) plus a callback route.
+  Future work; PVMSS local administrators cover the "no password in Proxmox"
+  case meanwhile. See `normalizePVEUsername` in
+  `server/internal/httpapi/auth.go`.
 - **No garbage collection of published snippet files.** PVMSS cannot write
   or delete snippet files through the Proxmox API (`upload`/`download-url`
   accept `iso`, `vztmpl`, `import` only, and files placed by hand under

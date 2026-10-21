@@ -37,6 +37,62 @@ test.describe('T02 authentication', () => {
 		await expect(page).toHaveURL(/\/admin$/);
 	});
 
+	test('signs in as the Proxmox cluster administrator (PVEAdmin) and lands on /admin', async ({ page }) => {
+		await page.goto('/login');
+		await page.locator('input[autocomplete="username"]').fill('admin');
+		await page.locator('input[autocomplete="current-password"]').fill('pvmss-admin');
+		await page.locator('#login-cluster').selectOption('default');
+		await page.locator('button[type="submit"]').click();
+		await expect(page).toHaveURL(/\/admin$/);
+
+		const me = await page.request.get('/api/v1/auth/me');
+		expect(me.status()).toBe(200);
+		expect(await me.json()).toMatchObject({
+			username: 'admin@pve',
+			isAdmin: true,
+			isOwner: false,
+			provider: 'pve',
+			cluster: 'default'
+		});
+	});
+
+	test('owner creates and deletes a local administrator account from Settings > Accounts', async ({ page, context }) => {
+		const login = await page.request.post('/api/v1/auth/admin-login', {
+			data: { password: 'pvmss-e2e-admin' }
+		});
+		expect(login.status()).toBe(200);
+
+		const created = await page.request.post('/api/v1/admin/accounts', {
+			headers: await csrfHeaders(page.request),
+			data: { username: 'e2e-ops', password: 'e2e-ops-password' }
+		});
+		expect(created.status()).toBe(201);
+		const account = (await created.json()) as { id: number; username: string };
+		expect(account.username).toBe('e2e-ops');
+
+		try {
+			await context.clearCookies();
+			await page.goto('/login');
+			await page.getByRole('button', { name: /administrat/i }).click();
+			await page.locator('input[autocomplete="username"]').fill('e2e-ops');
+			await page.locator('input[autocomplete="current-password"]').fill('e2e-ops-password');
+			await page.locator('button[type="submit"]').click();
+			await expect(page).toHaveURL(/\/admin$/);
+
+			// Non-owner local admin gets 403 on accounts API.
+			const forbidden = await page.request.get('/api/v1/admin/accounts');
+			expect(forbidden.status()).toBe(403);
+		} finally {
+			await page.request.post('/api/v1/auth/admin-login', {
+				data: { password: 'pvmss-e2e-admin' }
+			});
+			const del = await page.request.delete(`/api/v1/admin/accounts/${account.id}`, {
+				headers: await csrfHeaders(page.request)
+			});
+			expect(del.status()).toBe(204);
+		}
+	});
+
 	test('the sign-in gate returns the user to the page they asked for', async ({ page }) => {
 		await page.goto('/vms?cluster=default');
 		await page.getByRole('button', { name: /sign in|se connecter/i }).click();

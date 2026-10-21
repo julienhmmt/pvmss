@@ -90,6 +90,7 @@ type RouterConfig struct {
 	AdminClusters    *AdminClusters
 	AdminBaseline    *AdminBaseline
 	AdminMigration   *AdminMigration
+	AdminAccounts    *AdminAccounts
 	Docs             *DocsAPIHandler
 	AdminDocs        *AdminDocs
 	ProfileSSHKeys   *ProfileSSHKeys

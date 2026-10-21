@@ -33,6 +33,8 @@ const (
 	msgPolicyUnavailable     = "policy service is not configured"
 	msgClusterNotFound       = "cluster not found"
 	msgAdminOnly             = "admin only"
+	msgOwnerOnly             = "only the bootstrap administrator can manage local accounts"
+	msgRealmUnsupported      = "only the pve and pam realms are supported; OIDC is not available"
 	msgClusterUnavailable    = "cluster is unavailable"
 	msgNotReportedByCluster  = " not reported by the cluster"
 	msgOnNode                = `" on node "`

@@ -132,14 +132,14 @@ qm config <vmid> | grep cicustom
 
 ## Day-2 operations
 
-| Situation | Action |
-| --- | --- |
-| Offer a template on another node | Paste its command on that node, Verify |
-| New or reinstalled node | Paste the commands of the templates it must offer (and the baseline) |
-| Template edited | New file name: paste the new command on the nodes, Verify |
-| PVMSS upgrade changed the baseline | Every file name changes: paste the new commands |
-| Remove an old version | `rm` it on the node, only if no VM uses it (`grep -l <file> /etc/pve/qemu-server/*.conf`) |
-| VM deleted | Nothing to do. A legacy per-VM file (`pvmss-<vmid>.yml`, older PVMSS) is logged and left on the node: `rm` it by hand |
+| Situation                          | Action                                                                                                                |
+| ---------------------------------- | --------------------------------------------------------------------------------------------------------------------- |
+| Offer a template on another node   | Paste its command on that node, Verify                                                                                |
+| New or reinstalled node            | Paste the commands of the templates it must offer (and the baseline)                                                  |
+| Template edited                    | New file name: paste the new command on the nodes, Verify                                                             |
+| PVMSS upgrade changed the baseline | Every file name changes: paste the new commands                                                                       |
+| Remove an old version              | `rm` it on the node, only if no VM uses it (`grep -l <file> /etc/pve/qemu-server/*.conf`)                             |
+| VM deleted                         | Nothing to do. A legacy per-VM file (`pvmss-<vmid>.yml`, older PVMSS) is logged and left on the node: `rm` it by hand |
 
 ## Removing the old SSH publishing setup
 
@@ -156,18 +156,19 @@ Older PVMSS versions published over SSH. After upgrading:
 
   Then remove any `Match User pvmss…` block you added to
   `/etc/ssh/sshd_config`, check with `sshd -t`, and `systemctl reload ssh`.
+
 - Files already on the nodes keep working: VMs point at them by name.
 
 ## Troubleshooting
 
-| Symptom | Cause / fix |
-| --- | --- |
-| "cloud-init: off" on the cluster | No snippet storage selected (step 2) |
-| Storage list empty in the cluster form | Snippets content type not enabled (step 1) |
-| Pasted, still "absent" | Pasted on another node, or into another storage than the one selected in step 2: `pvesm list <storage> --content snippets` on the node |
-| `bash: pvesm: command not found` | Root shell opened with `su` instead of `su -`: `/usr/sbin` is not in `PATH`. Run `su -` and paste again |
-| `pvesm: storage '…' does not exist` | Storage id typo, or the storage is not available on that node |
-| Node shows "node is offline" | The node is down: nothing can be read from it |
-| Template missing from the create wizard | Its file is not on the VM's node: paste it there |
-| Create refused with `cloudinit_not_published` | Same: the file is not on the node PVMSS picked |
-| VM boots without the template's effect | `qm config <vmid> \| grep cicustom`, then `cloud-init status --long` in the guest |
+| Symptom                                       | Cause / fix                                                                                                                            |
+| --------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------- |
+| "cloud-init: off" on the cluster              | No snippet storage selected (step 2)                                                                                                   |
+| Storage list empty in the cluster form        | Snippets content type not enabled (step 1)                                                                                             |
+| Pasted, still "absent"                        | Pasted on another node, or into another storage than the one selected in step 2: `pvesm list <storage> --content snippets` on the node |
+| `bash: pvesm: command not found`              | Root shell opened with `su` instead of `su -`: `/usr/sbin` is not in `PATH`. Run `su -` and paste again                                |
+| `pvesm: storage '…' does not exist`           | Storage id typo, or the storage is not available on that node                                                                          |
+| Node shows "node is offline"                  | The node is down: nothing can be read from it                                                                                          |
+| Template missing from the create wizard       | Its file is not on the VM's node: paste it there                                                                                       |
+| Create refused with `cloudinit_not_published` | Same: the file is not on the node PVMSS picked                                                                                         |
+| VM boots without the template's effect        | `qm config <vmid> \| grep cicustom`, then `cloud-init status --long` in the guest                                                      |

@@ -50,7 +50,9 @@ describe('ProfilePasswordSection (Ticket 11)', () => {
 			pool: 'pvmss-alice',
 			isAdmin: false,
 			cluster: 'default',
-			clusterDisplayName: 'Default'
+			clusterDisplayName: 'Default',
+			provider: 'pve',
+			isOwner: false
 		};
 		toast = new ToastRegion();
 
@@ -96,7 +98,7 @@ describe('ProfilePasswordSection (Ticket 11)', () => {
 		expect(toast.items.some((item) => item.message.includes('Password updated'))).toBe(true);
 	});
 
-	it('renders the local admin note when signed in as the local emergency administrator', () => {
+	it('renders the bootstrap note when signed in as the bootstrap administrator', () => {
 		sessionStore = new SessionStore();
 		sessionStore.principal = {
 			username: 'admin',
@@ -104,7 +106,9 @@ describe('ProfilePasswordSection (Ticket 11)', () => {
 			pool: '',
 			isAdmin: true,
 			cluster: '',
-			clusterDisplayName: ''
+			clusterDisplayName: '',
+			provider: 'bootstrap',
+			isOwner: true
 		};
 		toast = new ToastRegion();
 
@@ -112,5 +116,26 @@ describe('ProfilePasswordSection (Ticket 11)', () => {
 
 		expect(document.querySelector('[data-testid="profile-local-admin-note"]')).not.toBeNull();
 		expect(document.querySelector('[data-testid="profile-password-section"]')).toBeNull();
+	});
+
+	it('lets a DB local account change its own password', () => {
+		sessionStore = new SessionStore();
+		sessionStore.principal = {
+			username: 'albert',
+			displayName: 'albert',
+			pool: '',
+			isAdmin: true,
+			cluster: '',
+			clusterDisplayName: '',
+			provider: 'local',
+			isOwner: false
+		};
+		toast = new ToastRegion();
+
+		mount(ProfilePasswordSection, { target: document.body });
+
+		expect(document.querySelector('[data-testid="profile-password-section"]')).not.toBeNull();
+		expect(document.querySelector('[data-testid="profile-local-admin-note"]')).toBeNull();
+		expect(document.body.textContent).toContain('Update the password PVMSS stores for this local account.');
 	});
 });

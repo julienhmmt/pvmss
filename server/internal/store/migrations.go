@@ -260,8 +260,33 @@ type Migration struct {
 	DDL     string
 }
 
+// schemaV2 adds DB-backed PVMSS local administrator accounts and records the
+// credential source on sessions. The bootstrap administrator (env
+// ADMIN_PASSWORD_HASH) stays outside the table: it is the immutable owner.
+// Existing sessions predate providers and can only come from PVE logins, so
+// they are backfilled as "pve".
+const schemaV2 = `
+CREATE TABLE local_accounts (
+	id              INTEGER PRIMARY KEY AUTOINCREMENT,
+	username        TEXT NOT NULL COLLATE NOCASE UNIQUE,
+	password_hash   TEXT NOT NULL,
+	disabled        INTEGER NOT NULL DEFAULT 0,
+	failed_attempts INTEGER NOT NULL DEFAULT 0,
+	locked_until    TEXT NOT NULL DEFAULT '',
+	created_at      TEXT NOT NULL,
+	updated_at      TEXT NOT NULL,
+	created_by      TEXT NOT NULL DEFAULT '',
+	last_login_at   TEXT NOT NULL DEFAULT ''
+);
+
+ALTER TABLE sessions ADD COLUMN provider TEXT NOT NULL DEFAULT '';
+
+UPDATE sessions SET provider = 'pve' WHERE cluster != '';
+`
+
 // Migrations is the ordered list of schema migrations.
 // Versions must be consecutive integers starting at 1.
 var Migrations = []Migration{
 	{Version: 1, DDL: schemaV1},
+	{Version: 2, DDL: schemaV2},
 }
