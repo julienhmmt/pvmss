@@ -4,6 +4,12 @@ kind: PersistentVolumeClaim
 metadata:
   name: {{ include "pvmss.fullname" . }}-logs-pvc
   namespace: {{ .Values.namespace }}
+  labels:
+    {{- include "pvmss.labels" . | nindent 4 }}
+  {{- with .Values.extraAnnotations }}
+  annotations:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
 spec:
   accessModes:
     - ReadWriteOnce
