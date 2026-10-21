@@ -60,9 +60,7 @@
 <section class="mx-auto w-full {chosen === 'simple' ? 'max-w-6xl' : 'max-w-3xl'}">
 	<PageHeader
 		back={{ href: resolve('/vms'), label: m['vms.create.back']() }}
-		eyebrow={m['vms.create.eyebrow']()}
 		title={m['vms.create.heading']()}
-		description={m['vms.create.calmDescription']()}
 		focusTarget
 		divider={false}
 	/>
@@ -100,17 +98,12 @@
 			<ModeChooser onSelect={chooseMode} />
 		{:else}
 			<div class="mb-5 flex flex-wrap items-center justify-between gap-3">
-				<button
-					type="button"
-					onclick={changeMode}
-					data-testid="vm-create-change-mode"
-					class="pv-focus inline-flex items-center gap-1.5 rounded-lg text-sm font-medium text-muted-foreground transition-colors hover:text-foreground"
-				>
+				<Button variant="secondary" size="sm" onclick={changeMode} data-testid="vm-create-change-mode">
 					<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="h-4 w-4" aria-hidden="true">
 						<path d="M12 5l-5 5 5 5" />
 					</svg>
 					{m['vms.create.changeMode']()}
-				</button>
+				</Button>
 				<div class="flex items-center gap-3 text-sm text-muted-foreground">
 					<span class="rounded-full bg-muted px-2.5 py-0.5 text-xs font-medium">
 						{chosen === 'simple' ? m['vms.create.simple']() : m['vms.create.detailed']()}

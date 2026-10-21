@@ -71,9 +71,7 @@
 
 <section class="w-full">
 	<PageHeader
-		eyebrow={m['vms.list.eyebrow']()}
 		title={m['vms.list.calmHeading']()}
-		description={m['vms.list.calmDescription']()}
 		focusTarget
 		divider={false}
 	>
