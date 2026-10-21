@@ -86,6 +86,18 @@ test.describe('T19 chrome UI', () => {
 			await expect(html).toHaveClass(/dark/);
 		});
 
+		for (const width of [320, 390]) {
+			test(`the public header with the theme control fits ${width}px`, async ({ page }) => {
+				await page.setViewportSize({ width, height: 844 });
+				for (const path of ['/', '/docs', '/about']) {
+					await page.goto(path);
+					await expect(page.getByRole('button', { name: /^(Système|System)$/ }).first()).toBeVisible();
+					const overflow = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
+					expect(overflow, path).toBeLessThanOrEqual(0);
+				}
+			});
+		}
+
 		test('a dark OS gets a dark first paint, before the app hydrates', async ({ browser }) => {
 			const context = await browser.newContext({ colorScheme: 'dark' });
 			const page = await context.newPage();

@@ -2273,7 +2273,7 @@
   "account.personal": "Compte personnel",
   "account.signedInOn": "Connecté à {cluster}",
   "account.appearanceTitle": "Apparence",
-  "account.appearanceBody": "Un espace clair et chaleureux, ou plus sombre et apaisé.",
+  "account.appearanceBody": "Un espace clair et chaleureux, plus sombre et apaisé, ou celui de votre système.",
   "account.languageTitle": "Langue",
   "account.languageBody": "Toute l'interface est disponible en anglais et en français.",
   "account.languageLabel": "Langue de l'interface",

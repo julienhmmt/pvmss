@@ -2273,7 +2273,7 @@
   "account.personal": "Personal account",
   "account.signedInOn": "Signed in on {cluster}",
   "account.appearanceTitle": "Appearance",
-  "account.appearanceBody": "Warm light or a quieter dark workspace.",
+  "account.appearanceBody": "Warm light, a quieter dark, or whatever your system uses.",
   "account.languageTitle": "Language",
   "account.languageBody": "The complete interface is available in English and French.",
   "account.languageLabel": "Interface language",
