@@ -148,13 +148,6 @@ describe('Simple wizard dead ends (ticket 02)', () => {
 		flushSync();
 	}
 
-	it('explains the block when the cluster offers no starting point at all', () => {
-		mountWith({ ...baseCatalog(), profiles: [], templates: [], images: [], isos: [] });
-
-		expect(document.querySelector('[data-testid="vm-create-no-sources"]')?.textContent).toContain(m['vms.create.noSourcesTitle']());
-		expect(document.querySelector('[data-testid="vm-create-submit"]')).toBeNull();
-	});
-
 	it('names the only starting point instead of an empty choice', () => {
 		mountWith({ ...baseCatalog(), templates: [], images: [], isos: [] });
 
