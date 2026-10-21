@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { AdminDocsStore } from './docs.svelte';
 import { ApiRequestError } from '#lib/shared/api/client.js';
+import { m } from '#lib/paraglide/messages.js';
 
 function jsonResponse(status: number, body: unknown): Response {
 	return new Response(JSON.stringify(body), {
@@ -52,7 +53,7 @@ describe('AdminDocsStore', () => {
 
 		await store.load();
 		expect(store.pages).toEqual([]);
-		expect(store.error).toBe('boom');
+		expect(store.error).toBe(m['error.internal_error']());
 	});
 
 	it('creates a page and appends it to the list', async () => {
@@ -160,7 +161,7 @@ describe('AdminDocsStore', () => {
 		await expect(
 			store.create({ title: 'dup', lang: 'en', category: 'X', bodyMd: 'body', audience: 'user' })
 		).rejects.toBeInstanceOf(ApiRequestError);
-		expect(store.saveError).toBe('a documentation page with this title already exists for this language');
+		expect(store.saveError).toBe(m['error.duplicate']());
 		expect(store.saving).toBe(false);
 	});
 

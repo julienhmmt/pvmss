@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 import { AdminTagsStore } from './tags.svelte';
+import { m } from '#lib/paraglide/messages.js';
 
 const testTags = [
 	{ name: 'pvmss', color: '#4f46e5', vmCount: 10, protected: true },
@@ -83,7 +84,7 @@ describe('AdminTagsStore create contract', () => {
 		vi.stubGlobal('fetch', vi.fn().mockResolvedValue(jsonResponse(400, { code: 'bad', message: 'name already used' })));
 		const store = new AdminTagsStore();
 		await expect(store.create('pvmss', '#fff')).resolves.toBe(false);
-		expect(store.saveError).toBe('name already used');
+		expect(store.saveError).toBe(m['error.generic']());
 		vi.unstubAllGlobals();
 	});
 });

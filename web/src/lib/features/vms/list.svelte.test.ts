@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, afterEach } from 'vitest';
 import { VmListStore, INCOMPLETE_RETRY_MS, type VmListResult } from './list.svelte';
 import { markVmDeleted } from './recently-deleted';
+import { m } from '#lib/paraglide/messages.js';
 
 function jsonResponse(status: number, body: unknown): Response {
 	return new Response(JSON.stringify(body), {
@@ -232,7 +233,7 @@ describe('VmListStore', () => {
 		const { store } = makeStore('');
 		await store.load();
 
-		expect(store.error).toBe('inventory has not been populated yet');
+		expect(store.error).toBe(m['error.inventory_not_ready']());
 		expect(store.errorCode).toBe('inventory_not_ready');
 		expect(store.result).toBeNull();
 	});

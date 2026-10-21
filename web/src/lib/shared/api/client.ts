@@ -24,10 +24,23 @@ export class ApiRequestError extends Error {
 
 	readonly privilege?: string | undefined;
 	readonly path?: string | undefined;
+	/** The server's own (English) message, kept for support; never the UI text. */
+	readonly serverMessage: string;
+	/** X-Request-Id of the failed response, to find it in the server log. */
+	readonly requestId?: string | undefined;
 
-	constructor(status: number, code: string, message: string, retryAfterSeconds?: number, details: Pick<ErrorEnvelope, 'privilege' | 'path'> = {}) {
-		super(code === 'cluster_permission_denied' ? resolveErrorMessage(code, message, details) : message);
+	constructor(
+		status: number,
+		code: string,
+		message: string,
+		retryAfterSeconds?: number,
+		details: Pick<ErrorEnvelope, 'privilege' | 'path'> & { requestId?: string | undefined } = {}
+	) {
+		// `message` is what every store shows, so it is localized here, once.
+		super(resolveErrorMessage(code, message, details));
 		this.name = 'ApiRequestError';
+		this.serverMessage = message;
+		this.requestId = details.requestId;
 		this.status = status;
 		this.code = code;
 		this.retryAfterSeconds = retryAfterSeconds;
@@ -86,7 +99,8 @@ async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
 			globalThis.dispatchEvent(new Event(UNAUTHORIZED_EVENT));
 		}
 
-		throw new ApiRequestError(response.status, envelope.code, envelope.message, envelope.retryAfterSeconds, envelope);
+		const requestId = response.headers.get('X-Request-Id') ?? undefined;
+		throw new ApiRequestError(response.status, envelope.code, envelope.message, envelope.retryAfterSeconds, { ...envelope, requestId });
 	}
 	if (response.status === 204) return undefined as T;
 	return (await response.json()) as T;

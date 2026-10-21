@@ -56,7 +56,7 @@ describe('NodesStore', () => {
 		await store.load();
 
 		expect(store.loading).toBe(false);
-		expect(store.error).toBe('cluster is not reachable');
+		expect(store.error).toBe(m['error.cluster_unreachable']());
 		expect(store.errorCode).toBe('cluster_unreachable');
 		expect(store.errorStatus).toBe(502);
 		expect(store.nodes).toEqual([]);
@@ -72,7 +72,7 @@ describe('NodesStore', () => {
 		await store.load();
 
 		expect(store.loading).toBe(false);
-		expect(store.error).toBe('authentication required');
+		expect(store.error).toBe(m['error.unauthenticated']());
 		expect(store.errorCode).toBe('unauthenticated');
 		expect(store.errorStatus).toBe(401);
 		expect(store.nodes).toEqual([]);
@@ -141,7 +141,7 @@ describe('NodesStore', () => {
 
 		expect(store.refreshing).toBe(false);
 		expect(store.refreshDisabled).toBe(true);
-		expect(store.refreshError).toBe('please wait before refreshing again');
+		expect(store.refreshError).toBe(m['error.refresh_too_soon']());
 	});
 
 	it('refresh auto re-enables the button once retryAfterSeconds elapses (quickstart step 6)', async () => {
@@ -199,7 +199,7 @@ describe('NodesStore', () => {
 
 		expect(store.refreshing).toBe(false);
 		expect(store.refreshDisabled).toBe(false);
-		expect(store.refreshError).toBe('refresh failed: cluster is not reachable');
+		expect(store.refreshError).toBe(m['error.cluster_unreachable']());
 	});
 
 	it('clearRefreshDisabled resets the disabled and error state', () => {

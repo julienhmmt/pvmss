@@ -409,9 +409,9 @@ function translateNotApproved(message: string): string {
  *  English message (constitution: UI text is always localized). */
 function translateSubmitError(error: unknown): string {
 	if (!(error instanceof ApiRequestError)) return m['vms.create.errorCreation']();
-	if (error.code === 'not_approved') return translateNotApproved(error.message);
+	if (error.code === 'not_approved') return translateNotApproved(error.serverMessage);
 	const dynamic = DYNAMIC_SUBMIT_ERRORS[error.code];
-	if (dynamic) return dynamic(error.message);
+	if (dynamic) return dynamic(error.serverMessage);
 	return (FIXED_SUBMIT_ERRORS[error.code] ?? m['vms.create.errorCreation'])();
 }
 

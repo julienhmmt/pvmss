@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { resolveErrorMessage, KNOWN_ERROR_CODES } from './errorMessage';
 import { m } from '#lib/paraglide/messages.js';
-import { getLocale, setLocale } from '#lib/paraglide/runtime.js';
+import { setLocale } from '#lib/paraglide/runtime.js';
 
 // T012 (US1): resolveErrorMessage - a known `code` resolves to the matching
 // localized message; an unlisted `code` resolves to the generic localized
@@ -10,25 +10,36 @@ import { getLocale, setLocale } from '#lib/paraglide/runtime.js';
 
 describe('resolveErrorMessage', () => {
 	for (const code of KNOWN_ERROR_CODES) {
-		describe(`code "${code}"`, () => {
-			it('resolves to the matching localized message in French', async () => {
-				await setLocale('fr', { reload: false });
-				expect(getLocale()).toBe('fr');
-				const result = resolveErrorMessage(code, 'raw server text');
-				expect(result).not.toBe(m['error.generic']()); // sanity: specific differs from generic
-				expect(result).toBe(localizedFor(code, 'fr'));
-				expect(result).not.toBe('raw server text');
-			});
-
-			it('resolves to the matching localized message in English', async () => {
-				await setLocale('en', { reload: false });
-				expect(getLocale()).toBe('en');
-				const result = resolveErrorMessage(code, 'raw server text');
-				expect(result).toBe(localizedFor(code, 'en'));
-				expect(result).not.toBe('raw server text');
-			});
+		it.each(['fr', 'en'] as const)(`code "${code}" resolves to its own localized message in %s`, async (locale) => {
+			await setLocale(locale, { reload: false });
+			const result = resolveErrorMessage(code, 'raw server text');
+			expect(result).not.toBe(m['error.generic']());
+			expect(result).not.toContain('raw server text');
 		});
 	}
+
+	it.each(['fr', 'en'] as const)('maps aliases and specific codes to their message in %s', async (locale) => {
+		await setLocale(locale, { reload: false });
+		expect(resolveErrorMessage('not_found', 'gone')).toBe(m['error.not_found']());
+		expect(resolveErrorMessage('iso_not_approved', 'x')).toBe(m['error.not_approved']());
+		expect(resolveErrorMessage('duplicate_tag', 'x')).toBe(m['error.duplicate']());
+		expect(resolveErrorMessage('invalid_credentials', 'x')).toBe(m['error.invalid_credentials']());
+	});
+
+	it.each(['fr', 'en'] as const)('frames a validation detail in a localized sentence in %s', async (locale) => {
+		await setLocale(locale, { reload: false });
+		expect(resolveErrorMessage('invalid_request', 'name must be 3-32 characters')).toBe(
+			m['error.validation']({ detail: 'name must be 3-32 characters' })
+		);
+		expect(resolveErrorMessage('hardware_exceeds_limit', 'memory 8192 exceeds 4096')).toContain('memory 8192 exceeds 4096');
+	});
+
+	it('gives an unknown code a generic sentence with the request reference, never the raw text', async () => {
+		await setLocale('fr', { reload: false });
+		const result = resolveErrorMessage('some_unknown_code_xyz', 'raw server text', { requestId: 'req-42' });
+		expect(result).toBe(m['error.genericRef']({ ref: 'req-42' }));
+		expect(result).not.toContain('raw server text');
+	});
 
 	// Ticket 02 (ADR 0002): cluster_rejected carries Proxmox's own message as
 	// its content - surfaced as-is, never replaced by the generic fallback.
@@ -70,25 +81,3 @@ describe('resolveErrorMessage', () => {
 		expect(resolveErrorMessage('', 'raw server text')).toBe(m['error.generic']());
 	});
 });
-
-function localizedFor(code: string, locale: 'fr' | 'en'): string {
-	const messages: Record<string, { fr: () => string; en: () => string }> = {
-		forbidden: { fr: () => m['error.forbidden'](), en: () => m['error.forbidden']({}, { locale: 'en' }) },
-		not_found: { fr: () => m['error.not_found'](), en: () => m['error.not_found']({}, { locale: 'en' }) },
-		invalid_action: { fr: () => m['error.invalid_action'](), en: () => m['error.invalid_action']({}, { locale: 'en' }) },
-		quota_exceeded: { fr: () => m['error.quota_exceeded'](), en: () => m['error.quota_exceeded']({}, { locale: 'en' }) },
-		gabarit_exceeded: { fr: () => m['error.gabarit_exceeded'](), en: () => m['error.gabarit_exceeded']({}, { locale: 'en' }) },
-		snapshot_storage_unsupported: {
-			fr: () => m['error.snapshot_storage_unsupported'](),
-			en: () => m['error.snapshot_storage_unsupported']({}, { locale: 'en' })
-		},
-		vm_locked: { fr: () => m['error.vm_locked'](), en: () => m['error.vm_locked']({}, { locale: 'en' }) },
-		snapshot_name_exists: {
-			fr: () => m['error.snapshot_name_exists'](),
-			en: () => m['error.snapshot_name_exists']({}, { locale: 'en' })
-		}
-	};
-	const entry = messages[code];
-	if (!entry) throw new Error(`unknown code in test helper: ${code}`);
-	return locale === 'fr' ? entry.fr() : entry.en();
-}

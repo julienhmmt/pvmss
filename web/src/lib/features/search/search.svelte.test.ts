@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { SearchStore } from './search.svelte';
 import type { VmListResult } from '#lib/features/vms/list.svelte.js';
+import { m } from '#lib/paraglide/messages.js';
 
 function jsonResponse(status: number, body: unknown): Response {
 	return new Response(JSON.stringify(body), {
@@ -110,7 +111,7 @@ describe('SearchStore', () => {
 		store.applySearch('web-01');
 		await vi.advanceTimersByTimeAsync(300);
 
-		expect(store.error).toBe('inventory has not been populated yet');
+		expect(store.error).toBe(m['error.inventory_not_ready']());
 		expect(store.result).toBeNull();
 	});
 });
