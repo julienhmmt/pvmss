@@ -105,6 +105,10 @@ const ACTION_LABELS: Record<string, () => string> = {
 	'admin.pools.delete': () => m['activity.action.admin_pools_delete'](),
 	'admin.profiles.create': () => m['activity.action.admin_profiles_create'](),
 	'admin.profiles.update': () => m['activity.action.admin_profiles_update'](),
+	'admin.profiles.delete': () => m['activity.action.admin_profiles_delete'](),
+	'admin.profiles.toggle': () => m['activity.action.admin_profiles_toggle'](),
+	'admin.cloudinittemplates.delete': () => m['activity.action.admin_cloudinittemplates_delete'](),
+	'admin.cloudinittemplates.toggle': () => m['activity.action.admin_cloudinittemplates_toggle'](),
 	'admin.tags.create': () => m['activity.action.admin_tags_create'](),
 	'admin.tags.color': () => m['activity.action.admin_tags_color'](),
 	'admin.tags.delete': () => m['activity.action.admin_tags_delete'](),
@@ -126,6 +130,11 @@ export function activityMessage(action: string): string {
 	return ACTION_LABELS[action]?.() ?? m['activity.action.other']({ action });
 }
 
+/** Every audit code the catalog names, for filters that match exact codes. */
+export function knownActions(): string[] {
+	return Object.keys(ACTION_LABELS);
+}
+
 /** Whether the catalog has a label for this action, so a surface can flag a
  *  missing translation instead of hiding it. */
 export function isKnownAction(action: string): boolean {
@@ -143,6 +152,7 @@ const TARGET_LABELS: Record<string, () => string> = {
 	image: () => m['activity.target.image'](),
 	template: () => m['activity.target.template'](),
 	cloudinit_template: () => m['activity.target.cloudinit_template'](),
+	cloud_init_template: () => m['activity.target.cloud_init_template'](),
 	pool: () => m['activity.target.pool'](),
 	profile: () => m['activity.target.profile'](),
 	tag: () => m['activity.target.tag'](),

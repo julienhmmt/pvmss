@@ -10,7 +10,7 @@
 	import EmptyState from '#lib/shared/ui/EmptyState.svelte';
 	import Pill from '#lib/shared/ui/Pill.svelte';
 	import { m } from '#lib/paraglide/messages.js';
-	import { activityMessage, auditTarget, isKnownAction } from '#lib/features/activity/activity.svelte.js';
+	import { activityMessage, auditTarget, isKnownAction, knownActions } from '#lib/features/activity/activity.svelte.js';
 
 	const store = getAuditLogContext();
 
@@ -21,6 +21,15 @@
 	let toFilter = $state('');
 	let severityFilter = $state('');
 	let selectedDetail = $state<number | null>(null);
+
+	// The server matches the action code exactly, and the table shows labels,
+	// so the filter offers the labels and sends the code.
+	const actionOptions = [
+		{ value: '', label: m['admin.audit.actionAll']() },
+		...knownActions()
+			.map((code) => ({ value: code, label: activityMessage(code) }))
+			.sort((a, b) => a.label.localeCompare(b.label))
+	];
 
 	function applyFilter(): void {
 		const filter: AuditFilter = {};
@@ -113,7 +122,7 @@
 				<form class="flex flex-wrap items-end gap-3" onsubmit={(e) => { e.preventDefault(); applyFilter(); }}>
 					<label class="flex flex-col gap-1 text-sm">
 						<span class="text-muted-foreground">{m['admin.audit.action']()}</span>
-						<TextField bind:value={actionFilter} placeholder={m['admin.audit.actionPlaceholder']()} />
+						<Select bind:value={actionFilter} options={actionOptions} />
 					</label>
 					<label class="flex flex-col gap-1 text-sm">
 						<span class="text-muted-foreground">{m['admin.audit.actor']()}</span>
