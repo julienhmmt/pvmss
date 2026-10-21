@@ -41,6 +41,7 @@ type vmListResponse struct {
 	Page           int          `json:"page"`
 	PageSize       int          `json:"pageSize"`
 	AvailableNodes []string     `json:"availableNodes"`
+	AvailablePools []string     `json:"availablePools"`
 	EmptyReason    string       `json:"emptyReason"`
 	Quota          *vmListQuota `json:"quota"`
 }
@@ -172,6 +173,54 @@ func TestVMs_AdminScopeAllReturnsAcrossPools(t *testing.T) {
 
 	if list.Total != 25 {
 		t.Errorf("total = %d, want 25", list.Total)
+	}
+}
+
+// TestVMs_PoolFilterNarrowsAdminList - the admin "all machines" page narrows
+// scope=all to one pool; the facet still lists every pool so the filter's
+// own dropdown keeps its selection.
+//
+//nolint:paralleltest // serial: shared fake VM and database fixtures
+func TestVMs_PoolFilterNarrowsAdminList(t *testing.T) {
+	handler, authHandler := newVMsHandler(t)
+	response := serveJSON(authHandler.AdminLogin, "/api/v1/auth/admin-login", `{"password":"pvmss-local-admin"}`)
+	cookie := response.Result().Cookies()[0]
+
+	httpResponse, list := getVMList(t, handler, cookie, "scope=all&pool="+cluster.FakePoolBob+"&pageSize=100")
+	if httpResponse.Code != http.StatusOK {
+		t.Fatalf("status = %d, want %d", httpResponse.Code, http.StatusOK)
+	}
+
+	for _, item := range list.Items {
+		if item.Pool != cluster.FakePoolBob {
+			t.Errorf("pool = %q, want %q", item.Pool, cluster.FakePoolBob)
+		}
+	}
+
+	if len(list.Items) == 0 {
+		t.Fatal("items = none, want bob's VMs")
+	}
+
+	if !slices.Contains(list.AvailablePools, cluster.FakePoolBob) {
+		t.Errorf("availablePools = %v, want %q", list.AvailablePools, cluster.FakePoolBob)
+	}
+}
+
+// TestVMs_NonAdminPoolFilterIsHarmless - a pool-scoped caller passing another
+// pool's name still sees only their own machines.
+//
+//nolint:paralleltest // serial: shared fake VM and database fixtures
+func TestVMs_NonAdminPoolFilterIsHarmless(t *testing.T) {
+	handler, authHandler := newVMsHandler(t)
+	cookie := loginCookie(t, authHandler, `{"username":"alice","password":"pvmss-alice"}`)
+
+	httpResponse, list := getVMList(t, handler, cookie, "pool="+cluster.FakePoolBob+"&pageSize=100")
+	if httpResponse.Code != http.StatusOK {
+		t.Fatalf("status = %d, want %d", httpResponse.Code, http.StatusOK)
+	}
+
+	if len(list.Items) != 0 {
+		t.Errorf("items = %v, want none", sortedVMIDs(list))
 	}
 }
 

@@ -75,10 +75,14 @@ const (
 // scope. Scope is a requested value only - List re-derives the effective
 // scope from the caller's identity and never trusts it as-is.
 type ListQuery struct {
-	Cluster  string
-	Search   string
-	Status   cluster.VMStatus
-	Node     string
+	Cluster string
+	Search  string
+	Status  cluster.VMStatus
+	Node    string
+	// Pool narrows the result to one PVMSS pool (one self-service user). It
+	// only bites on an admin scope=all listing; a pool-scoped caller already
+	// sees nothing outside their own pool.
+	Pool     string
 	SortBy   SortBy
 	SortDir  SortDir
 	Page     int
@@ -102,6 +106,9 @@ type ListResult struct {
 	Page           int
 	PageSize       int
 	AvailableNodes []string
+	// AvailablePools is the pool facet, built before the pool filter is
+	// applied so the admin filter never shrinks to hide its selection.
+	AvailablePools []string
 	EmptyReason    EmptyReason
 	Quota          *Quota
 }
@@ -129,6 +136,7 @@ func list(ctx context.Context, source inventory.Source, query ListQuery, identit
 	scoped := scopedVMs(source, query, identity)
 	searched := searchVMs(scoped, query.Search)
 	facetedNodes := nodeFacet(searched)
+	facetedPools := poolFacet(searched)
 	filtered := filterVMs(searched, query)
 	sortVMs(filtered, query.SortBy, query.SortDir)
 
@@ -137,6 +145,7 @@ func list(ctx context.Context, source inventory.Source, query ListQuery, identit
 		Page:           query.Page,
 		PageSize:       query.PageSize,
 		AvailableNodes: facetedNodes,
+		AvailablePools: facetedPools,
 	}
 	if len(services) > 0 && services[0] != nil {
 		quota, err := services[0].Quota(ctx, query.Cluster, identity)
@@ -321,8 +330,31 @@ func nodeFacet(vms []cluster.VM) []string {
 	return nodes
 }
 
+// poolFacet lists the non-empty pools present before the pool filter is
+// applied, so the admin filter's own dropdown never shrinks to hide its
+// selection. Unpooled VMs have no filter value (an empty query parameter
+// means "no filter"), so "" is left out.
+func poolFacet(vms []cluster.VM) []string {
+	seen := make(map[string]struct{}, len(vms))
+
+	pools := make([]string, 0, len(vms))
+	for _, machine := range vms {
+		if machine.Pool == "" {
+			continue
+		}
+		if _, ok := seen[machine.Pool]; !ok {
+			seen[machine.Pool] = struct{}{}
+			pools = append(pools, machine.Pool)
+		}
+	}
+
+	slices.Sort(pools)
+
+	return pools
+}
+
 func filterVMs(vms []cluster.VM, query ListQuery) []cluster.VM {
-	if query.Status == "" && query.Node == "" {
+	if query.Status == "" && query.Node == "" && query.Pool == "" {
 		return vms
 	}
 
@@ -333,6 +365,10 @@ func filterVMs(vms []cluster.VM, query ListQuery) []cluster.VM {
 		}
 
 		if query.Node != "" && machine.Node != query.Node {
+			continue
+		}
+
+		if query.Pool != "" && machine.Pool != query.Pool {
 			continue
 		}
 

@@ -38,6 +38,16 @@
 	const store = getVmDetailContext();
 	const session = getSessionContext();
 
+	interface Props {
+		/** Where the back link at the top of the page goes. Admin detail keeps
+		 *  the admin machine collection as its parent; the owner view goes to
+		 *  the workspace list. */
+		backHref?: string;
+		backLabel?: string;
+	}
+
+	let { backHref = resolve('/vms'), backLabel = m['vms.detail.back']() }: Props = $props();
+
 	const baselineReasons: Record<string, () => string> = {
 		cloudinit_write_unavailable: () => m['vms.detail.baselineReason.writeUnavailable'](),
 		no_document: () => m['vms.detail.baselineReason.noDocument'](),
@@ -243,13 +253,13 @@
 {:else if store.entity}
 	{@const entity = store.entity}
 	<header class="mb-6" data-testid="vm-detail-header">
-		<ButtonLink href={resolve('/vms')} variant="secondary" size="sm" class="mb-4" data-testid="page-back-link">
+		<ButtonLink href={backHref} variant="secondary" size="sm" class="mb-4" data-testid="page-back-link">
 			{#snippet icon()}
 				<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="h-3.5 w-3.5" aria-hidden="true">
 					<path d="M12 5l-5 5 5 5" />
 				</svg>
 			{/snippet}
-			{m['vms.detail.back']()}
+			{backLabel}
 		</ButtonLink>
 		<div class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
 			<div class="flex min-w-0 items-center gap-4">

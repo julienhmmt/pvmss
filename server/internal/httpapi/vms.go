@@ -80,6 +80,7 @@ type vmListResponse struct {
 	Page           int       `json:"page"`
 	PageSize       int       `json:"pageSize"`
 	AvailableNodes []string  `json:"availableNodes"`
+	AvailablePools []string  `json:"availablePools"`
 	EmptyReason    string    `json:"emptyReason,omitempty"`
 	Quota          *quotaDTO `json:"quota,omitempty"`
 }
@@ -146,6 +147,7 @@ func (h *VMs) parseQuery(r *http.Request) (vm.ListQuery, *queryError) {
 		Search:  params.Get("search"),
 		Status:  cluster.VMStatus(params.Get("status")),
 		Node:    params.Get("node"),
+		Pool:    params.Get("pool"),
 		SortBy:  vm.SortBy(params.Get("sortBy")),
 		SortDir: vm.SortDir(params.Get("sortDir")),
 		Scope:   vm.Scope(params.Get("scope")),
@@ -233,6 +235,7 @@ func (h *VMs) writeList(ctx context.Context, w http.ResponseWriter, result vm.Li
 		Page:           result.Page,
 		PageSize:       result.PageSize,
 		AvailableNodes: result.AvailableNodes,
+		AvailablePools: result.AvailablePools,
 		EmptyReason:    string(result.EmptyReason),
 	}
 	for i, machine := range result.Items {

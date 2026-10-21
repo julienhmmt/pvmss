@@ -183,6 +183,43 @@ func TestList_NodeFacetIgnoresNodeFilter(t *testing.T) {
 }
 
 //nolint:paralleltest // serial: shared in-memory fixture state
+func TestList_PoolFilterAndFacet(t *testing.T) {
+	// Admin scope=all narrowed to one pool - the "all users" admin page.
+	result, err := vm.List(testIndex(), vm.ListQuery{Scope: vm.ScopeAll, Pool: cluster.FakePoolBob}, admin, -1)
+	if err != nil {
+		t.Fatalf("List: %v", err)
+	}
+
+	got := vmids(result)
+	slices.Sort(got)
+
+	if want := []int{103, 104}; !slices.Equal(got, want) {
+		t.Errorf("vmids = %v, want %v", got, want)
+	}
+
+	// The facet is computed before the pool filter so the dropdown does not
+	// shrink to hide its own selection. Unpooled VMs are not a filter value.
+	wantPools := []string{cluster.FakePoolAlice, cluster.FakePoolBob}
+	if !slices.Equal(result.AvailablePools, wantPools) {
+		t.Errorf("AvailablePools = %v, want %v", result.AvailablePools, wantPools)
+	}
+}
+
+//nolint:paralleltest // serial: shared in-memory fixture state
+func TestList_PoolFilterNeverCrossesScope(t *testing.T) {
+	// A non-admin asking for another pool's VMs still sees only their own -
+	// scope is re-derived from the identity, never from the query.
+	result, err := vm.List(testIndex(), vm.ListQuery{Pool: cluster.FakePoolBob}, alice, -1)
+	if err != nil {
+		t.Fatalf("List: %v", err)
+	}
+
+	if got := vmids(result); len(got) != 0 {
+		t.Errorf("vmids = %v, want none", got)
+	}
+}
+
+//nolint:paralleltest // serial: shared in-memory fixture state
 func TestList_Sort(t *testing.T) {
 	tests := []struct {
 		name    string

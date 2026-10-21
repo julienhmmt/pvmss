@@ -86,6 +86,46 @@ describe('VmListStore', () => {
 		expect(store.queryString()).toBe('cluster=secondary');
 	});
 
+	it('parses and serializes the pool filter (admin all-machines list)', () => {
+		const { store } = makeStore('?pool=pool-bob', 'all');
+		expect(store.pool).toBe('pool-bob');
+		expect(store.queryString()).toBe('pool=pool-bob&scope=all');
+	});
+
+	it('narrows the list to one pool and resets to the first page', async () => {
+		const fetchMock = vi.fn().mockImplementation(() => Promise.resolve(jsonResponse(200, oneVmResult)));
+		vi.stubGlobal('fetch', fetchMock);
+		const { store, navigated } = makeStore('', 'all');
+		store.page = 3;
+
+		store.setPool('pool-bob');
+		await Promise.resolve();
+
+		expect(store.pool).toBe('pool-bob');
+		expect(store.page).toBe(1);
+		expect(navigated.at(-1)).toBe('pool=pool-bob&scope=all');
+	});
+
+	it('clears the pool filter with the rest of the filters', () => {
+		const { store } = makeStore('?pool=pool-bob&status=running');
+		store.clearFilters();
+		expect(store.pool).toBe('');
+		expect(store.status).toBe('');
+	});
+
+	it('normalizes null tags so every row can render them', async () => {
+		const untagged: VmListResult = {
+			...oneVmResult,
+			items: [{ ...oneVmResult.items[0]!, tags: null as unknown as string[] }]
+		};
+		vi.stubGlobal('fetch', vi.fn().mockResolvedValue(jsonResponse(200, untagged)));
+
+		const { store } = makeStore('');
+		await store.load();
+
+		expect(store.result?.items[0]?.tags).toEqual([]);
+	});
+
 	it('re-reads a just-created row until Proxmox reports it (ghost row)', async () => {
 		vi.useFakeTimers();
 		const ghost: VmListResult = {
