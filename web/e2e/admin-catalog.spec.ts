@@ -148,7 +148,7 @@ test.describe('T11 admin catalog', () => {
 		await page.goto('/admin/profiles');
 		// Two "New profile" buttons exist (toolbar + empty state).
 		await page.getByRole('button', { name: 'New profile' }).first().click();
-		await page.getByLabel('Label').fill('XLarge');
+		await page.getByRole('textbox', { name: 'Label', exact: true }).fill('XLarge');
 		await page.getByLabel('vCPU cores').fill('8');
 		await page.getByLabel('Memory (MB)').fill('16384');
 		await page.getByLabel('Disk (GB)').fill('160');

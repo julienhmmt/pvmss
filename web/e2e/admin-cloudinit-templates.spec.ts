@@ -47,7 +47,7 @@ test.describe.skip('T18 admin cloud-init templates', () => {
 		await signInAdmin(page.request);
 		await page.goto('/admin/cloudinit-templates');
 		await page.getByTestId('cloudinit-new-template').click();
-		await page.getByLabel('Label').fill('Web server');
+		await page.getByRole('textbox', { name: 'Label', exact: true }).fill('Web server');
 		await page.getByLabel('Content (must start with #cloud-config)').fill(templateContent);
 		await page.getByRole('button', { name: 'Create' }).click();
 

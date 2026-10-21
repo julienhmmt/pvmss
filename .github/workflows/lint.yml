@@ -58,6 +58,7 @@ jobs:
           uses: actions/setup-go@v7
           with:
             go-version-file: server/go.mod
+            cache-dependency-path: server/go.sum
 
         - name: Run golangci-lint
           working-directory: server
