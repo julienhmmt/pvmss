@@ -35,8 +35,8 @@ export class ApiRequestError extends Error {
 }
 
 /** The single network entry point (constitution XIII) - every API call goes through this. */
-export async function get<T>(path: string): Promise<T> {
-	return request<T>(path);
+export async function get<T>(path: string, init: RequestInit = {}): Promise<T> {
+	return request<T>(path, init);
 }
 
 /** Sends a JSON request through the shared API error model. */
