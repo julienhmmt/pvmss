@@ -358,52 +358,53 @@
 				{m['chrome.header.docs']()}
 			</a>
 		{/if}
-		<div class="flex flex-wrap items-center justify-between gap-2" role="group" aria-label={m['chrome.sidebar.preferences']()}>
+		<div class="flex items-center justify-between gap-2 px-1" role="group" aria-label={m['chrome.sidebar.preferences']()}>
 			<LanguageSwitcher />
 			<ThemeToggle />
 		</div>
 
 		{#if session.principal}
 			{@const accountHref = resolve('/profile')}
-			<a
-				href={accountHref}
-				aria-current={isActive(accountHref, true) ? 'page' : undefined}
-				aria-label={m['chrome.sidebar.accountLink']({ name: session.principal.displayName || session.principal.username })}
-				class="flex items-center gap-2.5 rounded-lg px-2 py-2 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring {isActive(accountHref, true)
-					? 'bg-sidebar-accent'
-					: 'hover:bg-sidebar-accent/50'}"
-				onclick={closeDrawer}
-				data-testid="sidebar-account-link"
-			>
-				<span class="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-sidebar-accent text-xs font-semibold text-sidebar-accent-foreground" aria-hidden="true">
-					{initials}
-				</span>
-				<span class="flex min-w-0 flex-1 flex-col">
-					<span class="truncate text-sm font-medium text-foreground">{session.principal.displayName || session.principal.username}</span>
-					<span class="truncate text-xs text-muted-foreground">
-						{session.isAdmin
-							? m['chrome.sidebar.userChip']({ username: session.principal.displayName || session.principal.username })
-							: m['chrome.sidebar.accountLabel']()}
+			<!-- One account card: the profile link fills it, sign-out sits at its
+			     edge as an icon button (named by aria-label and title). -->
+			<div class="flex items-center gap-1 rounded-xl border border-sidebar-border bg-muted/40 p-1">
+				<a
+					href={accountHref}
+					aria-current={isActive(accountHref, true) ? 'page' : undefined}
+					aria-label={m['chrome.sidebar.accountLink']({ name: session.principal.displayName || session.principal.username })}
+					class="flex min-w-0 flex-1 items-center gap-2.5 rounded-lg px-1.5 py-1.5 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring {isActive(accountHref, true)
+						? 'bg-sidebar-accent'
+						: 'hover:bg-card'}"
+					onclick={closeDrawer}
+					data-testid="sidebar-account-link"
+				>
+					<span class="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-sidebar-accent text-xs font-semibold text-sidebar-accent-foreground" aria-hidden="true">
+						{initials}
 					</span>
-				</span>
-				<svg viewBox="0 0 24 24" class="h-4 w-4 shrink-0 text-muted-foreground" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-					<polyline points="9 18 15 12 9 6" />
-				</svg>
-			</a>
-			<button
-				type="button"
-				class="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium text-muted-foreground transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-				onclick={handleLogout}
-				data-testid="sidebar-logout-button"
-				aria-label={m['auth.logout']()}
-			>
-				<svg viewBox="0 0 24 24" class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
-					<path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
-					<polyline points="16 17 21 12 16 7" />
-					<line x1="21" y1="12" x2="9" y2="12" />
-				</svg>
-				{m['auth.logout']()}
-			</button>
+					<span class="flex min-w-0 flex-1 flex-col">
+						<span class="truncate text-sm font-medium leading-tight text-foreground">{session.principal.displayName || session.principal.username}</span>
+						<span class="truncate text-xs text-muted-foreground">
+							{session.isAdmin
+								? m['chrome.sidebar.userChip']({ username: session.principal.displayName || session.principal.username })
+								: m['chrome.sidebar.accountLabel']()}
+						</span>
+					</span>
+				</a>
+				<button
+					type="button"
+					class="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-destructive/10 hover:text-destructive focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+					onclick={handleLogout}
+					data-testid="sidebar-logout-button"
+					aria-label={m['auth.logout']()}
+					title={m['auth.logout']()}
+				>
+					<svg viewBox="0 0 24 24" class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+						<path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
+						<polyline points="16 17 21 12 16 7" />
+						<line x1="21" y1="12" x2="9" y2="12" />
+					</svg>
+				</button>
+			</div>
 		{/if}
 	</div>
 </aside>
