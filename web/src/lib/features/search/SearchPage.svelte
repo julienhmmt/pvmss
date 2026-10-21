@@ -4,6 +4,7 @@
 	import { getSearchContext } from './search.svelte';
 	import type { VmListItem, VmStatus } from '#lib/features/vms/list.svelte.js';
 	import Alert from '#lib/shared/ui/Alert.svelte';
+	import Button from '#lib/shared/ui/Button.svelte';
 	import EmptyState from '#lib/shared/ui/EmptyState.svelte';
 	import Card from '#lib/shared/ui/Card.svelte';
 	import ClusterSelector from '#lib/shared/ui/ClusterSelector.svelte';
@@ -109,7 +110,9 @@
 		<EmptyState title={m['search.empty']()} dataTestid="search-empty" />
 	{:else}
 		<Card as="div" pad="none" class="overflow-hidden">
-			<div class="sr-only" role="status" aria-live="polite">{m['search.resultsCaption']()}</div>
+			<p class="border-b border-border px-4 py-2 text-sm text-muted-foreground" role="status" aria-live="polite" data-testid="search-result-count">
+				{m['search.showing']({ shown: store.result.items.length, total: store.result.total })}
+			</p>
 			<ul role="list" aria-label={m['search.resultsCaption']()} class="divide-y divide-border">
 				{#each store.result.items as machine (`${machine.cluster}:${machine.vmid}`)}
 					<li data-testid="search-result-row">
@@ -159,6 +162,13 @@
 					</li>
 				{/each}
 			</ul>
+			{#if store.hasMore}
+				<div class="border-t border-border p-3 text-center">
+					<Button variant="secondary" size="sm" loading={store.loadingMore} onclick={() => void store.loadMore()} data-testid="search-load-more">
+						{m['search.loadMore']()}
+					</Button>
+				</div>
+			{/if}
 		</Card>
 	{/if}
 </section>

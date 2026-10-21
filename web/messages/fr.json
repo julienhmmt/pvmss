@@ -1648,6 +1648,8 @@
   "search.error": "Échec du chargement des résultats.",
   "search.loading": "Chargement des résultats…",
   "search.resultsCaption": "Résultats de recherche",
+  "search.showing": "{shown} machines affichées sur {total}",
+  "search.loadMore": "Afficher plus",
   "search.instructions": "Saisissez un nom, une étiquette ou un ID de VM pour rechercher.",
   "admin.dashboard.emptyTitle": "Aucune activité PVMSS pour le moment",
   "admin.dashboard.emptyBody": "Créez votre premier pool pour commencer à gérer des VMs via PVMSS.",

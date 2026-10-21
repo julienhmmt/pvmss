@@ -1648,6 +1648,8 @@
   "search.error": "Failed to load search results.",
   "search.loading": "Loading results…",
   "search.resultsCaption": "Search results",
+  "search.showing": "Showing {shown} of {total} machines",
+  "search.loadMore": "Show more",
   "search.instructions": "Type a name, tag, or VM ID to search.",
   "admin.dashboard.emptyTitle": "No PVMSS activity yet",
   "admin.dashboard.emptyBody": "Create your first pool to start managing VMs through PVMSS.",
