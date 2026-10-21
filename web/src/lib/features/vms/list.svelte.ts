@@ -112,6 +112,16 @@ export class VmListStore {
 	page = $state(1);
 	pageSize = $state(DEFAULT_PAGE_SIZE);
 
+	/** True when any list filter narrows the owned machines. */
+	get filtered(): boolean {
+		return this.search !== '' || this.status !== '' || this.node !== '' || this.attention;
+	}
+
+	/** The user owns no machine at all (first visit), not a filtered-empty list. */
+	get noneOwned(): boolean {
+		return this.result?.emptyReason === 'no_vms_owned' && !this.filtered;
+	}
+
 	#navigate: (queryString: string) => void;
 	#searchTimer: ReturnType<typeof setTimeout> | null = null;
 	#loads: SvelteMap<string, Promise<void>> = new SvelteMap();

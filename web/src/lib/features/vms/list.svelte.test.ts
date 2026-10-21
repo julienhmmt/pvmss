@@ -413,6 +413,24 @@ describe('VmListStore', () => {
 			await actionPromise;
 		});
 	});
+	describe('noneOwned', () => {
+		const emptyResult: VmListResult = { ...oneVmResult, items: [], total: 0, emptyReason: 'no_vms_owned' };
+
+		it('is true only for an unfiltered list the server reports as owning nothing', () => {
+			const { store } = makeStore();
+			expect(store.noneOwned).toBe(false);
+			store.result = emptyResult;
+			expect(store.noneOwned).toBe(true);
+			store.search = 'web';
+			expect(store.noneOwned).toBe(false);
+		});
+
+		it('is false when the user owns machines', () => {
+			const { store } = makeStore();
+			store.result = oneVmResult;
+			expect(store.noneOwned).toBe(false);
+		});
+	});
 	describe('recently deleted suppression', () => {
 		afterEach(() => sessionStorage.clear());
 

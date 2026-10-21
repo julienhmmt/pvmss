@@ -88,7 +88,8 @@
 				>
 					{vmListStore.loading ? m['common.refreshing']() : m['common.refresh']()}
 				</Button>
-				{#if !session.isAdmin}
+				<!-- The empty state carries its own create call to action. -->
+				{#if !session.isAdmin && !vmListStore.noneOwned}
 					<ButtonLink href={resolve('/vms/create')} data-testid="vm-create-link">
 						<svg viewBox="0 0 24 24" class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true">
 							<line x1="12" y1="5" x2="12" y2="19" />
