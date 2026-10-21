@@ -138,7 +138,7 @@
 					{:else if healthyCount === totalClusters}
 						<Pill tone="ok" label={m['admin.appinfo.healthy']()} />
 					{:else}
-						<Pill tone="warn" label={m['admin.appinfo.stale']()} />
+						<Pill tone="warn" label={m['admin.appinfo.degraded']()} />
 					{/if}
 				</div>
 			</Card>
@@ -211,7 +211,7 @@
 							</div>
 							<StatusDot
 								tone={cluster.lastRefreshSucceeded ? 'success' : 'destructive'}
-								label={cluster.lastRefreshSucceeded ? m['admin.appinfo.healthy']() : m['admin.appinfo.stale']()}
+								label={cluster.lastRefreshSucceeded ? m['admin.appinfo.healthy']() : m['common.statusUnreachable']()}
 							/>
 						</li>
 					{:else}

@@ -473,12 +473,56 @@ func buildConfigFieldDTOs(fields []config.Field) []configFieldDTO {
 	return dtos
 }
 
-// buildClusterHealthDTOs builds the per-cluster health view from the
-// projection's refresh state. When no projection is loaded or no cluster
-// rows exist, a single "unknown" entry is returned so the admin still sees
-// the last refresh timestamp. Extracted from ServeAppInfo to keep its
-// cognitive complexity under the go:S3776 limit.
+// buildClusterHealthDTOs builds the per-cluster health view. When the
+// freshness checker behind /health is wired, each cluster reports its own
+// refresh state with the same stale rule as the status banner, so App Info
+// never calls a cluster healthy that the banner calls unreachable.
 func (h *AdminOps) buildClusterHealthDTOs() []clusterHealthDTO {
+	if h.auth != nil && h.auth.freshness != nil {
+		return h.freshClusterHealthDTOs()
+	}
+
+	return h.projectionClusterHealthDTOs()
+}
+
+// freshClusterHealthDTOs maps the per-cluster freshness snapshot, labelled
+// with the admin-facing display name when the store has one.
+func (h *AdminOps) freshClusterHealthDTOs() []clusterHealthDTO {
+	displayNames := map[string]string{}
+	if rows, err := h.store.ListClusters(context.Background()); err == nil {
+		for _, row := range rows {
+			if row.DisplayName != "" {
+				displayNames[row.Name] = row.DisplayName
+			}
+		}
+	}
+
+	now := time.Now()
+	freshness := h.auth.freshness.Clusters()
+	clusters := make([]clusterHealthDTO, 0, len(freshness))
+	for _, c := range freshness {
+		name := c.Name
+		if display, ok := displayNames[c.Name]; ok {
+			name = display
+		}
+		dto := clusterHealthDTO{
+			Name:                 name,
+			LastRefreshSucceeded: !c.RefreshedAt.IsZero() && now.Sub(c.RefreshedAt) <= h.auth.staleThreshold,
+		}
+		if !c.RefreshedAt.IsZero() {
+			dto.RefreshedAt = c.RefreshedAt.UTC().Format(time.RFC3339)
+		}
+		clusters = append(clusters, dto)
+	}
+	return clusters
+}
+
+// projectionClusterHealthDTOs is the fallback when no freshness checker is
+// wired: one global refresh state from the projection, repeated per cluster
+// row. When no projection is loaded or no cluster rows exist, a single
+// "unknown" entry is returned so the admin still sees the last refresh
+// timestamp.
+func (h *AdminOps) projectionClusterHealthDTOs() []clusterHealthDTO {
 	idx := h.projection.Load()
 	if idx == nil {
 		return make([]clusterHealthDTO, 0, 1)

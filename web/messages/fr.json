@@ -968,7 +968,7 @@
   "admin.appinfo.lastRefresh": "Dernière actualisation",
   "admin.appinfo.never": "jamais",
   "admin.appinfo.healthy": "Sain",
-  "admin.appinfo.stale": "Obsolète",
+  "admin.appinfo.degraded": "Dégradé",
   "admin.appinfo.loadError": "échec du chargement des informations sur l'application",
   "admin.baseline.title": "Baseline cloud-init - PVMSS",
   "admin.baseline.heading": "Baseline cloud-init",
