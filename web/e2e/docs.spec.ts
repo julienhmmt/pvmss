@@ -20,6 +20,8 @@ test.describe('T53 documentation browser', () => {
 		await expect(page.getByTestId('help-aside')).toBeVisible();
 		// The page heading is the only h1; article bodies start at h2.
 		await expect(page.locator('h1')).toHaveCount(1);
+		// Help boxes are page content, not complementary landmarks nested in main.
+		await expect(page.locator('main aside')).toHaveCount(0);
 	});
 
 	test('docs list is reachable while signed out', async ({ page }) => {

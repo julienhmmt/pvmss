@@ -584,7 +584,7 @@
 {/if}
 
 {#if !unreachable}
-	<aside class="mt-6 flex flex-wrap items-center gap-3 px-1 text-sm text-muted-foreground" data-testid="vm-quiet-help">
+	<div class="mt-6 flex flex-wrap items-center gap-3 px-1 text-sm text-muted-foreground" data-testid="vm-quiet-help">
 		<svg viewBox="0 0 24 24" class="h-4 w-4 shrink-0" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
 			<path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20" />
 			<path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z" />
@@ -592,5 +592,5 @@
 		<span class="font-medium text-foreground">{m['vms.list.quietHelpTitle']()}</span>
 		<span class="max-[699px]:hidden">{m['vms.list.quietHelpBody']()}</span>
 		<ButtonLink href={resolve('/docs')} variant="secondary" size="sm">{m['vms.list.openGuide']()}</ButtonLink>
-	</aside>
+	</div>
 {/if}
