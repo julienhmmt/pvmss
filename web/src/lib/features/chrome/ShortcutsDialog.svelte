@@ -16,7 +16,6 @@
 
 	const SHORTCUTS: ReadonlyArray<{ keys: string; label: () => string }> = [
 		{ keys: '/', label: () => m['shortcuts.focusSearch']() },
-		{ keys: 'R', label: () => m['shortcuts.reload']() },
 		{ keys: '?', label: () => m['shortcuts.toggleHelp']() },
 		{ keys: 'Esc', label: () => m['shortcuts.closeDialog']() },
 		{ keys: '⌘/Ctrl + Enter', label: () => m['shortcuts.submitForm']() }

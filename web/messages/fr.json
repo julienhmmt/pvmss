@@ -1632,7 +1632,6 @@
   "error.pageTitle": "Erreur {status} - PVMSS",
   "shortcuts.title": "Raccourcis clavier",
   "shortcuts.focusSearch": "Rechercher",
-  "shortcuts.reload": "Recharger la page",
   "shortcuts.toggleHelp": "Afficher cette aide",
   "shortcuts.closeDialog": "Fermer la fenêtre",
   "shortcuts.submitForm": "Envoyer le formulaire",

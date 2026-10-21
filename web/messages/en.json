@@ -1632,7 +1632,6 @@
   "error.pageTitle": "Error {status} - PVMSS",
   "shortcuts.title": "Keyboard shortcuts",
   "shortcuts.focusSearch": "Focus search",
-  "shortcuts.reload": "Reload page",
   "shortcuts.toggleHelp": "Toggle this help",
   "shortcuts.closeDialog": "Close dialog",
   "shortcuts.submitForm": "Submit form",

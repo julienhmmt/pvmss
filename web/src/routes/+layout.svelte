@@ -166,9 +166,6 @@
 		} else if (event.key === '?') {
 			event.preventDefault();
 			shortcutsOpen = true;
-		} else if (event.key.toLowerCase() === 'r') {
-			event.preventDefault();
-			window.location.reload();
 		}
 	}
 
