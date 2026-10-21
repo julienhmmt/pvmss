@@ -26,6 +26,10 @@ type Configuration struct {
 	ClusterSource     string
 	SessionSecret     string
 	AdminPasswordHash string
+	// MaxLocalAdmins caps the number of DB-backed local administrator accounts
+	// (PVMSS_MAX_LOCAL_ADMINS, default 5, range 1-50). The env bootstrap
+	// administrator is not counted: it stays the immutable recovery owner.
+	MaxLocalAdmins int
 	// CookieSecure gates the Secure attribute on the session cookie. Defaults
 	// to true (production behind TLS-terminating ingress); set
 	// PVMSS_COOKIE_SECURE=false only for local plain-HTTP development.

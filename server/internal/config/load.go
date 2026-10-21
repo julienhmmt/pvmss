@@ -14,6 +14,8 @@ const (
 	defaultInventoryManualRefreshMinInterval = 5 * time.Second
 	defaultInventoryRefreshTimeout           = 15 * time.Second
 	defaultMaxListPageSize                   = 100
+	defaultMaxLocalAdmins                    = 5
+	maxLocalAdminsCeiling                    = 50
 )
 
 // Load reads and validates the runtime configuration from the environment.
@@ -46,6 +48,10 @@ func Load() (Configuration, error) {
 	}
 
 	if err := loadRateLimitSettings(&cfg); err != nil {
+		return cfg, err
+	}
+
+	if err := loadLocalAdminSettings(&cfg); err != nil {
 		return cfg, err
 	}
 
@@ -174,6 +180,30 @@ func loadSecuritySettings(cfg *Configuration) error {
 	cfg.DBResetOnIncompatible, err = loadBool("PVMSS_DB_RESET_ON_INCOMPATIBLE", false)
 
 	return err
+}
+
+// loadLocalAdminSettings reads the cap on DB-backed local administrator
+// accounts. The bootstrap env administrator is not counted, so 1 is a usable
+// minimum and the value only bounds delegated accounts.
+func loadLocalAdminSettings(cfg *Configuration) error {
+	raw := strings.TrimSpace(os.Getenv("PVMSS_MAX_LOCAL_ADMINS"))
+	if raw == "" {
+		cfg.MaxLocalAdmins = defaultMaxLocalAdmins
+		return nil
+	}
+
+	value, err := strconv.Atoi(raw)
+	if err != nil {
+		return fmt.Errorf("PVMSS_MAX_LOCAL_ADMINS must be an integer, got %q", raw)
+	}
+
+	if value < 1 || value > maxLocalAdminsCeiling {
+		return fmt.Errorf("PVMSS_MAX_LOCAL_ADMINS must be between 1 and %d, got %d", maxLocalAdminsCeiling, value)
+	}
+
+	cfg.MaxLocalAdmins = value
+
+	return nil
 }
 
 // loadClusterSettings reads the cluster source selection and Proxmox credentials.

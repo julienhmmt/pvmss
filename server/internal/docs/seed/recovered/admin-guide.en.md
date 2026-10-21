@@ -62,15 +62,28 @@ Optional:
 
 - `PVMSS_HOST` - bind address (the image sets `0.0.0.0`).
 - `PVMSS_WEB_DIR` - location of the built SPA (defaults to a path relative to the executable).
-- `ADMIN_PASSWORD_HASH` - if set, must be a bcrypt hash (`$2…`); enables the local administrator login.
+- `ADMIN_PASSWORD_HASH` - if set, must be a bcrypt hash (`$2…`); seeds the bootstrap PVMSS administrator, the only account allowed to manage other local administrators. Its password is rotated by changing this value and restarting.
 - `PVMSS_COOKIE_SECURE` - defaults to `true`; set `false` only behind plain HTTP for local trials.
 - `PVMSS_TRUSTED_PROXY_HOPS` - number of reverse proxies in front of PVMSS, used to derive the client IP for rate limits and the audit log (default `1`).
 - `PVMSS_INVENTORY_REFRESH_INTERVAL` - background inventory refresh interval (default `30s`).
 - `PVMSS_INVENTORY_MANUAL_REFRESH_MIN_INTERVAL` - minimum spacing between manual refreshes (default `5s`).
 - `PVMSS_INVENTORY_REFRESH_TIMEOUT` - per-refresh timeout (default `15s`).
 - `PVMSS_MAX_LIST_PAGE_SIZE` - maximum list page size (default `100`).
+- `PVMSS_MAX_LOCAL_ADMINS` - maximum number of DB local administrator accounts, 1 to 50 (default `5`). The bootstrap administrator is not counted.
 
 For full deployment instructions (Docker, Kubernetes, Helm), see the project README.
+
+## Administrators and local accounts
+
+There are three ways to hold administrator rights, and all of them land on the same admin surface:
+
+- **Proxmox administrator** - sign in with a Proxmox account whose ACL grants `Permissions.Modify` on `/` (the `PVEAdmin`, `Administrator`, or a custom role). Pick the `pve` or `pam` realm, or type `user@realm`; OIDC realms are not supported yet and answer `realm_unsupported`. The privilege is read once at login, so grant it before the user signs in.
+- **Bootstrap local administrator** - the `admin` account seeded by `ADMIN_PASSWORD_HASH`. It is immutable, never locked, and not counted against `PVMSS_MAX_LOCAL_ADMINS`.
+- **DB local administrators** - accounts stored in PVMSS and created by the bootstrap administrator under **Settings > Accounts**. They work without any Proxmox connection.
+
+Only the bootstrap administrator may manage local accounts; every other admin gets `owner_only` from `/api/v1/admin/accounts`. From the Accounts tab you can create an account (3-32 lowercase characters, digits, dot, underscore or hyphen), reset its password, disable or enable it, and delete it. Each of those actions revokes that account's sessions. Passwords need at least 8 characters and at most 72 bytes (the bcrypt limit). Five consecutive failed sign-ins lock an account for 15 minutes; a successful sign-in, a password reset or a disable clears the lock. Every mutation is written to the audit log.
+
+DB local administrators change their own password on `/profile`, like Proxmox users. The bootstrap account cannot: rotate `ADMIN_PASSWORD_HASH` and restart.
 
 ## Clusters (multi-cluster)
 
@@ -171,6 +184,7 @@ Built-in pages are seeded once, when missing, and never overwritten on restart, 
 `/admin/settings` exposes operational controls:
 
 - **Audit log** - every write (VM create, power action, edit, delete, catalog and policy changes, sign-ins) is recorded with the acting user, IP, severity, and target. Filter and page through it; each VM also shows its own entries on its Activity tab.
+- **Accounts** - owner-only management of local administrators: cap usage, status and lock, last sign-in, create, reset password, disable/enable, delete.
 - **Retention** - set the number of days to keep audit rows and preview how many rows a prune would delete before applying.
 - **Database export / import** - back up the SQLite database or restore one. Import is two-phase: upload returns a table-by-table preview, and nothing is written until you confirm.
 
@@ -186,6 +200,7 @@ Built-in pages are seeded once, when missing, and never overwritten on restart, 
 ## Known limitations
 
 - PVMSS targets Proxmox VE 8.x/9.x clusters (and standalone nodes).
+- Proxmox accounts can sign in only through the `pve` and `pam` realms; OIDC realm sign-in is not supported yet. Use a local administrator or a `pve`/`pam` account meanwhile.
 - User accounts are provisioned through `/admin/pools` on the Proxmox side.
 - Administrators can migrate one VM at a time from **Infrastructure > Nodes**. HA, cross-cluster migration and backup orchestration are performed directly in Proxmox.
 - Administrators create VMs through the same self-service UI as users, or directly in Proxmox.

@@ -38,6 +38,19 @@ var (
 	ErrForbidden = errors.New("forbidden")
 )
 
+// Provider identifies where an identity's credentials came from.
+type Provider string
+
+const (
+	// ProviderPVE is a Proxmox VE cluster account (pve or pam realm).
+	ProviderPVE Provider = "pve"
+	// ProviderLocal is a DB-backed PVMSS administrator account.
+	ProviderLocal Provider = "local"
+	// ProviderBootstrap is the env-seeded administrator (ADMIN_PASSWORD_HASH).
+	// It is the immutable owner: only it may manage local accounts.
+	ProviderBootstrap Provider = "bootstrap"
+)
+
 // Identity is the principal resolved for an API request.
 type Identity struct {
 	Username string `json:"username"`
@@ -52,6 +65,17 @@ type Identity struct {
 	IsAdmin            bool   `json:"isAdmin"`
 	Cluster            string `json:"cluster"`
 	ClusterDisplayName string `json:"clusterDisplayName"`
+	// Provider records the credential source. Old sessions default to "pve"
+	// through the migration backfill.
+	Provider Provider `json:"provider"`
+	// IsOwner is derived from Provider on every resolution (never persisted):
+	// the bootstrap administrator owns local account management.
+	IsOwner bool `json:"isOwner"`
+}
+
+// Owner reports whether the identity may manage local administrator accounts.
+func (i Identity) Owner() bool {
+	return i.Provider == ProviderBootstrap
 }
 
 // SessionRecord is a persisted, revocable browser session.

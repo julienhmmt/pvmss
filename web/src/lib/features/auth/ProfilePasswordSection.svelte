@@ -26,7 +26,13 @@
 	let submitError = $state<string | null>(null);
 	let formEl: HTMLFormElement | undefined = $state();
 
-	const isClusterAccount = $derived(Boolean(session.principal && session.principal.cluster));
+	const isClusterAccount = $derived(session.principal?.provider === 'pve');
+	const isLocalAccount = $derived(session.principal?.provider === 'local');
+	const canChangePassword = $derived(isClusterAccount || isLocalAccount);
+
+	const body = $derived(
+		isLocalAccount ? m['account.password.bodyLocal']() : m['account.password.body']()
+	);
 
 	const rawCurrentError = $derived(
 		currentPassword === '' ? m['account.password.errorCurrentRequired']() : null
@@ -81,7 +87,7 @@
 </script>
 
 {#if session.principal}
-	{#if isClusterAccount}
+	{#if canChangePassword}
 		<Card
 			pad="none"
 			class="mt-6"
@@ -90,7 +96,7 @@
 		>
 			<div class="px-6 py-5">
 				<h2 id="profile-password-heading" class="font-medium">{m['account.password.heading']()}</h2>
-				<p class="mt-1 text-sm text-muted-foreground">{m['account.password.body']()}</p>
+				<p class="mt-1 text-sm text-muted-foreground">{body}</p>
 
 				<form
 					bind:this={formEl}

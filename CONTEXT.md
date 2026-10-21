@@ -6,6 +6,43 @@ served by the Go binary.
 
 ## Language
 
+**Proxmox administrator**:
+A Proxmox VE user whose ACL grants `Permissions.Modify` on `/` - any role
+carrying it (`PVEAdmin`, `Administrator`, or a custom one). PVMSS reads that
+privilege once, at login, with the user's own ticket and stores it as
+`Identity.IsAdmin` for the session. Only the `pve` and `pam` realms can sign
+in; OIDC realms are unsupported.
+_Avoid_: superuser, root admin, PVE admin (ambiguous with the PVEAdmin role)
+
+**Local administrator**:
+A PVMSS administrator whose credentials live in `/data/pvmss.db`
+(`local_accounts`), independent of Proxmox. Holds the full admin surface, but
+may not manage other local administrators. Created, reset, disabled and
+deleted by the owner under Admin > Settings > Accounts.
+_Avoid_: local user, DB user, fallback admin
+
+**Bootstrap administrator (owner)**:
+The env-seeded administrator (`ADMIN_PASSWORD_HASH`, username `admin`,
+`provider = bootstrap`). Its password is rotated by changing the variable and
+restarting, never from the UI, and it is the only identity allowed to manage
+local administrators (`owner_only`). It is not counted against
+`PVMSS_MAX_LOCAL_ADMINS` and cannot be locked.
+_Avoid_: root, super admin, emergency admin
+
+**Realm**:
+The Proxmox authentication backend after the `@` in a username (`user@pve`,
+`root@pam`). PVMSS accepts an explicit picker value or a typed suffix for
+`pve` and `pam` only; any other realm answers `realm_unsupported` so an
+unsupported backend fails loudly instead of silently falling back.
+_Avoid_: domain, auth type
+
+**Provider**:
+Where a session's credentials came from: `pve` (a Proxmox cluster account),
+`local` (a DB local administrator) or `bootstrap` (the env-seeded owner).
+Stored on the session row and exposed to the SPA as `Principal.provider`;
+`IsOwner` is derived from it, never persisted.
+_Avoid_: login type, source
+
 **Projection**:
 The cached inventory snapshot stored in SQLite, refreshed by the background
 inventory worker every 30s and by the per-cluster refresher after write

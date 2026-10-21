@@ -177,14 +177,12 @@ func TestPublicVersion_ReturnsOnlyVersion(t *testing.T) {
 // TestAdminAppInfo_PerClusterHealthFollowsFreshness - each cluster reports its
 // own refresh state from the same freshness source as /health, so a cluster
 // the banner calls unreachable is never listed as refreshed.
-//
-//nolint:paralleltest // serial: shared env
 func TestAdminAppInfo_PerClusterHealthFollowsFreshness(t *testing.T) {
 	t.Setenv("SESSION_SECRET", strings.Repeat("s", 32))
 
 	ops, auth, _ := newAdminOpsHandler(t)
 	auth.SetClusterFreshnessChecker(authTestFreshness{clusters: []httpapi.ClusterFreshness{
-		{Name: "default", RefreshedAt: time.Now()},
+		{Name: auditTestCluster, RefreshedAt: time.Now()},
 		{Name: "offline-demo"},
 	}}, time.Minute)
 	cookie := adminCookie(t, auth)
@@ -208,8 +206,8 @@ func TestAdminAppInfo_PerClusterHealthFollowsFreshness(t *testing.T) {
 		t.Fatalf("clusters = %+v, want default and offline-demo", info.Clusters)
 	}
 
-	if !got["default"].LastRefreshSucceeded || got["default"].RefreshedAt == "" {
-		t.Errorf("default = %+v, want refreshed", got["default"])
+	if !got[auditTestCluster].LastRefreshSucceeded || got[auditTestCluster].RefreshedAt == "" {
+		t.Errorf("default = %+v, want refreshed", got[auditTestCluster])
 	}
 
 	if got["offline-demo"].LastRefreshSucceeded || got["offline-demo"].RefreshedAt != "" {
