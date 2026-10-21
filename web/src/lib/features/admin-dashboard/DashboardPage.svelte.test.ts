@@ -72,4 +72,22 @@ describe('DashboardPage VM summary', () => {
 
 		expect(goto).toHaveBeenCalledWith('/admin/nodes/default/miniquarium?from=dashboard');
 	});
+
+	it('leads with the create-user quick action and four reserved slots', () => {
+		mount(DashboardPage, { target: document.body });
+
+		expect(document.querySelector('[data-testid="dashboard-create-user"]')?.getAttribute('href')).toBe('/admin/pools?create=1');
+		expect(document.querySelectorAll('[data-testid="dashboard-quick-action-slot"]')).toHaveLength(4);
+	});
+
+	it('lists only the five fullest storages', () => {
+		const storages = [10, 80, 30, 95, 50, 20, 60].map((percent) => ({
+			cluster: 'Default cluster', node: 'miniquarium', name: `s${percent}`, type: 'dir', shared: false, percent, usedBytes: percent, totalBytes: 100
+		}));
+		vi.mocked(getDashboardContext).mockReturnValue({ ...store, summary: { ...store.summary, storages } });
+		mount(DashboardPage, { target: document.body });
+
+		const names = [...document.querySelectorAll('[data-testid="dashboard-storage"]')].map((el) => el.textContent?.trim().split(/\s+/)[0]);
+		expect(names).toEqual(['s95', 's80', 's60', 's50', 's30']);
+	});
 });

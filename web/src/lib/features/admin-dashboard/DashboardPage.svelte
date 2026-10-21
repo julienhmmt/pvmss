@@ -7,6 +7,8 @@
 	import Alert from '#lib/shared/ui/Alert.svelte';
 	import PageHeader from '#lib/shared/ui/PageHeader.svelte';
 	import Button from '#lib/shared/ui/Button.svelte';
+	import ButtonLink from '#lib/shared/ui/ButtonLink.svelte';
+	import UserIcon from '#lib/shared/ui/icons/UserIcon.svelte';
 	import Card from '#lib/shared/ui/Card.svelte';
 	import Skeleton from '#lib/shared/ui/Skeleton.svelte';
 	import EmptyState from '#lib/shared/ui/EmptyState.svelte';
@@ -36,9 +38,17 @@
 		void goto(`${resolve('/admin/nodes/[cluster]/[node]', { cluster: node.clusterKey, node: node.name })}?from=dashboard`);
 	}
 
-	function goToCreateUser(): void {
-		void goto(resolve('/admin/pools'));
-	}
+	// Opens the pools page with its create dialog already up.
+	const createUserHref = `${resolve('/admin/pools')}?create=1`;
+
+	// The dashboard is a glance: the busiest storages and the latest changes,
+	// each card linking to its full page.
+	const STORAGE_LIMIT = 5;
+	const RECENT_LIMIT = 5;
+	// Slots kept for quick actions still to come.
+	const QUICK_ACTION_PLACEHOLDERS = 4;
+
+	const busiestStorages = $derived([...(store.summary?.storages ?? [])].sort((a, b) => b.percent - a.percent).slice(0, STORAGE_LIMIT));
 
 	// Shown in clear, not behind a hover: an admin reads the split at a glance.
 	const VM_STATUS_BREAKDOWN = [
@@ -55,17 +65,12 @@
 	</div>
 {/snippet}
 
-<PageHeader title={m['admin.dashboard.title']()} eyebrow={m['chrome.adminNav.overview']()}>
+<PageHeader title={m['admin.dashboard.title']()}>
 	{#snippet actions()}
 		<div class="flex flex-col items-end gap-1">
-			<div class="flex items-center gap-2">
-				<Button variant="secondary" size="sm" onclick={goToCreateUser} data-testid="dashboard-create-user">
-					{m['admin.dashboard.createUser']()}
-				</Button>
-				<Button variant="secondary" size="sm" loading={store.loading} onclick={() => void store.load()}>
-					{m['common.refresh']()}
-				</Button>
-			</div>
+			<Button variant="secondary" size="sm" loading={store.loading} onclick={() => void store.load()}>
+				{m['common.refresh']()}
+			</Button>
 			{#if store.summary}
 				<p class="text-xs text-muted-foreground" data-testid="dashboard-refreshed-at">
 					{m['admin.dashboard.refreshed']()} <time datetime={store.summary.refreshedAt}>{new Date(store.summary.refreshedAt).toLocaleTimeString()}</time>
@@ -74,6 +79,28 @@
 		</div>
 	{/snippet}
 </PageHeader>
+
+<section class="mb-6" aria-labelledby="dashboard-quick-actions">
+	<h2 id="dashboard-quick-actions" class="mb-3 text-sm font-semibold text-foreground">{m['admin.dashboard.quickActions']()}</h2>
+	<div class="grid grid-cols-2 gap-3 md:grid-cols-5">
+		<a
+			href={createUserHref}
+			class="col-span-2 flex min-h-24 items-center gap-3 rounded-xl border border-primary/30 bg-primary/10 p-4 transition-colors duration-150 hover:border-primary/50 hover:bg-primary/15 md:col-span-1 pv-focus"
+			data-testid="dashboard-create-user"
+		>
+			<span class="grid h-10 w-10 shrink-0 place-items-center rounded-lg bg-primary text-primary-foreground">
+				<UserIcon class="h-5 w-5" />
+			</span>
+			<span class="flex min-w-0 flex-col">
+				<span class="text-sm font-semibold text-foreground">{m['admin.dashboard.createUser']()}</span>
+				<span class="text-xs text-muted-foreground">{m['admin.dashboard.createUserHint']()}</span>
+			</span>
+		</a>
+		{#each { length: QUICK_ACTION_PLACEHOLDERS }, slot (slot)}
+			<div class="hidden min-h-24 rounded-xl border border-dashed border-border md:block" aria-hidden="true" data-testid="dashboard-quick-action-slot"></div>
+		{/each}
+	</div>
+</section>
 
 {#if store.loading}
 	<div role="status" aria-live="polite" class="sr-only">{m['common.loading']()}</div>
@@ -108,25 +135,23 @@
 		<DashboardAttention alerts={summary.alerts} />
 
 		<Card pad="none">
-			<div class="px-5 py-4 text-sm" data-testid="dashboard-vm-status">
-				<div class="flex flex-wrap items-center gap-x-6 gap-y-2">
-					<p class="font-semibold text-foreground">
-						{m['admin.dashboard.vmStatusTitle']()}
-						<span class="ml-1 font-normal text-muted-foreground" data-testid="dashboard-vm-total">
-							{m['admin.dashboard.vmTotal']({ count: summary.pvmssVMCount })}
-						</span>
-					</p>
-					<ul class="flex flex-wrap items-center gap-x-5 gap-y-1">
-						{#each VM_STATUS_BREAKDOWN as row (row.key)}
-							<li class="flex items-center gap-2" data-testid="dashboard-vm-status-{row.key}">
-								<span class="h-2 w-2 shrink-0 rounded-full {row.dot}" aria-hidden="true"></span>
-								<span class="text-muted-foreground">{row.label()}</span>
-								<span class="font-mono font-semibold tabular-nums">{summary.pvmssVMStatusCounts[row.key]}</span>
-							</li>
-						{/each}
-					</ul>
-				</div>
-				<div class="mt-3 flex flex-wrap items-center gap-x-2 gap-y-1 border-t border-border pt-3" data-testid="dashboard-vm-other-count">
+			<div class="flex flex-wrap items-center gap-x-6 gap-y-3 px-5 py-4 text-sm" data-testid="dashboard-vm-status">
+				<p class="font-semibold text-foreground">
+					{m['admin.dashboard.vmStatusTitle']()}
+					<span class="ml-1 font-normal text-muted-foreground" data-testid="dashboard-vm-total">
+						{m['admin.dashboard.vmTotal']({ count: summary.pvmssVMCount })}
+					</span>
+				</p>
+				<ul class="flex flex-wrap items-center gap-x-5 gap-y-1">
+					{#each VM_STATUS_BREAKDOWN as row (row.key)}
+						<li class="flex items-center gap-2" data-testid="dashboard-vm-status-{row.key}">
+							<span class="h-2 w-2 shrink-0 rounded-full {row.dot}" aria-hidden="true"></span>
+							<span class="text-muted-foreground">{row.label()}</span>
+							<span class="font-mono font-semibold tabular-nums">{summary.pvmssVMStatusCounts[row.key]}</span>
+						</li>
+					{/each}
+				</ul>
+				<div class="flex flex-wrap items-center gap-x-2 gap-y-1 lg:ml-auto" data-testid="dashboard-vm-other-count">
 					<p class="font-semibold text-foreground">{m['admin.dashboard.vmOtherTitle']()}</p>
 					<span class="font-mono font-semibold tabular-nums">{summary.otherVMCount}</span>
 					<span class="text-muted-foreground">{m['admin.dashboard.vmOtherDescription']()}</span>
@@ -137,7 +162,7 @@
 		{#if summary.nodes.length === 0}
 			<EmptyState title={m['admin.dashboard.emptyTitle']()} description={m['admin.dashboard.emptyBody']()} dataTestid="dashboard-empty">
 				{#snippet actions()}
-					<Button variant="primary" size="md" onclick={goToCreateUser}>{m['admin.dashboard.createUser']()}</Button>
+					<ButtonLink href={createUserHref}>{m['admin.dashboard.createUser']()}</ButtonLink>
 				{/snippet}
 			</EmptyState>
 		{:else}
@@ -185,25 +210,28 @@
 
 		<div class="grid grid-cols-1 gap-6 xl:grid-cols-2">
 			<Card pad="none" title={m['admin.dashboard.storageTitle']()}>
+				{#snippet actions()}
+					<a href={resolve('/admin/storages')} class="text-xs font-medium text-primary hover:underline pv-focus">
+						{m['admin.dashboard.storageAll']({ count: summary.storages.length })}
+					</a>
+				{/snippet}
 				{#if summary.storages.length === 0}
 					<p class="px-5 py-4 text-sm text-muted-foreground">{m['admin.dashboard.storageEmpty']()}</p>
 				{:else}
 					<ul class="divide-y divide-border" data-testid="dashboard-storages">
-						{#each summary.storages as storage (`${storage.cluster}/${storage.node ?? ''}/${storage.name}`)}
+						{#each busiestStorages as storage (`${storage.cluster}/${storage.node ?? ''}/${storage.name}`)}
 							<li class="grid gap-1.5 px-5 py-3" data-testid="dashboard-storage" data-shared={storage.shared}>
-								<div class="flex items-center justify-between gap-3 text-sm">
+								<div class="flex items-baseline justify-between gap-3 text-sm">
 									<span class="min-w-0 truncate">
 										<span class="font-mono font-semibold">{storage.name}</span>
-										<span class="ml-2 font-mono text-xs text-muted-foreground">
-											{storage.cluster} · {storage.shared ? m['admin.dashboard.storageShared']() : storage.node} · {storage.type}
-										</span>
+										<span class="ml-2 text-xs text-muted-foreground">{storage.shared ? m['admin.dashboard.storageShared']() : storage.node}</span>
 									</span>
-									<span class="shrink-0 font-mono text-xs tabular-nums">{storage.percent}%</span>
+									<span class="shrink-0 text-xs text-muted-foreground tabular-nums">
+										<span class="hidden sm:inline">{m['admin.dashboard.storageFree']({ free: formatBytes(Math.max(0, storage.totalBytes - storage.usedBytes)), total: formatBytes(storage.totalBytes) })}</span>
+										<span class="ml-2 font-mono font-semibold text-foreground">{storage.percent}%</span>
+									</span>
 								</div>
 								{@render bar(Math.min(100, storage.percent))}
-								<p class="text-xs text-muted-foreground">
-									{m['admin.dashboard.storageFree']({ free: formatBytes(Math.max(0, storage.totalBytes - storage.usedBytes)), total: formatBytes(storage.totalBytes) })}
-								</p>
 							</li>
 						{/each}
 					</ul>
@@ -220,9 +248,9 @@
 					<p class="px-5 py-4 text-sm text-muted-foreground">{m['admin.dashboard.recentEmpty']()}</p>
 				{:else}
 					<ul class="divide-y divide-border" data-testid="dashboard-recent-changes">
-						{#each summary.recentChanges as change (change.id)}
+						{#each summary.recentChanges.slice(0, RECENT_LIMIT) as change (change.id)}
 							<li class="flex items-baseline gap-3 px-5 py-2.5 text-sm">
-								<time class="w-32 shrink-0 font-mono text-xs text-muted-foreground tabular-nums" datetime={change.timestamp}>
+								<time class="w-36 shrink-0 whitespace-nowrap font-mono text-xs text-muted-foreground tabular-nums" datetime={change.timestamp}>
 									{new Date(change.timestamp).toLocaleString(undefined, { dateStyle: 'short', timeStyle: 'short' })}
 								</time>
 								<span class="shrink-0 font-mono text-xs font-semibold">{change.action}</span>
@@ -235,9 +263,5 @@
 				{/if}
 			</Card>
 		</div>
-
-		<p class="text-xs text-muted-foreground-subtle">
-			{m['admin.dashboard.version']()} <span class="font-mono">{summary.version}</span>
-		</p>
 	</section>
 {/if}
