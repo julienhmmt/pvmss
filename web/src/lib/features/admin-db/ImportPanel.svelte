@@ -5,6 +5,7 @@
 	import Button from '#lib/shared/ui/Button.svelte';
 	import { getDbOpsContext } from './dbOps.svelte';
 	import { m } from '#lib/paraglide/messages.js';
+	import { formatDateTime } from '#lib/shared/format-date.js';
 
 	const store = getDbOpsContext();
 
@@ -93,7 +94,7 @@
 			{/if}
 
 			<p class="text-sm text-muted-foreground">
-				{m['admin.db.expiresAt']()} {new Date(store.preview.expiresAt).toLocaleString()}.
+				{m['admin.db.expiresAt']()} {formatDateTime(store.preview.expiresAt)}.
 			</p>
 
 			<div class="flex gap-2">

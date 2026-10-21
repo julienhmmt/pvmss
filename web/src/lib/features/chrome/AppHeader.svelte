@@ -15,6 +15,7 @@
 	import { getToastContext } from '#lib/shared/ui/toast.svelte.js';
 	import { getChromeContext } from './chrome.svelte';
 	import MenuIcon from '#lib/shared/ui/icons/MenuIcon.svelte';
+	import SearchIcon from '#lib/shared/ui/icons/SearchIcon.svelte';
 	import Logo from '#lib/shared/ui/Logo.svelte';
 	import { m } from '#lib/paraglide/messages.js';
 
@@ -22,6 +23,8 @@
 	const chrome = getChromeContext();
 	const toast = getToastContext();
 	const context = $derived(contextLabel(page.url.pathname));
+	// The palette shortcut as the user's keyboard writes it.
+	const paletteKeys = typeof navigator !== 'undefined' && /Mac|iPhone|iPad/.test(navigator.userAgent) ? '⌘K' : 'Ctrl K';
 
 	let dismissTimer: ReturnType<typeof setTimeout> | null = null;
 	$effect(() => {
@@ -52,6 +55,15 @@
 	<Logo class="text-foreground" />
 
 	<div class="flex-1"></div>
+	<button
+		type="button"
+		class="inline-flex h-9 w-9 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-accent hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+		aria-label={m['palette.open']()}
+		onclick={() => chrome.openPalette()}
+		data-testid="palette-open-mobile"
+	>
+		<SearchIcon />
+	</button>
 </header>
 
 <header
@@ -66,4 +78,14 @@
 			<span class="truncate font-medium text-foreground" data-testid="context-screen">{context.screen}</span>
 		{/if}
 	</p>
+	<button
+		type="button"
+		class="inline-flex h-9 items-center gap-2 rounded-lg border border-border px-3 text-sm text-muted-foreground transition-colors hover:bg-accent hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+		onclick={() => chrome.openPalette()}
+		data-testid="palette-open"
+	>
+		<SearchIcon class="h-4 w-4" />
+		{m['palette.open']()}
+		<kbd class="rounded border border-border bg-muted px-1.5 font-mono text-2xs">{paletteKeys}</kbd>
+	</button>
 </header>

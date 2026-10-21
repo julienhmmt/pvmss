@@ -27,10 +27,6 @@
 		<rect x="2" y="4" width="20" height="14" rx="2" />
 		<polyline points="7 9 10 12 7 15" />
 		<line x1="13" y1="15" x2="17" y2="15" />
-	{:else if name === 'cloudinit'}
-		<path d="M17 18a5 5 0 0 0 0-10 7 7 0 0 0-13 2 4 4 0 0 0 1 8h4" />
-		<polyline points="8 16 10 18 8 20" />
-		<line x1="10" y1="18" x2="4" y2="18" />
 	{:else if name === 'snapshots'}
 		<path d="M3 7h3l2 2h10a2 2 0 0 1 2 2v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" />
 		<circle cx="12" cy="14" r="2.5" />

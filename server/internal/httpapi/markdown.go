@@ -9,7 +9,8 @@ import (
 )
 
 // renderMarkdownToHTML converts a small, safe subset of Markdown to HTML. It is
-// intentionally minimal (docs are admin-authored): headings (h1-h3),
+// intentionally minimal (docs are admin-authored): headings (# to ### as h2-h4,
+// since the host page always owns the only h1),
 // paragraphs, unordered/ordered lists, fenced code blocks, inline code, bold,
 // italic, and links. Raw HTML in the input is escaped - the renderer only ever
 // emits a known-safe tag set, so the result is safe to insert via {@html} on
@@ -142,7 +143,7 @@ func (m *mdRenderer) emitCodeBlock() {
 	m.out.WriteString("</code></pre>\n")
 }
 
-// handleHeading emits an h1-h3 heading when the line matches. Returns true when
+// handleHeading emits an h2-h4 heading when the line matches. Returns true when
 // the line was consumed.
 func (m *mdRenderer) handleHeading(trimmed string) bool {
 	h, level, ok := matchHeading(trimmed)
@@ -263,11 +264,12 @@ func matchHeading(line string) (text string, level int, ok bool) {
 	return m[2], len(m[1]), true
 }
 
-// headingTag returns the HTML tag for a heading level (1-3).
+// headingTag returns the HTML tag for a heading level (1-3), shifted one level
+// down: the page rendering the body already has its h1.
 func headingTag(level int) string {
-	tags := []string{"", "h1", "h2", "h3"}
+	tags := []string{"", "h2", "h3", "h4"}
 	if level < 1 || level >= len(tags) {
-		return "h3"
+		return "h4"
 	}
 
 	return tags[level]

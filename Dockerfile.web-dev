@@ -8,6 +8,6 @@
 # socket.destroySoon(). That breaks proxied WebSockets (e.g. the VNC console).
 #
 # So: install with Bun, run the dev server with Node.
-FROM oven/bun:1-alpine
+FROM oven/bun:1.4.3-alpine
 RUN apk add --no-cache nodejs
 WORKDIR /app

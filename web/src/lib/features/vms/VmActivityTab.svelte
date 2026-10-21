@@ -3,6 +3,7 @@
 	import { getVmDetailContext } from './detail.svelte';
 	import { activityMessage } from '#lib/features/activity/activity.svelte.js';
 	import { m } from '#lib/paraglide/messages.js';
+	import { formatDateTime } from '#lib/shared/format-date.js';
 	import Alert from '#lib/shared/ui/Alert.svelte';
 	import Button from '#lib/shared/ui/Button.svelte';
 	import Card from '#lib/shared/ui/Card.svelte';
@@ -18,7 +19,7 @@
 	});
 
 	function formatTimestamp(value: string): string {
-		return new Intl.DateTimeFormat(undefined, { dateStyle: 'medium', timeStyle: 'short' }).format(new Date(value));
+		return formatDateTime(value);
 	}
 
 	function goPrev(): void {

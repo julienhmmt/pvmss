@@ -23,6 +23,10 @@ services:
       - "50000:50000/tcp"
     volumes:
       - pvmss_dev_data:/data
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
     deploy:
       resources:
         limits:
@@ -59,6 +63,10 @@ services:
     volumes:
       - ./web:/app
       - /app/node_modules
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
     command: sh -c "bun install && node node_modules/vite/bin/vite.js dev --host 0.0.0.0 --port 5173"
     depends_on:
       - pvmss-dev
@@ -106,7 +114,7 @@ services:
 
 volumes:
   pvmss_dev_data: {}
-  sonarqube_data:
-  sonarqube_logs:
-  sonarqube_extensions:
-  sonar_cache:
+  sonarqube_data: {}
+  sonarqube_logs: {}
+  sonarqube_extensions: {}
+  sonar_cache: {}

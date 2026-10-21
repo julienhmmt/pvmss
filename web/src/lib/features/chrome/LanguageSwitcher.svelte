@@ -4,8 +4,9 @@
 	import type { Locale } from '#lib/paraglide/runtime.js';
 
 	/**
-	 * LanguageSwitcher - FR/EN as compact two-letter code buttons. A third
-	 * locale is one more message file plus one entry here (FR-003).
+	 * LanguageSwitcher - FR/EN as a compact segmented control of two-letter
+	 * codes. A third locale is one more message file plus one entry here
+	 * (FR-003).
 	 */
 	const LOCALE_OPTIONS: readonly { value: Locale; short: string; name: () => string }[] = [
 		{ value: 'fr', short: 'FR', name: () => m['chrome.locale.french']() },
@@ -16,7 +17,7 @@
 </script>
 
 <div
-	class="inline-flex items-center gap-1"
+	class="inline-flex items-center gap-0.5 rounded-lg border border-border p-0.5"
 	role="group"
 	aria-label={m['nav.language']()}
 >
@@ -27,9 +28,9 @@
 			aria-label={option.name()}
 			title={option.name()}
 			onclick={() => locale.set(option.value)}
-			class="inline-flex h-9 w-10 items-center justify-center rounded-lg text-sm font-bold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring {locale.current === option.value
-				? 'bg-accent text-foreground'
-				: 'text-muted-foreground hover:bg-accent hover:text-foreground'}"
+			class="inline-flex h-7 min-w-9 items-center justify-center rounded-md px-2 text-xs font-semibold tracking-wide transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring {locale.current === option.value
+				? 'bg-muted text-foreground'
+				: 'text-muted-foreground hover:text-foreground'}"
 		>
 			<span aria-hidden="true">{option.short}</span>
 			<span class="sr-only">{option.name()}</span>

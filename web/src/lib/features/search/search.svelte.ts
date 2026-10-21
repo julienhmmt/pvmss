@@ -34,6 +34,7 @@ export class SearchStore {
 	loading = $state(false);
 	error = $state<string | null>(null);
 	result = $state<VmListResult | null>(null);
+	loadingMore = $state(false);
 
 	#searchTimer: ReturnType<typeof setTimeout> | null = null;
 	#navigate: (queryString: string) => void;
@@ -135,11 +136,31 @@ export class SearchStore {
 		this.#requestId += 1;
 	}
 
-	/** Loads matching VMs from the shared VM list endpoint. */
+	/** True when the server holds more matches than the rows on screen. */
+	get hasMore(): boolean {
+		return this.result !== null && this.result.items.length < this.result.total;
+	}
+
+	/** One page of matching VMs from the shared VM list endpoint. */
+	#fetchPage(page: number): Promise<VmListResult> {
+		const params = new SvelteURLSearchParams();
+		const trimmed: string = this.query.trim();
+		if (trimmed !== '') params.set('search', trimmed);
+		if (this.cluster !== '') params.set('cluster', this.cluster);
+		if (this.status !== '') params.set('status', this.status);
+		params.set('scope', SEARCH_SCOPE);
+		params.set('sortBy', DEFAULT_SORT_BY);
+		params.set('sortDir', DEFAULT_SORT_DIR);
+		params.set('page', String(page));
+		params.set('pageSize', String(DEFAULT_PAGE_SIZE));
+		return get<VmListResult>(`/api/v1/vms?${params.toString()}`);
+	}
+
+	/** Loads the first page of matches, replacing any previous result. */
 	async load(): Promise<void> {
 		const requestId: number = ++this.#requestId;
-		const trimmed: string = this.query.trim();
-		if (trimmed === '' && this.cluster === '' && this.status === '') {
+		this.loadingMore = false;
+		if (this.query.trim() === '' && this.cluster === '' && this.status === '') {
 			this.loading = false;
 			this.result = null;
 			this.error = null;
@@ -149,20 +170,28 @@ export class SearchStore {
 		this.loading = true;
 		this.error = null;
 		try {
-			const params = new SvelteURLSearchParams();
-			if (trimmed !== '') params.set('search', trimmed);
-			if (this.cluster !== '') params.set('cluster', this.cluster);
-			if (this.status !== '') params.set('status', this.status);
-			params.set('scope', SEARCH_SCOPE);
-			params.set('sortBy', DEFAULT_SORT_BY);
-			params.set('sortDir', DEFAULT_SORT_DIR);
-			params.set('pageSize', String(DEFAULT_PAGE_SIZE));
-			const result: VmListResult = await get<VmListResult>(`/api/v1/vms?${params.toString()}`);
+			const result: VmListResult = await this.#fetchPage(1);
 			if (requestId === this.#requestId) this.result = result;
 		} catch (err) {
 			if (requestId === this.#requestId) this.error = err instanceof ApiRequestError ? err.message : m['search.error']();
 		} finally {
 			if (requestId === this.#requestId) this.loading = false;
+		}
+	}
+
+	/** Appends the next page of matches to the current result. */
+	async loadMore(): Promise<void> {
+		const current = this.result;
+		if (current === null || !this.hasMore || this.loadingMore) return;
+		const requestId: number = this.#requestId;
+		this.loadingMore = true;
+		try {
+			const next: VmListResult = await this.#fetchPage(current.page + 1);
+			if (requestId === this.#requestId) this.result = { ...next, items: [...current.items, ...next.items] };
+		} catch (err) {
+			if (requestId === this.#requestId) this.error = err instanceof ApiRequestError ? err.message : m['search.error']();
+		} finally {
+			if (requestId === this.#requestId) this.loadingMore = false;
 		}
 	}
 }

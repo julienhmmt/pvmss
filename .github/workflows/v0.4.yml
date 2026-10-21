@@ -20,6 +20,7 @@ jobs:
         with:
           go-version-file: server/go.mod
           cache: true
+          cache-dependency-path: server/go.sum
 
       - name: Verify Go dependencies
         run: go mod verify
@@ -66,7 +67,7 @@ jobs:
   e2e:
     runs-on: ubuntu-latest
     needs: [go, web]
-    timeout-minutes: 5
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@v7
 
@@ -75,6 +76,7 @@ jobs:
         with:
           go-version-file: server/go.mod
           cache: true
+          cache-dependency-path: server/go.sum
 
       - name: Set up Bun
         uses: oven-sh/setup-bun@v2
@@ -96,3 +98,13 @@ jobs:
       - name: Run Playwright E2E
         run: bun run test:e2e
         working-directory: web
+
+      - name: Upload Playwright report
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@v7
+        with:
+          name: playwright-report
+          path: |
+            web/playwright-report/
+            web/test-results/
+          retention-days: 14

@@ -1,8 +1,12 @@
-import { describe, it, expect } from 'vitest';
+import { afterEach, describe, it, expect } from 'vitest';
 import { mount } from 'svelte';
 import BrandPanel from './BrandPanel.svelte';
 
 describe('BrandPanel', () => {
+	afterEach(() => {
+		document.body.innerHTML = '';
+	});
+
 	it('renders login marketing content by default', () => {
 		mount(BrandPanel, { target: document.body });
 
@@ -15,9 +19,10 @@ describe('BrandPanel', () => {
 		expect(document.body.textContent).toContain('Avertissement');
 	});
 
-	it('renders error content in error mode', () => {
+	it('renders the neutral tagline without the login features in error mode', () => {
 		mount(BrandPanel, { target: document.body, props: { mode: 'error' } });
 
-		expect(document.body.textContent).toContain('Erreur');
+		expect(document.body.textContent).toContain('Proxmox VM Self-Service (PVMSS)');
+		expect(document.body.querySelector('ul')).toBeNull();
 	});
 });

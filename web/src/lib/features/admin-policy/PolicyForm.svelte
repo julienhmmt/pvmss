@@ -187,11 +187,27 @@
 		if (pendingPatch) sendPatch(pendingPatch);
 	});
 
-	// Manual fallback: always sends the full patch, even when clean.
+	// Enter in a field and the retry action: always sends the full patch, even when clean.
 	function saveNow(): void {
 		if (!isValid || saving) return;
 		sendPatch(fullPatch());
 	}
+
+	// One save model, one status: autosave state shown without a click.
+	type SaveStatus = 'saving' | 'failed' | 'invalid' | 'unsaved' | 'saved';
+	const saveStatus = $derived.by((): SaveStatus => {
+		if (saving) return 'saving';
+		if (saveError) return 'failed';
+		if (!isValid) return 'invalid';
+		return isDirty ? 'unsaved' : 'saved';
+	});
+	const SAVE_STATUS_LABELS: Record<SaveStatus, () => string> = {
+		saving: m['policy.saving'],
+		failed: m['policy.statusFailed'],
+		invalid: m['policy.statusInvalid'],
+		unsaved: m['policy.statusUnsaved'],
+		saved: m['policy.statusSaved']
+	};
 </script>
 
 <form class="grid max-w-5xl gap-6 lg:grid-cols-[minmax(0,2fr)_minmax(0,1fr)] lg:items-start" onsubmit={(event) => { event.preventDefault(); saveNow(); }}>
@@ -286,8 +302,19 @@
 		</Card>
 
 		{#if saveError && !serverErrorField}<Alert>{saveError}</Alert>{/if}
-		<div class="flex flex-wrap justify-end gap-2">
-			<Button type="submit" disabled={saving || !isValid}>{saving ? m['policy.saving']() : m['policy.save']()}</Button>
+		<div class="flex flex-wrap items-center justify-end gap-x-3 gap-y-2">
+			<p
+				class="text-sm {saveStatus === 'failed' || saveStatus === 'invalid' ? 'text-destructive' : 'text-muted-foreground'}"
+				role="status"
+				aria-live="polite"
+				data-testid="policy-save-status"
+				data-status={saveStatus}
+			>
+				{SAVE_STATUS_LABELS[saveStatus]()}
+			</p>
+			{#if saveStatus === 'failed'}
+				<Button variant="secondary" size="sm" onclick={saveNow} data-testid="policy-save-retry">{m['policy.retry']()}</Button>
+			{/if}
 		</div>
 	</div>
 </form>

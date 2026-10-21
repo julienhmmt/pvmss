@@ -60,4 +60,36 @@ describe('Dialog', () => {
 		await unmount(dialog);
 		expect(document.activeElement).toBe(trigger);
 	});
+
+	it('is a native modal dialog and locks the page scroll while open', async () => {
+		document.body.innerHTML = '<div id="host"></div>';
+		const dialog = mount(Dialog, {
+			target: document.querySelector<HTMLElement>('#host')!,
+			props: { open: true, labelledBy: 'dialog-title', onClose: vi.fn(), children }
+		});
+		await tick();
+
+		const el = document.querySelector('dialog');
+		expect(el?.open).toBe(true);
+		expect(el?.getAttribute('aria-labelledby')).toBe('dialog-title');
+		expect(document.querySelector('[role="dialog"]:not(dialog)')).toBeNull();
+		expect(document.documentElement.style.overflow).toBe('hidden');
+
+		await unmount(dialog);
+		expect(document.documentElement.style.overflow).toBe('');
+	});
+
+	it('closes on Escape and on a backdrop click, not on a click inside', async () => {
+		document.body.innerHTML = '<div id="host"></div>';
+		const onClose = vi.fn();
+		mount(Dialog, { target: document.querySelector<HTMLElement>('#host')!, props: { open: true, labelledBy: 'dialog-title', onClose, children } });
+		await tick();
+
+		document.querySelector('[data-testid="first-focusable"]')!.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+		expect(onClose).not.toHaveBeenCalled();
+		document.querySelector('dialog')!.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+		expect(onClose).toHaveBeenCalledTimes(1);
+		dispatchKey(document.querySelector('[data-testid="first-focusable"]')!, 'Escape');
+		expect(onClose).toHaveBeenCalledTimes(2);
+	});
 });

@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { TaskTrayStore } from '#lib/features/tasks/tasks.svelte.js';
 import { VmSnapshotsStore } from './snapshots.svelte';
+import { m } from '#lib/paraglide/messages.js';
 
 function jsonResponse(status: number, body: unknown): Response {
 	return new Response(JSON.stringify(body), { status, headers: { 'Content-Type': 'application/json' } });
@@ -48,7 +49,7 @@ describe('VmSnapshotsStore', () => {
 		const created = await store.create('sixth', '', false);
 
 		expect(created).toBe(false);
-		expect(store.error).toBe('maximum reached');
+		expect(store.error).toBe(m['error.max_snapshots_reached']());
 		expect(tray.tasks).toHaveLength(0);
 		tray.destroy();
 	});

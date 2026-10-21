@@ -7,6 +7,7 @@
 	import type { ClusterOption } from '#lib/shared/clusters.js';
 	import type { NodeStatus } from '../cluster/nodes.svelte';
 	import { m } from '#lib/paraglide/messages.js';
+	import { formatDateTime } from '#lib/shared/format-date.js';
 	import Alert from '#lib/shared/ui/Alert.svelte';
 	import PageHeader from '#lib/shared/ui/PageHeader.svelte';
 	import ClusterSelector from '#lib/shared/ui/ClusterSelector.svelte';
@@ -79,7 +80,7 @@
 
 	function formatRefreshedAt(iso: string | null): string {
 		if (!iso) return m['common.dash']();
-		return new Date(iso).toLocaleString();
+		return formatDateTime(iso, 'short');
 	}
 
 	const statusTone: Record<NodeStatus, 'ok' | 'error' | 'off'> = {
@@ -156,7 +157,8 @@
 				<tbody>
 					{#each nodes as node (node.node)}
 						{@const isOpen = expanded === node.node}
-						<tr class="group transition-colors hover:bg-muted/40" class:opacity-60={node.status === 'offline'}>
+						<!-- Offline is said by the status pill; dimming the row dragged every cell under AA. -->
+						<tr class="group transition-colors hover:bg-muted/40">
 							<th scope="row" class="text-left" data-label={m['policy.node']()}>
 								<span class="flex flex-wrap items-center gap-x-2 gap-y-1">
 									<a

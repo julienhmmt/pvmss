@@ -22,7 +22,7 @@
 	import { getPowerActionsContext } from '#lib/features/tasks/power-actions.svelte.js';
 	import { getToastContext } from '#lib/shared/ui/toast.svelte.js';
 	import { page } from '$app/state';
-	import { goto } from '$app/navigation';
+	import { beforeNavigate, goto } from '$app/navigation';
 	import { resolve } from '$app/paths';
 	import Button from '#lib/shared/ui/Button.svelte';
 	import ButtonLink from '#lib/shared/ui/ButtonLink.svelte';
@@ -33,9 +33,20 @@
 	import Textarea from '#lib/shared/ui/Textarea.svelte';
 	import { getSessionContext } from '#lib/features/auth/session.svelte.js';
 	import { m } from '#lib/paraglide/messages.js';
+	import { guardDecision } from './unsaved-guard';
 
 	const store = getVmDetailContext();
 	const session = getSessionContext();
+
+	interface Props {
+		/** Where the back link at the top of the page goes. Admin detail keeps
+		 *  the admin machine collection as its parent; the owner view goes to
+		 *  the workspace list. */
+		backHref?: string;
+		backLabel?: string;
+	}
+
+	let { backHref = resolve('/vms'), backLabel = m['vms.detail.back']() }: Props = $props();
 
 	const baselineReasons: Record<string, () => string> = {
 		cloudinit_write_unavailable: () => m['vms.detail.baselineReason.writeUnavailable'](),
@@ -179,6 +190,35 @@
 		descriptionDraft = '';
 	}
 
+	const draftDirty = $derived(
+		store.entity !== null &&
+			((editingName && nameDraft !== store.entity.name) ||
+				(editingDescription && descriptionDraft !== (store.entity.description ?? '')))
+	);
+	/** Replays the navigation the guard cancelled, once the user discards. */
+	let pendingNavigation: (() => void) | null = $state(null);
+
+	beforeNavigate((navigation) => {
+		const decision = guardDecision(navigation, draftDirty, page.url.pathname);
+		if (decision === 'allow') return;
+		navigation.cancel();
+		if (decision === 'native') return;
+		const delta = navigation.type === 'popstate' ? navigation.delta : 0;
+		const target = navigation.to?.url;
+		pendingNavigation = () => {
+			if (delta !== 0) history.go(delta);
+			else if (target) void goto(target);
+		};
+	});
+
+	function discardAndLeave(): void {
+		const replay = pendingNavigation;
+		pendingNavigation = null;
+		cancelName();
+		cancelDescription();
+		replay?.();
+	}
+
 	function handleNameKeydown(event: KeyboardEvent): void {
 		if (event.key === 'Enter') {
 			event.preventDefault();
@@ -213,13 +253,13 @@
 {:else if store.entity}
 	{@const entity = store.entity}
 	<header class="mb-6" data-testid="vm-detail-header">
-		<ButtonLink href={resolve('/vms')} variant="secondary" size="sm" class="mb-4" data-testid="page-back-link">
+		<ButtonLink href={backHref} variant="secondary" size="sm" class="mb-4" data-testid="page-back-link">
 			{#snippet icon()}
 				<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="h-3.5 w-3.5" aria-hidden="true">
 					<path d="M12 5l-5 5 5 5" />
 				</svg>
 			{/snippet}
-			{m['vms.detail.back']()}
+			{backLabel}
 		</ButtonLink>
 		<div class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
 			<div class="flex min-w-0 items-center gap-4">
@@ -509,5 +549,16 @@
 		testId="vm-retrofit-seabios-confirm"
 		onConfirm={async () => { await store.retrofitSeaBIOS(true); if (!store.retrofitError) retrofitOpen = false; }}
 		onClose={() => { retrofitOpen = false; }}
+	/>
+
+	<ConfirmDialog
+		open={pendingNavigation !== null}
+		title={m['vms.detail.discardDraftTitle']()}
+		message={m['vms.detail.discardDraftMessage']()}
+		confirmLabel={m['vms.detail.discardDraftConfirm']()}
+		cancelLabel={m['vms.detail.discardDraftKeep']()}
+		testId="vm-discard-draft-confirm"
+		onConfirm={discardAndLeave}
+		onClose={() => { pendingNavigation = null; }}
 	/>
 {/if}

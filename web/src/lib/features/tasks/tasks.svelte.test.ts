@@ -55,7 +55,7 @@ describe('TaskTrayStore timeout and error handling', () => {
 
 		expect(tray.tasks).toHaveLength(0);
 		expect(tray.toast?.kind).toBe('error');
-		expect(tray.toast?.message).toBe('cluster unreachable');
+		expect(tray.toast?.message).toBe(m['error.cluster_error']());
 		tray.destroy();
 	});
 
@@ -100,7 +100,7 @@ describe('TaskTrayStore timeout and error handling', () => {
 		await vi.advanceTimersByTimeAsync(POLL_INTERVAL_MS);
 		expect(tray.tasks).toHaveLength(0);
 		expect(tray.toast?.kind).toBe('error');
-		expect(tray.toast?.message).toBe('boom again');
+		expect(tray.toast?.message).toBe(m['error.cluster_error']());
 		tray.destroy();
 	});
 

@@ -8,4 +8,5 @@
 	<title>{m['error.pageTitle']({ status: String(page.status) })}</title>
 </svelte:head>
 
-<ErrorScreen status={page.status} message={page.error?.message} />
+<!-- page.error.message is SvelteKit's English text ("Not Found"); the screen localizes by status. -->
+<ErrorScreen status={page.status} />

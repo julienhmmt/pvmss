@@ -9,6 +9,11 @@ interface ErrorEnvelope {
 }
 
 const CSRF_COOKIE_NAME = 'pvmss_csrf';
+/** Dispatched on `globalThis` when the server no longer knows the session
+ *  (401 `unauthenticated`), so the shell can end it once; the client itself
+ *  keeps no session state. A wrong password is 401 `invalid_credentials` and
+ *  must not sign the user out. */
+export const UNAUTHORIZED_EVENT = 'pvmss-unauthorized';
 const CSRF_HEADER_NAME = 'X-CSRF-Token';
 
 export class ApiRequestError extends Error {
@@ -19,10 +24,23 @@ export class ApiRequestError extends Error {
 
 	readonly privilege?: string | undefined;
 	readonly path?: string | undefined;
+	/** The server's own (English) message, kept for support; never the UI text. */
+	readonly serverMessage: string;
+	/** X-Request-Id of the failed response, to find it in the server log. */
+	readonly requestId?: string | undefined;
 
-	constructor(status: number, code: string, message: string, retryAfterSeconds?: number, details: Pick<ErrorEnvelope, 'privilege' | 'path'> = {}) {
-		super(code === 'cluster_permission_denied' ? resolveErrorMessage(code, message, details) : message);
+	constructor(
+		status: number,
+		code: string,
+		message: string,
+		retryAfterSeconds?: number,
+		details: Pick<ErrorEnvelope, 'privilege' | 'path'> & { requestId?: string | undefined } = {}
+	) {
+		// `message` is what every store shows, so it is localized here, once.
+		super(resolveErrorMessage(code, message, details));
 		this.name = 'ApiRequestError';
+		this.serverMessage = message;
+		this.requestId = details.requestId;
 		this.status = status;
 		this.code = code;
 		this.retryAfterSeconds = retryAfterSeconds;
@@ -32,8 +50,8 @@ export class ApiRequestError extends Error {
 }
 
 /** The single network entry point (constitution XIII) - every API call goes through this. */
-export async function get<T>(path: string): Promise<T> {
-	return request<T>(path);
+export async function get<T>(path: string, init: RequestInit = {}): Promise<T> {
+	return request<T>(path, init);
 }
 
 /** Sends a JSON request through the shared API error model. */
@@ -77,8 +95,12 @@ async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
 		if (response.status === 403 && envelope.code === 'invalid_csrf_token' && typeof globalThis !== 'undefined') {
 			globalThis.location.reload();
 		}
+		if (response.status === 401 && envelope.code === 'unauthenticated' && typeof globalThis.dispatchEvent === 'function') {
+			globalThis.dispatchEvent(new Event(UNAUTHORIZED_EVENT));
+		}
 
-		throw new ApiRequestError(response.status, envelope.code, envelope.message, envelope.retryAfterSeconds, envelope);
+		const requestId = response.headers.get('X-Request-Id') ?? undefined;
+		throw new ApiRequestError(response.status, envelope.code, envelope.message, envelope.retryAfterSeconds, { ...envelope, requestId });
 	}
 	if (response.status === 204) return undefined as T;
 	return (await response.json()) as T;

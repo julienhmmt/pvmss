@@ -14,6 +14,7 @@
 	import { getTaskTrayContext } from '#lib/features/tasks/tasks.svelte.js';
 	import { usageTone } from '#lib/features/admin-dashboard/dashboard-alerts.js';
 	import { m } from '#lib/paraglide/messages.js';
+	import { formatDateTime } from '#lib/shared/format-date.js';
 
 	const TONE_BG = { success: 'bg-success', warning: 'bg-warning', destructive: 'bg-destructive' } as const;
 	const SECONDS_PER_MINUTE = 60;
@@ -233,7 +234,7 @@
 			<span class="inline-flex items-center gap-1.5 text-xs text-muted-foreground">
 				{m['admin.nodeDetails.inventoryRefreshed']()}
 				<time class="font-mono" datetime={detail.inventory.refreshedAt}>
-					{detail.inventory.refreshedAt ? new Date(detail.inventory.refreshedAt).toLocaleString() : m['admin.nodeDetails.notReported']()}
+					{detail.inventory.refreshedAt ? formatDateTime(detail.inventory.refreshedAt) : m['admin.nodeDetails.notReported']()}
 				</time>
 			</span>
 		{/if}

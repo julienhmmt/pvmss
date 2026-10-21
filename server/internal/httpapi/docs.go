@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"pvmss/server/internal/catalog"
 	"pvmss/server/internal/store"
+	"strings"
 	"sync"
 )
 
@@ -133,8 +134,21 @@ func (h *DocsAPIHandler) ServeDoc(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	htmlBody := h.renderedHTML(id, page.Lang, page.BodyMD)
+	htmlBody := h.renderedHTML(id, page.Lang, stripTitleHeading(page.BodyMD, page.Title))
 	writeJSON2(w, http.StatusOK, docRenderedDTO{ID: page.ID, Lang: page.Lang, Title: page.Title, HTML: htmlBody})
+}
+
+// stripTitleHeading drops a leading "# <title>" line: the page already shows the
+// title as its h1, so rendering it again would duplicate the heading.
+func stripTitleHeading(bodyMD, title string) string {
+	trimmed := strings.TrimLeft(bodyMD, " \t\r\n")
+	first, rest, _ := strings.Cut(trimmed, "\n")
+
+	if text, level, ok := matchHeading(strings.TrimSpace(first)); ok && level == 1 && strings.EqualFold(strings.TrimSpace(text), strings.TrimSpace(title)) {
+		return rest
+	}
+
+	return bodyMD
 }
 
 // renderedHTML returns the cached rendered HTML for (id, lang), rendering and

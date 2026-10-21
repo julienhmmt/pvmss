@@ -1,8 +1,9 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import appHtml from '../../../app.html?raw';
 import { THEME_COLOR_DARK, THEME_COLOR_LIGHT, THEME_STORAGE_KEY, ThemeState } from './theme.svelte';
 
 // T008 (US2): ThemeState - init reads localStorage["pvmss-theme-v1"] when
-// present, else falls back to prefers-color-scheme; toggle() flips, persists,
+// present, else follows prefers-color-scheme (system); set() persists a choice
 // and calls apply(), which toggles the "dark" class. Tested without a DOM
 // beyond happy-dom's document/localStorage/matchMedia.
 
@@ -88,30 +89,38 @@ describe('ThemeState.init', () => {
 	});
 });
 
-describe('ThemeState.toggle', () => {
+describe('ThemeState.set', () => {
 	beforeEach(() => {
 		localStorage.clear();
 		document.documentElement.classList.remove('dark');
 		setPrefersDark(false);
 	});
 
-	it('flips light to dark, persists, and applies the dark class', () => {
+	it('defaults to system when nothing is stored', () => {
 		const state = new ThemeState();
 		state.init();
-		expect(state.current).toBe('light');
-		state.toggle();
+		expect(state.preference).toBe('system');
+	});
+
+	it('pins dark, persists it under the v1 key, and applies the dark class', () => {
+		const state = new ThemeState();
+		state.init();
+		state.set('dark');
+		expect(state.preference).toBe('dark');
 		expect(state.current).toBe('dark');
 		expect(localStorage.getItem(THEME_STORAGE_KEY)).toBe('dark');
 		expect(document.documentElement.classList.contains('dark')).toBe(true);
 	});
 
-	it('flips dark back to light and removes the dark class', () => {
+	it('returns to system by clearing the stored choice', () => {
 		localStorage.setItem(THEME_STORAGE_KEY, 'dark');
 		const state = new ThemeState();
 		state.init();
-		state.toggle();
+		expect(state.preference).toBe('dark');
+		state.set('system');
+		expect(state.preference).toBe('system');
 		expect(state.current).toBe('light');
-		expect(localStorage.getItem(THEME_STORAGE_KEY)).toBe('light');
+		expect(localStorage.getItem(THEME_STORAGE_KEY)).toBeNull();
 		expect(document.documentElement.classList.contains('dark')).toBe(false);
 	});
 });
@@ -136,13 +145,13 @@ describe('ThemeState theme-color meta', () => {
 		expect(meta.getAttribute('content')).toBe(expected);
 	});
 
-	it('updates meta[name=theme-color] on toggle', () => {
+	it('updates meta[name=theme-color] on set', () => {
 		setPrefersDark(false);
 		const meta = insertThemeColorMeta();
 		const state = new ThemeState();
 		state.init();
 		expect(meta.getAttribute('content')).toBe(THEME_COLOR_LIGHT);
-		state.toggle();
+		state.set('dark');
 		expect(meta.getAttribute('content')).toBe(THEME_COLOR_DARK);
 	});
 
@@ -160,8 +169,9 @@ describe('ThemeState OS theme listener', () => {
 	});
 
 	it.each([
-		{ scenario: 'stored light', stored: 'light', prefersDark: true, expectedListeners: 0 },
-		{ scenario: 'stored dark', stored: 'dark', prefersDark: false, expectedListeners: 0 },
+		// Always one: a pinned user can switch back to system later.
+		{ scenario: 'stored light', stored: 'light', prefersDark: true, expectedListeners: 1 },
+		{ scenario: 'stored dark', stored: 'dark', prefersDark: false, expectedListeners: 1 },
 		{ scenario: 'nothing stored, OS light', stored: null, prefersDark: false, expectedListeners: 1 },
 		{ scenario: 'nothing stored, OS dark', stored: null, prefersDark: true, expectedListeners: 1 }
 	])(
@@ -192,11 +202,17 @@ describe('ThemeState OS theme listener', () => {
 		const meta = insertThemeColorMeta();
 		const state = new ThemeState();
 		state.init();
-		state.toggle();
+		state.set('light');
 		expect(localStorage.getItem(THEME_STORAGE_KEY)).toBe('light');
 		for (const listener of changeListeners) listener();
 		expect(state.current).toBe('light');
 		expect(document.documentElement.classList.contains('dark')).toBe(false);
 		expect(meta.getAttribute('content')).toBe(THEME_COLOR_LIGHT);
+	});
+});
+
+describe('app.html theme bootstrap', () => {
+	it('reads the same storage key as ThemeState, so the first paint matches', () => {
+		expect(appHtml).toContain(`localStorage.getItem('${THEME_STORAGE_KEY}')`);
 	});
 });

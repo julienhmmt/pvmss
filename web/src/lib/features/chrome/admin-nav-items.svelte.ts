@@ -45,7 +45,8 @@ export const ADMIN_NAV_GROUPS: readonly AdminNavGroup[] = [
 		items: [
 			{ href: resolve('/admin/nodes'), label: () => m['chrome.adminNav.nodes'](), exact: false },
 			{ href: resolve('/admin/clusters'), label: () => m['chrome.adminNav.clusters']() },
-			{ href: resolve('/admin/pools'), label: () => m['chrome.adminNav.pools'](), exact: false }
+			{ href: resolve('/admin/pools'), label: () => m['chrome.adminNav.pools'](), exact: false },
+			{ href: resolve('/admin/vms'), label: () => m['chrome.adminNav.vms'](), exact: false }
 		]
 	},
 	{

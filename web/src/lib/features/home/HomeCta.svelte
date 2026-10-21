@@ -17,7 +17,7 @@
 	}
 </script>
 
-<section class="flex flex-col items-center gap-4">
+<section class="flex flex-col items-center gap-4 lg:items-start">
 	{#if !session.principal}
 		<div class="flex gap-3">
 			<ButtonLink href={resolve('/login')}>

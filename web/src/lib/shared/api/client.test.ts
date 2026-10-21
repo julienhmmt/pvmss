@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { ApiRequestError, del, get, patch, post, put } from './client';
+import { ApiRequestError, UNAUTHORIZED_EVENT, del, get, patch, post, put } from './client';
 import { m } from '#lib/paraglide/messages.js';
 import { setLocale } from '#lib/paraglide/runtime.js';
 
@@ -31,14 +31,42 @@ describe('get', () => {
 		});
 	});
 
+	it('localizes the message and keeps the server text and request id for support', async () => {
+		await setLocale('fr', { reload: false });
+		vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response(JSON.stringify({ code: 'not_found', message: 'vm 999 not found' }), {
+			status: 404, headers: { 'Content-Type': 'application/json', 'X-Request-Id': 'req-7' }
+		})));
+		await expect(get('/api/v1/foo')).rejects.toMatchObject({
+			message: m['error.not_found'](), serverMessage: 'vm 999 not found', requestId: 'req-7'
+		});
+	});
+
 	it('throws ApiRequestError on non-2xx', async () => {
 		vi.stubGlobal('fetch', vi.fn().mockResolvedValue(jsonResponse(404, { code: 'not_found', message: 'gone' })));
 		await expect(get('/api/v1/foo')).rejects.toThrow(ApiRequestError);
 	});
 
+	it('announces a 401 to the shell and still rejects', async () => {
+		const listener = vi.fn();
+		globalThis.addEventListener(UNAUTHORIZED_EVENT, listener);
+		vi.stubGlobal('fetch', vi.fn().mockResolvedValue(jsonResponse(401, { code: 'unauthenticated', message: 'authentication required' })));
+		await expect(get('/api/v1/foo')).rejects.toMatchObject({ status: 401 });
+		globalThis.removeEventListener(UNAUTHORIZED_EVENT, listener);
+		expect(listener).toHaveBeenCalledTimes(1);
+	});
+
+	it('does not treat a wrong password (401 invalid_credentials) as an expired session', async () => {
+		const listener = vi.fn();
+		globalThis.addEventListener(UNAUTHORIZED_EVENT, listener);
+		vi.stubGlobal('fetch', vi.fn().mockResolvedValue(jsonResponse(401, { code: 'invalid_credentials', message: 'invalid credentials' })));
+		await expect(get('/api/v1/auth/password')).rejects.toMatchObject({ status: 401 });
+		globalThis.removeEventListener(UNAUTHORIZED_EVENT, listener);
+		expect(listener).not.toHaveBeenCalled();
+	});
+
 	it('throws with generic envelope when body is not JSON', async () => {
 		vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response('not json', { status: 500 })));
-		await expect(get('/api/v1/foo')).rejects.toThrow('request failed');
+		await expect(get('/api/v1/foo')).rejects.toThrow(m['error.generic']());
 	});
 });
 
@@ -117,11 +145,12 @@ describe('CSRF', () => {
 });
 
 describe('ApiRequestError', () => {
-	it('carries status, code, message, and retryAfterSeconds', () => {
+	it('carries status, code, a localized message, the server text and retryAfterSeconds', () => {
 		const err = new ApiRequestError(429, 'rate_limited', 'slow down', 30);
 		expect(err.status).toBe(429);
 		expect(err.code).toBe('rate_limited');
-		expect(err.message).toBe('slow down');
+		expect(err.message).toBe(m['error.rate_limited']());
+		expect(err.serverMessage).toBe('slow down');
 		expect(err.retryAfterSeconds).toBe(30);
 		expect(err.name).toBe('ApiRequestError');
 	});
@@ -145,7 +174,7 @@ describe('CSRF reload', () => {
 		vi.stubGlobal('fetch', vi.fn().mockResolvedValue(
 			jsonResponse(403, { code: 'forbidden', message: 'not allowed' }),
 		));
-		await expect(get('/api/v1/foo')).rejects.toThrow('not allowed');
+		await expect(get('/api/v1/foo')).rejects.toMatchObject({ code: 'forbidden', serverMessage: 'not allowed' });
 		expect(reload).not.toHaveBeenCalled();
 	});
 });

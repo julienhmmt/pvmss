@@ -1,4 +1,4 @@
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { StatusState, type HealthResponse } from './status.svelte';
 
 // T022 (US3): StatusState - severity derivation table from data-model.md
@@ -210,5 +210,100 @@ describe('StatusState.retryClusterConnection', () => {
 		await state.pollOnce();
 		await state.retryClusterConnection();
 		expect(state.severity).toBe('degraded');
+	});
+});
+
+describe('StatusState polling cadence', () => {
+	const healthy = makeResponse();
+	let hidden = false;
+
+	function setHidden(value: boolean): void {
+		hidden = value;
+		document.dispatchEvent(new Event('visibilitychange'));
+	}
+
+	beforeEach(() => {
+		vi.useFakeTimers();
+		hidden = false;
+		vi.spyOn(document, 'visibilityState', 'get').mockImplementation(() => (hidden ? 'hidden' : 'visible'));
+	});
+	afterEach(() => {
+		vi.useRealTimers();
+		vi.restoreAllMocks();
+	});
+
+	it('does not poll while the tab is hidden and polls once on return', async () => {
+		const fetcher = vi.fn().mockResolvedValue(healthy);
+		const state = new StatusState(fetcher);
+		state.start();
+		await vi.advanceTimersByTimeAsync(0);
+		expect(fetcher).toHaveBeenCalledTimes(1);
+
+		setHidden(true);
+		await vi.advanceTimersByTimeAsync(10 * 60_000);
+		expect(fetcher).toHaveBeenCalledTimes(1);
+
+		setHidden(false);
+		await vi.advanceTimersByTimeAsync(0);
+		expect(fetcher).toHaveBeenCalledTimes(2);
+		state.stop();
+	});
+
+	it('waits for the tab to show when it opens hidden', async () => {
+		hidden = true;
+		const fetcher = vi.fn().mockResolvedValue(healthy);
+		const state = new StatusState(fetcher);
+		state.start();
+		await vi.advanceTimersByTimeAsync(60_000);
+		expect(fetcher).not.toHaveBeenCalled();
+
+		setHidden(false);
+		await vi.advanceTimersByTimeAsync(0);
+		expect(fetcher).toHaveBeenCalledTimes(1);
+		state.stop();
+	});
+
+	it('backs off 15s, 30s, 60s, 120s on failures and resets on success', async () => {
+		const fetcher = vi.fn().mockRejectedValue(new Error('down'));
+		const state = new StatusState(fetcher);
+		state.start();
+		await vi.advanceTimersByTimeAsync(0);
+		const callsAfter = async (ms: number): Promise<number> => {
+			await vi.advanceTimersByTimeAsync(ms);
+			return fetcher.mock.calls.length;
+		};
+		// first failure -> wait 30s, second -> 60s, third -> 120s, then capped.
+		expect(await callsAfter(29_999)).toBe(1);
+		expect(await callsAfter(1)).toBe(2);
+		expect(await callsAfter(60_000)).toBe(3);
+		expect(await callsAfter(120_000)).toBe(4);
+		expect(await callsAfter(120_000)).toBe(5);
+
+		fetcher.mockResolvedValue(healthy);
+		expect(await callsAfter(120_000)).toBe(6);
+		expect(await callsAfter(15_000)).toBe(7);
+		state.stop();
+	});
+
+	it('stop() leaves no timer and aborts the request in flight', () => {
+		let seen: AbortSignal | undefined;
+		const fetcher = vi.fn((signal?: AbortSignal) => {
+			seen = signal;
+			return new Promise<HealthResponse>(() => {});
+		});
+		const state = new StatusState(fetcher);
+		state.start();
+		state.stop();
+		expect(seen?.aborted).toBe(true);
+		expect(vi.getTimerCount()).toBe(0);
+	});
+
+	it('skips a tick while the previous poll is still in flight', async () => {
+		const fetcher = vi.fn(() => new Promise<HealthResponse>(() => {}));
+		const state = new StatusState(fetcher);
+		state.start();
+		await state.pollOnce();
+		expect(fetcher).toHaveBeenCalledTimes(1);
+		state.stop();
 	});
 });

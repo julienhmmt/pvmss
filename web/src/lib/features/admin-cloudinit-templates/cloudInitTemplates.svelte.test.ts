@@ -1,5 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { AdminCloudInitTemplatesStore } from './cloudInitTemplates.svelte';
+import { m } from '#lib/paraglide/messages.js';
 
 function jsonResponse(status: number, body: unknown): Response {
 	return new Response(JSON.stringify(body), { status, headers: { 'Content-Type': 'application/json' } });
@@ -31,7 +32,7 @@ describe('AdminCloudInitTemplatesStore save contract', () => {
 		const store = new AdminCloudInitTemplatesStore();
 		store.templates = [template];
 		await expect(store.update('tpl-1', 'Base', '#cloud-config\nusers: []')).resolves.toBe(false);
-		expect(store.saveError).toBe('server broke');
+		expect(store.saveError).toBe(m['error.generic']());
 		expect(store.templates[0]?.content).toBe('#cloud-config\n');
 	});
 

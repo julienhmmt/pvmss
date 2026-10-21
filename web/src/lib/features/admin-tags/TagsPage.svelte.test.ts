@@ -66,7 +66,7 @@ function openCreateDialog(): void {
 }
 
 function submitDialogForm(): void {
-	const form = document.querySelector<HTMLFormElement>('[role="dialog"] form');
+	const form = document.querySelector<HTMLFormElement>('dialog form');
 	expect(form).not.toBeNull();
 	form!.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }));
 }
@@ -84,14 +84,14 @@ describe('TagsPage create dialog', () => {
 
 		openCreateDialog();
 		await tick();
-		expect(document.querySelector('[role="dialog"]')).not.toBeNull();
+		expect(document.querySelector('dialog')).not.toBeNull();
 
 		submitDialogForm();
 		await tick();
 		await tick();
 
 		expect(onCreate).toHaveBeenCalled();
-		expect(document.querySelector('[role="dialog"]')).not.toBeNull();
+		expect(document.querySelector('dialog')).not.toBeNull();
 	});
 
 	it('closes the dialog when the create succeeds', async () => {
@@ -105,7 +105,7 @@ describe('TagsPage create dialog', () => {
 		await tick();
 		await tick();
 
-		expect(document.querySelector('[role="dialog"]')).toBeNull();
+		expect(document.querySelector('dialog')).toBeNull();
 	});
 
 	it('renders the save error inside the dialog', async () => {
@@ -115,7 +115,7 @@ describe('TagsPage create dialog', () => {
 		openCreateDialog();
 		await tick();
 
-		expect(document.querySelector('[role="dialog"]')?.textContent).toContain('name already used');
+		expect(document.querySelector('dialog')?.textContent).toContain('name already used');
 	});
 });
 

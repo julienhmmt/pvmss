@@ -14,6 +14,7 @@
 	import StatCard from '#lib/shared/ui/StatCard.svelte';
 	import TextField from '#lib/shared/ui/TextField.svelte';
 	import { m } from '#lib/paraglide/messages.js';
+	import { formatDateTime } from '#lib/shared/format-date.js';
 
 	interface Props {
 		detail: PoolDetail | null;
@@ -194,7 +195,7 @@
 						<dt class="text-xs text-muted-foreground">{m['admin.poolDetail.provisioned']()}</dt>
 						<dd class="mt-1 font-mono">
 							{#if detail.createdAt}
-								<time datetime={detail.createdAt}>{new Date(detail.createdAt).toLocaleString()}</time>
+								<time datetime={detail.createdAt}>{formatDateTime(detail.createdAt)}</time>
 							{:else}
 								{m['admin.nodeDetails.notReported']()}
 							{/if}
@@ -308,7 +309,7 @@
 						<tbody>
 							{#each detail.activity as entry (entry.id)}
 								<tr>
-									<td class="whitespace-nowrap font-mono text-xs tabular-nums">{new Date(entry.timestamp).toLocaleString()}</td>
+									<td class="whitespace-nowrap font-mono text-xs tabular-nums">{formatDateTime(entry.timestamp, 'short')}</td>
 									<td class="font-mono text-xs">{entry.actor}</td>
 									<td><code class="text-xs">{entry.action}</code></td>
 									<td class="font-mono tabular-nums">{entry.vmid ?? '—'}</td>

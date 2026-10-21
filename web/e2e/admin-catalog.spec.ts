@@ -103,6 +103,7 @@ test.describe('T11 admin catalog', () => {
 
 		// Select the node that hosts the approved bridge; pve-node-01 is used
 		// for the storage assertion and may differ from the bridge node.
+		await page.getByLabel('Name').fill('web-e2e-catalog');
 		await page.getByLabel('Node').selectOption(bridgeNode ?? 'pve-node-01');
 
 		// ISOs are node-local (US1), so the dropdown stays empty until a node
@@ -111,6 +112,9 @@ test.describe('T11 admin catalog', () => {
 
 		await page.getByRole('tab', { name: 'Disk' }).click();
 		await expect(page.getByLabel('Storage').locator('option[value="local"]')).toHaveCount(1);
+		// The stepper only advances once each step is complete, so the disk has
+		// to be chosen before the network tab becomes reachable.
+		await page.getByLabel('Storage').selectOption('local');
 
 		await page.getByRole('tab', { name: 'Network' }).click();
 		await expect(page.getByLabel('Bridge').locator('option[value="vmbr2"]')).toHaveCount(1);
@@ -148,7 +152,7 @@ test.describe('T11 admin catalog', () => {
 		await page.goto('/admin/profiles');
 		// Two "New profile" buttons exist (toolbar + empty state).
 		await page.getByRole('button', { name: 'New profile' }).first().click();
-		await page.getByLabel('Label').fill('XLarge');
+		await page.getByRole('textbox', { name: 'Label', exact: true }).fill('XLarge');
 		await page.getByLabel('vCPU cores').fill('8');
 		await page.getByLabel('Memory (MB)').fill('16384');
 		await page.getByLabel('Disk (GB)').fill('160');
@@ -257,7 +261,8 @@ test.describe('T11 admin catalog', () => {
 		expect(alice.status()).toBe(200);
 
 		await page.goto('/admin/nodes');
-		await expect(page).toHaveURL(/\/login$/);
+		// Signed in without admin rights: sent home, not to the sign-in form.
+		await expect(page).toHaveURL(/\/vms$/);
 
 		const direct = await page.request.get('/api/v1/admin/nodes?cluster=default');
 		expect(direct.status()).toBe(403);

@@ -143,7 +143,7 @@
 		</Card>
 
 		{#if connect !== 'installing'}
-		<aside class="flex flex-col gap-3 rounded-xl border border-border bg-muted/40 p-5" aria-labelledby="connect-console-title">
+		<div class="flex flex-col gap-3 rounded-xl border border-border bg-muted/40 p-5">
 			<h2 id="connect-console-title" class="text-sm font-semibold">{m['vms.detail.connect.consoleTitle']()}</h2>
 			<p class="text-sm text-muted-foreground">{m['vms.detail.connect.consoleBody']()}</p>
 			{#if running}
@@ -160,7 +160,7 @@
 				</span>
 			{/if}
 			<p class="text-xs text-muted-foreground">{m['vms.detail.connect.consoleHint']()}</p>
-		</aside>
+		</div>
 		{/if}
 	</div>
 

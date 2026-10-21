@@ -41,6 +41,8 @@ export interface VmListResult {
 	page: number;
 	pageSize: number;
 	availableNodes: string[];
+	/** Pool facet for the admin "all machines" list (admin scope only). */
+	availablePools?: string[];
 	emptyReason?: VmEmptyReason;
 	quota?: VmQuota;
 }
@@ -107,10 +109,22 @@ export class VmListStore {
 	 */
 	attention = $state(false);
 	node = $state('');
+	/** Pool scope for the admin "all machines" list (one PVMSS user per pool). */
+	pool = $state('');
 	sortBy = $state<VmSortBy>(DEFAULT_SORT_BY);
 	sortDir = $state<VmSortDir>(DEFAULT_SORT_DIR);
 	page = $state(1);
 	pageSize = $state(DEFAULT_PAGE_SIZE);
+
+	/** True when any list filter narrows the owned machines. */
+	get filtered(): boolean {
+		return this.search !== '' || this.status !== '' || this.node !== '' || this.pool !== '' || this.attention;
+	}
+
+	/** The user owns no machine at all (first visit), not a filtered-empty list. */
+	get noneOwned(): boolean {
+		return this.result?.emptyReason === 'no_vms_owned' && !this.filtered;
+	}
 
 	#navigate: (queryString: string) => void;
 	#searchTimer: ReturnType<typeof setTimeout> | null = null;
@@ -129,6 +143,7 @@ export class VmListStore {
 		this.status = (params.get('status') ?? '') as VmStatus | '';
 		this.attention = params.get('attention') === '1';
 		this.node = params.get('node') ?? '';
+		this.pool = params.get('pool') ?? '';
 		this.sortBy = (params.get('sortBy') ?? DEFAULT_SORT_BY) as VmSortBy;
 		this.sortDir = (params.get('sortDir') ?? DEFAULT_SORT_DIR) as VmSortDir;
 		this.page = Math.max(1, Number(params.get('page')) || 1);
@@ -143,6 +158,7 @@ export class VmListStore {
 		if (this.status !== '') params.set('status', this.status);
 		if (this.attention) params.set('attention', '1');
 		if (this.node !== '') params.set('node', this.node);
+		if (this.pool !== '') params.set('pool', this.pool);
 		if (this.sortBy !== DEFAULT_SORT_BY) params.set('sortBy', this.sortBy);
 		if (this.sortDir !== DEFAULT_SORT_DIR) params.set('sortDir', this.sortDir);
 		if (this.page !== 1) params.set('page', String(this.page));
@@ -172,7 +188,11 @@ export class VmListStore {
 			// Proxmox destroy runs asynchronously (server/internal/cluster/proxmox_writer.go),
 			// so the inventory cache can still report a just-deleted VM for a short
 			// window. Hide anything this tab deleted itself until that window passes.
-			const items = result.items.filter((item) => !isRecentlyDeletedVm(item.cluster, item.vmid));
+			// Untagged VMs arrive with `tags: null` from the API (a nil Go slice);
+			// normalize here so every consumer can treat tags as an array.
+			const items = result.items
+				.filter((item) => !isRecentlyDeletedVm(item.cluster, item.vmid))
+				.map((item) => ({ ...item, tags: item.tags ?? [] }));
 			const hidden = result.items.length - items.length;
 			// Keep total/quota consistent with the hidden rows, otherwise the last
 			// deletion shows a "no match" state with a stale "1 machine" count.
@@ -228,10 +248,26 @@ export class VmListStore {
 		}
 	}
 
+	/** The list shows every page-1 row: no search, filter or attention view. */
+	#unfilteredFirstPage(): boolean {
+		return (
+			this.page === 1 &&
+			this.search === '' &&
+			this.status === '' &&
+			this.node === '' &&
+			this.pool === '' &&
+			!this.attention
+		);
+	}
+
 	#hasIncompleteRow(target: Pick<TrackedTask, 'cluster' | 'vmid' | 'expectedStatus'>): boolean {
 		const row: VmListItem | null = this.#findRow(target.cluster, target.vmid);
-		if (row === null) return this.page === 1 && this.search === '' && this.status === '' && this.node === ''
-			&& !this.attention && (this.cluster === '' || this.cluster === target.cluster);
+		if (row === null) {
+			// Only the unfiltered first page can be expected to grow a new row.
+			return (
+				this.#unfilteredFirstPage() && (this.cluster === '' || this.cluster === target.cluster)
+			);
+		}
 		const incomplete: boolean = row.name === '' || row.cpuCores === 0 || row.memoryTotal === 0;
 		return incomplete || (target.expectedStatus !== undefined && row.status !== target.expectedStatus);
 	}
@@ -322,6 +358,7 @@ export class VmListStore {
 		this.status = '';
 		this.attention = false;
 		this.node = '';
+		this.pool = '';
 		this.page = 1;
 		this.#syncAndLoad();
 	}
@@ -349,6 +386,13 @@ export class VmListStore {
 
 	setNode(value: string): void {
 		this.node = value;
+		this.page = 1;
+		this.#syncAndLoad();
+	}
+
+	/** Narrows the admin "all machines" list to one pool (one PVMSS user). */
+	setPool(value: string): void {
+		this.pool = value;
 		this.page = 1;
 		this.#syncAndLoad();
 	}

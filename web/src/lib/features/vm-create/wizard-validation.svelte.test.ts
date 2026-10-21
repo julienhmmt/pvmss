@@ -1,6 +1,7 @@
 import { afterEach, beforeAll, describe, expect, it, vi } from 'vitest';
 import { flushSync, mount, tick } from 'svelte';
 import { setLocale } from '#lib/paraglide/runtime.js';
+import { m } from '#lib/paraglide/messages.js';
 import SimpleWizard from './SimpleWizard.svelte';
 import DetailedWizard from './DetailedWizard.svelte';
 import { VmCreateStore, type VmCreateCatalog } from './create.svelte';
@@ -88,7 +89,7 @@ describe('Create VM wizard validation timing (Ticket 09)', () => {
 
 		expect(fetchMock).not.toHaveBeenCalled();
 		expect(document.body.textContent).toContain('Name is required.');
-		const nameInput = document.querySelector<HTMLInputElement>('input[placeholder="web-04"]');
+		const nameInput = document.querySelector<HTMLInputElement>('[data-testid="vm-create-name"]');
 		expect(nameInput).not.toBeNull();
 		expect(nameInput!.getAttribute('aria-invalid')).toBe('true');
 		expect(document.activeElement).toBe(nameInput);
@@ -115,7 +116,7 @@ describe('Create VM wizard validation timing (Ticket 09)', () => {
 		expect(baseTab?.textContent).toContain('Base');
 		expect(document.body.textContent).toContain('Name is required.');
 		expect(document.body.textContent).toContain('Select an approved node.');
-		const nameInput = document.querySelector<HTMLInputElement>('input[placeholder="web-03"]');
+		const nameInput = document.querySelector<HTMLInputElement>('[data-testid="vm-create-name"]');
 		expect(document.activeElement).toBe(nameInput);
 
 		storeInstance.name = 'web-valid';
@@ -128,5 +129,131 @@ describe('Create VM wizard validation timing (Ticket 09)', () => {
 
 		const currentTab = document.querySelector<HTMLButtonElement>('[role="tab"][aria-current="step"]');
 		expect(currentTab?.textContent).toContain('Hardware');
+	});
+
+	it('does not let a step tab skip over an incomplete step', async () => {
+		storeInstance = new VmCreateStore();
+		storeInstance.catalog = baseCatalog();
+		storeInstance.mode = 'detailed';
+
+		mount(DetailedWizard, { target: document.body });
+
+		// Base is empty: clicking the Disk tab directly must land back on Base
+		// with its errors revealed, not on Disk.
+		const diskTab = [...document.querySelectorAll<HTMLButtonElement>('[role="tab"]')].find((tab) =>
+			tab.textContent?.includes('Disk')
+		);
+		expect(diskTab).toBeDefined();
+		diskTab!.click();
+		flushSync();
+		await tick();
+
+		const currentTab = document.querySelector<HTMLButtonElement>('[role="tab"][aria-current="step"]');
+		expect(currentTab?.textContent).toContain('Base');
+		expect(document.body.textContent).toContain('Name is required.');
+	});
+
+	it('ticks a completed step only while its values remain valid', async () => {
+		storeInstance = new VmCreateStore();
+		storeInstance.catalog = baseCatalog();
+		storeInstance.mode = 'detailed';
+		storeInstance.name = 'web-valid';
+		storeInstance.node = 'pve-node-01';
+
+		mount(DetailedWizard, { target: document.body });
+
+		const nextBtn = [...document.querySelectorAll<HTMLButtonElement>('button')].find(
+			(btn) => btn.textContent?.trim() === 'Next'
+		);
+		nextBtn!.click();
+		flushSync();
+		await tick();
+
+		const baseTab = () =>
+			[...document.querySelectorAll<HTMLButtonElement>('[role="tab"]')].find((tab) => tab.textContent?.includes('Base'))!;
+
+		expect(baseTab().querySelector('path[d="M4 10l4 4 8-8"]')).not.toBeNull();
+		expect(baseTab().textContent).not.toContain(m['vms.create.stepNeedsFix']());
+
+		// Losing a required value (here: the name) must drop the checkmark.
+		storeInstance.name = '';
+		flushSync();
+
+		expect(baseTab().querySelector('path[d="M4 10l4 4 8-8"]')).toBeNull();
+		expect(baseTab().textContent).toContain(m['vms.create.stepNeedsFix']());
+	});
+
+	it('disables Create on Review while an earlier step is incomplete', async () => {
+		storeInstance = new VmCreateStore();
+		storeInstance.catalog = baseCatalog();
+		storeInstance.mode = 'detailed';
+		storeInstance.name = 'web-valid';
+		storeInstance.node = 'pve-node-01';
+		storeInstance.diskStorage = 'local-lvm';
+		storeInstance.nics = [{ bridge: 'vmbr0', model: 'virtio' }];
+
+		mount(DetailedWizard, { target: document.body });
+
+		const nextBtn = () =>
+			[...document.querySelectorAll<HTMLButtonElement>('button')].find((btn) => btn.textContent?.trim() === 'Next');
+
+		for (let i = 0; i < 4; i++) {
+			nextBtn()!.click();
+			flushSync();
+			await tick();
+		}
+		expect(document.querySelector('[role="tab"][aria-current="step"]')?.textContent).toContain('Review');
+
+		const submitBtn = () =>
+			[...document.querySelectorAll<HTMLButtonElement>('button')].find(
+				(btn) => btn.textContent?.trim() === m['vms.create.submit']()
+			);
+		expect(submitBtn()!.disabled).toBe(false);
+
+		storeInstance.diskStorage = '';
+		flushSync();
+
+		expect(submitBtn()!.disabled).toBe(true);
+		expect(document.querySelector('[data-testid="vm-create-blocker"]')?.textContent).toContain('Disk');
+	});
+});
+
+describe('Simple wizard dead ends (ticket 02)', () => {
+	beforeAll(() => setLocale('en', { reload: false }));
+
+	afterEach(() => {
+		document.body.innerHTML = '';
+		vi.unstubAllGlobals();
+	});
+
+	function mountWith(catalog: VmCreateCatalog): void {
+		storeInstance = new VmCreateStore();
+		storeInstance.catalog = catalog;
+		storeInstance.mode = 'simple';
+		mount(SimpleWizard, { target: document.body });
+		flushSync();
+	}
+
+	it('names the only starting point instead of an empty choice', () => {
+		mountWith({ ...baseCatalog(), templates: [], images: [], isos: [] });
+
+		expect(document.querySelector('input[name="simple-source"]')).toBeNull();
+		expect(document.querySelector('[data-testid="vm-create-start-fixed"]')?.textContent).toContain(m['vms.create.source.profileTitle']());
+		// Decision 2026-10-21: no size is preselected.
+		expect(storeInstance.profileId).toBe('');
+	});
+
+	it('says why the submit is disabled when no size is chosen', async () => {
+		vi.stubGlobal('fetch', vi.fn());
+		mountWith({ ...baseCatalog(), templates: [], images: [], isos: [] });
+		storeInstance.name = 'web-valid';
+		flushSync();
+
+		document.querySelector<HTMLButtonElement>('[data-testid="vm-create-submit"]')!.click();
+		flushSync();
+		await tick();
+
+		expect(document.querySelector<HTMLButtonElement>('[data-testid="vm-create-submit"]')!.disabled).toBe(true);
+		expect(document.querySelector('[data-testid="vm-create-submit-hint"]')?.textContent).toBe(m['vms.create.hintChooseSize']());
 	});
 });

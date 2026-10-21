@@ -109,7 +109,6 @@
 </section>
 
 <style>
-	.doc-content :global(h1),
 	.doc-content :global(h2),
 	.doc-content :global(h3),
 	.doc-content :global(h4),
@@ -122,16 +121,17 @@
 		margin-top: 1.5rem;
 	}
 
-	.doc-content :global(h1) {
-		font-size: 1.5rem;
-	}
-
+	/* The renderer emits h2-h4: the page header owns the h1. */
 	.doc-content :global(h2) {
 		font-size: 1.25rem;
 	}
 
 	.doc-content :global(h3) {
 		font-size: 1.125rem;
+	}
+
+	.doc-content :global(h4) {
+		font-size: 1rem;
 	}
 
 	.doc-content :global(p) {

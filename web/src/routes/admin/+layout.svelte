@@ -9,7 +9,9 @@
 	import { onMount } from 'svelte';
 	import { goto } from '$app/navigation';
 	import { resolve } from '$app/paths';
+	import { page } from '$app/state';
 	import { getSessionContext } from '#lib/features/auth/session.svelte.js';
+	import { loginHref } from '#lib/features/auth/public-routes.js';
 	import { m } from '#lib/paraglide/messages.js';
 
 	let { children }: { children: Snippet } = $props();
@@ -23,8 +25,12 @@
 			await session.load();
 		}
 		checked = true;
-		if (!session.isAdmin) {
-			await goto(resolve('/login'));
+		// Anonymous: sign in and come back. Signed in without admin rights:
+		// signing in again would not help, so go home.
+		if (session.principal === null) {
+			await goto(loginHref(page.url.pathname + page.url.search));
+		} else if (!session.isAdmin) {
+			await goto(resolve('/'));
 		}
 	});
 </script>

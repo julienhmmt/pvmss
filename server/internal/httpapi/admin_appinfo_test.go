@@ -3,8 +3,10 @@ package httpapi_test
 import (
 	"encoding/json"
 	"net/http"
+	"pvmss/server/internal/httpapi"
 	"strings"
 	"testing"
+	"time"
 )
 
 type configFieldDTO struct {
@@ -169,5 +171,48 @@ func TestPublicVersion_ReturnsOnlyVersion(t *testing.T) {
 
 	if strings.Contains(body, "\"clusters\"") {
 		t.Error("public version response contains 'clusters' - should not")
+	}
+}
+
+// TestAdminAppInfo_PerClusterHealthFollowsFreshness - each cluster reports its
+// own refresh state from the same freshness source as /health, so a cluster
+// the banner calls unreachable is never listed as refreshed.
+//
+//nolint:paralleltest // serial: shared env
+func TestAdminAppInfo_PerClusterHealthFollowsFreshness(t *testing.T) {
+	t.Setenv("SESSION_SECRET", strings.Repeat("s", 32))
+
+	ops, auth, _ := newAdminOpsHandler(t)
+	auth.SetClusterFreshnessChecker(authTestFreshness{clusters: []httpapi.ClusterFreshness{
+		{Name: "default", RefreshedAt: time.Now()},
+		{Name: "offline-demo"},
+	}}, time.Minute)
+	cookie := adminCookie(t, auth)
+
+	rec := opsGet(t, ops, auth, cookie, "/api/v1/admin/appinfo")
+	if rec.Code != http.StatusOK {
+		t.Fatalf("status = %d: %s", rec.Code, rec.Body.String())
+	}
+
+	var info appInfoDTO
+	if err := json.Unmarshal(rec.Body.Bytes(), &info); err != nil {
+		t.Fatalf("decode: %v", err)
+	}
+
+	got := map[string]clusterHealthDTO{}
+	for _, c := range info.Clusters {
+		got[c.Name] = c
+	}
+
+	if len(got) != 2 {
+		t.Fatalf("clusters = %+v, want default and offline-demo", info.Clusters)
+	}
+
+	if !got["default"].LastRefreshSucceeded || got["default"].RefreshedAt == "" {
+		t.Errorf("default = %+v, want refreshed", got["default"])
+	}
+
+	if got["offline-demo"].LastRefreshSucceeded || got["offline-demo"].RefreshedAt != "" {
+		t.Errorf("offline-demo = %+v, want not refreshed and no timestamp", got["offline-demo"])
 	}
 }

@@ -115,7 +115,7 @@
 <div class="grid gap-4">
 	<FormField label={m['vms.create.name']()} required error={nameError}>
 		{#snippet children({ id, describedBy, invalid })}
-			<TextField {id} {describedBy} {invalid} bind:value={form.name} onblur={() => (nameTouched = true)} required placeholder="web-03" />
+			<TextField {id} {describedBy} {invalid} bind:value={form.name} onblur={() => (nameTouched = true)} required data-testid="vm-create-name" autocomplete="off" />
 		{/snippet}
 	</FormField>
 

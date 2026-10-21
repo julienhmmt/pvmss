@@ -6,11 +6,15 @@ import { defineConfig, devices } from '@playwright/test';
 
 export default defineConfig({
 	testDir: './e2e',
-	fullyParallel: true,
+	// The specs share one stateful fake server (VM counts, approvals, refresh
+	// guard), so they run in file order on one worker, locally as in CI.
+	fullyParallel: false,
+	workers: 1,
 	forbidOnly: !!process.env.CI,
-	retries: process.env.CI ? 2 : 0,
-	...(process.env.CI ? { workers: 1 } : {}),
-	reporter: 'list',
+	// One retry captures a trace; a test that only passes on retry still fails CI.
+	retries: process.env.CI ? 1 : 0,
+	failOnFlakyTests: !!process.env.CI,
+	reporter: process.env.CI ? [['list'], ['github'], ['html', { open: 'never' }]] : 'list',
 	use: {
 		baseURL: 'http://127.0.0.1:50001',
 		trace: 'on-first-retry',

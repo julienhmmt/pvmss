@@ -1,5 +1,5 @@
-# Build stage - Go (v0.4 server)
-FROM golang:1.27.2-alpine AS builder
+# Build stage - Go
+FROM golang:1.27.3-alpine AS builder
 
 WORKDIR /app
 
@@ -15,7 +15,7 @@ RUN --mount=type=cache,target=/go/pkg/mod \
 # Copy server source code (module root = /app/)
 COPY server/ ./
 
-# Build the v0.4 server binary (static, CGO disabled - no C toolchain needed)
+# Build the server binary (static, CGO disabled - no C toolchain needed)
 RUN --mount=type=cache,target=/root/.cache/go-build \
     --mount=type=cache,target=/go/pkg/mod \
     CGO_ENABLED=0 GOOS=linux \
@@ -26,8 +26,8 @@ RUN --mount=type=cache,target=/root/.cache/go-build \
 # root:root 0755 - unwritable by the nonroot runtime uid (SQLITE_CANTOPEN).
 RUN mkdir /data
 
-# Build SvelteKit SPA (v0.4 web)
-FROM oven/bun:1-alpine AS svelte-builder
+# Build SvelteKit SPA
+FROM oven/bun:1.4.3-alpine AS svelte-builder
 WORKDIR /app/web
 
 # Copy lockfile first for better layer caching
@@ -44,9 +44,9 @@ FROM gcr.io/distroless/static-debian13:nonroot
 
 WORKDIR /app
 
-# Copy v0.4 Go binary
+# Copy Go binary
 COPY --from=builder --chown=nonroot:nonroot /app/pvmss /app/pvmss
-# SvelteKit build output (v0.4 web)
+# SvelteKit build output
 COPY --from=svelte-builder --chown=nonroot:nonroot /app/web/build/ /app/web/build/
 # Database directory owned by the runtime user (see builder stage).
 COPY --from=builder --chown=nonroot:nonroot /data /data
@@ -57,13 +57,13 @@ ENV PVMSS_DB_PATH=/data/pvmss.db
 # docker-compose / k8s controls external exposure. Override with
 # -e PVMSS_HOST=127.0.0.1 for bare-metal/loopback-only deployments.
 ENV PVMSS_HOST=0.0.0.0
-# Web build directory - the v0.4 binary resolves this via PVMSS_WEB_DIR
+# Web build directory - the binary resolves this via PVMSS_WEB_DIR
 # or falls back to a path relative to the executable.
 ENV PVMSS_WEB_DIR=/app/web/build
 
 # Expose the port the app runs on
 EXPOSE 50000
 
-# v0.4 entrypoint - the server binary (no -templates flag; web dir is
+# Entry point - the server binary (no -templates flag; web dir is
 # resolved via PVMSS_WEB_DIR env var or relative to the executable).
 ENTRYPOINT ["/app/pvmss"]

@@ -7,6 +7,7 @@ import (
 	"pvmss/server/internal/catalog"
 	"pvmss/server/internal/policy"
 	"pvmss/server/internal/store"
+	"slices"
 )
 
 // createPlan holds the resolved and validated values for a VM creation request.
@@ -363,7 +364,7 @@ func resolveResources(req CreateRequest, resources catalog.Resources, capacities
 // resolveNode returns the requested node, or - when the request omits it -
 // the best-scoring approved node. Candidates are restricted to nodes holding
 // the requested ISO or image, then hard-filtered to nodes with at least one
-// approved storage.
+// approved storage and bridge.
 func resolveNode(req CreateRequest, resources catalog.Resources, capacities map[string]policy.Capacity) (string, error) {
 	if req.Node != "" {
 		return req.Node, nil
@@ -384,10 +385,10 @@ func resolveNode(req CreateRequest, resources catalog.Resources, capacities map[
 		}
 	}
 
-	// Hard filter: node must have at least one approved storage.
-	candidates = nodesWithStorage(resources, candidates)
+	// Hard filter: node must have at least one approved storage and bridge.
+	candidates = hostableNodes(resources, candidates)
 	if len(candidates) == 0 {
-		return "", fmt.Errorf("%w: no approved node with storage in catalog", ErrNotApproved)
+		return "", fmt.Errorf("%w: no approved node with storage and bridge in catalog", ErrNotApproved)
 	}
 
 	return pickBestNode(candidates, capacities, req), nil
@@ -507,18 +508,21 @@ func placementCandidates(req CreateRequest, resources catalog.Resources) []catal
 		candidates = nodesWithImage(resources, req.Image.Storage, req.Image.File)
 	}
 
-	return nodesWithStorage(resources, candidates)
+	return hostableNodes(resources, candidates)
 }
 
-func nodesWithStorage(resources catalog.Resources, candidates []catalog.Node) []catalog.Node {
+// hostableNodes keeps the candidates that can host a VM: at least one
+// approved storage and one approved bridge on the node, the same rule the
+// create catalog uses to offer nodes (httpapi.catalogNodeNames).
+func hostableNodes(resources catalog.Resources, candidates []catalog.Node) []catalog.Node {
 	var filtered []catalog.Node
 
 	for _, candidate := range candidates {
-		for _, storage := range resources.Storages {
-			if storage.Node == candidate.Name {
-				filtered = append(filtered, candidate)
-				break
-			}
+		onNode := func(node string) bool { return node == candidate.Name }
+
+		if slices.ContainsFunc(resources.Storages, func(s catalog.Storage) bool { return onNode(s.Node) }) &&
+			slices.ContainsFunc(resources.Bridges, func(b catalog.Bridge) bool { return onNode(b.Node) }) {
+			filtered = append(filtered, candidate)
 		}
 	}
 

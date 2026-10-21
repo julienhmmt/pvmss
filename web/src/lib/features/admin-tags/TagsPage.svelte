@@ -139,11 +139,13 @@
 				<TextField
 					type="search"
 					placeholder={m['admin.tags.searchPlaceholder']()}
+					aria-label={m['admin.tags.searchPlaceholder']()}
 					value={search}
 					oninput={(e: Event & { currentTarget: HTMLInputElement }) => onSearchChange(e.currentTarget.value)}
 					class="w-full sm:w-48"
 				/>
 				<Select
+					aria-label={m['admin.tags.filterProtectionLabel']()}
 					value={protectedFilter}
 					onchange={(e: Event & { currentTarget: HTMLSelectElement }) => onProtectedFilterChange(e.currentTarget.value as 'all' | 'protected' | 'unprotected')}
 					options={[

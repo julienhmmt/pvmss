@@ -1,7 +1,5 @@
 <script lang="ts">
-	import { onMount } from 'svelte';
-	import { goto } from '$app/navigation';
-	import { resolve } from '$app/paths';
+	import { onMount, tick } from 'svelte';
 	import Alert from '#lib/shared/ui/Alert.svelte';
 	import BrandPanel from '#lib/shared/ui/BrandPanel.svelte';
 	import { LoginForm } from '#lib/features/auth/login.svelte.js';
@@ -27,13 +25,30 @@
 		void form.loadClusters();
 	});
 
+	const ERROR_ID = 'login-error';
+	let formEl: HTMLFormElement | null = $state(null);
+
 	async function submit(): Promise<void> {
 		const principal = await form.submit();
-		if (principal === null) return;
-		// Reload the shell session so the signed-in sidebar appears without a
-		// full page reload (the root layout gates the sidebar on principal).
+		if (principal === null) {
+			await tick();
+			focusAfterError();
+			return;
+		}
+		// Reload the shell session: the root layout sees the principal and
+		// sends the user on to `next` or their home.
 		await session.load();
-		await goto(resolve(principal.isAdmin ? '/admin' : '/'));
+	}
+
+	// Keyboard users land where they can act: the first empty field, or the
+	// error itself when every field is filled.
+	function focusAfterError(): void {
+		const inputs = [...(formEl?.querySelectorAll<HTMLInputElement>('input:not([disabled])') ?? [])];
+		(inputs.find((input) => input.value === '') ?? document.getElementById(ERROR_ID))?.focus();
+	}
+
+	function withError(describedBy: string | undefined): string | undefined {
+		return form.error ? [describedBy, ERROR_ID].filter(Boolean).join(' ') : describedBy;
 	}
 </script>
 
@@ -54,7 +69,7 @@
 					<h1 class="text-2xl font-semibold tracking-tight">{m['login.heading']()}</h1>
 					<p class="mt-2 text-sm text-muted-foreground">{m['login.description']()}</p>
 				</div>
-				<form class="grid gap-4" onsubmit={(event) => { event.preventDefault(); void submit(); }}>
+				<form bind:this={formEl} class="grid gap-4" onsubmit={(event) => { event.preventDefault(); void submit(); }}>
 					{#if form.pveDisabled && form.provider === 'pve'}
 						<p class="rounded-md bg-warning-soft p-3 text-sm text-warning-soft-foreground" role="status">
 							{m['login.clusterDownHint']()}
@@ -72,7 +87,7 @@
 							{#snippet children({ id, describedBy, invalid })}
 								<TextField
 									{id}
-									{describedBy}
+									describedBy={withError(describedBy)}
 									{invalid}
 									bind:value={form.username}
 									autocomplete="username"
@@ -90,7 +105,7 @@
 						{#snippet children({ id, describedBy, invalid })}
 							<TextField
 								{id}
-								{describedBy}
+								describedBy={withError(describedBy)}
 								{invalid}
 								type="password"
 								autocomplete="current-password"
@@ -106,7 +121,7 @@
 						{/snippet}
 					</FormField>
 					{#if form.error}
-						<Alert>{form.error}</Alert>
+						<Alert id={ERROR_ID} tabindex={-1}>{form.error}</Alert>
 					{/if}
 					<Button type="submit" loading={form.loading} disabled={form.provider === 'pve' && form.pveDisabled}>
 						{form.loading ? m['login.signingIn']() : m['login.signIn']()}

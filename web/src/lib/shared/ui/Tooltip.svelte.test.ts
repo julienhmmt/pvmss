@@ -1,44 +1,66 @@
-import { describe, it, expect, afterEach } from 'vitest';
-import { mount } from 'svelte';
+import { describe, it, expect, afterEach, vi } from 'vitest';
+import { mount, tick } from 'svelte';
 import Tooltip from './Tooltip.svelte';
+
+const tooltip = (): HTMLElement => document.body.querySelector<HTMLElement>('[role="tooltip"]')!;
+const trigger = (): HTMLElement => document.body.querySelector<HTMLElement>('[aria-describedby]')!;
+
+async function hoverAt(left: number, width: number, bubbleWidth: number): Promise<void> {
+	vi.spyOn(trigger(), 'getBoundingClientRect').mockReturnValue({ left, width, top: 100, bottom: 120 } as DOMRect);
+	vi.spyOn(tooltip(), 'offsetWidth', 'get').mockReturnValue(bubbleWidth);
+	trigger().dispatchEvent(new MouseEvent('mouseenter'));
+	await vi.advanceTimersByTimeAsync(200);
+	await tick();
+}
 
 describe('Tooltip', () => {
 	afterEach(() => {
+		vi.useRealTimers();
+		vi.restoreAllMocks();
 		document.body.innerHTML = '';
 	});
 
-	it('renders a trigger element with aria-describedby', () => {
-		mount(Tooltip, {
-			target: document.body,
-			props: { text: 'Helpful hint' }
-		});
+	it('points aria-describedby at a node that exists while hidden', () => {
+		mount(Tooltip, { target: document.body, props: { text: 'Helpful hint' } });
 
-		const trigger = document.body.querySelector('[aria-describedby]');
-		expect(trigger).not.toBeNull();
-		const describedById = trigger!.getAttribute('aria-describedby');
-		expect(describedById).toBeTruthy();
+		const target = document.getElementById(trigger().getAttribute('aria-describedby')!);
+		expect(target).toBe(tooltip());
+		expect(tooltip().hidden).toBe(true);
+		expect(tooltip().textContent?.trim()).toBe('Helpful hint');
 	});
 
-	it('does not render the tooltip element before hover', () => {
-		mount(Tooltip, {
-			target: document.body,
-			props: { text: 'Hidden hint' }
-		});
+	it('makes the trigger reachable by keyboard and shows on focus', async () => {
+		vi.useFakeTimers();
+		mount(Tooltip, { target: document.body, props: { text: 'Hint' } });
 
-		const tooltip = document.body.querySelector('[role="tooltip"]');
-		expect(tooltip).toBeNull();
+		expect(trigger().tabIndex).toBe(0);
+		trigger().dispatchEvent(new FocusEvent('focusin', { bubbles: true }));
+		await vi.advanceTimersByTimeAsync(200);
+		expect(tooltip().hidden).toBe(false);
 	});
 
-	it('renders the tooltip text when visible', () => {
-		mount(Tooltip, {
-			target: document.body,
-			props: { text: 'Visible hint' }
-		});
+	it('clamps the bubble inside the left edge of the viewport', async () => {
+		vi.useFakeTimers();
+		mount(Tooltip, { target: document.body, props: { text: 'Hint' } });
 
-		// The tooltip text is not in the DOM until hover/focus triggers it.
-		// Verify the trigger element exists and has the correct aria link.
-		const trigger = document.body.querySelector('[aria-describedby]') as HTMLElement;
-		expect(trigger).not.toBeNull();
-		expect(trigger.getAttribute('aria-describedby')).toMatch(/^tooltip-\d+$/);
+		await hoverAt(0, 10, 100);
+		// Center 5 would overflow; 8px margin + half the bubble (50).
+		expect(tooltip().style.left).toBe('58px');
+	});
+
+	it('clamps the bubble inside the right edge of the viewport', async () => {
+		vi.useFakeTimers();
+		mount(Tooltip, { target: document.body, props: { text: 'Hint' } });
+
+		await hoverAt(window.innerWidth - 10, 10, 100);
+		expect(tooltip().style.left).toBe(`${window.innerWidth - 58}px`);
+	});
+
+	it('keeps the bubble centered on the trigger when it fits', async () => {
+		vi.useFakeTimers();
+		mount(Tooltip, { target: document.body, props: { text: 'Hint' } });
+
+		await hoverAt(400, 20, 100);
+		expect(tooltip().style.left).toBe('410px');
 	});
 });

@@ -7,6 +7,7 @@
 	 */
 	import { onMount } from 'svelte';
 	import { m } from '#lib/paraglide/messages.js';
+	import { formatDate } from '#lib/shared/format-date.js';
 	import { ProfileSshKeysStore } from './profile-ssh-keys.svelte';
 	import { profileKeyErrorMessage } from './ssh-key-identity';
 	import { PROFILE_SSH_KEY_MAX, type ProfileSshKey } from './types';
@@ -32,12 +33,10 @@
 		void store.load();
 	});
 
-	/** Renders the API's RFC3339 timestamp in the user's locale; a malformed
+	/** Renders the API's RFC3339 timestamp in the interface locale; a malformed
 	 *  value falls back to the raw string rather than "Invalid Date". */
 	function formatCreated(value: string): string {
-		const date = new Date(value);
-		if (Number.isNaN(date.getTime())) return value;
-		return new Intl.DateTimeFormat(undefined, { dateStyle: 'medium' }).format(date);
+		return formatDate(value);
 	}
 
 	const canAdd = $derived(!adding && !store.limitReached && label.trim() !== '' && publicKey.trim() !== '');

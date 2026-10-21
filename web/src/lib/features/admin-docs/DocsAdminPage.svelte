@@ -210,23 +210,27 @@
 					type="search"
 					class="w-full sm:w-64"
 					placeholder={m['admin.docs.searchPlaceholder']()}
+					aria-label={m['admin.docs.searchPlaceholder']()}
 					value={search}
 					oninput={(event: Event) => onSearchChange((event.currentTarget as HTMLInputElement).value)}
 				/>
 				<Select
 					class="w-full sm:w-44"
+					aria-label={m['docs.category']()}
 					value={categoryFilter}
 					onchange={(event: Event) => onCategoryFilterChange((event.currentTarget as HTMLSelectElement).value)}
 					options={[{ value: '', label: m['admin.docs.filterCategory']() }, ...categoryOptions]}
 				/>
 				<Select
 					class="w-full sm:w-44"
+					aria-label={m['docs.language']()}
 					value={langFilter}
 					onchange={(event: Event) => onLangFilterChange((event.currentTarget as HTMLSelectElement).value)}
 					options={[{ value: '', label: m['admin.docs.filterLang']() }, ...langOptions]}
 				/>
 				<Select
 					class="w-full sm:w-44"
+					aria-label={m['docs.audience']()}
 					value={audienceFilter}
 					onchange={(event: Event) => onAudienceFilterChange((event.currentTarget as HTMLSelectElement).value as 'all' | 'user' | 'admin')}
 					options={[
@@ -289,17 +293,17 @@
 							<td data-label={m['admin.docs.actions']()}>
 								<div class="flex gap-2">
 									<Button variant="secondary" size="sm" label={m['admin.docs.editLabel']({ title: page.title })} onclick={() => openEdit(page)}>{m['admin.docs.edit']()}</Button>
-									<Button
-										variant="destructive"
-										size="sm"
-										label={m['admin.docs.deleteLabel']({ title: page.title })}
-										disabled={page.isSystem}
-										onclick={() => (pendingDelete = page)}
-									>{m['admin.docs.delete']()}</Button>
+									{#if page.isSystem}
+										<Pill tone="off" dot={false} label={m['admin.docs.builtIn']()} />
+									{:else}
+										<Button
+											variant="destructive"
+											size="sm"
+											label={m['admin.docs.deleteLabel']({ title: page.title })}
+											onclick={() => (pendingDelete = page)}
+										>{m['admin.docs.delete']()}</Button>
+									{/if}
 								</div>
-								{#if page.isSystem}
-									<p class="mt-1 text-xs text-muted-foreground">{m['docs.systemProtected']()}</p>
-								{/if}
 							</td>
 						</tr>
 					{:else}
@@ -310,6 +314,9 @@
 				</tbody>
 			</table>
 		</TableCard>
+		{#if pages.some((page) => page.isSystem)}
+			<p class="mt-2 text-xs text-muted-foreground">{m['docs.systemProtected']()}</p>
+		{/if}
 	{:else}
 		<EmptyState title={m['docs.empty']()}>
 			{#snippet actions()}

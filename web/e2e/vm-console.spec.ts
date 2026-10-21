@@ -93,6 +93,17 @@ test.describe('T10 VM console VNC', () => {
 		await expect(page.getByTestId('vm-console-popout-blocked')).toBeVisible();
 	});
 
+	test('T06: Ctrl+K inside the console reaches the guest, not the command palette', async ({ page }) => {
+		await signInAlice(page.request);
+		await page.goto('/vms/default/100/console');
+		await expect(page.getByTestId('vm-console-status')).toHaveAttribute('data-state', 'connected', { timeout: 15000 });
+
+		await page.getByTestId('vm-console-container').click();
+		await page.keyboard.press('ControlOrMeta+k');
+		await page.waitForTimeout(300);
+		await expect(page.getByRole('dialog')).toHaveCount(0);
+	});
+
 	test('P2: disconnect and reconnect', async ({ page }) => {
 		await signInAlice(page.request);
 		await page.goto('/vms/default/100/console');
