@@ -22,7 +22,7 @@
 	import { getPowerActionsContext } from '#lib/features/tasks/power-actions.svelte.js';
 	import { getToastContext } from '#lib/shared/ui/toast.svelte.js';
 	import { page } from '$app/state';
-	import { goto } from '$app/navigation';
+	import { beforeNavigate, goto } from '$app/navigation';
 	import { resolve } from '$app/paths';
 	import Button from '#lib/shared/ui/Button.svelte';
 	import ButtonLink from '#lib/shared/ui/ButtonLink.svelte';
@@ -33,6 +33,7 @@
 	import Textarea from '#lib/shared/ui/Textarea.svelte';
 	import { getSessionContext } from '#lib/features/auth/session.svelte.js';
 	import { m } from '#lib/paraglide/messages.js';
+	import { guardDecision } from './unsaved-guard';
 
 	const store = getVmDetailContext();
 	const session = getSessionContext();
@@ -177,6 +178,35 @@
 	function cancelDescription(): void {
 		editingDescription = false;
 		descriptionDraft = '';
+	}
+
+	const draftDirty = $derived(
+		store.entity !== null &&
+			((editingName && nameDraft !== store.entity.name) ||
+				(editingDescription && descriptionDraft !== (store.entity.description ?? '')))
+	);
+	/** Replays the navigation the guard cancelled, once the user discards. */
+	let pendingNavigation: (() => void) | null = $state(null);
+
+	beforeNavigate((navigation) => {
+		const decision = guardDecision(navigation, draftDirty, page.url.pathname);
+		if (decision === 'allow') return;
+		navigation.cancel();
+		if (decision === 'native') return;
+		const delta = navigation.type === 'popstate' ? navigation.delta : 0;
+		const target = navigation.to?.url;
+		pendingNavigation = () => {
+			if (delta !== 0) history.go(delta);
+			else if (target) void goto(target);
+		};
+	});
+
+	function discardAndLeave(): void {
+		const replay = pendingNavigation;
+		pendingNavigation = null;
+		cancelName();
+		cancelDescription();
+		replay?.();
 	}
 
 	function handleNameKeydown(event: KeyboardEvent): void {
@@ -509,5 +539,16 @@
 		testId="vm-retrofit-seabios-confirm"
 		onConfirm={async () => { await store.retrofitSeaBIOS(true); if (!store.retrofitError) retrofitOpen = false; }}
 		onClose={() => { retrofitOpen = false; }}
+	/>
+
+	<ConfirmDialog
+		open={pendingNavigation !== null}
+		title={m['vms.detail.discardDraftTitle']()}
+		message={m['vms.detail.discardDraftMessage']()}
+		confirmLabel={m['vms.detail.discardDraftConfirm']()}
+		cancelLabel={m['vms.detail.discardDraftKeep']()}
+		testId="vm-discard-draft-confirm"
+		onConfirm={discardAndLeave}
+		onClose={() => { pendingNavigation = null; }}
 	/>
 {/if}
