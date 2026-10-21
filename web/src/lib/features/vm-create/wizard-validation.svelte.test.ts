@@ -1,6 +1,7 @@
 import { afterEach, beforeAll, describe, expect, it, vi } from 'vitest';
 import { flushSync, mount, tick } from 'svelte';
 import { setLocale } from '#lib/paraglide/runtime.js';
+import { m } from '#lib/paraglide/messages.js';
 import SimpleWizard from './SimpleWizard.svelte';
 import DetailedWizard from './DetailedWizard.svelte';
 import { VmCreateStore, type VmCreateCatalog } from './create.svelte';
@@ -128,5 +129,52 @@ describe('Create VM wizard validation timing (Ticket 09)', () => {
 
 		const currentTab = document.querySelector<HTMLButtonElement>('[role="tab"][aria-current="step"]');
 		expect(currentTab?.textContent).toContain('Hardware');
+	});
+});
+
+describe('Simple wizard dead ends (ticket 02)', () => {
+	beforeAll(() => setLocale('en', { reload: false }));
+
+	afterEach(() => {
+		document.body.innerHTML = '';
+		vi.unstubAllGlobals();
+	});
+
+	function mountWith(catalog: VmCreateCatalog): void {
+		storeInstance = new VmCreateStore();
+		storeInstance.catalog = catalog;
+		storeInstance.mode = 'simple';
+		mount(SimpleWizard, { target: document.body });
+		flushSync();
+	}
+
+	it('explains the block when the cluster offers no starting point at all', () => {
+		mountWith({ ...baseCatalog(), profiles: [], templates: [], images: [], isos: [] });
+
+		expect(document.querySelector('[data-testid="vm-create-no-sources"]')?.textContent).toContain(m['vms.create.noSourcesTitle']());
+		expect(document.querySelector('[data-testid="vm-create-submit"]')).toBeNull();
+	});
+
+	it('names the only starting point instead of an empty choice', () => {
+		mountWith({ ...baseCatalog(), templates: [], images: [], isos: [] });
+
+		expect(document.querySelector('input[name="simple-source"]')).toBeNull();
+		expect(document.querySelector('[data-testid="vm-create-start-fixed"]')?.textContent).toContain(m['vms.create.source.profileTitle']());
+		// Decision 2026-10-21: no size is preselected.
+		expect(storeInstance.profileId).toBe('');
+	});
+
+	it('says why the submit is disabled when no size is chosen', async () => {
+		vi.stubGlobal('fetch', vi.fn());
+		mountWith({ ...baseCatalog(), templates: [], images: [], isos: [] });
+		storeInstance.name = 'web-valid';
+		flushSync();
+
+		document.querySelector<HTMLButtonElement>('[data-testid="vm-create-submit"]')!.click();
+		flushSync();
+		await tick();
+
+		expect(document.querySelector<HTMLButtonElement>('[data-testid="vm-create-submit"]')!.disabled).toBe(true);
+		expect(document.querySelector('[data-testid="vm-create-submit-hint"]')?.textContent).toBe(m['vms.create.hintChooseSize']());
 	});
 });

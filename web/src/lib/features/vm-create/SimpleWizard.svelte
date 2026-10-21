@@ -20,6 +20,10 @@
 	import Button from '#lib/shared/ui/Button.svelte';
 	import Skeleton from '#lib/shared/ui/Skeleton.svelte';
 	import RadioCard from '#lib/shared/ui/RadioCard.svelte';
+	import EmptyState from '#lib/shared/ui/EmptyState.svelte';
+	import ButtonLink from '#lib/shared/ui/ButtonLink.svelte';
+	import { resolve } from '$app/paths';
+	import { getSessionContext } from '#lib/features/auth/session.svelte.js';
 
 	// Simple mode, Calm workspace layout (DESIGN.md §6.2): a single-page form
 	// with every section visible and a live, sticky summary rail that holds
@@ -34,6 +38,9 @@
 	const hasTemplates = $derived((form.catalog?.templates ?? []).length > 0);
 	const hasImages = $derived((form.catalog?.images ?? []).length > 0);
 	const hasProfiles = $derived(form.hasProfiles());
+	// Nothing to size or clone: the wizard cannot produce a valid request.
+	const noSources = $derived(form.catalog !== null && !hasProfiles && !hasTemplates && !hasImages);
+	const session = getSessionContext();
 
 	const catalogTags = $derived(form.catalog?.tags ?? []);
 	const selectedTags = $derived(new Set(form.selectedTags()));
@@ -242,6 +249,11 @@
 	);
 	const quota = $derived(form.catalog?.quota ?? null);
 
+	// A disabled submit says why (decision 2026-10-21: no size is preselected).
+	const submitHint = $derived(
+		(form.simpleSource === 'profile' && profileError) || imageProfileError ? m['vms.create.hintChooseSize']() : m['vms.create.hintFixFields']()
+	);
+
 	async function submit(): Promise<void> {
 		submitted = true;
 		if (!canSubmit) {
@@ -267,6 +279,14 @@
 		<Skeleton class="h-20 w-full" />
 		<Skeleton class="h-10 w-full" />
 	</div>
+{:else if noSources}
+	<EmptyState title={m['vms.create.noSourcesTitle']()} description={m['vms.create.noSourcesBody']()} dataTestid="vm-create-no-sources">
+		{#snippet actions()}
+			{#if session?.isAdmin}
+				<ButtonLink href={resolve('/admin/profiles')} variant="secondary">{m['vms.create.noSourcesAdmin']()}</ButtonLink>
+			{/if}
+		{/snippet}
+	</EmptyState>
 {:else}
 	{@const cat = form.catalog}
 	<form
@@ -305,6 +325,9 @@
 							</RadioCard>
 						{/each}
 					</div>
+				{:else if sourceCards[0]}
+					<!-- One possible start: name it rather than offer a choice of one. -->
+					<p class="text-sm" data-testid="vm-create-start-fixed">{m['vms.create.startFixed']({ name: sourceCards[0].title })}</p>
 				{/if}
 
 				{#if form.simpleSource === 'image'}
@@ -478,6 +501,9 @@
 				{/if}
 				{form.submitting ? m['common.creating']() : m['vms.create.summary.submit']()}
 			</Button>
+			{#if submitted && !canSubmit && !form.submitting}
+				<p class="text-xs text-muted-foreground" role="status" data-testid="vm-create-submit-hint">{submitHint}</p>
+			{/if}
 			<p class="text-2xs text-muted-foreground-subtle">{m['vms.create.summary.provisioningNote']()}</p>
 		</Card>
 	</form>
