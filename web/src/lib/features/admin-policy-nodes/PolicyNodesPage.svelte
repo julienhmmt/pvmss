@@ -157,7 +157,8 @@
 				<tbody>
 					{#each nodes as node (node.node)}
 						{@const isOpen = expanded === node.node}
-						<tr class="group transition-colors hover:bg-muted/40" class:opacity-60={node.status === 'offline'}>
+						<!-- Offline is said by the status pill; dimming the row dragged every cell under AA. -->
+						<tr class="group transition-colors hover:bg-muted/40">
 							<th scope="row" class="text-left" data-label={m['policy.node']()}>
 								<span class="flex flex-wrap items-center gap-x-2 gap-y-1">
 									<a
