@@ -363,7 +363,7 @@
 			<FormSection step={form.simpleSource === 'template' ? 2 : 3} legend={m['vms.create.section.yours']()} description={m['vms.create.section.yoursHelp']()}>
 				<FormField label={m['vms.create.name']()} required hint={m['vms.create.nameHint']()} error={visibleNameError}>
 					{#snippet children({ id, describedBy, invalid })}
-						<TextField {id} {describedBy} {invalid} bind:value={form.name} onblur={() => (nameTouched = true)} required maxlength={63} placeholder="web-04" autocomplete="off" />
+						<TextField {id} {describedBy} {invalid} bind:value={form.name} onblur={() => (nameTouched = true)} required maxlength={63} data-testid="vm-create-name" autocomplete="off" />
 					{/snippet}
 				</FormField>
 

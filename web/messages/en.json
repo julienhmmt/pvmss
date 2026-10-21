@@ -858,8 +858,6 @@
   "vms.create.stepNeedsFix": "Needs completing",
   "vms.create.back": "My machines",
   "vms.create.nameLabel": "Name",
-  "vms.create.namePlaceholder": "web-04",
-  "vms.create.namePlaceholderDetailed": "web-03",
   "vms.create.profileLabel": "Profile",
   "vms.create.nodeLabel": "Node",
   "vms.create.storageLabel": "Storage",

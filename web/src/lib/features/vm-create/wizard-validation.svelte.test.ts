@@ -89,7 +89,7 @@ describe('Create VM wizard validation timing (Ticket 09)', () => {
 
 		expect(fetchMock).not.toHaveBeenCalled();
 		expect(document.body.textContent).toContain('Name is required.');
-		const nameInput = document.querySelector<HTMLInputElement>('input[placeholder="web-04"]');
+		const nameInput = document.querySelector<HTMLInputElement>('[data-testid="vm-create-name"]');
 		expect(nameInput).not.toBeNull();
 		expect(nameInput!.getAttribute('aria-invalid')).toBe('true');
 		expect(document.activeElement).toBe(nameInput);
@@ -116,7 +116,7 @@ describe('Create VM wizard validation timing (Ticket 09)', () => {
 		expect(baseTab?.textContent).toContain('Base');
 		expect(document.body.textContent).toContain('Name is required.');
 		expect(document.body.textContent).toContain('Select an approved node.');
-		const nameInput = document.querySelector<HTMLInputElement>('input[placeholder="web-03"]');
+		const nameInput = document.querySelector<HTMLInputElement>('[data-testid="vm-create-name"]');
 		expect(document.activeElement).toBe(nameInput);
 
 		storeInstance.name = 'web-valid';
