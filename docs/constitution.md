@@ -106,8 +106,8 @@ Trois concepts distincts, jamais confondus :
 Le mot « limite » employé seul est **BANNI** du code, des identifiants, de l'interface,
 des specs et des messages d'erreur.
 
-*Rationale : ces trois notions ont été confondues dans le code v0.3, produisant des règles
-appliquées au mauvais endroit. Un vocabulaire distinct rend l'erreur visible à la lecture.*
+_Rationale : ces trois notions ont été confondues dans le code v0.3, produisant des règles
+appliquées au mauvais endroit. Un vocabulaire distinct rend l'erreur visible à la lecture._
 
 ### II. API-first
 
@@ -117,8 +117,8 @@ jeton Bearer - les deux attaquent la **même** surface d'API, avec les mêmes dr
 
 Toute fonctionnalité accessible dans l'interface DOIT être accessible par API.
 
-*Rationale : les utilisateurs experts doivent pouvoir automatiser leur usage avec leur
-propre compte et leurs propres droits.*
+_Rationale : les utilisateurs experts doivent pouvoir automatiser leur usage avec leur
+propre compte et leurs propres droits._
 
 ### III. Resolve() est l'unique accès en écriture (NON NÉGOCIABLE)
 
@@ -130,10 +130,10 @@ Elle vérifie le tag `pvmss` **ET** l'appartenance au pool de l'appelant.
   côté serveur.
 - Tout nouveau chemin d'écriture passe par `Resolve()` ou n'est pas fusionné.
 
-*Rationale : correctif structurel de la faille S01. En v0.3, cinq routes vérifiaient
+_Rationale : correctif structurel de la faille S01. En v0.3, cinq routes vérifiaient
 correctement la propriété et une l'avait oubliée, permettant à tout utilisateur
 authentifié de piloter n'importe quelle VM du cluster. Un point de passage unique rend
-cet oubli impossible plutôt qu'improbable.*
+cet oubli impossible plutôt qu'improbable._
 
 ### IV. Chemins de lecture et d'écriture séparés
 
@@ -141,9 +141,9 @@ cet oubli impossible plutôt qu'improbable.*
   par un worker depuis `GET /cluster/resources`.
 - **Écriture** : passe toujours par Proxmox, puis invalide la projection.
 
-*Rationale : la v0.3 interrogeait Proxmox nœud par nœud à chaque requête de liste. La
+_Rationale : la v0.3 interrogeait Proxmox nœud par nœud à chaque requête de liste. La
 projection rend une lecture quasi gratuite et supprime la dépendance du temps de réponse
-à la taille du cluster.*
+à la taille du cluster._
 
 ### V. Multi-cluster par construction
 
@@ -154,8 +154,8 @@ Proxmox a son **propre** compte de service ; aucun compte n'est partagé entre c
 Le multi-cluster n'est pas une option ajoutée après coup : le modèle de données et les
 signatures le portent dès la première tranche, même si une seule instance est configurée.
 
-*Rationale : rétrofitter une identité composite dans un code qui suppose un `vmid` global
-impose de toucher chaque route. Le coût est nul au départ, élevé ensuite.*
+_Rationale : rétrofitter une identité composite dans un code qui suppose un `vmid` global
+impose de toucher chaque route. Le coût est nul au départ, élevé ensuite._
 
 ### VI. Le serveur est la seule frontière (NON NÉGOCIABLE)
 
@@ -188,9 +188,9 @@ garantit quoi que ce soit.
 - Le code v0.3 fournit des **idées** (algorithmes, pièges résolus, cas de test), jamais du
   copier-coller.
 
-*Rationale : la v0.3 contient 798 lignes d'abstraction testée sans aucun appelant, et
+_Rationale : la v0.3 contient 798 lignes d'abstraction testée sans aucun appelant, et
 2 762 lignes réparties sur quatre pages pour une seule fonction. Les deux symptômes ont la
-même cause.*
+même cause._
 
 ### IX. Tranches verticales, démontrables à la main
 
@@ -234,9 +234,9 @@ développement, et pour toute démonstration.
 - Tout endpoint ajouté par une tranche DOIT fonctionner sous le client factice avant
   d'être considéré comme terminé.
 
-*Rationale : sans cela, ni la CI ni une démonstration ne peuvent tourner, et chaque
+_Rationale : sans cela, ni la CI ni une démonstration ne peuvent tourner, et chaque
 tranche resterait bloquée derrière la disponibilité d'un cluster. Deux implémentations
-réelles justifient pleinement l'interface au regard du principe VIII.*
+réelles justifient pleinement l'interface au regard du principe VIII._
 
 ### XII. Accessibilité (NON NÉGOCIABLE)
 
@@ -261,16 +261,16 @@ réelles justifient pleinement l'interface au regard du principe VIII.*
 
 **Plafonds de taille** - dépassement = revue refusée :
 
-| Élément | Plafond |
-| --- | --- |
+| Élément        | Plafond                                                                |
+| -------------- | ---------------------------------------------------------------------- |
 | `+page.svelte` | 150 lignes (câblage seulement : `load` → composant de feature → rendu) |
-| Tout fichier | 400 lignes |
-| Toute fonction | 50 lignes |
-| Imbrication | 4 niveaux |
+| Tout fichier   | 400 lignes                                                             |
+| Toute fonction | 50 lignes                                                              |
+| Imbrication    | 4 niveaux                                                              |
 
 **Structure** - le code v0.4 vit dans `server/` (Go) et `web/` (SvelteKit). Le legacy
 v0.3 (`backend/`, `frontend/`) a été supprimé à la bascule T16 (commit `a7a26f7a`) ;
-il ne subsiste que comme référence historique dans les *rationale* ci-dessous.
+il ne subsiste que comme référence historique dans les _rationale_ ci-dessous.
 
 - Go : découpage par domaine (`inventory/`, `policy/`, `catalog/`, `vm/`, `auth/`,
   `cluster/`, `store/`, `httpapi/`), pas par couche technique.
@@ -338,8 +338,8 @@ phase de recherche, puis à nouveau après la conception. Toute violation assum�
 consignée dans le tableau « Complexity Tracking » du plan, avec la raison et l'alternative
 plus simple écartée. Une violation non consignée bloque la fusion.
 
-**Référence** - la cartographie `.claude/v0.4/` fait foi sur *ce que fait* l'application et
-*ce qu'il ne faut pas refaire*. Elle n'est pas publiée tant que la fiche `securite/S01`
+**Référence** - la cartographie `.claude/v0.4/` fait foi sur _ce que fait_ l'application et
+_ce qu'il ne faut pas refaire_. Elle n'est pas publiée tant que la fiche `securite/S01`
 contient une preuve de concept exploitable.
 
 **Version**: 1.2.0 | **Ratified**: 2026-08-01 | **Last Amended**: 2026-10-04

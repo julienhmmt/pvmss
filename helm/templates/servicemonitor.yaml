@@ -12,7 +12,7 @@ metadata:
 spec:
   selector:
     matchLabels:
-      {{- include "pvmss.labels" . | nindent 6 }}
+      {{- include "pvmss.selectorLabels" . | nindent 6 }}
   endpoints:
     - port: metrics
       path: /metrics

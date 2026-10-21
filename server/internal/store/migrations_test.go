@@ -287,6 +287,7 @@ func TestRunMigrations_UnknownAppliedVersion_ReturnsError(t *testing.T) {
 // (api_tokens, user_cloudinit_files, cloudinit_publications) are absent.
 var baselineTables = []string{
 	"sessions",
+	"local_accounts",
 	"audit_log",
 	"clusters",
 	"catalog_nodes",

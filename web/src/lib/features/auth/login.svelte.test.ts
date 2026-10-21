@@ -26,7 +26,7 @@ describe('LoginForm', () => {
 		expect((JSON.parse(init?.body as string) as { cluster: string }).cluster).toBe('secondary');
 	});
 
-	it('appends the @pve realm to a bare username', async () => {
+	it('sends a bare username with the default pve realm', async () => {
 		const fetchMock = vi.fn().mockResolvedValueOnce(jsonResponse(200, { username: 'alice@pve', pool: 'pool-alice', isAdmin: false, cluster: '', clusterDisplayName: '' }));
 		vi.stubGlobal('fetch', fetchMock);
 		const form = new LoginForm();
@@ -34,10 +34,26 @@ describe('LoginForm', () => {
 		form.password = 'pvmss-alice';
 		await form.submit();
 		const init = fetchMock.mock.calls[0]?.[1] as RequestInit | undefined;
-		expect((JSON.parse(init?.body as string) as { username: string }).username).toBe('alice@pve');
+		const body = JSON.parse(init?.body as string) as { username: string; realm: string };
+		expect(body.username).toBe('alice');
+		expect(body.realm).toBe('pve');
 	});
 
-	it('does not double the realm when the user already typed one', async () => {
+	it('sends the selected pam realm', async () => {
+		const fetchMock = vi.fn().mockResolvedValueOnce(jsonResponse(200, { username: 'root@pam', pool: '', isAdmin: true, cluster: '', clusterDisplayName: '' }));
+		vi.stubGlobal('fetch', fetchMock);
+		const form = new LoginForm();
+		form.username = 'root';
+		form.realm = 'pam';
+		form.password = 'root-password';
+		await form.submit();
+		const init = fetchMock.mock.calls[0]?.[1] as RequestInit | undefined;
+		const body = JSON.parse(init?.body as string) as { username: string; realm: string };
+		expect(body.username).toBe('root');
+		expect(body.realm).toBe('pam');
+	});
+
+	it('does not send a realm when the user already typed one', async () => {
 		const fetchMock = vi.fn().mockResolvedValueOnce(jsonResponse(200, { username: 'alice@pam', pool: 'pool-alice', isAdmin: false, cluster: '', clusterDisplayName: '' }));
 		vi.stubGlobal('fetch', fetchMock);
 		const form = new LoginForm();
@@ -45,7 +61,9 @@ describe('LoginForm', () => {
 		form.password = 'pvmss-alice';
 		await form.submit();
 		const init = fetchMock.mock.calls[0]?.[1] as RequestInit | undefined;
-		expect((JSON.parse(init?.body as string) as { username: string }).username).toBe('alice@pam');
+		const body = JSON.parse(init?.body as string) as { username: string; realm?: string };
+		expect(body.username).toBe('alice@pam');
+		expect(body.realm).toBeUndefined();
 	});
 
 	it('translates a server invalid_credentials error instead of showing the raw English message', async () => {
@@ -91,7 +109,7 @@ describe('LoginForm', () => {
 
 	it('allows local admin login even when PVE login is disabled', async () => {
 		const fetchMock = vi.fn().mockResolvedValueOnce(
-			jsonResponse(200, { username: 'admin', displayName: 'admin', isAdmin: true, cluster: '', clusterDisplayName: '' })
+			jsonResponse(200, { username: 'admin', displayName: 'admin', isAdmin: true, cluster: '', clusterDisplayName: '', provider: 'bootstrap', isOwner: true })
 		);
 		vi.stubGlobal('fetch', fetchMock);
 		const form = new LoginForm();
@@ -101,5 +119,34 @@ describe('LoginForm', () => {
 		const principal = await form.submit();
 		expect(principal?.isAdmin).toBe(true);
 		expect(form.error).toBeNull();
+	});
+
+	it('sends the optional local account username', async () => {
+		const fetchMock = vi.fn().mockResolvedValueOnce(
+			jsonResponse(200, { username: 'albert', displayName: 'albert', isAdmin: true, cluster: '', clusterDisplayName: '', provider: 'local', isOwner: false })
+		);
+		vi.stubGlobal('fetch', fetchMock);
+		const form = new LoginForm();
+		form.provider = 'local';
+		form.localUsername = 'albert';
+		form.password = 'albert-password';
+		await form.submit();
+		const init = fetchMock.mock.calls[0]?.[1] as RequestInit | undefined;
+		const body = JSON.parse(init?.body as string) as { username?: string };
+		expect(body.username).toBe('albert');
+	});
+
+	it('omits the username so the server falls back to the bootstrap admin', async () => {
+		const fetchMock = vi.fn().mockResolvedValueOnce(
+			jsonResponse(200, { username: 'admin', displayName: 'admin', isAdmin: true, cluster: '', clusterDisplayName: '', provider: 'bootstrap', isOwner: true })
+		);
+		vi.stubGlobal('fetch', fetchMock);
+		const form = new LoginForm();
+		form.provider = 'local';
+		form.password = 'admin-password';
+		await form.submit();
+		const init = fetchMock.mock.calls[0]?.[1] as RequestInit | undefined;
+		const body = JSON.parse(init?.body as string) as { username?: string };
+		expect(body.username).toBeUndefined();
 	});
 });

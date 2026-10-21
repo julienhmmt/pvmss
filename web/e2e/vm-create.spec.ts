@@ -95,7 +95,7 @@ test.describe('T06 VM creation', () => {
 		await expect(page.getByRole('tab', { name: 'Disk' }).locator('svg')).toHaveCount(0);
 
 		await page.getByLabel('Name').fill('web-e2e-stepper');
-		await page.getByLabel('Node').selectOption('pve-node-01');
+		await page.getByLabel('Node').selectOption('pve-node-02');
 
 		await page.getByRole('tab', { name: 'Disk' }).click();
 		await expect(page.getByRole('tab', { name: 'Disk' })).toHaveAttribute('aria-current', 'step');

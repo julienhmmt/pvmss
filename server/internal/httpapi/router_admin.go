@@ -47,6 +47,23 @@ func registerAdminRoutes(mux *http.ServeMux, cfg RouterConfig, adminProtect admi
 		mux.Handle("GET /api/v1/admin/vms/{cluster}/{vmid}/migrate", adminProtect(http.MethodGet, http.HandlerFunc(cfg.AdminMigration.ServePreflight)))
 		mux.Handle("POST /api/v1/admin/vms/{cluster}/{vmid}/migrate", adminProtect(http.MethodPost, http.HandlerFunc(cfg.AdminMigration.ServeStart)))
 	}
+
+	if cfg.AdminAccounts != nil {
+		registerAdminAccountRoutes(mux, adminProtect, cfg.AdminAccounts)
+	}
+}
+
+// registerAdminAccountRoutes wires the owner-only management of DB-backed
+// local administrators. The admin guard runs first; each handler then checks
+// that the caller is the bootstrap owner.
+//
+//nolint:dupl // registration blocks for distinct handlers stay symmetric on purpose
+func registerAdminAccountRoutes(mux *http.ServeMux, adminProtect adminRouteProtect, h *AdminAccounts) {
+	mux.Handle("GET /api/v1/admin/accounts", adminProtect(http.MethodGet, http.HandlerFunc(h.ServeList)))
+	mux.Handle("POST /api/v1/admin/accounts", adminProtect(http.MethodPost, http.HandlerFunc(h.ServeCreate)))
+	mux.Handle("PUT /api/v1/admin/accounts/{id}/password", adminProtect(http.MethodPut, http.HandlerFunc(h.ServeResetPassword)))
+	mux.Handle("POST /api/v1/admin/accounts/{id}/toggle", adminProtect(http.MethodPost, http.HandlerFunc(h.ServeToggle)))
+	mux.Handle("DELETE /api/v1/admin/accounts/{id}", adminProtect(http.MethodDelete, http.HandlerFunc(h.ServeDelete)))
 }
 
 // registerAdminCatalogRoutes wires the admin catalog endpoints (nodes,

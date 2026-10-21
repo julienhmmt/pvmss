@@ -65,6 +65,19 @@ pveum aclmod / -user pvmss-admin1@pve -role PVMSS_Admin -propagate 1
 lance une migration avec le jeton du compte de service, qui doit donc avoir
 `VM.Migrate`. Il ne fait pas partie du rôle par utilisateur `PVMSSUser`.
 
+### Se connecter à PVMSS
+
+Le nom du rôle n'a pas d'importance : à la connexion, PVMSS demande à Proxmox
+si le compte détient `Permissions.Modify` sur `/`, privilège porté par les rôles
+intégrés `PVEAdmin` et `Administrator`. Conservez `-propagate 1` pour que
+l'autorisation couvre toute l'arborescence. La vérification a lieu une fois par
+session : une ACL ajoutée après la connexion exige une nouvelle connexion.
+
+Seuls les realms `pve` et `pam` sont pris en charge. Un compte d'un realm OIDC
+est refusé avec `realm_unsupported` ; la connexion OIDC est un travail futur.
+Les administrateurs locaux PVMSS (gérés dans **Admin > Paramètres > Comptes**)
+n'ont besoin ni de compte ni de permission Proxmox.
+
 ## Pools par utilisateur (PVMSSUser)
 
 PVMSS crée le rôle `PVMSSUser`, l'utilisateur, le pool dédié et l'ACL

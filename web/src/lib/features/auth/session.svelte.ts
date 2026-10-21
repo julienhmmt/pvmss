@@ -53,6 +53,12 @@ export class SessionStore {
 	get isAdmin(): boolean {
 		return this.principal?.isAdmin ?? false;
 	}
+
+	/** The bootstrap administrator is the only identity allowed to manage
+	 *  local accounts; the server enforces it with `owner_only`. */
+	get isOwner(): boolean {
+		return this.principal?.isOwner ?? false;
+	}
 }
 
 const SESSION_CONTEXT_KEY = Symbol('session');

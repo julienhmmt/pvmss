@@ -1,26 +1,26 @@
 {{/*
-Nom complet du chart, limité à 63 caractères (convention K8s)
+Full name of the chart, truncated at 63 chars (Kubernetes naming convention).
 */}}
 {{- define "pvmss.fullname" -}}
 {{- printf "%s-%s" .Release.Name "pvmss" | trunc 63 | trimSuffix "-" -}}
 {{- end -}}
 
 {{/*
-Labels standards appliqués à chaque ressource
+Selector labels (immutable across upgrades; do not include appVersion here).
 */}}
-{{- define "pvmss.labels" -}}
+{{- define "pvmss.selectorLabels" -}}
 app.kubernetes.io/name: {{ include "pvmss.fullname" . }}
 app.kubernetes.io/instance: {{ .Release.Name }}
-app.kubernetes.io/version: {{ .Chart.AppVersion }}
 {{- end -}}
 
 {{/*
-Fonction utilitaire pour fusionner des maps (utile pour extraAnnotations/extraLabels)
+Standard labels applied to every resource.
 */}}
-{{- define "pvmss.merge" -}}
-{{- $dst := dict -}}
-{{- range $k, $v := . -}}
-{{- $_ := set $dst $k $v -}}
-{{- end -}}
-{{- $dst -}}
+{{- define "pvmss.labels" -}}
+{{ include "pvmss.selectorLabels" . }}
+app.kubernetes.io/version: {{ .Chart.AppVersion | quote }}
+app.kubernetes.io/managed-by: {{ .Release.Service }}
+{{- with .Values.extraLabels }}
+{{ toYaml . }}
+{{- end }}
 {{- end -}}

@@ -22,7 +22,7 @@ func newRegistryStatusBatch(t *testing.T, reader cluster.VMStatusReader) (*httpa
 	}
 
 	index := inventory.BuildIndex(snapshot)
-	registry := inventory.NewRegistryFromIndexes(map[string]*inventory.Index{"default": &index})
+	registry := inventory.NewRegistryFromIndexes(map[string]*inventory.Index{auditTestCluster: &index})
 	authHandler := newAuthHandler(t)
 
 	return httpapi.NewVMStatusBatch(httpapi.VMStatusBatchDeps{

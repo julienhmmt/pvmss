@@ -11,7 +11,7 @@ on:
 
 jobs:
   go:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-26.04
     steps:
       - uses: actions/checkout@v7
 
@@ -35,7 +35,7 @@ jobs:
         working-directory: server
 
   web:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-26.04
     steps:
       - uses: actions/checkout@v7
 
@@ -65,7 +65,7 @@ jobs:
         working-directory: web
 
   e2e:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-26.04
     needs: [go, web]
     timeout-minutes: 10
     steps:

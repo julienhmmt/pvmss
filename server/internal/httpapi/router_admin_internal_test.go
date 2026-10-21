@@ -19,6 +19,7 @@ func TestRegisterAdminRoutes_AllGroupsRegistered(t *testing.T) {
 		AdminOps:      &AdminOps{},
 		AdminClusters: &AdminClusters{},
 		AdminDocs:     &AdminDocs{},
+		AdminAccounts: &AdminAccounts{},
 	}
 
 	registerAdminRoutes(mux, cfg, func(_ string, next http.Handler) http.Handler { return next })
@@ -75,6 +76,11 @@ func TestRegisterAdminRoutes_AllGroupsRegistered(t *testing.T) {
 		"PUT /api/v1/admin/docs/{id}/{lang}",
 		"DELETE /api/v1/admin/docs/{id}/{lang}",
 		"POST /api/v1/admin/docs/{id}/{lang}/toggle",
+		"GET /api/v1/admin/accounts",
+		"POST /api/v1/admin/accounts",
+		"PUT /api/v1/admin/accounts/{id}/password",
+		"POST /api/v1/admin/accounts/{id}/toggle",
+		"DELETE /api/v1/admin/accounts/{id}",
 	}
 
 	for _, pattern := range wantRoutes {

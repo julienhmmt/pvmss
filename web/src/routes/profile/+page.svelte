@@ -23,6 +23,13 @@
 
 	const name = $derived(session.principal?.displayName || session.principal?.username || '');
 	const initials = $derived(accountInitials(name));
+	const sourceLabel = $derived(
+		session.principal?.provider === 'local'
+			? m['account.source.local']()
+			: session.principal?.provider === 'bootstrap'
+				? m['account.source.bootstrap']()
+				: m['account.source.pve']()
+	);
 
 	const languageOptions = $derived([
 		{ value: 'en', label: m['account.language.en']() },
@@ -54,6 +61,9 @@
 					{#if session.principal?.clusterDisplayName || session.principal?.cluster}
 						· {m['account.signedInOn']({ cluster: session.principal.clusterDisplayName || session.principal.cluster })}
 					{/if}
+				</p>
+				<p class="mt-1 text-xs text-muted-foreground" data-testid="account-source">
+					{m['account.sourceLabel']({ source: sourceLabel })}
 				</p>
 			</div>
 		</div>

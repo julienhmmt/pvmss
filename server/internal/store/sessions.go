@@ -16,8 +16,8 @@ import (
 func (s *Store) CreateSession(ctx context.Context, session auth.SessionRecord) error {
 	s.purgeDeadSessions(ctx)
 
-	_, err := s.db.ExecContext(ctx, `INSERT INTO sessions (token_hash, username, pool, cluster, is_admin, expires_at, created_at, csrf_token) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
-		session.Hash, session.Identity.Username, session.Identity.Pool, session.Identity.Cluster, session.Identity.IsAdmin, session.ExpiresAt.UTC().Format(time.RFC3339), session.CreatedAt.UTC().Format(time.RFC3339), session.CSRFToken)
+	_, err := s.db.ExecContext(ctx, `INSERT INTO sessions (token_hash, username, pool, cluster, is_admin, provider, expires_at, created_at, csrf_token) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+		session.Hash, session.Identity.Username, session.Identity.Pool, session.Identity.Cluster, session.Identity.IsAdmin, string(session.Identity.Provider), session.ExpiresAt.UTC().Format(time.RFC3339), session.CreatedAt.UTC().Format(time.RFC3339), session.CSRFToken)
 	if err != nil {
 		return fmt.Errorf("insert session: %w", err)
 	}
@@ -37,14 +37,15 @@ func (s *Store) purgeDeadSessions(ctx context.Context) {
 
 // FindSession resolves a session hash without ever querying by its plaintext value.
 func (s *Store) FindSession(ctx context.Context, hash []byte) (auth.SessionRecord, error) {
-	row := s.db.QueryRowContext(ctx, `SELECT token_hash, username, pool, cluster, is_admin, expires_at, created_at, csrf_token FROM sessions WHERE token_hash = ?`, hash)
+	row := s.db.QueryRowContext(ctx, `SELECT token_hash, username, pool, cluster, is_admin, provider, expires_at, created_at, csrf_token FROM sessions WHERE token_hash = ?`, hash)
 
 	var (
 		session                         auth.SessionRecord
 		isAdmin                         bool
+		provider                        string
 		expiresAt, createdAt, csrfToken string
 	)
-	if err := row.Scan(&session.Hash, &session.Identity.Username, &session.Identity.Pool, &session.Identity.Cluster, &isAdmin, &expiresAt, &createdAt, &csrfToken); err != nil {
+	if err := row.Scan(&session.Hash, &session.Identity.Username, &session.Identity.Pool, &session.Identity.Cluster, &isAdmin, &provider, &expiresAt, &createdAt, &csrfToken); err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return auth.SessionRecord{}, sql.ErrNoRows
 		}
@@ -53,6 +54,8 @@ func (s *Store) FindSession(ctx context.Context, hash []byte) (auth.SessionRecor
 	}
 
 	session.Identity.IsAdmin = isAdmin
+	session.Identity.Provider = auth.Provider(provider)
+	session.Identity.IsOwner = session.Identity.Owner()
 
 	var err error
 

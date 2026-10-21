@@ -51,6 +51,7 @@ The complete, route-by-route inventory lives in [docs/FEATURES.md](docs/FEATURES
 
 ### Administrators
 
+- **Sign-in**: Proxmox users granted `Permissions.Modify` on `/` (the `PVEAdmin` or `Administrator` role, `pve` or `pam` realm), plus PVMSS local administrators that work even when no cluster is reachable. The bootstrap local administrator is the only one allowed to create and manage further local accounts.
 - **Clusters**: connect several Proxmox environments, test connectivity, per-cluster snippet storage for cloud-init templates (paused).
 - **Catalog**: approve nodes, storages, ISOs, cloud images (temporarily disabled), VM templates, bridges; CRUD for hardware profiles, tags, cloud-init templates (published to every node, per-node status, "publish all"); stale approvals reconciled against live discovery.
 - **Pools**: create a self-service user = Proxmox user + pool + ACL in one step; cascade delete.
@@ -101,6 +102,13 @@ pveum aclmod / -user pvmss-admin1@pve -role PVMSS_Admin -propagate 1
 The `pveum` commands and information related to roles and required privileges are detailed in:
 
 - The in-app admin page `/docs/proxmox-permissions` (once PVMSS is running and you are logged in as admin)
+
+### Administrator sign-in
+
+PVMSS accepts two kinds of administrator, both landing on the same admin surface:
+
+- **Proxmox administrator** - sign in on `/login` with a Proxmox account whose ACL grants `Permissions.Modify` on `/` (the built-in `PVEAdmin` or `Administrator` role, or a custom role carrying that privilege). Choose the `pve` (Proxmox VE) or `pam` (Linux PAM) realm; typing an explicit `user@realm` overrides the picker. The admin flag is read at login and kept for the session (at most 24 hours), so a permission granted later needs a fresh sign-in. OIDC realms are not supported yet.
+- **Local administrator** - independent of Proxmox; sign in from the same page with the "Local administrator" toggle. `ADMIN_PASSWORD_HASH` seeds the bootstrap account (`admin`), the only owner allowed to create further accounts under **Admin > Settings > Accounts**. Those DB accounts are capped by `PVMSS_MAX_LOCAL_ADMINS`, have 8+ character passwords (72 bytes maximum, the bcrypt limit), and can be reset, disabled and deleted; each of those actions revokes that account's sessions. Five consecutive failed sign-ins lock an account for 15 minutes.
 
 ### Create an API token for the user root@pam
 
@@ -202,7 +210,7 @@ You can rely on `.env` + `env_file` or inline `environment:` entries, but **not 
 | `PROXMOX_URL`                                 | Full API URL (`https://host:8006/api2/json`)                                                                 | when source is `proxmox` | -                      |
 | `PROXMOX_API_TOKEN_NAME`                      | Proxmox token name (`user@pve!token`)                                                                        | when source is `proxmox` | -                      |
 | `PROXMOX_API_TOKEN_VALUE`                     | Token secret that matches the name above                                                                     | when source is `proxmox` | -                      |
-| `ADMIN_PASSWORD_HASH`                         | Bcrypt hash for the local admin login; disabled when empty                                                   | ❌                       | -                      |
+| `ADMIN_PASSWORD_HASH`                         | Bcrypt hash of the bootstrap local administrator (`admin`), the only account allowed to manage other local accounts; disabled when empty | ❌                       | -                      |
 | `PVMSS_HOST`                                  | Address to bind (`0.0.0.0` for all interfaces)                                                               | ❌                       | `127.0.0.1`            |
 | `PVMSS_WEB_DIR`                               | Directory holding the built SPA                                                                              | ❌                       | relative to the binary |
 | `PVMSS_COOKIE_SECURE`                         | `Secure` flag on auth cookies (keep `true` in production)                                                    | ❌                       | `true`                 |
@@ -210,6 +218,7 @@ You can rely on `.env` + `env_file` or inline `environment:` entries, but **not 
 | `PVMSS_INVENTORY_MANUAL_REFRESH_MIN_INTERVAL` | Minimum delay between user-triggered refreshes                                                               | ❌                       | `5s`                   |
 | `PVMSS_INVENTORY_REFRESH_TIMEOUT`             | Timeout for a single inventory refresh                                                                       | ❌                       | `15s`                  |
 | `PVMSS_MAX_LIST_PAGE_SIZE`                    | Upper bound on list endpoint page size                                                                       | ❌                       | `100`                  |
+| `PVMSS_MAX_LOCAL_ADMINS`                      | Maximum number of DB local administrator accounts (1-50); the bootstrap administrator is not counted          | ❌                       | `5`                    |
 | `PVMSS_TRUSTED_PROXY_HOPS`                    | Number of reverse proxies in front of PVMSS (for client IP / rate limits); set `0` with no proxy             | ❌                       | `1`                    |
 | `PVMSS_RATE_LIMIT_MAX`                        | Raises every built-in rate-limit ceiling (per-IP auth, per-user writes); `0` keeps the defaults              | ❌                       | `0`                    |
 | `PVMSS_METRICS_PORT`                          | Port of the `GET /metrics` listener on `PVMSS_HOST` (1-65535, different from `PVMSS_PORT`); empty disables it | ❌                       | empty                  |
@@ -373,6 +382,7 @@ A Helm chart lives in [`helm/`](helm/): `helm install pvmss ./helm -f my-values.
 
 - Security hardening is ongoing; no formal penetration test yet.
 - No HA-managed VMs, no cross-cluster migration, SDN and firewall rules stay in Proxmox.
+- Proxmox OIDC realms cannot sign in to PVMSS: only the `pve` and `pam` realms are supported (future work). Local PVMSS administrators remain available.
 
 Feedback and contributions are welcome through issues or pull requests. Next versions and features will be documented here: <https://github.com/julienhmmt/pvmss/projects?query=is%3Aopen>.
 

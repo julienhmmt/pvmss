@@ -64,15 +64,28 @@ Optionnelles :
 
 - `PVMSS_HOST` - adresse d'écoute (l'image met `0.0.0.0`).
 - `PVMSS_WEB_DIR` - emplacement de la SPA compilée (par défaut relatif à l'exécutable).
-- `ADMIN_PASSWORD_HASH` - si défini, doit être un hash bcrypt (`$2…`) ; active la connexion administrateur locale.
+- `ADMIN_PASSWORD_HASH` - si défini, doit être un hash bcrypt (`$2…`) ; initialise l'administrateur bootstrap de PVMSS, le seul compte autorisé à gérer les autres administrateurs locaux. Son mot de passe se change en modifiant cette valeur puis en redémarrant.
 - `PVMSS_COOKIE_SECURE` - `true` par défaut ; `false` uniquement derrière du HTTP en clair pour un essai local.
 - `PVMSS_TRUSTED_PROXY_HOPS` - nombre de reverse proxies devant PVMSS, pour déduire l'IP client (limitation de débit, audit) - défaut `1`.
 - `PVMSS_INVENTORY_REFRESH_INTERVAL` - période de rafraîchissement d'inventaire (défaut `30s`).
 - `PVMSS_INVENTORY_MANUAL_REFRESH_MIN_INTERVAL` - délai minimal entre deux rafraîchissements manuels (défaut `5s`).
 - `PVMSS_INVENTORY_REFRESH_TIMEOUT` - délai maximal d'un rafraîchissement (défaut `15s`).
 - `PVMSS_MAX_LIST_PAGE_SIZE` - taille de page maximale des listes (défaut `100`).
+- `PVMSS_MAX_LOCAL_ADMINS` - nombre maximal de comptes administrateurs locaux en base, de 1 à 50 (défaut `5`). L'administrateur bootstrap n'est pas compté.
 
 Pour les instructions de déploiement complètes (Docker, Kubernetes, Helm), voir le README du projet.
+
+## Administrateurs et comptes locaux
+
+Trois voies donnent les droits d'administration, et toutes mènent à la même interface :
+
+- **Administrateur Proxmox** - connectez-vous avec un compte Proxmox dont l'ACL accorde `Permissions.Modify` sur `/` (rôle `PVEAdmin`, `Administrator` ou un rôle personnalisé). Choisissez le realm `pve` ou `pam`, ou saisissez `user@realm` ; les realms OIDC ne sont pas encore pris en charge et répondent `realm_unsupported`. Le privilège est lu une fois à la connexion : accordez-le avant que l'utilisateur se connecte.
+- **Administrateur local bootstrap** - le compte `admin` initialisé par `ADMIN_PASSWORD_HASH`. Il est immuable, n'est jamais verrouillé et n'entre pas dans `PVMSS_MAX_LOCAL_ADMINS`.
+- **Administrateurs locaux en base** - comptes stockés dans PVMSS et créés par l'administrateur bootstrap dans **Paramètres > Comptes**. Ils fonctionnent sans aucune connexion à Proxmox.
+
+Seul l'administrateur bootstrap peut gérer les comptes locaux ; tout autre administrateur reçoit `owner_only` de `/api/v1/admin/accounts`. Depuis l'onglet Comptes, vous pouvez créer un compte (3 à 32 caractères minuscules, chiffres, point, tiret bas ou tiret), réinitialiser son mot de passe, le désactiver ou l'activer, et le supprimer. Chacune de ces actions révoque les sessions du compte. Les mots de passe doivent contenir au moins 8 caractères et au plus 72 octets (limite bcrypt). Cinq échecs consécutifs verrouillent un compte pendant 15 minutes ; une connexion réussie, une réinitialisation ou une désactivation lève le verrou. Chaque modification est écrite dans le journal d'audit.
+
+Les administrateurs locaux en base changent leur propre mot de passe sur `/profile`, comme les utilisateurs Proxmox. Le compte bootstrap ne le peut pas : changez `ADMIN_PASSWORD_HASH` puis redémarrez.
 
 ## Clusters (multi-cluster)
 
@@ -176,6 +189,7 @@ Les pages intégrées sont insérées une seule fois, si elles manquent, et jama
 `/admin/settings` expose les commandes d'exploitation :
 
 - **Journal d'audit** - chaque écriture (création de VM, action d'alimentation, modification, suppression, changements de catalogue et de politique, connexions) est enregistrée avec l'utilisateur, l'IP, la sévérité et la cible. Filtrez et paginez ; chaque VM affiche aussi ses propres entrées dans son onglet Activité.
+- **Comptes** - gestion réservée au propriétaire des administrateurs locaux : usage du plafond, statut et verrou, dernière connexion, création, réinitialisation du mot de passe, activation/désactivation, suppression.
 - **Rétention** - nombre de jours de conservation des lignes d'audit, avec aperçu du nombre de lignes qu'une purge supprimerait avant de l'appliquer.
 - **Export / import de la base** - sauvegardez la base SQLite ou restaurez-en une. L'import est en deux temps : l'envoi renvoie un aperçu table par table, rien n'est écrit avant confirmation.
 
@@ -191,6 +205,7 @@ Les pages intégrées sont insérées une seule fois, si elles manquent, et jama
 ## Limitations connues
 
 - PVMSS cible les clusters Proxmox VE 8.x/9.x (et les nœuds autonomes).
+- Les comptes Proxmox ne peuvent se connecter que via les realms `pve` et `pam` ; la connexion aux realms OIDC n'est pas encore prise en charge. Utilisez en attendant un administrateur local ou un compte `pve`/`pam`.
 - Les comptes sont provisionnés via `/admin/pools` côté Proxmox.
 - Les administrateurs peuvent migrer une VM à la fois depuis **Infrastructure > Nœuds**. La HA, la migration entre clusters et l'orchestration des sauvegardes se font directement dans Proxmox.
 - Les administrateurs créent des VM via la même interface self-service que les utilisateurs, ou directement dans Proxmox.

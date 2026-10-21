@@ -1,7 +1,16 @@
 import { describe, expect, it } from 'vitest';
 import { SessionStore } from './session.svelte';
 
-const principal = { username: 'alice@pve', displayName: 'alice', pool: 'pool-alice', isAdmin: false, cluster: 'default', clusterDisplayName: 'Default' };
+const principal = {
+	username: 'alice@pve',
+	displayName: 'alice',
+	pool: 'pool-alice',
+	isAdmin: false,
+	cluster: 'default',
+	clusterDisplayName: 'Default',
+	provider: 'pve' as const,
+	isOwner: false
+};
 
 describe('SessionStore.expire', () => {
 	it('drops a known principal once and reports it', () => {
@@ -16,5 +25,15 @@ describe('SessionStore.expire', () => {
 
 	it('ignores a 401 for an anonymous visitor', () => {
 		expect(new SessionStore().expire()).toBe(false);
+	});
+
+	it('exposes admin and owner flags from the principal', () => {
+		const session = new SessionStore();
+		expect(session.isAdmin).toBe(false);
+		expect(session.isOwner).toBe(false);
+
+		session.principal = { ...principal, isAdmin: true, provider: 'bootstrap', isOwner: true };
+		expect(session.isAdmin).toBe(true);
+		expect(session.isOwner).toBe(true);
 	});
 });

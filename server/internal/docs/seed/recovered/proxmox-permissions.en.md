@@ -60,6 +60,19 @@ pveum aclmod / -user pvmss-admin1@pve -role PVMSS_Admin -propagate 1
 migration with the service token, so that token needs `VM.Migrate`. It is not
 part of the per-user `PVMSSUser` role.
 
+### Signing in to PVMSS
+
+The role name does not matter: at login PVMSS asks Proxmox whether the account
+holds `Permissions.Modify` on `/`, which the built-in `PVEAdmin` and
+`Administrator` roles both carry. Keep `-propagate 1` so the grant covers the
+whole tree. The check runs once per session, so an ACL added after a user
+signed in requires a new sign-in.
+
+Only the `pve` and `pam` realms are supported. Accounts from an OIDC realm are
+refused with `realm_unsupported`; OIDC sign-in is future work. PVMSS local
+administrators (managed in **Admin > Settings > Accounts**) need no Proxmox
+account and no Proxmox permission at all.
+
 ## Per-user pools (PVMSSUser)
 
 PVMSS creates the `PVMSSUser` role, the user, the dedicated pool, and the ACL
