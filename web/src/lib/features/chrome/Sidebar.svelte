@@ -179,15 +179,19 @@
 	aria-label={m['chrome.sidebar.ariaLabel']()}
 	data-testid="app-sidebar"
 >
-	<div class="flex flex-col gap-1 px-3 pt-5">
-		<div class="flex items-center gap-2 px-2">
-			<Logo />
-			{#if session.principal}
-				<span class="font-mono text-xs text-muted-foreground">{session.principal.clusterDisplayName || session.principal.cluster}</span>
-			{/if}
-		</div>
-		{#if !session.isAdmin}
-			<p class="px-2 text-xs text-muted-foreground" data-testid="sidebar-tagline">{m['chrome.sidebar.tagline']()}</p>
+	<div class="flex flex-col gap-2 px-3 pt-5">
+		<div class="px-2"><Logo /></div>
+		{#if session.principal?.clusterDisplayName || session.principal?.cluster}
+			{@const clusterName = session.principal.clusterDisplayName || session.principal.cluster}
+			<p class="mx-2 flex min-w-0 items-center gap-1.5 text-xs text-muted-foreground" title={clusterName} data-testid="sidebar-cluster">
+				<svg viewBox="0 0 24 24" class="h-3.5 w-3.5 shrink-0" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+					<rect x="3" y="4" width="18" height="7" rx="1.5" />
+					<rect x="3" y="13" width="18" height="7" rx="1.5" />
+					<line x1="7" y1="7.5" x2="7.01" y2="7.5" />
+					<line x1="7" y1="16.5" x2="7.01" y2="16.5" />
+				</svg>
+				<span class="truncate">{clusterName}</span>
+			</p>
 		{/if}
 	</div>
 
@@ -253,11 +257,11 @@
 						{/if}
 					</div>
 					{#if isMachines && machinesOpen}
-						<ul id="sidebar-machines-drawer" class="flex flex-col gap-0.5 py-1">
+						<ul id="sidebar-machines-drawer" class="ml-5 flex flex-col gap-0.5 border-l border-sidebar-border py-1 pl-2">
 							{#if machinesLoading}
-								<li class="px-9 py-1.5 text-xs text-muted-foreground-subtle">{m['common.loading']()}</li>
+								<li class="px-2.5 py-1.5 text-xs text-muted-foreground-subtle">{m['common.loading']()}</li>
 							{:else if machinesVms.length === 0}
-								<li class="px-9 py-1.5 text-xs text-muted-foreground-subtle">{m['chrome.sidebar.machinesEmpty']()}</li>
+								<li class="px-2.5 py-1.5 text-xs text-muted-foreground-subtle">{m['chrome.sidebar.machinesEmpty']()}</li>
 							{:else}
 								{#each machinesVms as vm (vm.vmid + vm.cluster)}
 									{@const href = resolve('/vms/[cluster]/[vmid]', { cluster: vm.cluster, vmid: String(vm.vmid) })}
@@ -265,7 +269,7 @@
 										<a
 											{href}
 											aria-current={isActive(href, true) ? 'page' : undefined}
-											class="flex items-center gap-2 rounded-lg pl-9 pr-3 py-1.5 text-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring {isActive(href, true)
+											class="flex items-center gap-2 rounded-lg px-2.5 py-1.5 text-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring {isActive(href, true)
 												? 'bg-sidebar-accent font-medium text-sidebar-accent-foreground'
 												: 'text-muted-foreground hover:bg-sidebar-accent/50 hover:text-foreground'}"
 											onclick={closeDrawer}
@@ -291,7 +295,7 @@
 
 		{#if session.isAdmin}
 			<nav class="flex flex-col gap-1" aria-label={m['chrome.sidebar.navAdmin']()}>
-				<p class="px-3 text-xs font-semibold uppercase tracking-wide text-muted-foreground-subtle">
+				<p class="px-3 pb-1.5 text-2xs font-semibold uppercase tracking-[0.08em] text-muted-foreground-subtle">
 					{m['chrome.sidebar.navAdmin']()}
 				</p>
 				{#each ADMIN_NAV_GROUPS as group, index (group.heading())}
@@ -321,14 +325,14 @@
 							</svg>
 						</button>
 						{#if isGroupOpen(index)}
-							<ul id="admin-nav-group-{index}" class="flex flex-col gap-0.5 py-1">
+							<ul id="admin-nav-group-{index}" class="ml-5 flex flex-col gap-0.5 border-l border-sidebar-border py-1 pl-2">
 								{#each group.items as item (item.href)}
 									{@const active = isActive(item.href, item.exact ?? true)}
 									<li>
 										<a
 											href={item.href}
 											aria-current={active ? 'page' : undefined}
-											class="flex items-center rounded-lg pl-9 pr-3 py-1.5 text-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring {active
+											class="flex items-center rounded-lg px-2.5 py-1.5 text-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring {active
 												? 'bg-sidebar-accent font-medium text-sidebar-accent-foreground'
 												: 'text-muted-foreground hover:bg-sidebar-accent/50 hover:text-foreground'}"
 											onclick={closeDrawer}
@@ -354,7 +358,7 @@
 					? 'bg-sidebar-accent text-sidebar-accent-foreground'
 					: 'text-muted-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground'}"
 			>
-				<SidebarIcon name="info" />
+				<SidebarIcon name="help" />
 				{m['chrome.header.docs']()}
 			</a>
 		{/if}
@@ -384,9 +388,7 @@
 					<span class="flex min-w-0 flex-1 flex-col">
 						<span class="truncate text-sm font-medium leading-tight text-foreground">{session.principal.displayName || session.principal.username}</span>
 						<span class="truncate text-xs text-muted-foreground">
-							{session.isAdmin
-								? m['chrome.sidebar.userChip']({ username: session.principal.displayName || session.principal.username })
-								: m['chrome.sidebar.accountLabel']()}
+							{session.isAdmin ? m['chrome.sidebar.adminLabel']() : m['chrome.sidebar.accountLabel']()}
 						</span>
 					</span>
 				</a>
