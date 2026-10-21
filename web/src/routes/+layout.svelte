@@ -2,7 +2,7 @@
 	import type { Snippet } from 'svelte';
 	import { onDestroy, onMount } from 'svelte';
 	import { page } from '$app/state';
-	import { afterNavigate, onNavigate } from '$app/navigation';
+	import { afterNavigate, goto, onNavigate } from '$app/navigation';
 	import { resolve as resolvePath } from '$app/paths';
 	import '../app.css';
 	import '#lib/styles/prose.css';
@@ -10,7 +10,7 @@
 	import { setTaskOutcomeLedgerContext } from '#lib/features/tasks/task-outcome-ledger.svelte.js';
 	import { setPowerActionsContext } from '#lib/features/tasks/power-actions.svelte.js';
 	import { setSessionContext } from '#lib/features/auth/session.svelte.js';
-	import { isPublicPath } from '#lib/features/auth/public-routes.js';
+	import { isPublicPath, safeNext } from '#lib/features/auth/public-routes.js';
 	import { GITHUB_URL } from '#lib/shared/links.js';
 	import AuthRequired from '#lib/features/auth/AuthRequired.svelte';
 	import { get } from '#lib/shared/api/client.js';
@@ -172,6 +172,15 @@
 	const signedIn = $derived(session.principal !== null);
 	const hasRouteError = $derived(page.error !== null);
 	const isLoginPage = $derived(page.route.id === '/login');
+
+	// A signed-in user never sees the sign-in form: /login sends them to a safe
+	// `next` or their home. This also completes a fresh sign-in.
+	$effect(() => {
+		const principal = session.principal;
+		if (principal === null || !isLoginPage) return;
+		const next = safeNext(page.url.searchParams.get('next'));
+		void goto(next ?? resolvePath(principal.isAdmin ? '/admin' : '/'), { replaceState: true });
+	});
 	let shortcutsOpen = $state(false);
 
 	let sidebarDialog: HTMLDialogElement | null = $state(null);

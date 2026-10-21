@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { goto } from '$app/navigation';
-	import { resolve } from '$app/paths';
+	import { page } from '$app/state';
+	import { loginHref } from '#lib/features/auth/public-routes.js';
 	import { m } from '#lib/paraglide/messages.js';
 	import BrandPanel from '#lib/shared/ui/BrandPanel.svelte';
 	import Button from '#lib/shared/ui/Button.svelte';
@@ -31,7 +32,7 @@
 							<p class="mt-2 text-sm text-muted-foreground">{m['auth.requiredDescription']()}</p>
 						</div>
 					</div>
-					<Button focusOnMount onclick={() => void goto(resolve('/login'))}>
+					<Button focusOnMount onclick={() => void goto(loginHref(page.url.pathname + page.url.search))}>
 						{m['login.signIn']()}
 					</Button>
 				</Card>

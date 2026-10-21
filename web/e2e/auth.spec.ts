@@ -36,4 +36,31 @@ test.describe('T02 authentication', () => {
 		await page.locator('button[type="submit"]').click();
 		await expect(page).toHaveURL(/\/admin$/);
 	});
+
+	test('the sign-in gate returns the user to the page they asked for', async ({ page }) => {
+		await page.goto('/vms?cluster=default');
+		await page.getByRole('button', { name: /sign in|se connecter/i }).click();
+		await expect(page).toHaveURL(/\/login\?next=%2Fvms%3Fcluster%3Ddefault$/);
+
+		await page.locator('input[autocomplete="username"]').fill('alice');
+		await page.locator('input[autocomplete="current-password"]').fill('pvmss-alice');
+		await page.locator('#login-cluster').selectOption('default');
+		await page.locator('button[type="submit"]').click();
+		await expect(page).toHaveURL(/\/vms\?cluster=default$/);
+
+		// Signed in, /login is not a page: it sends the user on.
+		await page.goto('/login');
+		await expect(page).toHaveURL(/\/vms$/);
+	});
+
+	test('a failed sign-in moves focus to the error and links the fields to it', async ({ page }) => {
+		await page.goto('/login');
+		await page.locator('input[autocomplete="username"]').fill('alice');
+		await page.locator('input[autocomplete="current-password"]').fill('wrong-password');
+		await page.locator('#login-cluster').selectOption('default');
+		await page.locator('button[type="submit"]').click();
+
+		await expect(page.locator('#login-error')).toBeFocused();
+		await expect(page.locator('input[autocomplete="current-password"]')).toHaveAttribute('aria-describedby', /login-error/);
+	});
 });

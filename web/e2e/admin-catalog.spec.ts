@@ -257,7 +257,8 @@ test.describe('T11 admin catalog', () => {
 		expect(alice.status()).toBe(200);
 
 		await page.goto('/admin/nodes');
-		await expect(page).toHaveURL(/\/login$/);
+		// Signed in without admin rights: sent home, not to the sign-in form.
+		await expect(page).toHaveURL(/\/vms$/);
 
 		const direct = await page.request.get('/api/v1/admin/nodes?cluster=default');
 		expect(direct.status()).toBe(403);
