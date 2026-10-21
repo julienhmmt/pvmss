@@ -22,10 +22,10 @@ function buildPolicy(overrides: Partial<AdminPolicy['gabarit']> = {}): AdminPoli
 	};
 }
 
-function mountForm(onSave = vi.fn(), saving = false, policy = buildPolicy()) {
+function mountForm(onSave = vi.fn(), saving = false, policy = buildPolicy(), saveError: string | null = null) {
 	mount(PolicyForm, {
 		target: document.body,
-		props: { policy, saving, saveError: null, onSave }
+		props: { policy, saving, saveError, onSave }
 	});
 	return onSave;
 }
@@ -142,7 +142,7 @@ describe('PolicyForm autosave', () => {
 		expect(onSave).toHaveBeenCalledTimes(1);
 	});
 
-	it('manual save sends the full patch even when the form is clean', async () => {
+	it('submitting (Enter) sends the full patch even when the form is clean', async () => {
 		const onSave = mountForm();
 		await tick();
 		(document.querySelector('form') as HTMLFormElement).requestSubmit();
@@ -154,7 +154,7 @@ describe('PolicyForm autosave', () => {
 		});
 	});
 
-	it('manual save cancels the pending debounce so only one save is sent', async () => {
+	it('submitting cancels the pending debounce so only one save is sent', async () => {
 		const onSave = mountForm();
 		setInputValue(getFirstInput(), '6');
 		await tick();
@@ -166,11 +166,60 @@ describe('PolicyForm autosave', () => {
 		expect(patch?.gabarit?.maxSockets).toBe(6);
 	});
 
-	it('renders the manual save button and no discard control', () => {
+	it('has no save button: autosave is the only save model', () => {
 		mountForm();
-		expect(document.querySelector('button[type="submit"]')).not.toBeNull();
-		const labels = Array.from(document.querySelectorAll('button')).map((b) => b.textContent ?? '');
-		expect(labels.some((text) => text.includes('Annuler les modifications'))).toBe(false);
+		expect(document.querySelector('button[type="submit"]')).toBeNull();
+	});
+});
+
+describe('PolicyForm save status', () => {
+	beforeEach(() => {
+		vi.useFakeTimers();
+	});
+
+	afterEach(() => {
+		vi.useRealTimers();
+		document.body.innerHTML = '';
+	});
+
+	const status = (): string | undefined => document.querySelector<HTMLElement>('[data-testid="policy-save-status"]')?.dataset.status;
+	const retry = (): HTMLButtonElement | null => document.querySelector('[data-testid="policy-save-retry"]');
+
+	it('reads saved on a clean form', async () => {
+		mountForm();
+		await tick();
+		expect(status()).toBe('saved');
+		expect(retry()).toBeNull();
+	});
+
+	it('reads unsaved while the debounce is pending', async () => {
+		mountForm();
+		setInputValue(getFirstInput(), '6');
+		await tick();
+		expect(status()).toBe('unsaved');
+	});
+
+	it('reads invalid when a field blocks the save', async () => {
+		mountForm();
+		setInputValue(getFirstInput(), '');
+		await tick();
+		expect(status()).toBe('invalid');
+	});
+
+	it('reads saving while a save is in flight', async () => {
+		mountForm(vi.fn(), true);
+		await tick();
+		expect(status()).toBe('saving');
+	});
+
+	it('reads failed with a retry that resends the full patch', async () => {
+		const onSave = mountForm(vi.fn(), false, buildPolicy(), 'boom');
+		await tick();
+		expect(status()).toBe('failed');
+
+		retry()?.click();
+		expect(onSave).toHaveBeenCalledTimes(1);
+		expect(onSave.mock.calls[0]?.[0]).toMatchObject({ gabarit: { maxSockets: 4 }, quota: { maxVmPerUser: -1 } });
 	});
 });
 
