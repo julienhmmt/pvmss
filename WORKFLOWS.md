@@ -364,6 +364,18 @@ version is readable without an account.
 
 ---
 
+### Jump to a page or a machine (command palette)
+
+|                 |                                                                                                                                       |
+| --------------- | ------------------------------------------------------------------------------------------------------------------------------------- |
+| **Audience**    | end user and admin (signed in)                                                                                                        |
+| **Entry**       | Cmd/Ctrl+K anywhere, even in a text field; the "Search or jump to" button in the header (search icon on phones)                       |
+| **Route**       | any; selecting navigates to the page or to `/vms/[cluster]/[vmid]`                                                                    |
+| **API**         | `GET /api/v1/vms?search=&scope=all&pageSize=8` (debounced, latest query wins); pages need no call                                     |
+| **Steps**       | 1. Open. 2. Type: pages filter as you type, machines appear below. 3. Arrows/Home/End to pick, Enter to go.                            |
+| **States**      | Empty query shows the last five destinations (per browser) and every page; "Nothing matches."; "Machines could not be searched."    |
+| **Safety nets** | Navigation only, no actions; pages are the sidebar's own destinations, so admin pages never reach a pool user; Escape returns focus |
+
 ## Cross-cutting
 
 These apply to every workflow above; a new workflow inherits them.

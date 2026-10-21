@@ -15,6 +15,7 @@
 	let { open = $bindable(false), onClose }: Props = $props();
 
 	const SHORTCUTS: ReadonlyArray<{ keys: string; label: () => string }> = [
+		{ keys: '⌘/Ctrl + K', label: () => m['shortcuts.palette']() },
 		{ keys: '/', label: () => m['shortcuts.focusSearch']() },
 		{ keys: '?', label: () => m['shortcuts.toggleHelp']() },
 		{ keys: 'Esc', label: () => m['shortcuts.closeDialog']() },

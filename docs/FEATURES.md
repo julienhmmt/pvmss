@@ -174,6 +174,7 @@ Clusters have two names. The **id** (`clusters.name`, e.g. `default` for the env
 | `fake` cluster source for demos/tests (no Proxmox needed)                                                       | `PVMSS_CLUSTER_SOURCE=fake`                                                  | ✅     |
 | Docker, Docker Compose, Kubernetes manifest, Helm chart                                                         | repo root, `helm/`                                                           | ✅     |
 | `pvmss-recover` one-shot v0.3 → v0.4 DB migration CLI                                                           | `server/cmd/pvmss-recover`                                                   | ✅     |
+| Command palette (Cmd/Ctrl+K or the header button): jump to a permitted page or a machine by name, recent destinations | `chrome/CommandPalette.svelte`, `GET /api/v1/vms?search=` | ✅ |
 | i18n EN + FR, WCAG 2.1 AA target, keyboard-first, reduced-motion                                                | `web/messages`                                                               | ✅     |
 
 ## Not in scope (done in Proxmox)

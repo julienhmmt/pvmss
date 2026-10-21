@@ -23,6 +23,7 @@
 	import HeaderLite from '#lib/features/chrome/HeaderLite.svelte';
 	import StatusBanner from '#lib/features/chrome/StatusBanner.svelte';
 	import ShortcutsDialog from '#lib/features/chrome/ShortcutsDialog.svelte';
+	import CommandPalette from '#lib/features/chrome/CommandPalette.svelte';
 	import Toaster from '#lib/shared/ui/Toaster.svelte';
 	import { setToastContext } from '#lib/shared/ui/toast.svelte.js';
 	import ClusterDownOverlay from '#lib/shared/ui/ClusterDownOverlay.svelte';
@@ -162,6 +163,13 @@
 	});
 
 	function handleGlobalShortcut(event: KeyboardEvent): void {
+		// Cmd/Ctrl+K works even while typing: it is never text input.
+		if ((event.metaKey || event.ctrlKey) && !event.altKey && event.key.toLowerCase() === 'k') {
+			if (!signedIn) return;
+			event.preventDefault();
+			chrome.openPalette();
+			return;
+		}
 		if (event.ctrlKey || event.altKey || event.metaKey) return;
 		const target = event.target as HTMLElement | null;
 		if (target === null) return;
@@ -304,6 +312,7 @@
 
 {#if signedIn}
 	<ShortcutsDialog bind:open={shortcutsOpen} onClose={() => (shortcutsOpen = false)} />
+	<CommandPalette />
 {/if}
 
 <Toaster />

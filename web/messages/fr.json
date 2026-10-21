@@ -2431,5 +2431,16 @@
   "admin.clusterDetail.vms": "VMs",
   "admin.clusterDetail.vmsRunning": "VMs démarrées",
   "admin.clusters.details": "Détails du cluster",
-  "admin.clusters.detailsLabel": "Détails de {name}"
+  "admin.clusters.detailsLabel": "Détails de {name}",
+  "palette.title": "Aller à",
+  "palette.placeholder": "Chercher une page ou une machine…",
+  "palette.groupRecent": "Récents",
+  "palette.groupGoto": "Aller à",
+  "palette.groupAdmin": "Administration",
+  "palette.groupMachines": "Machines",
+  "palette.results": "{count} résultats",
+  "palette.empty": "Aucun résultat.",
+  "palette.machinesError": "La recherche de machines a échoué.",
+  "palette.open": "Rechercher ou aller à",
+  "shortcuts.palette": "Ouvrir la palette de commandes"
 }
