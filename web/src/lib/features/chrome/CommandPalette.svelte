@@ -27,7 +27,8 @@
 	let machines = $state.raw<PaletteItem[]>([]);
 	let machinesFailed = $state(false);
 	// Re-read on every opening: another tab may have added a recent item.
-	const recent = $derived(chrome.paletteOpen ? readRecent() : []);
+	const user = $derived(session.principal?.username ?? '');
+	const recent = $derived(chrome.paletteOpen && user !== '' ? readRecent(user) : []);
 
 	const GROUP_LABELS: Record<PaletteItem['group'], () => string> = {
 		recent: () => m['palette.groupRecent'](),
@@ -50,11 +51,10 @@
 	$effect(() => {
 		const q = query.trim();
 		const token = ++searchToken;
-		if (q === '' || !chrome.paletteOpen) {
-			machines = [];
-			machinesFailed = false;
-			return;
-		}
+		// Stale results go at once: a fast Enter must not open the previous match.
+		machines = [];
+		machinesFailed = false;
+		if (q === '' || !chrome.paletteOpen) return;
 		const timer = setTimeout(() => void searchMachines(q, token), MACHINE_DEBOUNCE_MS);
 		return () => clearTimeout(timer);
 	});
@@ -84,7 +84,7 @@
 
 	function choose(item: PaletteItem | undefined): void {
 		if (!item) return;
-		rememberRecent(item);
+		if (user !== '') rememberRecent(item, user);
 		close();
 		void goto(item.href);
 	}
@@ -151,11 +151,13 @@
 					</div>
 				{/each}
 			</div>
-		{:else}
-			<p class="px-2 py-2 text-sm text-muted-foreground">{m['palette.empty']()}</p>
 		{/each}
-		{#if machinesFailed}
-			<p class="px-2 text-xs text-muted-foreground">{m['palette.machinesError']()}</p>
-		{/if}
 	</div>
+	<!-- Outside the listbox: a listbox may only hold options and groups. -->
+	{#if results.length === 0}
+		<p class="px-2 py-2 text-sm text-muted-foreground">{m['palette.empty']()}</p>
+	{/if}
+	{#if machinesFailed}
+		<p class="px-2 text-xs text-muted-foreground">{m['palette.machinesError']()}</p>
+	{/if}
 </Dialog>

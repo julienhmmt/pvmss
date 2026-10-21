@@ -12,7 +12,8 @@ export interface PaletteItem {
 	href: string;
 }
 
-const RECENT_KEY = 'pvmss-palette-recent-v1';
+// Per user: a shared browser must not show one account another's pages or machines.
+const recentKey = (user: string): string => `pvmss-palette-recent-v1:${user}`;
 const RECENT_LIMIT = 5;
 
 /** Pages the principal may open: the sidebar's destinations, nothing more. */
@@ -65,10 +66,10 @@ export function filterItems(items: readonly PaletteItem[], query: string): Palet
 	return [...hits.filter((item) => normalize(item.label).startsWith(q)), ...hits.filter((item) => !normalize(item.label).startsWith(q))];
 }
 
-/** The last destinations opened from the palette, newest first (per browser). */
-export function readRecent(): PaletteItem[] {
+/** The last destinations `user` opened from the palette, newest first. */
+export function readRecent(user: string): PaletteItem[] {
 	try {
-		const parsed: unknown = JSON.parse(localStorage.getItem(RECENT_KEY) ?? '[]');
+		const parsed: unknown = JSON.parse(localStorage.getItem(recentKey(user)) ?? '[]');
 		if (!Array.isArray(parsed)) return [];
 		return (parsed as unknown[])
 			.filter((entry): entry is PaletteItem => {
@@ -81,10 +82,10 @@ export function readRecent(): PaletteItem[] {
 	}
 }
 
-export function rememberRecent(item: PaletteItem): void {
-	const next = [{ ...item, group: 'recent' as const }, ...readRecent().filter((entry) => entry.href !== item.href)].slice(0, RECENT_LIMIT);
+export function rememberRecent(item: PaletteItem, user: string): void {
+	const next = [{ ...item, group: 'recent' as const }, ...readRecent(user).filter((entry) => entry.href !== item.href)].slice(0, RECENT_LIMIT);
 	try {
-		localStorage.setItem(RECENT_KEY, JSON.stringify(next));
+		localStorage.setItem(recentKey(user), JSON.stringify(next));
 	} catch {
 		// Storage blocked: recents are a convenience, the palette works without them.
 	}

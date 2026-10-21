@@ -1,4 +1,5 @@
 import { test, expect, type Page } from '@playwright/test';
+import AxeBuilder from '@axe-core/playwright';
 
 // Ticket 06: Cmd/Ctrl+K jumps to a page or a machine, keyboard only.
 async function signInAlice(page: Page): Promise<void> {
@@ -58,5 +59,20 @@ test.describe('T06 command palette', () => {
 		await page.goto('/vms?cluster=default');
 		await page.getByTestId('palette-open-mobile').click();
 		await expect(page.getByTestId('palette-input')).toBeFocused();
+	});
+
+	test('passes axe with results and with nothing matching', async ({ page }) => {
+		await signInAlice(page);
+		await page.goto('/vms?cluster=default');
+		await page.getByTestId('vm-search').focus();
+		await page.keyboard.press('ControlOrMeta+k');
+		const input = page.getByTestId('palette-input');
+		for (const query of ['web', 'zzzz-no-match']) {
+			await input.fill(query);
+			await page.waitForTimeout(400);
+			const { violations } = await new AxeBuilder({ page }).include('dialog').analyze();
+			expect(violations.map((violation) => `${violation.id}: ${violation.nodes.map((node) => node.target.join(' ')).join(', ')}`), query).toEqual([]);
+		}
+		await expect(page.getByText(/Nothing matches|Aucun résultat/)).toBeVisible();
 	});
 });

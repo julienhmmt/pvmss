@@ -165,7 +165,8 @@
 	function handleGlobalShortcut(event: KeyboardEvent): void {
 		// Cmd/Ctrl+K works even while typing: it is never text input.
 		if ((event.metaKey || event.ctrlKey) && !event.altKey && event.key.toLowerCase() === 'k') {
-			if (!signedIn) return;
+			// A widget that used the key (a console, an editor) keeps it.
+			if (!signedIn || event.defaultPrevented) return;
 			event.preventDefault();
 			chrome.openPalette();
 			return;

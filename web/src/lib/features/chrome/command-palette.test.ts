@@ -39,13 +39,18 @@ describe('recent items', () => {
 	beforeEach(() => localStorage.clear());
 
 	it('keeps the last five, newest first, without duplicates', () => {
-		for (const label of ['a', 'b', 'c', 'd', 'e', 'f', 'b']) rememberRecent(item(label));
-		expect(readRecent().map((entry) => entry.label)).toEqual(['b', 'f', 'e', 'd', 'c']);
-		expect(readRecent().every((entry) => entry.group === 'recent')).toBe(true);
+		for (const label of ['a', 'b', 'c', 'd', 'e', 'f', 'b']) rememberRecent(item(label), 'alice');
+		expect(readRecent('alice').map((entry) => entry.label)).toEqual(['b', 'f', 'e', 'd', 'c']);
+		expect(readRecent('alice').every((entry) => entry.group === 'recent')).toBe(true);
+	});
+
+	it('never shows one user the destinations of another on the same browser', () => {
+		rememberRecent(item('Node capacity', '/admin/policy/nodes'), 'admin');
+		expect(readRecent('alice')).toEqual([]);
 	});
 
 	it('survives a corrupt stored value', () => {
-		localStorage.setItem('pvmss-palette-recent-v1', '{not json');
-		expect(readRecent()).toEqual([]);
+		localStorage.setItem('pvmss-palette-recent-v1:alice', '{not json');
+		expect(readRecent('alice')).toEqual([]);
 	});
 });

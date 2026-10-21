@@ -2438,7 +2438,21 @@
   "palette.groupGoto": "Go to",
   "palette.groupAdmin": "Administration",
   "palette.groupMachines": "Machines",
-  "palette.results": "{count} results",
+  "palette.results": [
+    {
+      "declarations": [
+        "input count",
+        "local countPlural = count: plural"
+      ],
+      "selectors": [
+        "countPlural"
+      ],
+      "match": {
+        "countPlural=one": "{count} result",
+        "countPlural=other": "{count} results"
+      }
+    }
+  ],
   "palette.empty": "Nothing matches.",
   "palette.machinesError": "Machines could not be searched.",
   "palette.open": "Search or jump to",
