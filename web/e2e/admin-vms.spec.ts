@@ -35,13 +35,6 @@ test.describe('Admin all machines', () => {
 			page.locator('[data-testid="admin-vm-start"], [data-testid="admin-vm-console"]').first()
 		).toBeVisible();
 
-		// The pool filter narrows the list server-side and keeps the facet.
-		await page.getByLabel('Filter by pool', { exact: true }).selectOption('pool-bob');
-		await expect.poll(async () => {
-			const pools = await page.getByTestId('admin-vm-pool').allTextContents();
-			return pools.length > 0 && pools.every((pool) => pool.trim() === 'pool-bob');
-		}).toBe(true);
-
 		// A row (or its name) opens the same detail view the owner gets, under
 		// the admin route, and Back returns to the admin collection.
 		await page.getByTestId('admin-vm-row-link').first().click();

@@ -31,7 +31,7 @@ function machine(overrides: Partial<VmListItem>): VmListItem {
 		name: 'web-01',
 		node: 'pve-01',
 		status: 'running',
-		pool: 'pool-alice',
+		pool: 'pvmss-alice',
 		tags: ['pvmss'],
 		ostype: 'l26',
 		cpuCores: 2,
@@ -47,7 +47,7 @@ function makeResult(items: VmListItem[]): VmListResult {
 		page: 1,
 		pageSize: 10,
 		availableNodes: ['pve-01'],
-		availablePools: ['pool-alice', 'pool-bob']
+		availablePools: ['pvmss-alice', 'pvmss-bob']
 	};
 }
 
@@ -71,8 +71,8 @@ describe('AdminVmsPage', () => {
 	it('lists every pool and names the total', () => {
 		const store = makeStore(
 			makeResult([
-				machine({ vmid: 100, name: 'web-01', pool: 'pool-alice' }),
-				machine({ vmid: 103, name: 'cache-01', pool: 'pool-bob', status: 'stopped' })
+				machine({ vmid: 100, name: 'web-01', pool: 'pvmss-alice' }),
+				machine({ vmid: 103, name: 'cache-01', pool: 'pvmss-bob', status: 'stopped' })
 			])
 		);
 		vi.mocked(getVmListContext).mockReturnValue(store);
@@ -81,8 +81,8 @@ describe('AdminVmsPage', () => {
 
 		expect(text()).toContain('web-01');
 		expect(text()).toContain('cache-01');
-		expect(text()).toContain('pool-alice');
-		expect(text()).toContain('pool-bob');
+		expect(text()).toContain('pvmss-alice');
+		expect(text()).toContain('pvmss-bob');
 		expect(document.querySelector('[data-testid="admin-vm-count"]')?.textContent).toBe('2 machines');
 	});
 

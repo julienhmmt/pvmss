@@ -149,7 +149,7 @@ func TestVMs_NonAdminScopeAllSilentlyOverridden(t *testing.T) {
 }
 
 // TestVMs_AdminScopeAllReturnsAcrossPools - an admin asking for
-// scope=all sees VMs across pools.
+// scope=all sees pvmss-tagged VMs across pools (untagged VMs 109, 110, 121, 122 are excluded).
 //
 //nolint:paralleltest // serial: shared fake VM and database fixtures
 func TestVMs_AdminScopeAllReturnsAcrossPools(t *testing.T) {
@@ -165,44 +165,59 @@ func TestVMs_AdminScopeAllReturnsAcrossPools(t *testing.T) {
 	pools := make(map[string]bool)
 	for _, item := range list.Items {
 		pools[item.Pool] = true
+		if !slices.Contains(item.Tags, extraPvmssTag) {
+			t.Errorf("item %+v lacks mandatory pvmss tag", item)
+		}
 	}
 
 	if len(pools) < 3 {
 		t.Errorf("pools = %v, want VMs across at least 3 pools", pools)
 	}
 
-	if list.Total != 25 {
-		t.Errorf("total = %d, want 25", list.Total)
+	if list.Total != 21 {
+		t.Errorf("total = %d, want 21", list.Total)
 	}
 }
 
 // TestVMs_PoolFilterNarrowsAdminList - the admin "all machines" page narrows
-// scope=all to one pool; the facet still lists every pool so the filter's
-// own dropdown keeps its selection.
+// scope=all to one pool; the facet lists only PVMSS ("pvmss-") pools.
 //
 //nolint:paralleltest // serial: shared fake VM and database fixtures
 func TestVMs_PoolFilterNarrowsAdminList(t *testing.T) {
-	handler, authHandler := newVMsHandler(t)
+	snap, err := (cluster.Fake{}).Snapshot(context.Background())
+	if err != nil {
+		t.Fatalf("Snapshot: %v", err)
+	}
+
+	snap.VMs = append(snap.VMs,
+		cluster.VM{VMID: 200, Name: "team-a-01", Node: cluster.FakeNode01, Status: cluster.VMRunning, Pool: "pvmss-team-a", Tags: []string{extraPvmssTag}},
+		cluster.VM{VMID: 201, Name: "team-b-01", Node: cluster.FakeNode01, Status: cluster.VMRunning, Pool: "pvmss-team-b", Tags: []string{extraPvmssTag}},
+	)
+	projection := buildProjectionWithIndex(t, snap, time.Now())
+	authHandler := newAuthHandler(t)
+	logger := slog.New(slog.NewTextHandler(testWriter{t}, nil))
+	handler := httpapi.NewVMs(projection, authHandler, testMaxListPageSize, testDefaultQuota, logger)
+
 	response := serveJSON(authHandler.AdminLogin, "/api/v1/auth/admin-login", `{"password":"pvmss-local-admin"}`)
 	cookie := response.Result().Cookies()[0]
 
-	httpResponse, list := getVMList(t, handler, cookie, "scope=all&pool="+cluster.FakePoolBob+"&pageSize=100")
+	httpResponse, list := getVMList(t, handler, cookie, "scope=all&pool=pvmss-team-b&pageSize=100")
 	if httpResponse.Code != http.StatusOK {
 		t.Fatalf("status = %d, want %d", httpResponse.Code, http.StatusOK)
 	}
 
 	for _, item := range list.Items {
-		if item.Pool != cluster.FakePoolBob {
-			t.Errorf("pool = %q, want %q", item.Pool, cluster.FakePoolBob)
+		if item.Pool != "pvmss-team-b" {
+			t.Errorf("pool = %q, want pvmss-team-b", item.Pool)
 		}
 	}
 
-	if len(list.Items) == 0 {
-		t.Fatal("items = none, want bob's VMs")
+	if len(list.Items) != 1 {
+		t.Fatalf("items = %d, want 1", len(list.Items))
 	}
 
-	if !slices.Contains(list.AvailablePools, cluster.FakePoolBob) {
-		t.Errorf("availablePools = %v, want %q", list.AvailablePools, cluster.FakePoolBob)
+	if got, want := list.AvailablePools, []string{"pvmss-team-a", "pvmss-team-b"}; !slices.Equal(got, want) {
+		t.Errorf("availablePools = %v, want %v", got, want)
 	}
 }
 

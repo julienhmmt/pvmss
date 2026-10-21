@@ -69,6 +69,7 @@ const (
 const (
 	defaultPage     = 1
 	defaultPageSize = 10
+	poolPrefix      = "pvmss-"
 )
 
 // ListQuery is the resolved combination of search, filters, sort, page, and
@@ -272,11 +273,18 @@ func scopedVMCount(index *inventory.Index, pool string, adminAll bool) int {
 func appendScopedVMs(result []cluster.VM, index *inventory.Index, pool string, adminAll bool) []cluster.VM {
 	if adminAll {
 		for _, machine := range index.ByVMID {
-			result = append(result, machine)
+			if slices.Contains(machine.Tags, pvmssTag) {
+				result = append(result, machine)
+			}
 		}
 		return result
 	}
-	return append(result, index.ByPool[pool]...)
+	for _, machine := range index.ByPool[pool] {
+		if slices.Contains(machine.Tags, pvmssTag) {
+			result = append(result, machine)
+		}
+	}
+	return result
 }
 
 // searchVMs classifies the raw text server-side: numeric-only
@@ -330,27 +338,26 @@ func nodeFacet(vms []cluster.VM) []string {
 	return nodes
 }
 
-// poolFacet lists the non-empty pools present before the pool filter is
-// applied, so the admin filter's own dropdown never shrinks to hide its
-// selection. Unpooled VMs have no filter value (an empty query parameter
-// means "no filter"), so "" is left out.
+// poolFacet lists the PVMSS-managed pools ("pvmss-" prefix) present before the
+// pool filter is applied, so the admin filter's own dropdown never shrinks to
+// hide its selection. Unmanaged Proxmox pools and unpooled VMs are left out.
 func poolFacet(vms []cluster.VM) []string {
 	seen := make(map[string]struct{}, len(vms))
 
-	pools := make([]string, 0, len(vms))
+	poolList := make([]string, 0, len(vms))
 	for _, machine := range vms {
-		if machine.Pool == "" {
+		if !strings.HasPrefix(machine.Pool, poolPrefix) {
 			continue
 		}
 		if _, ok := seen[machine.Pool]; !ok {
 			seen[machine.Pool] = struct{}{}
-			pools = append(pools, machine.Pool)
+			poolList = append(poolList, machine.Pool)
 		}
 	}
 
-	slices.Sort(pools)
+	slices.Sort(poolList)
 
-	return pools
+	return poolList
 }
 
 func filterVMs(vms []cluster.VM, query ListQuery) []cluster.VM {
