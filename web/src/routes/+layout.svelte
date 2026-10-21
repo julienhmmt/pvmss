@@ -10,10 +10,10 @@
 	import { setTaskOutcomeLedgerContext } from '#lib/features/tasks/task-outcome-ledger.svelte.js';
 	import { setPowerActionsContext } from '#lib/features/tasks/power-actions.svelte.js';
 	import { setSessionContext } from '#lib/features/auth/session.svelte.js';
-	import { isPublicPath, safeNext } from '#lib/features/auth/public-routes.js';
+	import { isPublicPath, loginHref, safeNext } from '#lib/features/auth/public-routes.js';
 	import { GITHUB_URL } from '#lib/shared/links.js';
 	import AuthRequired from '#lib/features/auth/AuthRequired.svelte';
-	import { get } from '#lib/shared/api/client.js';
+	import { get, UNAUTHORIZED_EVENT } from '#lib/shared/api/client.js';
 	import { setLocaleContext } from '#lib/features/chrome/locale.svelte.js';
 	import { setThemeContext } from '#lib/features/chrome/theme.svelte.js';
 	import { setStatusContext } from '#lib/features/chrome/status.svelte.js';
@@ -66,13 +66,26 @@
 	const theme = setThemeContext();
 	const status = setStatusContext();
 	const chrome = setChromeContext();
-	setToastContext();
+	const toasts = setToastContext();
 	onMount(() => {
 		locale.init();
 		theme.init();
 		status.start();
 	});
 	onDestroy(() => status.stop());
+
+	// A 401 while signed in means the session expired mid-use: one toast and
+	// one trip to sign in, coming back here. expire() is false for anonymous
+	// visitors and for every 401 after the first.
+	onMount(() => {
+		const onUnauthorized = (): void => {
+			if (!session.expire()) return;
+			toasts.info(m['auth.sessionExpired']());
+			void goto(loginHref(page.url.pathname + page.url.search));
+		};
+		globalThis.addEventListener(UNAUTHORIZED_EVENT, onUnauthorized);
+		return () => globalThis.removeEventListener(UNAUTHORIZED_EVENT, onUnauthorized);
+	});
 
 	if (typeof onNavigate === 'function' && typeof document !== 'undefined' && 'startViewTransition' in document) {
 		onNavigate((navigation) =>

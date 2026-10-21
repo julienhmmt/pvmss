@@ -9,6 +9,9 @@ interface ErrorEnvelope {
 }
 
 const CSRF_COOKIE_NAME = 'pvmss_csrf';
+/** Dispatched on `globalThis` for every 401, so the shell can end an expired
+ *  session once; the client itself keeps no session state. */
+export const UNAUTHORIZED_EVENT = 'pvmss-unauthorized';
 const CSRF_HEADER_NAME = 'X-CSRF-Token';
 
 export class ApiRequestError extends Error {
@@ -76,6 +79,9 @@ async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
 
 		if (response.status === 403 && envelope.code === 'invalid_csrf_token' && typeof globalThis !== 'undefined') {
 			globalThis.location.reload();
+		}
+		if (response.status === 401 && typeof globalThis.dispatchEvent === 'function') {
+			globalThis.dispatchEvent(new Event(UNAUTHORIZED_EVENT));
 		}
 
 		throw new ApiRequestError(response.status, envelope.code, envelope.message, envelope.retryAfterSeconds, envelope);

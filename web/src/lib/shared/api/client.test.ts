@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { ApiRequestError, del, get, patch, post, put } from './client';
+import { ApiRequestError, UNAUTHORIZED_EVENT, del, get, patch, post, put } from './client';
 import { m } from '#lib/paraglide/messages.js';
 import { setLocale } from '#lib/paraglide/runtime.js';
 
@@ -34,6 +34,15 @@ describe('get', () => {
 	it('throws ApiRequestError on non-2xx', async () => {
 		vi.stubGlobal('fetch', vi.fn().mockResolvedValue(jsonResponse(404, { code: 'not_found', message: 'gone' })));
 		await expect(get('/api/v1/foo')).rejects.toThrow(ApiRequestError);
+	});
+
+	it('announces a 401 to the shell and still rejects', async () => {
+		const listener = vi.fn();
+		globalThis.addEventListener(UNAUTHORIZED_EVENT, listener);
+		vi.stubGlobal('fetch', vi.fn().mockResolvedValue(jsonResponse(401, { code: 'unauthenticated', message: 'authentication required' })));
+		await expect(get('/api/v1/foo')).rejects.toMatchObject({ status: 401 });
+		globalThis.removeEventListener(UNAUTHORIZED_EVENT, listener);
+		expect(listener).toHaveBeenCalledTimes(1);
 	});
 
 	it('throws with generic envelope when body is not JSON', async () => {

@@ -1622,6 +1622,7 @@
   "auth.logout.confirm": "Sign out of PVMSS?",
   "auth.requiredTitle": "Authentication required",
   "auth.requiredDescription": "Please sign in to access this page.",
+  "auth.sessionExpired": "Your session expired. Sign in again.",
   "auth.warningBrandTitle": "Warning",
   "auth.warningBrandDescription": "This page requires authentication.",
   "error.notFoundTitle": "Page not found",

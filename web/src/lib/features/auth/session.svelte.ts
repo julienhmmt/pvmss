@@ -38,6 +38,15 @@ export class SessionStore {
 		}
 	}
 
+	/** Drops a principal whose session the server no longer accepts. Returns
+	 *  false when nobody was signed in, so a 401 burst, a sign-in failure or an
+	 *  anonymous visitor's 401 is not treated as an expiry. */
+	expire(): boolean {
+		if (this.principal === null) return false;
+		this.principal = null;
+		return true;
+	}
+
 	get isAdmin(): boolean {
 		return this.principal?.isAdmin ?? false;
 	}
