@@ -337,8 +337,9 @@ chosen concept ("Calm workspace") fixes three structural decisions:
 4. **Sidebar bottom** - pinned to the bottom:
    - A short reassurance note ("Approved by your team. Ready for your next
      idea.") with a shield icon.
-   - Preferences row: theme toggle (sun/moon icon button) and language button
-     (EN/FR with a chevron).
+   - Preferences row: theme control (light / dark / system, a three-icon
+     segmented group; system follows the OS) and language button (EN/FR with
+     a chevron).
    - Account link: avatar initials, name, "Personal account" subtitle, and a
      trailing chevron.
 
@@ -923,7 +924,7 @@ workspace that feels comfortable to use."
 - **Identity** - large avatar (initials), name, "Personal account" subtitle.
 - **Preference rows** (top-bordered, space-between):
   - **Appearance** - "Warm light or a quieter dark workspace." with a
-    "Switch to light/dark" secondary button.
+    the same light / dark / system theme control.
   - **Language** - "The complete interface is available in English and French."
     with a language select.
 - **Field note** - "Authentication, passwords and API tokens are intentionally

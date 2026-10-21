@@ -46,9 +46,8 @@ test.describe('Calm workspace', () => {
 		await page.goto('/profile');
 
 		const html = page.locator('html');
-		const wasDark = (await html.getAttribute('class'))?.includes('dark') ?? false;
-		await page.getByTestId('account-theme-toggle').click();
-		await expect(html).toHaveClass(wasDark ? /^(?!.*\bdark\b)/ : /\bdark\b/);
+		await page.getByTestId('account-theme').getByRole('button', { name: 'Dark', exact: true }).click();
+		await expect(html).toHaveClass(/\bdark\b/);
 
 		await page.getByTestId('account-language').selectOption('fr');
 		await expect(html).toHaveAttribute('lang', 'fr');
@@ -56,7 +55,7 @@ test.describe('Calm workspace', () => {
 
 		await page.reload();
 		await expect(page.getByRole('heading', { name: 'Votre compte' })).toBeVisible();
-		await expect(html).toHaveClass(wasDark ? /^(?!.*\bdark\b)/ : /\bdark\b/);
+		await expect(html).toHaveClass(/\bdark\b/);
 	});
 
 	test('activity shows a power action in progress, then the recorded update', async ({ page }) => {

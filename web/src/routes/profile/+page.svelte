@@ -6,11 +6,10 @@
 	 * sidebar controls make, persisted the same way.
 	 */
 	import { getSessionContext } from '#lib/features/auth/session.svelte.js';
-	import { getThemeContext } from '#lib/features/chrome/theme.svelte.js';
+	import ThemeToggle from '#lib/features/chrome/ThemeToggle.svelte';
 	import { getLocaleContext } from '#lib/features/chrome/locale.svelte.js';
 	import type { Locale } from '#lib/paraglide/runtime.js';
 	import PageHeader from '#lib/shared/ui/PageHeader.svelte';
-	import Button from '#lib/shared/ui/Button.svelte';
 	import Card from '#lib/shared/ui/Card.svelte';
 	import Select from '#lib/shared/ui/Select.svelte';
 	import ProfilePasswordSection from '#lib/features/auth/ProfilePasswordSection.svelte';
@@ -20,7 +19,6 @@
 	import { m } from '#lib/paraglide/messages.js';
 
 	const session = getSessionContext();
-	const theme = getThemeContext();
 	const locale = getLocaleContext();
 
 	const name = $derived(session.principal?.displayName || session.principal?.username || '');
@@ -65,9 +63,9 @@
 				<p class="font-medium">{m['account.appearanceTitle']()}</p>
 				<p class="text-sm text-muted-foreground">{m['account.appearanceBody']()}</p>
 			</div>
-			<Button variant="secondary" onclick={() => theme.toggle()} data-testid="account-theme-toggle">
-				{theme.current === 'dark' ? m['account.switchToLight']() : m['account.switchToDark']()}
-			</Button>
+			<div data-testid="account-theme">
+				<ThemeToggle />
+			</div>
 		</div>
 
 		<div class="flex flex-wrap items-center justify-between gap-4 border-t border-border px-6 py-5">
