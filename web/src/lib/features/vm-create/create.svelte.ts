@@ -85,6 +85,11 @@ export interface CatalogGabarit {
 	isolationVlanTag: number;
 }
 
+/** Memory for display: whole gigabytes as GB, anything else in MB. */
+export function memoryLabel(memoryMB: number): string {
+	return memoryMB >= 1024 && memoryMB % 1024 === 0 ? `${memoryMB / 1024} GB` : `${memoryMB} MB`;
+}
+
 /** The effective UI ceiling for a gabarit field: 0 means no cap (the server
  *  enforces the same rule), so the fallback rail applies for the input's
  *  max attribute. */

@@ -160,6 +160,8 @@ test.describe('T06 VM creation', () => {
 		await page.getByLabel('Bridge').selectOption('vmbr2');
 
 		await page.getByRole('tab', { name: 'Review' }).click();
+		await expect(page.getByTestId('review-summary')).toContainText('vmbr2');
+		await page.getByRole('switch', { name: 'Show the JSON request' }).click();
 
 		const outgoing = await page.locator('[data-testid="review-request"]').textContent();
 		expect(outgoing).toContain('"node": "pve-node-02"');

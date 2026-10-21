@@ -55,7 +55,9 @@
 	<title>{m['vms.create.title']()}</title>
 </svelte:head>
 
-<section class="mx-auto w-full max-w-6xl">
+<!-- Simple mode keeps the wide layout for its sticky summary aside; the
+     chooser and the detailed wizard read better as one centered column. -->
+<section class="mx-auto w-full {chosen === 'simple' ? 'max-w-6xl' : 'max-w-3xl'}">
 	<PageHeader
 		back={{ href: resolve('/vms'), label: m['vms.create.back']() }}
 		eyebrow={m['vms.create.eyebrow']()}
@@ -95,7 +97,7 @@
 				<EmptyState title={m['vms.create.blocked.noCatalogTitle']()} description={m['vms.create.blocked.noCatalogBody']()} dataTestid="vm-create-no-catalog" />
 			</Card>
 		{:else if chosen === null}
-			<div class="w-full max-w-3xl"><ModeChooser onSelect={chooseMode} /></div>
+			<ModeChooser onSelect={chooseMode} />
 		{:else}
 			<div class="mb-5 flex flex-wrap items-center justify-between gap-3">
 				<button

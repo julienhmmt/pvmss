@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { tick } from 'svelte';
-	import { getVmCreateContext, gabaritCeiling, type SimpleSource } from './create.svelte';
+	import { getVmCreateContext, gabaritCeiling, memoryLabel, type SimpleSource } from './create.svelte';
 	import { getTaskTrayContext } from '#lib/features/tasks/tasks.svelte.js';
 	import { getTaskOutcomeLedgerContext } from '#lib/features/tasks/task-outcome-ledger.svelte.js';
 	import { handleAccepted } from './post-submit';
@@ -88,10 +88,6 @@
 	const isoOptions = $derived(
 		(form.catalog?.isos ?? []).map((iso) => ({ value: iso.file, label: iso.file }))
 	);
-
-	function memoryLabel(memoryMB: number): string {
-		return memoryMB >= 1024 && memoryMB % 1024 === 0 ? `${memoryMB / 1024} GB` : `${memoryMB} MB`;
-	}
 
 	const HOSTNAME_PATTERN = /^[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?$/;
 
@@ -286,7 +282,7 @@
 	>
 		<p id="simple-wizard-help" class="sr-only">{m['vms.create.reviewRequest']()}</p>
 
-		<div class="creation-form grid gap-8">
+		<Card as="div" pad="lg" class="creation-form grid gap-8">
 			<FormSection step={1} legend={m['vms.create.section.start']()} description={m['vms.create.section.startHelp']()}>
 				{#if sourceCards.length > 1}
 					<div class="grid gap-2" role="radiogroup" aria-label={m['vms.create.section.start']()}>
@@ -408,7 +404,7 @@
 			</FormSection>
 
 			<p class="text-xs text-muted-foreground" data-testid="vm-create-retention">{m['vms.create.retentionNote']()}</p>
-		</div>
+		</Card>
 
 		<Card as="aside" pad="md" class="creation-summary flex flex-col gap-4 min-[700px]:sticky min-[700px]:top-24" aria-labelledby="creation-summary-title" data-testid="vm-create-summary">
 			<p id="creation-summary-title" class="flex items-center gap-2 text-sm font-semibold">

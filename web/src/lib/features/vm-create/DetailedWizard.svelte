@@ -7,6 +7,11 @@
 	import StepNetwork from './_steps/StepNetwork.svelte';
 	import StepReview from './_steps/StepReview.svelte';
 	import Button from '#lib/shared/ui/Button.svelte';
+	import Card from '#lib/shared/ui/Card.svelte';
+	import { getTaskTrayContext } from '#lib/features/tasks/tasks.svelte.js';
+	import { getTaskOutcomeLedgerContext } from '#lib/features/tasks/task-outcome-ledger.svelte.js';
+	import { getToastContext } from '#lib/shared/ui/toast.svelte.js';
+	import { handleAccepted } from './post-submit';
 	import Skeleton from '#lib/shared/ui/Skeleton.svelte';
 	import { m } from '#lib/paraglide/messages.js';
 
@@ -102,6 +107,20 @@
 		if (step !== undefined) current = step.id;
 	}
 
+	const tray = getTaskTrayContext();
+	const toast = getToastContext();
+	const outcomeLedger = getTaskOutcomeLedgerContext();
+	const imageBlocker = $derived(form.imageModeBlocker());
+
+	async function submit(): Promise<void> {
+		const accepted = await form.submit();
+		if (accepted === null) {
+			if (form.submitError) toast.error(m['toast.vmCreateFailed']({ error: form.submitError }));
+			return;
+		}
+		await handleAccepted(accepted, { tray, toast, outcomeLedger, keyToSave: form.sshSelection.keyToSave() });
+	}
+
 	function goBack(): void {
 		const previous = stepIndex(current) - 1;
 		const step = STEPS[previous];
@@ -118,69 +137,77 @@
 		<Skeleton class="h-10 w-full" />
 	</div>
 {:else}
-	<!-- Progress stepper, not a second tab row: numbered circles joined by a
-	     connector, the current step accented, completed steps checked. The
-	     role stays `tab` so the step controls keep their existing accessible
-	     name and keyboard behaviour. -->
-	<ol role="tablist" aria-label={m['vms.create.stepsAriaLabel']()} class="mb-6 flex flex-wrap items-center gap-1">
-		{#each STEPS as step, i (step.id)}
-			{@const state = current === step.id ? 'current' : stepIndex(current) > i ? 'done' : 'todo'}
-			<li class="flex items-center gap-1">
-				<button
-					role="tab"
-					aria-selected={current === step.id}
-					aria-current={current === step.id ? 'step' : undefined}
-					class="pv-focus inline-flex items-center gap-2 rounded-lg px-2 py-1.5 text-sm font-medium transition-colors {state === 'current'
-						? 'text-foreground'
-						: state === 'done'
-							? 'text-success-soft-foreground'
-							: 'text-muted-foreground hover:text-foreground'}"
-					onclick={() => (current = step.id)}
-				>
-					<span
-						class="flex h-7 w-7 shrink-0 items-center justify-center rounded-full border text-xs font-semibold transition-colors {state === 'current'
-							? 'border-primary bg-primary-solid text-primary-foreground'
-							: state === 'done'
-								? 'border-success-soft-foreground/30 bg-success-soft text-success-soft-foreground'
-								: 'border-border bg-muted text-muted-foreground'}"
-					>
-						{#if state === 'done'}
-							<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" class="h-3.5 w-3.5" aria-hidden="true">
-								<path d="M4 10l4 4 8-8" />
-							</svg>
-						{:else}
-							{i + 1}
+	<Card as="div" pad="lg">
+		{#snippet header()}
+			<!-- Progress stepper, not a second tab row: numbered circles joined by a
+			     connector, the current step accented, completed steps checked. The
+			     role stays `tab` so the step controls keep their existing accessible
+			     name and keyboard behaviour. -->
+			<ol role="tablist" aria-label={m['vms.create.stepsAriaLabel']()} class="flex flex-wrap items-center gap-1">
+				{#each STEPS as step, i (step.id)}
+					{@const state = current === step.id ? 'current' : stepIndex(current) > i ? 'done' : 'todo'}
+					<li class="flex items-center gap-1">
+						<button
+							role="tab"
+							aria-selected={current === step.id}
+							aria-current={current === step.id ? 'step' : undefined}
+							class="pv-focus inline-flex items-center gap-2 rounded-lg px-2 py-1.5 text-sm font-medium transition-colors {state === 'current'
+								? 'text-foreground'
+								: state === 'done'
+									? 'text-success-soft-foreground'
+									: 'text-muted-foreground hover:text-foreground'}"
+							onclick={() => (current = step.id)}
+						>
+							<span
+								class="flex h-7 w-7 shrink-0 items-center justify-center rounded-full border text-xs font-semibold transition-colors {state === 'current'
+									? 'border-primary bg-primary-solid text-primary-foreground'
+									: state === 'done'
+										? 'border-success-soft-foreground/30 bg-success-soft text-success-soft-foreground'
+										: 'border-border bg-muted text-muted-foreground'}"
+							>
+								{#if state === 'done'}
+									<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" class="h-3.5 w-3.5" aria-hidden="true">
+										<path d="M4 10l4 4 8-8" />
+									</svg>
+								{:else}
+									{i + 1}
+								{/if}
+							</span>
+							{step.label()}
+						</button>
+						{#if i < STEPS.length - 1}
+							<span class="h-px w-5 shrink-0 bg-border" aria-hidden="true"></span>
 						{/if}
-					</span>
-					{step.label()}
-				</button>
-				{#if i < STEPS.length - 1}
-					<span class="h-px w-5 shrink-0 bg-border" aria-hidden="true"></span>
-				{/if}
-			</li>
-		{/each}
-	</ol>
+					</li>
+				{/each}
+			</ol>
+		{/snippet}
 
-	<div bind:this={stepContainer}>
-		{#if current === 'Base'}
-			<StepBase showErrors={stepAttempted.Base} />
-		{:else if current === 'Hardware'}
-			<StepHardware showErrors={stepAttempted.Hardware} />
-		{:else if current === 'Disk'}
-			<StepDisk showErrors={stepAttempted.Disk} />
-		{:else if current === 'Network'}
-			<StepNetwork showErrors={stepAttempted.Network} />
-		{:else}
-			<StepReview />
-		{/if}
-	</div>
+		<div bind:this={stepContainer}>
+			{#if current === 'Base'}
+				<StepBase showErrors={stepAttempted.Base} />
+			{:else if current === 'Hardware'}
+				<StepHardware showErrors={stepAttempted.Hardware} />
+			{:else if current === 'Disk'}
+				<StepDisk showErrors={stepAttempted.Disk} />
+			{:else if current === 'Network'}
+				<StepNetwork showErrors={stepAttempted.Network} />
+			{:else}
+				<StepReview />
+			{/if}
+		</div>
 
-	{#if current !== 'Review'}
-		<div class="mt-6 flex gap-2">
+		{#snippet footer()}
 			{#if stepIndex(current) > 0}
 				<Button variant="secondary" onclick={goBack}>{m['common.back']()}</Button>
 			{/if}
-			<Button onclick={() => void goNext()}>{m['common.next']()}</Button>
-		</div>
-	{/if}
+			{#if current === 'Review'}
+				<Button loading={form.submitting} disabled={imageBlocker !== null} onclick={() => void submit()}>
+					{form.submitting ? m['common.creating']() : m['vms.create.submit']()}
+				</Button>
+			{:else}
+				<Button onclick={() => void goNext()}>{m['common.next']()}</Button>
+			{/if}
+		{/snippet}
+	</Card>
 {/if}
