@@ -74,6 +74,17 @@ describe('AuditLogPanel', () => {
 		const detailCell = document.body.querySelector<HTMLTableCellElement>('td[colspan="8"]');
 		expect(detailCell).not.toBeNull();
 		expect(detailCell!.querySelector('pre')?.textContent).toContain('"ok": true');
+		expect(toggle!.getAttribute('aria-expanded')).toBe('true');
+		await unmount(app);
+	});
+
+	it('shows a no-detail label instead of an empty button', async () => {
+		vi.stubGlobal('fetch', vi.fn().mockResolvedValue(jsonResponse(200, auditPage([{ ...entry, detail: '' }]))));
+		const app = mount(AuditLogHarness, { target: document.body });
+		await settle();
+
+		expect(document.body.querySelector('tbody button')).toBeNull();
+		expect(document.body.textContent).toContain(m['admin.audit.noDetail']());
 		await unmount(app);
 	});
 });

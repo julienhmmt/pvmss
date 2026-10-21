@@ -174,13 +174,23 @@
 								<Pill tone={severityTone(entry.severity)} label={severityLabel(entry.severity)} />
 							</td>
 							<td data-label={m['admin.audit.detail']()}>
-								<button type="button" class="pv-focus rounded-sm text-left hover:underline" onclick={() => selectedDetail = selectedDetail === entry.id ? null : entry.id}>
-									{summary}
-								</button>
+								{#if summary.trim() === ''}
+									<span class="text-muted-foreground">{m['admin.audit.noDetail']()}</span>
+								{:else}
+									<button
+										type="button"
+										class="pv-focus rounded-sm text-left hover:underline"
+										aria-expanded={selectedDetail === entry.id}
+										aria-controls="audit-detail-{entry.id}"
+										onclick={() => selectedDetail = selectedDetail === entry.id ? null : entry.id}
+									>
+										{summary}
+									</button>
+								{/if}
 							</td>
 						</tr>
 						{#if selectedDetail === entry.id}
-							<tr>
+							<tr id="audit-detail-{entry.id}">
 								<td colspan={8} data-nolabel="true">
 									<pre class="max-h-96 overflow-auto whitespace-pre-wrap break-words rounded-md bg-muted p-4 font-mono text-xs">{detailBlock(entry)}</pre>
 								</td>

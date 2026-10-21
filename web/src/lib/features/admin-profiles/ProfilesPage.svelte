@@ -155,11 +155,13 @@
 				<TextField
 					type="search"
 					placeholder={m['admin.profiles.searchPlaceholder']()}
+					aria-label={m['admin.profiles.searchPlaceholder']()}
 					value={search}
 					oninput={(e: Event & { currentTarget: HTMLInputElement }) => onSearchChange(e.currentTarget.value)}
 					class="w-full sm:w-48"
 				/>
 				<Select
+					aria-label={m['admin.profiles.bus']()}
 					value={busFilter}
 					onchange={(e: Event & { currentTarget: HTMLSelectElement }) => onBusFilterChange(e.currentTarget.value)}
 					options={[
@@ -169,6 +171,7 @@
 					class="w-full sm:w-44"
 				/>
 				<Select
+					aria-label={m['common.enabled']()}
 					value={enabledFilter}
 					onchange={(e: Event & { currentTarget: HTMLSelectElement }) => onEnabledFilterChange(e.currentTarget.value as 'all' | 'enabled' | 'disabled')}
 					options={[
