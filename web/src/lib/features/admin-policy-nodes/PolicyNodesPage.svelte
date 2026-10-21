@@ -7,6 +7,7 @@
 	import type { ClusterOption } from '#lib/shared/clusters.js';
 	import type { NodeStatus } from '../cluster/nodes.svelte';
 	import { m } from '#lib/paraglide/messages.js';
+	import { formatDateTime } from '#lib/shared/format-date.js';
 	import Alert from '#lib/shared/ui/Alert.svelte';
 	import PageHeader from '#lib/shared/ui/PageHeader.svelte';
 	import ClusterSelector from '#lib/shared/ui/ClusterSelector.svelte';
@@ -79,7 +80,7 @@
 
 	function formatRefreshedAt(iso: string | null): string {
 		if (!iso) return m['common.dash']();
-		return new Date(iso).toLocaleString();
+		return formatDateTime(iso, 'short');
 	}
 
 	const statusTone: Record<NodeStatus, 'ok' | 'error' | 'off'> = {

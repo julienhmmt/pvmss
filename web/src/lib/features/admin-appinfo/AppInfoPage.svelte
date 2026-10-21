@@ -8,6 +8,7 @@
 	import Skeleton from '#lib/shared/ui/Skeleton.svelte';
 	import ErrorState from '#lib/shared/ui/ErrorState.svelte';
 	import { m } from '#lib/paraglide/messages.js';
+	import { formatDateTime } from '#lib/shared/format-date.js';
 
 	const store = getAppInfoContext();
 
@@ -59,9 +60,7 @@
 
 	function formatClusterTimestamp(iso: string | undefined): string {
 		if (!iso) return m['admin.appinfo.never']();
-		const date = new Date(iso);
-		if (Number.isNaN(date.getTime())) return iso;
-		return date.toLocaleString();
+		return formatDateTime(iso);
 	}
 
 	function isBooleanLike(field: ConfigField): boolean {

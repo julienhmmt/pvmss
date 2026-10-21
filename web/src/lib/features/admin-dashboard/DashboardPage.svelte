@@ -14,6 +14,7 @@
 	import EmptyState from '#lib/shared/ui/EmptyState.svelte';
 	import { formatBytes, usagePercent } from '#lib/shared/format-bytes.js';
 	import { m } from '#lib/paraglide/messages.js';
+	import { formatDateTime, formatTime } from '#lib/shared/format-date.js';
 	import { activityMessage, auditTarget } from '#lib/features/activity/activity.svelte.js';
 	import { post } from '#lib/shared/api/client.js';
 
@@ -74,7 +75,7 @@
 			</Button>
 			{#if store.summary}
 				<p class="text-xs text-muted-foreground" data-testid="dashboard-refreshed-at">
-					{m['admin.dashboard.refreshed']()} <time datetime={store.summary.refreshedAt}>{new Date(store.summary.refreshedAt).toLocaleTimeString()}</time>
+					{m['admin.dashboard.refreshed']()} <time datetime={store.summary.refreshedAt}>{formatTime(store.summary.refreshedAt)}</time>
 				</p>
 			{/if}
 		</div>
@@ -252,7 +253,7 @@
 						{#each summary.recentChanges.slice(0, RECENT_LIMIT) as change (change.id)}
 							<li class="flex items-baseline gap-3 px-5 py-2.5 text-sm">
 								<time class="w-36 shrink-0 whitespace-nowrap font-mono text-xs text-muted-foreground tabular-nums" datetime={change.timestamp}>
-									{new Date(change.timestamp).toLocaleString(undefined, { dateStyle: 'short', timeStyle: 'short' })}
+									{formatDateTime(change.timestamp, 'short')}
 								</time>
 								<span class="min-w-0 truncate text-xs font-semibold" title={activityMessage(change.action)}>{activityMessage(change.action)}</span>
 								<span class="min-w-0 flex-1 truncate text-muted-foreground">

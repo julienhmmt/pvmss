@@ -7,6 +7,7 @@
 	import RollbackSnapshotDialog from './RollbackSnapshotDialog.svelte';
 	import { VmSnapshotsStore, type VmSnapshot } from './snapshots.svelte';
 	import { m } from '#lib/paraglide/messages.js';
+	import { formatDateTime } from '#lib/shared/format-date.js';
 	import Alert from '#lib/shared/ui/Alert.svelte';
 	import Card from '#lib/shared/ui/Card.svelte';
 	import EmptyState from '#lib/shared/ui/EmptyState.svelte';
@@ -41,7 +42,7 @@
 	}
 
 	function formatCreatedAt(value: string): string {
-		return new Intl.DateTimeFormat(undefined, { dateStyle: 'medium', timeStyle: 'short' }).format(new Date(value));
+		return formatDateTime(value);
 	}
 </script>
 

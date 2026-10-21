@@ -11,6 +11,7 @@
 	import type { DashboardSummary } from '#lib/features/admin-dashboard/dashboard.svelte.js';
 	import { statusHint, statusLabel, statusTone, type AdminCluster } from './clusters.svelte';
 	import { m } from '#lib/paraglide/messages.js';
+	import { formatDateTime } from '#lib/shared/format-date.js';
 
 	interface Props {
 		name: string;
@@ -97,7 +98,7 @@
 				<div class="flex flex-wrap items-center gap-3">
 					<Pill tone={statusTone(cluster.lastTestStatus)} label={statusLabel(cluster.lastTestStatus)} />
 					{#if cluster.lastTestAt}
-						<time class="font-mono text-xs text-muted-foreground" datetime={cluster.lastTestAt}>{new Date(cluster.lastTestAt).toLocaleString()}</time>
+						<time class="font-mono text-xs text-muted-foreground" datetime={cluster.lastTestAt}>{formatDateTime(cluster.lastTestAt)}</time>
 					{/if}
 				</div>
 				{#if cluster.lastTestMessage || statusHint(cluster.lastTestStatus)}

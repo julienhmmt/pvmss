@@ -10,6 +10,7 @@
 	import EmptyState from '#lib/shared/ui/EmptyState.svelte';
 	import Pill from '#lib/shared/ui/Pill.svelte';
 	import { m } from '#lib/paraglide/messages.js';
+	import { formatDateTime } from '#lib/shared/format-date.js';
 	import { activityMessage, auditTarget, isKnownAction, knownActions } from '#lib/features/activity/activity.svelte.js';
 
 	const store = getAuditLogContext();
@@ -104,7 +105,7 @@
 	}
 
 	function formatTimestamp(ts: string): string {
-		return new Date(ts).toLocaleString();
+		return formatDateTime(ts, 'short');
 	}
 </script>
 
