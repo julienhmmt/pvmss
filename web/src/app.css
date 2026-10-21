@@ -547,7 +547,10 @@
   }
 }
 
-.dialog-backdrop-in {
+/* Shared Dialog backdrop (native ::backdrop of the top-layer <dialog>). */
+.pv-dialog::backdrop {
+  background: oklch(0% 0 0deg / 0.4);
+  backdrop-filter: blur(2px);
   animation: dialog-backdrop-in 160ms ease-out;
 }
 

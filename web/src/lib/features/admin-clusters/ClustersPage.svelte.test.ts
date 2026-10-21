@@ -70,7 +70,7 @@ describe('ClustersPage remove confirmation', () => {
 		document.querySelector<HTMLButtonElement>('button[aria-label="Remove secondary"]')!.click();
 		await tick();
 
-		const cancel = [...document.querySelectorAll<HTMLButtonElement>('[role="dialog"] button')].find(
+		const cancel = [...document.querySelectorAll<HTMLButtonElement>('dialog button')].find(
 			(button) => button.textContent?.trim() === 'Cancel'
 		);
 		expect(cancel).toBeDefined();
