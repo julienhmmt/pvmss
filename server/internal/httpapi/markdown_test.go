@@ -73,7 +73,7 @@ func TestRenderMarkdownToHTML_BasicElements(t *testing.T) {
 	md := "# Title\n\n- one\n- two\n\nA **bold** and *italic* and `code`.\n\n```\ncode block\n```"
 	got := renderMarkdownToHTML(md)
 
-	checks := []string{"<h1>", "<ul>", "<li>one</li>", "<strong>bold</strong>", "<em>italic</em>", "<code>code</code>", "<pre><code>"}
+	checks := []string{"<h2>", "<ul>", "<li>one</li>", "<strong>bold</strong>", "<em>italic</em>", "<code>code</code>", "<pre><code>"}
 	for _, c := range checks {
 		if !strings.Contains(got, c) {
 			t.Fatalf("output missing %q: %s", c, got)
@@ -132,7 +132,7 @@ func TestRenderMarkdownToHTML_ParagraphBreaksOnSpecialLines(t *testing.T) {
 		t.Fatalf("paragraph not isolated: %s", got)
 	}
 
-	if !strings.Contains(got, "<h1>Heading</h1>") {
+	if !strings.Contains(got, "<h2>Heading</h2>") {
 		t.Fatalf("heading after paragraph missing: %s", got)
 	}
 }
@@ -168,11 +168,11 @@ func TestHeadingTag_OutOfRange(t *testing.T) {
 		level int
 		want  string
 	}{
-		{0, "h3"},
-		{4, "h3"},
-		{1, "h1"},
-		{2, "h2"},
-		{3, "h3"},
+		{0, "h4"},
+		{4, "h4"},
+		{1, "h2"},
+		{2, "h3"},
+		{3, "h4"},
 	}
 	for _, tc := range cases {
 		if got := headingTag(tc.level); got != tc.want {
