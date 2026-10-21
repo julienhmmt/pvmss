@@ -28,6 +28,9 @@ export class SessionStore {
 	async logout(): Promise<void> {
 		this.loading = true;
 		this.error = null;
+		// Cleared first: a poll answered 401 while the session is being revoked
+		// must not read as an expiry.
+		this.principal = null;
 		try {
 			await post<void>('/api/v1/auth/logout');
 		} catch (error: unknown) {

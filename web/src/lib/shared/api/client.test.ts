@@ -45,6 +45,15 @@ describe('get', () => {
 		expect(listener).toHaveBeenCalledTimes(1);
 	});
 
+	it('does not treat a wrong password (401 invalid_credentials) as an expired session', async () => {
+		const listener = vi.fn();
+		globalThis.addEventListener(UNAUTHORIZED_EVENT, listener);
+		vi.stubGlobal('fetch', vi.fn().mockResolvedValue(jsonResponse(401, { code: 'invalid_credentials', message: 'invalid credentials' })));
+		await expect(get('/api/v1/auth/password')).rejects.toMatchObject({ status: 401 });
+		globalThis.removeEventListener(UNAUTHORIZED_EVENT, listener);
+		expect(listener).not.toHaveBeenCalled();
+	});
+
 	it('throws with generic envelope when body is not JSON', async () => {
 		vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response('not json', { status: 500 })));
 		await expect(get('/api/v1/foo')).rejects.toThrow('request failed');
