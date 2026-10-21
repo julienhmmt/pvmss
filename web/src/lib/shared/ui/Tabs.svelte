@@ -10,7 +10,8 @@
 	 *   header for attention and stops scaling past four or five entries.
 	 *
 	 * Keyboard behaviour is the same in both: arrow keys move the selection,
-	 * only the active tab is in the tab order.
+	 * Home/End jump to the first/last tab, only the active tab is in the tab
+	 * order.
 	 */
 	import { m } from '#lib/paraglide/messages.js';
 
@@ -36,11 +37,26 @@
 		active = id;
 	}
 
+	// WAI-ARIA tabs pattern: arrows wrap, Home/End jump to the ends.
+	function targetIndex(key: string, index: number): number | null {
+		switch (key) {
+			case 'ArrowRight':
+				return (index + 1) % tabs.length;
+			case 'ArrowLeft':
+				return (index - 1 + tabs.length) % tabs.length;
+			case 'Home':
+				return 0;
+			case 'End':
+				return tabs.length - 1;
+			default:
+				return null;
+		}
+	}
+
 	function handleKeydown(event: KeyboardEvent, index: number): void {
-		if (event.key !== 'ArrowRight' && event.key !== 'ArrowLeft') return;
+		const nextIndex = targetIndex(event.key, index);
+		if (nextIndex === null) return;
 		event.preventDefault();
-		const delta = event.key === 'ArrowRight' ? 1 : -1;
-		const nextIndex = (index + delta + tabs.length) % tabs.length;
 		const next = tabs[nextIndex];
 		if (!next) return;
 		active = next.id;
