@@ -630,6 +630,28 @@
   animation: pv-pulse 2.4s ease-in-out infinite;
 }
 
+/* A packet travelling along an architecture connector (about page). */
+.pv-flow {
+  animation: pv-flow 2.8s ease-in-out infinite;
+}
+
+@keyframes pv-flow {
+  from {
+    left: 0%;
+    top: 0%;
+    opacity: 0;
+  }
+  15%,
+  85% {
+    opacity: 1;
+  }
+  to {
+    left: 100%;
+    top: 100%;
+    opacity: 0;
+  }
+}
+
 @keyframes pv-boot {
   0%,
   35% {

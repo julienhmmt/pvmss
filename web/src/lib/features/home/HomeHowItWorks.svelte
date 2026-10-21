@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { m } from '#lib/paraglide/messages.js';
 	import StepNumberIcon from '#lib/shared/ui/icons/StepNumberIcon.svelte';
-	import { reveal } from './reveal';
+	import { reveal } from '#lib/shared/reveal.js';
 
 	const steps: { number: number; title: () => string; description: () => string }[] = [
 		{ number: 1, title: () => m['home.steps.1.title'](), description: () => m['home.steps.1.description']() },

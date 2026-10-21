@@ -11,6 +11,7 @@
 	import { setPowerActionsContext } from '#lib/features/tasks/power-actions.svelte.js';
 	import { setSessionContext } from '#lib/features/auth/session.svelte.js';
 	import { isPublicPath } from '#lib/features/auth/public-routes.js';
+	import { GITHUB_URL } from '#lib/shared/links.js';
 	import AuthRequired from '#lib/features/auth/AuthRequired.svelte';
 	import { get } from '#lib/shared/api/client.js';
 	import { setLocaleContext } from '#lib/features/chrome/locale.svelte.js';
@@ -99,7 +100,6 @@
 	});
 
 	let version = $state<string | null>(null);
-	const githubUrl = 'https://github.com/julienhmmt/pvmss';
 	onMount(async () => {
 		try {
 			const result = await get<{ version: string }>('/api/v1/public/version');
@@ -234,7 +234,7 @@
 					</p>
 					<div class="flex items-center gap-4">
 						<a href={resolvePath('/about')} class="hover:text-foreground hover:underline">{m['chrome.footer.about']()}</a>
-						<a href={githubUrl} target="_blank" rel="noopener noreferrer" class="hover:text-foreground hover:underline">
+						<a href={GITHUB_URL} target="_blank" rel="noopener noreferrer" class="hover:text-foreground hover:underline">
 							{m['chrome.footer.github']()}<span aria-hidden="true"> ↗</span><span class="sr-only"> {m['chrome.footer.externalLink']()}</span>
 						</a>
 					</div>
@@ -274,7 +274,7 @@
 				{#if version}PVMSS {version}{/if}
 				<div class="mt-1 flex items-center justify-center gap-4">
 					<a href={resolvePath('/about')} class="hover:text-foreground hover:underline">{m['chrome.footer.about']()}</a>
-					<a href={githubUrl} target="_blank" rel="noopener noreferrer" class="hover:text-foreground hover:underline">
+					<a href={GITHUB_URL} target="_blank" rel="noopener noreferrer" class="hover:text-foreground hover:underline">
 						{m['chrome.footer.github']()}<span aria-hidden="true"> ↗</span><span class="sr-only"> {m['chrome.footer.externalLink']()}</span>
 					</a>
 				</div>

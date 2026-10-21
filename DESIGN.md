@@ -122,8 +122,12 @@ fields - but decoration is not. Every surface earns its visual weight.
 
 This system explicitly rejects generic SaaS aesthetics: no indigo gradients, no
 glassmorphism, no hero-metric templates, no identical card grids. It also rejects
-cluttered enterprise dashboards with excessive panels and gauges. The warmth
-comes from the palette and microcopy, not from illustrations or animation.
+cluttered enterprise dashboards with excessive panels and gauges. Inside the
+workspace, the warmth comes from the palette and microcopy, not from
+illustrations or animation. The two public pages (home and about) are the one
+exception: they tell the product's story to someone who has not signed in yet,
+and may use scroll-in motion and small product illustrations (see **6.7 Public
+pages**).
 
 **Application direction (chosen concept: "Calm workspace"):** the signed-in app
 is a single, quiet workspace - a fixed sidebar, a slim context header, and one
@@ -259,10 +263,11 @@ a banded header sitting flush against the card's border, not a peer of the tiers
 above. No panel in the app has adopted it yet; don't reach for it as a
 substitute for **Panel Title** on a component that isn't already a `Card`.
 
-The anonymous home page's hero (`text-4xl`) and its two marketing sections'
-centered headers (`text-xl`, HomeCapabilities/HomeHowItWorks) sit outside this
-scale on purpose - a landing pitch, shown only to logged-out visitors, is
-allowed a heavier register than the app's own internal chrome.
+The public pages (home, about - see **6.7**) sit outside this scale on
+purpose: a hero `h1` at `text-4xl` rising to `text-5xl`/`text-6xl` on wide
+screens, section headers at `text-3xl`, card titles at `text-base`/`text-lg`.
+A story told to a visitor is allowed a heavier register than the app's own
+internal chrome.
 
 ### Type Rules
 
@@ -651,9 +656,11 @@ The label always names the source ("Set by your administrator").
 - **Don't** use hand-rolled modal divs (`fixed inset-0 z-50`) instead of
   `Dialog.svelte`.
 - **Don't** use identical card grids with icon + heading + text repeated
-  endlessly.
-- **Don't** add decorative motion that doesn't convey state. Motion is for
-  feedback, not choreography.
+  endlessly. When a list of features must be cards, give the set one
+  metaphor (the home page's rack blades) rather than a bare grid.
+- **Don't** add decorative motion that doesn't convey state inside the
+  workspace. Motion is for feedback, not choreography. The public pages are
+  the only exception, under the rules of **6.7**.
 - **Don't** expose raw Proxmox terminology (node, storage, bridge, ISO) in the
   beginner path unless necessary. Use "starting point", "size", "access".
 - **Don't** claim a machine is "ready" unless connection data actually exists.
@@ -922,6 +929,77 @@ workspace that feels comfortable to use."
 - **Field note** - "Authentication, passwords and API tokens are intentionally
   outside this prototype." (In production, this is where token management
   lives - see `profile/tokens`.)
+
+### 6.7 Public pages (`/` and `/about`)
+
+Outside the workspace: the anonymous layout (slim header, no sidebar) and the
+only screens without the eyebrow + `PageHeader` pattern. Each opens on its own
+hero, whose `<h1 id="page-heading" tabindex="-1">` keeps the focus contract.
+A signed-in user never sees the home page (it redirects to the workspace) but
+can reach `/about` from the footer, so `/about` must stand on its own.
+
+**Home (`/`, `features/home/`)** - a scroll page that pitches:
+
+1. **Hero** - eyebrow pill, product name, `h1` "Your Proxmox VMs,
+   self-served.", subtitle, CTAs, three check badges; beside it a miniature of
+   the machine list (sample rows, one booting on a loop).
+2. **How it works** - three numbered steps joined by a connector that draws on
+   scroll.
+3. **Capabilities as a server rack** - each capability is a *blade* (rack
+   ear with screws and a `U1`..`U8` label, a status LED) that slides into its
+   slot on scroll. On wide screens a sticky rack overview lights the matching
+   module and counts "n/8 modules online".
+4. **Guardrails** - the three limits (pool quota, cluster gabarit, node
+   capacity) on a dot-grid band.
+5. **Closing** - one question-headline, log in, about.
+
+**About (`/about`, `features/about/`)** - the story, not a second pitch:
+
+1. **Hero** - logo tile, `h1` "Proxmox, with a human face.", a one-line lead
+   and the longer introduction.
+2. **Why PVMSS exists** - a before/after pair: "Without PVMSS" (dashed,
+   muted, a ticket loop) beside "With PVMSS" (card, primary rail, checks).
+3. **What we hold to** - the five product principles of `PRODUCT.md` as an
+   editorial numbered list (`01`..`05`, mono, primary) beside a sticky heading.
+4. **How it is built** - browser → PVMSS → Proxmox clusters, with a packet
+   travelling each connector and stacked sheets for "one or more" clusters;
+   operational facts as chips below.
+5. **Who it is for** - users (with the full capability list) and admins
+   (with the three limits), side by side.
+6. **Closing** - open source (AGPL-3.0, GitHub) beside the session-aware
+   call to action.
+
+**Motion vocabulary** (all in `app.css`, all reduced-motion safe):
+
+| Class / helper                    | Use                                                   |
+| --------------------------------- | ----------------------------------------------------- |
+| `reveal()` (`#lib/shared/reveal`) | Fade + rise on scroll-in, once; optional `onShow`     |
+| `.pv-blade`                       | Sideways slide-in instead of the rise (rack blades)   |
+| `.pv-connector`                   | A line that draws itself when its parent reveals     |
+| `.pv-boot-*`                      | Status dot + label crossfade, starting → running      |
+| `.pv-load`                        | A usage bar breathing between 35% and 100%            |
+| `.pv-flow`                        | A packet travelling along a connector                 |
+| `.pv-pulse`                       | A slow "live" pulse on a small dot                    |
+| `.pv-dot-grid`                    | The 18px dot texture behind illustrations and bands   |
+
+**Rules:**
+
+- **Content is visible by default.** `reveal()` only hides an element once an
+  `IntersectionObserver` is there to show it again; without one, or with
+  `prefers-reduced-motion`, everything renders at rest immediately.
+- **Every keyframe ends on its resting state** - the global reduced-motion
+  rule collapses animations to their last frame.
+- **Stagger, don't choreograph.** Siblings delay by 120-150ms; nothing loops
+  except the small "alive" signals (booting row, load bars, packets, pulse).
+- **Illustrations are decorative and honest.** `aria-hidden`, built from
+  tokens and house shapes, sample names only. Never a fabricated metric,
+  testimonial, customer logo or benchmark (`PRODUCT.md`, "Evidence on Hand").
+- **Advertise only what ships.** A paused feature (cloud-init, cloud images)
+  is not on either page until it is back.
+- **Clip, don't hide.** The page root is `overflow-x-clip`, so slide-in
+  offsets never cause a horizontal scroll and sticky elements still stick.
+- Same palette, font and tokens as the workspace: one orange accent, warm
+  paper, no gradients beyond the dot texture and its fade mask.
 
 ## State and Feedback Model
 

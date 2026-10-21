@@ -7,7 +7,6 @@ describe('CAPABILITIES', () => {
 		expect(ids).toEqual<CapabilityId[]>([
 			'lifecycle',
 			'consoles',
-			'cloudinit',
 			'snapshots',
 			'storage',
 			'multiCluster'

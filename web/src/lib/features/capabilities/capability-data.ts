@@ -6,7 +6,6 @@ import { m } from '#lib/paraglide/messages.js';
 export type CapabilityId =
 	| 'lifecycle'
 	| 'consoles'
-	| 'cloudinit'
 	| 'snapshots'
 	| 'storage'
 	| 'multiCluster';
@@ -25,7 +24,6 @@ type MessageFn = () => string;
 const capabilityIds: readonly CapabilityId[] = [
 	'lifecycle',
 	'consoles',
-	'cloudinit',
 	'snapshots',
 	'storage',
 	'multiCluster'

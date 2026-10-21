@@ -2,7 +2,7 @@
 	import { resolve } from '$app/paths';
 	import { m } from '#lib/paraglide/messages.js';
 	import ButtonLink from '#lib/shared/ui/ButtonLink.svelte';
-	import { reveal } from './reveal';
+	import { reveal } from '#lib/shared/reveal.js';
 </script>
 
 <section class="mx-auto w-full max-w-3xl pt-8 pb-20 text-center" aria-labelledby="home-closing-heading" {@attach reveal()}>

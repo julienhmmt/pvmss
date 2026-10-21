@@ -6,15 +6,14 @@
 	import FeatureMultiClusterIcon from '#lib/shared/ui/icons/FeatureMultiClusterIcon.svelte';
 	import FeatureQuotasIcon from '#lib/shared/ui/icons/FeatureQuotasIcon.svelte';
 	import FeatureSelfServiceIcon from '#lib/shared/ui/icons/FeatureSelfServiceIcon.svelte';
-	import { reveal } from './reveal';
+	import { reveal } from '#lib/shared/reveal.js';
 
 	/**
 	 * HomeCapabilities - the product pitch as a server rack: each capability
 	 * is a blade that slides into its slot as it scrolls in, and the sticky
 	 * rack on wide screens lights the matching module. The three feature
 	 * highlights lead, then the capability cards, then the admin preview.
-	 * Multi-cluster is shown once (as a highlight); cloud-init is left out
-	 * while it is paused (AGENTS.md, "Cloud-init").
+	 * Multi-cluster is shown once (as a highlight).
 	 */
 	type Icon = 'selfService' | 'multiCluster' | 'quotas' | 'admin' | CapabilityId;
 
@@ -30,7 +29,7 @@
 		{ icon: 'selfService', title: () => m['home.feature.1.title'](), description: () => m['home.feature.1.description']() },
 		{ icon: 'multiCluster', title: () => m['home.feature.2.title'](), description: () => m['home.feature.2.description']() },
 		{ icon: 'quotas', title: () => m['home.feature.3.title'](), description: () => m['home.feature.3.description']() },
-		...CAPABILITIES.filter((c) => c.id !== 'multiCluster' && c.id !== 'cloudinit').map((c) => ({
+		...CAPABILITIES.filter((c) => c.id !== 'multiCluster').map((c) => ({
 			icon: c.id,
 			title: c.title,
 			description: c.description

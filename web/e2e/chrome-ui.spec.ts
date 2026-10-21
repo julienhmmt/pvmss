@@ -48,8 +48,8 @@ test.describe('T19 chrome UI', () => {
 			// <html lang> updates immediately, no reload.
 			await expect(page.locator('html')).toHaveAttribute('lang', 'en');
 
-			// The home CTA has switched to English.
-			await expect(page.getByRole('link', { name: 'Log in' })).toBeVisible();
+			// The home CTA has switched to English (the hero's; the closing band repeats it).
+			await expect(page.getByRole('link', { name: 'Log in' }).first()).toBeVisible();
 		});
 
 		test('language choice persists across reload', async ({ page }) => {

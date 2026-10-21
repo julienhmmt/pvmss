@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { m } from '#lib/paraglide/messages.js';
-	import { reveal } from './reveal';
+	import { reveal } from '#lib/shared/reveal.js';
 
 	// Sample fill levels for the decorative meters - illustrative, not data.
 	const limits = [
