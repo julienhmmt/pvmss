@@ -55,9 +55,7 @@
 	<title>{m['vms.create.title']()}</title>
 </svelte:head>
 
-<!-- Simple mode keeps the wide layout for its sticky summary aside; the
-     chooser and the detailed wizard read better as one centered column. -->
-<section class="mx-auto w-full {chosen === 'simple' ? 'max-w-6xl' : 'max-w-3xl'}">
+<section class="mx-auto w-full max-w-6xl">
 	<PageHeader
 		back={{ href: resolve('/vms'), label: m['vms.create.back']() }}
 		title={m['vms.create.heading']()}
