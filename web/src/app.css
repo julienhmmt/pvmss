@@ -574,6 +574,120 @@
 }
 
 /* ---------------------------------------------------------------------------
+   Landing page motion (features/home). The hidden state only exists while
+   reveal() waits for the element to scroll in, so content is never stuck
+   invisible. Every keyframe ends on its resting state: the reduced-motion rule
+   above collapses animations to that last frame.
+   --------------------------------------------------------------------------- */
+[data-reveal] {
+  transition:
+    opacity 600ms ease-out,
+    transform 600ms cubic-bezier(0.2, 0.7, 0.2, 1);
+}
+
+[data-reveal="pending"] {
+  opacity: 0;
+  transform: translateY(18px);
+}
+
+/* Rack blades slide in sideways, like a server pushed into its slot. */
+.pv-blade[data-reveal="pending"] {
+  transform: translateX(56px);
+}
+
+.pv-connector {
+  transform-origin: left;
+  transition: transform 1200ms ease-out 300ms;
+}
+
+[data-reveal="pending"] .pv-connector {
+  transform: scaleX(0);
+}
+
+.pv-dot-grid {
+  background-image: radial-gradient(var(--border) 1px, transparent 1px);
+  background-size: 18px 18px;
+}
+
+.pv-boot-dot {
+  animation: pv-boot 7s ease-in-out infinite;
+}
+
+.pv-boot-label-off {
+  animation: pv-boot-off 7s ease-in-out infinite;
+}
+
+.pv-boot-label-on {
+  animation: pv-boot-on 7s ease-in-out infinite;
+}
+
+.pv-load {
+  animation: pv-load 5s ease-in-out infinite alternate;
+  transform-origin: left;
+}
+
+.pv-pulse {
+  animation: pv-pulse 2.4s ease-in-out infinite;
+}
+
+@keyframes pv-boot {
+  0%,
+  35% {
+    background-color: var(--warning);
+    opacity: 0.5;
+  }
+  45% {
+    opacity: 1;
+  }
+  55%,
+  100% {
+    background-color: var(--success);
+    opacity: 1;
+  }
+}
+
+@keyframes pv-boot-off {
+  0%,
+  45% {
+    opacity: 1;
+  }
+  55%,
+  100% {
+    opacity: 0;
+  }
+}
+
+@keyframes pv-boot-on {
+  0%,
+  45% {
+    opacity: 0;
+  }
+  55%,
+  100% {
+    opacity: 1;
+  }
+}
+
+@keyframes pv-load {
+  from {
+    transform: scaleX(0.35);
+  }
+  to {
+    transform: scaleX(1);
+  }
+}
+
+@keyframes pv-pulse {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.35;
+  }
+}
+
+/* ---------------------------------------------------------------------------
    Data table vocabulary. Every list in the app (VMs, nodes, admin tables)
    renders the same table: a sticky header band, a hover row with a left
    accent rail, tabular numerics in numeric columns. Defined once here so a

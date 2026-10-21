@@ -3,11 +3,11 @@
 	import { goto } from '$app/navigation';
 	import { resolve } from '$app/paths';
 	import HomeCapabilities from '#lib/features/home/HomeCapabilities.svelte';
-	import HomeCta from '#lib/features/home/HomeCta.svelte';
+	import HomeClosing from '#lib/features/home/HomeClosing.svelte';
+	import HomeGuardrails from '#lib/features/home/HomeGuardrails.svelte';
+	import HomeHero from '#lib/features/home/HomeHero.svelte';
 	import HomeHowItWorks from '#lib/features/home/HomeHowItWorks.svelte';
-	import Logo from '#lib/shared/ui/Logo.svelte';
 	import { getSessionContext } from '#lib/features/auth/session.svelte.js';
-	import { m } from '#lib/paraglide/messages.js';
 
 	const session = getSessionContext();
 
@@ -24,18 +24,16 @@
 </script>
 
 {#if !session.principal}
-	<section class="flex flex-col items-center gap-10 py-12">
-		<!-- The product pitch: name, tagline, "how it works", capabilities.
-		     Anonymous visitors only - a signed-in user is sent to the workspace. -->
-		<div class="text-center">
-			<div class="mb-4 inline-flex items-center justify-center rounded-2xl bg-primary/10 p-4 text-primary">
-				<Logo variant="color" showText={false} size="xl" />
-			</div>
-			<h1 class="text-4xl font-semibold tracking-tight">{m['shell.title']()}</h1>
-			<p class="mt-2 text-lg text-muted-foreground">{m['shell.subtitle']()}</p>
-		</div>
-		<HomeCta />
+	<!-- The product pitch, a scroll page: hero, how it works, the capability
+	     rack, the guardrails, a closing call to action. Anonymous visitors
+	     only - a signed-in user is sent to the workspace. -->
+	<!-- overflow-x-clip (not hidden): hides the blades' slide-in offset
+	     without becoming a scroll container, so the sticky rack still sticks. -->
+	<div class="w-full self-stretch overflow-x-clip">
+		<HomeHero />
 		<HomeHowItWorks />
 		<HomeCapabilities />
-	</section>
+		<HomeGuardrails />
+		<HomeClosing />
+	</div>
 {/if}
