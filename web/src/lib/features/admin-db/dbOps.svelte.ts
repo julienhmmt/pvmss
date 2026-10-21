@@ -24,6 +24,20 @@ export interface ImportResult {
  * simple download trigger; import is a two-step upload → preview → confirm
  * flow, with $state for the in-progress upload/preview (constitution VII).
  */
+/** The shared client's error for a raw fetch (multipart upload, staged
+ *  confirm): same code mapping, server text and request reference. */
+async function responseError(response: Response): Promise<ApiRequestError> {
+	let body: { code?: string; message?: string } = {};
+	try {
+		body = (await response.json()) as typeof body;
+	} catch {
+		// Not JSON: the code-less error resolves to the generic message.
+	}
+	return new ApiRequestError(response.status, body.code ?? 'unknown_error', body.message ?? '', undefined, {
+		requestId: response.headers.get('X-Request-Id') ?? undefined
+	});
+}
+
 export class DbOpsStore {
 	exporting = $state.raw(false);
 	exportError = $state.raw<string | null>(null);
@@ -72,12 +86,7 @@ export class DbOpsStore {
 			formData.append('file', file);
 			const response = await fetch('/api/v1/admin/db/import', withCSRF({ method: 'POST', body: formData }));
 			if (!response.ok) {
-				let message: string = m['admin.db.importError']();
-				try {
-					const body = (await response.json()) as { message?: string };
-					message = body.message ?? message;
-				} catch { /* keep default */ }
-				throw new ApiRequestError(response.status, 'import_error', message);
+				throw await responseError(response);
 			}
 			this.preview = (await response.json()) as ImportPreview;
 		} catch (err) {
@@ -101,12 +110,7 @@ export class DbOpsStore {
 				})
 			);
 			if (!response.ok) {
-				let message: string = m['admin.db.confirmError']();
-				try {
-					const body = (await response.json()) as { message?: string };
-					message = body.message ?? message;
-				} catch { /* keep default */ }
-				throw new ApiRequestError(response.status, 'confirm_error', message);
+				throw await responseError(response);
 			}
 			this.confirmResult = (await response.json()) as ImportResult;
 			this.preview = null;

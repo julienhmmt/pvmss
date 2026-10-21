@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { untrack } from 'svelte';
 	import type { AdminPool, CreatedPoolCredentials } from './pools.svelte';
 	import { resolve } from '$app/paths';
 	import type { ClusterOption } from '#lib/shared/clusters.js';
@@ -40,6 +41,8 @@
 		onCreate: (name: string, comment: string) => Promise<void>;
 		onDelete: (name: string) => Promise<void>;
 		onDismissCredentials: () => void;
+		/** Open the create dialog on arrival (dashboard quick action). */
+		startCreating?: boolean;
 	}
 
 	let {
@@ -60,10 +63,11 @@
 		onSearch,
 		onCreate,
 		onDelete,
-		onDismissCredentials
+		onDismissCredentials,
+		startCreating = false
 	}: Props = $props();
 	let search = $state('');
-	let showCreate = $state(false);
+	let showCreate = $state(untrack(() => startCreating));
 	let deleteName = $state<string | null>(null);
 	let sortBy = $state<PoolSortColumn>('name');
 	let sortDir = $state<'asc' | 'desc'>('asc');

@@ -1,9 +1,10 @@
 import { getContext, setContext } from 'svelte';
 
 export type Theme = 'light' | 'dark';
+/** What the user picked; `system` follows prefers-color-scheme live. */
+export type ThemePreference = Theme | 'system';
 
-const SUPPORTED_THEMES: readonly Theme[] = ['light', 'dark'];
-const DEFAULT_THEME: Theme = 'light';
+const PINNED_THEMES: readonly Theme[] = ['light', 'dark'];
 
 /**
  * localStorage key for the persisted theme preference. The version lives in
@@ -29,33 +30,40 @@ export const THEME_COLOR_DARK = '#2a2826';
  * (constitution VII - no module singletons).
  */
 export class ThemeState {
-	#current = $state<Theme>(DEFAULT_THEME);
+	#preference = $state<ThemePreference>('system');
+	#current = $state<Theme>('light');
 
+	/** The user's choice, including `system`. */
+	get preference(): ThemePreference {
+		return this.#preference;
+	}
+
+	/** The theme actually shown. */
 	get current(): Theme {
 		return this.#current;
 	}
 
 	/**
-	 * Reads localStorage["pvmss-theme-v1"]; absent/invalid → prefers-color-scheme. Calls apply().
-	 * With no stored preference, also watches prefers-color-scheme so live OS
-	 * theme flips re-resolve and re-apply.
+	 * Reads localStorage["pvmss-theme-v1"] (light/dark; absent or invalid means
+	 * system), applies it, and watches prefers-color-scheme so `system` follows
+	 * live OS flips.
 	 */
 	init(): void {
-		this.#current = this.#resolveInitial();
-		this.apply();
-		if (this.#readStored() === null) this.#watchSystemTheme();
+		this.#preference = this.#readStored() ?? 'system';
+		this.#resolve();
+		this.#watchSystemTheme();
 	}
 
-	/** Flips $state, persists, and applies (FR-007/FR-008). */
-	toggle(): void {
-		this.#current = this.#current === 'dark' ? 'light' : 'dark';
-		this.#writeStored(this.#current);
-		this.apply();
+	/** Persists the choice (system clears the key) and applies it. */
+	set(preference: ThemePreference): void {
+		this.#preference = preference;
+		this.#writeStored(preference);
+		this.#resolve();
 	}
 
 	/**
-	 * Toggles the `dark` class on <html> - same DOM contract as legacy
-	 * theme.svelte.ts - and syncs <meta name="theme-color"> to the surface token.
+	 * Toggles the `dark` class on <html> - same DOM contract as the inline
+	 * bootstrap in app.html - and syncs <meta name="theme-color"> to the surface token.
 	 */
 	apply(): void {
 		const dark = this.#current === 'dark';
@@ -64,26 +72,31 @@ export class ThemeState {
 		if (meta !== null) meta.setAttribute('content', dark ? THEME_COLOR_DARK : THEME_COLOR_LIGHT);
 	}
 
-	#resolveInitial(): Theme {
-		const stored = this.#readStored();
-		if (stored !== null) return stored;
-		return this.#prefersDark() ? 'dark' : 'light';
+	#resolve(): void {
+		if (this.#preference === 'system') {
+			this.#current = this.#prefersDark() ? 'dark' : 'light';
+		} else {
+			this.#current = this.#preference;
+		}
+		this.apply();
 	}
 
 	#readStored(): Theme | null {
-		const raw = localStorage.getItem(THEME_STORAGE_KEY);
-		if (raw !== null && SUPPORTED_THEMES.includes(raw as Theme)) {
-			return raw as Theme;
+		try {
+			const raw = localStorage.getItem(THEME_STORAGE_KEY);
+			return raw !== null && PINNED_THEMES.includes(raw as Theme) ? (raw as Theme) : null;
+		} catch {
+			return null;
 		}
-		return null;
 	}
 
-	#writeStored(theme: Theme): void {
+	#writeStored(preference: ThemePreference): void {
 		try {
-			localStorage.setItem(THEME_STORAGE_KEY, theme);
+			if (preference === 'system') localStorage.removeItem(THEME_STORAGE_KEY);
+			else localStorage.setItem(THEME_STORAGE_KEY, preference);
 		} catch {
-			// Private browsing / locked-down storage: fail closed to the
-			// in-memory default (spec Edge Cases) rather than throwing.
+			// Private browsing / locked-down storage: the choice holds for this
+			// page only (spec Edge Cases) rather than throwing.
 		}
 	}
 
@@ -91,17 +104,11 @@ export class ThemeState {
 		return typeof window !== 'undefined' && window.matchMedia?.('(prefers-color-scheme: dark)').matches === true;
 	}
 
-	/**
-	 * Registered by init() only when nothing is stored. The callback re-runs
-	 * #resolveInitial(), which reads localStorage again - so once toggle()
-	 * persists a choice the listener resolves to the stored value and applying
-	 * it is a no-op rather than an override.
-	 */
+	/** OS flips only matter while the preference is `system`. */
 	#watchSystemTheme(): void {
 		if (typeof window === 'undefined' || typeof window.matchMedia !== 'function') return;
 		window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => {
-			this.#current = this.#resolveInitial();
-			this.apply();
+			if (this.#preference === 'system') this.#resolve();
 		});
 	}
 }

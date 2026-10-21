@@ -160,6 +160,38 @@ func TestResolveResources_PlacementHardFilterNoStorage(t *testing.T) {
 	}
 }
 
+// TestResolveResources_PlacementHardFilterNoBridge - a node with approved
+// storage but no approved bridge cannot take the auto NIC, so it is filtered
+// out even when it scores best (pve-b is the most free here).
+func TestResolveResources_PlacementHardFilterNoBridge(t *testing.T) {
+	t.Parallel()
+
+	resources := catalog.Resources{
+		Nodes: []catalog.Node{
+			{Name: placementNodeA},
+			{Name: placementNodeB},
+		},
+		Storages: []catalog.Storage{
+			{Name: "storage-a", Node: placementNodeA},
+			{Name: "storage-b", Node: placementNodeB},
+		},
+		Bridges: []catalog.Bridge{
+			// Only pve-a has a bridge.
+			{Name: placementBridge, Node: placementNodeA},
+		},
+	}
+	req := CreateRequest{CPUCores: 2, MemoryMB: 2048, Disk: DiskRequest{SizeGB: 20}}
+
+	node, _, _, err := resolveResources(req, resources, placementCapacities(), nil)
+	if err != nil {
+		t.Fatalf("resolveResources: %v", err)
+	}
+
+	if node != placementNodeA {
+		t.Errorf("node = %q, want %q (only node with a bridge)", node, placementNodeA)
+	}
+}
+
 // TestBestStorageOnNode_PicksMostFree - bestStorageOnNode picks the storage
 // with the most free space, not the first in catalog order.
 func TestBestStorageOnNode_PicksMostFree(t *testing.T) {

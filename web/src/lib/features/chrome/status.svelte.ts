@@ -41,11 +41,13 @@ export type Severity = 'none' | 'info' | 'degraded' | 'unhealthy' | 'unknown';
 
 /** Polling cadence - roughly half of T03's 30s server refresh interval. */
 const POLL_INTERVAL_MS = 15_000;
+/** Consecutive failures double the wait (30s, 60s, ...) up to this cap. */
+const MAX_POLL_INTERVAL_MS = 120_000;
 
 /** Fetcher seam - overridable in tests. */
-export type HealthFetcher = () => Promise<HealthResponse>;
+export type HealthFetcher = (signal?: AbortSignal) => Promise<HealthResponse>;
 
-const defaultFetcher: HealthFetcher = () => get<HealthResponse>('/health');
+const defaultFetcher: HealthFetcher = (signal) => get<HealthResponse>('/health', signal ? { signal } : {});
 
 /**
  * StatusState polls the extended GET /health and derives one severity for
@@ -57,7 +59,10 @@ const defaultFetcher: HealthFetcher = () => get<HealthResponse>('/health');
 export class StatusState {
 	#raw = $state.raw<HealthResponse | null>(null);
 	#pollFailed = $state.raw(false);
-	#timer: ReturnType<typeof setInterval> | null = null;
+	#timer: ReturnType<typeof setTimeout> | null = null;
+	#running = false;
+	#failures = 0;
+	#inFlight: AbortController | null = null;
 	#fetcher: HealthFetcher;
 
 	constructor(fetcher: HealthFetcher = defaultFetcher) {
@@ -97,30 +102,68 @@ export class StatusState {
 			// The refresh may fail (cluster still down) - re-poll reports the
 			// current state either way.
 		}
-		await this.pollOnce();
+		await this.#tick();
 	}
 
-	/** Immediate poll, then setInterval at the fixed cadence. Called once on mount. */
+	/**
+	 * Immediate poll, then one poll per cadence while the tab is visible:
+	 * nothing while hidden, an immediate poll on return, and a doubling wait
+	 * while the server keeps failing. Called once on mount.
+	 */
 	start(): void {
-		void this.pollOnce();
-		this.#timer = setInterval(() => void this.pollOnce(), POLL_INTERVAL_MS);
+		this.#running = true;
+		document.addEventListener('visibilitychange', this.#onVisibility);
+		// A tab opened in the background waits for visibilitychange.
+		if (document.visibilityState !== 'hidden') void this.#tick();
 	}
 
-	/** Clears the interval - symmetric lifecycle for testability. */
+	/** Stops the cadence and aborts a poll in flight. */
 	stop(): void {
-		if (this.#timer !== null) clearInterval(this.#timer);
-		this.#timer = null;
+		this.#running = false;
+		document.removeEventListener('visibilitychange', this.#onVisibility);
+		this.#clearTimer();
+		this.#inFlight?.abort();
+		this.#inFlight = null;
 	}
 
-	/** One poll: success → reassign raw whole; failure → set the failed flag. */
+	/** One poll: success → reassign raw whole; failure → set the failed flag.
+	 *  Skipped while a previous poll is still in flight. */
 	async pollOnce(): Promise<void> {
+		if (this.#inFlight !== null) return;
+		const controller = new AbortController();
+		this.#inFlight = controller;
 		try {
-			const response = await this.#fetcher();
+			const response = await this.#fetcher(controller.signal);
+			if (controller.signal.aborted) return;
 			this.#raw = response;
 			this.#pollFailed = false;
+			this.#failures = 0;
 		} catch {
+			if (controller.signal.aborted) return;
 			this.#pollFailed = true;
+			this.#failures += 1;
+		} finally {
+			if (this.#inFlight === controller) this.#inFlight = null;
 		}
+	}
+
+	#onVisibility = (): void => {
+		if (document.visibilityState === 'visible') void this.#tick();
+		else this.#clearTimer();
+	};
+
+	async #tick(): Promise<void> {
+		this.#clearTimer();
+		await this.pollOnce();
+		if (!this.#running || document.visibilityState === 'hidden') return;
+		this.#clearTimer();
+		const delay = Math.min(POLL_INTERVAL_MS * 2 ** this.#failures, MAX_POLL_INTERVAL_MS);
+		this.#timer = setTimeout(() => void this.#tick(), delay);
+	}
+
+	#clearTimer(): void {
+		if (this.#timer !== null) clearTimeout(this.#timer);
+		this.#timer = null;
 	}
 }
 

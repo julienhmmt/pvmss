@@ -144,7 +144,7 @@
 			{/if}
 		</div>
 
-		<aside class="rounded-xl border border-border bg-muted/40 p-5 text-sm" data-testid="help-aside">
+		<div class="rounded-xl border border-border bg-muted/40 p-5 text-sm" data-testid="help-aside">
 			<h2 class="font-semibold">{m['help.aside.title']()}</h2>
 			<p class="mt-2 text-muted-foreground">{m['help.aside.body']()}</p>
 			<ul class="mt-3 grid list-disc gap-1.5 pl-5 text-muted-foreground">
@@ -153,6 +153,6 @@
 				<li>{m['help.aside.conceptConsole']()}</li>
 				<li>{m['help.aside.conceptAllowance']()}</li>
 			</ul>
-		</aside>
+		</div>
 	</div>
 </section>

@@ -235,7 +235,31 @@ func TestDocs_GetDoc_AdminAudienceGating(t *testing.T) {
 		t.Fatalf("decode rendered: %v", err)
 	}
 
-	if !strings.Contains(rendered.HTML, "<h1>") || !strings.Contains(rendered.HTML, "Secret") {
+	if !strings.Contains(rendered.HTML, "<h2>Secret</h2>") {
+		t.Fatalf("rendered HTML = %q", rendered.HTML)
+	}
+}
+
+// TestDocs_GetDoc_DropsLeadingTitleHeading - the page chrome owns the only h1,
+// so a body that opens by repeating the title does not render it twice.
+//
+//nolint:paralleltest // serial: shared database fixture
+func TestDocs_GetDoc_DropsLeadingTitleHeading(t *testing.T) {
+	docs, admin, auth := newDocsHandlers(t)
+	cookie := adminCookie(t, auth)
+	createDocViaAdmin(t, docs, admin, auth, cookie, newAdminDocJSON("Admin only", "# Admin only\n\nIntro\n\n## Part"))
+
+	rec := docsServe(t, docs, admin, auth, docsRequest(http.MethodGet, "/api/v1/docs/admin-only", cookie, ""))
+	if rec.Code != http.StatusOK {
+		t.Fatalf("admin doc status = %d: %s", rec.Code, rec.Body.String())
+	}
+
+	var rendered docRenderedDTO
+	if err := json.Unmarshal(rec.Body.Bytes(), &rendered); err != nil {
+		t.Fatalf("decode rendered: %v", err)
+	}
+
+	if strings.Contains(rendered.HTML, "Admin only") || !strings.Contains(rendered.HTML, "<h3>Part</h3>") {
 		t.Fatalf("rendered HTML = %q", rendered.HTML)
 	}
 }

@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 import { AdminProfilesStore } from './profiles.svelte';
+import { m } from '#lib/paraglide/messages.js';
 
 const testProfiles = [
 	{ id: 'small', label: 'Small', sockets: 1, cpuCores: 1, memoryMB: 2048, diskGB: 20, bus: 'scsi', enabled: true },
@@ -98,7 +99,7 @@ describe('AdminProfilesStore create', () => {
 		vi.stubGlobal('fetch', vi.fn().mockResolvedValue(jsonResponse(400, { code: 'bad', message: 'duplicate label' })));
 		const store = new AdminProfilesStore();
 		await expect(store.create('p', 4, 2048, 20, 'scsi', 2)).resolves.toBe(false);
-		expect(store.saveError).toBe('duplicate label');
+		expect(store.saveError).toBe(m['error.generic']());
 		expect(store.profiles).toHaveLength(0);
 		vi.unstubAllGlobals();
 	});
@@ -108,7 +109,7 @@ describe('AdminProfilesStore create', () => {
 		const store = new AdminProfilesStore();
 		store.profiles = testProfiles;
 		await expect(store.update('small', 'p', 4, 2048, 20, 'scsi', 2)).resolves.toBe(false);
-		expect(store.saveError).toBe('server broke');
+		expect(store.saveError).toBe(m['error.generic']());
 		expect(store.profiles[0]?.label).toBe('Small');
 		vi.unstubAllGlobals();
 	});

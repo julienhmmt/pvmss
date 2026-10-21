@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { buildConsolePopoutURL, buildConsoleWebSocketURL, consoleTicketErrorMessage, fetchConsoleTicket, openConsolePopout, fetchSerialTicket, buildSerialWebSocketURL } from './console';
 import { ApiRequestError } from '#lib/shared/api/client.js';
+import { m } from '#lib/paraglide/messages.js';
 
 function jsonResponse(status: number, body: unknown): Response {
 	return new Response(JSON.stringify(body), { status, headers: { 'Content-Type': 'application/json' } });
@@ -84,7 +85,7 @@ describe('openConsolePopout', () => {
 describe('consoleTicketErrorMessage', () => {
 	it('returns the API message for an ApiRequestError', () => {
 		const err = new ApiRequestError(403, 'forbidden', 'not your VM');
-		expect(consoleTicketErrorMessage(err, () => 'fallback')).toBe('not your VM');
+		expect(consoleTicketErrorMessage(err, () => 'fallback')).toBe(m['error.forbidden']());
 	});
 
 	it('returns the fallback for a generic error', () => {

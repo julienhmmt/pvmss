@@ -10,10 +10,9 @@
 
 	interface Props {
 		status: number;
-		message?: string | undefined;
 	}
 
-	let { status, message }: Props = $props();
+	let { status }: Props = $props();
 
 	const errorMessage = $derived(getErrorMessage(status));
 </script>
@@ -39,7 +38,7 @@
 						<div>
 							<h1 class="text-2xl font-semibold tracking-tight">{errorMessage.title()}</h1>
 							<p class="mt-2 text-sm text-muted-foreground">
-								{message ?? errorMessage.description()}
+								{errorMessage.description()}
 							</p>
 						</div>
 					</div>

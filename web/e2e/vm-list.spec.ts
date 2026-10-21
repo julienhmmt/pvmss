@@ -30,6 +30,9 @@ test.describe('T04 VM list', () => {
 		await expect(page.getByText('web-01')).toBeVisible();
 		await expect(page.locator('[data-testid="vm-quota"]')).toContainText('7 machines, no limit set');
 		await expect(page.locator('[data-testid="vm-count"]')).toHaveText('7 machines');
+		// The guide hint is page content, not a complementary landmark nested in main.
+		await expect(page.getByTestId('vm-quiet-help')).toBeVisible();
+		await expect(page.locator('main aside')).toHaveCount(0);
 	});
 
 	test('one search field finds VMs by name, tag, or ID', async ({ page }) => {

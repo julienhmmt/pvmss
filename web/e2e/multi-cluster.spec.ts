@@ -54,6 +54,6 @@ test.describe('T15 multi-cluster', () => {
 		}
 		const tertiary = page.locator('tr', { hasText: 'e2e-tertiary' });
 		await expect(tertiary).toBeVisible();
-		await expect(tertiary.getByText('untested')).toBeVisible();
+		await expect(tertiary.getByText('Untested')).toBeVisible();
 	});
 });

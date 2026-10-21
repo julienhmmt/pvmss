@@ -69,16 +69,21 @@ const (
 const (
 	defaultPage     = 1
 	defaultPageSize = 10
+	poolPrefix      = "pvmss-"
 )
 
 // ListQuery is the resolved combination of search, filters, sort, page, and
 // scope. Scope is a requested value only - List re-derives the effective
 // scope from the caller's identity and never trusts it as-is.
 type ListQuery struct {
-	Cluster  string
-	Search   string
-	Status   cluster.VMStatus
-	Node     string
+	Cluster string
+	Search  string
+	Status  cluster.VMStatus
+	Node    string
+	// Pool narrows the result to one PVMSS pool (one self-service user). It
+	// only bites on an admin scope=all listing; a pool-scoped caller already
+	// sees nothing outside their own pool.
+	Pool     string
 	SortBy   SortBy
 	SortDir  SortDir
 	Page     int
@@ -102,6 +107,9 @@ type ListResult struct {
 	Page           int
 	PageSize       int
 	AvailableNodes []string
+	// AvailablePools is the pool facet, built before the pool filter is
+	// applied so the admin filter never shrinks to hide its selection.
+	AvailablePools []string
 	EmptyReason    EmptyReason
 	Quota          *Quota
 }
@@ -129,6 +137,7 @@ func list(ctx context.Context, source inventory.Source, query ListQuery, identit
 	scoped := scopedVMs(source, query, identity)
 	searched := searchVMs(scoped, query.Search)
 	facetedNodes := nodeFacet(searched)
+	facetedPools := poolFacet(searched)
 	filtered := filterVMs(searched, query)
 	sortVMs(filtered, query.SortBy, query.SortDir)
 
@@ -137,6 +146,7 @@ func list(ctx context.Context, source inventory.Source, query ListQuery, identit
 		Page:           query.Page,
 		PageSize:       query.PageSize,
 		AvailableNodes: facetedNodes,
+		AvailablePools: facetedPools,
 	}
 	if len(services) > 0 && services[0] != nil {
 		quota, err := services[0].Quota(ctx, query.Cluster, identity)
@@ -263,11 +273,18 @@ func scopedVMCount(index *inventory.Index, pool string, adminAll bool) int {
 func appendScopedVMs(result []cluster.VM, index *inventory.Index, pool string, adminAll bool) []cluster.VM {
 	if adminAll {
 		for _, machine := range index.ByVMID {
-			result = append(result, machine)
+			if slices.Contains(machine.Tags, pvmssTag) {
+				result = append(result, machine)
+			}
 		}
 		return result
 	}
-	return append(result, index.ByPool[pool]...)
+	for _, machine := range index.ByPool[pool] {
+		if slices.Contains(machine.Tags, pvmssTag) {
+			result = append(result, machine)
+		}
+	}
+	return result
 }
 
 // searchVMs classifies the raw text server-side: numeric-only
@@ -321,8 +338,30 @@ func nodeFacet(vms []cluster.VM) []string {
 	return nodes
 }
 
+// poolFacet lists the PVMSS-managed pools ("pvmss-" prefix) present before the
+// pool filter is applied, so the admin filter's own dropdown never shrinks to
+// hide its selection. Unmanaged Proxmox pools and unpooled VMs are left out.
+func poolFacet(vms []cluster.VM) []string {
+	seen := make(map[string]struct{}, len(vms))
+
+	poolList := make([]string, 0, len(vms))
+	for _, machine := range vms {
+		if !strings.HasPrefix(machine.Pool, poolPrefix) {
+			continue
+		}
+		if _, ok := seen[machine.Pool]; !ok {
+			seen[machine.Pool] = struct{}{}
+			poolList = append(poolList, machine.Pool)
+		}
+	}
+
+	slices.Sort(poolList)
+
+	return poolList
+}
+
 func filterVMs(vms []cluster.VM, query ListQuery) []cluster.VM {
-	if query.Status == "" && query.Node == "" {
+	if query.Status == "" && query.Node == "" && query.Pool == "" {
 		return vms
 	}
 
@@ -333,6 +372,10 @@ func filterVMs(vms []cluster.VM, query ListQuery) []cluster.VM {
 		}
 
 		if query.Node != "" && machine.Node != query.Node {
+			continue
+		}
+
+		if query.Pool != "" && machine.Pool != query.Pool {
 			continue
 		}
 

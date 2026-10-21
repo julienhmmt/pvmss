@@ -18,6 +18,10 @@ test.describe('T53 documentation browser', () => {
 		await expect(page.getByTestId('help-article').first()).toHaveAttribute('open', '');
 		await expect(page.getByTestId('help-article').first().locator('article')).toBeVisible();
 		await expect(page.getByTestId('help-aside')).toBeVisible();
+		// The page heading is the only h1; article bodies start at h2.
+		await expect(page.locator('h1')).toHaveCount(1);
+		// Help boxes are page content, not complementary landmarks nested in main.
+		await expect(page.locator('main aside')).toHaveCount(0);
 	});
 
 	test('docs list is reachable while signed out', async ({ page }) => {
@@ -45,8 +49,9 @@ test.describe('T53 documentation browser', () => {
 		await article.getByTestId('help-open-page').click();
 
 		await expect(page).toHaveURL(/\/docs\/user-guide\?lang=en$/);
-		// Two headings carry the doc title (page heading + article heading).
-		await expect(page.getByRole('heading', { name: 'User guide' }).first()).toBeVisible();
+		// The body does not repeat the title: one heading, the page h1.
+		await expect(page.getByRole('heading', { name: 'User guide' })).toHaveCount(1);
+		await expect(page.locator('h1')).toHaveCount(1);
 	});
 
 	test('language selector filters the list by language', async ({ page }) => {

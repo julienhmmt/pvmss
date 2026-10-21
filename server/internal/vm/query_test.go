@@ -65,7 +65,7 @@ func TestList_ScopeEnforcement(t *testing.T) {
 		{name: "non-admin default scope sees own pool", identity: alice, scope: "", wantIDs: []int{100, 101, 102}},
 		{name: "non-admin explicit mine sees own pool", identity: alice, scope: vm.ScopeMine, wantIDs: []int{100, 101, 102}},
 		{name: "non-admin scope=all silently overridden to mine", identity: alice, scope: vm.ScopeAll, wantIDs: []int{100, 101, 102}},
-		{name: "admin scope=all sees every pool, including unpooled VMs", identity: admin, scope: vm.ScopeAll, wantIDs: []int{100, 101, 102, 103, 104, 105}},
+		{name: "admin scope=all sees every pvmss-tagged VM across pools", identity: admin, scope: vm.ScopeAll, wantIDs: []int{100, 101, 102, 103}},
 		{name: "admin without scope owns no pool and sees nothing, not the unpooled VM", identity: admin, scope: "", wantIDs: nil},
 	}
 	for _, tt := range tests {
@@ -179,6 +179,55 @@ func TestList_NodeFacetIgnoresNodeFilter(t *testing.T) {
 	want := []string{cluster.FakeNode01, cluster.FakeNode02}
 	if !slices.Equal(result.AvailableNodes, want) {
 		t.Errorf("AvailableNodes = %v, want %v", result.AvailableNodes, want)
+	}
+}
+
+//nolint:paralleltest // serial: shared in-memory fixture state
+func TestList_PoolFilterAndFacet(t *testing.T) {
+	const pvmssBob = "pvmss-bob"
+
+	index := inventory.BuildIndex(cluster.Snapshot{
+		VMs: []cluster.VM{
+			{VMID: 100, Name: "alice-vm", Node: cluster.FakeNode01, Status: cluster.VMRunning, Pool: "pvmss-alice", Tags: []string{testPvmssTag}},
+			{VMID: 103, Name: "cache-01", Node: cluster.FakeNode01, Status: cluster.VMPaused, Pool: pvmssBob, Tags: []string{testPvmssTag}},
+			{VMID: 104, Name: "build-01", Node: cluster.FakeNode02, Status: cluster.VMStopped, Pool: pvmssBob, Tags: nil},
+			{VMID: 106, Name: "legacy-pool-vm", Node: cluster.FakeNode01, Status: cluster.VMRunning, Pool: cluster.FakePoolShared, Tags: []string{testPvmssTag}},
+			{VMID: 105, Name: "orphan-01", Node: cluster.FakeNode01, Status: cluster.VMRunning, Pool: "", Tags: []string{testPvmssTag}},
+		},
+	})
+
+	// Admin scope=all narrowed to one pool - only pvmss-tagged VMs of that pool.
+	result, err := vm.List(&index, vm.ListQuery{Scope: vm.ScopeAll, Pool: pvmssBob}, admin, -1)
+	if err != nil {
+		t.Fatalf("List: %v", err)
+	}
+
+	got := vmids(result)
+	slices.Sort(got)
+
+	if want := []int{103}; !slices.Equal(got, want) {
+		t.Errorf("vmids = %v, want %v", got, want)
+	}
+
+	// The facet is computed before the pool filter so the dropdown does not
+	// shrink to hide its own selection, and includes only PVMSS-managed ("pvmss-") pools.
+	wantPools := []string{"pvmss-alice", pvmssBob}
+	if !slices.Equal(result.AvailablePools, wantPools) {
+		t.Errorf("AvailablePools = %v, want %v", result.AvailablePools, wantPools)
+	}
+}
+
+//nolint:paralleltest // serial: shared in-memory fixture state
+func TestList_PoolFilterNeverCrossesScope(t *testing.T) {
+	// A non-admin asking for another pool's VMs still sees only their own -
+	// scope is re-derived from the identity, never from the query.
+	result, err := vm.List(testIndex(), vm.ListQuery{Pool: cluster.FakePoolBob}, alice, -1)
+	if err != nil {
+		t.Fatalf("List: %v", err)
+	}
+
+	if got := vmids(result); len(got) != 0 {
+		t.Errorf("vmids = %v, want none", got)
 	}
 }
 

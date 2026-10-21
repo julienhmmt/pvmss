@@ -2,7 +2,7 @@
 	import type { Snippet } from 'svelte';
 	import { onDestroy, onMount } from 'svelte';
 	import { page } from '$app/state';
-	import { afterNavigate, onNavigate } from '$app/navigation';
+	import { afterNavigate, goto, onNavigate } from '$app/navigation';
 	import { resolve as resolvePath } from '$app/paths';
 	import '../app.css';
 	import '#lib/styles/prose.css';
@@ -10,9 +10,10 @@
 	import { setTaskOutcomeLedgerContext } from '#lib/features/tasks/task-outcome-ledger.svelte.js';
 	import { setPowerActionsContext } from '#lib/features/tasks/power-actions.svelte.js';
 	import { setSessionContext } from '#lib/features/auth/session.svelte.js';
-	import { isPublicPath } from '#lib/features/auth/public-routes.js';
+	import { isPublicPath, loginHref, safeNext } from '#lib/features/auth/public-routes.js';
+	import { GITHUB_URL } from '#lib/shared/links.js';
 	import AuthRequired from '#lib/features/auth/AuthRequired.svelte';
-	import { get } from '#lib/shared/api/client.js';
+	import { get, UNAUTHORIZED_EVENT } from '#lib/shared/api/client.js';
 	import { setLocaleContext } from '#lib/features/chrome/locale.svelte.js';
 	import { setThemeContext } from '#lib/features/chrome/theme.svelte.js';
 	import { setStatusContext } from '#lib/features/chrome/status.svelte.js';
@@ -22,6 +23,7 @@
 	import HeaderLite from '#lib/features/chrome/HeaderLite.svelte';
 	import StatusBanner from '#lib/features/chrome/StatusBanner.svelte';
 	import ShortcutsDialog from '#lib/features/chrome/ShortcutsDialog.svelte';
+	import CommandPalette from '#lib/features/chrome/CommandPalette.svelte';
 	import Toaster from '#lib/shared/ui/Toaster.svelte';
 	import { setToastContext } from '#lib/shared/ui/toast.svelte.js';
 	import ClusterDownOverlay from '#lib/shared/ui/ClusterDownOverlay.svelte';
@@ -65,13 +67,26 @@
 	const theme = setThemeContext();
 	const status = setStatusContext();
 	const chrome = setChromeContext();
-	setToastContext();
+	const toasts = setToastContext();
 	onMount(() => {
 		locale.init();
 		theme.init();
 		status.start();
 	});
 	onDestroy(() => status.stop());
+
+	// A 401 while signed in means the session expired mid-use: one toast and
+	// one trip to sign in, coming back here. expire() is false for anonymous
+	// visitors and for every 401 after the first.
+	onMount(() => {
+		const onUnauthorized = (): void => {
+			if (!session.expire()) return;
+			toasts.info(m['auth.sessionExpired']());
+			void goto(loginHref(page.url.pathname + page.url.search));
+		};
+		globalThis.addEventListener(UNAUTHORIZED_EVENT, onUnauthorized);
+		return () => globalThis.removeEventListener(UNAUTHORIZED_EVENT, onUnauthorized);
+	});
 
 	if (typeof onNavigate === 'function' && typeof document !== 'undefined' && 'startViewTransition' in document) {
 		onNavigate((navigation) =>
@@ -99,7 +114,6 @@
 	});
 
 	let version = $state<string | null>(null);
-	const githubUrl = 'https://github.com/julienhmmt/pvmss';
 	onMount(async () => {
 		try {
 			const result = await get<{ version: string }>('/api/v1/public/version');
@@ -149,6 +163,14 @@
 	});
 
 	function handleGlobalShortcut(event: KeyboardEvent): void {
+		// Cmd/Ctrl+K works even while typing: it is never text input.
+		if ((event.metaKey || event.ctrlKey) && !event.altKey && event.key.toLowerCase() === 'k') {
+			// A widget that used the key (a console, an editor) keeps it.
+			if (!signedIn || event.defaultPrevented) return;
+			event.preventDefault();
+			chrome.openPalette();
+			return;
+		}
 		if (event.ctrlKey || event.altKey || event.metaKey) return;
 		const target = event.target as HTMLElement | null;
 		if (target === null) return;
@@ -166,15 +188,21 @@
 		} else if (event.key === '?') {
 			event.preventDefault();
 			shortcutsOpen = true;
-		} else if (event.key.toLowerCase() === 'r') {
-			event.preventDefault();
-			window.location.reload();
 		}
 	}
 
 	const signedIn = $derived(session.principal !== null);
 	const hasRouteError = $derived(page.error !== null);
 	const isLoginPage = $derived(page.route.id === '/login');
+
+	// A signed-in user never sees the sign-in form: /login sends them to a safe
+	// `next` or their home. This also completes a fresh sign-in.
+	$effect(() => {
+		const principal = session.principal;
+		if (principal === null || !isLoginPage) return;
+		const next = safeNext(page.url.searchParams.get('next'));
+		void goto(next ?? resolvePath(principal.isAdmin ? '/admin' : '/'), { replaceState: true });
+	});
 	let shortcutsOpen = $state(false);
 
 	let sidebarDialog: HTMLDialogElement | null = $state(null);
@@ -234,7 +262,7 @@
 					</p>
 					<div class="flex items-center gap-4">
 						<a href={resolvePath('/about')} class="hover:text-foreground hover:underline">{m['chrome.footer.about']()}</a>
-						<a href={githubUrl} target="_blank" rel="noopener noreferrer" class="hover:text-foreground hover:underline">
+						<a href={GITHUB_URL} target="_blank" rel="noopener noreferrer" class="hover:text-foreground hover:underline">
 							{m['chrome.footer.github']()}<span aria-hidden="true"> ↗</span><span class="sr-only"> {m['chrome.footer.externalLink']()}</span>
 						</a>
 					</div>
@@ -274,7 +302,7 @@
 				{#if version}PVMSS {version}{/if}
 				<div class="mt-1 flex items-center justify-center gap-4">
 					<a href={resolvePath('/about')} class="hover:text-foreground hover:underline">{m['chrome.footer.about']()}</a>
-					<a href={githubUrl} target="_blank" rel="noopener noreferrer" class="hover:text-foreground hover:underline">
+					<a href={GITHUB_URL} target="_blank" rel="noopener noreferrer" class="hover:text-foreground hover:underline">
 						{m['chrome.footer.github']()}<span aria-hidden="true"> ↗</span><span class="sr-only"> {m['chrome.footer.externalLink']()}</span>
 					</a>
 				</div>
@@ -285,6 +313,7 @@
 
 {#if signedIn}
 	<ShortcutsDialog bind:open={shortcutsOpen} onClose={() => (shortcutsOpen = false)} />
+	<CommandPalette />
 {/if}
 
 <Toaster />

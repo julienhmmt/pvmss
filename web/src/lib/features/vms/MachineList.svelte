@@ -183,9 +183,7 @@
 			? 1
 			: Math.max(1, Math.ceil(store.result.total / store.result.pageSize))
 	);
-	const filtered = $derived(
-		store.search !== '' || store.status !== '' || store.node !== '' || store.attention
-	);
+	const filtered = $derived(store.filtered);
 	// Filtered lists show "N of M machines" - M is the owned-VM total from
 	// quota.used, only present on the 'mine' scope; without it the plain
 	// filtered count stands alone. The attention filter is client-side, so it
@@ -201,7 +199,7 @@
 		}
 		return m['vms.list.machineCount']({ count: result.total });
 	});
-	const firstVisit = $derived(store.result?.emptyReason === 'no_vms_owned' && !filtered);
+	const firstVisit = $derived(store.noneOwned);
 	const unreachable = $derived(store.errorCode === 'inventory_not_ready');
 	// A pageSize arriving via the URL may not be one of the offered choices;
 	// surface it rather than let the select misreport the active size.
@@ -243,13 +241,11 @@
 			</span>
 			<span class="absolute -right-2 -top-2 flex h-6 w-6 items-center justify-center rounded-full bg-primary-solid text-sm font-semibold text-primary-foreground">+</span>
 		</div>
-		<p class="text-2xs font-semibold uppercase tracking-[0.08em] text-muted-foreground-subtle">{m['vms.list.emptyFirstEyebrow']()}</p>
 		<div class="max-w-md">
 			<p class="text-lg font-semibold text-foreground">{m['vms.list.emptyFirstTitle']()}</p>
 			<p class="mt-1.5 text-sm text-muted-foreground">{m['vms.list.emptyFirstBody']()}</p>
 		</div>
 		<ButtonLink href={resolve('/vms/create')} data-testid="vm-empty-create">{m['vms.list.emptyFirstAction']()}</ButtonLink>
-		<p class="text-xs text-muted-foreground-subtle">{m['vms.list.emptyFirstReassurance']()}</p>
 	</Card>
 {:else}
 	<Card pad="none" class="machine-collection overflow-hidden" aria-label={m['vms.list.caption']()}>
@@ -588,13 +584,13 @@
 {/if}
 
 {#if !unreachable}
-	<aside class="mt-6 flex flex-wrap items-center gap-3 px-1 text-sm text-muted-foreground" data-testid="vm-quiet-help">
+	<div class="mt-6 flex flex-wrap items-center gap-3 px-1 text-sm text-muted-foreground" data-testid="vm-quiet-help">
 		<svg viewBox="0 0 24 24" class="h-4 w-4 shrink-0" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
 			<path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20" />
 			<path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z" />
 		</svg>
 		<span class="font-medium text-foreground">{m['vms.list.quietHelpTitle']()}</span>
 		<span class="max-[699px]:hidden">{m['vms.list.quietHelpBody']()}</span>
-		<a href={resolve('/docs')} class="pv-focus rounded font-medium text-primary underline-offset-2 hover:underline">{m['vms.list.openGuide']()}</a>
-	</aside>
+		<ButtonLink href={resolve('/docs')} variant="secondary" size="sm">{m['vms.list.openGuide']()}</ButtonLink>
+	</div>
 {/if}

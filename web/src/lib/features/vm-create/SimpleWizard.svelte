@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { tick } from 'svelte';
-	import { getVmCreateContext, gabaritCeiling, type SimpleSource } from './create.svelte';
+	import { getVmCreateContext, gabaritCeiling, memoryLabel, type SimpleSource } from './create.svelte';
 	import { getTaskTrayContext } from '#lib/features/tasks/tasks.svelte.js';
 	import { getTaskOutcomeLedgerContext } from '#lib/features/tasks/task-outcome-ledger.svelte.js';
 	import { handleAccepted } from './post-submit';
@@ -88,10 +88,6 @@
 	const isoOptions = $derived(
 		(form.catalog?.isos ?? []).map((iso) => ({ value: iso.file, label: iso.file }))
 	);
-
-	function memoryLabel(memoryMB: number): string {
-		return memoryMB >= 1024 && memoryMB % 1024 === 0 ? `${memoryMB / 1024} GB` : `${memoryMB} MB`;
-	}
 
 	const HOSTNAME_PATTERN = /^[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?$/;
 
@@ -246,6 +242,11 @@
 	);
 	const quota = $derived(form.catalog?.quota ?? null);
 
+	// A disabled submit says why (decision 2026-10-21: no size is preselected).
+	const submitHint = $derived(
+		(form.simpleSource === 'profile' && profileError) || imageProfileError ? m['vms.create.hintChooseSize']() : m['vms.create.hintFixFields']()
+	);
+
 	async function submit(): Promise<void> {
 		submitted = true;
 		if (!canSubmit) {
@@ -286,7 +287,7 @@
 	>
 		<p id="simple-wizard-help" class="sr-only">{m['vms.create.reviewRequest']()}</p>
 
-		<div class="creation-form grid gap-8">
+		<Card as="div" pad="lg" class="creation-form grid gap-8">
 			<FormSection step={1} legend={m['vms.create.section.start']()} description={m['vms.create.section.startHelp']()}>
 				{#if sourceCards.length > 1}
 					<div class="grid gap-2" role="radiogroup" aria-label={m['vms.create.section.start']()}>
@@ -309,6 +310,9 @@
 							</RadioCard>
 						{/each}
 					</div>
+				{:else if sourceCards[0]}
+					<!-- One possible start: name it rather than offer a choice of one. -->
+					<p class="text-sm" data-testid="vm-create-start-fixed">{m['vms.create.startFixed']({ name: sourceCards[0].title })}</p>
 				{/if}
 
 				{#if form.simpleSource === 'image'}
@@ -359,7 +363,7 @@
 			<FormSection step={form.simpleSource === 'template' ? 2 : 3} legend={m['vms.create.section.yours']()} description={m['vms.create.section.yoursHelp']()}>
 				<FormField label={m['vms.create.name']()} required hint={m['vms.create.nameHint']()} error={visibleNameError}>
 					{#snippet children({ id, describedBy, invalid })}
-						<TextField {id} {describedBy} {invalid} bind:value={form.name} onblur={() => (nameTouched = true)} required maxlength={63} placeholder="web-04" autocomplete="off" />
+						<TextField {id} {describedBy} {invalid} bind:value={form.name} onblur={() => (nameTouched = true)} required maxlength={63} data-testid="vm-create-name" autocomplete="off" />
 					{/snippet}
 				</FormField>
 
@@ -408,7 +412,7 @@
 			</FormSection>
 
 			<p class="text-xs text-muted-foreground" data-testid="vm-create-retention">{m['vms.create.retentionNote']()}</p>
-		</div>
+		</Card>
 
 		<Card as="aside" pad="md" class="creation-summary flex flex-col gap-4 min-[700px]:sticky min-[700px]:top-24" aria-labelledby="creation-summary-title" data-testid="vm-create-summary">
 			<p id="creation-summary-title" class="flex items-center gap-2 text-sm font-semibold">
@@ -482,6 +486,9 @@
 				{/if}
 				{form.submitting ? m['common.creating']() : m['vms.create.summary.submit']()}
 			</Button>
+			{#if submitted && !canSubmit && !form.submitting}
+				<p class="text-xs text-muted-foreground" role="status" data-testid="vm-create-submit-hint">{submitHint}</p>
+			{/if}
 			<p class="text-2xs text-muted-foreground-subtle">{m['vms.create.summary.provisioningNote']()}</p>
 		</Card>
 	</form>

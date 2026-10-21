@@ -1,6 +1,7 @@
 <script lang="ts">
 	import type { ClusterNode, NodeStatus } from './nodes.svelte';
 	import { m } from '#lib/paraglide/messages.js';
+	import { formatDateTime } from '#lib/shared/format-date.js';
 	import { formatBytes } from '#lib/shared/format-bytes.js';
 	import Alert from '#lib/shared/ui/Alert.svelte';
 	import EmptyState from '#lib/shared/ui/EmptyState.svelte';
@@ -34,8 +35,7 @@
 
 	function formatRefreshedAt(iso: string | null): string {
 		if (!iso) return m['common.dash']();
-		const date = new Date(iso);
-		return date.toLocaleString();
+		return formatDateTime(iso, 'short');
 	}
 
 	function usageRatio(used: number, total: number): number {

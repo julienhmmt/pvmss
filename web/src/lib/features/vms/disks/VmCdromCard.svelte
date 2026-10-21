@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { getVmDetailContext } from '../detail.svelte';
+	import { getVmDetailContext, type VmCdrom } from '../detail.svelte';
 	import Alert from '#lib/shared/ui/Alert.svelte';
 	import { getToastContext } from '#lib/shared/ui/toast.svelte.js';
 	import MountIsoDialog from './MountIsoDialog.svelte';
@@ -18,6 +18,16 @@
 	const isoMounted = $derived(store.entity?.cdrom?.state === 'mounted');
 	// ide2 holds a cloud-init drive: mounting, ejecting or removing would destroy it.
 	const occupied = $derived(store.entity?.cdrom?.state === 'occupied');
+
+	const CDROM_STATE_LABELS: Record<VmCdrom['state'], () => string> = {
+		absent: m['vms.disks.cdromStateAbsent'],
+		empty: m['vms.disks.cdromStateEmpty'],
+		mounted: m['vms.disks.cdromStateMounted'],
+		occupied: m['vms.disks.cdromStateOccupied']
+	};
+	const cdromState = $derived(store.entity?.cdrom?.state ?? 'absent');
+	// A state added server-side later shows as-is rather than blank.
+	const cdromStateLabel = $derived(CDROM_STATE_LABELS[cdromState]?.() ?? cdromState);
 
 	async function bootFromCdrom(): Promise<void> {
 		const vmName = store.entity?.name ?? '';
@@ -48,7 +58,7 @@
 			<h2 class="text-lg font-semibold">{m['vms.disks.cdromHeading']()}</h2>
 			<p class="mt-1 text-sm text-muted-foreground" data-testid="vm-cdrom-state">
 				{m['vms.disks.cdromState']()}
-				<span class="font-medium text-foreground">{store.entity?.cdrom?.state ?? 'absent'}</span>
+				<span class="font-medium text-foreground">{cdromStateLabel}</span>
 			</p>
 			{#if store.entity?.cdrom?.isoVolId}
 				<p class="mt-1 truncate font-mono text-xs text-muted-foreground">{store.entity.cdrom.isoVolId}</p>

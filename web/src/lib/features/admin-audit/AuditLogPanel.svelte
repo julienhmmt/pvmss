@@ -10,6 +10,8 @@
 	import EmptyState from '#lib/shared/ui/EmptyState.svelte';
 	import Pill from '#lib/shared/ui/Pill.svelte';
 	import { m } from '#lib/paraglide/messages.js';
+	import { formatDateTime } from '#lib/shared/format-date.js';
+	import { activityMessage, auditTarget, isKnownAction, knownActions } from '#lib/features/activity/activity.svelte.js';
 
 	const store = getAuditLogContext();
 
@@ -20,6 +22,15 @@
 	let toFilter = $state('');
 	let severityFilter = $state('');
 	let selectedDetail = $state<number | null>(null);
+
+	// The server matches the action code exactly, and the table shows labels,
+	// so the filter offers the labels and sends the code.
+	const actionOptions = [
+		{ value: '', label: m['admin.audit.actionAll']() },
+		...knownActions()
+			.map((code) => ({ value: code, label: activityMessage(code) }))
+			.sort((a, b) => a.label.localeCompare(b.label))
+	];
 
 	function applyFilter(): void {
 		const filter: AuditFilter = {};
@@ -94,7 +105,7 @@
 	}
 
 	function formatTimestamp(ts: string): string {
-		return new Date(ts).toLocaleString();
+		return formatDateTime(ts, 'short');
 	}
 </script>
 
@@ -112,7 +123,7 @@
 				<form class="flex flex-wrap items-end gap-3" onsubmit={(e) => { e.preventDefault(); applyFilter(); }}>
 					<label class="flex flex-col gap-1 text-sm">
 						<span class="text-muted-foreground">{m['admin.audit.action']()}</span>
-						<TextField bind:value={actionFilter} placeholder={m['admin.audit.actionPlaceholder']()} />
+						<Select bind:value={actionFilter} options={actionOptions} />
 					</label>
 					<label class="flex flex-col gap-1 text-sm">
 						<span class="text-muted-foreground">{m['admin.audit.actor']()}</span>
@@ -168,19 +179,36 @@
 							<td data-label={m['admin.audit.actor']()}>{entry.actor}</td>
 							<td data-label={m['common.cluster']()}>{entry.cluster}</td>
 							<td data-label={m['admin.audit.columnVm']()}>{entry.vmid ?? ''}</td>
-							<td class="font-mono" data-label={m['admin.audit.action']()}>{entry.action}</td>
-							<td data-label={m['admin.audit.target']()}>{entry.targetType ? `${entry.targetType}:${entry.targetId}` : ''}</td>
+							<td data-label={m['admin.audit.action']()}>
+								{#if isKnownAction(entry.action)}
+									{activityMessage(entry.action)}
+								{:else}
+									<!-- A missing label stays visible as the raw code, muted so review spots it. -->
+									<span class="font-mono text-muted-foreground" data-testid="audit-action-unknown">{entry.action}</span>
+								{/if}
+							</td>
+							<td data-label={m['admin.audit.target']()}>{auditTarget(entry.targetType, entry.targetId)}</td>
 							<td data-label={m['admin.audit.severity']()}>
 								<Pill tone={severityTone(entry.severity)} label={severityLabel(entry.severity)} />
 							</td>
 							<td data-label={m['admin.audit.detail']()}>
-								<button type="button" class="pv-focus rounded-sm text-left hover:underline" onclick={() => selectedDetail = selectedDetail === entry.id ? null : entry.id}>
-									{summary}
-								</button>
+								{#if summary.trim() === ''}
+									<span class="text-muted-foreground">{m['admin.audit.noDetail']()}</span>
+								{:else}
+									<button
+										type="button"
+										class="pv-focus rounded-sm text-left hover:underline"
+										aria-expanded={selectedDetail === entry.id}
+										aria-controls="audit-detail-{entry.id}"
+										onclick={() => selectedDetail = selectedDetail === entry.id ? null : entry.id}
+									>
+										{summary}
+									</button>
+								{/if}
 							</td>
 						</tr>
 						{#if selectedDetail === entry.id}
-							<tr>
+							<tr id="audit-detail-{entry.id}">
 								<td colspan={8} data-nolabel="true">
 									<pre class="max-h-96 overflow-auto whitespace-pre-wrap break-words rounded-md bg-muted p-4 font-mono text-xs">{detailBlock(entry)}</pre>
 								</td>

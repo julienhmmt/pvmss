@@ -28,6 +28,9 @@ export class SessionStore {
 	async logout(): Promise<void> {
 		this.loading = true;
 		this.error = null;
+		// Cleared first: a poll answered 401 while the session is being revoked
+		// must not read as an expiry.
+		this.principal = null;
 		try {
 			await post<void>('/api/v1/auth/logout');
 		} catch (error: unknown) {
@@ -36,6 +39,15 @@ export class SessionStore {
 			this.principal = null;
 			this.loading = false;
 		}
+	}
+
+	/** Drops a principal whose session the server no longer accepts. Returns
+	 *  false when nobody was signed in, so a 401 burst, a sign-in failure or an
+	 *  anonymous visitor's 401 is not treated as an expiry. */
+	expire(): boolean {
+		if (this.principal === null) return false;
+		this.principal = null;
+		return true;
 	}
 
 	get isAdmin(): boolean {

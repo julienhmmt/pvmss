@@ -50,7 +50,7 @@ function baseProps(overrides: Partial<PageProps> = {}): PageProps {
 }
 
 function submitDialogForm(): void {
-	const form = document.querySelector<HTMLFormElement>('[role="dialog"] form');
+	const form = document.querySelector<HTMLFormElement>('dialog form');
 	expect(form).not.toBeNull();
 	form!.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }));
 }
@@ -86,7 +86,7 @@ describe('CloudInitTemplatesPage safety nets', () => {
 
 		document.querySelector<HTMLButtonElement>('[data-testid="cloudinit-new-template"]')!.click();
 		await tick();
-		expect(document.querySelector('[role="dialog"]')).not.toBeNull();
+		expect(document.querySelector('dialog')).not.toBeNull();
 
 		submitDialogForm();
 		await tick();
@@ -94,7 +94,7 @@ describe('CloudInitTemplatesPage safety nets', () => {
 
 		expect(onCreate).toHaveBeenCalled();
 		// The draft is still there: the dialog did not close.
-		expect(document.querySelector('[role="dialog"]')).not.toBeNull();
+		expect(document.querySelector('dialog')).not.toBeNull();
 	});
 
 	it('closes the form dialog when the save succeeds', async () => {
@@ -108,7 +108,7 @@ describe('CloudInitTemplatesPage safety nets', () => {
 		await tick();
 		await tick();
 
-		expect(document.querySelector('[role="dialog"]')).toBeNull();
+		expect(document.querySelector('dialog')).toBeNull();
 	});
 
 	it('renders the save error inside the dialog, not on the page behind it', async () => {
@@ -118,7 +118,7 @@ describe('CloudInitTemplatesPage safety nets', () => {
 		document.querySelector<HTMLButtonElement>('[data-testid="cloudinit-new-template"]')!.click();
 		await tick();
 
-		const dialog = document.querySelector('[role="dialog"]');
+		const dialog = document.querySelector('dialog');
 		expect(dialog?.textContent).toContain('invalid YAML');
 	});
 });

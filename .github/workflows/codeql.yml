@@ -40,6 +40,7 @@ jobs:
         with:
           go-version-file: server/go.mod
           cache: true
+          cache-dependency-path: server/go.sum
 
       - name: Initialize CodeQL
         uses: github/codeql-action/init@v4

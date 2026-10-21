@@ -85,6 +85,11 @@ export interface CatalogGabarit {
 	isolationVlanTag: number;
 }
 
+/** Memory for display: whole gigabytes as GB, anything else in MB. */
+export function memoryLabel(memoryMB: number): string {
+	return memoryMB >= 1024 && memoryMB % 1024 === 0 ? `${memoryMB / 1024} GB` : `${memoryMB} MB`;
+}
+
 /** The effective UI ceiling for a gabarit field: 0 means no cap (the server
  *  enforces the same rule), so the fallback rail applies for the input's
  *  max attribute. */
@@ -404,9 +409,9 @@ function translateNotApproved(message: string): string {
  *  English message (constitution: UI text is always localized). */
 function translateSubmitError(error: unknown): string {
 	if (!(error instanceof ApiRequestError)) return m['vms.create.errorCreation']();
-	if (error.code === 'not_approved') return translateNotApproved(error.message);
+	if (error.code === 'not_approved') return translateNotApproved(error.serverMessage);
 	const dynamic = DYNAMIC_SUBMIT_ERRORS[error.code];
-	if (dynamic) return dynamic(error.message);
+	if (dynamic) return dynamic(error.serverMessage);
 	return (FIXED_SUBMIT_ERRORS[error.code] ?? m['vms.create.errorCreation'])();
 }
 

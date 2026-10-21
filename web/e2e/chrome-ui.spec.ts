@@ -5,8 +5,8 @@ import { test, expect } from '@playwright/test';
 // against the fake cluster client (constitution XI - no Proxmox needed).
 //
 // The default locale is French (Paraglide base locale). SSR renders in French;
-// the language switcher is a two-button group and the theme toggle is an icon
-// button. Selectors use locale-agnostic patterns where possible.
+// the language switcher is a two-button group and the theme control a
+// light / dark / system group. Selectors use locale-agnostic patterns where possible.
 //
 // This file asserts the real French default, so it opts out of the suite-wide
 // English seed that playwright.config.ts applies.
@@ -48,8 +48,8 @@ test.describe('T19 chrome UI', () => {
 			// <html lang> updates immediately, no reload.
 			await expect(page.locator('html')).toHaveAttribute('lang', 'en');
 
-			// The home CTA has switched to English.
-			await expect(page.getByRole('link', { name: 'Log in' })).toBeVisible();
+			// The home CTA has switched to English (the hero's; the closing band repeats it).
+			await expect(page.getByRole('link', { name: 'Log in' }).first()).toBeVisible();
 		});
 
 		test('language choice persists across reload', async ({ page }) => {
@@ -70,13 +70,42 @@ test.describe('T19 chrome UI', () => {
 			await page.evaluate(() => localStorage.removeItem('pvmss-theme-v1'));
 			await page.reload();
 
-			// The theme toggle is an icon button labelled "Thème" / "Theme".
-			await page.getByRole('button', { name: /Thème|Theme/ }).click();
+			// The theme control is a light / dark / system group.
+			await page.getByRole('button', { name: /^(Sombre|Dark)$/ }).first().click();
 			await expect(html).toHaveClass(/dark/);
 
 			// Persist across reload.
 			await page.reload();
 			await expect(html).toHaveClass(/dark/);
+
+			// System follows the OS again.
+			await page.emulateMedia({ colorScheme: 'light' });
+			await page.getByRole('button', { name: /^(Système|System)$/ }).first().click();
+			await expect(html).not.toHaveClass(/dark/);
+			await page.emulateMedia({ colorScheme: 'dark' });
+			await expect(html).toHaveClass(/dark/);
+		});
+
+		for (const width of [320, 390]) {
+			test(`the public header with the theme control fits ${width}px`, async ({ page }) => {
+				await page.setViewportSize({ width, height: 844 });
+				for (const path of ['/', '/docs', '/about']) {
+					await page.goto(path);
+					await expect(page.getByRole('button', { name: /^(Système|System)$/ }).first()).toBeVisible();
+					const overflow = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
+					expect(overflow, path).toBeLessThanOrEqual(0);
+				}
+			});
+		}
+
+		test('a dark OS gets a dark first paint, before the app hydrates', async ({ browser }) => {
+			const context = await browser.newContext({ colorScheme: 'dark' });
+			const page = await context.newPage();
+			// No app bundle: only the inline bootstrap in app.html can run.
+			await page.route('**/_app/immutable/**', (route) => route.abort());
+			await page.goto('/');
+			await expect(page.locator('html')).toHaveClass(/dark/);
+			await context.close();
 		});
 
 		test('respects prefers-reduced-motion', async ({ browser }) => {
@@ -85,8 +114,8 @@ test.describe('T19 chrome UI', () => {
 			});
 			const page = await context.newPage();
 			await page.goto('/');
-			// The toggle is reachable and functional under reduced motion.
-			await page.getByRole('button', { name: /Thème|Theme/ }).click();
+			// The control is reachable and functional under reduced motion.
+			await page.getByRole('button', { name: /^(Sombre|Dark)$/ }).first().click();
 			await expect(page.locator('html')).toHaveClass(/dark/);
 			await context.close();
 		});

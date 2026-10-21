@@ -4,6 +4,7 @@
 	import FormField from '#lib/shared/ui/FormField.svelte';
 	import Select from '#lib/shared/ui/Select.svelte';
 	import Tooltip from '#lib/shared/ui/Tooltip.svelte';
+	import Button from '#lib/shared/ui/Button.svelte';
 
 	interface Props {
 		showErrors?: boolean;
@@ -47,13 +48,12 @@
 				<div class="flex items-center justify-between">
 					<span class="text-sm font-medium text-foreground">{m['vms.create.nicLabel']({ index })}</span>
 					{#if canRemoveNIC}
-						<button
-							type="button"
-							class="text-sm text-destructive hover:underline"
-							onclick={() => form.removeNIC(index)}
-						>
+						<Button variant="outline" size="sm" class="text-destructive" onclick={() => form.removeNIC(index)}>
+							<svg viewBox="0 0 24 24" class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+								<path d="M3 6h18M8 6V4h8v2M19 6l-1 14H6L5 6" />
+							</svg>
 							{m['vms.create.removeNic']()}
-						</button>
+						</Button>
 					{/if}
 				</div>
 			{/if}
@@ -104,8 +104,12 @@
 	{/each}
 
 	{#if canAddNIC}
-		<button type="button" class="justify-self-start text-sm text-primary hover:underline" onclick={() => form.addNIC()}>
+		<Button variant="secondary" size="sm" class="justify-self-start" onclick={() => form.addNIC()}>
+			<svg viewBox="0 0 24 24" class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true">
+				<line x1="12" y1="5" x2="12" y2="19" />
+				<line x1="5" y1="12" x2="19" y2="12" />
+			</svg>
 			{m['vms.create.addNic']()}
-		</button>
+		</Button>
 	{/if}
 </div>

@@ -48,6 +48,10 @@
 			]}"
 			data-testid="toast"
 			data-toast-variant={toast.variant}
+			onmouseenter={() => region.hold(toast.id)}
+			onmouseleave={() => region.release(toast.id)}
+			onfocusin={() => region.hold(toast.id)}
+			onfocusout={() => region.release(toast.id)}
 		>
 			<span class="mt-0.5 font-mono text-xs font-bold" aria-hidden="true">
 				{variantIcon[toast.variant]}

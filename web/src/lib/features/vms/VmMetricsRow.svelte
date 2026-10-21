@@ -58,15 +58,16 @@
 				{m['vms.detail.metricsHeading']()}
 			</h2>
 			{#if store.streamState === 'reconnecting'}
-				<span class="text-xs text-warning" data-testid="vm-metrics-stream-reconnecting">
+				<span class="text-xs text-warning-soft-foreground" data-testid="vm-metrics-stream-reconnecting">
 					{m['vms.detail.metricsStreamReconnecting']()}
 				</span>
 			{:else if store.streamState === 'error'}
-				<span class="text-xs text-destructive" data-testid="vm-metrics-stream-error">
+				<span class="text-xs text-destructive-soft-foreground" data-testid="vm-metrics-stream-error">
 					{m['vms.detail.metricsStreamError']()}
 				</span>
 			{:else if store.streamState === 'connected'}
-				<span class="text-xs text-success" data-testid="vm-metrics-stream-live">
+				<!-- Status words use the soft-foreground text tokens: the fill colors (text-success, ...) are for dots and stay under AA as 12px text. -->
+				<span class="text-xs text-success-soft-foreground" data-testid="vm-metrics-stream-live">
 					{m['vms.detail.metricsStreamLive']()}
 				</span>
 			{/if}

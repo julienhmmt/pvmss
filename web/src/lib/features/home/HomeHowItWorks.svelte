@@ -1,9 +1,7 @@
 <script lang="ts">
 	import { m } from '#lib/paraglide/messages.js';
 	import StepNumberIcon from '#lib/shared/ui/icons/StepNumberIcon.svelte';
-	import { getSessionContext } from '#lib/features/auth/session.svelte.js';
-
-	const session = getSessionContext();
+	import { reveal } from '#lib/shared/reveal.js';
 
 	const steps: { number: number; title: () => string; description: () => string }[] = [
 		{ number: 1, title: () => m['home.steps.1.title'](), description: () => m['home.steps.1.description']() },
@@ -12,19 +10,23 @@
 	];
 </script>
 
-{#if !session.principal}
-	<section class="w-full max-w-4xl" aria-labelledby="how-it-works-heading">
-		<h2 id="how-it-works-heading" class="text-center text-xl font-semibold tracking-tight">
-			{m['home.steps.heading']()}
-		</h2>
-		<div class="mt-6 grid gap-6 sm:grid-cols-3">
-			{#each steps as step (step.number)}
-				<div class="flex flex-col items-center text-center">
+<section class="mx-auto w-full max-w-6xl py-16" aria-labelledby="how-it-works-heading">
+	<h2 id="how-it-works-heading" class="text-center text-3xl font-semibold tracking-tight" {@attach reveal()}>
+		{m['home.steps.heading']()}
+	</h2>
+	<div class="relative mt-12" {@attach reveal()}>
+		<!-- The connector draws itself across the three steps when they scroll in. -->
+		<div class="pv-connector absolute top-6 right-[16.6%] left-[16.6%] hidden h-px bg-primary/40 sm:block" aria-hidden="true"></div>
+		<ol class="relative grid gap-10 sm:grid-cols-3 sm:gap-6">
+		{#each steps as step, i (step.number)}
+			<li class="relative flex flex-col items-center text-center" style:transition-delay="{i * 150}ms" {@attach reveal()}>
+				<span class="rounded-full bg-background p-1 ring-8 ring-background">
 					<StepNumberIcon number={step.number} class="h-10 w-10" />
-					<h3 class="mt-3 text-base font-semibold">{step.title()}</h3>
-					<p class="mt-1 text-sm text-muted-foreground">{step.description()}</p>
-				</div>
-			{/each}
-		</div>
-	</section>
-{/if}
+				</span>
+				<h3 class="mt-4 text-base font-semibold">{step.title()}</h3>
+				<p class="mt-1.5 max-w-xs text-sm text-muted-foreground">{step.description()}</p>
+			</li>
+		{/each}
+		</ol>
+	</div>
+</section>

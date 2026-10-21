@@ -22,6 +22,8 @@
 		options: (store: Store) => readonly (string | SelectOption)[];
 		get: (store: Store) => string;
 		set: (store: Store, value: string) => void;
+		/** Accessible name; the first option only shows the current value. */
+		label: () => string;
 		/** Disabled first option - "all" style prompt. Omit for a labelled list. */
 		placeholder?: () => string;
 		testid: string;
@@ -64,6 +66,7 @@
 			],
 			get,
 			set: (store, value) => set(store, value as EnabledFilter),
+			label: () => m['admin.catalog.statusColumn'](),
 			testid
 		};
 	}
@@ -82,6 +85,7 @@
 					get: (s) => s.nodeStatusFilter,
 					set: (s, v) => (s.nodeStatusFilter = v),
 					placeholder: () => m['admin.nodes.filterAllStatuses'](),
+					label: () => m['common.status'](),
 					testid: 'node-status-filter',
 					class: 'w-full sm:w-48'
 				},
@@ -122,6 +126,7 @@
 					get: (s) => s.bridgeNodeFilter,
 					set: (s, v) => (s.bridgeNodeFilter = v),
 					placeholder: () => m['admin.bridges.filterAllNodes'](),
+					label: () => m['common.node'](),
 					testid: 'bridge-node-filter'
 				},
 				{
@@ -132,6 +137,7 @@
 					],
 					get: (s) => s.bridgeActiveFilter,
 					set: (s, v) => (s.bridgeActiveFilter = v as ActiveFilter),
+					label: () => m['common.active'](),
 					testid: 'bridge-active-filter'
 				},
 				enabledSelect(
@@ -172,6 +178,7 @@
 					get: (s) => s.storageNodeFilter,
 					set: (s, v) => (s.storageNodeFilter = v),
 					placeholder: () => m['admin.storages.filterAllNodes'](),
+					label: () => m['common.node'](),
 					testid: 'storage-node-filter'
 				},
 				{
@@ -179,6 +186,7 @@
 					get: (s) => s.storageTypeFilter,
 					set: (s, v) => (s.storageTypeFilter = v),
 					placeholder: () => m['admin.storages.filterAllTypes'](),
+					label: () => m['common.type'](),
 					testid: 'storage-type-filter'
 				},
 				enabledSelect(
@@ -219,6 +227,7 @@
 					get: (s) => s.isoStorageFilter,
 					set: (s, v) => (s.isoStorageFilter = v),
 					placeholder: () => m['admin.isos.filterStorage'](),
+					label: () => m['common.storage'](),
 					testid: 'iso-storage-filter'
 				},
 				{
@@ -226,6 +235,7 @@
 					get: (s) => s.isoNodeFilter,
 					set: (s, v) => (s.isoNodeFilter = v),
 					placeholder: () => m['admin.isos.filterNode'](),
+					label: () => m['common.node'](),
 					testid: 'iso-node-filter'
 				},
 				enabledSelect(
@@ -266,6 +276,7 @@
 					get: (s) => s.imageStorageFilter,
 					set: (s, v) => (s.imageStorageFilter = v),
 					placeholder: () => m['admin.images.filterStorage'](),
+					label: () => m['common.storage'](),
 					testid: 'image-storage-filter'
 				},
 				{
@@ -273,6 +284,7 @@
 					get: (s) => s.imageNodeFilter,
 					set: (s, v) => (s.imageNodeFilter = v),
 					placeholder: () => m['admin.images.filterNode'](),
+					label: () => m['common.node'](),
 					testid: 'image-node-filter'
 				},
 				enabledSelect(
@@ -313,6 +325,7 @@
 					get: (s) => s.templateStorageFilter,
 					set: (s, v) => (s.templateStorageFilter = v),
 					placeholder: () => m['admin.templates.filterStorage'](),
+					label: () => m['common.storage'](),
 					testid: 'template-storage-filter'
 				},
 				{
@@ -320,6 +333,7 @@
 					get: (s) => s.templateNodeFilter,
 					set: (s, v) => (s.templateNodeFilter = v),
 					placeholder: () => m['admin.templates.filterNode'](),
+					label: () => m['common.node'](),
 					testid: 'template-node-filter'
 				},
 				enabledSelect(
@@ -362,6 +376,7 @@
 	type="search"
 	class="w-full sm:w-64"
 	placeholder={config.search.placeholder()}
+	aria-label={config.search.placeholder()}
 	value={config.search.get(store)}
 	oninput={(event: Event) => config.search.set(store, (event.currentTarget as HTMLInputElement).value)}
 	data-testid={config.search.testid}
@@ -369,6 +384,7 @@
 {#each config.selects as select (select.testid)}
 	<Select
 		class={select.class ?? 'w-full sm:w-44'}
+		aria-label={select.label()}
 		placeholder={select.placeholder?.()}
 		options={select.options(store)}
 		value={select.get(store)}

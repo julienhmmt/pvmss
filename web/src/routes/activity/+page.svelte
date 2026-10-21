@@ -19,6 +19,7 @@
 	import ButtonLink from '#lib/shared/ui/ButtonLink.svelte';
 	import Skeleton from '#lib/shared/ui/Skeleton.svelte';
 	import { m } from '#lib/paraglide/messages.js';
+	import { formatDateTime } from '#lib/shared/format-date.js';
 
 	const tray = getTaskTrayContext();
 	const powerActions = getPowerActionsContext();
@@ -76,8 +77,6 @@
 	function detailHref(cluster: string, vmid: number): string {
 		return resolve('/vms/[cluster]/[vmid]', { cluster, vmid: String(vmid) });
 	}
-
-	const timeFormat = new Intl.DateTimeFormat(undefined, { dateStyle: 'medium', timeStyle: 'short' });
 </script>
 
 <svelte:head>
@@ -151,7 +150,7 @@
 							<span class="font-medium">{entry.machineName}</span>
 							<span class="text-sm text-muted-foreground">{activityMessage(entry.action)}</span>
 							<span class="text-xs text-muted-foreground-subtle">{m['activity.by']({ actor: entry.actor })}</span>
-							<time class="ml-auto text-xs tabular-nums text-muted-foreground" datetime={entry.timestamp}>{timeFormat.format(new Date(entry.timestamp))}</time>
+							<time class="ml-auto text-xs tabular-nums text-muted-foreground" datetime={entry.timestamp}>{formatDateTime(entry.timestamp)}</time>
 						</a>
 					</li>
 				{/each}

@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { SearchStore } from './search.svelte';
 import type { VmListResult } from '#lib/features/vms/list.svelte.js';
+import { m } from '#lib/paraglide/messages.js';
 
 function jsonResponse(status: number, body: unknown): Response {
 	return new Response(JSON.stringify(body), {
@@ -67,7 +68,7 @@ describe('SearchStore', () => {
 		store.applySearch('web-01');
 		await vi.advanceTimersByTimeAsync(300);
 
-		expect(fetchMock).toHaveBeenCalledWith('/api/v1/vms?search=web-01&scope=all&sortBy=name&sortDir=asc&pageSize=15', expect.anything());
+		expect(fetchMock).toHaveBeenCalledWith('/api/v1/vms?search=web-01&scope=all&sortBy=name&sortDir=asc&page=1&pageSize=15', expect.anything());
 		expect(store.result?.items).toHaveLength(1);
 		expect(store.result?.items[0]?.name).toBe('web-01');
 		expect(store.error).toBeNull();
@@ -110,7 +111,7 @@ describe('SearchStore', () => {
 		store.applySearch('web-01');
 		await vi.advanceTimersByTimeAsync(300);
 
-		expect(store.error).toBe('inventory has not been populated yet');
+		expect(store.error).toBe(m['error.inventory_not_ready']());
 		expect(store.result).toBeNull();
 	});
 });
@@ -259,5 +260,25 @@ describe('SearchStore cluster & status filters', () => {
 		await store.init();
 		expect(store.clusterOptions).toEqual([]);
 		expect(store.error).toBeNull();
+	});
+
+	it('loads the next page and appends it while matches remain', async () => {
+		const vm = oneVmResult.items[0]!;
+		const page1: VmListResult = { ...oneVmResult, items: [vm], total: 2, page: 1 };
+		const page2: VmListResult = { ...oneVmResult, items: [{ ...vm, vmid: 101, name: 'web-02' }], total: 2, page: 2 };
+		const fetchMock = vi
+			.fn()
+			.mockResolvedValueOnce(jsonResponse(200, page1))
+			.mockResolvedValueOnce(jsonResponse(200, page2));
+		vi.stubGlobal('fetch', fetchMock);
+
+		const store = new SearchStore({ initialQuery: '?q=web' });
+		await store.load();
+		expect(store.hasMore).toBe(true);
+
+		await store.loadMore();
+		expect(String(fetchMock.mock.calls[1]![0])).toContain('page=2');
+		expect(store.result?.items.map((item) => item.name)).toEqual(['web-01', 'web-02']);
+		expect(store.hasMore).toBe(false);
 	});
 });
