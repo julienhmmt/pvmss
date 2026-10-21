@@ -85,9 +85,23 @@ test.describe('T06 VM creation', () => {
 		const base = page.getByRole('tab', { name: 'Base' });
 		await expect(base).toHaveAttribute('aria-current', 'step');
 
+		// A later step cannot be reached (and must not be ticked) while Base is
+		// incomplete: the click lands back on Base with its errors revealed.
+		await page.getByRole('tab', { name: 'Disk' }).click();
+		await expect(base).toHaveAttribute('aria-current', 'step');
+		await expect(page.getByText('Name is required.')).toBeVisible();
+		// No completion tick: the step was never valid.
+		await expect(base.locator('svg')).toHaveCount(0);
+		await expect(page.getByRole('tab', { name: 'Disk' }).locator('svg')).toHaveCount(0);
+
+		await page.getByLabel('Name').fill('web-e2e-stepper');
+		await page.getByLabel('Node').selectOption('pve-node-01');
+
 		await page.getByRole('tab', { name: 'Disk' }).click();
 		await expect(page.getByRole('tab', { name: 'Disk' })).toHaveAttribute('aria-current', 'step');
 		await expect(base).not.toHaveAttribute('aria-current', 'step');
+		// Base is complete now, so it earns its tick.
+		await expect(base.locator('svg')).toHaveCount(1);
 	});
 
 	test('simple mode: create a VM and watch it appear in the list', async ({ page }) => {

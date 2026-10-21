@@ -103,6 +103,7 @@ test.describe('T11 admin catalog', () => {
 
 		// Select the node that hosts the approved bridge; pve-node-01 is used
 		// for the storage assertion and may differ from the bridge node.
+		await page.getByLabel('Name').fill('web-e2e-catalog');
 		await page.getByLabel('Node').selectOption(bridgeNode ?? 'pve-node-01');
 
 		// ISOs are node-local (US1), so the dropdown stays empty until a node
@@ -111,6 +112,9 @@ test.describe('T11 admin catalog', () => {
 
 		await page.getByRole('tab', { name: 'Disk' }).click();
 		await expect(page.getByLabel('Storage').locator('option[value="local"]')).toHaveCount(1);
+		// The stepper only advances once each step is complete, so the disk has
+		// to be chosen before the network tab becomes reachable.
+		await page.getByLabel('Storage').selectOption('local');
 
 		await page.getByRole('tab', { name: 'Network' }).click();
 		await expect(page.getByLabel('Bridge').locator('option[value="vmbr2"]')).toHaveCount(1);

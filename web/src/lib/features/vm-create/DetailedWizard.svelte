@@ -29,6 +29,7 @@
 		{ id: 'Review', label: () => m['vms.create.stepReview']() }
 	] as const;
 	type StepName = (typeof STEPS)[number]['id'];
+	type StepState = 'current' | 'done' | 'invalid' | 'todo';
 
 	const HOSTNAME_PATTERN = /^[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?$/;
 
@@ -95,17 +96,78 @@
 	}
 
 	async function goNext(): Promise<void> {
+		const next = STEPS[stepIndex(current) + 1];
+		if (next === undefined) return;
 		if (!isStepValid(current)) {
-			stepAttempted = { ...stepAttempted, [current]: true };
-			await tick();
-			const firstInvalid = stepContainer?.querySelector<HTMLElement>('[aria-invalid="true"], input[type="radio"]');
-			firstInvalid?.focus();
+			revealInvalid(current);
+			await focusFirstInvalid();
 			return;
 		}
-		const next = stepIndex(current) + 1;
-		const step = STEPS[next];
-		if (step !== undefined) current = step.id;
+		current = next.id;
 	}
+
+	/** Marks a step as attempted so it shows its field errors. */
+	function revealInvalid(step: StepName): void {
+		stepAttempted = { ...stepAttempted, [step]: true };
+		current = step;
+	}
+
+	/** Focuses the first control the current step flags as invalid. */
+	async function focusFirstInvalid(): Promise<void> {
+		await tick();
+		const firstInvalid = stepContainer?.querySelector<HTMLElement>('[aria-invalid="true"], input[type="radio"]');
+		firstInvalid?.focus();
+	}
+
+	/** Step-tab navigation: jumping forward re-checks every step in between
+	 *  and stops at the first one that is still incomplete, so a step can
+	 *  never be passed (or ticked as done) with missing values. Jumping back
+	 *  is always allowed. */
+	async function goTo(target: StepName): Promise<void> {
+		const targetIndex = stepIndex(target);
+		if (targetIndex <= stepIndex(current)) {
+			current = target;
+			return;
+		}
+		const blocking = STEPS.slice(0, targetIndex).find((step) => !isStepValid(step.id));
+		if (blocking === undefined) {
+			current = target;
+			return;
+		}
+		revealInvalid(blocking.id);
+		await focusFirstInvalid();
+	}
+
+	/** A step earns its check only once its fields hold a valid value - the
+	 *  forward gate (goNext/goTo) guarantees this on the way through, but a
+	 *  later edit (or a name taken in the meantime) can invalidate one again. */
+	function stepState(step: StepName, index: number): StepState {
+		if (step === current) return 'current';
+		if (index < stepIndex(current)) return isStepValid(step) ? 'done' : 'invalid';
+		return 'todo';
+	}
+
+	function stepLabel(step: StepName): string {
+		return STEPS.find((candidate) => candidate.id === step)?.label() ?? '';
+	}
+
+	/** The first step whose fields are still incomplete, or null when the
+	 *  form may be submitted (Review itself carries no fields). */
+	const blockerStep = $derived(STEPS.slice(0, -1).find((step) => !isStepValid(step.id)) ?? null);
+
+	const stepTabClass: Record<StepState, string> = {
+		current: 'text-foreground',
+		done: 'text-success-soft-foreground',
+		invalid: 'text-destructive-soft-foreground',
+		todo: 'text-muted-foreground hover:text-foreground'
+	};
+
+	const stepCircleClass: Record<StepState, string> = {
+		current: 'border-primary bg-primary-solid text-primary-foreground',
+		done: 'border-success-soft-foreground/30 bg-success-soft text-success-soft-foreground',
+		invalid: 'border-destructive-soft-border bg-destructive-soft text-destructive-soft-foreground',
+		todo: 'border-border bg-muted text-muted-foreground'
+	};
 
 	const tray = getTaskTrayContext();
 	const toast = getToastContext();
@@ -113,6 +175,13 @@
 	const imageBlocker = $derived(form.imageModeBlocker());
 
 	async function submit(): Promise<void> {
+		// Belt and braces: never POST a form with an incomplete step, even if
+		// the button is somehow reached with the keyboard.
+		if (blockerStep !== null) {
+			revealInvalid(blockerStep.id);
+			await focusFirstInvalid();
+			return;
+		}
 		const accepted = await form.submit();
 		if (accepted === null) {
 			if (form.submitError) toast.error(m['toast.vmCreateFailed']({ error: form.submitError }));
@@ -145,35 +214,39 @@
 			     name and keyboard behaviour. -->
 			<ol role="tablist" aria-label={m['vms.create.stepsAriaLabel']()} class="flex flex-wrap items-center gap-1">
 				{#each STEPS as step, i (step.id)}
-					{@const state = current === step.id ? 'current' : stepIndex(current) > i ? 'done' : 'todo'}
+					{@const state = stepState(step.id, i)}
 					<li class="flex items-center gap-1">
 						<button
 							role="tab"
 							aria-selected={current === step.id}
 							aria-current={current === step.id ? 'step' : undefined}
-							class="pv-focus inline-flex items-center gap-2 rounded-lg px-2 py-1.5 text-sm font-medium transition-colors {state === 'current'
-								? 'text-foreground'
-								: state === 'done'
-									? 'text-success-soft-foreground'
-									: 'text-muted-foreground hover:text-foreground'}"
-							onclick={() => (current = step.id)}
+							class="pv-focus inline-flex items-center gap-2 rounded-lg px-2 py-1.5 text-sm font-medium transition-colors {stepTabClass[
+								state
+							]}"
+							onclick={() => void goTo(step.id)}
 						>
 							<span
-								class="flex h-7 w-7 shrink-0 items-center justify-center rounded-full border text-xs font-semibold transition-colors {state === 'current'
-									? 'border-primary bg-primary-solid text-primary-foreground'
-									: state === 'done'
-										? 'border-success-soft-foreground/30 bg-success-soft text-success-soft-foreground'
-										: 'border-border bg-muted text-muted-foreground'}"
+								class="flex h-7 w-7 shrink-0 items-center justify-center rounded-full border text-xs font-semibold transition-colors {stepCircleClass[
+									state
+								]}"
 							>
 								{#if state === 'done'}
 									<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" class="h-3.5 w-3.5" aria-hidden="true">
 										<path d="M4 10l4 4 8-8" />
+									</svg>
+								{:else if state === 'invalid'}
+									<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" class="h-3.5 w-3.5" aria-hidden="true">
+										<path d="M10 4.5v6" />
+										<path d="M10 15v.01" />
 									</svg>
 								{:else}
 									{i + 1}
 								{/if}
 							</span>
 							{step.label()}
+							{#if state === 'invalid'}
+								<span class="sr-only">({m['vms.create.stepNeedsFix']()})</span>
+							{/if}
 						</button>
 						{#if i < STEPS.length - 1}
 							<span class="h-px w-5 shrink-0 bg-border" aria-hidden="true"></span>
@@ -198,11 +271,20 @@
 		</div>
 
 		{#snippet footer()}
+			{#if current === 'Review' && blockerStep !== null}
+				<p class="mr-auto text-sm text-destructive-soft-foreground" data-testid="vm-create-blocker">
+					{m['vms.create.hintCompleteStep']({ step: stepLabel(blockerStep.id) })}
+				</p>
+			{/if}
 			{#if stepIndex(current) > 0}
 				<Button variant="secondary" onclick={goBack}>{m['common.back']()}</Button>
 			{/if}
 			{#if current === 'Review'}
-				<Button loading={form.submitting} disabled={imageBlocker !== null} onclick={() => void submit()}>
+				<Button
+					loading={form.submitting}
+					disabled={blockerStep !== null || imageBlocker !== null}
+					onclick={() => void submit()}
+				>
 					{form.submitting ? m['common.creating']() : m['vms.create.submit']()}
 				</Button>
 			{:else}
