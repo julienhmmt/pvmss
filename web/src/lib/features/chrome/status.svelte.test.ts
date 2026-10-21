@@ -249,6 +249,20 @@ describe('StatusState polling cadence', () => {
 		state.stop();
 	});
 
+	it('waits for the tab to show when it opens hidden', async () => {
+		hidden = true;
+		const fetcher = vi.fn().mockResolvedValue(healthy);
+		const state = new StatusState(fetcher);
+		state.start();
+		await vi.advanceTimersByTimeAsync(60_000);
+		expect(fetcher).not.toHaveBeenCalled();
+
+		setHidden(false);
+		await vi.advanceTimersByTimeAsync(0);
+		expect(fetcher).toHaveBeenCalledTimes(1);
+		state.stop();
+	});
+
 	it('backs off 15s, 30s, 60s, 120s on failures and resets on success', async () => {
 		const fetcher = vi.fn().mockRejectedValue(new Error('down'));
 		const state = new StatusState(fetcher);

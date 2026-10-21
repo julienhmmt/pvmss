@@ -113,7 +113,8 @@ export class StatusState {
 	start(): void {
 		this.#running = true;
 		document.addEventListener('visibilitychange', this.#onVisibility);
-		void this.#tick();
+		// A tab opened in the background waits for visibilitychange.
+		if (document.visibilityState !== 'hidden') void this.#tick();
 	}
 
 	/** Stops the cadence and aborts a poll in flight. */
