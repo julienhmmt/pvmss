@@ -39,24 +39,7 @@ func (h *VMDetail) handleHardware(w http.ResponseWriter, r *http.Request) {
 
 	_ = http.NewResponseController(w).SetWriteDeadline(time.Now().Add(hardwareWriteDeadline))
 
-	identity, err := h.auth.Principal(r)
-	if err != nil {
-		h.writeDetailError(w, http.StatusUnauthorized, "unauthenticated", msgAuthRequired)
-		return
-	}
-
-	clusterName, vmid, ok := h.parsePath(r)
-	if !ok {
-		h.writeDetailError(w, http.StatusBadRequest, "invalid_request", msgInvalidVMPath)
-		return
-	}
-
-	index, ok := h.index(w, clusterName)
-	if !ok {
-		return
-	}
-
-	writer, ok := h.writerFor(w, clusterName)
+	wctx, ok := h.resolveWriteContext(w, r)
 	if !ok {
 		return
 	}
@@ -66,7 +49,7 @@ func (h *VMDetail) handleHardware(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	allowedTags, err := h.allowedTagNames(r.Context(), clusterName)
+	allowedTags, err := h.allowedTagNames(r.Context(), wctx.clusterName)
 	if err != nil {
 		SetErrorMsg(w, msgHardwareCatalogFailed, err)
 		h.writeDetailError(w, http.StatusInternalServerError, "internal_error", msgInternalServerError)
@@ -75,26 +58,15 @@ func (h *VMDetail) handleHardware(w http.ResponseWriter, r *http.Request) {
 	}
 
 	err = vm.UpdateHardware(r.Context(), vm.HardwareDependencies{
-		Index: index, Actor: identity, ClusterName: clusterName, VMID: vmid, Writer: writer,
-		Policy: h.policy, Audit: h.store, Refresher: h.refresherFor(clusterName), AllowedTags: allowedTags,
+		Index: wctx.index, Actor: wctx.identity, ClusterName: wctx.clusterName, VMID: wctx.vmid, Writer: wctx.writer,
+		Policy: h.policy, Audit: h.store, Refresher: h.refresherFor(wctx.clusterName), AllowedTags: allowedTags,
 	}, vm.HardwarePatch{Sockets: request.Sockets, Cores: request.Cores, MemoryMB: request.MemoryMB, Tags: request.Tags})
 	if err != nil {
 		h.writeHardwareError(w, err)
 		return
 	}
 
-	refreshed, ok := h.index(w, clusterName)
-	if !ok {
-		return
-	}
-
-	entity, err := vm.Resolve(refreshed, identity, clusterName, vmid)
-	if err != nil {
-		h.writeResolveError(w, err)
-		return
-	}
-
-	h.writeEntity(w, r, entity)
+	h.writeRefreshedEntity(w, r, wctx.identity, wctx.clusterName, wctx.vmid)
 }
 
 // handleEnableSerial serves POST /vms/:cluster/:vmid/serial - the serial-
@@ -110,36 +82,19 @@ func (h *VMDetail) handleEnableSerial(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	identity, err := h.auth.Principal(r)
-	if err != nil {
-		h.writeDetailError(w, http.StatusUnauthorized, "unauthenticated", msgAuthRequired)
-		return
-	}
-
-	clusterName, vmid, ok := h.parsePath(r)
-	if !ok {
-		h.writeDetailError(w, http.StatusBadRequest, "invalid_request", msgInvalidVMPath)
-		return
-	}
-
-	index, ok := h.index(w, clusterName)
+	wctx, ok := h.resolveWriteContext(w, r)
 	if !ok {
 		return
 	}
 
-	writer, ok := h.writerFor(w, clusterName)
-	if !ok {
-		return
-	}
-
-	err = vm.EnableSerialConsole(r.Context(), vm.EnableSerialDependencies{
-		Index:       index,
-		Actor:       identity,
-		ClusterName: clusterName,
-		VMID:        vmid,
-		Writer:      writer,
+	err := vm.EnableSerialConsole(r.Context(), vm.EnableSerialDependencies{
+		Index:       wctx.index,
+		Actor:       wctx.identity,
+		ClusterName: wctx.clusterName,
+		VMID:        wctx.vmid,
+		Writer:      wctx.writer,
 		Audit:       h.store,
-		Refresher:   h.refresherFor(clusterName),
+		Refresher:   h.refresherFor(wctx.clusterName),
 	})
 	if err != nil {
 		if h.writeCommonVMError(w, err) {
@@ -152,18 +107,7 @@ func (h *VMDetail) handleEnableSerial(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	refreshed, ok := h.index(w, clusterName)
-	if !ok {
-		return
-	}
-
-	entity, err := vm.Resolve(refreshed, identity, clusterName, vmid)
-	if err != nil {
-		h.writeResolveError(w, err)
-		return
-	}
-
-	h.writeEntity(w, r, entity)
+	h.writeRefreshedEntity(w, r, wctx.identity, wctx.clusterName, wctx.vmid)
 }
 
 // handleRetrofitSeaBIOS serves POST /vms/:cluster/:vmid/retrofit-seabios -
@@ -191,18 +135,7 @@ func (h *VMDetail) handleRetrofitSeaBIOS(w http.ResponseWriter, r *http.Request)
 		return
 	}
 
-	clusterName, vmid, ok := h.parsePath(r)
-	if !ok {
-		h.writeDetailError(w, http.StatusBadRequest, "invalid_request", msgInvalidVMPath)
-		return
-	}
-
-	index, ok := h.index(w, clusterName)
-	if !ok {
-		return
-	}
-
-	writer, ok := h.writerFor(w, clusterName)
+	wctx, ok := h.resolveWriteContext(w, r)
 	if !ok {
 		return
 	}
@@ -219,14 +152,14 @@ func (h *VMDetail) handleRetrofitSeaBIOS(w http.ResponseWriter, r *http.Request)
 	}
 
 	err = vm.RetrofitToSeaBIOS(r.Context(), vm.RetrofitDependencies{
-		Index:        index,
-		Actor:        identity,
-		ClusterName:  clusterName,
-		VMID:         vmid,
-		Writer:       writer,
-		StatusReader: h.statusReaderFor(clusterName),
+		Index:        wctx.index,
+		Actor:        wctx.identity,
+		ClusterName:  wctx.clusterName,
+		VMID:         wctx.vmid,
+		Writer:       wctx.writer,
+		StatusReader: h.statusReaderFor(wctx.clusterName),
 		Audit:        h.store,
-		Refresher:    h.refresherFor(clusterName),
+		Refresher:    h.refresherFor(wctx.clusterName),
 		Confirm:      request.Confirm,
 	})
 	if err != nil {
@@ -234,16 +167,5 @@ func (h *VMDetail) handleRetrofitSeaBIOS(w http.ResponseWriter, r *http.Request)
 		return
 	}
 
-	refreshed, ok := h.index(w, clusterName)
-	if !ok {
-		return
-	}
-
-	entity, err := vm.Resolve(refreshed, identity, clusterName, vmid)
-	if err != nil {
-		h.writeResolveError(w, err)
-		return
-	}
-
-	h.writeEntity(w, r, entity)
+	h.writeRefreshedEntity(w, r, wctx.identity, wctx.clusterName, wctx.vmid)
 }

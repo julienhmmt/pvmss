@@ -10,29 +10,12 @@ import (
 )
 
 func (h *VMDetail) handleDisk(w http.ResponseWriter, r *http.Request) {
-	identity, err := h.auth.Principal(r)
-	if err != nil {
-		h.writeDetailError(w, http.StatusUnauthorized, "unauthenticated", msgAuthRequired)
-		return
-	}
-
-	clusterName, vmid, ok := h.parsePath(r)
-	if !ok {
-		h.writeDetailError(w, http.StatusBadRequest, "invalid_request", msgInvalidVMPath)
-		return
-	}
-
-	index, ok := h.index(w, clusterName)
+	wctx, ok := h.resolveWriteContext(w, r)
 	if !ok {
 		return
 	}
 
-	writer, ok := h.writerFor(w, clusterName)
-	if !ok {
-		return
-	}
-
-	resources, err := catalog.ApprovedResources(r.Context(), h.store, clusterName)
+	resources, err := catalog.ApprovedResources(r.Context(), h.store, wctx.clusterName)
 	if err != nil {
 		SetErrorMsg(w, msgHardwareCatalogFailed, err)
 		h.writeDetailError(w, http.StatusInternalServerError, "internal_error", msgInternalServerError)
@@ -41,22 +24,22 @@ func (h *VMDetail) handleDisk(w http.ResponseWriter, r *http.Request) {
 	}
 
 	deps := vm.DiskDependencies{
-		Index:       index,
-		Actor:       identity,
-		ClusterName: clusterName,
-		VMID:        vmid,
-		Writer:      writer,
+		Index:       wctx.index,
+		Actor:       wctx.identity,
+		ClusterName: wctx.clusterName,
+		VMID:        wctx.vmid,
+		Writer:      wctx.writer,
 		Resources:   resources,
 		Policy:      h.policy,
 		Audit:       h.store,
-		Refresher:   h.refresherFor(clusterName),
+		Refresher:   h.refresherFor(wctx.clusterName),
 	}
 
 	switch r.Method {
 	case http.MethodPost:
-		h.handleDiskCreate(w, r, deps, vmid)
+		h.handleDiskCreate(w, r, deps, wctx.vmid)
 	case http.MethodPut:
-		h.handleDiskResize(w, r, deps, identity, clusterName, vmid)
+		h.handleDiskResize(w, r, deps, wctx.identity, wctx.clusterName, wctx.vmid)
 	case http.MethodDelete:
 		h.handleDiskDelete(w, r, deps, r.PathValue("diskKey"))
 	default:
@@ -144,37 +127,20 @@ func (h *VMDetail) handleBootCDROM(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	identity, err := h.auth.Principal(r)
-	if err != nil {
-		h.writeDetailError(w, http.StatusUnauthorized, "unauthenticated", msgAuthRequired)
-		return
-	}
-
-	clusterName, vmid, ok := h.parsePath(r)
-	if !ok {
-		h.writeDetailError(w, http.StatusBadRequest, "invalid_request", msgInvalidVMPath)
-		return
-	}
-
-	index, ok := h.index(w, clusterName)
-	if !ok {
-		return
-	}
-
-	writer, ok := h.writerFor(w, clusterName)
+	wctx, ok := h.resolveWriteContext(w, r)
 	if !ok {
 		return
 	}
 
 	if err := vm.BootFromCDROM(r.Context(), vm.BootDependencies{
-		Index:        index,
-		Actor:        identity,
-		ClusterName:  clusterName,
-		VMID:         vmid,
-		Writer:       writer,
+		Index:        wctx.index,
+		Actor:        wctx.identity,
+		ClusterName:  wctx.clusterName,
+		VMID:         wctx.vmid,
+		Writer:       wctx.writer,
 		Audit:        h.store,
-		Refresher:    h.refresherFor(clusterName),
-		StatusReader: h.statusReaderFor(clusterName),
+		Refresher:    h.refresherFor(wctx.clusterName),
+		StatusReader: h.statusReaderFor(wctx.clusterName),
 	}); err != nil {
 		h.writeBootCDROMError(w, err)
 		return
@@ -191,29 +157,12 @@ func (h *VMDetail) handleCDROM(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	identity, err := h.auth.Principal(r)
-	if err != nil {
-		h.writeDetailError(w, http.StatusUnauthorized, "unauthenticated", msgAuthRequired)
-		return
-	}
-
-	clusterName, vmid, ok := h.parsePath(r)
-	if !ok {
-		h.writeDetailError(w, http.StatusBadRequest, "invalid_request", msgInvalidVMPath)
-		return
-	}
-
-	index, ok := h.index(w, clusterName)
+	wctx, ok := h.resolveWriteContext(w, r)
 	if !ok {
 		return
 	}
 
-	writer, ok := h.writerFor(w, clusterName)
-	if !ok {
-		return
-	}
-
-	resources, err := catalog.ApprovedResources(r.Context(), h.store, clusterName)
+	resources, err := catalog.ApprovedResources(r.Context(), h.store, wctx.clusterName)
 	if err != nil {
 		SetErrorMsg(w, msgHardwareCatalogFailed, err)
 		h.writeDetailError(w, http.StatusInternalServerError, "internal_error", msgInternalServerError)
@@ -228,14 +177,14 @@ func (h *VMDetail) handleCDROM(w http.ResponseWriter, r *http.Request) {
 	}
 
 	state, err := vm.SetCDROM(r.Context(), vm.CDROMDependencies{
-		Index:       index,
-		Actor:       identity,
-		ClusterName: clusterName,
-		VMID:        vmid,
-		Writer:      writer,
+		Index:       wctx.index,
+		Actor:       wctx.identity,
+		ClusterName: wctx.clusterName,
+		VMID:        wctx.vmid,
+		Writer:      wctx.writer,
 		Resources:   resources,
 		Audit:       h.store,
-		Refresher:   h.refresherFor(clusterName),
+		Refresher:   h.refresherFor(wctx.clusterName),
 	}, request.Action, request.ISOVolID)
 	if err != nil {
 		h.writeCDROMError(w, err)

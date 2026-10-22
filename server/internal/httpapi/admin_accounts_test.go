@@ -558,7 +558,7 @@ func assertAccountErrorCases(t *testing.T, accounts *httpapi.AdminAccounts, owne
 		t.Fatalf("unauthenticated list status = %d, want 401", unauth.Code)
 	}
 
-	badCreate := createLocalAccount(t, accounts, owner, `{bad`)
+	badCreate := createLocalAccount(t, accounts, owner, badJSONBody)
 	if badCreate.Code != http.StatusBadRequest {
 		t.Fatalf("bad create JSON status = %d, want 400", badCreate.Code)
 	}
@@ -571,11 +571,11 @@ func assertAccountErrorCases(t *testing.T, accounts *httpapi.AdminAccounts, owne
 		want    int
 	}{
 		{name: "reset bad id", handler: accounts.ServeResetPassword, id: "0", body: `{"password":"valid-passphrase"}`, want: http.StatusBadRequest},
-		{name: "reset bad json", handler: accounts.ServeResetPassword, id: itoa(accountID), body: `{bad`, want: http.StatusBadRequest},
+		{name: "reset bad json", handler: accounts.ServeResetPassword, id: itoa(accountID), body: badJSONBody, want: http.StatusBadRequest},
 		{name: "reset weak password", handler: accounts.ServeResetPassword, id: itoa(accountID), body: `{"password":"short"}`, want: http.StatusBadRequest},
 		{name: "reset missing id", handler: accounts.ServeResetPassword, id: "999", body: `{"password":"valid-passphrase"}`, want: http.StatusNotFound},
 		{name: "toggle bad id", handler: accounts.ServeToggle, id: "0", body: `{"disabled":true}`, want: http.StatusBadRequest},
-		{name: "toggle bad json", handler: accounts.ServeToggle, id: itoa(accountID), body: `{bad`, want: http.StatusBadRequest},
+		{name: "toggle bad json", handler: accounts.ServeToggle, id: itoa(accountID), body: badJSONBody, want: http.StatusBadRequest},
 		{name: "toggle missing id", handler: accounts.ServeToggle, id: "999", body: `{"disabled":true}`, want: http.StatusNotFound},
 	}
 
