@@ -593,3 +593,36 @@ func assertAccountErrorCases(t *testing.T, accounts *httpapi.AdminAccounts, owne
 		}
 	}
 }
+
+// TestAuth_AdminLogin_LockedAccountSpendsBcryptWork: a locked or disabled
+// account answered without any bcrypt work, so its fast 401 told an attacker
+// the account exists. The rejection must cost about a password comparison.
+func TestAuth_AdminLogin_LockedAccountSpendsBcryptWork(t *testing.T) {
+	t.Parallel()
+
+	authHandler, accounts, _ := newAccountsFixture(t, 5)
+	owner := ownerCookie(t, authHandler)
+	mustCreateLocalAccount(t, accounts, owner, `{"username":"albert","password":"s3cret-passphrase"}`)
+
+	for range 5 {
+		assertLocalLoginStatus(t, authHandler, `{"username":"albert","password":"wrong-password"}`, http.StatusUnauthorized)
+	}
+
+	reference, err := bcrypt.GenerateFromPassword([]byte("reference"), bcrypt.DefaultCost)
+	if err != nil {
+		t.Fatalf("GenerateFromPassword: %v", err)
+	}
+
+	start := time.Now()
+
+	_ = bcrypt.CompareHashAndPassword(reference, []byte("other"))
+	oneCompare := time.Since(start)
+
+	start = time.Now()
+
+	assertLocalLoginStatus(t, authHandler, `{"username":"albert","password":"s3cret-passphrase"}`, http.StatusUnauthorized)
+
+	if locked := time.Since(start); locked < oneCompare/2 {
+		t.Fatalf("locked rejection took %v, want about one bcrypt comparison (%v)", locked, oneCompare)
+	}
+}

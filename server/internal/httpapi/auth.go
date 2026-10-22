@@ -222,7 +222,15 @@ func (h *Auth) bootstrapLogin(w http.ResponseWriter, r *http.Request, password s
 		return
 	}
 
-	if password == "" || h.adminHash == "" || bcrypt.CompareHashAndPassword([]byte(h.adminHash), []byte(password)) != nil {
+	hash := []byte(h.adminHash)
+	if len(hash) == 0 {
+		// No bootstrap admin configured: still spend the bcrypt work, so the
+		// answer time does not reveal it.
+		hash = dummyPasswordHash
+	}
+
+	matches := bcrypt.CompareHashAndPassword(hash, []byte(password)) == nil
+	if password == "" || h.adminHash == "" || !matches {
 		h.bootstrapFailures.allow(ip, time.Now())
 		// Admin login failures write no audit row (keeps /activity unchanged),
 		// so the log stream is the only record. Never log the password.
@@ -254,13 +262,18 @@ func (h *Auth) localAccountLogin(w http.ResponseWriter, r *http.Request, usernam
 	}
 
 	now := time.Now().UTC()
-	if account.Disabled {
-		h.rejectLocalLogin(w, r, username, "account disabled")
-		return
-	}
+	if account.Disabled || account.Locked(now) {
+		// Same bcrypt work as a wrong password: the answer time must not tell
+		// a disabled or locked account from a live one.
+		_ = bcrypt.CompareHashAndPassword(dummyPasswordHash, []byte(password))
 
-	if account.Locked(now) {
-		h.rejectLocalLogin(w, r, username, "account locked")
+		reason := "account locked"
+		if account.Disabled {
+			reason = "account disabled"
+		}
+
+		h.rejectLocalLogin(w, r, username, reason)
+
 		return
 	}
 
