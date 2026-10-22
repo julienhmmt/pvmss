@@ -232,7 +232,8 @@ provider `bootstrap`); DB-backed accounts (`local_accounts`, capped by
 Settings > Accounts. They get the full admin surface but every account route
 answers `owner_only` to them. Local passwords are 8+ characters and at most 72
 bytes (bcrypt); five consecutive failures lock an account for 15 minutes.
-Resetting, disabling or deleting an account revokes its sessions.
+The bootstrap admin is never locked: five failures from one client IP refuse
+that IP (429) for 15 minutes. Resetting, disabling or deleting an account revokes its sessions.
 
 No longer read (startup warns for the SSH ones): `PVMSS_OFFLINE`, `PVMSS_ENV`,
 `JWT_SECRET`, `PROXMOX_VERIFY_SSL`, `LOG_FILE_PATH`, `PVMSS_SSH_KEY_FILE`,

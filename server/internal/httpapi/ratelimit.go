@@ -77,6 +77,24 @@ func (l *windowLimiter) allow(key string, now time.Time) (bool, time.Duration) {
 	return true, 0
 }
 
+// exhausted reports whether key has used its whole budget in the current
+// window, without recording a hit.
+func (l *windowLimiter) exhausted(key string, now time.Time) bool {
+	l.mu.Lock()
+	defer l.mu.Unlock()
+
+	cutoff := now.Add(-l.window)
+	count := 0
+
+	for _, t := range l.hits[key] {
+		if t.After(cutoff) {
+			count++
+		}
+	}
+
+	return count >= l.max
+}
+
 // sweepIdle drops keys whose hits have all left the window, at most once per
 // window, and returns the time of the last sweep. Without it a key that never
 // returns would stay in the map for the life of the process. The caller holds
