@@ -79,6 +79,11 @@ func UpdateNetwork(ctx context.Context, deps NetworkDependencies, requested []cl
 		iface.IPAddresses = append([]string(nil), current.IPAddresses...)
 		iface.Firewall = current.Firewall
 		iface.MTU = current.MTU
+
+		if !deps.Actor.IsAdmin {
+			iface = keepTenantIsolation(iface, current, gabarit.IsolationVLANTag)
+		}
+
 		updated = append(updated, iface)
 	}
 
@@ -95,6 +100,20 @@ func UpdateNetwork(ctx context.Context, deps NetworkDependencies, requested []cl
 	}
 
 	return updated, nil
+}
+
+// keepTenantIsolation pins the VLAN and rate limit of a non-admin's NIC: they
+// isolate tenants, so the NIC stays on the imposed isolation VLAN (or its
+// current one) at its current rate, whatever the request asked.
+func keepTenantIsolation(iface, current cluster.NetworkInterface, isolationVLANTag int) cluster.NetworkInterface {
+	iface.VLAN = current.VLAN
+	if isolationVLANTag > 0 {
+		iface.VLAN = &isolationVLANTag
+	}
+
+	iface.RateMbps = current.RateMbps
+
+	return iface
 }
 
 func resolveNetworkTarget(deps NetworkDependencies) (Entity, error) {
