@@ -8,6 +8,7 @@ import (
 	"pvmss/server/internal/catalog"
 	"pvmss/server/internal/cluster"
 	"pvmss/server/internal/store"
+	"pvmss/server/internal/vm"
 	"slices"
 )
 
@@ -351,7 +352,7 @@ func (h *VMCreate) ServeCatalog(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	clusterName, client, ok := h.resolveCatalogClient(w, r)
+	clusterName, client, ok := h.resolveCatalogClient(w, r, identity)
 	if !ok {
 		return
 	}
@@ -433,8 +434,15 @@ func (h *VMCreate) attachLimits(ctx context.Context, dto *catalogDTO, clusterNam
 	return nil
 }
 
-func (h *VMCreate) resolveCatalogClient(w http.ResponseWriter, r *http.Request) (string, cluster.Client, bool) {
-	clusterName, err := ResolveClusterParam(r, h.clients)
+func (h *VMCreate) resolveCatalogClient(w http.ResponseWriter, r *http.Request, identity auth.Identity) (string, cluster.Client, bool) {
+	requested, allowed := vm.TargetCluster(identity, r.URL.Query().Get("cluster"))
+	if !allowed {
+		h.writeCreateError(w, http.StatusNotFound, "not_found", msgClusterNotFound)
+
+		return "", nil, false
+	}
+
+	clusterName, err := ResolveClusterValue(requested, h.clients)
 	if err != nil {
 		code, message := clusterParamError(err)
 		h.writeCreateError(w, http.StatusBadRequest, code, message)
