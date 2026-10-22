@@ -4,13 +4,13 @@ import { test, expect } from '@playwright/test';
 // toggle (US2), status banner (US3), homepage CTA by identity (US4). Runs
 // against the fake cluster client (constitution XI - no Proxmox needed).
 //
-// The default locale is French (Paraglide base locale). SSR renders in French;
-// the language switcher is a two-button group and the theme control a
+// With no stored choice the locale follows the browser (fr-FR here); the
+// language switcher is a native select and the theme control a
 // light / dark / system group. Selectors use locale-agnostic patterns where possible.
 //
 // This file asserts the real French default, so it opts out of the suite-wide
 // English seed that playwright.config.ts applies.
-test.use({ storageState: { cookies: [], origins: [] } });
+test.use({ storageState: { cookies: [], origins: [] }, locale: 'fr-FR' });
 
 test.describe('T19 chrome UI', () => {
 	test.describe('US1 - language switcher', () => {
@@ -39,11 +39,10 @@ test.describe('T19 chrome UI', () => {
 
 		test('switching language updates visible strings and <html lang> without a reload', async ({ page }) => {
 			await page.goto('/');
-			// Default locale is French (constitution: French is the source language).
+			// No stored choice: the browser language (fr-FR) wins.
 			await expect(page.locator('html')).toHaveAttribute('lang', 'fr');
 
-			// The language switcher exposes each locale as a button.
-			await page.getByRole('button', { name: 'English' }).click();
+			await page.getByTestId('language-switcher').first().selectOption('en');
 
 			// <html lang> updates immediately, no reload.
 			await expect(page.locator('html')).toHaveAttribute('lang', 'en');
@@ -54,7 +53,7 @@ test.describe('T19 chrome UI', () => {
 
 		test('language choice persists across reload', async ({ page }) => {
 			await page.goto('/');
-			await page.getByRole('button', { name: 'English' }).click();
+			await page.getByTestId('language-switcher').first().selectOption('en');
 			await expect(page.locator('html')).toHaveAttribute('lang', 'en');
 
 			await page.reload();
