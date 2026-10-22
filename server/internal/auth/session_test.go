@@ -295,3 +295,27 @@ func TestSessionManager_ResolveSlidesExpiryOnlyOnceStale(t *testing.T) {
 		t.Fatalf("touches after the expiry aged an hour = %d, want 1", got)
 	}
 }
+
+// The browser must keep the cookies for the session's absolute lifetime: the
+// server slides the 8h idle expiry on use, so a cookie that dies 8h after
+// login would sign out an active user early.
+//
+//nolint:paralleltest // serial: shared session repository fixture
+func TestSessionManager_CookiesLastTheAbsoluteLifetime(t *testing.T) {
+	manager, err := auth.NewSessionManager(newSessionRepository(), "a-session-secret-with-at-least-thirty-two-bytes", false)
+	if err != nil {
+		t.Fatalf("NewSessionManager: %v", err)
+	}
+
+	recorder := httptest.NewRecorder()
+	if err := manager.SetCookie(context.Background(), recorder, auth.Identity{Username: "alice@pve"}); err != nil {
+		t.Fatalf("SetCookie: %v", err)
+	}
+
+	floor := time.Now().Add(auth.MaxSessionAge - time.Minute)
+	for _, cookie := range recorder.Result().Cookies() {
+		if cookie.Expires.Before(floor) {
+			t.Fatalf("cookie %s expires %v, want about %v after login", cookie.Name, cookie.Expires, auth.MaxSessionAge)
+		}
+	}
+}

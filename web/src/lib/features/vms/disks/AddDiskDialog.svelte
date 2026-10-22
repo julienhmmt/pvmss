@@ -6,6 +6,7 @@
 	import Select from '#lib/shared/ui/Select.svelte';
 	import Button from '#lib/shared/ui/Button.svelte';
 	import { m } from '#lib/paraglide/messages.js';
+	import { diskSizeCeiling } from './disk-limit';
 
 	const store = getVmDetailContext();
 
@@ -19,10 +20,7 @@
 	let storage = $state('');
 	let sizeGB = $state('10');
 
-	const maxDiskGB = $derived.by(() => {
-		const configured = store.hardwareOptions?.limits.maxDiskPerVMGB;
-		return configured !== undefined && configured > 0 ? configured : 2048;
-	});
+	const maxDiskGB = $derived(diskSizeCeiling(store.hardwareOptions?.limits.maxDiskPerVMGB, store.entity?.disks));
 
 	const sizeNum = $derived(Number(sizeGB));
 	const sizeError = $derived(

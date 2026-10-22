@@ -91,7 +91,7 @@ The server validates all environment variables at startup and refuses to start i
 | `PVMSS_INVENTORY_REFRESH_TIMEOUT`             | Timeout for a single inventory refresh                                                             | ❌                       | `15s`            |
 | `PVMSS_MAX_LIST_PAGE_SIZE`                    | Maximum page size for list endpoints                                                               | ❌                       | `100`            |
 | `PVMSS_MAX_LOCAL_ADMINS`                      | Maximum number of DB local administrator accounts (`1`–`50`, excluding bootstrap `admin`)          | ❌                       | `5`              |
-| `PVMSS_TRUSTED_PROXY_HOPS`                    | Number of reverse proxies in front of PVMSS (`0` when exposed directly)                            | ❌                       | `1`              |
+| `PVMSS_TRUSTED_PROXY_HOPS`                    | Number of reverse proxies in front of PVMSS (set it when behind one; Helm sets `1`)                            | ❌                       | `0`              |
 | `PVMSS_RATE_LIMIT_MAX`                        | Raises built-in rate-limit ceilings (`0` keeps built-in defaults)                                  | ❌                       | `0`              |
 | `PVMSS_METRICS_PORT`                          | Port for the Prometheus `GET /metrics` listener (must differ from `PVMSS_PORT`); empty disables it | ❌                       | empty            |
 | `TZ`                                          | Container timezone                                                                                 | ❌                       | `UTC`            |

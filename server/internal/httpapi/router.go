@@ -132,7 +132,7 @@ func NewRouter(cfg RouterConfig) http.Handler {
 	// protect combines per-user rate limiting (outer) and CSRF validation (inner)
 	// for state-changing browser requests.
 	protect := func(next http.Handler, limiter *userRateLimiter) http.Handler {
-		return limiter.middleware(cfg.Auth, csrf(next))
+		return limiter.middleware(cfg.Auth, csrf(withLongWriteDeadline(next)))
 	}
 
 	adminProtect := func(method string, next http.Handler) http.Handler {
@@ -360,7 +360,23 @@ func newAdminProtect(cfg RouterConfig, method string, next http.Handler, limiter
 			return
 		}
 
-		limiter.middleware(cfg.Auth, csrf(next)).ServeHTTP(w, r)
+		limiter.middleware(cfg.Auth, csrf(withLongWriteDeadline(next))).ServeHTTP(w, r)
+	})
+}
+
+// longWriteDeadline covers the slowest authenticated write: a power action or
+// snapshot retrying on a VM lock (vm.MaxLockRetryWait, 30s), its task wait and
+// the post-action inventory refresh, or a bulk action over many VMs.
+const longWriteDeadline = 2 * time.Minute
+
+// withLongWriteDeadline lifts the server's 10s WriteTimeout for one
+// authenticated write, so a slow-but-successful action reaches the client
+// instead of a dropped connection. Handlers needing more (VM create) set
+// their own deadline afterwards.
+func withLongWriteDeadline(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		_ = http.NewResponseController(w).SetWriteDeadline(time.Now().Add(longWriteDeadline))
+		next.ServeHTTP(w, r)
 	})
 }
 

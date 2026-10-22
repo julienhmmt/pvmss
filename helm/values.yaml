@@ -18,8 +18,9 @@ secrets:
   adminPasswordHash: ""
   # Proxmox API token secret (the value matching deployment.env.PROXMOX_API_TOKEN_NAME).
   pveApiToken: changeme
-  # 32+ bytes. Generate with: openssl rand -hex 32
-  sessionSecret: changeMeWithSomethingElseUniqueMinimum32Chars
+  # Required, 32+ bytes. Generate with: openssl rand -hex 32
+  # (the server refuses the README example value).
+  sessionSecret: ""
 
 # PERSISTENCE (PVCs)
 persistence:

@@ -202,7 +202,7 @@ func diskDependencies(index *inventory.Index, actor auth.Identity, vmid int) vm.
 		ClusterName: testClusterName,
 		VMID:        vmid,
 		Writer:      cluster.Fake{},
-		Resources:   catalog.Resources{Storages: []catalog.Storage{{Name: "local-lvm", Node: cluster.FakeNode01}}},
+		Resources:   catalog.Resources{Storages: []catalog.Storage{{Name: testDiskStorage, Node: cluster.FakeNode01}}},
 		Gabarit:     policy.DefaultGabarit(),
 		Audit:       noopAudit{},
 		Refresher:   noopRefresher{},
@@ -235,3 +235,75 @@ func (noopAudit) RecordAction(context.Context, string, string, int, string) erro
 type noopRefresher struct{}
 
 func (noopRefresher) Refresh(context.Context) (time.Time, error) { return time.Time{}, nil }
+
+// testDiskStorage is the approved storage diskDependencies offers.
+const testDiskStorage = "local-lvm"
+
+// diskIndexWithDisks is diskTestIndex with VM vmid's disks replaced, so a
+// case controls the sizes the per-VM total is computed from.
+func diskIndexWithDisks(t *testing.T, vmid int, disks []cluster.Disk) *inventory.Index {
+	t.Helper()
+
+	snapshot, err := (cluster.Fake{}).Snapshot(context.Background())
+	if err != nil {
+		t.Fatalf("Snapshot: %v", err)
+	}
+
+	for index := range snapshot.VMs {
+		if snapshot.VMs[index].VMID == vmid {
+			snapshot.VMs[index].Status = cluster.VMStopped
+			snapshot.VMs[index].Disks = disks
+		}
+	}
+
+	built := inventory.BuildIndex(snapshot)
+
+	return &built
+}
+
+// The gabarit's MaxDiskPerVMGB caps the VM's total disk ("Maximum disk per
+// VM"), not each disk: adding or growing disks must not push the sum past it.
+//
+//nolint:paralleltest // fake dataset is shared
+func TestDiskOperations_LimitIsPerVMTotal(t *testing.T) {
+	disks := []cluster.Disk{
+		{Key: testBootDiskKey, Bus: cluster.DiskBusSCSI, BusIndex: 0, Storage: testDiskStorage, SizeGB: 300},
+		{Key: "scsi1", Bus: cluster.DiskBusSCSI, BusIndex: 1, Storage: testDiskStorage, SizeGB: 150},
+	}
+	gabarit := policy.DefaultGabarit()
+	gabarit.MaxDiskPerVMGB = 500
+
+	tests := []struct {
+		name      string
+		operation func(vm.DiskDependencies) error
+		wantErr   error
+	}{
+		{"add within total", func(deps vm.DiskDependencies) error {
+			_, err := vm.AddDisk(context.Background(), deps, cluster.DiskBusSCSI, testDiskStorage, 50)
+			return err
+		}, nil},
+		{"add past total", func(deps vm.DiskDependencies) error {
+			_, err := vm.AddDisk(context.Background(), deps, cluster.DiskBusSCSI, testDiskStorage, 51)
+			return err
+		}, vm.ErrDiskSizeExceedsLimit},
+		{"resize within total", func(deps vm.DiskDependencies) error {
+			return vm.ResizeDisk(context.Background(), deps, "scsi1", 200)
+		}, nil},
+		{"resize past total", func(deps vm.DiskDependencies) error {
+			return vm.ResizeDisk(context.Background(), deps, "scsi1", 201)
+		}, vm.ErrDiskSizeExceedsLimit},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			cluster.ResetFake()
+
+			deps := diskDependencies(diskIndexWithDisks(t, 101, disks), auth.Identity{Username: cluster.FakeUserAlice, Pool: cluster.FakePoolAlice}, 101)
+			deps.Gabarit = gabarit
+
+			if err := test.operation(deps); !errors.Is(err, test.wantErr) {
+				t.Fatalf("err = %v, want %v", err, test.wantErr)
+			}
+		})
+	}
+}
