@@ -129,7 +129,10 @@ type Entity struct {
 // behaving identically. actor/clusterName/vmid's order, types, and the
 // (Entity, error) return are unchanged.
 func Resolve(source inventory.LookupSource, actor auth.Identity, clusterName string, vmid int) (Entity, error) {
-	if _, ok := TargetCluster(actor, clusterName); !ok {
+	// The caller already picked the index for clusterName, so a pinned actor
+	// must name its own cluster exactly: an empty name would resolve to its
+	// cluster here but may have selected another cluster's index upstream.
+	if resolved, ok := TargetCluster(actor, clusterName); !ok || resolved != clusterName {
 		recordResolveFailed(actor, clusterName, vmid, "cross-cluster access denied")
 		return Entity{}, ErrNotFound
 	}

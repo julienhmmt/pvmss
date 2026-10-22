@@ -64,6 +64,12 @@ func TestResolve_NonAdminPinnedToSignInCluster(t *testing.T) {
 		t.Fatalf("Resolve(other cluster) err = %v, want ErrNotFound", err)
 	}
 
+	// An empty cluster name must not fall through to whatever index the
+	// caller picked for it.
+	if _, err := vm.Resolve(registry, user, "", 101); !errors.Is(err, vm.ErrNotFound) {
+		t.Fatalf("Resolve(empty cluster) err = %v, want ErrNotFound", err)
+	}
+
 	admin := auth.Identity{Username: "root@pam", IsAdmin: true, Cluster: testClusterName}
 	if _, err := vm.Resolve(registry, admin, crossClusterSecondaryKey, 102); err != nil {
 		t.Fatalf("Resolve(admin, other cluster): %v", err)
