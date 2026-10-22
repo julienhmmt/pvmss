@@ -1,6 +1,7 @@
 package httpapi
 
 import (
+	"context"
 	"database/sql"
 	"errors"
 	"log/slog"
@@ -218,9 +219,7 @@ func (h *AdminAccounts) ServeResetPassword(w http.ResponseWriter, r *http.Reques
 		return
 	}
 
-	if err := h.store.DeleteSessionsForLocalUsername(r.Context(), account.Username); err != nil {
-		logctx.FromOr(r.Context(), h.log).WarnContext(r.Context(), "local account session revocation failed", "component", "httpapi", "error", err)
-	}
+	h.revokeSessions(r.Context(), account.Username)
 
 	h.recordAction(r, "admin.accounts.password_reset", account.Username, "local admin password reset", []any{
 		auditChange("password", "set", "reset"),
@@ -257,9 +256,7 @@ func (h *AdminAccounts) ServeToggle(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if request.Disabled {
-		if err := h.store.DeleteSessionsForLocalUsername(r.Context(), account.Username); err != nil {
-			logctx.FromOr(r.Context(), h.log).WarnContext(r.Context(), "local account session revocation failed", "component", "httpapi", "error", err)
-		}
+		h.revokeSessions(r.Context(), account.Username)
 	}
 
 	action := "admin.accounts.enable"
@@ -292,9 +289,7 @@ func (h *AdminAccounts) ServeDelete(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if err := h.store.DeleteSessionsForLocalUsername(r.Context(), account.Username); err != nil {
-		logctx.FromOr(r.Context(), h.log).WarnContext(r.Context(), "local account session revocation failed", "component", "httpapi", "error", err)
-	}
+	h.revokeSessions(r.Context(), account.Username)
 
 	if err := h.store.DeleteLocalAccount(r.Context(), id); err != nil {
 		h.writeAccountStoreFailure(w, "delete local account failed", err)
@@ -354,6 +349,12 @@ func (h *AdminAccounts) writeAccountStoreFailure(w http.ResponseWriter, message 
 
 	SetErrorMsg(w, message, err)
 	writeAdminError(w, http.StatusInternalServerError, "internal_error", msgInternalServerError)
+}
+
+func (h *AdminAccounts) revokeSessions(ctx context.Context, username string) {
+	if err := h.store.DeleteSessionsForLocalUsername(ctx, username); err != nil {
+		logctx.FromOr(ctx, h.log).WarnContext(ctx, "local account session revocation failed", "component", "httpapi", "error", err)
+	}
 }
 
 func (h *AdminAccounts) recordAction(r *http.Request, action, targetID, summary string, changes []any) {
