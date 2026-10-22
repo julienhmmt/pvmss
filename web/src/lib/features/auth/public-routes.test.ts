@@ -31,7 +31,7 @@ describe('safeNext', () => {
 	});
 
 	it('rejects missing, external and self-referencing targets', () => {
-		for (const raw of [null, '', 'vms', '//evil.example', '/\\evil.example', '/\t/evil.example', 'https://evil.example/', '/login', '/login?next=/vms']) {
+		for (const raw of [null, '', 'vms', '//evil.example', '//[::1', '/\\evil.example', '/\t/evil.example', 'https://evil.example/', '/login', '/login?next=/vms']) {
 			expect(safeNext(raw)).toBeNull();
 		}
 	});
