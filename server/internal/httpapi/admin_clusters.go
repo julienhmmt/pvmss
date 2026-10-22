@@ -173,6 +173,9 @@ func (handler *AdminClusters) ServeUpdate(w http.ResponseWriter, r *http.Request
 		return
 	}
 	name := r.PathValue("name")
+	if !handler.secretKeptSafely(w, r, name, request) {
+		return
+	}
 	row := store.ClusterRow{Name: name, URL: request.URL, TLSInsecureSkipVerify: request.TLSInsecureSkipVerify, TokenID: request.TokenID, TokenSecret: request.TokenSecret}
 	if err := handler.store.UpdateCluster(r.Context(), row); err != nil {
 		if errors.Is(err, store.ErrInvalidClusterName) {
@@ -214,6 +217,26 @@ func (handler *AdminClusters) ServeUpdate(w http.ResponseWriter, r *http.Request
 		"updated cluster "+name,
 		[]any{map[string]any{auditKeyName: name, "url": updated.URL, "tlsInsecureSkipVerify": updated.TLSInsecureSkipVerify, "tokenId": updated.TokenID, "snippetStorage": updated.SnippetStorage}})
 	writeAdminJSON(w, http.StatusOK, handler.clusterDTO(updated))
+}
+
+// secretKeptSafely refuses an update that keeps the stored token secret while
+// changing the endpoint it is sent to: pointing a cluster elsewhere, or
+// dropping TLS verification, must re-enter the secret. It writes the error
+// response and returns false when the update must stop.
+func (handler *AdminClusters) secretKeptSafely(w http.ResponseWriter, r *http.Request, name string, request updateClusterRequest) bool {
+	if request.TokenSecret != "" {
+		return true
+	}
+	current, err := handler.store.GetCluster(r.Context(), name)
+	if err != nil {
+		handler.writeStoreFailure(w, err)
+		return false
+	}
+	if current.URL != request.URL || current.TLSInsecureSkipVerify != request.TLSInsecureSkipVerify {
+		writeAdminError(w, http.StatusBadRequest, "token_secret_required", "re-enter the token secret to change the url or tls verification")
+		return false
+	}
+	return true
 }
 
 // ServeTest handles POST /api/v1/admin/clusters/:name/test.
