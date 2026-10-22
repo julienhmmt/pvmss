@@ -60,6 +60,8 @@ func consoleRequest(method, path, body string, cookie *http.Cookie) *http.Reques
 	}
 
 	req.Header.Set("Content-Type", "application/json")
+	// Same origin as httptest's default Host, as a browser would send.
+	req.Header.Set("Origin", "http://example.com")
 
 	if cookie != nil {
 		req.AddCookie(cookie)
@@ -286,4 +288,36 @@ func (failingConsoleRelay) GetVNCTicket(_ context.Context, _ string, _ int, _ st
 
 func (failingConsoleRelay) RelayConsole(_ context.Context, _ string, _ int, _ cluster.VNCProxyTicket, _ io.ReadWriteCloser) error {
 	return nil
+}
+
+// TestVMConsole_WebSocket_CrossOriginDoesNotBurnTicket - the origin check ran
+// after the single-use ticket was consumed, so a cross-origin attempt that
+// knew the token could burn it. The ticket must survive a rejected origin.
+//
+//nolint:paralleltest // serial: shared fake VM and database fixtures
+func TestVMConsole_WebSocket_CrossOriginDoesNotBurnTicket(t *testing.T) {
+	handler, authHandler, tickets := newVMConsoleHandler(t)
+	cookie := aliceCookie(t, authHandler)
+
+	ticketRec := httptest.NewRecorder()
+	handler.ServeHTTP(ticketRec, consoleRequest(http.MethodPost, "/api/v1/vms/default/100/vnc-ticket", "", cookie))
+
+	var ticket vncTicketResponse
+	if err := json.Unmarshal(ticketRec.Body.Bytes(), &ticket); err != nil || ticket.Token == "" {
+		t.Fatalf("ticket issuance: status = %d, err = %v", ticketRec.Code, err)
+	}
+
+	req := consoleRequest(http.MethodGet, "/api/v1/vms/default/100/console/websocket?token="+ticket.Token, "", cookie)
+	req.Header.Set("Origin", "https://evil.example")
+
+	rec := httptest.NewRecorder()
+	handler.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusForbidden {
+		t.Fatalf("cross-origin status = %d, want 403", rec.Code)
+	}
+
+	if _, err := tickets.Consume(vm.KindVNC, ticket.Token, "alice@pve", "default", 100); err != nil {
+		t.Fatalf("ticket burned by a cross-origin attempt: %v", err)
+	}
 }
