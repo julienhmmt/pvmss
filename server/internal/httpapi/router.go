@@ -174,7 +174,7 @@ func NewRouter(cfg RouterConfig) http.Handler {
 	// SPA) gets CSP, X-Content-Type-Options, X-Frame-Options, Referrer-Policy,
 	// Permissions-Policy, HSTS, and cache-control for API paths. The request-ID
 	// middleware is outermost so every response, including errors, carries it.
-	return withRequestID(cfg.Log, withTracing(cfg.TracerProvider, withAccessLog(hops, withSecurityHeaders(mux))))
+	return withRequestID(cfg.Log, withTracing(cfg.TracerProvider, withAccessLog(hops, withSecurityHeaders(spaSecurityPolicy(cfg.WebBuildDir), mux))))
 }
 
 // protectFunc is the signature of NewRouter's `protect` closure, factored out
