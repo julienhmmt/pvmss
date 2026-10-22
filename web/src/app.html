@@ -15,7 +15,9 @@
 				if (stored === 'dark' || (stored !== 'light' && matchMedia('(prefers-color-scheme: dark)').matches)) {
 					document.documentElement.classList.add('dark');
 				}
-			} catch (e) {}
+			} catch {
+				// localStorage or matchMedia may be unavailable in restricted contexts.
+			}
 		</script>
 		%sveltekit.head%
 	</head>
