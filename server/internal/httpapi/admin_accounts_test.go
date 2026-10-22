@@ -519,3 +519,77 @@ func TestAdminAccounts_PasswordHashesAreBcrypt(t *testing.T) {
 func itoa(value int64) string {
 	return strconv.FormatInt(value, 10)
 }
+
+func TestAdminAccounts_ListPopulatedAndEdgeErrors(t *testing.T) {
+	t.Parallel()
+
+	authHandler, accounts, _ := newAccountsFixture(t, 5)
+	accounts.SetTrustedProxyHops(1)
+
+	owner := ownerCookie(t, authHandler)
+	accountID := mustCreateLocalAccount(t, accounts, owner, `{"username":"albert","password":"s3cret-passphrase"}`)
+
+	assertLocalLoginStatus(t, authHandler, `{"username":"albert","password":"s3cret-passphrase"}`, http.StatusOK)
+
+	for range 5 {
+		assertLocalLoginStatus(t, authHandler, `{"username":"albert","password":"wrong-password"}`, http.StatusUnauthorized)
+	}
+
+	listReq := httptest.NewRequest(http.MethodGet, "/api/v1/admin/accounts", nil)
+	listReq.AddCookie(owner)
+
+	listResp := httptest.NewRecorder()
+	accounts.ServeList(listResp, listReq)
+
+	if listResp.Code != http.StatusOK || !strings.Contains(listResp.Body.String(), "lockedUntil") || !strings.Contains(listResp.Body.String(), "lastLoginAt") {
+		t.Fatalf("populated list = %d %s", listResp.Code, listResp.Body.String())
+	}
+
+	assertAccountErrorCases(t, accounts, owner, accountID)
+}
+
+func assertAccountErrorCases(t *testing.T, accounts *httpapi.AdminAccounts, owner *http.Cookie, accountID int64) {
+	t.Helper()
+
+	unauth := httptest.NewRecorder()
+	accounts.ServeList(unauth, httptest.NewRequest(http.MethodGet, "/api/v1/admin/accounts", nil))
+
+	if unauth.Code != http.StatusUnauthorized {
+		t.Fatalf("unauthenticated list status = %d, want 401", unauth.Code)
+	}
+
+	badCreate := createLocalAccount(t, accounts, owner, `{bad`)
+	if badCreate.Code != http.StatusBadRequest {
+		t.Fatalf("bad create JSON status = %d, want 400", badCreate.Code)
+	}
+
+	cases := []struct {
+		name    string
+		handler http.HandlerFunc
+		id      string
+		body    string
+		want    int
+	}{
+		{name: "reset bad id", handler: accounts.ServeResetPassword, id: "0", body: `{"password":"valid-passphrase"}`, want: http.StatusBadRequest},
+		{name: "reset bad json", handler: accounts.ServeResetPassword, id: itoa(accountID), body: `{bad`, want: http.StatusBadRequest},
+		{name: "reset weak password", handler: accounts.ServeResetPassword, id: itoa(accountID), body: `{"password":"short"}`, want: http.StatusBadRequest},
+		{name: "reset missing id", handler: accounts.ServeResetPassword, id: "999", body: `{"password":"valid-passphrase"}`, want: http.StatusNotFound},
+		{name: "toggle bad id", handler: accounts.ServeToggle, id: "0", body: `{"disabled":true}`, want: http.StatusBadRequest},
+		{name: "toggle bad json", handler: accounts.ServeToggle, id: itoa(accountID), body: `{bad`, want: http.StatusBadRequest},
+		{name: "toggle missing id", handler: accounts.ServeToggle, id: "999", body: `{"disabled":true}`, want: http.StatusNotFound},
+	}
+
+	for _, tc := range cases {
+		req := httptest.NewRequest(http.MethodPost, "/api/v1/admin/accounts/"+tc.id, strings.NewReader(tc.body))
+		req.Header.Set("Content-Type", "application/json")
+		req.AddCookie(owner)
+		req.SetPathValue("id", tc.id)
+
+		rec := httptest.NewRecorder()
+		tc.handler(rec, req)
+
+		if rec.Code != tc.want {
+			t.Errorf("%s: status = %d, want %d: %s", tc.name, rec.Code, tc.want, rec.Body.String())
+		}
+	}
+}
