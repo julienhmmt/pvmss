@@ -64,12 +64,36 @@ func loginLocal(t *testing.T, authHandler *httpapi.Auth, body string) *httptest.
 	return serveJSON(authHandler.AdminLogin, "/api/v1/auth/admin-login", body)
 }
 
-//nolint:gocyclo,funlen // one end-to-end owner lifecycle keeps fixture setup linear
-func TestAdminAccounts_OwnerLifecycle(t *testing.T) {
-	t.Parallel()
+func assertLocalLoginStatus(t *testing.T, authHandler *httpapi.Auth, body string, wantCode int) {
+	t.Helper()
 
-	authHandler, accounts, st := newAccountsFixture(t, 5)
-	owner := ownerCookie(t, authHandler)
+	response := loginLocal(t, authHandler, body)
+	if response.Code != wantCode {
+		t.Fatalf("local login status = %d, want %d: %s", response.Code, wantCode, response.Body.String())
+	}
+}
+
+func serveOwnerAccountAction(t *testing.T, handler http.HandlerFunc, method, path string, id int64, owner *http.Cookie, body string) {
+	t.Helper()
+
+	request := httptest.NewRequest(method, path, strings.NewReader(body))
+	if body != "" {
+		request.Header.Set("Content-Type", "application/json")
+	}
+
+	request.AddCookie(owner)
+	request.SetPathValue("id", itoa(id))
+
+	response := httptest.NewRecorder()
+	handler(response, request)
+
+	if response.Code != http.StatusNoContent {
+		t.Fatalf("%s %s status = %d, want 204: %s", method, path, response.Code, response.Body.String())
+	}
+}
+
+func assertEmptyAccountList(t *testing.T, accounts *httpapi.AdminAccounts, owner *http.Cookie, wantMax int) {
+	t.Helper()
 
 	listRequest := httptest.NewRequest(http.MethodGet, "/api/v1/admin/accounts", nil)
 	listRequest.AddCookie(owner)
@@ -93,11 +117,15 @@ func TestAdminAccounts_OwnerLifecycle(t *testing.T) {
 		t.Fatalf("decode list: %v", err)
 	}
 
-	if listing.Max != 5 || listing.Count != 0 || len(listing.Accounts) != 0 {
+	if listing.Max != wantMax || listing.Count != 0 || len(listing.Accounts) != 0 {
 		t.Fatalf("empty listing = %+v", listing)
 	}
+}
 
-	created := createLocalAccount(t, accounts, owner, `{"username":"Albert","password":"s3cret-passphrase"}`)
+func mustCreateLocalAccount(t *testing.T, accounts *httpapi.AdminAccounts, owner *http.Cookie, body string) int64 {
+	t.Helper()
+
+	created := createLocalAccount(t, accounts, owner, body)
 	if created.Code != http.StatusCreated {
 		t.Fatalf("create status = %d: %s", created.Code, created.Body.String())
 	}
@@ -111,20 +139,17 @@ func TestAdminAccounts_OwnerLifecycle(t *testing.T) {
 		t.Fatalf("decode created: %v", err)
 	}
 
-	if account.Username != accountsTestUsername || account.CreatedBy != accountsTestCreatedBy {
-		t.Fatalf("created account = %+v, want albert created by admin", account)
+	if account.Username != accountsTestUsername || account.CreatedBy != accountsTestCreatedBy || account.ID == 0 {
+		t.Fatalf("created account = %+v, want non-zero id and albert created by admin", account)
 	}
 
-	if account.ID == 0 {
-		t.Fatal("created account has no id")
-	}
+	return account.ID
+}
 
-	duplicate := createLocalAccount(t, accounts, owner, `{"username":"albert","password":"another-passphrase"}`)
-	if duplicate.Code != http.StatusConflict {
-		t.Fatalf("duplicate status = %d, want 409: %s", duplicate.Code, duplicate.Body.String())
-	}
+func mustLoginLocal(t *testing.T, authHandler *httpapi.Auth, body string) *http.Cookie {
+	t.Helper()
 
-	login := loginLocal(t, authHandler, `{"username":"albert","password":"s3cret-passphrase"}`)
+	login := loginLocal(t, authHandler, body)
 	if login.Code != http.StatusOK {
 		t.Fatalf("local login status = %d: %s", login.Code, login.Body.String())
 	}
@@ -138,28 +163,49 @@ func TestAdminAccounts_OwnerLifecycle(t *testing.T) {
 		t.Fatalf("local identity = %+v", identity)
 	}
 
-	sessionCookie := login.Result().Cookies()[0]
+	return login.Result().Cookies()[0]
+}
+
+func assertAuditActions(t *testing.T, st *store.Store, actions ...string) {
+	t.Helper()
+
+	entries, err := st.QueryAudit(context.Background())
+	if err != nil {
+		t.Fatalf("QueryAudit: %v", err)
+	}
+
+	seen := make(map[string]bool, len(entries))
+	for _, entry := range entries {
+		seen[entry.Action] = true
+	}
+
+	for _, action := range actions {
+		if !seen[action] {
+			t.Errorf("audit action %q not recorded", action)
+		}
+	}
+}
+
+func TestAdminAccounts_OwnerLifecycle(t *testing.T) {
+	t.Parallel()
+
+	authHandler, accounts, st := newAccountsFixture(t, 5)
+	owner := ownerCookie(t, authHandler)
+
+	assertEmptyAccountList(t, accounts, owner, 5)
+	accountID := mustCreateLocalAccount(t, accounts, owner, `{"username":"Albert","password":"s3cret-passphrase"}`)
+
+	duplicate := createLocalAccount(t, accounts, owner, `{"username":"albert","password":"another-passphrase"}`)
+	if duplicate.Code != http.StatusConflict {
+		t.Fatalf("duplicate status = %d, want 409: %s", duplicate.Code, duplicate.Body.String())
+	}
+
+	sessionCookie := mustLoginLocal(t, authHandler, `{"username":"albert","password":"s3cret-passphrase"}`)
 
 	// Reset password: old secret dies, old sessions are revoked.
-	resetRequest := httptest.NewRequest(http.MethodPut, "/api/v1/admin/accounts/"+itoa(account.ID)+"/password", strings.NewReader(`{"password":"brand-new-passphrase"}`))
-	resetRequest.Header.Set("Content-Type", "application/json")
-	resetRequest.AddCookie(owner)
-	resetRequest.SetPathValue("id", itoa(account.ID))
-
-	reset := httptest.NewRecorder()
-	accounts.ServeResetPassword(reset, resetRequest)
-
-	if reset.Code != http.StatusNoContent {
-		t.Fatalf("reset status = %d: %s", reset.Code, reset.Body.String())
-	}
-
-	if oldLogin := loginLocal(t, authHandler, `{"username":"albert","password":"s3cret-passphrase"}`); oldLogin.Code != http.StatusUnauthorized {
-		t.Fatalf("old password login status = %d, want 401", oldLogin.Code)
-	}
-
-	if newLogin := loginLocal(t, authHandler, `{"username":"albert","password":"brand-new-passphrase"}`); newLogin.Code != http.StatusOK {
-		t.Fatalf("new password login status = %d: %s", newLogin.Code, newLogin.Body.String())
-	}
+	serveOwnerAccountAction(t, accounts.ServeResetPassword, http.MethodPut, "/api/v1/admin/accounts/"+itoa(accountID)+"/password", accountID, owner, `{"password":"brand-new-passphrase"}`)
+	assertLocalLoginStatus(t, authHandler, `{"username":"albert","password":"s3cret-passphrase"}`, http.StatusUnauthorized)
+	assertLocalLoginStatus(t, authHandler, `{"username":"albert","password":"brand-new-passphrase"}`, http.StatusOK)
 
 	revoked := httptest.NewRequest(http.MethodGet, "/api/v1/auth/me", nil)
 	revoked.AddCookie(sessionCookie)
@@ -169,79 +215,24 @@ func TestAdminAccounts_OwnerLifecycle(t *testing.T) {
 	}
 
 	// Disable: login refused and sessions revoked.
-	toggleRequest := httptest.NewRequest(http.MethodPost, "/api/v1/admin/accounts/"+itoa(account.ID)+"/toggle", strings.NewReader(`{"disabled":true}`))
-	toggleRequest.Header.Set("Content-Type", "application/json")
-	toggleRequest.AddCookie(owner)
-	toggleRequest.SetPathValue("id", itoa(account.ID))
-
-	toggle := httptest.NewRecorder()
-	accounts.ServeToggle(toggle, toggleRequest)
-
-	if toggle.Code != http.StatusNoContent {
-		t.Fatalf("toggle status = %d: %s", toggle.Code, toggle.Body.String())
-	}
-
-	if disabledLogin := loginLocal(t, authHandler, `{"username":"albert","password":"brand-new-passphrase"}`); disabledLogin.Code != http.StatusUnauthorized {
-		t.Fatalf("disabled login status = %d, want 401", disabledLogin.Code)
-	}
+	serveOwnerAccountAction(t, accounts.ServeToggle, http.MethodPost, "/api/v1/admin/accounts/"+itoa(accountID)+"/toggle", accountID, owner, `{"disabled":true}`)
+	assertLocalLoginStatus(t, authHandler, `{"username":"albert","password":"brand-new-passphrase"}`, http.StatusUnauthorized)
 
 	// Enable: login works again.
-	enableRequest := httptest.NewRequest(http.MethodPost, "/api/v1/admin/accounts/"+itoa(account.ID)+"/toggle", strings.NewReader(`{"disabled":false}`))
-	enableRequest.Header.Set("Content-Type", "application/json")
-	enableRequest.AddCookie(owner)
-	enableRequest.SetPathValue("id", itoa(account.ID))
-
-	enable := httptest.NewRecorder()
-	accounts.ServeToggle(enable, enableRequest)
-
-	if enable.Code != http.StatusNoContent {
-		t.Fatalf("enable status = %d: %s", enable.Code, enable.Body.String())
-	}
-
-	if enabledLogin := loginLocal(t, authHandler, `{"username":"albert","password":"brand-new-passphrase"}`); enabledLogin.Code != http.StatusOK {
-		t.Fatalf("enabled login status = %d: %s", enabledLogin.Code, enabledLogin.Body.String())
-	}
+	serveOwnerAccountAction(t, accounts.ServeToggle, http.MethodPost, "/api/v1/admin/accounts/"+itoa(accountID)+"/toggle", accountID, owner, `{"disabled":false}`)
+	assertLocalLoginStatus(t, authHandler, `{"username":"albert","password":"brand-new-passphrase"}`, http.StatusOK)
 
 	// Delete: gone from the list and unable to log in.
-	deleteRequest := httptest.NewRequest(http.MethodDelete, "/api/v1/admin/accounts/"+itoa(account.ID), nil)
-	deleteRequest.AddCookie(owner)
-	deleteRequest.SetPathValue("id", itoa(account.ID))
+	serveOwnerAccountAction(t, accounts.ServeDelete, http.MethodDelete, "/api/v1/admin/accounts/"+itoa(accountID), accountID, owner, "")
+	assertLocalLoginStatus(t, authHandler, `{"username":"albert","password":"brand-new-passphrase"}`, http.StatusUnauthorized)
 
-	deleted := httptest.NewRecorder()
-	accounts.ServeDelete(deleted, deleteRequest)
-
-	if deleted.Code != http.StatusNoContent {
-		t.Fatalf("delete status = %d: %s", deleted.Code, deleted.Body.String())
-	}
-
-	if deletedLogin := loginLocal(t, authHandler, `{"username":"albert","password":"brand-new-passphrase"}`); deletedLogin.Code != http.StatusUnauthorized {
-		t.Fatalf("deleted login status = %d, want 401", deletedLogin.Code)
-	}
-
-	entries, err := st.QueryAudit(context.Background())
-	if err != nil {
-		t.Fatalf("QueryAudit: %v", err)
-	}
-
-	wantActions := map[string]bool{
-		"admin.accounts.create":         false,
-		"admin.accounts.password_reset": false,
-		"admin.accounts.disable":        false,
-		"admin.accounts.enable":         false,
-		"admin.accounts.delete":         false,
-	}
-
-	for _, entry := range entries {
-		if _, ok := wantActions[entry.Action]; ok {
-			wantActions[entry.Action] = true
-		}
-	}
-
-	for action, seen := range wantActions {
-		if !seen {
-			t.Errorf("audit action %q not recorded", action)
-		}
-	}
+	assertAuditActions(t, st,
+		"admin.accounts.create",
+		"admin.accounts.password_reset",
+		"admin.accounts.disable",
+		"admin.accounts.enable",
+		"admin.accounts.delete",
+	)
 }
 
 func TestAdminAccounts_NonOwnerForbidden(t *testing.T) {
