@@ -39,8 +39,8 @@ func (h *VMDetail) handleGet(w http.ResponseWriter, r *http.Request) {
 }
 
 // handleStatus serves GET /vms/:cluster/:vmid/status - the live status read
-// (ADR 0001). Unlike handleGet which reads the projection, this reads the
-// cluster's live /status/current via VMStatusReader, so the front's converge
+// (ADR 0001). It reads the cluster's live /status/current via VMStatusReader
+// (handleGet overlays the same read on the projection), so the front's converge
 // loop sees the real power state immediately after an action, not the
 // projection's up-to-30s-stale view. Read-only: never writes the projection.
 func (h *VMDetail) handleStatus(w http.ResponseWriter, r *http.Request) {
