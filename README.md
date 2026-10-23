@@ -18,9 +18,10 @@ French version: [README.fr.md](README.fr.md)
 6. [Quick start with Docker run](#quick-start-with-docker-run)
 7. [Start with Docker compose](#start-with-docker-compose)
 8. [Start with Kubernetes](#start-with-kubernetes)
-9. [Operations](#operations)
-10. [Limitations](#limitations)
-11. [License](#license)
+9. [Coming from v0.3](#coming-from-v03)
+10. [Operations](#operations)
+11. [Limitations](#limitations)
+12. [License](#license)
 
 ---
 
@@ -370,11 +371,26 @@ LOG_OUTPUT: "/app/pvmss.log"
 A Helm chart lives in [`helm/`](helm/): `helm install pvmss ./helm -f my-values.yaml`.
 `values.yaml` documents every variable.
 
+## Coming from v0.3
+
+There is no migration from v0.3 to v0.4. v0.4 is a rewrite (Go API + SvelteKit) and imports nothing from v0.3: deploy it as a new installation, then configure it again from the Admin UI. PVMSS never deletes VMs, so the VMs themselves stay in Proxmox.
+
+- **Data**: v0.4 does not read `settings.json` (v0.3.0). A SQLite database written by a later v0.3 build is refused at startup (`incompatible database schema`). Point `PVMSS_DB_PATH` at a new file on a persistent `/data` volume.
+- **New required variables**: `PVMSS_PORT`, `PVMSS_CLUSTER_SOURCE` (`proxmox` for a real cluster), `LOG_LEVEL`, `LOG_FORMAT`, `LOG_OUTPUT`.
+- **Changed variables**:
+  - `LOG_LEVEL` is lowercase only: `INFO` stops startup, use `info`.
+  - `LOG_OUTPUT` takes `stdout`, `stderr` or a file path; `file` / `both` and `LOG_FILE_PATH` are gone.
+  - `SESSION_SECRET` (32+ bytes) is refused if it is still the example value.
+  - `ADMIN_PASSWORD_HASH` is now optional; it creates the bootstrap administrator `admin`.
+  - `PROXMOX_URL` and `PROXMOX_API_TOKEN_*` only seed the first cluster on the first boot; afterwards **Admin › Clusters** owns them.
+- **Removed variables** (no longer read): `JWT_SECRET`, `PVMSS_SETTINGS_PATH`, `CSRF_TOKEN_TTL`, `PVMSS_OFFLINE`, `PVMSS_ENV`, `LOG_FILE_PATH`, `PROXMOX_VERIFY_SSL` (now a per-cluster TLS option in **Admin › Clusters**), `PVMSS_SSH_KEY_FILE`, `PVMSS_SSH_USER`, `PVMSS_SSH_PORT` (startup warns about the SSH ones).
+- **To configure again**: clusters, approved nodes, storages, ISOs, bridges and templates, hardware profiles, limits and quotas, tags, user pools and documentation pages. Check the Proxmox roles against [Proxmox roles and permissions](#proxmox-roles-and-permissions-required).
+
 ## Operations
 
 - **Logs**: `docker logs -f pvmss` or `kubectl -n pvmss logs -f deploy/pvmss`. Switch `LOG_LEVEL=debug` for verbose traces. Use `LOG_FORMAT=json` with `LOG_OUTPUT=stdout` or a file path to emit JSON logs that can be shipped to a SIEM or log aggregator.
 - **Health**: startup logs include cluster connectivity and inventory refresh status. The admin "Application Info" page shows runtime metrics, environment variables, and Proxmox cluster status.
-- **Upgrades**: pull the desired image tag and restart the container. Configuration is stored in the SQLite database and persists automatically.
+- **Upgrades** (within v0.4.x): pull the desired image tag and restart the container. Configuration is stored in the SQLite database and persists automatically.
 - **Built-in documentation**: the in-app pages (`/docs`) are seeded once into the database and never overwritten, so admin edits survive upgrades. To pick up a newer built-in text after an upgrade, delete the page in **Admin › Documentation** and restart, or paste the new content from `server/internal/docs/seed/`.
 - **Static analysis (SonarQube)**: run `make sonar` to start a local SonarQube container, provision tokens, generate Go coverage, and scan the two projects - `pvmss-server` (Go) and `pvmss-web` (SvelteKit TS). Results are at `http://localhost:9000/projects`. Stop with `make sonar-down` and clean data with `make sonar-clean`.
 

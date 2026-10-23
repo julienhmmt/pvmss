@@ -18,9 +18,10 @@ Version anglaise : [README.md](README.md)
 6. [Démarrage rapide avec Docker run](#démarrage-rapide-avec-docker-run)
 7. [Démarrer avec Docker compose](#démarrer-avec-docker-compose)
 8. [Démarrer avec Kubernetes](#démarrer-avec-kubernetes)
-9. [Exploitation](#exploitation)
-10. [Limites connues](#limites-connues)
-11. [Licence](#licence)
+9. [Venir de la v0.3](#venir-de-la-v03)
+10. [Exploitation](#exploitation)
+11. [Limites connues](#limites-connues)
+12. [Licence](#licence)
 
 ---
 
@@ -359,11 +360,26 @@ LOG_OUTPUT: "/app/pvmss.log"
 Un chart Helm est fourni dans [`helm/`](helm/) : `helm install pvmss ./helm -f mes-values.yaml`.
 `values.yaml` documente chaque variable.
 
+## Venir de la v0.3
+
+Il n'y a pas de migration de la v0.3 vers la v0.4. La v0.4 est une réécriture (API Go + SvelteKit) et n'importe rien de la v0.3 : déployez-la comme une nouvelle installation, puis reconfigurez-la depuis l'interface Admin. PVMSS ne supprime jamais de VM : les VM restent dans Proxmox.
+
+- **Données** : la v0.4 ne lit pas `settings.json` (v0.3.0). Une base SQLite écrite par une version v0.3 plus récente est refusée au démarrage (`incompatible database schema`). Faites pointer `PVMSS_DB_PATH` vers un nouveau fichier sur un volume `/data` persistant.
+- **Nouvelles variables obligatoires** : `PVMSS_PORT`, `PVMSS_CLUSTER_SOURCE` (`proxmox` pour un vrai cluster), `LOG_LEVEL`, `LOG_FORMAT`, `LOG_OUTPUT`.
+- **Variables modifiées** :
+  - `LOG_LEVEL` est en minuscules uniquement : `INFO` bloque le démarrage, utilisez `info`.
+  - `LOG_OUTPUT` accepte `stdout`, `stderr` ou un chemin de fichier ; `file` / `both` et `LOG_FILE_PATH` disparaissent.
+  - `SESSION_SECRET` (32 octets ou plus) est refusé s'il vaut encore la valeur d'exemple.
+  - `ADMIN_PASSWORD_HASH` devient optionnel ; il crée l'administrateur d'amorçage `admin`.
+  - `PROXMOX_URL` et `PROXMOX_API_TOKEN_*` ne servent qu'à créer le premier cluster au premier démarrage ; ensuite **Admin › Clusters** les gère.
+- **Variables supprimées** (plus lues) : `JWT_SECRET`, `PVMSS_SETTINGS_PATH`, `CSRF_TOKEN_TTL`, `PVMSS_OFFLINE`, `PVMSS_ENV`, `LOG_FILE_PATH`, `PROXMOX_VERIFY_SSL` (désormais une option TLS par cluster dans **Admin › Clusters**), `PVMSS_SSH_KEY_FILE`, `PVMSS_SSH_USER`, `PVMSS_SSH_PORT` (le démarrage avertit pour les variables SSH).
+- **À reconfigurer** : clusters, nœuds approuvés, stockages, ISO, bridges et modèles, profils matériels, limites et quotas, tags, pools utilisateurs et pages de documentation. Vérifiez les rôles Proxmox avec [Roles et permissions](#roles-et-permissions-obligatoire).
+
 ## Exploitation
 
 - **Logs** : `docker logs -f pvmss` ou `kubectl -n pvmss logs -f deploy/pvmss`. Passez `LOG_LEVEL=debug` pour plus de verbosité. Utilisez `LOG_FORMAT=json` avec `LOG_OUTPUT=stdout` ou un chemin de fichier pour produire des logs JSON exploitables par un SIEM ou un collecteur de logs.
 - **Santé** : les logs de démarrage détaillent la connectivité Proxmox et l'état du rafraîchissement d'inventaire ; `GET /health` répond pour les sondes. La page admin "Informations de l'application" affiche des métriques, des variables d'environnement et le statut du cluster Proxmox.
-- **Mises à jour** : récupérez l'image souhaitée (le tag) et redémarrez le conteneur. La configuration est stockée dans la base de données SQLite et persiste automatiquement.
+- **Mises à jour** (au sein de la v0.4.x) : récupérez l'image souhaitée (le tag) et redémarrez le conteneur. La configuration est stockée dans la base de données SQLite et persiste automatiquement.
 - **Documentation intégrée** : les pages `/docs` sont insérées une seule fois en base et jamais écrasées, les modifications admin survivent donc aux mises à jour. Pour récupérer un texte intégré plus récent après une mise à jour, supprimez la page dans **Admin › Documentation** et redémarrez, ou collez le nouveau contenu depuis `server/internal/docs/seed/`.
 
 ## Limites connues
