@@ -157,6 +157,29 @@ func TestAccessLog_SetErrorYieldsOneErrorLine(t *testing.T) {
 	}
 }
 
+// A client leaving mid-request cancels its context; the handler's 500 then
+// reaches nobody and needs no human, so it must not log at Error.
+func TestAccessLog_ClientCancelIsNotAnError(t *testing.T) {
+	t.Parallel()
+
+	mux := http.NewServeMux()
+	mux.HandleFunc("GET /api/v1/slow", func(w http.ResponseWriter, r *http.Request) {
+		SetError(w, r.Context().Err())
+		w.WriteHeader(http.StatusInternalServerError)
+	})
+
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel()
+
+	h, buf := newAccessFixture(mux)
+	h.ServeHTTP(httptest.NewRecorder(), httptest.NewRequestWithContext(ctx, http.MethodGet, "/api/v1/slow", nil))
+
+	lines := accessLines(t, buf)
+	if len(lines) != 1 || lines[0]["level"] != "DEBUG" || lines[0]["result"] != "canceled" {
+		t.Fatalf("lines = %v, want one DEBUG line with result=canceled", lines)
+	}
+}
+
 func TestAccessLog_HijackLogsUpgradeAndClose(t *testing.T) {
 	t.Parallel()
 
