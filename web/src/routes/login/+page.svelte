@@ -10,6 +10,7 @@
 	import FormField from '#lib/shared/ui/FormField.svelte';
 	import Select from '#lib/shared/ui/Select.svelte';
 	import TextField from '#lib/shared/ui/TextField.svelte';
+	import Tabs from '#lib/shared/ui/Tabs.svelte';
 	import UserIcon from '#lib/shared/ui/icons/UserIcon.svelte';
 	import LockIcon from '#lib/shared/ui/icons/LockIcon.svelte';
 	import { m } from '#lib/paraglide/messages.js';
@@ -70,7 +71,27 @@
 					<h1 class="text-2xl font-semibold tracking-tight">{m['login.heading']()}</h1>
 					<p class="mt-2 text-sm text-muted-foreground">{m['login.description']()}</p>
 				</div>
-				<form bind:this={formEl} class="grid gap-4" onsubmit={(event) => { event.preventDefault(); void submit(); }}>
+				<Tabs
+					tabs={[
+						{ id: 'pve', label: m['login.proxmoxUser'] },
+						{ id: 'local', label: m['login.localAdmin'] }
+					]}
+					bind:active={
+						() => form.provider,
+						(value) => {
+							form.provider = value === 'local' ? 'local' : 'pve';
+							form.error = null;
+						}
+					}
+					class="grid grid-cols-2"
+				/>
+				<form
+					bind:this={formEl}
+					id={`panel-${form.provider}`}
+					aria-labelledby={`tab-${form.provider}`}
+					class="grid gap-4"
+					onsubmit={(event) => { event.preventDefault(); void submit(); }}
+				>
 					{#if form.pveDisabled && form.provider === 'pve'}
 						<p class="rounded-md bg-warning-soft p-3 text-sm text-warning-soft-foreground" role="status">
 							{m['login.clusterDownHint']()}
@@ -84,8 +105,8 @@
 							id="login-cluster"
 							disabled={form.pveDisabled}
 						/>
-						<div class="grid gap-4 sm:grid-cols-2">
-							<FormField label={m['login.username']()} hint={m['login.usernameRealmHint']()} required>
+						<div class="grid grid-cols-[1fr_auto] items-end gap-3">
+							<FormField label={m['login.username']()} required>
 								{#snippet children({ id, describedBy, invalid })}
 									<TextField
 										{id}
@@ -163,21 +184,6 @@
 						{form.loading ? m['login.signingIn']() : m['login.signIn']()}
 					</Button>
 				</form>
-				<div class="flex items-center gap-3 text-xs text-muted-foreground-subtle">
-					<span class="h-px flex-1 bg-border" aria-hidden="true"></span>
-					{m['login.or']()}
-					<span class="h-px flex-1 bg-border" aria-hidden="true"></span>
-				</div>
-				<Button
-					variant="secondary"
-					type="button"
-					onclick={() => {
-						form.provider = form.provider === 'pve' ? 'local' : 'pve';
-						form.error = null;
-					}}
-				>
-					{form.provider === 'pve' ? m['login.useLocalAdmin']() : m['login.backToProxmoxLogin']()}
-				</Button>
 			</Card>
 		</div>
 	</div>

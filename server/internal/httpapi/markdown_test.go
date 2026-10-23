@@ -277,3 +277,21 @@ func TestRenderMarkdownToHTML_DangerousURLSchemesRejected(t *testing.T) {
 		})
 	}
 }
+
+// TestRenderMarkdownToHTML_UnderscoresKeepLinksIntact - emphasis must not
+// rewrite inside an emitted <a> tag: an underscore URL, or two external
+// links pairing the "_" of their target="_blank", used to break the HTML.
+func TestRenderMarkdownToHTML_UnderscoresKeepLinksIntact(t *testing.T) {
+	t.Parallel()
+	got := renderMarkdownToHTML("See [wiki](https://pve.proxmox.com/wiki/Cloud_Init_Support) and [b](https://b.example) or [_c_](https://c.example)")
+
+	for _, want := range []string{
+		`<a href="https://pve.proxmox.com/wiki/Cloud_Init_Support" target="_blank" rel="noopener noreferrer">wiki</a>`,
+		`<a href="https://b.example" target="_blank" rel="noopener noreferrer">b</a>`,
+		`<a href="https://c.example" target="_blank" rel="noopener noreferrer"><em>c</em></a>`,
+	} {
+		if !strings.Contains(got, want) {
+			t.Fatalf("output %q missing %q", got, want)
+		}
+	}
+}

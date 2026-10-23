@@ -33,7 +33,7 @@
 </script>
 
 {#if node.status === 'offline'}
-	<span class="text-muted-foreground-subtle">—</span>
+	<span class="text-muted-foreground-subtle">-</span>
 {:else}
 	<div class="flex min-w-48 flex-col gap-1">
 		{#each meters as meter (meter.label)}

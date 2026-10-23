@@ -18,10 +18,10 @@ export default defineConfig({
 	use: {
 		baseURL: 'http://127.0.0.1:50001',
 		trace: 'on-first-retry',
-		// The app defaults to French (locale.svelte.ts DEFAULT_LOCALE), while
+		// The app follows the browser language when nothing is stored, while
 		// most specs assert English strings. Seed the persisted preference once
 		// here rather than repeating addInitScript in every spec.
-		// chrome-ui.spec.ts opts out - it tests the French default itself.
+		// chrome-ui.spec.ts opts out - it tests browser-language detection.
 		storageState: {
 			cookies: [],
 			origins: [

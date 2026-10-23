@@ -308,8 +308,11 @@ func renderInline(text string) string {
 		return "\x00CODE" + indexPlaceholder(len(codeSpans)-1) + "\x00"
 	})
 
-	// Links: [text](dest) - text and dest are already HTML-escaped.
-	protected = renderLinks(protected)
+	// Links: [text](dest) - text and dest are already HTML-escaped. Opening
+	// <a> tags go behind placeholders so emphasis cannot rewrite their href or
+	// target="_blank"; the link text stays inline and still gets emphasis.
+	var linkTags []string
+	protected = renderLinks(protected, &linkTags)
 
 	// Bold **x** then italic *x* / _x_. The italic patterns capture the inner
 	// text only (delimiters excluded) so the replacement does not re-emit them.
@@ -320,6 +323,10 @@ func renderInline(text string) string {
 	// Restore code spans.
 	for idx, span := range codeSpans {
 		protected = strings.ReplaceAll(protected, "\x00CODE"+indexPlaceholder(idx)+"\x00", "<code>"+span+"</code>")
+	}
+
+	for idx, tag := range linkTags {
+		protected = strings.ReplaceAll(protected, "\x00LINK"+indexPlaceholder(idx)+"\x00", tag)
 	}
 
 	return protected
@@ -339,18 +346,22 @@ var (
 // activated.
 //
 // Both text and dest are already HTML-escaped by renderInline, so they are
-// inserted verbatim when a link is emitted.
-func renderLink(text, dest string) string {
+// inserted verbatim when a link is emitted. The opening tag is appended to
+// tags and replaced by a placeholder that renderInline restores last.
+func renderLink(text, dest string, tags *[]string) string {
 	safe, external := safeURL(dest)
 	if !safe {
 		return text
 	}
 
+	open := "<a href=\"" + dest + "\">"
 	if external {
-		return "<a href=\"" + dest + "\" target=\"_blank\" rel=\"noopener noreferrer\">" + text + "</a>"
+		open = "<a href=\"" + dest + "\" target=\"_blank\" rel=\"noopener noreferrer\">"
 	}
 
-	return "<a href=\"" + dest + "\">" + text + "</a>"
+	*tags = append(*tags, open)
+
+	return "\x00LINK" + indexPlaceholder(len(*tags)-1) + "\x00" + text + "</a>"
 }
 
 // safeURL parses a link destination and classifies it as safe or unsafe. It
@@ -387,7 +398,7 @@ func safeURL(dest string) (safe, external bool) {
 // renderLinks scans s for [text](dest) links and emits them through renderLink.
 // It handles URLs that contain their own parentheses by tracking the paren
 // balance, so [click](javascript:alert(1)) is parsed as a single link.
-func renderLinks(s string) string {
+func renderLinks(s string, tags *[]string) string {
 	var out strings.Builder
 	for i := 0; i < len(s); {
 		if s[i] != '[' {
@@ -405,7 +416,7 @@ func renderLinks(s string) string {
 			continue
 		}
 
-		out.WriteString(renderLink(text, dest))
+		out.WriteString(renderLink(text, dest, tags))
 		i = next
 	}
 

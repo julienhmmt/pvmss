@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import {
 	getSavedAdminCluster,
+	pinnedClusterOptions,
 	resolveInitialAdminCluster,
 	saveAdminCluster,
 	type ClusterOption
@@ -82,5 +83,22 @@ describe('Admin active cluster persistence (Ticket 12)', () => {
 		const baseline = new AdminBaselineStore();
 		await baseline.init();
 		expect(baseline.cluster).toBe('secondary');
+	});
+});
+
+describe('pinnedClusterOptions', () => {
+	const options: ClusterOption[] = [
+		{ name: 'a', displayName: 'A' },
+		{ name: 'b', displayName: 'B' }
+	];
+
+	it('keeps only the sign-in cluster for a non-admin', () => {
+		expect(pinnedClusterOptions(options, { isAdmin: false, cluster: 'a' })).toEqual([options[0]]);
+	});
+
+	it('keeps every cluster for an admin, a legacy session or no session', () => {
+		expect(pinnedClusterOptions(options, { isAdmin: true, cluster: 'a' })).toEqual(options);
+		expect(pinnedClusterOptions(options, { isAdmin: false, cluster: '' })).toEqual(options);
+		expect(pinnedClusterOptions(options, null)).toEqual(options);
 	});
 });

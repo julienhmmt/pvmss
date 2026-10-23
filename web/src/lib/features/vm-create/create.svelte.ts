@@ -1,6 +1,6 @@
 import { getContext, setContext } from 'svelte';
 import { get, post, ApiRequestError } from '#lib/shared/api/client.js';
-import { fetchClusterOptions, type ClusterOption } from '#lib/shared/clusters.js';
+import { fetchClusterOptions, pinnedClusterOptions, type ClusterOption } from '#lib/shared/clusters.js';
 import { m } from '#lib/paraglide/messages.js';
 import { SshKeySelection } from '#lib/features/profile-ssh-keys/ssh-key-selection.svelte.js';
 import { loadProfileSshKeys } from '#lib/features/profile-ssh-keys/profile-ssh-keys.svelte.js';
@@ -504,9 +504,9 @@ export class VmCreateStore {
 	/** Fetches the multi-cluster options and defaults to the first one, matching
 	 *  the login page's cluster picker (must run before loadCatalog when the
 	 *  deployment has more than one cluster - the catalog needs one to target). */
-	async loadClusters(): Promise<void> {
+	async loadClusters(principal: { isAdmin: boolean; cluster: string } | null = null): Promise<void> {
 		try {
-			this.clusterOptions = await fetchClusterOptions();
+			this.clusterOptions = pinnedClusterOptions(await fetchClusterOptions(), principal);
 		} catch {
 			this.clusterOptions = [];
 		}

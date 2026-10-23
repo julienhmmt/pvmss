@@ -1,12 +1,21 @@
 import { getContext, setContext } from 'svelte';
-import { setLocale as paraglideSetLocale, type Locale } from '#lib/paraglide/runtime.js';
+import { locales, setLocale as paraglideSetLocale, type Locale } from '#lib/paraglide/runtime.js';
 
 /**
- * Supported interface locales. Adding a third locale is one more message file
- * plus one entry here - never a change to the switcher component (FR-003).
+ * Supported interface locales come from project.inlang/settings.json. Adding
+ * a locale is one message file, one entry there and its name below.
  */
-const SUPPORTED_LOCALES: readonly Locale[] = ['fr', 'en'];
-const DEFAULT_LOCALE: Locale = 'fr';
+export const SUPPORTED_LOCALES: readonly Locale[] = locales;
+/** Fallback when neither a stored choice nor the browser language matches. */
+const DEFAULT_LOCALE: Locale = 'en';
+
+/** Each locale named in its own language, as language pickers show them. */
+export const LOCALE_NAMES: Record<Locale, string> = {
+	fr: 'Français',
+	en: 'English',
+	de: 'Deutsch',
+	it: 'Italiano'
+};
 
 /** localStorage key for the persisted locale preference (FR-005). */
 export const LOCALE_STORAGE_KEY = 'pvmss-locale';
@@ -41,7 +50,7 @@ export class LocaleState {
 		return this.#current;
 	}
 
-	/** Reads localStorage; absent or unrecognized → "fr". Calls apply(). */
+	/** Reads localStorage, then the browser languages, then "en". Calls apply(). */
 	init(): void {
 		const stored = this.#readStored();
 		this.#current = stored;
@@ -67,7 +76,7 @@ export class LocaleState {
 		if (stored !== null && this.#isSupported(stored)) {
 			return stored as Locale;
 		}
-		return DEFAULT_LOCALE;
+		return browserLocale() ?? DEFAULT_LOCALE;
 	}
 
 	#writeStored(locale: Locale): void {
@@ -82,6 +91,21 @@ export class LocaleState {
 	#isSupported(value: string): boolean {
 		return SUPPORTED_LOCALES.includes(value as Locale);
 	}
+}
+
+/** Documentation pages exist in en and fr only; other locales read English. */
+export function docLocale(locale: Locale): 'en' | 'fr' {
+	return locale === 'fr' ? 'fr' : 'en';
+}
+
+/** First browser language whose primary subtag we support ("de-CH" -> "de"). */
+function browserLocale(): Locale | undefined {
+	const preferred = navigator.languages.length > 0 ? navigator.languages : [navigator.language];
+	for (const tag of preferred) {
+		const primary = tag.split('-')[0]?.toLowerCase() ?? '';
+		if (SUPPORTED_LOCALES.includes(primary as Locale)) return primary as Locale;
+	}
+	return undefined;
 }
 
 const LOCALE_CONTEXT_KEY = Symbol('locale');

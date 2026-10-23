@@ -159,8 +159,9 @@ describe('Ticket 10: VM detail power confirmation & sub-tab form hygiene', () =>
 
 		const addSizeInput = document.querySelector<HTMLInputElement>('[data-testid="add-disk-size"]');
 		expect(addSizeInput).not.toBeNull();
-		expect(addSizeInput!.getAttribute('max')).toBe('100');
-		expect(document.body.textContent).toContain('1–100 GB allowed');
+		// The cap is the VM total: the 20 GB boot disk leaves 80 GB.
+		expect(addSizeInput!.getAttribute('max')).toBe('80');
+		expect(document.body.textContent).toContain('1–80 GB allowed');
 
 		const virtioOption = document.querySelector<HTMLOptionElement>('select option[value="virtio"]');
 		expect(virtioOption).not.toBeNull();

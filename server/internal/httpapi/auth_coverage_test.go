@@ -687,3 +687,34 @@ func TestAuthCoverage_Me_ReissuesMissingCSRFCookie(t *testing.T) {
 
 	t.Fatal("/auth/me did not reissue the missing csrf cookie")
 }
+
+// TestAuthCoverage_AdminLogin_ThrottlesBootstrapFailuresPerIP: the bootstrap
+// admin is never locked, so repeated failures from one IP refuse that IP's
+// next attempts (even the right password) while other IPs can still sign in.
+//
+//nolint:paralleltest // serial: shared fake auth and session fixtures
+func TestAuthCoverage_AdminLogin_ThrottlesBootstrapFailuresPerIP(t *testing.T) {
+	handler := newAuthHandler(t)
+	login := func(remoteAddr, password string) int {
+		request := httptest.NewRequest(http.MethodPost, "/api/v1/auth/admin-login", strings.NewReader(`{"password":"`+password+`"}`))
+		request.RemoteAddr = remoteAddr
+		response := httptest.NewRecorder()
+		handler.AdminLogin(response, request)
+
+		return response.Code
+	}
+
+	for i := range 5 {
+		if code := login("198.51.100.7:1000", "wrong-admin-password"); code != http.StatusUnauthorized {
+			t.Fatalf("failure %d status = %d, want 401", i+1, code)
+		}
+	}
+
+	if code := login("198.51.100.7:1000", "pvmss-local-admin"); code != http.StatusTooManyRequests {
+		t.Fatalf("throttled IP status = %d, want 429", code)
+	}
+
+	if code := login("198.51.100.8:1000", "pvmss-local-admin"); code != http.StatusOK {
+		t.Fatalf("other IP status = %d, want 200", code)
+	}
+}

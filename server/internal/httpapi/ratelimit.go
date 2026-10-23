@@ -17,6 +17,7 @@ import (
 type windowLimiter struct {
 	mu               sync.Mutex
 	hits             map[string][]time.Time
+	audited          map[string]time.Time // last audited rejection per key
 	lastSweep        time.Time
 	max              int
 	window           time.Duration
@@ -25,7 +26,7 @@ type windowLimiter struct {
 }
 
 func newWindowLimiter(maxRequests int, window time.Duration, trustedProxyHops int, st *store.Store) *windowLimiter {
-	return &windowLimiter{hits: make(map[string][]time.Time), max: maxRequests, window: window, trustedProxyHops: trustedProxyHops, store: st}
+	return &windowLimiter{hits: make(map[string][]time.Time), audited: make(map[string]time.Time), max: maxRequests, window: window, trustedProxyHops: trustedProxyHops, store: st}
 }
 
 // allow reports whether key may make another request now, recording the hit
@@ -36,7 +37,15 @@ func (l *windowLimiter) allow(key string, now time.Time) (bool, time.Duration) {
 	defer l.mu.Unlock()
 
 	cutoff := now.Add(-l.window)
-	l.lastSweep = sweepIdle(l.hits, l.lastSweep, now, l.window)
+	if swept := sweepIdle(l.hits, l.lastSweep, now, l.window); swept != l.lastSweep {
+		l.lastSweep = swept
+
+		for k, at := range l.audited {
+			if !at.After(cutoff) {
+				delete(l.audited, k)
+			}
+		}
+	}
 
 	hits := l.hits[key]
 	kept := hits[:0]
@@ -68,6 +77,24 @@ func (l *windowLimiter) allow(key string, now time.Time) (bool, time.Duration) {
 	return true, 0
 }
 
+// exhausted reports whether key has used its whole budget in the current
+// window, without recording a hit.
+func (l *windowLimiter) exhausted(key string, now time.Time) bool {
+	l.mu.Lock()
+	defer l.mu.Unlock()
+
+	cutoff := now.Add(-l.window)
+	count := 0
+
+	for _, t := range l.hits[key] {
+		if t.After(cutoff) {
+			count++
+		}
+	}
+
+	return count >= l.max
+}
+
 // sweepIdle drops keys whose hits have all left the window, at most once per
 // window, and returns the time of the last sweep. Without it a key that never
 // returns would stay in the map for the life of the process. The caller holds
@@ -88,8 +115,24 @@ func sweepIdle(hits map[string][]time.Time, lastSweep, now time.Time, window tim
 	return now
 }
 
-func (l *windowLimiter) recordRateLimited(ctx context.Context, r *http.Request, actor, keyType string) {
-	if l.store == nil {
+// shouldAudit reports whether a rejection of key deserves an audit row: at
+// most one per key per window, so a client hammering past its limit cannot
+// grow the audit table without bound.
+func (l *windowLimiter) shouldAudit(key string, now time.Time) bool {
+	l.mu.Lock()
+	defer l.mu.Unlock()
+
+	if last, ok := l.audited[key]; ok && now.Sub(last) < l.window {
+		return false
+	}
+
+	l.audited[key] = now
+
+	return true
+}
+
+func (l *windowLimiter) recordRateLimited(ctx context.Context, r *http.Request, key, actor, keyType string) {
+	if l.store == nil || !l.shouldAudit(key, time.Now()) {
 		return
 	}
 
@@ -114,7 +157,7 @@ func (l *ipRateLimiter) middleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		ip := clientIP(r, l.trustedProxyHops)
 		if allowed, _ := l.allow(ip, time.Now()); !allowed {
-			l.recordRateLimited(r.Context(), r, ip, "ip")
+			l.recordRateLimited(r.Context(), r, ip, ip, "ip")
 			writeAuthError(w, http.StatusTooManyRequests, "rate_limited", "too many requests, try again later")
 
 			return
@@ -149,7 +192,7 @@ func (l *userRateLimiter) middleware(authHandler *Auth, next http.Handler) http.
 
 		allowed, retryAfter := l.allow(key, time.Now())
 		if !allowed {
-			l.recordRateLimited(r.Context(), r, actor, "user")
+			l.recordRateLimited(r.Context(), r, key, actor, "user")
 			writeRateLimitError(w, retryAfter)
 
 			return

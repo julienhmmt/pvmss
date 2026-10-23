@@ -80,9 +80,9 @@ func AddDisk(ctx context.Context, deps DiskDependencies, bus cluster.DiskBus, st
 		return cluster.Disk{}, err
 	}
 
-	// A zero gabarit field means no cap.
-	if gabarit.MaxDiskPerVMGB != 0 && sizeGB > gabarit.MaxDiskPerVMGB {
-		return cluster.Disk{}, ErrDiskSizeExceedsLimit
+	// A zero gabarit field means no cap. The cap is the VM's total disk.
+	if total := totalDiskGB(entity.Disks) + sizeGB; gabarit.MaxDiskPerVMGB != 0 && total > gabarit.MaxDiskPerVMGB {
+		return cluster.Disk{}, fmt.Errorf("%w: the VM would total %d GB, the maximum is %d GB", ErrDiskSizeExceedsLimit, total, gabarit.MaxDiskPerVMGB)
 	}
 
 	maxSlots, ok := maxDisksForBus[bus]
@@ -133,9 +133,9 @@ func ResizeDisk(ctx context.Context, deps DiskDependencies, diskKey string, size
 		return policy.ErrUnavailable
 	}
 
-	// A zero gabarit field means no cap.
-	if gabarit.MaxDiskPerVMGB != 0 && sizeGB > gabarit.MaxDiskPerVMGB {
-		return ErrDiskSizeExceedsLimit
+	// A zero gabarit field means no cap. The cap is the VM's total disk.
+	if total := totalDiskGB(entity.Disks) - disk.SizeGB + sizeGB; gabarit.MaxDiskPerVMGB != 0 && total > gabarit.MaxDiskPerVMGB {
+		return fmt.Errorf("%w: the VM would total %d GB, the maximum is %d GB", ErrDiskSizeExceedsLimit, total, gabarit.MaxDiskPerVMGB)
 	}
 
 	if err := deps.Writer.ResizeDisk(ctx, entity.Node, entity.VMID, diskKey, sizeGB); err != nil {
@@ -212,6 +212,16 @@ func refreshDiskIndex(ctx context.Context, deps DiskDependencies) error {
 	}
 
 	return nil
+}
+
+// totalDiskGB sums the VM's disk sizes, what MaxDiskPerVMGB caps.
+func totalDiskGB(disks []cluster.Disk) int {
+	total := 0
+	for _, disk := range disks {
+		total += disk.SizeGB
+	}
+
+	return total
 }
 
 func countDisks(disks []cluster.Disk, bus cluster.DiskBus) int {

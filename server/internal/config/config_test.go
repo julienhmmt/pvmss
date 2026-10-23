@@ -56,7 +56,7 @@ func TestLoad(t *testing.T) {
 				InventoryRefreshTimeout:           15 * time.Second,
 				MaxListPageSize:                   100,
 				MaxLocalAdmins:                    5,
-				TrustedProxyHops:                  1,
+				TrustedProxyHops:                  0,
 			},
 		},
 		{
@@ -83,7 +83,7 @@ func TestLoad(t *testing.T) {
 				InventoryRefreshTimeout:           15 * time.Second,
 				MaxListPageSize:                   100,
 				MaxLocalAdmins:                    5,
-				TrustedProxyHops:                  1,
+				TrustedProxyHops:                  0,
 			},
 		},
 		{
@@ -220,7 +220,7 @@ func TestLoad(t *testing.T) {
 				InventoryRefreshTimeout:           15 * time.Second,
 				MaxListPageSize:                   100,
 				MaxLocalAdmins:                    5,
-				TrustedProxyHops:                  1,
+				TrustedProxyHops:                  0,
 			},
 		},
 		{
@@ -271,7 +271,7 @@ func TestLoad(t *testing.T) {
 				InventoryRefreshTimeout:           15 * time.Second,
 				MaxListPageSize:                   100,
 				MaxLocalAdmins:                    5,
-				TrustedProxyHops:                  1,
+				TrustedProxyHops:                  0,
 			},
 		},
 		{
@@ -337,7 +337,7 @@ func TestLoad(t *testing.T) {
 				InventoryRefreshTimeout:           45 * time.Second,
 				MaxListPageSize:                   100,
 				MaxLocalAdmins:                    5,
-				TrustedProxyHops:                  1,
+				TrustedProxyHops:                  0,
 			},
 		},
 		{
@@ -417,7 +417,7 @@ func TestLoad(t *testing.T) {
 				InventoryRefreshTimeout:           15 * time.Second,
 				MaxListPageSize:                   100,
 				MaxLocalAdmins:                    5,
-				TrustedProxyHops:                  1,
+				TrustedProxyHops:                  0,
 				RateLimitMax:                      500,
 			},
 		},
@@ -588,5 +588,23 @@ func TestLoad_DeprecatedSSHEnv(t *testing.T) {
 				t.Fatalf("DeprecatedSSHEnv = %v, want %v", cfg.DeprecatedSSHEnv, tt.want)
 			}
 		})
+	}
+}
+
+// The SESSION_SECRET shipped in the examples (README, compose, Helm values)
+// is public: it keys session hashes and the cluster-token encryption, so
+// startup must refuse it.
+func TestLoad_RejectsExampleSessionSecret(t *testing.T) {
+	t.Setenv(envPort, "50001")
+	t.Setenv(envDBPath, testDBPath)
+	t.Setenv(envLogLevel, testLogLevel)
+	t.Setenv(envLogFormat, testLogFormat)
+	t.Setenv(envLogOutput, testLogOutput)
+	t.Setenv(envClusterSource, testCluster)
+	t.Setenv("SESSION_SECRET", "changeMeWithSomethingElseUniqueMinimum32Chars")
+
+	_, err := config.Load()
+	if err == nil || !strings.Contains(err.Error(), "SESSION_SECRET is the example value") {
+		t.Fatalf("err = %v, want the example-secret rejection", err)
 	}
 }

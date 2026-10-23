@@ -7,7 +7,7 @@
 	 */
 	import { getSessionContext } from '#lib/features/auth/session.svelte.js';
 	import ThemeToggle from '#lib/features/chrome/ThemeToggle.svelte';
-	import { getLocaleContext } from '#lib/features/chrome/locale.svelte.js';
+	import { getLocaleContext, LOCALE_NAMES, SUPPORTED_LOCALES } from '#lib/features/chrome/locale.svelte.js';
 	import type { Locale } from '#lib/paraglide/runtime.js';
 	import PageHeader from '#lib/shared/ui/PageHeader.svelte';
 	import Card from '#lib/shared/ui/Card.svelte';
@@ -31,10 +31,7 @@
 				: m['account.source.pve']()
 	);
 
-	const languageOptions = $derived([
-		{ value: 'en', label: m['account.language.en']() },
-		{ value: 'fr', label: m['account.language.fr']() }
-	]);
+	const languageOptions = SUPPORTED_LOCALES.map((value) => ({ value, label: LOCALE_NAMES[value] }));
 </script>
 
 <svelte:head>

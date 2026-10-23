@@ -52,11 +52,9 @@ const (
 	// context.WithTimeout(ctx, cfg.InventoryRefreshTimeout) so a hung
 	// upstream cannot hold the singleflight lock indefinitely.
 	//
-	// Note: InventoryRefreshTimeout (default 15s) can exceed writeTimeout
-	// (10s). With the fake cluster this is harmless (calls are instant).
-	// When a real Proxmox client is implemented, either raise writeTimeout
-	// to >= InventoryRefreshTimeout or make the manual-refresh handler
-	// asynchronous (202 Accepted + background refresh).
+	// Authenticated writes (VM actions, snapshots, bulk, manual refresh) can
+	// outlast writeTimeout (lock retry 30s, refresh timeout 15s): the router's
+	// withLongWriteDeadline lifts it per request for them.
 
 	// appVersion is the version string surfaced in the dashboard, the admin
 	// app info page, and the public /api/v1/public/version endpoint.

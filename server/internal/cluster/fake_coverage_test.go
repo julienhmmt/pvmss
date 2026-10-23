@@ -1508,6 +1508,103 @@ func TestFake_TagsSerialFirmware(t *testing.T) {
 	}
 }
 
+func TestFake_MigrationPrecheckAndMigrate(t *testing.T) {
+	t.Parallel()
+
+	ctx := context.Background()
+	fake := cluster.NewFake("test-fake-migrate")
+
+	if _, err := fake.MigrationPrecheck(ctx, cluster.FakeNode01, 99999); !errors.Is(err, cluster.ErrNotFound) {
+		t.Fatalf("MigrationPrecheck(99999) = %v, want ErrNotFound", err)
+	}
+
+	if _, err := fake.AddDisk(ctx, cluster.FakeNode01, 100, "scsi", cluster.FakeStorageLocalLVM, 10); err != nil {
+		t.Fatalf("AddDisk(local-lvm): %v", err)
+	}
+
+	precheck, err := fake.MigrationPrecheck(ctx, cluster.FakeNode01, 100)
+	if err != nil {
+		t.Fatalf("MigrationPrecheck(100): %v", err)
+	}
+
+	if !slices.Contains(precheck.AllowedNodes, cluster.FakeNode02) || len(precheck.LocalDisks) == 0 {
+		t.Fatalf("precheck = %+v, want %s allowed and local disks reported", precheck, cluster.FakeNode02)
+	}
+
+	if _, err := fake.Migrate(ctx, cluster.FakeNode01, 99999, cluster.MigrateSpec{Target: cluster.FakeNode02}); !errors.Is(err, cluster.ErrNotFound) {
+		t.Fatalf("Migrate(99999) = %v, want ErrNotFound", err)
+	}
+
+	upid, err := fake.Migrate(ctx, cluster.FakeNode01, 100, cluster.MigrateSpec{Target: cluster.FakeNode02, Online: true, WithLocalDisks: true})
+	if err != nil || upid == "" {
+		t.Fatalf("Migrate(100) = %q, %v", upid, err)
+	}
+
+	// A second migration while locked must fail.
+	if _, err := fake.Migrate(ctx, cluster.FakeNode01, 100, cluster.MigrateSpec{Target: cluster.FakeNode02}); err == nil {
+		t.Fatal("Migrate while locked succeeded, want error")
+	}
+
+	completeFakeTaskExternal(t, fake, upid)
+
+	status, err := fake.VMStatus(ctx, cluster.FakeNode02, 100)
+	if err != nil || status.Lock != "" {
+		t.Fatalf("VMStatus on target after migrate = %+v, %v", status, err)
+	}
+}
+
+//nolint:paralleltest // serial: shared default fake state
+func TestFake_MigrationOverridesAndErrors(t *testing.T) {
+	cluster.ResetFake()
+	defer cluster.ResetFake()
+
+	ctx := context.Background()
+	fake := cluster.Fake{}
+
+	override := &cluster.MigrationPrecheck{
+		AllowedNodes:   []string{cluster.FakeNode02},
+		LocalDisks:     []string{"local-lvm:vm-100-disk-0"},
+		LocalResources: []string{"hostpci0"},
+	}
+	cluster.SetFakeMigrationPrecheck(100, override)
+
+	defer cluster.SetFakeMigrationPrecheck(100, nil)
+
+	got, err := fake.MigrationPrecheck(ctx, cluster.FakeNode01, 100)
+	if err != nil || !slices.Equal(got.LocalResources, []string{"hostpci0"}) {
+		t.Fatalf("MigrationPrecheck(override) = %+v, %v", got, err)
+	}
+
+	forcedErr := errors.New("migrate dispatch failed")
+	cluster.SetFakeMigrateError(forcedErr)
+
+	defer cluster.SetFakeMigrateError(nil)
+
+	if _, err := fake.Migrate(ctx, cluster.FakeNode01, 100, cluster.MigrateSpec{Target: cluster.FakeNode02}); !errors.Is(err, forcedErr) {
+		t.Fatalf("Migrate(forcedErr) = %v, want %v", err, forcedErr)
+	}
+
+	cluster.SetFakeMigrateError(nil)
+	cluster.SetFakeTaskError("migration task failed")
+
+	defer cluster.SetFakeTaskError("")
+
+	upid, err := fake.Migrate(ctx, cluster.FakeNode01, 100, cluster.MigrateSpec{Target: cluster.FakeNode02})
+	if err != nil {
+		t.Fatalf("Migrate before task failure: %v", err)
+	}
+
+	taskStatus, err := fake.TaskStatus(ctx, upid)
+	if err != nil || taskStatus.State != cluster.TaskError {
+		t.Fatalf("TaskStatus(failed migrate) = %+v, %v", taskStatus, err)
+	}
+
+	status, err := fake.VMStatus(ctx, cluster.FakeNode01, 100)
+	if err != nil || status.Lock != "" {
+		t.Fatalf("VMStatus after failed task = %+v, %v (lock should be cleared)", status, err)
+	}
+}
+
 func TestFake_ReadFirmwareConfig_AndRetrofit(t *testing.T) {
 	t.Parallel()
 

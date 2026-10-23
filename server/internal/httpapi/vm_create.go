@@ -338,7 +338,13 @@ func (h *VMCreate) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	target, ok := h.resolveCreateTarget(w, req.Cluster)
+	clusterName, allowed := vm.TargetCluster(identity, req.Cluster)
+	if !allowed {
+		h.writeCreateError(w, http.StatusNotFound, "not_found", msgClusterNotFound)
+		return
+	}
+
+	target, ok := h.resolveCreateTarget(w, clusterName)
 	if !ok {
 		return
 	}

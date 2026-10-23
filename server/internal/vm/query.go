@@ -149,7 +149,9 @@ func list(ctx context.Context, source inventory.Source, query ListQuery, identit
 		AvailablePools: facetedPools,
 	}
 	if len(services) > 0 && services[0] != nil {
-		quota, err := services[0].Quota(ctx, query.Cluster, identity)
+		quotaCluster, _ := TargetCluster(identity, query.Cluster)
+
+		quota, err := services[0].Quota(ctx, quotaCluster, identity)
 		if err != nil {
 			return ListResult{}, fmt.Errorf("read quota: %w", err)
 		}
@@ -218,9 +220,14 @@ func validSortBy(sortBy SortBy) bool {
 // scope=all is honoured for an admin and silently treated
 // as mine for anyone else.
 func scopedVMs(source inventory.Source, query ListQuery, identity auth.Identity) []cluster.VM {
+	clusterFilter, ok := TargetCluster(identity, query.Cluster)
+	if !ok {
+		return []cluster.VM{}
+	}
+
 	indexes := source.All()
 	clusterNames := sortedClusterNames(indexes)
-	selected := selectedIndexes(clusterNames, indexes, query.Cluster)
+	selected := selectedIndexes(clusterNames, indexes, clusterFilter)
 	pool := identity.Pool
 	adminAll := query.Scope == ScopeAll && identity.IsAdmin
 	// An empty Pool means the identity owns no pool (the local admin, or a

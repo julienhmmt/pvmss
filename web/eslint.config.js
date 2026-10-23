@@ -66,6 +66,7 @@ export default [
     ignores: [
       '.svelte-kit/',
       'build/',
+      'coverage/',
       'node_modules/',
       'test-results/',
       'playwright-report/',

@@ -57,3 +57,13 @@ export function resolveInitialAdminCluster(
 export async function fetchClusterOptions(): Promise<ClusterOption[]> {
 	return get<ClusterOption[]>('/api/v1/auth/clusters');
 }
+
+/** A non-admin is confined to the cluster it signed in to (the server
+ *  enforces it), so only that option is offered. */
+export function pinnedClusterOptions(
+	options: readonly ClusterOption[],
+	principal: { isAdmin: boolean; cluster: string } | null
+): ClusterOption[] {
+	if (principal === null || principal.isAdmin || principal.cluster === '') return [...options];
+	return options.filter((option) => option.name === principal.cluster);
+}

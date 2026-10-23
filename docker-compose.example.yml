@@ -41,6 +41,8 @@ services:
       # "true") in production.
       PVMSS_COOKIE_SECURE: "false"
       # Reverse proxies in front of PVMSS (client IP for rate limits / audit).
+      # Default 0: this example exposes PVMSS directly. Set it only when a
+      # proxy that appends X-Forwarded-For sits in front.
       # PVMSS_TRUSTED_PROXY_HOPS: "1"
       # PVMSS_INVENTORY_REFRESH_INTERVAL: "30s"
       # PVMSS_INVENTORY_MANUAL_REFRESH_MIN_INTERVAL: "5s"

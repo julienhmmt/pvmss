@@ -4,7 +4,7 @@
 	import { resolve } from '$app/paths';
 	import { page } from '$app/state';
 	import { fetchDocPage, type DocRendered } from '#lib/features/docs/docs.svelte.js';
-	import { getLocaleContext } from '#lib/features/chrome/locale.svelte.js';
+	import { docLocale, getLocaleContext } from '#lib/features/chrome/locale.svelte.js';
 	import { m } from '#lib/paraglide/messages.js';
 	import Alert from '#lib/shared/ui/Alert.svelte';
 	import Card from '#lib/shared/ui/Card.svelte';
@@ -26,7 +26,7 @@
 
 	function langFromURL(): Locale {
 		const value = page.url.searchParams.get('lang');
-		return value === 'en' || value === 'fr' ? value : locale.current;
+		return value === 'en' || value === 'fr' ? value : docLocale(locale.current);
 	}
 
 	async function loadDoc(lang: Locale): Promise<void> {

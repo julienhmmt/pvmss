@@ -62,9 +62,9 @@ dans l'URL pour mettre une vue en favori ou la partager. Sélectionnez
 plusieurs lignes pour lancer une **action d'alimentation groupée** ; chaque
 VM rapporte son propre succès ou sa propre erreur.
 
-Quand PVMSS est connecté à plusieurs environnements Proxmox, utilisez le
-**sélecteur de cluster** pour restreindre la liste à un cluster ou les voir
-tous. Une VM est toujours identifiée par son `cluster` et son `VMID` : le
+Quand PVMSS est connecté à plusieurs environnements Proxmox, la liste
+couvre le cluster auquel vous êtes connecté ; connectez-vous à un autre
+cluster pour voir ses VM. Une VM est toujours identifiée par son `cluster` et son `VMID` : le
 même VMID peut exister sur des clusters différents sans conflit.
 
 ## Gérer une machine virtuelle

@@ -935,3 +935,90 @@ func TestCatalogImagesEnabled_Empty(t *testing.T) {
 		t.Fatalf("images count = %d, want 0", len(images))
 	}
 }
+
+//nolint:paralleltest // migration fixtures are intentionally serial
+func TestCatalogEnabledFilters_NodesAndStorages(t *testing.T) {
+	st := openClusterStore(t)
+	ctx := context.Background()
+
+	if err := st.SetNodeEnabled(ctx, catalogTestCluster, catalogTestNode, true); err != nil {
+		t.Fatalf("SetNodeEnabled: %v", err)
+	}
+
+	if err := st.SetNodeEnabled(ctx, catalogTestCluster, catalogTestNodeAlpha, false); err != nil {
+		t.Fatalf("SetNodeEnabled(disabled): %v", err)
+	}
+
+	nodes, err := st.CatalogNodes(ctx, catalogTestCluster)
+	if err != nil || len(nodes) != 1 || nodes[0].Name != catalogTestNode {
+		t.Fatalf("CatalogNodes = %+v, %v", nodes, err)
+	}
+
+	if err := st.SetStorageEnabled(ctx, catalogTestCluster, catalogTestStorageName, catalogTestNode, true); err != nil {
+		t.Fatalf("SetStorageEnabled: %v", err)
+	}
+
+	storages, err := st.CatalogStorages(ctx, catalogTestCluster)
+	if err != nil || len(storages) != 1 || storages[0].Name != catalogTestStorageName {
+		t.Fatalf("CatalogStorages = %+v, %v", storages, err)
+	}
+}
+
+//nolint:paralleltest // migration fixtures are intentionally serial
+func TestCatalogEnabledFilters_BridgesISOsAndImages(t *testing.T) {
+	st := openClusterStore(t)
+	ctx := context.Background()
+
+	if err := st.SetBridgeEnabled(ctx, catalogTestCluster, catalogTestNode, catalogTestBridgeName, true); err != nil {
+		t.Fatalf("SetBridgeEnabled: %v", err)
+	}
+
+	bridges, err := st.CatalogBridges(ctx, catalogTestCluster)
+	if err != nil || len(bridges) != 1 || bridges[0].Name != catalogTestBridgeName {
+		t.Fatalf("CatalogBridges = %+v, %v", bridges, err)
+	}
+
+	if err := st.SetISOEnabled(ctx, catalogTestCluster, catalogTestNode, catalogTestStorageHost, catalogTestISOFile, true); err != nil {
+		t.Fatalf("SetISOEnabled: %v", err)
+	}
+
+	isos, err := st.CatalogISOs(ctx, catalogTestCluster)
+	if err != nil || len(isos) != 1 || isos[0].File != catalogTestISOFile {
+		t.Fatalf("CatalogISOs = %+v, %v", isos, err)
+	}
+
+	if err := st.SetImageEnabled(ctx, catalogTestCluster, catalogTestNode, catalogTestStorageHost, "ubuntu.qcow2", 2048, true); err != nil {
+		t.Fatalf("SetImageEnabled: %v", err)
+	}
+
+	images, err := st.CatalogImages(ctx, catalogTestCluster)
+	if err != nil || len(images) != 1 || images[0].SizeBytes != 2048 {
+		t.Fatalf("CatalogImages = %+v, %v", images, err)
+	}
+}
+
+//nolint:paralleltest // migration fixtures are intentionally serial
+func TestCatalogEnabledFilters_ProfilesAndTemplates(t *testing.T) {
+	st := openClusterStore(t)
+	ctx := context.Background()
+
+	profile := store.ProfileValues{Label: "Compact", CPUCores: 2, MemoryMB: 2048, DiskGB: 20, Bus: catalogTestStorageBus}
+	if err := st.InsertProfile(ctx, catalogTestCluster, "compact", profile); err != nil {
+		t.Fatalf("InsertProfile: %v", err)
+	}
+
+	profiles, err := st.CatalogProfiles(ctx, catalogTestCluster)
+	if err != nil || len(profiles) != 1 || profiles[0].ID != "compact" {
+		t.Fatalf("CatalogProfiles = %+v, %v", profiles, err)
+	}
+
+	tmpl := store.TemplateValues{Node: catalogTestNode, Name: "debian-13", CloudInitCapable: true, DiskStorage: catalogTestStorageName, DiskSizeGB: 8, DiskBus: catalogTestStorageBus}
+	if err := st.InsertTemplate(ctx, catalogTestCluster, 9001, tmpl, true); err != nil {
+		t.Fatalf("InsertTemplate: %v", err)
+	}
+
+	templates, err := st.CatalogTemplates(ctx, catalogTestCluster)
+	if err != nil || len(templates) != 1 || !templates[0].CloudInitCapable {
+		t.Fatalf("CatalogTemplates = %+v, %v", templates, err)
+	}
+}

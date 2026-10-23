@@ -9,6 +9,7 @@ import (
 	"pvmss/server/internal/logctx"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 )
 
@@ -128,8 +129,18 @@ func routeOf(r *http.Request) string {
 // upgrade and close). Place it inside withRequestID so the line carries
 // requestId and, once auth resolves, user.
 func withAccessLog(trustedProxyHops int, next http.Handler) http.Handler {
+	var proxyWarning sync.Once
+
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		start := time.Now()
+		// Behind an unconfigured proxy every client shares the proxy's IP, so
+		// the per-IP login limits would throttle everyone as one client.
+		if trustedProxyHops == 0 && r.Header.Get("X-Forwarded-For") != "" {
+			proxyWarning.Do(func() {
+				logctx.From(r.Context()).WarnContext(r.Context(), "forwarded request with no trusted proxy configured", "component", "httpapi", "hint", "set PVMSS_TRUSTED_PROXY_HOPS")
+			})
+		}
+
 		// Put clientIp on the request logger so every later line (handler,
 		// audit mirror, access log) carries it without repeating the lookup.
 		logctx.AddAttrs(r.Context(), slog.String("clientIp", clientIP(r, trustedProxyHops)))

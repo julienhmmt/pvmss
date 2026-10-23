@@ -8,7 +8,7 @@ import type { Attachment } from 'svelte/attachments';
  */
 export function reveal(onShow?: () => void): Attachment<HTMLElement> {
 	return (node) => {
-		const reduced = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches ?? false;
+		const reduced = globalThis.matchMedia?.('(prefers-reduced-motion: reduce)').matches ?? false;
 		if (typeof IntersectionObserver === 'undefined' || reduced) {
 			onShow?.();
 			return;

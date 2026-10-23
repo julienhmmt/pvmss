@@ -5,9 +5,14 @@
 	import TextField from '#lib/shared/ui/TextField.svelte';
 	import Select from '#lib/shared/ui/Select.svelte';
 	import Button from '#lib/shared/ui/Button.svelte';
+	import { getSessionContext } from '#lib/features/auth/session.svelte.js';
 	import { m } from '#lib/paraglide/messages.js';
 
 	const store = getVmDetailContext();
+	// VLAN and rate limit are admin-only: the server keeps a user's NIC on the
+	// imposed isolation VLAN and its current rate.
+	const session = getSessionContext();
+	const isAdmin = $derived(session?.isAdmin ?? false);
 
 	interface Props {
 		open?: boolean;
@@ -100,35 +105,37 @@
 				/>
 			{/snippet}
 		</FormField>
-		<FormField label={m['vms.network.vlan']()} hint={m['common.optional']()}>
-			{#snippet children({ id, describedBy, invalid })}
-				<TextField
-					{id}
-					{describedBy}
-					{invalid}
-					type="number"
-					min={1}
-					max={4094}
-					value={vlan}
-					oninput={(e: Event & { currentTarget: HTMLInputElement }) => (vlan = e.currentTarget.value)}
-					data-testid="edit-nic-vlan"
-				/>
-			{/snippet}
-		</FormField>
-		<FormField label={m['vms.network.rateLimit']()} hint={m['common.optional']()}>
-			{#snippet children({ id, describedBy, invalid })}
-				<TextField
-					{id}
-					{describedBy}
-					{invalid}
-					type="number"
-					min={1}
-					value={rateMbps}
-					oninput={(e: Event & { currentTarget: HTMLInputElement }) => (rateMbps = e.currentTarget.value)}
-					data-testid="edit-nic-rate"
-				/>
-			{/snippet}
-		</FormField>
+		{#if isAdmin}
+			<FormField label={m['vms.network.vlan']()} hint={m['common.optional']()}>
+				{#snippet children({ id, describedBy, invalid })}
+					<TextField
+						{id}
+						{describedBy}
+						{invalid}
+						type="number"
+						min={1}
+						max={4094}
+						value={vlan}
+						oninput={(e: Event & { currentTarget: HTMLInputElement }) => (vlan = e.currentTarget.value)}
+						data-testid="edit-nic-vlan"
+					/>
+				{/snippet}
+			</FormField>
+			<FormField label={m['vms.network.rateLimit']()} hint={m['common.optional']()}>
+				{#snippet children({ id, describedBy, invalid })}
+					<TextField
+						{id}
+						{describedBy}
+						{invalid}
+						type="number"
+						min={1}
+						value={rateMbps}
+						oninput={(e: Event & { currentTarget: HTMLInputElement }) => (rateMbps = e.currentTarget.value)}
+						data-testid="edit-nic-rate"
+					/>
+				{/snippet}
+			</FormField>
+		{/if}
 		<div class="mt-2 flex justify-end gap-2">
 			<Button type="button" variant="ghost" onclick={close}>{m['common.cancel']()}</Button>
 			<Button

@@ -22,7 +22,7 @@
 	let chosen = $state<CreateMode | null>(null);
 
 	onMount(() => {
-		void form.loadClusters().then(() => {
+		void form.loadClusters(session.principal).then(() => {
 			void form.loadCatalog();
 			void form.loadExistingMachines();
 		});

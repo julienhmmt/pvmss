@@ -31,7 +31,7 @@ test.describe('T02 authentication', () => {
 
 	test('redirects the local administrator to the admin dashboard', async ({ page }) => {
 		await page.goto('/login');
-		await page.getByRole('button', { name: /administrat/i }).click();
+		await page.getByRole('tab', { name: /administrat/i }).click();
 		await page.locator('input[autocomplete="current-password"]').fill('pvmss-e2e-admin');
 		await page.locator('button[type="submit"]').click();
 		await expect(page).toHaveURL(/\/admin$/);
@@ -73,7 +73,7 @@ test.describe('T02 authentication', () => {
 		try {
 			await context.clearCookies();
 			await page.goto('/login');
-			await page.getByRole('button', { name: /administrat/i }).click();
+			await page.getByRole('tab', { name: /administrat/i }).click();
 			await page.locator('input[autocomplete="username"]').fill('e2e-ops');
 			await page.locator('input[autocomplete="current-password"]').fill('e2e-ops-password');
 			await page.locator('button[type="submit"]').click();

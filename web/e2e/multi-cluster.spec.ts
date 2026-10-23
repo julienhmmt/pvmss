@@ -15,23 +15,26 @@ function vmRows(page: Page) {
 }
 
 test.describe('T15 multi-cluster', () => {
-	test('merges Alice VMs and keeps the composite VM identity', async ({ page }) => {
+	// Pool names are per cluster, so a user only sees the cluster they signed in to.
+	test('confines Alice to her sign-in cluster', async ({ page }) => {
 		await signIn(page.request, 'alice', 'pvmss-alice', 'default');
 		await page.goto('/vms?pageSize=100');
 		await expect(vmRows(page).first()).toBeVisible();
-		expect(await vmRows(page).count()).toBeGreaterThanOrEqual(12);
 		// The per-row cluster badge shows the cluster's Proxmox display name,
 		// not the internal key ("default" -> "Demo Cluster Alpha").
+		await expect(vmRows(page)).toHaveCount(7);
 		await expect(vmRows(page).locator('[data-testid="vm-row-cluster"]').filter({ hasText: 'Demo Cluster Alpha' })).toHaveCount(7);
-		await expect(vmRows(page).locator('[data-testid="vm-row-cluster"]').filter({ hasText: 'Demo Cluster Beta' })).toHaveCount(5);
+		await expect(vmRows(page).filter({ hasText: 'secondary-web-02' })).toHaveCount(0);
+		await expect(page.locator('#vm-cluster-filter')).toHaveCount(0);
+	});
 
-		const secondaryVM = vmRows(page).filter({ hasText: 'secondary-web-02' });
-		await expect(secondaryVM).toBeVisible();
-		await expect(secondaryVM.getByTestId('vm-row-link')).toHaveAttribute('href', /\/vms\/secondary\/101$/);
-
-		await page.locator('#vm-cluster-filter').selectOption('secondary');
+	test('keeps the composite VM identity on the secondary cluster', async ({ page }) => {
+		await signIn(page.request, 'alice', 'pvmss-alice', 'secondary');
+		await page.goto('/vms?pageSize=100');
 		await expect(vmRows(page)).toHaveCount(5);
-		await expect(vmRows(page).getByRole('link', { name: 'secondary-web-02' })).toHaveAttribute('href', /\/vms\/secondary\/101$/);
+		await expect(vmRows(page).locator('[data-testid="vm-row-cluster"]').filter({ hasText: 'Demo Cluster Beta' })).toHaveCount(5);
+		const secondaryVM = vmRows(page).filter({ hasText: 'secondary-web-02' });
+		await expect(secondaryVM.getByTestId('vm-row-link')).toHaveAttribute('href', /\/vms\/secondary\/101$/);
 	});
 
 	test('admin sees cluster health, required catalog selection, and can add a cluster', async ({ page }) => {

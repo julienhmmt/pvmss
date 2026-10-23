@@ -195,3 +195,27 @@ func TestAccessLog_HijackLogsUpgradeAndClose(t *testing.T) {
 		t.Fatalf("lines = %v", lines)
 	}
 }
+
+// TestAccessLog_WarnsOnceAboutUnconfiguredProxy: with no trusted proxy hop,
+// forwarded requests all share the proxy's IP for the per-IP limits; the
+// operator gets one warning, not one per request.
+func TestAccessLog_WarnsOnceAboutUnconfiguredProxy(t *testing.T) {
+	t.Parallel()
+
+	mux := http.NewServeMux()
+	mux.HandleFunc("GET /api/v1/ping", func(http.ResponseWriter, *http.Request) {})
+
+	buf := &syncBuffer{}
+	log := slog.New(slog.NewJSONHandler(buf, &slog.HandlerOptions{Level: slog.LevelDebug}))
+	h := withRequestID(log, withAccessLog(0, mux))
+
+	for range 3 {
+		req := httptest.NewRequestWithContext(context.Background(), http.MethodGet, "/api/v1/ping", nil)
+		req.Header.Set("X-Forwarded-For", "203.0.113.9")
+		h.ServeHTTP(httptest.NewRecorder(), req)
+	}
+
+	if got := strings.Count(buf.String(), "forwarded request with no trusted proxy configured"); got != 1 {
+		t.Fatalf("proxy warnings = %d, want 1: %s", got, buf.String())
+	}
+}

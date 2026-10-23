@@ -36,7 +36,7 @@ jobs:
             VALIDATE_MARKDOWN_PRETTIER: true
             FIX_MARKDOWN_PRETTIER: true
             VALIDATE_YAML: true
-            FILTER_REGEX_EXCLUDE: '.*bulma\.min\.css$,.*brands\.min\.css$,.*fontawesome\.min\.css$,.*regular\.min\.css$,.*solid\.min\.css$,.*components/noVNC-1\.6\.0/.*'
+            FILTER_REGEX_EXCLUDE: '.*bulma\.min\.css$|.*brands\.min\.css$|.*fontawesome\.min\.css$|.*regular\.min\.css$|.*solid\.min\.css$|.*components/noVNC-1\.6\.0/.*|.*helm/templates/.*'
 
     golangci-lint:
       name: Go Lint

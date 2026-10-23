@@ -16,6 +16,9 @@ const (
 	defaultMaxListPageSize                   = 100
 	defaultMaxLocalAdmins                    = 5
 	maxLocalAdminsCeiling                    = 50
+	// exampleSessionSecret is the placeholder in README, example.env, the
+	// compose example and the Helm values.
+	exampleSessionSecret = "changeMeWithSomethingElseUniqueMinimum32Chars"
 )
 
 // Load reads and validates the runtime configuration from the environment.
@@ -165,6 +168,12 @@ func loadSecuritySettings(cfg *Configuration) error {
 		return errors.New("SESSION_SECRET must be at least 32 bytes")
 	}
 
+	// The examples ship this value; anyone can read it, and it keys the
+	// session hashes and the cluster-token encryption.
+	if cfg.SessionSecret == exampleSessionSecret {
+		return errors.New("SESSION_SECRET is the example value; generate one with: openssl rand -hex 32")
+	}
+
 	cfg.AdminPasswordHash = strings.TrimSpace(os.Getenv("ADMIN_PASSWORD_HASH"))
 	if cfg.AdminPasswordHash != "" && !strings.HasPrefix(cfg.AdminPasswordHash, "$2") {
 		return errors.New("ADMIN_PASSWORD_HASH must be a bcrypt hash")
@@ -277,10 +286,11 @@ func loadInventorySettings(cfg *Configuration) error {
 
 // loadProxySettings reads the trusted-proxy-hop count used by the shared
 // clientIP helper for X-Forwarded-For parsing (audit IP recording and rate
-// limiting). Defaults to 1 (a single Kubernetes ingress in front of the
-// server). 0 disables XFF parsing entirely and falls back to RemoteAddr.
+// limiting). Defaults to 0 (RemoteAddr only): trusting X-Forwarded-For with no
+// proxy in front lets any client pick its own IP and dodge the login rate
+// limit. Deployments behind an ingress set it explicitly (the Helm chart sets 1).
 func loadProxySettings(cfg *Configuration) error {
-	hops, err := loadInt("PVMSS_TRUSTED_PROXY_HOPS", 1)
+	hops, err := loadInt("PVMSS_TRUSTED_PROXY_HOPS", 0)
 	if err != nil {
 		return err
 	}

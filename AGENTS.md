@@ -173,7 +173,7 @@ built with bun and served by the Go binary (catch-all to `index.html`).
 - Port 50000 (`PVMSS_PORT`)
 - Image `gcr.io/distroless/static-debian13:nonroot` (uid 65532), entrypoint
   `/app/pvmss`, web dir from `PVMSS_WEB_DIR` (default `/app/web/build`)
-- Multi-stage build: `golang:1.27.2-alpine` + `oven/bun:1-alpine`
+- Multi-stage build: `golang:1.27.3-alpine` + `oven/bun:1.4.3-alpine`
 - Helm chart: `helm/`
 
 ## Configuration
@@ -214,7 +214,7 @@ cluster on first boot only; afterwards the admin UI owns clusters.
 | `PVMSS_MAX_LIST_PAGE_SIZE`                    | `100`                                                           |
 | `PVMSS_MAX_LOCAL_ADMINS`                      | `5` (range 1-50; excludes the bootstrap admin)                  |
 | `PVMSS_DB_RESET_ON_INCOMPATIBLE`              | `false` (dev compose: `true`; old DB is renamed, never deleted) |
-| `PVMSS_TRUSTED_PROXY_HOPS`                    | `1`                                                             |
+| `PVMSS_TRUSTED_PROXY_HOPS`                    | `0`                                                             |
 | `PVMSS_RATE_LIMIT_MAX`                        | `0` (built-in ceilings; positive raises them, used by e2e)      |
 | `PVMSS_METRICS_PORT`                          | empty (off); a port != `PVMSS_PORT` enables `GET /metrics`      |
 
@@ -232,7 +232,8 @@ provider `bootstrap`); DB-backed accounts (`local_accounts`, capped by
 Settings > Accounts. They get the full admin surface but every account route
 answers `owner_only` to them. Local passwords are 8+ characters and at most 72
 bytes (bcrypt); five consecutive failures lock an account for 15 minutes.
-Resetting, disabling or deleting an account revokes its sessions.
+The bootstrap admin is never locked: five failures from one client IP refuse
+that IP (429) for 15 minutes. Resetting, disabling or deleting an account revokes its sessions.
 
 No longer read (startup warns for the SSH ones): `PVMSS_OFFLINE`, `PVMSS_ENV`,
 `JWT_SECRET`, `PROXMOX_VERIFY_SSL`, `LOG_FILE_PATH`, `PVMSS_SSH_KEY_FILE`,
@@ -303,7 +304,7 @@ from `server/go.mod`, bun pinned to `1.3.13`.
 - Admin features are SvelteKit routes under `web/src/routes/admin/`, backed by
   the `admin_*.go` handlers in `server/internal/httpapi/`, which must return
   the complete payload the admin UI needs.
-- English for code and docs. UI translations: EN + FR.
+- English for code and docs. UI translations: EN, FR, DE, IT (in-app docs: EN + FR).
 - **No em-dash (U+2014)** in authored source or docs; use ` - `. Generated
   trees (node_modules, paraglide, build, .svelte-kit) are exempt.
 

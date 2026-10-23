@@ -3,6 +3,7 @@ package httpapi
 import (
 	"log/slog"
 	"net/http"
+	"pvmss/server/internal/auth"
 	"pvmss/server/internal/cluster"
 	"pvmss/server/internal/inventory"
 	"pvmss/server/internal/policy"
@@ -181,6 +182,55 @@ func (h *VMDetail) writerFor(w http.ResponseWriter, clusterName string) (cluster
 	}
 
 	return writer, true
+}
+
+type vmWriteContext struct {
+	identity    auth.Identity
+	clusterName string
+	vmid        int
+	index       *inventory.Index
+	writer      cluster.Writer
+}
+
+func (h *VMDetail) resolveWriteContext(w http.ResponseWriter, r *http.Request) (vmWriteContext, bool) {
+	identity, err := h.auth.Principal(r)
+	if err != nil {
+		h.writeDetailError(w, http.StatusUnauthorized, "unauthenticated", msgAuthRequired)
+		return vmWriteContext{}, false
+	}
+
+	clusterName, vmid, ok := h.parsePath(r)
+	if !ok {
+		h.writeDetailError(w, http.StatusBadRequest, "invalid_request", msgInvalidVMPath)
+		return vmWriteContext{}, false
+	}
+
+	index, ok := h.index(w, clusterName)
+	if !ok {
+		return vmWriteContext{}, false
+	}
+
+	writer, ok := h.writerFor(w, clusterName)
+	if !ok {
+		return vmWriteContext{}, false
+	}
+
+	return vmWriteContext{identity: identity, clusterName: clusterName, vmid: vmid, index: index, writer: writer}, true
+}
+
+func (h *VMDetail) writeRefreshedEntity(w http.ResponseWriter, r *http.Request, identity auth.Identity, clusterName string, vmid int) {
+	refreshed, ok := h.index(w, clusterName)
+	if !ok {
+		return
+	}
+
+	entity, err := vm.Resolve(refreshed, identity, clusterName, vmid)
+	if err != nil {
+		h.writeResolveError(w, err)
+		return
+	}
+
+	h.writeEntity(w, r, entity)
 }
 
 // statusReaderFor resolves the cluster.VMStatusReader for clusterName. Returns
