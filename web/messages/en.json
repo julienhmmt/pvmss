@@ -765,7 +765,7 @@
   "vms.snapshots.rollbackDiff": "What will change",
   "vms.snapshots.rollbackDiffEmpty": "No difference with the current config.",
   "vms.snapshots.rollbackDiffBecomes": "becomes",
-  "vms.snapshots.rollbackRestarts": "Rollback stops then restarts the VM.",
+  "vms.snapshots.rollbackRestarts": "Rollback stops the VM. It comes back running only if the snapshot includes the RAM state.",
   "vms.snapshots.errorLoad": "failed to load snapshots",
   "vms.snapshots.errorOperation": "snapshot operation failed",
   "vms.lock.badge": "Locked: {lock}",

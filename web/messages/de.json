@@ -765,7 +765,7 @@
   "vms.snapshots.rollbackDiff": "Was sich ändert",
   "vms.snapshots.rollbackDiffEmpty": "Kein Unterschied zur aktuellen Konfiguration.",
   "vms.snapshots.rollbackDiffBecomes": "wird zu",
-  "vms.snapshots.rollbackRestarts": "Das Zurücksetzen stoppt die VM und startet sie dann neu.",
+  "vms.snapshots.rollbackRestarts": "Das Zurücksetzen stoppt die VM. Sie läuft danach nur weiter, wenn der Snapshot den RAM-Zustand enthält.",
   "vms.snapshots.errorLoad": "Snapshots konnten nicht geladen werden",
   "vms.snapshots.errorOperation": "Snapshot-Vorgang fehlgeschlagen",
   "vms.lock.badge": "Gesperrt: {lock}",

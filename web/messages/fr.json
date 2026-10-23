@@ -765,7 +765,7 @@
   "vms.snapshots.rollbackDiff": "Ce qui va changer",
   "vms.snapshots.rollbackDiffEmpty": "Aucune différence avec la configuration actuelle.",
   "vms.snapshots.rollbackDiffBecomes": "devient",
-  "vms.snapshots.rollbackRestarts": "Le rollback arrête puis redémarre la VM.",
+  "vms.snapshots.rollbackRestarts": "Le rollback arrête la VM. Elle ne redémarre que si l'instantané inclut l'état de la RAM.",
   "vms.snapshots.errorLoad": "Échec du chargement des instantanés",
   "vms.snapshots.errorOperation": "Échec de l'opération d'instantané",
   "vms.lock.badge": "Verrouillée : {lock}",
