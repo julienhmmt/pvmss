@@ -1976,6 +1976,8 @@
   "vms.list.emptyFirstTitle": "La tua prima macchina inizia qui.",
   "vms.list.emptyFirstBody": "Scegli una delle configurazioni approvate dal tuo team, dalle un nome ed è tua. Nessuna conoscenza dell'infrastruttura necessaria.",
   "vms.list.emptyFirstAction": "Crea la tua prima macchina",
+  "vms.list.provisioningTitle": "{name} è in preparazione.",
+  "vms.list.provisioningBody": "Apparirà qui non appena Proxmox l'avrà creata, di solito entro un minuto. Puoi seguirla in Attività.",
   "vms.list.noResultsTitle": "Nessuna macchina corrispondente",
   "vms.list.noResultsBody": "Niente corrisponde a questa ricerca o a questo filtro.",
   "vms.list.clearFilters": "Cancella filtri",

@@ -199,7 +199,11 @@
 		}
 		return m['vms.list.machineCount']({ count: result.total });
 	});
-	const firstVisit = $derived(store.noneOwned);
+	// A machine being created is not in the inventory yet: say so rather than
+	// invite a first create, which would make a duplicate.
+	const creating = $derived(tray.tasks.filter((task) => task.kind === 'vm_create'));
+	const firstVisit = $derived(store.noneOwned && creating.length === 0);
+	const provisioningOnly = $derived(store.noneOwned && creating.length > 0);
 	const unreachable = $derived(store.errorCode === 'inventory_not_ready');
 	// A pageSize arriving via the URL may not be one of the offered choices;
 	// surface it rather than let the select misreport the active size.
@@ -228,6 +232,13 @@
 				<Button onclick={() => void retry()} data-testid="vm-list-cluster-retry">{m['vms.list.unreachableRetry']()}</Button>
 			{/snippet}
 		</EmptyState>
+	</Card>
+{:else if provisioningOnly}
+	<Card as="div" pad="none" class="flex flex-col items-center gap-2 px-6 py-14 text-center" data-testid="vm-empty-provisioning" role="status">
+		{#each creating as task (task.upid)}
+			<p class="text-lg font-semibold text-foreground">{m['vms.list.provisioningTitle']({ name: task.name })}</p>
+		{/each}
+		<p class="max-w-md text-sm text-muted-foreground">{m['vms.list.provisioningBody']()}</p>
 	</Card>
 {:else if firstVisit}
 	<Card as="div" pad="none" class="flex flex-col items-center gap-4 px-6 py-14 text-center" data-testid="vm-empty-owned">
