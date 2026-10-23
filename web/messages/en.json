@@ -2167,6 +2167,7 @@
   "vms.create.section.options": "Startup options",
   "vms.create.fieldNote.start": "Includes the browser console. A template comes with the sign-in your team built into it (SSH key or password). Network and storage are preconfigured.",
   "vms.create.fieldNote.size": "Not sure? The smallest size is a good place to experiment.",
+  "vms.create.noProfiles": "No machine size is approved yet. Ask an administrator to add a VM profile, or start from a ready-made system.",
   "vms.create.fieldNote.access": "Use the computer that holds your SSH private key.",
   "vms.create.retentionNote": "Your choices stay while you browse.",
   "vms.create.source.profileTitle": "Install from scratch",

@@ -2167,6 +2167,7 @@
   "vms.create.section.options": "Options de démarrage",
   "vms.create.fieldNote.start": "Inclut la console du navigateur. Un modèle embarque les accès prévus par votre équipe (clé SSH ou mot de passe). Le réseau et le stockage sont préconfigurés.",
   "vms.create.fieldNote.size": "Vous hésitez ? La plus petite taille est idéale pour expérimenter.",
+  "vms.create.noProfiles": "Aucune taille de machine n'est encore approuvée. Demandez à un administrateur d'ajouter un profil de VM, ou partez d'un système prêt à l'emploi.",
   "vms.create.fieldNote.access": "Utilisez l'ordinateur qui détient votre clé privée SSH.",
   "vms.create.retentionNote": "Vos choix sont conservés pendant votre navigation.",
   "vms.create.source.profileTitle": "Installer depuis zéro",

@@ -2167,6 +2167,7 @@
   "vms.create.section.options": "Startoptionen",
   "vms.create.fieldNote.start": "Enthält die Browser-Konsole. Eine Vorlage bringt die Anmeldung mit, die Ihr Team eingebaut hat (SSH-Schlüssel oder Passwort). Netzwerk und Speicher sind vorkonfiguriert.",
   "vms.create.fieldNote.size": "Unsicher? Die kleinste Größe ist ein guter Anfang zum Ausprobieren.",
+  "vms.create.noProfiles": "Es ist noch keine Maschinengröße freigegeben. Bitten Sie einen Administrator, ein VM-Profil anzulegen, oder starten Sie mit einem einsatzbereiten System.",
   "vms.create.fieldNote.access": "Verwenden Sie den Computer, auf dem Ihr privater SSH-Schlüssel liegt.",
   "vms.create.retentionNote": "Ihre Auswahl bleibt beim Navigieren erhalten.",
   "vms.create.source.profileTitle": "Von Grund auf installieren",
