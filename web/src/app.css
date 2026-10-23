@@ -639,7 +639,7 @@
 }
 
 @keyframes pv-flow {
-  from {
+  0% {
     left: 0%;
     top: 0%;
     opacity: 0;
@@ -648,7 +648,7 @@
   85% {
     opacity: 1;
   }
-  to {
+  100% {
     left: 100%;
     top: 100%;
     opacity: 0;

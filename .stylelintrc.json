@@ -2,9 +2,12 @@
   "extends": ["stylelint-config-standard"],
   "ignoreFiles": [
     "**/build/**",
+    "**/coverage/**",
     "**/.svelte-kit/**",
     "**/node_modules/**",
-    "**/static/**"
+    "**/playwright-report/**",
+    "**/static/**",
+    "**/test-results/**"
   ],
   "rules": {
     "selector-class-pattern": null,
