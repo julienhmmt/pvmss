@@ -3,7 +3,7 @@
 	import { resolve } from '$app/paths';
 	import { get, ApiRequestError } from '#lib/shared/api/client.js';
 	import { getSessionContext } from '#lib/features/auth/session.svelte.js';
-	import { getLocaleContext } from '#lib/features/chrome/locale.svelte.js';
+	import { docLocale, getLocaleContext } from '#lib/features/chrome/locale.svelte.js';
 	import { m } from '#lib/paraglide/messages.js';
 	import type { Locale } from '#lib/paraglide/runtime.js';
 	import { fetchDocPage, type DocSummary } from '#lib/features/docs/docs.svelte.js';
@@ -64,7 +64,7 @@
 		if ((event.currentTarget as HTMLDetailsElement).open) void loadBody(page);
 	}
 
-	const visible = $derived(visiblePages(pages, session.isAdmin, locale.current));
+	const visible = $derived(visiblePages(pages, session.isAdmin, docLocale(locale.current)));
 
 	// The first article is open by default; load its body as soon as the
 	// list is known.

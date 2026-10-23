@@ -301,7 +301,7 @@ func TestAdminClusters_UpdateRejectsNameAnd404sOnRemoved(t *testing.T) {
 	}
 
 	// Valid update: 200, new URL reflected.
-	response := update(crossSecondaryCluster, `{"url":"https://pve-b2.example.com:8006/api2/json","tlsInsecureSkipVerify":true,"tokenId":"pvmss@pve!service"}`)
+	response := update(crossSecondaryCluster, `{"url":"https://pve-b2.example.com:8006/api2/json","tlsInsecureSkipVerify":true,"tokenId":"pvmss@pve!service","tokenSecret":"s"}`)
 	if response.Code != http.StatusOK {
 		t.Fatalf("update status = %d, want 200: %s", response.Code, response.Body.String())
 	}
@@ -349,7 +349,7 @@ func TestAdminClusters_UpdateSetsDisplayName(t *testing.T) {
 	fixture := newAdminClusterFixture(t)
 	cookie := adminClusterCookie(t, fixture.auth)
 
-	response := adminClusterRequest(t, fixture, cookie, clusterRequestSpec{Method: fixture.handler.ServeUpdate, HTTPMethod: http.MethodPut, Path: "/api/v1/admin/clusters/" + crossSecondaryCluster, Name: crossSecondaryCluster, Body: `{"displayName":"Lab Proxmox","url":"https://pve-b4.example.com:8006/api2/json","tokenId":"pvmss@pve!service"}`})
+	response := adminClusterRequest(t, fixture, cookie, clusterRequestSpec{Method: fixture.handler.ServeUpdate, HTTPMethod: http.MethodPut, Path: "/api/v1/admin/clusters/" + crossSecondaryCluster, Name: crossSecondaryCluster, Body: `{"displayName":"Lab Proxmox","url":"https://pve-b4.example.com:8006/api2/json","tokenId":"pvmss@pve!service","tokenSecret":"s"}`})
 	if response.Code != http.StatusOK {
 		t.Fatalf("update status = %d, want 200: %s", response.Code, response.Body.String())
 	}
@@ -362,6 +362,44 @@ func TestAdminClusters_UpdateSetsDisplayName(t *testing.T) {
 	}
 }
 
+// TestAdminClusters_UpdateRequiresSecretToRedirect: the stored token secret is
+// sent to whatever URL the cluster points at, so moving the URL or dropping TLS
+// verification without re-entering it would hand the secret to a new host.
+//
+//nolint:paralleltest // serial: shared fake cluster dataset
+func TestAdminClusters_UpdateRequiresSecretToRedirect(t *testing.T) {
+	fixture := newAdminClusterFixture(t)
+	cookie := adminClusterCookie(t, fixture.auth)
+
+	update := func(body string) *httptest.ResponseRecorder {
+		return adminClusterRequest(t, fixture, cookie, clusterRequestSpec{Method: fixture.handler.ServeUpdate, HTTPMethod: http.MethodPut, Path: adminClustersSecondaryPath, Name: crossSecondaryCluster, Body: body})
+	}
+
+	for _, body := range []string{
+		`{"url":"https://attacker.example.com:8006/api2/json","tokenId":"pvmss@pve!service"}`,
+		`{"url":"https://pve-b.example.com:8006/api2/json","tlsInsecureSkipVerify":true,"tokenId":"pvmss@pve!service"}`,
+	} {
+		response := update(body)
+		if response.Code != http.StatusBadRequest {
+			t.Fatalf("update %s status = %d, want 400: %s", body, response.Code, response.Body.String())
+		}
+		assertClusterErrorBody(t, response, "token_secret_required")
+	}
+
+	stored, err := fixture.store.GetCluster(t.Context(), crossSecondaryCluster)
+	if err != nil {
+		t.Fatalf("GetCluster: %v", err)
+	}
+	if stored.URL != "https://pve-b.example.com:8006/api2/json" || stored.TLSInsecureSkipVerify {
+		t.Fatalf("stored cluster changed: %+v", stored)
+	}
+
+	// Same endpoint, no secret: still allowed (display name, token id edits).
+	if response := update(`{"displayName":"B","url":"https://pve-b.example.com:8006/api2/json","tokenId":"pvmss@pve!service"}`); response.Code != http.StatusOK {
+		t.Fatalf("unchanged-endpoint update status = %d, want 200: %s", response.Code, response.Body.String())
+	}
+}
+
 // TestAdminClusters_TestKeepsAdminDisplayName: a successful connection test
 // must not overwrite a label the admin set (the Proxmox name is only a fallback).
 //
@@ -370,7 +408,7 @@ func TestAdminClusters_TestKeepsAdminDisplayName(t *testing.T) {
 	fixture := newAdminClusterFixture(t)
 	cookie := adminClusterCookie(t, fixture.auth)
 
-	update := adminClusterRequest(t, fixture, cookie, clusterRequestSpec{Method: fixture.handler.ServeUpdate, HTTPMethod: http.MethodPut, Path: "/api/v1/admin/clusters/" + auditTestCluster, Name: auditTestCluster, Body: `{"displayName":"Lab Proxmox","url":"https://pve-t.example.com:8006/api2/json","tokenId":"pvmss@pve!service"}`})
+	update := adminClusterRequest(t, fixture, cookie, clusterRequestSpec{Method: fixture.handler.ServeUpdate, HTTPMethod: http.MethodPut, Path: "/api/v1/admin/clusters/" + auditTestCluster, Name: auditTestCluster, Body: `{"displayName":"Lab Proxmox","url":"https://pve-t.example.com:8006/api2/json","tokenId":"pvmss@pve!service","tokenSecret":"s"}`})
 	if update.Code != http.StatusOK {
 		t.Fatalf("update status = %d, want 200: %s", update.Code, update.Body.String())
 	}

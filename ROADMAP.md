@@ -7,7 +7,9 @@ section to check it against a later HEAD.
 
 Current state at time of writing: `v0.3.0` was the last tagged release
 (shipped on the original stack); `v0.4` is an in-progress rewrite, not yet
-tagged, currently at `HEAD fd20662f` (2026-09-27, 472 commits after the cutover).
+tagged and not yet on `main`: at `HEAD c54b1089` (2026-10-22) the branch is
+945 commits ahead of `origin/main`, which is still an ancestor (the merge is a
+fast-forward).
 
 ## History
 
@@ -48,9 +50,10 @@ the old stack before the cutover.
 ### T16 cutover (2026-08-12): the legacy tree deleted
 
 Commit `a7a26f7a` ("cutover v0.4 -> main (T16) - delete legacy
-backend/frontend"), 2026-08-12, merged the `v0.4` branch into `main` and
-removed `backend/` and `frontend/`. From this point on, `server/` + `web/`
-is the only codebase.
+backend/frontend"), 2026-08-12, removed `backend/` and `frontend/` on the
+`v0.4` branch. From this point on, `server/` + `web/` is the only codebase on
+`v0.4`; `origin/main` does not contain this commit yet and still ships the
+legacy tree.
 
 ### Post-cutover hardening (2026-08-12 to 2026-09-27): 472 commits
 
@@ -77,8 +80,10 @@ findings cleaned up.
 
 Things structurally implied by the current codebase, not a feature backlog:
 
-- **Tag `v0.4.0`.** The rewrite has been the only codebase since the T16
-  cutover (2026-08-12) and has not been tagged.
+- **Merge `v0.4` into `main`** (fast-forward), then drop `appVersion`'s
+  `-dev` suffix in `server/cmd/pvmss/main.go`.
+- **Tag `v0.4.0`.** The rewrite has been the only codebase on `v0.4` since
+  the T16 cutover (2026-08-12) and has not been tagged.
 
 ## How this file gets updated
 

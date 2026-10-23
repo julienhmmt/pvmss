@@ -13,7 +13,7 @@
 	import PageHeader from '#lib/shared/ui/PageHeader.svelte';
 	import Button from '#lib/shared/ui/Button.svelte';
 	import ButtonLink from '#lib/shared/ui/ButtonLink.svelte';
-	import { fetchClusterOptions, type ClusterOption } from '#lib/shared/clusters.js';
+	import { fetchClusterOptions, pinnedClusterOptions, type ClusterOption } from '#lib/shared/clusters.js';
 	import { onVisibleRefresh } from '#lib/shared/visibility-refresh.js';
 	import { m } from '#lib/paraglide/messages.js';
 
@@ -43,7 +43,7 @@
 
 	async function loadPage(): Promise<void> {
 		try {
-			clusterOptions = await fetchClusterOptions();
+			clusterOptions = pinnedClusterOptions(await fetchClusterOptions(), session.principal);
 		} catch {
 			clusterOptions = [];
 		}

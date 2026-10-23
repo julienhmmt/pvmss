@@ -15,15 +15,17 @@ const (
 	crossClusterSecondaryName = "secondary-web"
 	crossClusterSecondaryKey  = "secondary"
 	crossClusterPoolAlice     = "pool-alice"
+	crossClusterNodeA         = "node-a"
+	crossClusterNodeB         = "node-b"
 )
 
 //nolint:paralleltest // VM fixtures are shared with the package suite; names prove isolation
 func TestList_CrossClusterPoolMerge(t *testing.T) {
 	defaultIndex := inventory.BuildIndexForCluster(testClusterName, cluster.Snapshot{VMs: []cluster.VM{
-		{VMID: 101, Name: crossClusterDefaultName, Node: "node-a", Pool: crossClusterPoolAlice, Tags: []string{testPvmssTag}},
+		{VMID: 101, Name: crossClusterDefaultName, Node: crossClusterNodeA, Pool: crossClusterPoolAlice, Tags: []string{testPvmssTag}},
 	}})
 	secondaryIndex := inventory.BuildIndexForCluster(crossClusterSecondaryKey, cluster.Snapshot{VMs: []cluster.VM{
-		{VMID: 101, Name: crossClusterSecondaryName, Node: "node-b", Pool: crossClusterPoolAlice, Tags: []string{testPvmssTag}},
+		{VMID: 101, Name: crossClusterSecondaryName, Node: crossClusterNodeB, Pool: crossClusterPoolAlice, Tags: []string{testPvmssTag}},
 	}})
 	thirdIndex := inventory.BuildIndexForCluster("third", cluster.Snapshot{VMs: []cluster.VM{
 		{VMID: 202, Name: "other-web", Node: "node-c", Pool: "pool-bob", Tags: []string{testPvmssTag}},
@@ -61,10 +63,10 @@ func TestList_CrossClusterPoolMerge(t *testing.T) {
 //nolint:paralleltest // VM fixtures are shared with the package suite; names prove isolation
 func TestList_AdminScopeAllSpansEveryCluster(t *testing.T) {
 	defaultIndex := inventory.BuildIndexForCluster(testClusterName, cluster.Snapshot{VMs: []cluster.VM{
-		{VMID: 101, Name: crossClusterDefaultName, Node: "node-a", Pool: crossClusterPoolAlice, Tags: []string{testPvmssTag}},
+		{VMID: 101, Name: crossClusterDefaultName, Node: crossClusterNodeA, Pool: crossClusterPoolAlice, Tags: []string{testPvmssTag}},
 	}})
 	secondaryIndex := inventory.BuildIndexForCluster(crossClusterSecondaryKey, cluster.Snapshot{VMs: []cluster.VM{
-		{VMID: 101, Name: crossClusterSecondaryName, Node: "node-b", Pool: "pool-bob", Tags: []string{testPvmssTag}},
+		{VMID: 101, Name: crossClusterSecondaryName, Node: crossClusterNodeB, Pool: "pool-bob", Tags: []string{testPvmssTag}},
 	}})
 	thirdIndex := inventory.BuildIndexForCluster("third", cluster.Snapshot{VMs: []cluster.VM{
 		{VMID: 202, Name: "third-web", Node: "node-c", Pool: "pool-carol", Tags: []string{testPvmssTag}},
@@ -100,4 +102,37 @@ func names(result vm.ListResult) []string {
 		out = append(out, machine.Name)
 	}
 	return out
+}
+
+// TestList_NonAdminPinnedToSignInCluster: a signed-in user lists only the
+// cluster it signed in to, even when another cluster has a same-named pool.
+//
+//nolint:paralleltest // VM fixtures are shared with the package suite
+func TestList_NonAdminPinnedToSignInCluster(t *testing.T) {
+	defaultIndex := inventory.BuildIndexForCluster(testClusterName, cluster.Snapshot{VMs: []cluster.VM{
+		{VMID: 101, Name: crossClusterDefaultName, Node: crossClusterNodeA, Pool: crossClusterPoolAlice, Tags: []string{testPvmssTag}},
+	}})
+	secondaryIndex := inventory.BuildIndexForCluster(crossClusterSecondaryKey, cluster.Snapshot{VMs: []cluster.VM{
+		{VMID: 101, Name: crossClusterSecondaryName, Node: crossClusterNodeB, Pool: crossClusterPoolAlice, Tags: []string{testPvmssTag}},
+	}})
+	registry := inventory.NewRegistryFromIndexes(map[string]*inventory.Index{
+		testClusterName: &defaultIndex, crossClusterSecondaryKey: &secondaryIndex,
+	})
+	alice := auth.Identity{Username: "alice@pve", Pool: crossClusterPoolAlice, Cluster: testClusterName}
+
+	result, err := vm.List(registry, vm.ListQuery{}, alice, -1)
+	if err != nil {
+		t.Fatalf("List: %v", err)
+	}
+	if got := names(result); !slices.Equal(got, []string{crossClusterDefaultName}) {
+		t.Fatalf("names = %v, want only the sign-in cluster's VM", got)
+	}
+
+	other, err := vm.List(registry, vm.ListQuery{Cluster: crossClusterSecondaryKey}, alice, -1)
+	if err != nil {
+		t.Fatalf("List(other cluster): %v", err)
+	}
+	if len(other.Items) != 0 {
+		t.Fatalf("other cluster items = %+v, want none", other.Items)
+	}
 }

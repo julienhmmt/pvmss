@@ -34,6 +34,11 @@ const (
 	// protected by the per-IP login limiter instead.
 	maxLocalLoginFailures  = 5
 	localLoginLockDuration = 15 * time.Minute
+	// maxBootstrapLoginFailures failed bootstrap logins from one client IP
+	// inside bootstrapFailureWindow refuse that IP's next attempts. The
+	// account itself is never locked: it stays reachable from other IPs.
+	maxBootstrapLoginFailures = 5
+	bootstrapFailureWindow    = 15 * time.Minute
 )
 
 type loginRequest struct {
@@ -74,16 +79,22 @@ type Auth struct {
 	trustedProxyHops int
 	freshness        ClusterFreshnessChecker
 	staleThreshold   time.Duration
+	// bootstrapFailures counts failed bootstrap logins per client IP.
+	bootstrapFailures *windowLimiter
 }
 
 // NewAuth creates the legacy single-cluster authentication endpoint handlers.
 func NewAuth(clusterClient cluster.Client, sessions *auth.SessionManager, adminHash string, log *slog.Logger) *Auth {
-	return &Auth{cluster: clusterClient, sessions: sessions, adminHash: adminHash, log: log}
+	return &Auth{cluster: clusterClient, sessions: sessions, adminHash: adminHash, log: log, bootstrapFailures: newBootstrapFailures()}
 }
 
 // NewAuthWithRegistry creates authentication handlers with runtime cluster choice.
 func NewAuthWithRegistry(registry cluster.ClientProvider, st *store.Store, sessions *auth.SessionManager, adminHash string, log *slog.Logger) *Auth {
-	return &Auth{clusters: registry, clusterStore: st, sessions: sessions, adminHash: adminHash, log: log}
+	return &Auth{clusters: registry, clusterStore: st, sessions: sessions, adminHash: adminHash, log: log, bootstrapFailures: newBootstrapFailures()}
+}
+
+func newBootstrapFailures() *windowLimiter {
+	return newWindowLimiter(maxBootstrapLoginFailures, bootstrapFailureWindow, 0, nil)
 }
 
 // SetTrustedProxyHops configures how many X-Forwarded-For hops are trusted
@@ -204,7 +215,23 @@ func (h *Auth) AdminLogin(w http.ResponseWriter, r *http.Request) {
 // bootstrapLogin checks ADMIN_PASSWORD_HASH. The bootstrap admin is the
 // immutable owner: it is never locked, disabled, or listed in local_accounts.
 func (h *Auth) bootstrapLogin(w http.ResponseWriter, r *http.Request, password string) {
-	if password == "" || h.adminHash == "" || bcrypt.CompareHashAndPassword([]byte(h.adminHash), []byte(password)) != nil {
+	ip := clientIP(r, h.trustedProxyHops)
+	if h.bootstrapFailures.exhausted(ip, time.Now()) {
+		logctx.FromOr(r.Context(), h.log).WarnContext(r.Context(), "bootstrap login throttled", "component", "httpapi", "event", "auth", "result", "throttled", "user", bootstrapUsername)
+		writeAuthError(w, http.StatusTooManyRequests, "rate_limited", "too many requests, try again later")
+		return
+	}
+
+	hash := []byte(h.adminHash)
+	if len(hash) == 0 {
+		// No bootstrap admin configured: still spend the bcrypt work, so the
+		// answer time does not reveal it.
+		hash = dummyPasswordHash
+	}
+
+	matches := bcrypt.CompareHashAndPassword(hash, []byte(password)) == nil
+	if password == "" || h.adminHash == "" || !matches {
+		h.bootstrapFailures.allow(ip, time.Now())
 		// Admin login failures write no audit row (keeps /activity unchanged),
 		// so the log stream is the only record. Never log the password.
 		telemetry.RecordLogin(r.Context(), "failure")
@@ -235,13 +262,18 @@ func (h *Auth) localAccountLogin(w http.ResponseWriter, r *http.Request, usernam
 	}
 
 	now := time.Now().UTC()
-	if account.Disabled {
-		h.rejectLocalLogin(w, r, username, "account disabled")
-		return
-	}
+	if account.Disabled || account.Locked(now) {
+		// Same bcrypt work as a wrong password: the answer time must not tell
+		// a disabled or locked account from a live one.
+		_ = bcrypt.CompareHashAndPassword(dummyPasswordHash, []byte(password))
 
-	if account.Locked(now) {
-		h.rejectLocalLogin(w, r, username, "account locked")
+		reason := "account locked"
+		if account.Disabled {
+			reason = "account disabled"
+		}
+
+		h.rejectLocalLogin(w, r, username, reason)
+
 		return
 	}
 

@@ -14,9 +14,9 @@ formulaire l'indique - réessayez plus tard ou choisissez un autre cluster.
 
 Une fois connecté, vous arrivez sur la page **Mes VM** (la barre latérale
 affiche votre quota et les tâches encore en cours). Elle liste toutes les
-machines virtuelles de votre pool sur l'ensemble des clusters configurés. Utilisez la
-recherche pour filtrer par nom, VMID ou tag, et le sélecteur de cluster pour
-restreindre la vue à un seul cluster. Les filtres sont conservés dans l'URL :
+machines virtuelles de votre pool sur le cluster auquel vous êtes connecté. Utilisez la
+recherche pour filtrer par nom, VMID ou tag. Pour voir un autre cluster,
+connectez-vous à celui-ci. Les filtres sont conservés dans l'URL :
 une vue filtrée peut être mise en favori.
 
 ## Créer une VM

@@ -169,14 +169,16 @@ func acceptConsoleWebSocket(
 		return vm.ConsoleTicket{}, nil, false
 	}
 
-	consumed, err := env.tickets.Consume(params.kind, token, principal.Username, clusterName, vmid)
-	if err != nil {
-		writeError(w, http.StatusBadRequest, "invalid_ticket", params.invalidTicketMsg)
+	// Checked before Consume: a cross-origin attempt must not burn the
+	// user's single-use ticket.
+	if !isConsoleOriginAllowed(r) {
+		writeError(w, http.StatusForbidden, "forbidden", "invalid origin")
 		return vm.ConsoleTicket{}, nil, false
 	}
 
-	if !isConsoleOriginAllowed(r) {
-		writeError(w, http.StatusForbidden, "forbidden", "invalid origin")
+	consumed, err := env.tickets.Consume(params.kind, token, principal.Username, clusterName, vmid)
+	if err != nil {
+		writeError(w, http.StatusBadRequest, "invalid_ticket", params.invalidTicketMsg)
 		return vm.ConsoleTicket{}, nil, false
 	}
 

@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { LOCALE_STORAGE_KEY, LocaleState } from './locale.svelte';
 
 // T006 (US1): LocaleState - init defaults to "fr" when localStorage is empty
@@ -6,23 +6,44 @@ import { LOCALE_STORAGE_KEY, LocaleState } from './locale.svelte';
 // apply() sets document.documentElement.lang. Tested without a DOM beyond
 // happy-dom's document/localStorage.
 
+function browserLanguages(languages: string[]): void {
+	vi.spyOn(navigator, 'languages', 'get').mockReturnValue(languages);
+}
+
 describe('LocaleState.init', () => {
 	beforeEach(() => {
 		localStorage.clear();
 		document.documentElement.lang = '';
+		browserLanguages(['fr-FR']);
+	});
+	afterEach(() => vi.restoreAllMocks());
+
+	it('follows the browser language when localStorage is empty', () => {
+		browserLanguages(['es-ES', 'de-CH', 'en']);
+		const state = new LocaleState();
+		state.init();
+		expect(state.current).toBe('de');
 	});
 
-	it('defaults to "fr" when localStorage is empty', () => {
+	it('falls back to "en" when no browser language is supported', () => {
+		browserLanguages(['es-ES', 'pt']);
+		const state = new LocaleState();
+		state.init();
+		expect(state.current).toBe('en');
+	});
+
+	it('ignores an unrecognized stored value and uses the browser language', () => {
+		localStorage.setItem(LOCALE_STORAGE_KEY, 'xx');
 		const state = new LocaleState();
 		state.init();
 		expect(state.current).toBe('fr');
 	});
 
-	it('defaults to "fr" when localStorage holds an unrecognized value', () => {
-		localStorage.setItem(LOCALE_STORAGE_KEY, 'de');
+	it('prefers the stored choice over the browser language', () => {
+		localStorage.setItem(LOCALE_STORAGE_KEY, 'it');
 		const state = new LocaleState();
 		state.init();
-		expect(state.current).toBe('fr');
+		expect(state.current).toBe('it');
 	});
 
 	it('restores "en" when localStorage holds a recognized value', () => {

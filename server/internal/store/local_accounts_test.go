@@ -139,16 +139,12 @@ func TestLocalAccounts_MissingRows(t *testing.T) {
 	}
 }
 
-//nolint:gocyclo // lockout, password reset and disable paths read as one sequence
-func TestLocalAccounts_PasswordAndDisabledClearLockout(t *testing.T) {
-	t.Parallel()
+func lockLocalAccount(t *testing.T, st *store.Store, accountID int64, now time.Time) {
+	t.Helper()
 
-	st := newLocalAccountStore(t)
 	ctx := context.Background()
-	account := seedLocalAccount(t, st, localTestUsername)
-	now := time.Date(2026, 10, 21, 12, 0, 0, 0, time.UTC)
 
-	locked, err := st.RecordLocalLoginFailure(ctx, account.ID, now, 5, 15*time.Minute)
+	locked, err := st.RecordLocalLoginFailure(ctx, accountID, now, 5, 15*time.Minute)
 	if err != nil {
 		t.Fatalf("RecordLocalLoginFailure: %v", err)
 	}
@@ -160,7 +156,7 @@ func TestLocalAccounts_PasswordAndDisabledClearLockout(t *testing.T) {
 	var lockExpiry time.Time
 
 	for range 4 {
-		lockExpiry, err = st.RecordLocalLoginFailure(ctx, account.ID, now, 5, 15*time.Minute)
+		lockExpiry, err = st.RecordLocalLoginFailure(ctx, accountID, now, 5, 15*time.Minute)
 		if err != nil {
 			t.Fatalf("RecordLocalLoginFailure: %v", err)
 		}
@@ -170,12 +166,30 @@ func TestLocalAccounts_PasswordAndDisabledClearLockout(t *testing.T) {
 	if !lockExpiry.Equal(wantLock) {
 		t.Fatalf("lock expiry = %v, want %v", lockExpiry, wantLock)
 	}
+}
 
-	stored, err := st.LocalAccountByID(ctx, account.ID)
+func mustLocalAccountByID(t *testing.T, st *store.Store, accountID int64) store.LocalAccount {
+	t.Helper()
+
+	stored, err := st.LocalAccountByID(context.Background(), accountID)
 	if err != nil {
 		t.Fatalf("LocalAccountByID: %v", err)
 	}
 
+	return stored
+}
+
+func TestLocalAccounts_PasswordAndDisabledClearLockout(t *testing.T) {
+	t.Parallel()
+
+	st := newLocalAccountStore(t)
+	ctx := context.Background()
+	account := seedLocalAccount(t, st, localTestUsername)
+	now := time.Date(2026, 10, 21, 12, 0, 0, 0, time.UTC)
+
+	lockLocalAccount(t, st, account.ID, now)
+
+	stored := mustLocalAccountByID(t, st, account.ID)
 	if !stored.Locked(now) {
 		t.Error("account should be locked")
 	}
@@ -188,11 +202,7 @@ func TestLocalAccounts_PasswordAndDisabledClearLockout(t *testing.T) {
 		t.Fatalf("SetLocalAccountPassword: %v", err)
 	}
 
-	stored, err = st.LocalAccountByID(ctx, account.ID)
-	if err != nil {
-		t.Fatalf("LocalAccountByID: %v", err)
-	}
-
+	stored = mustLocalAccountByID(t, st, account.ID)
 	if stored.FailedAttempts != 0 || !stored.LockedUntil.IsZero() {
 		t.Errorf("password reset left lock state: %+v", stored)
 	}
@@ -205,11 +215,7 @@ func TestLocalAccounts_PasswordAndDisabledClearLockout(t *testing.T) {
 		t.Fatalf("SetLocalAccountDisabled: %v", err)
 	}
 
-	stored, err = st.LocalAccountByID(ctx, account.ID)
-	if err != nil {
-		t.Fatalf("LocalAccountByID: %v", err)
-	}
-
+	stored = mustLocalAccountByID(t, st, account.ID)
 	if !stored.Disabled || stored.FailedAttempts != 0 {
 		t.Errorf("disable did not clear state: %+v", stored)
 	}

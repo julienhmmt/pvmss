@@ -41,6 +41,11 @@
 	let tokenSecret = $state('');
 	let tlsInsecureSkipVerify = $state(false);
 	let snippetStorage = $state('');
+	// The server sends the kept secret to the cluster URL, so it refuses a new
+	// URL or TLS setting without the secret re-entered.
+	const secretRequired = $derived(
+		editing === null || url.trim() !== editing.url || tlsInsecureSkipVerify !== editing.tlsInsecureSkipVerify
+	);
 	const TITLE_ID = 'cluster-form-title';
 	const FORM_ID = 'cluster-form';
 
@@ -95,7 +100,7 @@
 						<TextField {id} {describedBy} {invalid} bind:value={tokenId} placeholder="pvmss@pve!service" required />
 					{/snippet}
 				</FormField>
-				<FormField label={m['admin.clusters.tokenSecret']()} required={editing === null}>
+				<FormField label={m['admin.clusters.tokenSecret']()} required={secretRequired}>
 					{#snippet children({ id, describedBy, invalid })}
 						<TextField
 							{id}
@@ -104,9 +109,9 @@
 							type="password"
 							bind:value={tokenSecret}
 							reveal
-							required={editing === null}
+							required={secretRequired}
 							autocomplete="new-password"
-							placeholder={editing ? m['admin.clusters.tokenSecretHint']() : ''}
+							placeholder={secretRequired ? '' : m['admin.clusters.tokenSecretHint']()}
 						/>
 					{/snippet}
 				</FormField>

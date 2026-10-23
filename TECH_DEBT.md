@@ -77,6 +77,26 @@ the tables and `docs/cloud-init.md`.
 | Per-cluster CA certificate | a cluster signed by a private CA can only be reached with TLS skip-verify (`newProxmoxHTTPClient` takes one bool). Deciding it takes: a `clusters.ca_pem` column (and its import exclusion), a PEM field in Admin > Clusters, `RootCAs` from that PEM in the HTTP client, and a rotation story. Parked 2026-10-06 (functional review Q2) |
 | `docs/plans/`, `server/internal/recovery/` stale `backend/` refs | historical context only - fix when the surrounding area is touched, no dedicated pass |
 
+## Resolved 2026-10-22 (full app review)
+
+- **`PVMSS_TRUSTED_PROXY_HOPS` defaults to `0`.** With `1` and no proxy (the
+  compose example), a client chose its own IP through `X-Forwarded-For` and
+  dodged the login rate limit. Helm keeps `1` explicitly.
+- **Authenticated writes outlive the 10s `WriteTimeout`.** `protect` and the
+  admin guard wrap writes in `withLongWriteDeadline` (2 min): a power action
+  or snapshot retrying on a VM lock (30s), bulk actions and the manual
+  refresh no longer answer with a dropped connection.
+- **`maxDiskPerVmGb` caps the VM's total disk**, not each disk (`vm/disks.go`);
+  the add/resize disk dialogs cap their input at the room left (`disk-limit.ts`).
+- **The example `SESSION_SECRET` is refused at startup**, and the Helm chart
+  requires `secrets.sessionSecret`. An instance already running with the
+  example value must get a new secret, then re-enter its cluster tokens in
+  Admin > Clusters (they are encrypted with a key derived from it).
+- **Markdown links survive underscores**: opening `<a>` tags sit behind
+  placeholders until emphasis is done.
+- **Session cookies last `auth.MaxSessionAge` (24h)** in the browser; the
+  server still enforces the 8h idle expiry.
+
 ## Resolved 2026-10-04
 
 - **`api_tokens` dropped** (schema V37). Personal API tokens were removed

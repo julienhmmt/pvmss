@@ -197,3 +197,29 @@ func TestUserRateLimiter_MiddlewareSetsRetryAfter(t *testing.T) {
 		t.Fatalf("body = %+v, want rate_limited with retryAfterSeconds=%d", body, seconds)
 	}
 }
+
+// TestWindowLimiter_AuditsOneRejectionPerWindow: every 429 used to write an
+// audit row, so an unauthenticated client could grow the audit table without
+// bound by hammering past its limit.
+func TestWindowLimiter_AuditsOneRejectionPerWindow(t *testing.T) {
+	t.Parallel()
+
+	l := newWindowLimiter(1, time.Minute, 0, nil)
+	base := time.Now()
+
+	if !l.shouldAudit("192.0.2.1", base) {
+		t.Fatal("first rejection should be audited")
+	}
+
+	if l.shouldAudit("192.0.2.1", base.Add(30*time.Second)) {
+		t.Fatal("second rejection in the same window should not be audited")
+	}
+
+	if !l.shouldAudit("192.0.2.2", base) {
+		t.Fatal("another key should be audited on its own")
+	}
+
+	if !l.shouldAudit("192.0.2.1", base.Add(2*time.Minute)) {
+		t.Fatal("rejection after the window should be audited again")
+	}
+}

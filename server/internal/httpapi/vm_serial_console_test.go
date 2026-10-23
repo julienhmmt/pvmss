@@ -65,6 +65,8 @@ func serialRequest(method, path, body string, cookie *http.Cookie) *http.Request
 	}
 
 	req.Header.Set("Content-Type", "application/json")
+	// Same origin as httptest's default Host, as a browser would send.
+	req.Header.Set("Origin", "http://example.com")
 
 	if cookie != nil {
 		req.AddCookie(cookie)

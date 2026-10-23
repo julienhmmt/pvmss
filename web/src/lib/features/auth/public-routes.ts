@@ -10,7 +10,7 @@ export function isPublicPath(path: string): boolean {
 	return PUBLIC_PREFIXES.some((prefix) => path === prefix || path.startsWith(`${prefix}/`));
 }
 
-const NEXT_BASE = 'http://pvmss.invalid';
+const NEXT_BASE = 'https://pvmss.invalid';
 
 /** The in-app path to return to after sign-in, or null when `raw` is missing,
  *  leaves the app (`//host`, `/\host`, a scheme) or points back at /login.

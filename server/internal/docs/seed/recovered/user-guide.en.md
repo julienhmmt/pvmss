@@ -57,9 +57,9 @@ and quick actions (console, details). Search, filters, and sort order are
 kept in the URL so a view can be bookmarked or shared. Select several rows to
 run a **bulk power action**; each VM reports its own success or error.
 
-When PVMSS is connected to more than one Proxmox environment, use the
-**cluster selector** to scope the list to one cluster or to all of them. A VM
-is always identified by its `cluster` and its `VMID`, so the same VMID can
+When PVMSS is connected to more than one Proxmox environment, the list
+covers the cluster you signed in to; sign in to another cluster to see its
+VMs. A VM is always identified by its `cluster` and its `VMID`, so the same VMID can
 exist on different clusters without conflict.
 
 ## Managing a virtual machine

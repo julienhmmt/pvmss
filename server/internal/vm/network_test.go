@@ -182,3 +182,67 @@ func networkDependencies(index *inventory.Index, actor auth.Identity, vmid int) 
 		Resources: catalog.Resources{Bridges: []catalog.Bridge{{Name: testBridgeVMbr0, Node: cluster.FakeNode01}, {Name: testBridgeVMbr1, Node: cluster.FakeNode01}}}, Gabarit: policy.DefaultGabarit(), Audit: noopAudit{}, Refresher: noopRefresher{},
 	}
 }
+
+// TestUpdateNetwork_UserCannotMoveVLANOrRate: VLAN and rate limit isolate
+// tenants, so a non-admin PUT keeps the NIC on the imposed isolation VLAN
+// (or its current VLAN) and its current rate; an admin may change both.
+//
+//nolint:paralleltest // serial: shared fake cluster dataset
+func TestUpdateNetwork_UserCannotMoveVLANOrRate(t *testing.T) {
+	const (
+		currentVLAN   = 100
+		currentRate   = 10
+		isolationVLAN = 42
+		requestedVLAN = 7
+	)
+
+	cases := []struct {
+		name      string
+		actor     auth.Identity
+		isolation int
+		wantVLAN  int
+		wantRate  *int
+	}{
+		{name: "user with isolation VLAN", actor: aliceIdentity(), isolation: isolationVLAN, wantVLAN: isolationVLAN, wantRate: new(int)},
+		{name: "user without isolation VLAN", actor: aliceIdentity(), wantVLAN: currentVLAN, wantRate: new(int)},
+		{name: "admin", actor: auth.Identity{Username: testAdminUser, IsAdmin: true}, isolation: isolationVLAN, wantVLAN: requestedVLAN},
+	}
+	for _, tc := range cases { //nolint:paralleltest // serial: shared fake cluster dataset
+		t.Run(tc.name, func(t *testing.T) {
+			cluster.ResetFake()
+			t.Cleanup(cluster.ResetFake)
+
+			vlan, rate := currentVLAN, currentRate
+
+			seeded := []cluster.NetworkInterface{{Index: 0, Bridge: testBridgeVMbr0, Model: testModelVirtio, VLAN: &vlan, RateMbps: &rate}}
+			if err := (cluster.Fake{}).UpdateNetwork(context.Background(), cluster.FakeNode01, 101, seeded); err != nil {
+				t.Fatalf("seed NIC: %v", err)
+			}
+
+			deps := networkDependencies(diskTestIndex(t, 101, cluster.VMRunning), tc.actor, 101)
+			deps.Gabarit.IsolationVLANTag = tc.isolation
+
+			requested := requestedVLAN
+
+			result, err := vm.UpdateNetwork(context.Background(), deps, []cluster.NetworkInterface{{
+				Index: 0, Bridge: testBridgeVMbr0, Model: testModelVirtio, VLAN: &requested,
+			}})
+			if err != nil {
+				t.Fatalf("UpdateNetwork: %v", err)
+			}
+
+			got := result[0]
+			if got.VLAN == nil || *got.VLAN != tc.wantVLAN {
+				t.Errorf("VLAN = %v, want %d", got.VLAN, tc.wantVLAN)
+			}
+
+			if tc.wantRate == nil {
+				if got.RateMbps != nil {
+					t.Errorf("RateMbps = %d, want nil (admin cleared it)", *got.RateMbps)
+				}
+			} else if got.RateMbps == nil || *got.RateMbps != currentRate {
+				t.Errorf("RateMbps = %v, want %d (kept from live NIC)", got.RateMbps, currentRate)
+			}
+		})
+	}
+}

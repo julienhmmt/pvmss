@@ -129,6 +129,14 @@ type Entity struct {
 // behaving identically. actor/clusterName/vmid's order, types, and the
 // (Entity, error) return are unchanged.
 func Resolve(source inventory.LookupSource, actor auth.Identity, clusterName string, vmid int) (Entity, error) {
+	// The caller already picked the index for clusterName, so a pinned actor
+	// must name its own cluster exactly: an empty name would resolve to its
+	// cluster here but may have selected another cluster's index upstream.
+	if resolved, ok := TargetCluster(actor, clusterName); !ok || resolved != clusterName {
+		recordResolveFailed(actor, clusterName, vmid, "cross-cluster access denied")
+		return Entity{}, ErrNotFound
+	}
+
 	machine, ok := source.Lookup(clusterName, vmid)
 	if !ok {
 		recordResolveFailed(actor, clusterName, vmid, "vm not found or not in PVMSS scope")
@@ -170,6 +178,23 @@ func Resolve(source inventory.LookupSource, actor auth.Identity, clusterName str
 		HasSerial:         machine.HasSerial,
 		Agent:             machine.Agent,
 	}, nil
+}
+
+// TargetCluster resolves the cluster actor may act on for a request naming
+// requested. A non-admin is confined to the cluster it signed in to: pool
+// names are per cluster, so the same pool name on another cluster may belong
+// to someone else. An empty requested resolves to that cluster. Admins and
+// sessions without a cluster (legacy single-cluster) are not confined.
+func TargetCluster(actor auth.Identity, requested string) (string, bool) {
+	if actor.IsAdmin || actor.Cluster == "" {
+		return requested, true
+	}
+
+	if requested == "" {
+		return actor.Cluster, true
+	}
+
+	return requested, requested == actor.Cluster
 }
 
 func cloneDisks(disks []cluster.Disk, bootOrder []string) []cluster.Disk {

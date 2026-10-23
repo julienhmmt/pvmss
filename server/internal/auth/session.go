@@ -129,15 +129,18 @@ func (m *SessionManager) SetCookie(ctx context.Context, w http.ResponseWriter, i
 		return fmt.Errorf("generate csrf token: %w", err)
 	}
 
-	expires := time.Now().Add(sessionTTL)
+	now := time.Now()
 
-	session := SessionRecord{Hash: m.hash(raw), Identity: identity, CSRFToken: csrfToken, ExpiresAt: expires, CreatedAt: time.Now().UTC()}
+	session := SessionRecord{Hash: m.hash(raw), Identity: identity, CSRFToken: csrfToken, ExpiresAt: now.Add(sessionTTL), CreatedAt: now.UTC()}
 	if err := m.repository.CreateSession(ctx, session); err != nil {
 		return fmt.Errorf("create session: %w", err)
 	}
 
-	http.SetCookie(w, m.cookie(raw, expires))
-	http.SetCookie(w, m.csrfCookie(csrfToken, expires))
+	// The cookies live for the absolute lifetime; the server enforces the
+	// sliding idle expiry, which the browser never sees move.
+	cookieExpires := now.Add(MaxSessionAge)
+	http.SetCookie(w, m.cookie(raw, cookieExpires))
+	http.SetCookie(w, m.csrfCookie(csrfToken, cookieExpires))
 
 	return nil
 }
@@ -214,7 +217,7 @@ func (m *SessionManager) EnsureCSRFCookie(ctx context.Context, w http.ResponseWr
 		return ErrUnauthenticated
 	}
 
-	http.SetCookie(w, m.csrfCookie(session.CSRFToken, session.ExpiresAt))
+	http.SetCookie(w, m.csrfCookie(session.CSRFToken, session.CreatedAt.Add(MaxSessionAge)))
 
 	return nil
 }

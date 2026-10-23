@@ -95,7 +95,7 @@
 	}
 
 	function uptimeLabel(seconds: number): string {
-		if (seconds <= 0) return '—';
+		if (seconds <= 0) return '-';
 		const days: number = Math.floor(seconds / (SECONDS_PER_MINUTE * MINUTES_PER_HOUR * HOURS_PER_DAY));
 		const hours: number = Math.floor((seconds / (SECONDS_PER_MINUTE * MINUTES_PER_HOUR)) % HOURS_PER_DAY);
 		const minutes: number = Math.floor((seconds / SECONDS_PER_MINUTE) % MINUTES_PER_HOUR);
@@ -281,7 +281,7 @@
 									<td class="text-right font-mono tabular-nums">{vm.cpuCores}</td>
 									<td class="text-right font-mono tabular-nums">{formatBytes(vm.memoryBytes)}</td>
 									<td class="text-right font-mono tabular-nums">{formatBytes(vm.diskBytes)}</td>
-									<td class="font-mono text-xs">{vm.ipAddresses.length > 0 ? vm.ipAddresses.join(', ') : '—'}</td>
+									<td class="font-mono text-xs">{vm.ipAddresses.length > 0 ? vm.ipAddresses.join(', ') : '-'}</td>
 								</tr>
 							{/each}
 						</tbody>
@@ -312,8 +312,8 @@
 									<td class="whitespace-nowrap font-mono text-xs tabular-nums">{formatDateTime(entry.timestamp, 'short')}</td>
 									<td class="font-mono text-xs">{entry.actor}</td>
 									<td><code class="text-xs">{entry.action}</code></td>
-									<td class="font-mono tabular-nums">{entry.vmid ?? '—'}</td>
-									{#if hasActivityDetail}<td class="max-w-72 truncate text-xs text-muted-foreground" title={activitySummary(entry)}>{activitySummary(entry) || '—'}</td>{/if}
+									<td class="font-mono tabular-nums">{entry.vmid ?? '-'}</td>
+									{#if hasActivityDetail}<td class="max-w-72 truncate text-xs text-muted-foreground" title={activitySummary(entry)}>{activitySummary(entry) || '-'}</td>{/if}
 								</tr>
 							{/each}
 						</tbody>

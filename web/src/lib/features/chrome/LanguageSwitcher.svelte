@@ -1,39 +1,34 @@
 <script lang="ts">
-	import { getLocaleContext } from './locale.svelte';
+	import { getLocaleContext, LOCALE_NAMES, SUPPORTED_LOCALES } from './locale.svelte';
 	import { m } from '#lib/paraglide/messages.js';
 	import type { Locale } from '#lib/paraglide/runtime.js';
+	import GlobeIcon from '#lib/shared/ui/icons/GlobeIcon.svelte';
+	import ChevronDownIcon from '#lib/shared/ui/icons/ChevronDownIcon.svelte';
 
 	/**
-	 * LanguageSwitcher - FR/EN as a compact segmented control of two-letter
-	 * codes. A third locale is one more message file plus one entry here
-	 * (FR-003).
+	 * LanguageSwitcher - a globe button showing the active locale code. A
+	 * transparent native <select> covers it, so the list, keyboard and screen
+	 * reader behaviour are the platform's. Locales come from locale.svelte.ts.
 	 */
-	const LOCALE_OPTIONS: readonly { value: Locale; short: string; name: () => string }[] = [
-		{ value: 'fr', short: 'FR', name: () => m['chrome.locale.french']() },
-		{ value: 'en', short: 'EN', name: () => m['chrome.locale.english']() }
-	];
-
 	const locale = getLocaleContext();
 </script>
 
 <div
-	class="inline-flex items-center gap-0.5 rounded-lg border border-border p-0.5"
-	role="group"
-	aria-label={m['nav.language']()}
+	class="relative inline-flex h-8 items-center gap-1.5 rounded-lg border border-border px-2 text-xs font-semibold tracking-wide text-muted-foreground transition-colors focus-within:ring-2 focus-within:ring-ring hover:text-foreground"
+	title={m['nav.language']()}
 >
-	{#each LOCALE_OPTIONS as option (option.value)}
-		<button
-			type="button"
-			aria-pressed={locale.current === option.value}
-			aria-label={option.name()}
-			title={option.name()}
-			onclick={() => locale.set(option.value)}
-			class="inline-flex h-7 min-w-9 items-center justify-center rounded-md px-2 text-xs font-semibold tracking-wide transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring {locale.current === option.value
-				? 'bg-muted text-foreground'
-				: 'text-muted-foreground hover:text-foreground'}"
-		>
-			<span aria-hidden="true">{option.short}</span>
-			<span class="sr-only">{option.name()}</span>
-		</button>
-	{/each}
+	<GlobeIcon class="h-4 w-4" />
+	<span aria-hidden="true">{locale.current.toUpperCase()}</span>
+	<ChevronDownIcon class="h-3 w-3" />
+	<select
+		class="absolute inset-0 cursor-pointer opacity-0"
+		aria-label={m['nav.language']()}
+		value={locale.current}
+		onchange={(event) => locale.set(event.currentTarget.value as Locale)}
+		data-testid="language-switcher"
+	>
+		{#each SUPPORTED_LOCALES as option (option)}
+			<option value={option} lang={option}>{LOCALE_NAMES[option]}</option>
+		{/each}
+	</select>
 </div>
