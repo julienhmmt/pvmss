@@ -104,7 +104,6 @@
 	 * clusters, so the row carries the cluster as a chip and the link says
 	 * which one it opens.
 	 */
-	const spansClusters = $derived(store.cluster === '');
 
 	async function start(machine: VmListItem): Promise<void> {
 		if (powerActions.get(machine.cluster, machine.vmid) !== null) return;
@@ -137,6 +136,9 @@
 	}
 
 	const allItems = $derived(store.result?.items ?? []);
+	// The chip only tells rows apart when the list mixes clusters; a user
+	// pinned to one cluster sees its name in the sidebar already.
+	const spansClusters = $derived(store.cluster === '' && new Set(allItems.map((item) => item.cluster)).size > 1);
 	// "Needs attention" is a view-level filter over the full set the store
 	// fetched; every other filter is already applied server-side.
 	const items = $derived(

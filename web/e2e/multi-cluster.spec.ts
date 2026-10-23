@@ -20,10 +20,9 @@ test.describe('T15 multi-cluster', () => {
 		await signIn(page.request, 'alice', 'pvmss-alice', 'default');
 		await page.goto('/vms?pageSize=100');
 		await expect(vmRows(page).first()).toBeVisible();
-		// The per-row cluster badge shows the cluster's Proxmox display name,
-		// not the internal key ("default" -> "Demo Cluster Alpha").
 		await expect(vmRows(page)).toHaveCount(7);
-		await expect(vmRows(page).locator('[data-testid="vm-row-cluster"]').filter({ hasText: 'Demo Cluster Alpha' })).toHaveCount(7);
+		// One cluster in the list: no per-row cluster badge to tell rows apart.
+		await expect(vmRows(page).locator('[data-testid="vm-row-cluster"]')).toHaveCount(0);
 		await expect(vmRows(page).filter({ hasText: 'secondary-web-02' })).toHaveCount(0);
 		await expect(page.locator('#vm-cluster-filter')).toHaveCount(0);
 	});
@@ -32,7 +31,6 @@ test.describe('T15 multi-cluster', () => {
 		await signIn(page.request, 'alice', 'pvmss-alice', 'secondary');
 		await page.goto('/vms?pageSize=100');
 		await expect(vmRows(page)).toHaveCount(5);
-		await expect(vmRows(page).locator('[data-testid="vm-row-cluster"]').filter({ hasText: 'Demo Cluster Beta' })).toHaveCount(5);
 		const secondaryVM = vmRows(page).filter({ hasText: 'secondary-web-02' });
 		await expect(secondaryVM.getByTestId('vm-row-link')).toHaveAttribute('href', /\/vms\/secondary\/101$/);
 	});
