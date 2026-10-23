@@ -41,7 +41,7 @@ L'inventaire complet, route par route, est dans [docs/FEATURES.md](docs/FEATURES
 ### Utilisateurs finaux
 
 - Connexion avec ses identifiants Proxmox sur le cluster de son choix.
-- **Mes VM** : liste multi-cluster, recherche/filtre/tri reflétés dans l'URL, statut en direct, actions d'alimentation groupées avec résultat par VM, bouton console sur chaque ligne.
+- **Mes VM** : liste des VM du cluster de connexion, recherche/filtre/tri reflétés dans l'URL, statut en direct, actions d'alimentation groupées avec résultat par VM, bouton console sur chaque ligne.
 - **Assistant de création** (mode Simple / Détaillé) depuis trois sources : une **ISO** approuvée, un **template** Proxmox (clone lié ou complet) ou une **image cloud** (`import-from` + cloud-init) (images cloud temporairement désactivées : elles ne fonctionnent pas encore correctement). Profils matériels ou valeurs libres, placement automatique avec score de capacité, multi-NIC (bridge + modèle), UEFI (sans Secure Boot) / TPM 2.0, tags curés, démarrage sur CD-ROM.
 - **Accès aux VM** : PVMSS n'ajoute ni clé SSH ni mot de passe (cloud-init est en pause). Un clone de template garde les accès intégrés à son template Proxmox ; une installation ISO reçoit le compte créé par l'utilisateur pendant l'installation. Voir [Les modèles de VM portent les accès](#les-modèles-de-vm-portent-les-accès).
 - **Exploitation d'une VM** : 7 actions d'alimentation, renommage, description Markdown, suppression ; disques (ajout / agrandissement / détachement) ; cartes réseau (bridge, modèle, VLAN, débit) ; CPU/RAM/tags/CD-ROM ; snapshots (création / restauration / suppression, RAM optionnelle) ; historique de métriques (heure/jour/semaine) et flux temps réel ; journal d'activité par VM.

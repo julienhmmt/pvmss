@@ -41,7 +41,7 @@ The complete, route-by-route inventory lives in [docs/FEATURES.md](docs/FEATURES
 ### End users
 
 - Sign in with Proxmox credentials on the cluster of your choice.
-- **My VMs**: cross-cluster list, search/filter/sort mirrored in the URL, live status, bulk power actions with per-VM results, console button in every row.
+- **My VMs**: list of the sign-in cluster's VMs, search/filter/sort mirrored in the URL, live status, bulk power actions with per-VM results, console button in every row.
 - **Create a VM** wizard (Simple / Detailed) from three sources: an approved **ISO**, a Proxmox **template** (linked or full clone), or a **cloud image** (`import-from` + cloud-init) (cloud images are temporarily disabled: they do not work reliably yet). Hardware profiles or custom CPU/RAM/disk, auto-placement with capacity scoring, multi-NIC (bridge + model), UEFI (no Secure Boot) / TPM 2.0, curated tags, boot from CD-ROM.
 - **Sign-in on VMs**: PVMSS adds no SSH key or password (cloud-init is paused). A template clone keeps the sign-in built into its Proxmox template; an ISO install gets the account the user creates during installation. See [VM templates carry the sign-in](#vm-templates-carry-the-sign-in).
 - **Operate a VM**: 7 power actions, rename, Markdown description, delete; disks (add / grow / detach); NIC edit (bridge, model, VLAN, rate); CPU/RAM/tags/CD-ROM; snapshots (create / rollback / delete, RAM optional); metrics history (hour/day/week) and live stream; per-VM activity log.

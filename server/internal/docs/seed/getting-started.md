@@ -14,8 +14,8 @@ pick another cluster.
 
 Once signed in, you land on the **My VMs** page (the sidebar shows your quota
 and any task still running). It lists every virtual machine your pool owns
-across all configured clusters. Use the search box to filter by name,
-VMID, or tag, and the cluster selector to narrow the view to one cluster.
+on the cluster you signed in to. Use the search box to filter by name,
+VMID, or tag. To see another cluster, sign in to it.
 Filters are kept in the URL, so a filtered view can be bookmarked.
 
 ## Creating a VM

@@ -13,7 +13,7 @@ The complete, route-by-route inventory lives in [docs/FEATURES.md](https://githu
 ### For users
 
 - **Sign in**: Authenticate with Proxmox credentials (`pve` or `pam` realm) on the cluster of your choice.
-- **My VMs**: Cross-cluster VM list, linkable search/status filters, live status refresh, bulk power actions with per-VM results, and quick console access.
+- **My VMs**: VM list of the sign-in cluster, linkable search/status filters, live status refresh, bulk power actions with per-VM results, and quick console access.
 - **Create VM wizard**: Simple (single-page) and Detailed (5-step) modes from approved **ISOs** or **Proxmox templates** (linked or full clone). Choose hardware profiles or custom CPU/RAM/disk, auto-placement with capacity scoring, multi-NIC (bridge + model), UEFI (no Secure Boot) / TPM 2.0, curated tags, and CD-ROM boot priority.
 - **Operate a VM**: 7 power actions (`start`, `shutdown`, `stop`, `reboot`, `reset`, `pause`, `resume`), rename, Markdown description, delete; disk add/grow/detach; NIC edit (bridge, model, VLAN, rate limit); CPU/RAM/tags/CD-ROM; snapshots (create/rollback/delete, optional RAM); historical (hour/day/week) and live streaming metrics; per-VM activity log.
 - **Consoles**: Built-in noVNC graphical console and serial (xterm.js) console, both WebSocket-proxied through PVMSS with single-use tickets.
@@ -62,7 +62,7 @@ Save the token name (`pvmss-svc@pve!pvmss-service-token`) and secret value outpu
 
 ### 2. Database & configuration storage
 
-All application configuration (approved nodes, storages, ISOs, templates, bridges, hardware profiles, limits, tags, user pools, clusters, docs, and audit logs) is stored in an embedded **SQLite** database inside `/data` and managed from the **Admin** UI—no `settings.json` file is needed.
+All application configuration (approved nodes, storages, ISOs, templates, bridges, hardware profiles, limits, tags, user pools, clusters, docs, and audit logs) is stored in an embedded **SQLite** database inside `/data` and managed from the **Admin** UI - no `settings.json` file is needed.
 
 Always mount a persistent volume at `/data` (not a single file mount) because SQLite runs in WAL mode and creates `-wal` and `-shm` files alongside `pvmss.db`.
 

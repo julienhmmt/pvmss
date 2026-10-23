@@ -173,7 +173,7 @@ built with bun and served by the Go binary (catch-all to `index.html`).
 - Port 50000 (`PVMSS_PORT`)
 - Image `gcr.io/distroless/static-debian13:nonroot` (uid 65532), entrypoint
   `/app/pvmss`, web dir from `PVMSS_WEB_DIR` (default `/app/web/build`)
-- Multi-stage build: `golang:1.27.2-alpine` + `oven/bun:1-alpine`
+- Multi-stage build: `golang:1.27.3-alpine` + `oven/bun:1.4.3-alpine`
 - Helm chart: `helm/`
 
 ## Configuration
@@ -304,7 +304,7 @@ from `server/go.mod`, bun pinned to `1.3.13`.
 - Admin features are SvelteKit routes under `web/src/routes/admin/`, backed by
   the `admin_*.go` handlers in `server/internal/httpapi/`, which must return
   the complete payload the admin UI needs.
-- English for code and docs. UI translations: EN + FR.
+- English for code and docs. UI translations: EN, FR, DE, IT (in-app docs: EN + FR).
 - **No em-dash (U+2014)** in authored source or docs; use ` - `. Generated
   trees (node_modules, paraglide, build, .svelte-kit) are exempt.
 
