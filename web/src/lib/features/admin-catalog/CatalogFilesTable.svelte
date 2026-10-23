@@ -85,7 +85,7 @@
 				<td data-label={m['admin.catalog.statusColumn']()}>
 					<ApprovalCell
 						enabled={file.enabled}
-						name={file.file}
+						name={`${file.file} (${file.node})`}
 						pending={toggling === key}
 						missing={file.missing}
 						onToggle={() => onToggle(file.node, file.storage, file.file, !file.enabled)}

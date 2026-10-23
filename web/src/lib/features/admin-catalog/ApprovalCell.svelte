@@ -12,7 +12,7 @@
 
 	interface Props {
 		enabled: boolean;
-		/** Item name, used in the switch's accessible label. */
+		/** Item name for the switch's accessible label; per-node items add their node. */
 		name: string;
 		/** In-flight toggle: shows a pending ellipsis, keeps aria-busy. */
 		pending: boolean;
