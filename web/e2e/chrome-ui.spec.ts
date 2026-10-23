@@ -158,7 +158,7 @@ test.describe('T19 chrome UI', () => {
 
 		test('authenticated admin is sent from the home page to the admin dashboard', async ({ page }) => {
 			await page.goto('/login');
-			await page.getByRole('button', { name: /administrat/i }).click();
+			await page.getByRole('tab', { name: /administrat/i }).click();
 			await page.locator('input[type="password"]').fill('pvmss-e2e-admin');
 			await page.locator('button[type="submit"]').click();
 			await page.waitForURL(/\/admin/);

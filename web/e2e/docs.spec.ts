@@ -64,7 +64,7 @@ test.describe('T53 documentation browser', () => {
 		await expect(page.getByText("Guide de l'utilisateur")).toHaveCount(0);
 
 		// Switching to French shows only the French variants.
-		await page.getByRole('button', { name: 'Français' }).click();
+		await page.getByTestId('language-switcher').first().selectOption('fr');
 		await expect(page.getByText("Guide de l'utilisateur")).toBeVisible();
 		await expect(page.getByText('Getting started')).toHaveCount(0);
 	});
