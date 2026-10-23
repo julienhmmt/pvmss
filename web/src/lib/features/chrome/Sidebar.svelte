@@ -12,6 +12,7 @@
 	 * mounts it inside a Dialog-style overlay driven by ChromeState.sidebarOpen.
 	 */
 	import { onMount } from 'svelte';
+	import { afterNavigate } from '$app/navigation';
 	import { page } from '$app/state';
 	import { resolve } from '$app/paths';
 	import { getSessionContext } from '#lib/features/auth/session.svelte.js';
@@ -49,6 +50,11 @@
 	}
 	onMount(() => {
 		void loadMachineCount();
+	});
+	// A deletion is not a tracked task and lands on the machine list: refresh
+	// the chip there so it does not keep counting the deleted machine.
+	afterNavigate(({ from, to }) => {
+		if (from !== null && to?.url.pathname === '/vms') void loadMachineCount();
 	});
 
 	// "Activity" count chip: operations in flight right now - creations and
