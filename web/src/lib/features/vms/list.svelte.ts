@@ -77,8 +77,10 @@ const SEARCH_DEBOUNCE_MS = 300;
  */
 const MAX_ATTENTION_PAGES = 50;
 
-/** Ghost-row convergence after a create: ~5 x 4 s covers Proxmox's lag. */
-export const INCOMPLETE_RETRY_MS = 4000;
+/** Ghost-row convergence after a create: ~5 x 5 s covers Proxmox's lag. Not
+ *  shorter than the server's default manual-refresh interval (5 s), or every
+ *  other forced refresh is refused with a 429. */
+export const INCOMPLETE_RETRY_MS = 5000;
 const INCOMPLETE_RETRIES = 5;
 
 export const SORTABLE_COLUMNS: readonly VmSortBy[] = ['name', 'vmid', 'node', 'status', 'cpu', 'memory'] as const;
