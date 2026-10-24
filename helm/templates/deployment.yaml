@@ -5,8 +5,9 @@ metadata:
   namespace: {{ .Values.namespace }}
   labels:
     {{- include "pvmss.labels" . | nindent 4 }}
-  {{- with $.Values.extraAnnotations }}
-  annotations: {{ include "pvmss.merge" . | toYaml | nindent 4 }}
+  {{- with .Values.extraAnnotations }}
+  annotations:
+    {{- toYaml . | nindent 4 }}
   {{- end }}
 spec:
   replicas: {{ .Values.deployment.replicaCount }}
@@ -14,17 +15,32 @@ spec:
     type: {{ .Values.deployment.strategy }}
   selector:
     matchLabels:
-      {{- include "pvmss.labels" . | nindent 6 }}
+      {{- include "pvmss.selectorLabels" . | nindent 6 }}
   template:
     metadata:
       labels:
         {{- include "pvmss.labels" . | nindent 8 }}
+      {{- with .Values.extraAnnotations }}
+      annotations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
     spec:
+      {{- if or .Values.serviceAccount.create .Values.serviceAccount.name }}
       serviceAccountName: {{ .Values.serviceAccount.name }}
+      {{- end }}
       automountServiceAccountToken: {{ .Values.serviceAccount.automountToken }}
-      nodeSelector: {{ toJson .Values.nodeSelector | nindent 8 }}
-      tolerations: {{ toJson .Values.tolerations | nindent 8 }}
-      affinity: {{ toJson .Values.affinity | nindent 8 }}
+      {{- with .Values.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
       securityContext:
         runAsUser: 65532
         runAsGroup: 65532
@@ -39,6 +55,11 @@ spec:
             - name: backend
               containerPort: {{ .Values.service.port }}
               protocol: TCP
+            {{- if .Values.metrics.enabled }}
+            - name: metrics
+              containerPort: {{ .Values.metrics.port }}
+              protocol: TCP
+            {{- end }}
           env:
             # Secrets
             - name: ADMIN_PASSWORD_HASH
@@ -51,33 +72,37 @@ spec:
                 secretKeyRef:
                   name: {{ include "pvmss.fullname" . }}-secrets
                   key: {{ .Values.deployment.secretEnv.PROXMOX_API_TOKEN_VALUE }}
-            - name: JWT_SECRET
-              valueFrom:
-                secretKeyRef:
-                  name: {{ include "pvmss.fullname" . }}-secrets
-                  key: {{ .Values.deployment.secretEnv.JWT_SECRET }}
             - name: SESSION_SECRET
               valueFrom:
                 secretKeyRef:
                   name: {{ include "pvmss.fullname" . }}-secrets
                   key: {{ .Values.deployment.secretEnv.SESSION_SECRET }}
-            # Variables simples
+            {{- if .Values.metrics.enabled }}
+            - name: PVMSS_METRICS_PORT
+              value: "{{ .Values.metrics.port }}"
+            {{- end }}
+            # Plain variables
             {{- range $k, $v := .Values.deployment.env }}
             - name: {{ $k }}
               value: "{{ $v }}"
             {{- end }}
+          {{- with .Values.deployment.livenessProbe }}
+          livenessProbe:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+          {{- with .Values.deployment.readinessProbe }}
+          readinessProbe:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
           volumeMounts:
             - name: pvmss-data
               mountPath: /data
+            {{- if .Values.persistence.logs.enabled }}
             - name: pvmss-logs
               mountPath: /data/logs
+            {{- end }}
           resources:
-            requests:
-              cpu: {{ .Values.deployment.resources.requests.cpu }}
-              memory: {{ .Values.deployment.resources.requests.memory }}
-            limits:
-              cpu: {{ .Values.deployment.resources.limits.cpu }}
-              memory: {{ .Values.deployment.resources.limits.memory }}
+            {{- toYaml .Values.deployment.resources | nindent 12 }}
           securityContext:
             allowPrivilegeEscalation: false
             capabilities:
@@ -88,8 +113,14 @@ spec:
               type: RuntimeDefault
       volumes:
         - name: pvmss-data
+          {{- if .Values.persistence.db.enabled }}
           persistentVolumeClaim:
             claimName: {{ include "pvmss.fullname" . }}-db-pvc
+          {{- else }}
+          emptyDir: {}
+          {{- end }}
+        {{- if .Values.persistence.logs.enabled }}
         - name: pvmss-logs
           persistentVolumeClaim:
             claimName: {{ include "pvmss.fullname" . }}-logs-pvc
+        {{- end }}

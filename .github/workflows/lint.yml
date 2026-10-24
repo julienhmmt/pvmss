@@ -9,7 +9,7 @@ permissions: {}
 jobs:
     super-linter:
       name: Super Linter
-      runs-on: ubuntu-latest
+      runs-on: ubuntu-26.04
       timeout-minutes: 15
 
       permissions:
@@ -36,11 +36,11 @@ jobs:
             VALIDATE_MARKDOWN_PRETTIER: true
             FIX_MARKDOWN_PRETTIER: true
             VALIDATE_YAML: true
-            FILTER_REGEX_EXCLUDE: '.*bulma\.min\.css$,.*brands\.min\.css$,.*fontawesome\.min\.css$,.*regular\.min\.css$,.*solid\.min\.css$,.*components/noVNC-1\.6\.0/.*'
+            FILTER_REGEX_EXCLUDE: '.*bulma\.min\.css$|.*brands\.min\.css$|.*fontawesome\.min\.css$|.*regular\.min\.css$|.*solid\.min\.css$|.*components/noVNC-1\.6\.0/.*|.*helm/templates/.*'
 
     golangci-lint:
       name: Go Lint
-      runs-on: ubuntu-latest
+      runs-on: ubuntu-26.04
       timeout-minutes: 10
 
       permissions:
@@ -57,11 +57,11 @@ jobs:
         - name: Set up Go
           uses: actions/setup-go@v7
           with:
-            go-version-file: backend/go.mod
+            go-version-file: server/go.mod
+            cache-dependency-path: server/go.sum
 
         - name: Run golangci-lint
-          uses: golangci/golangci-lint-action@v9
-          with:
-            version: latest
-            working-directory: backend
-            args: -v --timeout=3m
+          working-directory: server
+          # go tool, not the action's prebuilt binary: those lag go.mod's
+          # go directive and cannot decode its export data
+          run: go tool golangci-lint run -v --timeout=5m ./...

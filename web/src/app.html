@@ -1,9 +1,24 @@
 <!doctype html>
-<html lang="en">
+<html lang="fr">
 	<head>
 		<meta charset="utf-8" />
 		<meta name="viewport" content="width=device-width, initial-scale=1" />
 		<title>PVMSS</title>
+		<link rel="icon" type="image/svg+xml" href="%sveltekit.assets%/favicon.svg" />
+		<link rel="alternate icon" type="image/x-icon" href="%sveltekit.assets%/favicon.ico" sizes="any" />
+		<link rel="apple-touch-icon" sizes="180x180" href="%sveltekit.assets%/apple-touch-icon.png" />
+		<meta name="theme-color" content="#FF8A33" />
+		<script>
+			// First paint in the right theme; ThemeState (pvmss-theme-v1) owns it after hydration.
+			try {
+				var stored = localStorage.getItem('pvmss-theme-v1');
+				if (stored === 'dark' || (stored !== 'light' && matchMedia('(prefers-color-scheme: dark)').matches)) {
+					document.documentElement.classList.add('dark');
+				}
+			} catch {
+				// localStorage or matchMedia may be unavailable in restricted contexts.
+			}
+		</script>
 		%sveltekit.head%
 	</head>
 	<body data-sveltekit-preload-data="hover">

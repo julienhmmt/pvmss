@@ -8,7 +8,49 @@ import (
 	"log/slog"
 	"net/http"
 	"path"
+	"pvmss/server/internal/logctx"
+	"pvmss/server/internal/store"
 	"strings"
+	"time"
+
+	"go.opentelemetry.io/otel/trace"
+)
+
+// cloudInitPaused turns off the cloud-init features (admin templates, the
+// baseline view, per-VM cloud-init writes, templates at create): they are not
+// reliable or viable yet and too complex to set up. Flip to false to restore.
+const cloudInitPaused = true
+
+const (
+	authRateLimitMaxRequests = 10
+	authRateLimitWindow      = time.Minute
+	// clusterListRateLimitMaxRequests: nearly every page loads the pre-login
+	// cluster list, so it gets its own per-IP budget, apart from login's.
+	clusterListRateLimitMaxRequests = 120
+	clusterListRateLimitWindow      = time.Minute
+	vmWriteRateLimitMaxRequests     = 30
+	vmWriteRateLimitWindow          = time.Minute
+	// vmStatusRateLimitMaxRequests allows the frontend convergence loop to
+	// poll batch live status every 1.5s for up to 30s per action (20 polls),
+	// with headroom for concurrent actions.
+	vmStatusRateLimitMaxRequests = 120
+	vmStatusRateLimitWindow      = time.Minute
+	// taskPollRateLimitMaxRequests allows the task tray to poll several
+	// tasks at once (one GET per task per second) without letting one user
+	// hammer the Proxmox task API.
+	taskPollRateLimitMaxRequests    = 300
+	taskPollRateLimitWindow         = time.Minute
+	clusterTestRateLimitMaxRequests = 10
+	clusterTestRateLimitWindow      = time.Minute
+	adminWriteRateLimitMaxRequests  = 60
+	adminWriteRateLimitWindow       = time.Minute
+	authWriteRateLimitMaxRequests   = 30
+	authWriteRateLimitWindow        = time.Minute
+	// clientErrorRateLimitMaxRequests stays generous - an error burst is
+	// exactly what the endpoint exists to see - but unbounded logging is a
+	// spam vector.
+	clientErrorRateLimitMaxRequests = 60
+	clientErrorRateLimitWindow      = time.Minute
 )
 
 // errorResponse is the public error shape for unknown API paths.
@@ -23,28 +65,325 @@ type spaHandler struct {
 	log   *slog.Logger
 }
 
-// NewRouter wires the public API and the static SPA handler.
-func NewRouter(health http.Handler, webBuildDir string, log *slog.Logger) *http.ServeMux {
+// RouterConfig configures NewRouter. VMCloudInit, VMCreate, Tasks,
+// SnapshotHandlers, VMConsole, AdminCatalog, AdminPolicy, AdminPools, and
+// AdminOps are optional - left nil/empty, their routes are simply not
+// registered (router tests rely on this to omit handlers without panicking).
+type RouterConfig struct {
+	Health           http.Handler
+	ClusterNodes     http.Handler
+	ClusterRefresh   http.Handler
+	VMs              http.Handler
+	VMDetail         http.Handler
+	VMBulk           *VMBulk
+	VMStatusBatch    *VMStatusBatch
+	VMCloudInit      *VMCloudInit
+	VMCreate         *VMCreate
+	Tasks            *Tasks
+	Auth             *Auth
+	WebBuildDir      string
+	Log              *slog.Logger
+	SnapshotHandlers []*VMSnapshots
+	VMConsole        *VMConsole
+	VMSerialConsole  *VMSerialConsole
+	VMMetrics        *VMMetrics
+	AdminCatalog     *AdminCatalog
+	AdminPolicy      *AdminPolicy
+	AdminPools       *AdminPools
+	AdminOps         *AdminOps
+	AdminClusters    *AdminClusters
+	AdminBaseline    *AdminBaseline
+	AdminMigration   *AdminMigration
+	AdminAccounts    *AdminAccounts
+	Docs             *DocsAPIHandler
+	AdminDocs        *AdminDocs
+	ProfileSSHKeys   *ProfileSSHKeys
+	Store            *store.Store
+	// TrustedProxyHops is forwarded to the rate limiters so clientIP resolves
+	// the real user IP behind a Kubernetes ingress via X-Forwarded-For.
+	// Defaults to 0 (use RemoteAddr directly) when not set by the caller.
+	TrustedProxyHops int
+	// RateLimitMax overrides every limiter's ceiling when > 0 (0 keeps the
+	// built-in defaults). Opt-in escape hatch for the e2e suite and load
+	// tests; raising it weakens the login brute-force protection.
+	RateLimitMax int
+	// TracerProvider overrides the global OpenTelemetry provider for request
+	// spans. nil uses the global one (no-op unless telemetry.Setup enabled it).
+	TracerProvider trace.TracerProvider
+}
+
+// limitMax resolves a limiter ceiling, honouring the RateLimitMax override.
+func (cfg RouterConfig) limitMax(defaultMax int) int {
+	if cfg.RateLimitMax > 0 {
+		return cfg.RateLimitMax
+	}
+
+	return defaultMax
+}
+
+// NewRouter wires the public API and the static SPA handler from cfg.
+func NewRouter(cfg RouterConfig) http.Handler {
 	mux := http.NewServeMux()
-	mux.Handle("GET /health", health)
+
+	hops := cfg.TrustedProxyHops
+	csrf := newCSRFMiddleware(cfg.Auth, cfg.Store, hops)
+	vmWriteLimiter := newUserRateLimiter(cfg.limitMax(vmWriteRateLimitMaxRequests), vmWriteRateLimitWindow, hops, cfg.Store)
+	vmStatusLimiter := newUserRateLimiter(cfg.limitMax(vmStatusRateLimitMaxRequests), vmStatusRateLimitWindow, hops, cfg.Store)
+	clusterTestLimiter := newUserRateLimiter(cfg.limitMax(clusterTestRateLimitMaxRequests), clusterTestRateLimitWindow, hops, cfg.Store)
+	adminWriteLimiter := newUserRateLimiter(cfg.limitMax(adminWriteRateLimitMaxRequests), adminWriteRateLimitWindow, hops, cfg.Store)
+	authWriteLimiter := newUserRateLimiter(cfg.limitMax(authWriteRateLimitMaxRequests), authWriteRateLimitWindow, hops, cfg.Store)
+
+	// protect combines per-user rate limiting (outer) and CSRF validation (inner)
+	// for state-changing browser requests.
+	protect := func(next http.Handler, limiter *userRateLimiter) http.Handler {
+		return limiter.middleware(cfg.Auth, csrf(withLongWriteDeadline(next)))
+	}
+
+	adminProtect := func(method string, next http.Handler) http.Handler {
+		return newAdminProtect(cfg, method, next, adminWriteLimiter, csrf, hops)
+	}
+
+	mux.Handle("GET /health", cfg.Health)
+	mux.Handle("GET /api/v1/cluster/nodes", cfg.Auth.Require(cfg.ClusterNodes))
+	mux.Handle("POST /api/v1/cluster/refresh", protect(cfg.Auth.Require(cfg.ClusterRefresh), clusterTestLimiter))
+
+	registerVMRoutes(mux, cfg, protect, vmWriteLimiter, vmStatusLimiter)
+	registerAuthRoutes(mux, cfg, protect, csrf, authWriteLimiter, hops)
+
+	// Public documentation - audience-filtered list and rendered
+	// single-page view. Not wrapped in auth.Require: the handler resolves the
+	// caller itself (to hide admin-audience pages from non-admins) and issues
+	// its own 401/403 on admin-audience pages.
+	if cfg.Docs != nil {
+		mux.Handle("GET /api/v1/docs", http.HandlerFunc(cfg.Docs.ServeDocsList))
+		mux.Handle("GET /api/v1/docs/{id}", http.HandlerFunc(cfg.Docs.ServeDoc))
+	}
+
+	// Admin-only route groups. Each group is
+	// wired by its own helper behind the RequireAdmin guard. Extracted
+	// from NewRouter to keep its Cognitive Complexity under the SonarQube
+	// go:S3776 threshold.
+	registerAdminRoutes(mux, cfg, adminProtect)
+
+	// Metrics live on their own port; the SPA fallback must not answer
+	// /metrics on this one with index.html and a 200.
+	mux.Handle("GET /metrics", http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		_ = writeError(w, http.StatusNotFound, "not found")
+	}))
+
+	registerAPINotFound(mux, cfg)
+	registerSPA(mux, cfg)
+
+	// Wrap the entire mux with security headers so every response (API and
+	// SPA) gets CSP, X-Content-Type-Options, X-Frame-Options, Referrer-Policy,
+	// Permissions-Policy, HSTS, and cache-control for API paths. The request-ID
+	// middleware is outermost so every response, including errors, carries it.
+	return withRequestID(cfg.Log, withTracing(cfg.TracerProvider, withAccessLog(hops, withSecurityHeaders(spaSecurityPolicy(cfg.WebBuildDir), mux))))
+}
+
+// protectFunc is the signature of NewRouter's `protect` closure, factored out
+// so the extracted route-registration helpers can take it as a parameter.
+type protectFunc func(next http.Handler, limiter *userRateLimiter) http.Handler
+
+// registerVMRoutes wires the VM, task, console, serial, snapshot, and metrics
+// routes. Extracted from NewRouter to keep its cyclomatic complexity under
+// gocyclo's ceiling. The handlers call h.auth.Principal(r) directly and return
+// 401 on their own, so they are not wrapped in auth.Require.
+func registerVMRoutes(mux *http.ServeMux, cfg RouterConfig, protect protectFunc, vmWriteLimiter, vmStatusLimiter *userRateLimiter) {
+	// Not wrapped in auth.Require: the handler needs the resolved Identity
+	// itself (for scope enforcement) and calls h.auth.Principal(r) directly,
+	// returning 401 on its own - wrapping would just re-run the same check.
+	mux.Handle("GET /api/v1/vms", cfg.VMs)
+	// Bulk VM power actions - same Principal pattern as VM list/detail:
+	// the handler calls h.auth.Principal(r) directly and returns 401 on its
+	// own, so it is not wrapped in auth.Require. Registered before the
+	// {cluster}/{vmid} pattern so the literal "bulk-action" segment wins.
+	if cfg.VMBulk != nil {
+		mux.Handle("POST /api/v1/vms/bulk-action", protect(cfg.VMBulk, vmWriteLimiter))
+	}
+	// Batch live-status read (ADR 0001). Registered before the
+	// {cluster}/{vmid} pattern so the literal "status" segment wins, same
+	// reason as bulk-action above. Wrapped in protect for CSRF (it takes a
+	// POST body) with a read-oriented rate limit.
+	if cfg.VMStatusBatch != nil {
+		mux.Handle("POST /api/v1/vms/status", protect(cfg.VMStatusBatch, vmStatusLimiter))
+	}
+	// VM creation + catalog + task polling - same Principal pattern as above.
+	if cfg.VMCreate != nil {
+		mux.Handle("POST /api/v1/vms", protect(cfg.VMCreate, vmWriteLimiter))
+		mux.Handle("GET /api/v1/vm-create/catalog", http.HandlerFunc(cfg.VMCreate.ServeCatalog))
+	}
+
+	if cfg.Tasks != nil {
+		// GET: rate limit only, no CSRF.
+		taskPollLimiter := newUserRateLimiter(cfg.limitMax(taskPollRateLimitMaxRequests), taskPollRateLimitWindow, cfg.TrustedProxyHops, cfg.Store)
+		mux.Handle("GET /api/v1/tasks/{upid}", taskPollLimiter.middleware(cfg.Auth, cfg.Tasks))
+	}
+	// VM detail + actions + delete + patch - all gated by vm.Resolve() inside
+	// the handler. Same reason as GET /vms: not wrapped in auth.Require.
+	mux.Handle("GET /api/v1/vms/{cluster}/{vmid}", cfg.VMDetail)
+	mux.Handle("POST /api/v1/vms/{cluster}/{vmid}/actions", protect(cfg.VMDetail, vmWriteLimiter))
+	mux.Handle("DELETE /api/v1/vms/{cluster}/{vmid}", protect(cfg.VMDetail, vmWriteLimiter))
+	mux.Handle("PATCH /api/v1/vms/{cluster}/{vmid}", protect(cfg.VMDetail, vmWriteLimiter))
+	mux.Handle("GET /api/v1/vms/{cluster}/{vmid}/hardware-options", cfg.VMDetail)
+	mux.Handle("GET /api/v1/vms/{cluster}/{vmid}/status", cfg.VMDetail)
+	mux.Handle("POST /api/v1/vms/{cluster}/{vmid}/disks", protect(cfg.VMDetail, vmWriteLimiter))
+	mux.Handle("PUT /api/v1/vms/{cluster}/{vmid}/disks/{diskKey}/resize", protect(cfg.VMDetail, vmWriteLimiter))
+	mux.Handle("DELETE /api/v1/vms/{cluster}/{vmid}/disks/{diskKey}", protect(cfg.VMDetail, vmWriteLimiter))
+	mux.Handle("PATCH /api/v1/vms/{cluster}/{vmid}/cdrom", protect(cfg.VMDetail, vmWriteLimiter))
+	mux.Handle("POST /api/v1/vms/{cluster}/{vmid}/boot-cdrom", protect(cfg.VMDetail, vmWriteLimiter))
+	mux.Handle("PUT /api/v1/vms/{cluster}/{vmid}/network", protect(cfg.VMDetail, vmWriteLimiter))
+	mux.Handle("PUT /api/v1/vms/{cluster}/{vmid}/hardware", protect(cfg.VMDetail, vmWriteLimiter))
+	mux.Handle("POST /api/v1/vms/{cluster}/{vmid}/serial", protect(cfg.VMDetail, vmWriteLimiter))
+	mux.Handle("POST /api/v1/vms/{cluster}/{vmid}/retrofit-seabios", protect(cfg.VMDetail, vmWriteLimiter))
+	mux.Handle("GET /api/v1/vms/{cluster}/{vmid}/audit", cfg.VMDetail)
+
+	if cfg.VMCloudInit != nil {
+		mux.Handle("GET /api/v1/vms/{cluster}/{vmid}/cloudinit", cfg.VMCloudInit)
+		// The read stays: the Connect tab shows the SSH user from it.
+		if !cloudInitPaused {
+			mux.Handle("PUT /api/v1/vms/{cluster}/{vmid}/cloudinit", protect(cfg.VMCloudInit, vmWriteLimiter))
+			mux.Handle("GET /api/v1/vms/{cluster}/{vmid}/cloudinit/document", cfg.VMCloudInit)
+			mux.Handle("PUT /api/v1/vms/{cluster}/{vmid}/cloudinit/document", protect(cfg.VMCloudInit, vmWriteLimiter))
+			mux.Handle("POST /api/v1/vms/{cluster}/{vmid}/cloudinit/ssh-keys", protect(cfg.VMCloudInit, vmWriteLimiter))
+		}
+
+		mux.Handle("POST /api/v1/vms/{cluster}/{vmid}/console-password", protect(cfg.VMCloudInit, vmWriteLimiter))
+	}
+
+	if len(cfg.SnapshotHandlers) > 0 && cfg.SnapshotHandlers[0] != nil {
+		snapshots := cfg.SnapshotHandlers[0]
+		mux.Handle("GET /api/v1/vms/{cluster}/{vmid}/snapshots", snapshots)
+		mux.Handle("POST /api/v1/vms/{cluster}/{vmid}/snapshots", protect(snapshots, vmWriteLimiter))
+		mux.Handle("POST /api/v1/vms/{cluster}/{vmid}/snapshots/{name}/rollback", protect(snapshots, vmWriteLimiter))
+		mux.Handle("DELETE /api/v1/vms/{cluster}/{vmid}/snapshots/{name}", protect(snapshots, vmWriteLimiter))
+		// One snapshot's stored config - the pre-rollback diff.
+		mux.Handle("GET /api/v1/vms/{cluster}/{vmid}/snapshots/{name}/config", snapshots)
+	}
+
+	if cfg.VMConsole != nil {
+		mux.Handle("POST /api/v1/vms/{cluster}/{vmid}/vnc-ticket", protect(cfg.VMConsole, vmWriteLimiter))
+		mux.Handle("GET /api/v1/vms/{cluster}/{vmid}/console/websocket", cfg.VMConsole)
+	}
+
+	registerSerialConsoleRoutes(mux, cfg.VMSerialConsole, protect, vmWriteLimiter)
+
+	if cfg.VMMetrics != nil {
+		mux.Handle("GET /api/v1/vms/{cluster}/{vmid}/metrics/history", cfg.VMMetrics)
+		mux.Handle("GET /api/v1/vms/{cluster}/{vmid}/metrics/stream", cfg.VMMetrics)
+	}
+}
+
+// registerAuthRoutes wires the unauthenticated credential-check endpoints
+// (per-IP rate limited) and the authenticated password endpoint
+// (per-user rate limited + CSRF). Extracted from NewRouter for gocyclo.
+func registerAuthRoutes(mux *http.ServeMux, cfg RouterConfig, protect protectFunc, csrf func(http.Handler) http.Handler, authWriteLimiter *userRateLimiter, hops int) {
+	// Unauthenticated credential-check endpoints get a per-IP rate limit -
+	// nothing else gates repeated guesses against them. The pre-login cluster
+	// list is also unauthenticated and discloses cluster names, so it is
+	// limited too, but on its own budget: pages load it on every visit, and
+	// sharing login's would let browsing lock everyone behind an IP out.
+	authLimiter := newIPRateLimiter(cfg.limitMax(authRateLimitMaxRequests), authRateLimitWindow, hops, cfg.Store)
+	clusterListLimiter := newIPRateLimiter(cfg.limitMax(clusterListRateLimitMaxRequests), clusterListRateLimitWindow, hops, cfg.Store)
+	mux.Handle("POST /api/v1/auth/login", authLimiter.middleware(http.HandlerFunc(cfg.Auth.Login)))
+	mux.Handle("POST /api/v1/auth/admin-login", authLimiter.middleware(http.HandlerFunc(cfg.Auth.AdminLogin)))
+	mux.HandleFunc("GET /api/v1/auth/me", cfg.Auth.Me)
+	mux.Handle("GET /api/v1/auth/clusters", clusterListLimiter.middleware(http.HandlerFunc(cfg.Auth.ServeClusters)))
+	mux.Handle("POST /api/v1/auth/logout", protect(http.HandlerFunc(cfg.Auth.Logout), authWriteLimiter))
+	mux.Handle("POST /api/v1/auth/password", protect(http.HandlerFunc(cfg.Auth.ChangePassword), authWriteLimiter))
+
+	// Profile-scoped user routes. The handler resolves the session itself
+	// (401 on its own); writes still go through CSRF + the per-user limiter
+	// like the other authenticated writes above. Nothing static lives under
+	// /profile/ssh-keys/ - only the {id} pattern.
+	if cfg.ProfileSSHKeys != nil {
+		mux.Handle("GET /api/v1/profile/ssh-keys", cfg.ProfileSSHKeys)
+		mux.Handle("POST /api/v1/profile/ssh-keys", protect(cfg.ProfileSSHKeys, authWriteLimiter))
+		mux.Handle("DELETE /api/v1/profile/ssh-keys/{id}", protect(cfg.ProfileSSHKeys, authWriteLimiter))
+	}
+
+	// Unauthenticated SPA telemetry: errors must report even before login, so
+	// it shares the per-IP limiter style of the auth endpoints (its own
+	// bucket - an error burst must not lock out logins).
+	clientErrorLimiter := newIPRateLimiter(cfg.limitMax(clientErrorRateLimitMaxRequests), clientErrorRateLimitWindow, hops, cfg.Store)
+	mux.Handle("POST /api/v1/client-errors", clientErrorLimiter.middleware(csrf(http.HandlerFunc(ServeClientError))))
+}
+
+// registerAPINotFound installs the catch-all 404 for unknown /api/ paths across
+// every method the SPA might use. Extracted from NewRouter for gocyclo.
+func registerAPINotFound(mux *http.ServeMux, cfg RouterConfig) {
 	for _, method := range []string{http.MethodGet, http.MethodPost, http.MethodPut, http.MethodPatch, http.MethodDelete} {
 		mux.Handle(method+" /api/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			if err := writeError(w, http.StatusNotFound, "unknown API path"); err != nil {
-				log.Error("failed to write API 404", "component", "httpapi", "error", err)
+				cfg.Log.WarnContext(r.Context(), "failed to write API 404", "component", "httpapi", "error", err)
 			}
 		}))
 	}
+}
 
-	if webBuildDir != "" {
-		spa := &spaHandler{
-			root:  http.Dir(webBuildDir),
-			index: "/index.html",
-			log:   log,
-		}
-		mux.Handle("GET /", spa)
+// registerSPA wires the static SPA handler when WebBuildDir is set. Extracted
+// from NewRouter for gocyclo.
+func registerSPA(mux *http.ServeMux, cfg RouterConfig) {
+	if cfg.WebBuildDir == "" {
+		return
 	}
 
-	return mux
+	spa := &spaHandler{
+		root:  http.Dir(cfg.WebBuildDir),
+		index: "/index.html",
+		log:   cfg.Log,
+	}
+	mux.Handle("GET /", spa)
+}
+
+// newAdminProtect builds the admin authorization guard used by NewRouter.
+// It rejects unauthenticated requests (401), audits and rejects non-admin
+// identities (403), and wraps non-GET handlers with the admin write rate
+// limiter and CSRF middleware.
+func newAdminProtect(cfg RouterConfig, method string, next http.Handler, limiter *userRateLimiter, csrf func(http.Handler) http.Handler, hops int) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		identity, err := cfg.Auth.Principal(r)
+		if err != nil {
+			writeAuthError(w, http.StatusUnauthorized, "unauthenticated", msgAuthRequired)
+
+			return
+		}
+
+		if !identity.IsAdmin {
+			if cfg.Store != nil {
+				_ = cfg.Store.RecordAdminAction(r.Context(), identity.Username, "auth.admin_denied", "auth", identity.Username,
+					`{"summary":"admin route denied to non-admin user","changes":[]}`, clientIP(r, hops))
+			}
+
+			writeAuthError(w, http.StatusForbidden, "forbidden", msgAdminOnly)
+
+			return
+		}
+
+		if method == http.MethodGet {
+			next.ServeHTTP(w, r)
+
+			return
+		}
+
+		limiter.middleware(cfg.Auth, csrf(withLongWriteDeadline(next))).ServeHTTP(w, r)
+	})
+}
+
+// longWriteDeadline covers the slowest authenticated write: a power action or
+// snapshot retrying on a VM lock (vm.MaxLockRetryWait, 30s), its task wait and
+// the post-action inventory refresh, or a bulk action over many VMs.
+const longWriteDeadline = 2 * time.Minute
+
+// withLongWriteDeadline lifts the server's 10s WriteTimeout for one
+// authenticated write, so a slow-but-successful action reaches the client
+// instead of a dropped connection. Handlers needing more (VM create) set
+// their own deadline afterwards.
+func withLongWriteDeadline(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		_ = http.NewResponseController(w).SetWriteDeadline(time.Now().Add(longWriteDeadline))
+		next.ServeHTTP(w, r)
+	})
 }
 
 func (s *spaHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
@@ -57,9 +396,10 @@ func (s *spaHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	if strings.HasPrefix(p, "/_app/") || path.Ext(p) != "" {
 		if err := s.serveFile(w, r, p); err != nil {
 			if writeErr := writeTextError(w, http.StatusNotFound, "asset not found"); writeErr != nil {
-				s.log.Error("failed to write asset 404", "component", "httpapi", "path", p, "error", writeErr)
+				logctx.FromOr(r.Context(), s.log).WarnContext(r.Context(), "failed to write asset 404", "component", "httpapi", "path", p, "error", writeErr)
 			}
 		}
+
 		return
 	}
 
@@ -67,9 +407,10 @@ func (s *spaHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	if err := s.serveFile(w, r, p); err == nil {
 		return
 	}
+
 	if err := s.serveFile(w, r, s.index); err != nil {
 		if writeErr := writeTextError(w, http.StatusNotFound, "shell not found"); writeErr != nil {
-			s.log.Error("failed to write shell 404", "component", "httpapi", "path", p, "error", writeErr)
+			logctx.FromOr(r.Context(), s.log).WarnContext(r.Context(), "failed to write shell 404", "component", "httpapi", "path", p, "error", writeErr)
 		}
 	}
 }
@@ -78,18 +419,22 @@ func (s *spaHandler) serveFile(w http.ResponseWriter, r *http.Request, name stri
 	f, err := s.root.Open(name)
 	if err != nil {
 		if !errors.Is(err, fs.ErrNotExist) {
-			s.log.Error("failed to open static file", "component", "httpapi", "path", name, "error", err)
+			logctx.FromOr(r.Context(), s.log).ErrorContext(r.Context(), "failed to open static file", "component", "httpapi", "path", name, "error", err)
 		}
+
 		return err
 	}
 	defer func() { _ = f.Close() }()
+
 	st, err := f.Stat()
 	if err != nil {
 		return err
 	}
+
 	if st.IsDir() {
 		return fs.ErrNotExist
 	}
+
 	http.ServeContent(
 		w,
 		r,
@@ -97,6 +442,7 @@ func (s *spaHandler) serveFile(w http.ResponseWriter, r *http.Request, name stri
 		st.ModTime(),
 		f,
 	)
+
 	return nil
 }
 
@@ -105,6 +451,7 @@ func writeJSON(w http.ResponseWriter, status int, body []byte) error {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(status)
 	_, err := w.Write(body)
+
 	return err
 }
 
@@ -114,6 +461,7 @@ func writeError(w http.ResponseWriter, status int, detail string) error {
 	if err != nil {
 		return fmt.Errorf("marshal error response: %w", err)
 	}
+
 	return writeJSON(w, status, body)
 }
 
@@ -122,5 +470,20 @@ func writeTextError(w http.ResponseWriter, status int, detail string) error {
 	w.Header().Set("Content-Type", "text/plain; charset=utf-8")
 	w.WriteHeader(status)
 	_, err := w.Write([]byte(detail))
+
 	return err
+}
+
+// registerSerialConsoleRoutes wires the serial-terminal endpoints onto mux
+// when the handler is present. Extracted from NewRouter to keep its cyclomatic
+// complexity under the gocyclo threshold (one if-block per route group adds up
+//
+// across console, metrics, admin, tasks, ...).
+func registerSerialConsoleRoutes(mux *http.ServeMux, handler *VMSerialConsole, protect func(http.Handler, *userRateLimiter) http.Handler, limiter *userRateLimiter) {
+	if handler == nil {
+		return
+	}
+
+	mux.Handle("POST /api/v1/vms/{cluster}/{vmid}/serial-ticket", protect(handler, limiter))
+	mux.Handle("GET /api/v1/vms/{cluster}/{vmid}/serial/websocket", handler)
 }

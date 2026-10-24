@@ -1,17 +1,23 @@
 # Ignore everything by default
 *
 
-# Allow files and directories
-!backend/
-!frontend/
+# Allow source directories
+!server/
+!web/
 !.gitkeep
-!go.mod
-!go.sum
 
-# Exclude heavy frontend dev artifacts (built inside Docker by svelte-builder stage)
-frontend/node_modules/
-frontend/.svelte-kit/
-frontend/build/
+# Exclude heavy web/server dev artifacts (built inside Docker)
+server/pvmss
+server/coverage.out
+web/node_modules/
+web/.svelte-kit/
+web/build/
+web/coverage/
+web/playwright-report/
+web/test-results/
+web/src/lib/paraglide/
+web/project.inlang/*
+!web/project.inlang/settings.json
 
 # But ignore git and other temporary files
 .git

@@ -1,0 +1,772 @@
+//nolint:wsl_v5 // authentication handlers keep credential validation and response mapping adjacent
+package httpapi
+
+import (
+	"context"
+	"encoding/json"
+	"errors"
+	"fmt"
+	"io"
+	"log/slog"
+	"net/http"
+	"pvmss/server/internal/auth"
+	"pvmss/server/internal/cluster"
+	"pvmss/server/internal/logctx"
+	"pvmss/server/internal/pools"
+	"pvmss/server/internal/store"
+	"pvmss/server/internal/telemetry"
+	"strings"
+	"time"
+
+	"golang.org/x/crypto/bcrypt"
+)
+
+const (
+	minPasswordLength = 8
+	// maxPasswordLength is bcrypt's hard input limit: anything longer is
+	// silently truncated by the algorithm, so it is rejected instead.
+	maxPasswordLength = 72
+	// bootstrapUsername is the env-seeded administrator (ADMIN_PASSWORD_HASH).
+	// It is never stored in local_accounts and cannot be claimed by one.
+	bootstrapUsername = "admin"
+	// maxLocalLoginFailures failures lock a DB local account for
+	// localLoginLockDuration. The bootstrap admin uses the env secret and is
+	// protected by the per-IP login limiter instead.
+	maxLocalLoginFailures  = 5
+	localLoginLockDuration = 15 * time.Minute
+	// maxBootstrapLoginFailures failed bootstrap logins from one client IP
+	// inside bootstrapFailureWindow refuse that IP's next attempts. The
+	// account itself is never locked: it stays reachable from other IPs.
+	maxBootstrapLoginFailures = 5
+	bootstrapFailureWindow    = 15 * time.Minute
+)
+
+type loginRequest struct {
+	Username string `json:"username"`
+	Password string `json:"password"`
+	Cluster  string `json:"cluster"`
+	// Realm selects the Proxmox authentication realm when Username carries no
+	// "@realm" suffix. Only pve and pam are supported; OIDC is not.
+	Realm string `json:"realm"`
+}
+
+type adminLoginRequest struct {
+	// Username is optional for backward compatibility: empty means the
+	// bootstrap admin ("admin").
+	Username string `json:"username"`
+	Password string `json:"password"`
+}
+
+type changePasswordRequest struct {
+	OldPassword string `json:"oldPassword"`
+	NewPassword string `json:"newPassword"`
+}
+
+type authError struct {
+	Code              string `json:"code"`
+	Message           string `json:"message"`
+	RetryAfterSeconds int    `json:"retryAfterSeconds,omitempty"`
+}
+
+// Auth exposes browser login, session inspection, and logout endpoints.
+type Auth struct {
+	cluster          cluster.Client
+	clusters         cluster.ClientProvider
+	clusterStore     *store.Store
+	sessions         *auth.SessionManager
+	adminHash        string
+	log              *slog.Logger
+	trustedProxyHops int
+	freshness        ClusterFreshnessChecker
+	staleThreshold   time.Duration
+	// bootstrapFailures counts failed bootstrap logins per client IP.
+	bootstrapFailures *windowLimiter
+}
+
+// NewAuth creates the legacy single-cluster authentication endpoint handlers.
+func NewAuth(clusterClient cluster.Client, sessions *auth.SessionManager, adminHash string, log *slog.Logger) *Auth {
+	return &Auth{cluster: clusterClient, sessions: sessions, adminHash: adminHash, log: log, bootstrapFailures: newBootstrapFailures()}
+}
+
+// NewAuthWithRegistry creates authentication handlers with runtime cluster choice.
+func NewAuthWithRegistry(registry cluster.ClientProvider, st *store.Store, sessions *auth.SessionManager, adminHash string, log *slog.Logger) *Auth {
+	return &Auth{clusters: registry, clusterStore: st, sessions: sessions, adminHash: adminHash, log: log, bootstrapFailures: newBootstrapFailures()}
+}
+
+func newBootstrapFailures() *windowLimiter {
+	return newWindowLimiter(maxBootstrapLoginFailures, bootstrapFailureWindow, 0, nil)
+}
+
+// SetTrustedProxyHops configures how many X-Forwarded-For hops are trusted
+// when extracting the client IP for audit entries.
+func (h *Auth) SetTrustedProxyHops(n int) {
+	h.trustedProxyHops = n
+}
+
+// SetClusterFreshnessChecker wires the cluster health source used to reject
+// user logins when the selected cluster is unreachable. Admin login is never
+// gated by this check.
+func (h *Auth) SetClusterFreshnessChecker(freshness ClusterFreshnessChecker, staleThreshold time.Duration) {
+	h.freshness = freshness
+	h.staleThreshold = staleThreshold
+}
+
+// Login authenticates a PVE cluster account. The local administrator has its
+// own endpoint (AdminLogin) - a wrong password means something different for
+// each, so neither is a branch inside the other.
+//
+//nolint:gocyclo // each rejection maps to a distinct client-visible code
+func (h *Auth) Login(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		writeAuthError(w, http.StatusMethodNotAllowed, "method_not_allowed", msgMethodNotAllowed)
+		return
+	}
+
+	var request loginRequest
+	if err := decodeJSON(w, r, &request); err != nil {
+		writeAuthError(w, http.StatusBadRequest, "invalid_request", "invalid login request")
+		return
+	}
+
+	request.Username = strings.TrimSpace(request.Username)
+	if request.Username == "" || request.Password == "" {
+		writeAuthError(w, http.StatusBadRequest, "invalid_request", "username and password are required")
+		return
+	}
+
+	username, err := normalizePVEUsername(request.Username, request.Realm)
+	if errors.Is(err, errRealmUnsupported) {
+		writeAuthError(w, http.StatusBadRequest, "realm_unsupported", msgRealmUnsupported)
+		return
+	}
+	if err != nil {
+		writeAuthError(w, http.StatusBadRequest, "invalid_request", "username and realm disagree")
+		return
+	}
+
+	client, clusterName, err := h.loginClient(request.Cluster)
+	if errors.Is(err, errAuthClusterRequired) {
+		writeAuthError(w, http.StatusBadRequest, "cluster_required", "cluster is required when multiple clusters are configured")
+		return
+	}
+	if errors.Is(err, cluster.ErrClusterNotFound) {
+		writeAuthError(w, http.StatusBadRequest, "invalid_cluster", "unknown cluster")
+		return
+	}
+	if err != nil {
+		SetErrorMsg(w, "select cluster for login failed", err)
+		writeAuthError(w, http.StatusInternalServerError, "internal_error", msgInternalServerError)
+		return
+	}
+
+	if !h.isClusterAvailable(clusterName) {
+		logctx.FromOr(r.Context(), h.log).InfoContext(r.Context(), "cluster unavailable, rejecting user login", "component", "httpapi", "cluster", clusterName)
+		writeAuthError(w, http.StatusServiceUnavailable, "cluster_unavailable", msgClusterUnavailable)
+		return
+	}
+
+	result, err := authenticatePVE(r.Context(), client, username, request.Password)
+	if err != nil {
+		SetErrorMsg(w, "pve authentication failed", err)
+		h.recordLoginFailed(r.Context(), username, clientIP(r, h.trustedProxyHops))
+		writeAuthError(w, http.StatusUnauthorized, "invalid_credentials", msgInvalidCredentials)
+		return
+	}
+
+	displayName := clusterName
+	if h.clusterStore != nil {
+		if row, err := h.clusterStore.GetCluster(r.Context(), clusterName); err == nil && row.DisplayName != "" {
+			displayName = row.DisplayName
+		}
+	}
+	h.startSession(w, r, auth.Identity{Username: result.Username, DisplayName: userDisplayName(username), Pool: result.Pool, IsAdmin: result.IsAdmin, Cluster: clusterName, ClusterDisplayName: displayName, Provider: auth.ProviderPVE})
+}
+
+// AdminLogin authenticates a local administrator, independent of any cluster.
+// The username is optional and defaults to the bootstrap admin ("admin"),
+// which keeps older clients working. A wrong password, an unknown account, a
+// disabled account and a locked account all answer the same generic error:
+// the endpoint must not become a username oracle.
+func (h *Auth) AdminLogin(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		writeAuthError(w, http.StatusMethodNotAllowed, "method_not_allowed", msgMethodNotAllowed)
+		return
+	}
+
+	var request adminLoginRequest
+	if err := decodeJSON(w, r, &request); err != nil {
+		writeAuthError(w, http.StatusBadRequest, "invalid_request", "invalid login request")
+		return
+	}
+
+	username := strings.TrimSpace(request.Username)
+	if username == "" {
+		username = bootstrapUsername
+	}
+
+	if username == bootstrapUsername {
+		h.bootstrapLogin(w, r, request.Password)
+		return
+	}
+
+	h.localAccountLogin(w, r, username, request.Password)
+}
+
+// bootstrapLogin checks ADMIN_PASSWORD_HASH. The bootstrap admin is the
+// immutable owner: it is never locked, disabled, or listed in local_accounts.
+func (h *Auth) bootstrapLogin(w http.ResponseWriter, r *http.Request, password string) {
+	ip := clientIP(r, h.trustedProxyHops)
+	if h.bootstrapFailures.exhausted(ip, time.Now()) {
+		logctx.FromOr(r.Context(), h.log).WarnContext(r.Context(), "bootstrap login throttled", "component", "httpapi", "event", "auth", "result", "throttled", "user", bootstrapUsername)
+		writeAuthError(w, http.StatusTooManyRequests, "rate_limited", "too many requests, try again later")
+		return
+	}
+
+	hash := []byte(h.adminHash)
+	if len(hash) == 0 {
+		// No bootstrap admin configured: still spend the bcrypt work, so the
+		// answer time does not reveal it.
+		hash = dummyPasswordHash
+	}
+
+	matches := bcrypt.CompareHashAndPassword(hash, []byte(password)) == nil
+	if password == "" || h.adminHash == "" || !matches {
+		h.bootstrapFailures.allow(ip, time.Now())
+		// Admin login failures write no audit row (keeps /activity unchanged),
+		// so the log stream is the only record. Never log the password.
+		telemetry.RecordLogin(r.Context(), "failure")
+		logctx.FromOr(r.Context(), h.log).WarnContext(r.Context(), "login failed", "component", "httpapi", "event", "auth", "result", "failure", "user", bootstrapUsername)
+		writeAuthError(w, http.StatusUnauthorized, "invalid_credentials", msgInvalidCredentials)
+		return
+	}
+
+	h.startSession(w, r, auth.Identity{Username: bootstrapUsername, DisplayName: bootstrapUsername, IsAdmin: true, Provider: auth.ProviderBootstrap, IsOwner: true})
+}
+
+// localAccountLogin authenticates a DB-backed local administrator, applying
+// the per-account lockout. Every rejection is the same 401 and every known
+// account rejection leaves an audit row for the owner.
+func (h *Auth) localAccountLogin(w http.ResponseWriter, r *http.Request, username, password string) {
+	if h.clusterStore == nil {
+		writeAuthError(w, http.StatusUnauthorized, "invalid_credentials", msgInvalidCredentials)
+		return
+	}
+
+	account, err := h.clusterStore.LocalAccountByUsername(r.Context(), username)
+	if err != nil {
+		// Burn the same bcrypt work as a real comparison so an unknown
+		// username does not answer faster than a wrong password.
+		_ = bcrypt.CompareHashAndPassword(dummyPasswordHash, []byte(password))
+		h.rejectLocalLogin(w, r, username, "unknown account")
+		return
+	}
+
+	now := time.Now().UTC()
+	if account.Disabled || account.Locked(now) {
+		// Same bcrypt work as a wrong password: the answer time must not tell
+		// a disabled or locked account from a live one.
+		_ = bcrypt.CompareHashAndPassword(dummyPasswordHash, []byte(password))
+
+		reason := "account locked"
+		if account.Disabled {
+			reason = "account disabled"
+		}
+
+		h.rejectLocalLogin(w, r, username, reason)
+
+		return
+	}
+
+	if bcrypt.CompareHashAndPassword([]byte(account.PasswordHash), []byte(password)) != nil {
+		lockedUntil, err := h.clusterStore.RecordLocalLoginFailure(r.Context(), account.ID, now, maxLocalLoginFailures, localLoginLockDuration)
+		if err != nil {
+			logctx.FromOr(r.Context(), h.log).WarnContext(r.Context(), "local login failure recording failed", "component", "httpapi", "error", err)
+		} else if !lockedUntil.IsZero() {
+			logctx.FromOr(r.Context(), h.log).WarnContext(r.Context(), "local account locked after repeated failures", "component", "httpapi", "event", "auth", "result", "locked", "user", username, "lockedUntil", lockedUntil)
+		}
+
+		h.rejectLocalLogin(w, r, username, "invalid password")
+		return
+	}
+
+	if err := h.clusterStore.RecordLocalLoginSuccess(r.Context(), account.ID, now); err != nil {
+		logctx.FromOr(r.Context(), h.log).WarnContext(r.Context(), "local login success recording failed", "component", "httpapi", "error", err)
+	}
+
+	h.startSession(w, r, auth.Identity{Username: account.Username, DisplayName: account.Username, IsAdmin: true, Provider: auth.ProviderLocal})
+}
+
+// rejectLocalLogin audits and answers a local account rejection.
+func (h *Auth) rejectLocalLogin(w http.ResponseWriter, r *http.Request, username, reason string) {
+	telemetry.RecordLogin(r.Context(), "failure")
+	logctx.FromOr(r.Context(), h.log).WarnContext(r.Context(), "local login failed", "component", "httpapi", "event", "auth", "result", "failure", "user", username, "reason", reason)
+
+	if h.clusterStore != nil {
+		_ = h.clusterStore.RecordAdminAction(r.Context(), username, "auth.login_failed", "auth", username, loginFailedDetail(username), clientIP(r, h.trustedProxyHops))
+	}
+
+	writeAuthError(w, http.StatusUnauthorized, "invalid_credentials", msgInvalidCredentials)
+}
+
+func (h *Auth) startSession(w http.ResponseWriter, r *http.Request, identity auth.Identity) {
+	identity.IsOwner = identity.Owner()
+
+	if err := h.sessions.SetCookie(r.Context(), w, identity); err != nil {
+		SetErrorMsg(w, "failed to create session", err)
+		writeAuthError(w, http.StatusInternalServerError, "internal_error", msgInternalServerError)
+
+		return
+	}
+
+	telemetry.RecordLogin(r.Context(), "success")
+	logctx.FromOr(r.Context(), h.log).InfoContext(r.Context(), "login succeeded", "component", "httpapi", "event", "auth", "result", "success", "user", identity.Username)
+	writeAuthJSON(w, http.StatusOK, identity)
+}
+
+// Me returns the resolved browser session identity. The cluster
+// display name is refreshed from the current database row so the sidebar
+// reflects an updated display name without forcing a re-login.
+func (h *Auth) Me(w http.ResponseWriter, r *http.Request) {
+	identity, err := h.Principal(r)
+	if err != nil {
+		writeAuthError(w, http.StatusUnauthorized, "unauthenticated", msgAuthRequired)
+		return
+	}
+
+	if err := h.sessions.EnsureCSRFCookie(r.Context(), w, r); err != nil {
+		logctx.FromOr(r.Context(), h.log).WarnContext(r.Context(), "csrf cookie reissue failed", "component", "httpapi", "error", err)
+	}
+
+	identity = h.refreshClusterDisplayName(r.Context(), identity)
+	if identity.DisplayName == "" {
+		identity.DisplayName = userDisplayName(identity.Username)
+	}
+
+	writeAuthJSON(w, http.StatusOK, identity)
+}
+
+// refreshClusterDisplayName re-reads the cluster row's DisplayName so the
+// frontend sidebar and login choices stay up to date when an admin test or
+// seeding populates it after the session was created.
+func (h *Auth) refreshClusterDisplayName(ctx context.Context, identity auth.Identity) auth.Identity {
+	if h.clusterStore == nil || identity.Cluster == "" {
+		return identity
+	}
+
+	row, err := h.clusterStore.GetCluster(ctx, identity.Cluster)
+	if err != nil {
+		return identity
+	}
+
+	if row.DisplayName != "" {
+		identity.ClusterDisplayName = row.DisplayName
+	}
+
+	return identity
+}
+
+// Require rejects requests that do not resolve to a browser session or API token.
+func (h *Auth) Require(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if _, err := h.Principal(r); err != nil {
+			writeAuthError(w, http.StatusUnauthorized, "unauthenticated", msgAuthRequired)
+			return
+		}
+
+		next.ServeHTTP(w, r)
+	})
+}
+
+// RequireAdmin is the admin-only route guard: the resolved identity
+// must authenticate (401 if not) and have IsAdmin == true (403 if not). It
+// duplicates the Principal resolution from Require rather than composing it,
+// so it can issue the role check without an extra handler hop. This is the
+// only admin-only route guard in v0.4 - earlier work shipped authentication only, not
+// role enforcement. Every /api/v1/admin/* route is wrapped by this, so a
+// non-admin identity can never reach an admin handler regardless of the HTTP
+// method or path.
+func (h *Auth) RequireAdmin(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		identity, err := h.Principal(r)
+		if err != nil {
+			writeAuthError(w, http.StatusUnauthorized, "unauthenticated", msgAuthRequired)
+			return
+		}
+
+		if !identity.IsAdmin {
+			writeAuthError(w, http.StatusForbidden, "forbidden", msgAdminOnly)
+			return
+		}
+
+		next.ServeHTTP(w, r)
+	})
+}
+
+// CSRFToken returns the persisted CSRF token for the request's session, or an
+// error if the session cookie is missing, unknown, or expired.
+func (h *Auth) CSRFToken(r *http.Request) (string, error) {
+	return h.sessions.CSRFToken(r.Context(), r)
+}
+
+// Principal resolves the browser session cookie. Bearer credentials are not
+// accepted: PVMSS has no API tokens.
+func (h *Auth) Principal(r *http.Request) (auth.Identity, error) {
+	identity, err := h.sessions.Resolve(r.Context(), r)
+	if err == nil {
+		// Principal is the single resolution point (Require, RequireAdmin and
+		// handlers that call it directly), so tagging here covers them all.
+		logctx.AddAttrs(r.Context(), slog.String("user", identity.Username))
+
+		// Derived, never persisted: only the bootstrap admin owns accounts.
+		identity.IsOwner = identity.Owner()
+
+		return identity, nil
+	}
+
+	return auth.Identity{}, auth.ErrUnauthenticated
+}
+
+// Logout revokes the authenticated browser session.
+func (h *Auth) Logout(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		writeAuthError(w, http.StatusMethodNotAllowed, "method_not_allowed", msgMethodNotAllowed)
+		return
+	}
+
+	// Resolve first so the request logger carries the user being logged out.
+	_, _ = h.Principal(r)
+
+	if err := h.sessions.Logout(r.Context(), w, r); err != nil {
+		SetErrorMsg(w, "failed to revoke session", err)
+		writeAuthError(w, http.StatusInternalServerError, "internal_error", msgInternalServerError)
+
+		return
+	}
+
+	logctx.FromOr(r.Context(), h.log).InfoContext(r.Context(), "logout", "component", "httpapi", "event", "auth", "result", "success")
+
+	w.WriteHeader(http.StatusNoContent)
+}
+
+// ChangePassword rotates the browser session identity's cluster password.
+// The local administrator has no password to change through this flow - its
+// secret is rotated outside the application.
+func (h *Auth) ChangePassword(w http.ResponseWriter, r *http.Request) {
+	identity, err := h.sessions.Resolve(r.Context(), r)
+	if err != nil {
+		writeAuthError(w, http.StatusUnauthorized, "unauthenticated", msgAuthRequired)
+		return
+	}
+
+	var request changePasswordRequest
+	if err := decodeJSON(w, r, &request); err != nil {
+		writeAuthError(w, http.StatusBadRequest, "invalid_request", "invalid password change request")
+		return
+	}
+
+	if err := validatePassword(request.NewPassword); err != nil {
+		writeAuthError(w, http.StatusBadRequest, "invalid_request", err.Error())
+		return
+	}
+
+	switch identity.Provider {
+	case auth.ProviderBootstrap:
+		// The bootstrap secret is rotated through ADMIN_PASSWORD_HASH and a
+		// restart, never from the UI: that is what keeps it a recovery path.
+		writeAuthError(w, http.StatusBadRequest, "invalid_request", "the bootstrap administrator password is rotated through ADMIN_PASSWORD_HASH")
+	case auth.ProviderLocal:
+		h.changeLocalPassword(w, r, identity, request)
+	case auth.ProviderPVE:
+		h.changeClusterPassword(w, r, identity, request)
+	}
+}
+
+// changeLocalPassword rotates a DB local account's password. The old password
+// is verified against the stored hash, then every other session is revoked so
+// a stolen cookie dies with the old secret.
+func (h *Auth) changeLocalPassword(w http.ResponseWriter, r *http.Request, identity auth.Identity, request changePasswordRequest) {
+	if h.clusterStore == nil {
+		writeAuthError(w, http.StatusUnauthorized, "invalid_credentials", msgInvalidCredentials)
+		return
+	}
+
+	account, err := h.clusterStore.LocalAccountByUsername(r.Context(), identity.Username)
+	if err != nil {
+		writeAuthError(w, http.StatusUnauthorized, "invalid_credentials", msgInvalidCredentials)
+		return
+	}
+
+	if bcrypt.CompareHashAndPassword([]byte(account.PasswordHash), []byte(request.OldPassword)) != nil {
+		writeAuthError(w, http.StatusUnauthorized, "invalid_credentials", msgInvalidCredentials)
+		return
+	}
+
+	hash, err := bcrypt.GenerateFromPassword([]byte(request.NewPassword), bcrypt.DefaultCost)
+	if err != nil {
+		SetErrorMsg(w, "hash local password failed", err)
+		writeAuthError(w, http.StatusInternalServerError, "internal_error", msgInternalServerError)
+		return
+	}
+
+	if err := h.clusterStore.SetLocalAccountPassword(r.Context(), account.ID, string(hash), time.Now()); err != nil {
+		SetErrorMsg(w, "update local password failed", err)
+		writeAuthError(w, http.StatusInternalServerError, "internal_error", msgInternalServerError)
+		return
+	}
+
+	if err := h.sessions.RevokeOthers(r.Context(), r, identity); err != nil {
+		logctx.FromOr(r.Context(), h.log).WarnContext(r.Context(), "other sessions revocation failed", "component", "httpapi", "error", err)
+	}
+
+	logctx.FromOr(r.Context(), h.log).InfoContext(r.Context(), "local password changed", "component", "httpapi", "event", "auth", "result", "success")
+
+	w.WriteHeader(http.StatusNoContent)
+}
+
+// changeClusterPassword rotates the PVE account password through the cluster,
+// exactly as before local accounts existed.
+func (h *Auth) changeClusterPassword(w http.ResponseWriter, r *http.Request, identity auth.Identity, request changePasswordRequest) {
+	client := h.cluster
+	if h.clusters != nil && identity.Cluster != "" {
+		selected, selectErr := h.clusters.Client(identity.Cluster)
+		if selectErr != nil {
+			writeAuthError(w, http.StatusUnauthorized, "invalid_credentials", msgInvalidCredentials)
+			return
+		}
+		client = selected
+	}
+	if client == nil {
+		// Local admin session: no cluster account behind it.
+		writeAuthError(w, http.StatusBadRequest, "invalid_request", "password change requires a cluster account")
+		return
+	}
+	if err := client.ChangePassword(r.Context(), identity.Username, request.OldPassword, request.NewPassword); err != nil {
+		SetErrorMsg(w, "password change failed", err)
+		writeAuthError(w, http.StatusUnauthorized, "invalid_credentials", msgInvalidCredentials)
+
+		return
+	}
+
+	// The password already changed: a failed revocation is logged, not returned.
+	if err := h.sessions.RevokeOthers(r.Context(), r, identity); err != nil {
+		logctx.FromOr(r.Context(), h.log).WarnContext(r.Context(), "other sessions revocation failed", "component", "httpapi", "error", err)
+	}
+
+	w.WriteHeader(http.StatusNoContent)
+}
+
+var errAuthClusterRequired = errors.New("authentication cluster required")
+
+// errRealmUnsupported rejects realms PVMSS cannot authenticate against.
+var errRealmUnsupported = errors.New("unsupported realm")
+
+// dummyPasswordHash is a valid bcrypt hash used only to spend the same CPU on
+// an unknown username as on a wrong password, so login timing does not reveal
+// which local accounts exist.
+var dummyPasswordHash = []byte("$2a$10$N9qo8uLOickgx2ZMRZoMyeIjZAgcfl7p92ldGxad68LJZdL17lhWy")
+
+// validatePassword enforces the shared policy for locally stored passwords:
+// at least minPasswordLength characters and no more than bcrypt's 72-byte
+// input limit (longer input is silently truncated, so it is refused).
+func validatePassword(password string) error {
+	if len(password) < minPasswordLength {
+		return fmt.Errorf("password must be at least %d characters", minPasswordLength)
+	}
+
+	if len(password) > maxPasswordLength {
+		return fmt.Errorf("password must be at most %d bytes", maxPasswordLength)
+	}
+
+	return nil
+}
+
+// isClusterAvailable reports whether the named cluster has completed a recent
+// successful inventory refresh. A missing checker or missing cluster means the
+// availability is unknown and the login proceeds (legacy/no-freshness paths).
+func (h *Auth) isClusterAvailable(name string) bool {
+	if h.freshness == nil {
+		return true
+	}
+
+	for _, c := range h.freshness.Clusters() {
+		if c.Name != name {
+			continue
+		}
+
+		if c.RefreshedAt.IsZero() {
+			return false
+		}
+
+		return time.Since(c.RefreshedAt) <= h.staleThreshold
+	}
+
+	return false
+}
+
+func (h *Auth) loginClient(name string) (cluster.Client, string, error) {
+	if h.clusters == nil {
+		return h.cluster, "", nil
+	}
+	names := h.clusters.List()
+	if name == "" {
+		if len(names) != 1 {
+			return nil, "", errAuthClusterRequired
+		}
+		name = names[0]
+	}
+	client, err := h.clusters.Client(name)
+	if err != nil {
+		return nil, "", err
+	}
+	return client, name, nil
+}
+
+type authClusterDTO struct {
+	Name        string `json:"name"`
+	DisplayName string `json:"displayName"`
+}
+
+// ServeClusters exposes the non-secret cluster choices needed before login.
+func (h *Auth) ServeClusters(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		writeAuthError(w, http.StatusMethodNotAllowed, "method_not_allowed", msgMethodNotAllowed)
+		return
+	}
+	if h.clusterStore == nil {
+		writeAuthJSON(w, http.StatusOK, []authClusterDTO{})
+		return
+	}
+	rows, err := h.clusterStore.ListClusters(r.Context())
+	if err != nil {
+		SetErrorMsg(w, "list login clusters failed", err)
+		writeAuthError(w, http.StatusInternalServerError, "internal_error", msgInternalServerError)
+		return
+	}
+	result := make([]authClusterDTO, 0, len(rows))
+	for _, row := range rows {
+		result = append(result, authClusterDTO{Name: row.Name, DisplayName: row.DisplayName})
+	}
+	writeAuthJSON(w, http.StatusOK, result)
+}
+
+func decodeJSON(w http.ResponseWriter, r *http.Request, dest any) error {
+	return decodeJSONLimit(w, r, dest, 4096)
+}
+
+func decodeJSONLimit(w http.ResponseWriter, r *http.Request, dest any, maxBytes int64) error {
+	defer func() { _ = r.Body.Close() }()
+
+	decoder := json.NewDecoder(http.MaxBytesReader(w, r.Body, maxBytes))
+	decoder.DisallowUnknownFields()
+
+	if err := decoder.Decode(dest); err != nil {
+		return fmt.Errorf("decode request: %w", err)
+	}
+
+	if err := decoder.Decode(&struct{}{}); !errors.Is(err, io.EOF) {
+		return errors.New("decode request: multiple json values")
+	}
+
+	return nil
+}
+
+// authenticatePVE tries the typed username, then - on a not-found rejection -
+// retries once under the "pvmss-" pool prefix. Self-service pool users are
+// provisioned as "pvmss-{pool}@{realm}" (pools.CreateManaged) but only ever
+// told their pool name, so a bare "jho" must resolve to "pvmss-jho@pve"
+// without the user needing to know the internal naming convention.
+func authenticatePVE(ctx context.Context, client cluster.Client, username, password string) (cluster.Identity, error) {
+	result, err := client.Authenticate(ctx, username, password)
+	if err != nil && errors.Is(err, cluster.ErrNotFound) {
+		if poolUsername, ok := withPoolPrefix(username); ok {
+			result, err = client.Authenticate(ctx, poolUsername, password)
+		}
+	}
+
+	return result, err
+}
+
+// normalizePVEUsername resolves the realm. An explicit "@realm" in the
+// username wins and must not contradict the separately selected realm. A bare
+// username gets the selected realm, defaulting to pve. Only the picker's pve
+// and pam values are validated here: a realm typed explicitly is forwarded to
+// Proxmox untouched, so LDAP/AD users keep working. OIDC realms are not
+// offered (and Proxmox OIDC uses a browser redirect, not a password ticket).
+func normalizePVEUsername(username, realm string) (string, error) {
+	realm = strings.ToLower(strings.TrimSpace(realm))
+
+	if local, explicit, ok := strings.Cut(username, "@"); ok {
+		if local == "" || explicit == "" {
+			return "", errRealmUnsupported
+		}
+
+		if realm != "" && !strings.EqualFold(realm, explicit) {
+			return "", errRealmUnsupported
+		}
+
+		return username, nil
+	}
+
+	if realm == "" {
+		realm = "pve"
+	}
+
+	if realm != "pve" && realm != "pam" {
+		return "", errRealmUnsupported
+	}
+
+	return username + "@" + realm, nil
+}
+
+// withPoolPrefix inserts pools.PoolPrefix before the realm, e.g.
+// "jho@pve" -> "pvmss-jho@pve". ok is false when the local part already
+// carries the prefix, since there is then nothing new to retry with.
+func withPoolPrefix(username string) (prefixed string, ok bool) {
+	local, realm, _ := strings.Cut(username, "@")
+	if strings.HasPrefix(local, pools.PoolPrefix) {
+		return "", false
+	}
+
+	return pools.PoolPrefix + local + "@" + realm, true
+}
+
+func writeAuthJSON(w http.ResponseWriter, status int, value any) {
+	body, err := json.Marshal(value)
+	if err != nil {
+		writeAuthError(w, http.StatusInternalServerError, "internal_error", msgInternalServerError)
+		return
+	}
+
+	_ = writeJSON(w, status, body)
+}
+
+func writeAuthError(w http.ResponseWriter, status int, code, message string) {
+	writeAuthJSON(w, status, authError{Code: code, Message: message})
+}
+
+// userDisplayName extracts the local part of a Proxmox username, stripping the
+// optional pvmss- pool prefix so the UI can show "jho" instead of "pvmss-jho@pve".
+func userDisplayName(username string) string {
+	local, _, _ := strings.Cut(username, "@")
+	return strings.TrimPrefix(local, pools.PoolPrefix)
+}
+
+func (h *Auth) recordLoginFailed(ctx context.Context, username, ip string) {
+	telemetry.RecordLogin(ctx, "failure")
+
+	if h.clusterStore == nil {
+		return
+	}
+
+	detail := loginFailedDetail(username)
+	_ = h.clusterStore.RecordAdminAction(ctx, username, "auth.login_failed", "auth", username, detail, ip)
+}
+
+func loginFailedDetail(username string) string {
+	body, err := json.Marshal(map[string]any{auditKeySummary: fmt.Sprintf("login failed for user %q", username), auditKeyChanges: []any{}})
+	if err != nil {
+		return `{"summary":"login failed","changes":[]}`
+	}
+
+	return string(body)
+}

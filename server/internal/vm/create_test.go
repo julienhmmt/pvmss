@@ -1,0 +1,1442 @@
+package vm_test
+
+import (
+	"context"
+	"errors"
+	"log/slog"
+	"path/filepath"
+	"pvmss/server/internal/auth"
+	"pvmss/server/internal/catalog"
+	"pvmss/server/internal/cluster"
+	"pvmss/server/internal/config"
+	"pvmss/server/internal/inventory"
+	"pvmss/server/internal/policy"
+	"pvmss/server/internal/store"
+	"pvmss/server/internal/testfixture"
+	"pvmss/server/internal/vm"
+	"slices"
+	"strings"
+	"testing"
+	"time"
+)
+
+// createFixture wires the real seeded store and the fake Creator, so
+// validation runs against the same catalog rows production serves (the catalog is fixture data,
+// not a mock).
+type createFixture struct {
+	store *store.Store
+	fake  cluster.Fake
+}
+
+// Shared test log configuration constants - used by every test in the vm
+// package that opens a store, so goconst does not flag the literals.
+const (
+	testLogLevel  = "info"
+	testLogFormat = "json"
+	testLogOutput = "stdout"
+)
+
+func newCreateFixture(t *testing.T) createFixture {
+	t.Helper()
+	t.Cleanup(cluster.ResetFake)
+
+	st, err := store.Open(config.Configuration{
+		DBPath:    filepath.Join(t.TempDir(), "vm-create.db"),
+		LogLevel:  testLogLevel,
+		LogFormat: testLogFormat,
+		LogOutput: testLogOutput,
+	})
+	if err != nil {
+		t.Fatalf("store.Open: %v", err)
+	}
+
+	t.Cleanup(func() { _ = st.Close() })
+
+	testfixture.SeedDemoFixtures(t, st)
+
+	ctx := context.Background()
+	for _, bridge := range []catalog.Bridge{
+		{Name: testBridgeVMbr0, Node: discoveryNode01},
+		{Name: testBridgeVMbr1, Node: discoveryNode01},
+		{Name: testBridgeVMbr0, Node: "pve-node-02"},
+	} {
+		if err := st.SetBridgeEnabled(ctx, "default", bridge.Node, bridge.Name, true); err != nil {
+			t.Fatalf("seed bridge approval: %v", err)
+		}
+	}
+
+	// Tags are admin-curated - seed the one the tests reference.
+	if err := st.InsertTag(ctx, testClusterName, "team-web", "#3b82f6", time.Now().UTC().Format(time.RFC3339)); err != nil {
+		t.Fatalf("seed tag approval: %v", err)
+	}
+
+	// Template approvals are admin-curated - seed the two the
+	// clone tests reference (the schema ships no demo rows).
+	templates := map[int]store.TemplateValues{
+		9000: {Node: cluster.FakeNode02, Name: "debian-12-cloud", CloudInitCapable: true, DiskStorage: cluster.FakeStorageLocalLVM, DiskSizeGB: 8, DiskBus: string(cluster.DiskBusSCSI)},
+		9001: {Node: cluster.FakeNode02, Name: "alpine-appliance", CloudInitCapable: false, DiskStorage: cluster.FakeStorageLocal, DiskSizeGB: 2, DiskBus: string(cluster.DiskBusSCSI)},
+	}
+	for vmid, values := range templates {
+		if err := st.InsertTemplate(ctx, testClusterName, vmid, values, true); err != nil {
+			t.Fatalf("seed template approval %d: %v", vmid, err)
+		}
+	}
+
+	cluster.ClearFakeCalls()
+
+	return createFixture{store: st, fake: cluster.Fake{}}
+}
+
+func (f createFixture) create(t *testing.T, actor auth.Identity, req vm.CreateRequest) (vm.CreateResult, error) {
+	t.Helper()
+
+	log := slog.New(slog.DiscardHandler)
+
+	return vm.Create(context.Background(), actor, req.Cluster, req, vm.CreateDeps{
+		Store:     f.store,
+		Creator:   f.fake,
+		Pusher:    f.fake,
+		Writer:    f.fake,
+		FreeSpace: f.fake,
+		Snippets:  f.fake,
+		Audit:     f.store,
+		Log:       log,
+	})
+}
+
+func aliceIdentity() auth.Identity {
+	return auth.Identity{Username: cluster.FakeUserAlice, Pool: cluster.FakePoolAlice}
+}
+
+func bobIdentity() auth.Identity {
+	return auth.Identity{Username: cluster.FakeUserBob, Pool: cluster.FakePoolBob}
+}
+
+// mustPolicyService builds a policy service over the fixture's store.
+func mustPolicyService(st *store.Store) *policy.Policy {
+	return policy.New(st, nil, nil)
+}
+
+// mustGabarit reads the cluster's gabarit, failing the test on error.
+func mustGabarit(t *testing.T, st *store.Store) policy.Gabarit {
+	t.Helper()
+
+	gabarit, err := mustPolicyService(st).Gabarit(context.Background(), testClusterName)
+	if err != nil {
+		t.Fatalf("Gabarit: %v", err)
+	}
+
+	return gabarit
+}
+
+// detailedRequest is a fully explicit, catalog-valid detailed-mode request.
+func detailedRequest() vm.CreateRequest {
+	return vm.CreateRequest{
+		Cluster:  testClusterName,
+		Name:     "web-01",
+		Node:     cluster.FakeNode01,
+		CPUCores: 2,
+		MemoryMB: 4096,
+		Disk:     vm.DiskRequest{Storage: cluster.FakeStorageLocalLVM, SizeGB: 40},
+		Network:  vm.NetworkRequest{{Bridge: cluster.FakeBridgeVMbr0, Model: string(cluster.DiskBusVirtio)}},
+	}
+}
+
+//nolint:paralleltest // serial: shared fake VM and database fixtures
+func TestCreate_ValidationPipeline(t *testing.T) {
+	cases := []struct {
+		name    string
+		actor   auth.Identity
+		mutate  func(*vm.CreateRequest)
+		wantErr error
+	}{
+		{
+			name:    "non-admin without pool",
+			actor:   auth.Identity{Username: "nopool@pve", IsAdmin: false},
+			mutate:  func(_ *vm.CreateRequest) {},
+			wantErr: vm.ErrNoPool,
+		},
+		{
+			name:    "invalid hostname",
+			actor:   aliceIdentity(),
+			mutate:  func(r *vm.CreateRequest) { r.Name = "Bad_Name!" },
+			wantErr: vm.ErrInvalidName,
+		},
+		{
+			name:    "cpu out of range",
+			actor:   aliceIdentity(),
+			mutate:  func(r *vm.CreateRequest) { r.CPUCores = 64 },
+			wantErr: vm.ErrOutOfRange,
+		},
+		{
+			name:    "memory out of range",
+			actor:   aliceIdentity(),
+			mutate:  func(r *vm.CreateRequest) { r.MemoryMB = 0 },
+			wantErr: vm.ErrOutOfRange,
+		},
+		{
+			name:    "disk out of range",
+			actor:   aliceIdentity(),
+			mutate:  func(r *vm.CreateRequest) { r.Disk.SizeGB = -5 },
+			wantErr: vm.ErrOutOfRange,
+		},
+		{
+			name:    "node not approved",
+			actor:   aliceIdentity(),
+			mutate:  func(r *vm.CreateRequest) { r.Node = "pve-node-03" },
+			wantErr: vm.ErrNotApproved,
+		},
+		{
+			name:    "storage not approved",
+			actor:   aliceIdentity(),
+			mutate:  func(r *vm.CreateRequest) { r.Disk.Storage = "nas-scratch" },
+			wantErr: vm.ErrNotApproved,
+		},
+		{
+			name:    "storage approved but on another node",
+			actor:   aliceIdentity(),
+			mutate:  func(r *vm.CreateRequest) { r.Disk.Storage = "ceph-data" },
+			wantErr: vm.ErrNotApproved,
+		},
+		{
+			name:    "bridge not approved",
+			actor:   aliceIdentity(),
+			mutate:  func(r *vm.CreateRequest) { r.Network[0].Bridge = "vmbr9" },
+			wantErr: vm.ErrNotApproved,
+		},
+		{
+			name:  "iso not approved",
+			actor: aliceIdentity(),
+			mutate: func(r *vm.CreateRequest) {
+				r.ISO = &vm.ISORequest{Storage: testStorageLocal, File: "windows-11.iso"}
+			},
+			wantErr: vm.ErrNotApproved,
+		},
+		{
+			name:    "profile not approved",
+			actor:   aliceIdentity(),
+			mutate:  func(r *vm.CreateRequest) { r.ProfileID = "huge" },
+			wantErr: vm.ErrNotApproved,
+		},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			fixture := newCreateFixture(t)
+			req := detailedRequest()
+			tc.mutate(&req)
+
+			_, err := fixture.create(t, tc.actor, req)
+			if !errors.Is(err, tc.wantErr) {
+				t.Fatalf("error = %v, want %v", err, tc.wantErr)
+			}
+			// Rejections happen before any cluster call (contracts behavioural
+			// rule): no VMID burned, no task created.
+			if calls := cluster.FakeCalls(); len(calls) != 0 {
+				t.Fatalf("rejected request reached the cluster: %+v", calls)
+			}
+		})
+	}
+}
+
+// TestCreate_ProfileResolvesHardware - a profile's catalog values win
+// over any hardware fields the request also carries; the client cannot
+// contradict the chosen profile.
+//
+//nolint:paralleltest // serial: shared fake VM and database fixtures
+func TestCreate_ProfileResolvesHardware(t *testing.T) {
+	fixture := newCreateFixture(t)
+	req := vm.CreateRequest{
+		Cluster:          testClusterName,
+		Name:             "profiled-vm",
+		ProfileID:        "medium",
+		CPUCores:         32, // contradictory - must be ignored
+		MemoryMB:         65536,
+		Disk:             vm.DiskRequest{SizeGB: 2048},
+		StartAfterCreate: true,
+	}
+
+	result, err := fixture.create(t, aliceIdentity(), req)
+	if err != nil {
+		t.Fatalf("Create: %v", err)
+	}
+
+	if result.VMID < 1 || result.UPID == "" {
+		t.Fatalf("unexpected result: %+v", result)
+	}
+
+	snap, err := fixture.fake.Snapshot(context.Background())
+	if err != nil {
+		t.Fatalf("Snapshot: %v", err)
+	}
+
+	idx := slices.IndexFunc(snap.VMs, func(v cluster.VM) bool { return v.VMID == result.VMID })
+	if idx < 0 {
+		t.Fatalf("created VM not in snapshot")
+	}
+
+	created := snap.VMs[idx]
+	if created.CPUCores != 2 {
+		t.Errorf("cpuCores = %d, want 2 (medium profile, request said 32)", created.CPUCores)
+	}
+
+	if created.MemoryTotal != 4096*1024*1024 {
+		t.Errorf("memory = %d, want 4096 MB (medium profile)", created.MemoryTotal)
+	}
+
+	if created.DiskTotal != 40*1024*1024*1024 {
+		t.Errorf("disk = %d, want 40 GB (medium profile)", created.DiskTotal)
+	}
+}
+
+// TestCreate_SimpleModeAutoSelection - unset node/storage/bridge are
+// filled from the first approved catalog entries, deterministically.
+//
+//nolint:paralleltest // serial: shared fake VM and database fixtures
+func TestCreate_SimpleModeAutoSelection(t *testing.T) {
+	fixture := newCreateFixture(t)
+
+	result, err := fixture.create(t, aliceIdentity(), vm.CreateRequest{
+		Cluster:   testClusterName,
+		Name:      "auto-vm",
+		ProfileID: "small",
+	})
+	if err != nil {
+		t.Fatalf("Create: %v", err)
+	}
+
+	if result.Node != cluster.FakeNode01 {
+		t.Errorf("auto-selected node = %q, want %q", result.Node, cluster.FakeNode01)
+	}
+
+	snap, err := fixture.fake.Snapshot(context.Background())
+	if err != nil {
+		t.Fatalf("Snapshot: %v", err)
+	}
+
+	idx := slices.IndexFunc(snap.VMs, func(v cluster.VM) bool { return v.VMID == result.VMID })
+	if idx < 0 {
+		t.Fatalf("created VM not in snapshot")
+	}
+
+	if snap.VMs[idx].Status != cluster.VMStopped {
+		t.Errorf("status = %q, want stopped (no startAfterCreate)", snap.VMs[idx].Status)
+	}
+}
+
+// TestCreate_PoolIsAlwaysActors - the created VM's pool is the
+// actor's own. The request type carries no pool field, so there is nothing to
+// forge; this test pins that the spec dispatched to the cluster always takes
+// the pool from the identity.
+//
+//nolint:paralleltest // serial: shared fake VM and database fixtures
+func TestCreate_PoolIsAlwaysActors(t *testing.T) {
+	fixture := newCreateFixture(t)
+
+	result, err := fixture.create(t, aliceIdentity(), detailedRequest())
+	if err != nil {
+		t.Fatalf("Create: %v", err)
+	}
+
+	snap, err := fixture.fake.Snapshot(context.Background())
+	if err != nil {
+		t.Fatalf("Snapshot: %v", err)
+	}
+
+	idx := slices.IndexFunc(snap.VMs, func(v cluster.VM) bool { return v.VMID == result.VMID })
+	if idx < 0 {
+		t.Fatalf("created VM not in snapshot")
+	}
+
+	if snap.VMs[idx].Pool != cluster.FakePoolAlice {
+		t.Errorf("pool = %q, want actor's pool %q", snap.VMs[idx].Pool, cluster.FakePoolAlice)
+	}
+}
+
+// TestCreate_AdminCannotCreate - an admin (local or cluster) cannot create
+// VMs through the self-service portal. VM ownership requires a personal pool,
+// which admins do not have.
+//
+//nolint:paralleltest // serial: shared fake VM and database fixtures
+func TestCreate_AdminCannotCreate(t *testing.T) {
+	fixture := newCreateFixture(t)
+	admin := auth.Identity{Username: "admin@pve", IsAdmin: true}
+
+	_, err := fixture.create(t, admin, detailedRequest())
+	if !errors.Is(err, vm.ErrAdminCannotCreate) {
+		t.Fatalf("Create: want ErrAdminCannotCreate, got %v", err)
+	}
+}
+
+// TestCreate_PvmssTagAlwaysPresent
+//
+//nolint:paralleltest // serial: shared fake VM and database fixtures
+func TestCreate_PvmssTagAlwaysPresent(t *testing.T) {
+	fixture := newCreateFixture(t)
+	req := detailedRequest()
+	req.Tags = []string{"team-web"}
+
+	result, err := fixture.create(t, aliceIdentity(), req)
+	if err != nil {
+		t.Fatalf("Create: %v", err)
+	}
+
+	snap, err := fixture.fake.Snapshot(context.Background())
+	if err != nil {
+		t.Fatalf("Snapshot: %v", err)
+	}
+
+	idx := slices.IndexFunc(snap.VMs, func(v cluster.VM) bool { return v.VMID == result.VMID })
+	if idx < 0 {
+		t.Fatalf("created VM not in snapshot")
+	}
+
+	tags := snap.VMs[idx].Tags
+	if !slices.Contains(tags, "pvmss") || !slices.Contains(tags, "team-web") {
+		t.Errorf("tags = %v, want both pvmss and team-web", tags)
+	}
+}
+
+// TestCreate_RecordsAudit - a successful creation lands in the audit
+// log with the real actor, the allocated VMID, and action vm_create.
+//
+//nolint:paralleltest // serial: shared fake VM and database fixtures
+func TestCreate_RecordsAudit(t *testing.T) {
+	fixture := newCreateFixture(t)
+
+	result, err := fixture.create(t, aliceIdentity(), detailedRequest())
+	if err != nil {
+		t.Fatalf("Create: %v", err)
+	}
+
+	entries, err := fixture.store.QueryAudit(context.Background())
+	if err != nil {
+		t.Fatalf("QueryAudit: %v", err)
+	}
+
+	if len(entries) != 1 {
+		t.Fatalf("audit entries = %d, want 1", len(entries))
+	}
+
+	entry := entries[0]
+	if entry.Actor != cluster.FakeUserAlice || entry.Cluster != testClusterName || *entry.VMID != result.VMID || entry.Action != "vm_create" {
+		t.Errorf("audit entry = %+v", entry)
+	}
+}
+
+// failingAudit always errors - simulates the audit log write failing after
+// the cluster has already accepted the creation task.
+type failingAudit struct{}
+
+func (failingAudit) RecordAction(context.Context, string, string, int, string) error {
+	return errors.New("audit write failed")
+}
+
+// TestCreate_AuditFailureDoesNotFailCreate - a step-7 audit-write failure
+// must not turn an already-dispatched creation into a client-facing error:
+// the cluster task is real by the time audit runs, so the client still needs
+// its upid to poll. Regression for the audit-failure-orphaned-task gap.
+//
+//nolint:paralleltest // serial: shared fake VM and database fixtures
+func TestCreate_AuditFailureDoesNotFailCreate(t *testing.T) {
+	fixture := newCreateFixture(t)
+	log := slog.New(slog.DiscardHandler)
+
+	result, err := vm.Create(context.Background(), aliceIdentity(), testClusterName, detailedRequest(), vm.CreateDeps{
+		Store:   fixture.store,
+		Creator: fixture.fake,
+		Pusher:  fixture.fake,
+		Writer:  fixture.fake,
+		Audit:   failingAudit{},
+		Log:     log,
+	})
+	if err != nil {
+		t.Fatalf("Create: %v, want nil (audit failure must not fail the request)", err)
+	}
+
+	if result.VMID < 1 || result.UPID == "" {
+		t.Fatalf("unexpected result: %+v", result)
+	}
+}
+
+//  - cloud-init template application -
+
+const testCloudInitContent = "#cloud-config\npackages:\n  - nginx\n"
+
+// createTestTemplate inserts an enabled cloud-init template into the fixture
+// store, publishes it to every fake node like the admin API does, and
+// returns its id.
+func createTestTemplate(t *testing.T, st *store.Store) string {
+	t.Helper()
+
+	tmpl, err := catalog.CreateCloudInitTemplate(context.Background(), st, testClusterName, "Web server", testCloudInitContent)
+	if err != nil {
+		t.Fatalf("CreateCloudInitTemplate: %v", err)
+	}
+
+	cluster.ClearFakeCalls()
+
+	return tmpl.ID
+}
+
+// publishedFilename returns the published file of a template ("" = baseline).
+func publishedFilename(t *testing.T, st *store.Store, templateID string) string {
+	t.Helper()
+
+	filename, err := catalog.PublishedFile(context.Background(), st, testClusterName, templateID)
+	if err != nil {
+		t.Fatalf("PublishedFile(%q): %v", templateID, err)
+	}
+
+	return filename
+}
+
+// attachedFilename returns the filename of the last cicustom attach recorded
+// for vmid ("" when none), failing on any per-VM file write: VM creation
+// never writes a cloud-init file.
+func attachedFilename(t *testing.T, vmid int) string {
+	t.Helper()
+
+	filename := ""
+
+	for _, c := range cluster.FakeCallsFor(vmid) {
+		if c.Action == "publish_snippet" || c.Action == "push_cloudinit_snippet" {
+			t.Errorf("VM creation wrote a cloud-init file: %+v", c)
+		}
+
+		if c.Action == testActionAttachCloudInitSnippet {
+			filename = c.Filename
+		}
+	}
+
+	return filename
+}
+
+// assertDocumentRow checks the vm_cloudinit_documents row for vmid.
+func assertDocumentRow(t *testing.T, st *store.Store, vmid int, wantTemplateID, wantFilename, wantActor string) {
+	t.Helper()
+
+	doc, found, err := st.GetVMCloudInitDocument(context.Background(), testClusterName, vmid)
+	if err != nil || !found {
+		t.Fatalf("GetVMCloudInitDocument: found=%v err=%v", found, err)
+	}
+
+	if doc.TemplateID != wantTemplateID || doc.Filename != wantFilename || doc.UpdatedBy != wantActor {
+		t.Errorf("document row = %+v, want template %q file %q by %q", doc, wantTemplateID, wantFilename, wantActor)
+	}
+}
+
+// TestCreate_CloudInitTemplate_AttachesPublishedFile - a published template
+// is attached as the VM's vendor-data by its published (shared) filename;
+// nothing is written for the VM; the VM starts after the attach.
+//
+//nolint:paralleltest // serial: shared fake VM and database fixtures
+func TestCreate_CloudInitTemplate_AttachesPublishedFile(t *testing.T) {
+	fixture := newCreateFixture(t)
+	tmplID := createTestTemplate(t, fixture.store)
+	wantFilename := publishedFilename(t, fixture.store, tmplID)
+
+	req := detailedRequest()
+	req.CloudInitTemplateID = tmplID
+	req.StartAfterCreate = true
+
+	result, err := fixture.create(t, aliceIdentity(), req)
+	if err != nil {
+		t.Fatalf("Create: %v", err)
+	}
+
+	if result.CloudInitTemplateID != tmplID || result.CloudInitPushError != "" {
+		t.Errorf("result = %+v, want template %q without error", result, tmplID)
+	}
+
+	if got := attachedFilename(t, result.VMID); got != wantFilename {
+		t.Errorf("attached %q, want the published %q", got, wantFilename)
+	}
+
+	calls := cluster.FakeCallsFor(result.VMID)
+	attachIdx := slices.IndexFunc(calls, func(c cluster.FakeCall) bool { return c.Action == testActionAttachCloudInitSnippet })
+	startIdx := slices.IndexFunc(calls, func(c cluster.FakeCall) bool { return c.Action == testActionStart })
+
+	if startIdx < 0 || startIdx < attachIdx {
+		t.Errorf("start=%d attach=%d, want the start after the attach", startIdx, attachIdx)
+	}
+
+	assertDocumentRow(t, fixture.store, result.VMID, tmplID, wantFilename, aliceIdentity().Username)
+}
+
+// TestCreate_CloudInitTemplate_TwoVMsShareOneFile - the published file is
+// shared: two VMs from the same template point at the same file.
+//
+//nolint:paralleltest // serial: shared fake VM and database fixtures
+func TestCreate_CloudInitTemplate_TwoVMsShareOneFile(t *testing.T) {
+	fixture := newCreateFixture(t)
+	tmplID := createTestTemplate(t, fixture.store)
+	wantFilename := publishedFilename(t, fixture.store, tmplID)
+
+	for _, name := range []string{"web-a", "web-b"} {
+		req := detailedRequest()
+		req.Name = name
+		req.CloudInitTemplateID = tmplID
+
+		result, err := fixture.create(t, aliceIdentity(), req)
+		if err != nil {
+			t.Fatalf("Create %s: %v", name, err)
+		}
+
+		if got := attachedFilename(t, result.VMID); got != wantFilename {
+			t.Errorf("%s attached %q, want %q", name, got, wantFilename)
+		}
+	}
+}
+
+// failingSnippetFinder refuses every resolution - the stand-in for a node
+// without any snippet-capable storage.
+type failingSnippetFinder struct{}
+
+func (failingSnippetFinder) FindSnippetStorage(context.Context, string) (string, error) {
+	return "", cluster.ErrNotFound
+}
+
+// writeUnavailableSnippetFinder reports a cluster with no snippet write
+// target - the stand-in for an unconfigured Proxmox cluster.
+type writeUnavailableSnippetFinder struct{}
+
+func (writeUnavailableSnippetFinder) FindSnippetStorage(context.Context, string) (string, error) {
+	return "", cluster.ErrSnippetWriteUnavailable
+}
+
+// fixedSnippetFinder always resolves to one storage and counts calls, so
+// tests can assert the create path used the plan-resolved target.
+type fixedSnippetFinder struct {
+	calls   int
+	storage string
+}
+
+func (f *fixedSnippetFinder) FindSnippetStorage(context.Context, string) (string, error) {
+	f.calls++
+
+	return f.storage, nil
+}
+
+// assertNoVMCreated fails when any VM create/clone reached the fake.
+func assertNoVMCreated(t *testing.T) {
+	t.Helper()
+
+	for _, c := range cluster.FakeCalls() {
+		if c.Action == testActionCreate {
+			t.Fatalf("a VM was created for a refused request: %+v", c)
+		}
+	}
+}
+
+// assertTemplateRefusedBeforeVMID asserts Create refuses the cloud-init
+// template with wantErr before any VMID is allocated: the snippet finder
+// decides which refusal the request hits.
+func assertTemplateRefusedBeforeVMID(t *testing.T, snippets vm.SnippetStorageFinder, wantErr error) {
+	t.Helper()
+
+	fixture := newCreateFixture(t)
+	req := detailedRequest()
+	req.CloudInitTemplateID = createTestTemplate(t, fixture.store)
+
+	_, err := vm.Create(context.Background(), aliceIdentity(), testClusterName, req, vm.CreateDeps{
+		Store: fixture.store, Creator: fixture.fake, Pusher: fixture.fake,
+		Writer: fixture.fake, FreeSpace: fixture.fake, Snippets: snippets,
+		Audit: fixture.store, Log: slog.New(slog.DiscardHandler),
+	})
+	if !errors.Is(err, wantErr) {
+		t.Fatalf("error = %v, want %v", err, wantErr)
+	}
+
+	assertNoVMCreated(t)
+}
+
+// TestCreate_CloudInitTemplate_NoSnippetStorage_RejectedBeforeVMID - a
+// template on a node without the snippet storage is refused before NextVMID.
+//
+//nolint:paralleltest // serial: shared fake VM and database fixtures
+func TestCreate_CloudInitTemplate_NoSnippetStorage_RejectedBeforeVMID(t *testing.T) {
+	assertTemplateRefusedBeforeVMID(t, failingSnippetFinder{}, vm.ErrNoSnippetStorage)
+}
+
+// TestCreate_CloudInitTemplate_UsesPlanSnippetStorage - the visibility check
+// and the attach use the storage resolved at plan time.
+//
+//nolint:paralleltest // serial: shared fake VM and database fixtures
+func TestCreate_CloudInitTemplate_UsesPlanSnippetStorage(t *testing.T) {
+	fixture := newCreateFixture(t)
+	tmplID := createTestTemplate(t, fixture.store)
+	filename := publishedFilename(t, fixture.store, tmplID)
+
+	cluster.SetFakeSnippetPresent(cluster.FakeNode01, "snippet-vol", filename, true)
+
+	finder := &fixedSnippetFinder{storage: "snippet-vol"}
+
+	req := detailedRequest()
+	req.CloudInitTemplateID = tmplID
+
+	result, err := vm.Create(context.Background(), aliceIdentity(), testClusterName, req, vm.CreateDeps{
+		Store: fixture.store, Creator: fixture.fake, Pusher: fixture.fake,
+		Writer: fixture.fake, FreeSpace: fixture.fake, Snippets: finder,
+		Audit: fixture.store, Log: slog.New(slog.DiscardHandler),
+	})
+	if err != nil {
+		t.Fatalf("Create: %v", err)
+	}
+
+	attached := false
+
+	for _, c := range cluster.FakeCallsFor(result.VMID) {
+		if c.Action == testActionAttachCloudInitSnippet {
+			attached = true
+
+			if c.Storage != "snippet-vol" {
+				t.Fatalf("attach on %q, want the plan-resolved snippet-vol", c.Storage)
+			}
+		}
+	}
+
+	if finder.calls == 0 || !attached {
+		t.Fatalf("finder calls=%d attached=%v", finder.calls, attached)
+	}
+}
+
+// TestCreate_CloudInitTemplate_WriteUnavailable409 - a template on a cluster
+// that does not publish is refused (409) before any VMID is allocated.
+//
+//nolint:paralleltest // serial: shared fake VM and database fixtures
+func TestCreate_CloudInitTemplate_WriteUnavailable409(t *testing.T) {
+	assertTemplateRefusedBeforeVMID(t, writeUnavailableSnippetFinder{}, vm.ErrCloudInitWriteUnavailable)
+}
+
+// TestCreate_WithoutCloudInitTemplate_DoesNotResolveSnippetStorage - the
+// resolution costs a cluster read and must not run on the plain ISO path.
+//
+//nolint:paralleltest // serial: shared fake VM and database fixtures
+func TestCreate_WithoutCloudInitTemplate_DoesNotResolveSnippetStorage(t *testing.T) {
+	fixture := newCreateFixture(t)
+	finder := &fixedSnippetFinder{storage: "snippet-vol"}
+
+	if _, err := vm.Create(context.Background(), aliceIdentity(), testClusterName, detailedRequest(), vm.CreateDeps{
+		Store: fixture.store, Creator: fixture.fake, Pusher: fixture.fake,
+		Writer: fixture.fake, FreeSpace: fixture.fake, Snippets: finder,
+		Audit: fixture.store, Log: slog.New(slog.DiscardHandler),
+	}); err != nil {
+		t.Fatalf("Create: %v", err)
+	}
+
+	if finder.calls != 0 {
+		t.Errorf("FindSnippetStorage calls = %d, want 0 without a cloud-init template", finder.calls)
+	}
+}
+
+// TestCreate_CloudInitTemplate_Unknown_RejectedBeforeVMID - an unknown
+// template id is ErrNotApproved with zero cluster calls.
+//
+//nolint:paralleltest // serial: shared fake VM and database fixtures
+func TestCreate_CloudInitTemplate_Unknown_RejectedBeforeVMID(t *testing.T) {
+	fixture := newCreateFixture(t)
+
+	cluster.ResetFake()
+
+	req := detailedRequest()
+	req.CloudInitTemplateID = "does-not-exist"
+
+	_, err := fixture.create(t, aliceIdentity(), req)
+	if !errors.Is(err, vm.ErrNotApproved) {
+		t.Fatalf("error = %v, want ErrNotApproved", err)
+	}
+
+	if calls := cluster.FakeCalls(); len(calls) != 0 {
+		t.Fatalf("rejected request reached the cluster: %+v", calls)
+	}
+}
+
+// TestCreate_CloudInitTemplate_Disabled_RejectedBeforeVMID - a disabled
+// template is ErrNotApproved before NextVMID.
+//
+//nolint:paralleltest // serial: shared fake VM and database fixtures
+func TestCreate_CloudInitTemplate_Disabled_RejectedBeforeVMID(t *testing.T) {
+	fixture := newCreateFixture(t)
+	tmplID := createTestTemplate(t, fixture.store)
+
+	if err := catalog.SetCloudInitTemplateEnabled(context.Background(), fixture.store, testClusterName, tmplID, false); err != nil {
+		t.Fatalf("disable template: %v", err)
+	}
+
+	req := detailedRequest()
+	req.CloudInitTemplateID = tmplID
+
+	_, err := fixture.create(t, aliceIdentity(), req)
+	if !errors.Is(err, vm.ErrNotApproved) {
+		t.Fatalf("error = %v, want ErrNotApproved", err)
+	}
+
+	assertNoVMCreated(t)
+}
+
+// TestCreate_CloudInitTemplate_NotPasted_RejectedBeforeVMID - an enabled
+// template whose file is on no node is refused (409) before any VMID.
+//
+//nolint:paralleltest // serial: shared fake VM and database fixtures
+func TestCreate_CloudInitTemplate_NotPasted_RejectedBeforeVMID(t *testing.T) {
+	fixture := newCreateFixture(t)
+
+	cluster.SetFakeSnippetVisibility(false)
+	t.Cleanup(func() { cluster.SetFakeSnippetVisibility(true) })
+
+	if _, err := catalog.CreateCloudInitTemplate(context.Background(), fixture.store, testClusterName, "Unpublished", testCloudInitContent); err != nil {
+		t.Fatalf("CreateCloudInitTemplate: %v", err)
+	}
+
+	req := detailedRequest()
+	req.CloudInitTemplateID = "unpublished"
+
+	_, err := fixture.create(t, aliceIdentity(), req)
+	if !errors.Is(err, vm.ErrCloudInitNotPublished) {
+		t.Fatalf("error = %v, want ErrCloudInitNotPublished", err)
+	}
+
+	assertNoVMCreated(t)
+}
+
+// TestCreate_CloudInitTemplate_NotOnNode_RejectedBeforeVMID - the regression
+// for "volume 'local:snippets/...' does not exist": a template published
+// while the VM's node did not get the file (offline, wrong directory) is
+// refused before any VMID, never attached.
+//
+//nolint:paralleltest // serial: shared fake VM and database fixtures
+func TestCreate_CloudInitTemplate_NotOnNode_RejectedBeforeVMID(t *testing.T) {
+	fixture := newCreateFixture(t)
+
+	cluster.SetFakeSnippetVisibility(false)
+	t.Cleanup(func() { cluster.SetFakeSnippetVisibility(true) })
+
+	tmplID := createTestTemplate(t, fixture.store)
+
+	req := detailedRequest()
+	req.CloudInitTemplateID = tmplID
+
+	_, err := fixture.create(t, aliceIdentity(), req)
+	if !errors.Is(err, vm.ErrCloudInitNotPublished) || !strings.Contains(err.Error(), cluster.FakeNode01) {
+		t.Fatalf("error = %v, want ErrCloudInitNotPublished naming the node", err)
+	}
+
+	assertNoVMCreated(t)
+}
+
+// TestCreate_CloudInitTemplate_DeletedAfterUse - deleting a template after
+// a VM used it leaves the VM's document row (and the shared file) alone.
+//
+//nolint:paralleltest // serial: shared fake VM and database fixtures
+func TestCreate_CloudInitTemplate_DeletedAfterUse(t *testing.T) {
+	fixture := newCreateFixture(t)
+	tmplID := createTestTemplate(t, fixture.store)
+	filename := publishedFilename(t, fixture.store, tmplID)
+
+	req := detailedRequest()
+	req.CloudInitTemplateID = tmplID
+
+	result, err := fixture.create(t, aliceIdentity(), req)
+	if err != nil {
+		t.Fatalf("Create: %v", err)
+	}
+
+	if err := catalog.DeleteCloudInitTemplate(context.Background(), fixture.store, testClusterName, tmplID); err != nil {
+		t.Fatalf("DeleteCloudInitTemplate: %v", err)
+	}
+
+	assertDocumentRow(t, fixture.store, result.VMID, tmplID, filename, aliceIdentity().Username)
+
+	if present, _ := fixture.fake.HasSnippet(context.Background(), cluster.FakeNode01, cluster.FakeSnippetStorage, filename); !present {
+		t.Error("template delete removed the published file the VM boots from")
+	}
+}
+
+//  - Sockets and multi-NIC -
+
+// TestCreate_Sockets_PopulatesForm - sockets=2, cores=4 produces a VM with
+// Sockets=2, Cores=4, and CPUCores=8 (sockets*cores) in the fake dataset
+//
+//nolint:paralleltest // serial: shared fake VM and database fixtures
+func TestCreate_Sockets_PopulatesForm(t *testing.T) {
+	fixture := newCreateFixture(t)
+	req := detailedRequest()
+	req.Sockets = 2
+	req.CPUCores = 4
+
+	result, err := fixture.create(t, aliceIdentity(), req)
+	if err != nil {
+		t.Fatalf("Create: %v", err)
+	}
+
+	snap, err := fixture.fake.Snapshot(context.Background())
+	if err != nil {
+		t.Fatalf("Snapshot: %v", err)
+	}
+
+	idx := slices.IndexFunc(snap.VMs, func(v cluster.VM) bool { return v.VMID == result.VMID })
+	if idx < 0 {
+		t.Fatalf("created VM not in snapshot")
+	}
+
+	created := snap.VMs[idx]
+	if created.Sockets != 2 {
+		t.Errorf("sockets = %d, want 2", created.Sockets)
+	}
+
+	if created.Cores != 4 {
+		t.Errorf("cores = %d, want 4", created.Cores)
+	}
+
+	if created.CPUCores != 8 {
+		t.Errorf("cpuCores (sockets*cores) = %d, want 8", created.CPUCores)
+	}
+}
+
+// TestCreate_Sockets_DefaultsToOne - a request without sockets preserves the
+// previous behaviour: the created VM has Sockets=1.
+//
+//nolint:paralleltest // serial: shared fake VM and database fixtures
+func TestCreate_Sockets_DefaultsToOne(t *testing.T) {
+	fixture := newCreateFixture(t)
+	req := detailedRequest()
+
+	result, err := fixture.create(t, aliceIdentity(), req)
+	if err != nil {
+		t.Fatalf("Create: %v", err)
+	}
+
+	snap, err := fixture.fake.Snapshot(context.Background())
+	if err != nil {
+		t.Fatalf("Snapshot: %v", err)
+	}
+
+	idx := slices.IndexFunc(snap.VMs, func(v cluster.VM) bool { return v.VMID == result.VMID })
+	if idx < 0 {
+		t.Fatalf("created VM not in snapshot")
+	}
+
+	if snap.VMs[idx].Sockets != 1 {
+		t.Errorf("sockets = %d, want 1 (default)", snap.VMs[idx].Sockets)
+	}
+}
+
+// TestCreate_Sockets_BeyondMaxSockets - sockets exceeding the gabarit's
+// MaxSockets is rejected with GabaritExceededError{Field: "sockets"} before
+// any cluster call.
+//
+//nolint:paralleltest // serial: shared fake VM and database fixtures
+func TestCreate_Sockets_BeyondMaxSockets(t *testing.T) {
+	fixture := newCreateFixture(t)
+
+	snapshot, err := fixture.fake.Snapshot(context.Background())
+	if err != nil {
+		t.Fatalf("Snapshot: %v", err)
+	}
+
+	index := inventory.BuildIndex(snapshot)
+	service := policy.New(fixture.store, inventory.NewProjectionFromIndex(&index), fixture.fake)
+
+	gabarit, err := service.Gabarit(context.Background(), testClusterName)
+	if err != nil {
+		t.Fatalf("Gabarit: %v", err)
+	}
+
+	gabarit.MaxSockets = 1
+	if err := service.SetPolicy(context.Background(), testClusterName, gabarit, -1); err != nil {
+		t.Fatalf("SetPolicy: %v", err)
+	}
+
+	req := detailedRequest()
+	req.Sockets = 2
+	req.Name = "sockets-over"
+
+	_, err = vm.Create(context.Background(), aliceIdentity(), req.Cluster, req, vm.CreateDeps{
+		Store:    fixture.store,
+		Creator:  fixture.fake,
+		Pusher:   fixture.fake,
+		Audit:    fixture.store,
+		Log:      slog.New(slog.DiscardHandler),
+		Services: []*policy.Policy{service},
+	})
+	if !errors.Is(err, policy.ErrGabaritExceeded) {
+		t.Fatalf("error = %v, want ErrGabaritExceeded", err)
+	}
+
+	var gabaritErr *policy.GabaritExceededError
+	if !errors.As(err, &gabaritErr) {
+		t.Fatalf("error is not a GabaritExceededError: %v", err)
+	}
+
+	if gabaritErr.Field != "sockets" {
+		t.Errorf("field = %q, want %q", gabaritErr.Field, "sockets")
+	}
+
+	if calls := cluster.FakeCalls(); len(calls) != 0 {
+		t.Fatalf("gabarit rejection reached cluster: %+v", calls)
+	}
+}
+
+// TestCreate_Sockets_NodeCapacityCountsSocketsTimesCores - CheckNodeCapacity
+// multiplies sockets*cores: with sockets=2, cores=4 (8 vCPU) and MaxVCPUs
+// set to UsedVCPUs+4, the request is rejected because 8 > 4. If only cores
+// were counted (4), the request would pass. The node_limits row is written
+// directly via UpsertNodePolicyRow to bypass the physical-capacity admin
+// validation.
+//
+//nolint:paralleltest // serial: shared fake VM and database fixtures
+func TestCreate_Sockets_NodeCapacityCountsSocketsTimesCores(t *testing.T) {
+	fixture := newCreateFixture(t)
+
+	snapshot, err := fixture.fake.Snapshot(context.Background())
+	if err != nil {
+		t.Fatalf("Snapshot: %v", err)
+	}
+
+	index := inventory.BuildIndex(snapshot)
+	service := policy.New(fixture.store, inventory.NewProjectionFromIndex(&index), fixture.fake)
+
+	capacity, err := service.NodeCapacity(context.Background(), testClusterName, cluster.FakeNode01)
+	if err != nil {
+		t.Fatalf("NodeCapacity: %v", err)
+	}
+
+	// Set MaxVCPUs to UsedVCPUs+4 directly in the store, bypassing the
+	// admin validation that would reject values above physical capacity.
+	// With sockets=2, cores=4: deltaVCPUs = 2*4 = 8 > 4 → rejected.
+	// With sockets=1, cores=4: deltaVCPUs = 1*4 = 4 = headroom → passes.
+	if err := fixture.store.UpsertNodePolicyRow(context.Background(), store.NodePolicyRow{
+		Cluster: testClusterName, Node: cluster.FakeNode01,
+		MaxVMs: capacity.MaxVMs, MaxVCPUs: capacity.UsedVCPUs + 4,
+		MaxRAMGB: capacity.MaxRAMGB, MaxDiskGB: capacity.MaxDiskGB,
+	}); err != nil {
+		t.Fatalf("UpsertNodePolicyRow: %v", err)
+	}
+
+	req := detailedRequest()
+	req.Sockets = 2
+	req.CPUCores = 4
+	req.Name = "sockets-capacity"
+
+	_, err = vm.Create(context.Background(), aliceIdentity(), req.Cluster, req, vm.CreateDeps{
+		Store:    fixture.store,
+		Creator:  fixture.fake,
+		Pusher:   fixture.fake,
+		Audit:    fixture.store,
+		Log:      slog.New(slog.DiscardHandler),
+		Services: []*policy.Policy{service},
+	})
+	if !errors.Is(err, policy.ErrNodeCapacityExceeded) {
+		t.Fatalf("error = %v, want ErrNodeCapacityExceeded (8 vCPU > headroom of 4)", err)
+	}
+
+	if calls := cluster.FakeCalls(); len(calls) != 0 {
+		t.Fatalf("capacity rejection reached cluster: %+v", calls)
+	}
+}
+
+// TestCreate_MultiNIC_PopulatesForm - two NICs produce a VM with two network
+// interfaces (net0 and net1), each with its own bridge and model.
+//
+//nolint:paralleltest // serial: shared fake VM and database fixtures
+func TestCreate_MultiNIC_PopulatesForm(t *testing.T) {
+	fixture := newCreateFixture(t)
+	req := detailedRequest()
+	req.Network = vm.NetworkRequest{
+		{Bridge: cluster.FakeBridgeVMbr0, Model: testModelVirtio},
+		{Bridge: testBridgeVMbr1, Model: "e1000"},
+	}
+
+	result, err := fixture.create(t, aliceIdentity(), req)
+	if err != nil {
+		t.Fatalf("Create: %v", err)
+	}
+
+	snap, err := fixture.fake.Snapshot(context.Background())
+	if err != nil {
+		t.Fatalf("Snapshot: %v", err)
+	}
+
+	idx := slices.IndexFunc(snap.VMs, func(v cluster.VM) bool { return v.VMID == result.VMID })
+	if idx < 0 {
+		t.Fatalf("created VM not in snapshot")
+	}
+
+	ifaces := snap.VMs[idx].NetworkInterfaces
+	if len(ifaces) != 2 {
+		t.Fatalf("network interfaces = %d, want 2", len(ifaces))
+	}
+
+	if ifaces[0].Bridge != "vmbr0" || ifaces[0].Model != "virtio" {
+		t.Errorf("net0 = {bridge: %q, model: %q}, want {vmbr0, virtio}", ifaces[0].Bridge, ifaces[0].Model)
+	}
+
+	if ifaces[1].Bridge != "vmbr1" || ifaces[1].Model != "e1000" {
+		t.Errorf("net1 = {bridge: %q, model: %q}, want {vmbr1, e1000}", ifaces[1].Bridge, ifaces[1].Model)
+	}
+}
+
+// TestCreate_MultiNIC_BeyondMaxNetworkCards - three NICs with MaxNetworkCards=2
+// is rejected with GabaritExceededError before any cluster call.
+//
+//nolint:paralleltest // serial: shared fake VM and database fixtures
+func TestCreate_MultiNIC_BeyondMaxNetworkCards(t *testing.T) {
+	fixture := newCreateFixture(t)
+
+	snapshot, err := fixture.fake.Snapshot(context.Background())
+	if err != nil {
+		t.Fatalf("Snapshot: %v", err)
+	}
+
+	index := inventory.BuildIndex(snapshot)
+	service := policy.New(fixture.store, inventory.NewProjectionFromIndex(&index), fixture.fake)
+
+	gabarit, err := service.Gabarit(context.Background(), testClusterName)
+	if err != nil {
+		t.Fatalf("Gabarit: %v", err)
+	}
+
+	gabarit.MaxNetworkCards = 2
+	if err := service.SetPolicy(context.Background(), testClusterName, gabarit, -1); err != nil {
+		t.Fatalf("SetPolicy: %v", err)
+	}
+
+	req := detailedRequest()
+	req.Name = "multi-nic-over"
+	req.Network = vm.NetworkRequest{
+		{Bridge: cluster.FakeBridgeVMbr0, Model: testModelVirtio},
+		{Bridge: testBridgeVMbr1, Model: testModelVirtio},
+		{Bridge: testBridgeVMbr0, Model: testModelVirtio},
+	}
+
+	_, err = vm.Create(context.Background(), aliceIdentity(), req.Cluster, req, vm.CreateDeps{
+		Store:    fixture.store,
+		Creator:  fixture.fake,
+		Pusher:   fixture.fake,
+		Audit:    fixture.store,
+		Log:      slog.New(slog.DiscardHandler),
+		Services: []*policy.Policy{service},
+	})
+	if !errors.Is(err, policy.ErrGabaritExceeded) {
+		t.Fatalf("error = %v, want ErrGabaritExceeded", err)
+	}
+
+	var gabaritErr *policy.GabaritExceededError
+	if !errors.As(err, &gabaritErr) {
+		t.Fatalf("error is not a GabaritExceededError: %v", err)
+	}
+
+	if gabaritErr.Field != "networkCards" {
+		t.Errorf("field = %q, want %q", gabaritErr.Field, "networkCards")
+	}
+
+	if calls := cluster.FakeCalls(); len(calls) != 0 {
+		t.Fatalf("gabarit rejection reached cluster: %+v", calls)
+	}
+}
+
+// TestCreate_MultiNIC_EachBridgeValidated - each NIC's bridge is validated
+// against the node's catalog: a request with two NICs where the second
+// bridge is not approved on the node is rejected with ErrNotApproved.
+//
+//nolint:paralleltest // serial: shared fake VM and database fixtures
+func TestCreate_MultiNIC_EachBridgeValidated(t *testing.T) {
+	fixture := newCreateFixture(t)
+	req := detailedRequest()
+	req.Network = vm.NetworkRequest{
+		{Bridge: cluster.FakeBridgeVMbr0, Model: testModelVirtio},
+		{Bridge: "vmbr9", Model: testModelVirtio},
+	}
+
+	_, err := fixture.create(t, aliceIdentity(), req)
+	if !errors.Is(err, vm.ErrNotApproved) {
+		t.Fatalf("error = %v, want ErrNotApproved (second NIC bridge not approved)", err)
+	}
+
+	if calls := cluster.FakeCalls(); len(calls) != 0 {
+		t.Fatalf("rejection reached cluster: %+v", calls)
+	}
+}
+
+// TestCreate_InsufficientDiskSpace_RefusedBeforeVMID - when
+// the live free-space check on the target storage reports less than the
+// requested disk, Create returns ErrInsufficientDiskSpace before any VMID is
+// allocated or cluster call made. The fixture wires the fake as FreeSpaceChecker,
+// so the live check runs against the fake's static storage dataset.
+//
+//nolint:paralleltest // serial: shared fake VM and database fixtures
+func TestCreate_InsufficientDiskSpace_RefusedBeforeVMID(t *testing.T) {
+	fixture := newCreateFixture(t)
+	req := detailedRequest()
+	req.Name = "oversized-disk"
+	// local-lvm on pve-node-01: Total=549755813888 (~512 GB), Used=219902325555
+	// (~205 GB), free ~307 GB. Requesting 400 GB exceeds the free space.
+	req.Disk.SizeGB = 400
+
+	_, err := fixture.create(t, aliceIdentity(), req)
+	if !errors.Is(err, vm.ErrInsufficientDiskSpace) {
+		t.Fatalf("error = %v, want ErrInsufficientDiskSpace", err)
+	}
+
+	// No VMID allocation or cluster mutation may have happened.
+	if calls := cluster.FakeCalls(); len(calls) != 0 {
+		t.Fatalf("disk-space rejection reached cluster: %+v", calls)
+	}
+}
+
+// TestCreate_SufficientDiskSpace_Passes - the happy path of the live check:
+// a disk that fits within the target storage's free space is accepted. This
+// guards against a regression where the check is wired but always rejects.
+//
+//nolint:paralleltest // serial: shared fake VM and database fixtures
+func TestCreate_SufficientDiskSpace_Passes(t *testing.T) {
+	fixture := newCreateFixture(t)
+	req := detailedRequest()
+	req.Name = "fits-disk"
+	// local-lvm on pve-node-01 has ~307 GB free; 40 GB fits.
+	req.Disk.SizeGB = 40
+
+	result, err := fixture.create(t, aliceIdentity(), req)
+	if err != nil {
+		t.Fatalf("Create: %v", err)
+	}
+
+	if result.VMID < 1 || result.UPID == "" {
+		t.Fatalf("unexpected result: %+v", result)
+	}
+}
+
+// TestCreate_IsolationVLAN_StampsTagOnEveryNIC asserts the admin-imposed
+// per-cluster VLAN tag is stamped on every created NIC.
+//
+//nolint:paralleltest // serial: shared fake VM and database fixtures
+func TestCreate_IsolationVLAN_StampsTagOnEveryNIC(t *testing.T) {
+	fixture := newCreateFixture(t)
+
+	gabarit := mustGabarit(t, fixture.store)
+	gabarit.IsolationVLANTag = 110
+
+	if err := mustPolicyService(fixture.store).SetPolicy(context.Background(), testClusterName, gabarit, -1); err != nil {
+		t.Fatalf("SetPolicy: %v", err)
+	}
+
+	req := detailedRequest()
+	req.Name = "vlan-stamp"
+	req.Network = vm.NetworkRequest{
+		{Bridge: cluster.FakeBridgeVMbr0, Model: testModelVirtio},
+		{Bridge: testBridgeVMbr1, Model: "e1000"},
+	}
+
+	result, err := fixture.create(t, aliceIdentity(), req)
+	if err != nil {
+		t.Fatalf("Create: %v", err)
+	}
+
+	snap, err := fixture.fake.Snapshot(context.Background())
+	if err != nil {
+		t.Fatalf("Snapshot: %v", err)
+	}
+
+	idx := slices.IndexFunc(snap.VMs, func(v cluster.VM) bool { return v.VMID == result.VMID })
+	if idx < 0 {
+		t.Fatalf("created VM not in snapshot")
+	}
+
+	ifaces := snap.VMs[idx].NetworkInterfaces
+	if len(ifaces) != 2 {
+		t.Fatalf("network interfaces = %d, want 2", len(ifaces))
+	}
+
+	for i, nic := range ifaces {
+		if nic.VLAN == nil || *nic.VLAN != 110 {
+			t.Errorf("nic[%d].vlan = %v, want 110", i, nic.VLAN)
+		}
+
+		if !nic.Firewall {
+			t.Errorf("nic[%d].firewall = false, want true", i)
+		}
+	}
+}
+
+// TestCreate_IsolationVLAN_Zero_NoTag asserts that when the gabarit's VLAN
+// tag is 0 (the default), no tag is stamped on NICs.
+//
+//nolint:paralleltest // serial: shared fake VM and database fixtures
+func TestCreate_IsolationVLAN_Zero_NoTag(t *testing.T) {
+	fixture := newCreateFixture(t)
+
+	req := detailedRequest()
+	req.Name = "no-vlan"
+
+	result, err := fixture.create(t, aliceIdentity(), req)
+	if err != nil {
+		t.Fatalf("Create: %v", err)
+	}
+
+	snap, err := fixture.fake.Snapshot(context.Background())
+	if err != nil {
+		t.Fatalf("Snapshot: %v", err)
+	}
+
+	idx := slices.IndexFunc(snap.VMs, func(v cluster.VM) bool { return v.VMID == result.VMID })
+	if idx < 0 {
+		t.Fatalf("created VM not in snapshot")
+	}
+
+	ifaces := snap.VMs[idx].NetworkInterfaces
+	if len(ifaces) != 1 {
+		t.Fatalf("network interfaces = %d, want 1", len(ifaces))
+	}
+
+	if ifaces[0].VLAN != nil {
+		t.Errorf("nic.vlan = %v, want nil (no imposed tag)", ifaces[0].VLAN)
+	}
+}
+
+// TestCreate_UEFI_ProvisionsEFIDisk asserts that requesting UEFI produces
+// bios=ovmf, machine=q35, and efidisk0 on the created VM.
+//
+//nolint:paralleltest // serial: shared fake VM and database fixtures
+func TestCreate_UEFI_ProvisionsEFIDisk(t *testing.T) {
+	fixture := newCreateFixture(t)
+
+	req := detailedRequest()
+	req.Name = "uefi-vm"
+	req.UEFI = new(true)
+
+	result, err := fixture.create(t, aliceIdentity(), req)
+	if err != nil {
+		t.Fatalf("Create: %v", err)
+	}
+
+	snap, err := fixture.fake.Snapshot(context.Background())
+	if err != nil {
+		t.Fatalf("Snapshot: %v", err)
+	}
+
+	idx := slices.IndexFunc(snap.VMs, func(v cluster.VM) bool { return v.VMID == result.VMID })
+	if idx < 0 {
+		t.Fatalf("created VM %d not found in snapshot", result.VMID)
+	}
+
+	got := snap.VMs[idx]
+	if got.BIOS != testBIOSOVMF || got.Machine != "q35" || !got.EFIDisk {
+		t.Errorf("bios=%q machine=%q efidisk=%v, want ovmf/q35/true", got.BIOS, got.Machine, got.EFIDisk)
+	}
+
+	if got.TPMState {
+		t.Errorf("tpmstate = true, want false (TPM not requested)")
+	}
+}
+
+// TestCreate_UEFI_DefaultsToTrueWhenOmitted asserts that a request that
+// never sets UEFI still provisions bios=ovmf (default-on).
+//
+//nolint:paralleltest // serial: shared fake VM and database fixtures
+func TestCreate_UEFI_DefaultsToTrueWhenOmitted(t *testing.T) {
+	fixture := newCreateFixture(t)
+
+	req := detailedRequest()
+	req.Name = "uefi-default-vm"
+
+	result, err := fixture.create(t, aliceIdentity(), req)
+	if err != nil {
+		t.Fatalf("Create: %v", err)
+	}
+
+	snap, err := fixture.fake.Snapshot(context.Background())
+	if err != nil {
+		t.Fatalf("Snapshot: %v", err)
+	}
+
+	idx := slices.IndexFunc(snap.VMs, func(v cluster.VM) bool { return v.VMID == result.VMID })
+	if idx < 0 {
+		t.Fatalf("created VM %d not found in snapshot", result.VMID)
+	}
+
+	if got := snap.VMs[idx].BIOS; got != testBIOSOVMF {
+		t.Errorf("bios = %q, want ovmf (UEFI defaults to true when omitted)", got)
+	}
+}
+
+// TestCreate_UEFI_ExplicitFalseStaysSeaBIOS asserts that explicitly
+// disabling UEFI is honored, not overridden by the default.
+//
+//nolint:paralleltest // serial: shared fake VM and database fixtures
+func TestCreate_UEFI_ExplicitFalseStaysSeaBIOS(t *testing.T) {
+	fixture := newCreateFixture(t)
+
+	req := detailedRequest()
+	req.Name = "seabios-vm"
+	req.UEFI = new(false)
+
+	result, err := fixture.create(t, aliceIdentity(), req)
+	if err != nil {
+		t.Fatalf("Create: %v", err)
+	}
+
+	snap, err := fixture.fake.Snapshot(context.Background())
+	if err != nil {
+		t.Fatalf("Snapshot: %v", err)
+	}
+
+	idx := slices.IndexFunc(snap.VMs, func(v cluster.VM) bool { return v.VMID == result.VMID })
+	if idx < 0 {
+		t.Fatalf("created VM %d not found in snapshot", result.VMID)
+	}
+
+	if got := snap.VMs[idx]; got.BIOS != "" || got.EFIDisk {
+		t.Errorf("bios=%q efidisk=%v, want empty/false (explicit UEFI=false)", got.BIOS, got.EFIDisk)
+	}
+}
+
+// TestCreate_UEFI_WithTPM_ProvisionsTPMState asserts that UEFI+TPM is
+// accepted and the cluster layer emits tpmstate0.
+//
+//nolint:paralleltest // serial: shared fake VM and database fixtures
+func TestCreate_UEFI_WithTPM_ProvisionsTPMState(t *testing.T) {
+	fixture := newCreateFixture(t)
+
+	req := detailedRequest()
+	req.Name = "uefi-tpm-vm"
+	req.UEFI = new(true)
+	req.TPM = true
+
+	result, err := fixture.create(t, aliceIdentity(), req)
+	if err != nil {
+		t.Fatalf("Create: %v", err)
+	}
+
+	snap, err := fixture.fake.Snapshot(context.Background())
+	if err != nil {
+		t.Fatalf("Snapshot: %v", err)
+	}
+
+	idx := slices.IndexFunc(snap.VMs, func(v cluster.VM) bool { return v.VMID == result.VMID })
+	if idx < 0 {
+		t.Fatalf("created VM %d not found in snapshot", result.VMID)
+	}
+
+	if got := snap.VMs[idx]; !got.TPMState {
+		t.Errorf("tpmstate = false, want true")
+	}
+}
+
+// TestCreate_TPM_WithoutUEFI_Rejected asserts that TPM without UEFI is
+// rejected with ErrInvalidRequest before any VMID is allocated (TPM 2.0 requires UEFI).
+//
+//nolint:paralleltest // serial: shared fake VM and database fixtures
+func TestCreate_TPM_WithoutUEFI_Rejected(t *testing.T) {
+	fixture := newCreateFixture(t)
+
+	req := detailedRequest()
+	req.Name = "tpm-no-uefi"
+	req.TPM = true
+	req.UEFI = new(false)
+
+	_, err := fixture.create(t, aliceIdentity(), req)
+	if !errors.Is(err, vm.ErrInvalidRequest) {
+		t.Fatalf("err = %v, want ErrInvalidRequest", err)
+	}
+}

@@ -3,14 +3,13 @@ import { test, expect } from '@playwright/test';
 test.describe('T00 smoke', () => {
 	test('shell renders the placeholder title', async ({ page }) => {
 		await page.goto('/');
-		await expect(page.locator('text=PVMSS v0.4')).toBeVisible();
-		await expect(page.locator('text=Minimal SvelteKit web shell')).toBeVisible();
+		await expect(page.locator('text=Proxmox VM Self-Service (PVMSS)')).toBeVisible();
 	});
 
 	test('health endpoint returns healthy', async ({ request }) => {
 		const response = await request.get('/health');
 		expect(response.status()).toBe(200);
-		const body = await response.json();
+		const body = (await response.json()) as { timestamp: string };
 		expect(body).toMatchObject({
 			status: 'healthy',
 			checks: { database: { status: 'healthy' } },

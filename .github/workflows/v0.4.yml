@@ -5,13 +5,13 @@ permissions:
 
 on:
   push:
-    branches: ["main"]
+    branches: ["main", "v0.4"]
   pull_request:
     branches: ["main"]
 
 jobs:
   go:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-26.04
     steps:
       - uses: actions/checkout@v7
 
@@ -20,6 +20,7 @@ jobs:
         with:
           go-version-file: server/go.mod
           cache: true
+          cache-dependency-path: server/go.sum
 
       - name: Verify Go dependencies
         run: go mod verify
@@ -34,7 +35,7 @@ jobs:
         working-directory: server
 
   web:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-26.04
     steps:
       - uses: actions/checkout@v7
 
@@ -51,6 +52,10 @@ jobs:
         run: bun run check
         working-directory: web
 
+      - name: Lint
+        run: bun run lint
+        working-directory: web
+
       - name: Build web shell
         run: bun run build
         working-directory: web
@@ -60,9 +65,9 @@ jobs:
         working-directory: web
 
   e2e:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-26.04
     needs: [go, web]
-    timeout-minutes: 5
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@v7
 
@@ -71,6 +76,7 @@ jobs:
         with:
           go-version-file: server/go.mod
           cache: true
+          cache-dependency-path: server/go.sum
 
       - name: Set up Bun
         uses: oven-sh/setup-bun@v2
@@ -92,3 +98,13 @@ jobs:
       - name: Run Playwright E2E
         run: bun run test:e2e
         working-directory: web
+
+      - name: Upload Playwright report
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@v7
+        with:
+          name: playwright-report
+          path: |
+            web/playwright-report/
+            web/test-results/
+          retention-days: 14

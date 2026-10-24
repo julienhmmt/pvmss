@@ -5,18 +5,25 @@ metadata:
   namespace: {{ .Values.namespace }}
   labels:
     {{- include "pvmss.labels" . | nindent 4 }}
-  {{- with $.Values.extraAnnotations }}
-  annotations: {{ include "pvmss.merge" . | toYaml | nindent 4 }}
+  {{- with .Values.extraAnnotations }}
+  annotations:
+    {{- toYaml . | nindent 4 }}
   {{- end }}
 spec:
+  type: {{ .Values.service.type }}
   selector:
-    {{- include "pvmss.labels" . | nindent 4 }}
+    {{- include "pvmss.selectorLabels" . | nindent 4 }}
   ports:
     - name: backend
       protocol: TCP
       port: {{ .Values.service.port }}
       targetPort: {{ .Values.service.targetPort }}
-  type: {{ .Values.service.type }}
-  {{- if eq .Values.service.type "NodePort" }}
-  nodePort: {{ .Values.service.nodePort }}
-  {{- end }}
+      {{- if and (eq .Values.service.type "NodePort") .Values.service.nodePort }}
+      nodePort: {{ .Values.service.nodePort }}
+      {{- end }}
+    {{- if .Values.metrics.enabled }}
+    - name: metrics
+      protocol: TCP
+      port: {{ .Values.metrics.port }}
+      targetPort: metrics
+    {{- end }}
