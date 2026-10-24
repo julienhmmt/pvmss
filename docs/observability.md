@@ -36,7 +36,7 @@ once, is audited, and is not persisted: a restart returns to `LOG_LEVEL`. At
 | `error` | Something is broken: a 5xx (from the access log), a database failure, a cluster that just became unreachable.                         |
 | `warn`  | Degraded or refused: failed logins, 403, CSRF rejects, 429, a cluster that is still down (reminder every 5 minutes), Proxmox retries. |
 | `info`  | Startup banner, "server ready", shutdown, logins and logouts, every write request, every audited action, cluster recovery.            |
-| `debug` | Every GET request, every Proxmox call (templated path, status, duration), every successful inventory refresh.                         |
+| `debug` | Every GET request, every Proxmox call (templated path, status, duration), every successful inventory refresh, and any request the client abandoned (`result=canceled`, whatever its status). |
 
 Every request produces one access-log line (`message` = `http request`) with
 `method`, `route` (the route pattern, never the URL or query string),

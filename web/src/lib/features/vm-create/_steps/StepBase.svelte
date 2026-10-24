@@ -194,7 +194,7 @@
 					{describedBy}
 					{invalid}
 					bind:value={form.isoFile}
-					options={isosOnNode.map((iso) => ({ value: iso.file, label: iso.file }))}
+					options={[{ value: '', label: m['common.none']() }, ...isosOnNode.map((iso) => ({ value: iso.file, label: iso.file }))]}
 				/>
 			{/snippet}
 		</FormField>

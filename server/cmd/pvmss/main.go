@@ -59,7 +59,7 @@ const (
 	// appVersion is the version string surfaced in the dashboard, the admin
 	// app info page, and the public /api/v1/public/version endpoint.
 	// It is a compile-time literal; no runtime discovery is performed.
-	appVersion = "0.4.0-dev"
+	appVersion = "0.4.0"
 
 	// errNoClustersConfigured is the error message shared by initCluster and
 	// initInventory when the registry has no clusters. Extracted as a

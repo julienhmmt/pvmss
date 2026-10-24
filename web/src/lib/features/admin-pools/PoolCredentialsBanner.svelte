@@ -20,24 +20,24 @@
 		{m['admin.pools.credentialsBannerWarning']()}
 	</Alert>
 	<div class="grid gap-4 sm:grid-cols-3">
-		<div>
+		<div class="min-w-0">
 			<span class="mb-1 block text-sm font-medium">{m['admin.pools.poolName']()}</span>
 			<div class="flex items-center gap-2">
-				<code class="flex-1 rounded-md border border-border bg-muted px-3 py-2 text-sm font-mono">{credentials.name}</code>
+				<code class="min-w-0 flex-1 break-all rounded-md border border-border bg-muted px-3 py-2 text-sm font-mono">{credentials.name}</code>
 				<CopyButton variant="secondary" value={credentials.name} />
 			</div>
 		</div>
-		<div>
+		<div class="min-w-0">
 			<span class="mb-1 block text-sm font-medium">{m['admin.pools.username']()}</span>
 			<div class="flex items-center gap-2">
-				<code class="flex-1 rounded-md border border-border bg-muted px-3 py-2 text-sm font-mono">{credentials.username}@pve</code>
+				<code class="min-w-0 flex-1 break-all rounded-md border border-border bg-muted px-3 py-2 text-sm font-mono">{credentials.username}@pve</code>
 				<CopyButton variant="secondary" value={`${credentials.username}@pve`} />
 			</div>
 		</div>
-		<div>
+		<div class="min-w-0">
 			<span class="mb-1 block text-sm font-medium">{m['admin.pools.generatedPassword']()}</span>
 			<div class="flex items-center gap-2">
-				<code class="flex-1 rounded-md border border-border bg-muted px-3 py-2 text-sm font-mono">{credentials.password}</code>
+				<code class="min-w-0 flex-1 break-all rounded-md border border-border bg-muted px-3 py-2 text-sm font-mono">{credentials.password}</code>
 				<CopyButton variant="secondary" value={credentials.password} />
 			</div>
 		</div>

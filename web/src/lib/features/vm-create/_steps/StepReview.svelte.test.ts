@@ -52,7 +52,7 @@ describe('StepReview', () => {
 		});
 		expect(summary()).toContain('web-03');
 		expect(summary()).toContain('vmbr2 · virtio');
-		expect(summary()).toContain('4 GB');
+		expect(summary()).toContain('4 GiB');
 		expect(document.querySelector('[data-testid="review-request"]')).toBeNull();
 
 		document.querySelector<HTMLButtonElement>('[role="switch"]')?.click();
@@ -72,6 +72,6 @@ describe('StepReview', () => {
 		});
 		expect(summary()).toContain('debian-12.qcow2');
 		expect(summary()).toContain('Small');
-		expect(summary()).not.toContain('8 GB');
+		expect(summary()).not.toContain('8 GiB');
 	});
 });

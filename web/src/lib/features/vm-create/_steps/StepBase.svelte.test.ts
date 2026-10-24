@@ -145,3 +145,17 @@ describe('StepBase template picker grouping (issue 04)', () => {
 		document.body.innerHTML = '';
 	});
 });
+
+describe('StepBase ISO field', () => {
+	it('lets the optional ISO go back to none', () => {
+		storeInstance = new VmCreateStore();
+		storeInstance.catalog = { ...catalogWith([]), isos: [{ node: 'pve-node-01', storage: 'local', file: 'debian.iso' }] };
+		storeInstance.node = 'pve-node-01';
+		mount(StepBase, { target: document.body });
+		const isoSelect = [...document.querySelectorAll('select')].find((select) => select.querySelector('option[value="debian.iso"]'));
+		const none = isoSelect?.querySelector<HTMLOptionElement>('option[value=""]');
+		expect(none).not.toBeNull();
+		expect(none?.disabled).toBe(false);
+		document.body.innerHTML = '';
+	});
+});

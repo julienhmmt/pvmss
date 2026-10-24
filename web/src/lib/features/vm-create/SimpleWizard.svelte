@@ -322,7 +322,7 @@
 				{:else if isoOptions.length > 0}
 					<FormField label={m['vms.create.iso']()} hint={m['common.optional']()}>
 						{#snippet children({ id, describedBy, invalid })}
-							<Select {id} {describedBy} {invalid} bind:value={form.isoFile} placeholder={m['common.none']()} options={isoOptions} />
+							<Select {id} {describedBy} {invalid} bind:value={form.isoFile} options={[{ value: '', label: m['common.none']() }, ...isoOptions]} />
 						{/snippet}
 					</FormField>
 				{/if}
@@ -331,7 +331,9 @@
 
 			{#if form.simpleSource !== 'template'}
 				<FormSection step={2} legend={m['vms.create.section.size']()} description={m['vms.create.section.sizeHelp']()}>
-					{#if usesProfile}
+					{#if usesProfile && cat.profiles.length === 0}
+						<Alert tone="warning" data-testid="vm-create-no-profiles">{m['vms.create.noProfiles']()}</Alert>
+					{:else if usesProfile}
 						<div class="grid gap-2 sm:grid-cols-2 min-[1100px]:grid-cols-3" role="radiogroup" aria-label={m['vms.create.section.size']()}>
 							{#each cat.profiles as profile (profile.id)}
 								<RadioCard name="simple-size" value={profile.id} selected={form.profileId === profile.id} onSelect={(value) => (form.profileId = value)}>

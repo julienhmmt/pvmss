@@ -2,6 +2,8 @@ package httpapi
 
 import (
 	"bufio"
+	"context"
+	"errors"
 	"fmt"
 	"log/slog"
 	"net"
@@ -168,7 +170,16 @@ func withAccessLog(trustedProxyHops int, next http.Handler) http.Handler {
 				attrs = append(attrs, slog.Any("error", lw.err))
 			}
 
-			logctx.From(r.Context()).LogAttrs(r.Context(), accessLevel(r.Method, route, lw.status), msg, attrs...) //nolint:sloglint // msg is one of two fixed access-log messages
+			level := accessLevel(r.Method, route, lw.status)
+			// The client left (page change, closed tab): the status reached
+			// nobody and nothing is broken, so it is a diagnostic only.
+			if errors.Is(r.Context().Err(), context.Canceled) {
+				level = slog.LevelDebug
+
+				attrs = append(attrs, slog.String("result", "canceled"))
+			}
+
+			logctx.From(r.Context()).LogAttrs(r.Context(), level, msg, attrs...) //nolint:sloglint // msg is one of two fixed access-log messages
 		}
 
 		lw := &logWriter{ResponseWriter: w}

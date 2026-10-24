@@ -22,6 +22,10 @@ import (
 func serialFakeServe(ctx context.Context, peer io.ReadWriteCloser) error {
 	defer func() { _ = peer.Close() }()
 
+	// A blocked Read never sees ctx: closing the peer on cancel unblocks it.
+	stop := context.AfterFunc(ctx, func() { _ = peer.Close() })
+	defer stop()
+
 	buf := make([]byte, 4096)
 
 	for {
@@ -47,6 +51,10 @@ func serialFakeServe(ctx context.Context, peer io.ReadWriteCloser) error {
 		}
 
 		if err != nil {
+			if ctx.Err() != nil {
+				return ctx.Err()
+			}
+
 			if errors.Is(err, io.EOF) {
 				return nil
 			}

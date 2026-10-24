@@ -136,6 +136,9 @@ func TestSerialFakeServe_ReturnsContextErrOnCancel(t *testing.T) {
 	done := make(chan error, 1)
 	go func() { done <- serialFakeServe(ctx, local) }()
 
+	// Let the server block in Read first: cancellation must interrupt it,
+	// not only be noticed between reads.
+	time.Sleep(50 * time.Millisecond)
 	cancel()
 
 	select {

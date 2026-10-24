@@ -86,8 +86,9 @@ export interface CatalogGabarit {
 }
 
 /** Memory for display: whole gigabytes as GB, anything else in MB. */
+// Proxmox memory is MiB, so the units are binary - as everywhere else in the UI.
 export function memoryLabel(memoryMB: number): string {
-	return memoryMB >= 1024 && memoryMB % 1024 === 0 ? `${memoryMB / 1024} GB` : `${memoryMB} MB`;
+	return memoryMB >= 1024 && memoryMB % 1024 === 0 ? `${memoryMB / 1024} GiB` : `${memoryMB} MiB`;
 }
 
 /** The effective UI ceiling for a gabarit field: 0 means no cap (the server

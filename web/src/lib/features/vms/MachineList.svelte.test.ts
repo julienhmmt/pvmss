@@ -16,8 +16,9 @@ vi.mock('./bulk.svelte', async (importOriginal) => {
 // Rows derive their display status from the tray; an empty one is enough
 // here - the ledger and power-action getters already degrade gracefully
 // outside the app shell.
+const tray: { tasks: { kind: string; name: string; cluster: string; vmid: number; upid: string }[] } = { tasks: [] };
 vi.mock('#lib/features/tasks/tasks.svelte.js', () => ({
-	getTaskTrayContext: vi.fn(() => ({ tasks: [] }))
+	getTaskTrayContext: vi.fn(() => tray)
 }));
 
 const vmItem: VmListItem = {
@@ -122,5 +123,31 @@ describe('MachineList sorting and selection', () => {
 
 		expect(fetchAll).toHaveBeenCalled();
 		expect(bulk.selectedCount).toBe(1);
+	});
+});
+
+describe('MachineList first visit', () => {
+	beforeAll(() => setLocale('en', { reload: false }));
+	afterEach(() => {
+		document.body.innerHTML = '';
+		tray.tasks = [];
+	});
+
+	function emptyOwnedStore(): VmListStore {
+		return makeStore('', { items: [], total: 0, page: 1, pageSize: 10, availableNodes: [], emptyReason: 'no_vms_owned' });
+	}
+
+	it('invites a first create when nothing is owned and nothing is being created', () => {
+		vi.mocked(getVmListContext).mockReturnValue(emptyOwnedStore());
+		mount(MachineList, { target: document.body });
+		expect(document.querySelector('[data-testid="vm-empty-owned"]')).not.toBeNull();
+	});
+
+	it('shows the machine being prepared instead of the first-create invite', () => {
+		tray.tasks = [{ kind: 'vm_create', name: 'web-01', cluster: 'default', vmid: 100, upid: 'UPID:x' }];
+		vi.mocked(getVmListContext).mockReturnValue(emptyOwnedStore());
+		mount(MachineList, { target: document.body });
+		expect(document.querySelector('[data-testid="vm-empty-owned"]')).toBeNull();
+		expect(document.querySelector('[data-testid="vm-empty-provisioning"]')?.textContent).toContain('web-01');
 	});
 });
