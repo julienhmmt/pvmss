@@ -104,7 +104,7 @@
 					{#if !storage.noStorage}
 						<ApprovalCell
 							enabled={storage.enabled}
-							name={storage.name}
+							name={`${storage.name} (${storage.node})`}
 							pending={toggling === `storage:${storage.name}@${storage.node}`}
 							missing={storage.missing}
 							onToggle={() => onToggle(storage.name, storage.node, !storage.enabled)}

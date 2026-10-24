@@ -89,7 +89,7 @@
 				<td data-label={m['admin.catalog.statusColumn']()}>
 					<ApprovalCell
 						enabled={bridge.enabled}
-						name={bridge.name}
+						name={`${bridge.name} (${bridge.node})`}
 						pending={toggling === `bridge:${bridge.node}/${bridge.name}`}
 						missing={bridge.missing}
 						onToggle={() => onToggle(bridge.node, bridge.name, !bridge.enabled)}

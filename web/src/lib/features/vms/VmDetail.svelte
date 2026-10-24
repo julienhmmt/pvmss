@@ -37,6 +37,10 @@
 
 	const store = getVmDetailContext();
 	const session = getSessionContext();
+	// The sign-in cluster's Proxmox name reads better than its internal key.
+	const clusterLabel = $derived(
+		session.principal?.cluster === store.cluster && session.principal.clusterDisplayName ? session.principal.clusterDisplayName : store.cluster
+	);
 
 	interface Props {
 		/** Where the back link at the top of the page goes. Admin detail keeps
@@ -414,7 +418,7 @@
 					</div>
 					<div>
 						<dt class="text-xs text-muted-foreground">{m['vms.detail.config.identifier']()}</dt>
-						<dd class="mt-0.5 font-mono">{entity.cluster} / {entity.vmid}</dd>
+						<dd class="mt-0.5 font-mono">{clusterLabel} / {entity.vmid}</dd>
 					</div>
 				</dl>
 				{#if entity.baselineState === 'applied'}

@@ -47,6 +47,22 @@ func parseIntPathValue(r *http.Request, key string) (int, error) {
 }
 
 func (h *VMDetail) writeEntity(w http.ResponseWriter, r *http.Request, entity vm.Entity) {
+	// The live Proxmox read is best-effort: a failed read must not fail the
+	// whole detail. It carries the lock badge and overrides the projection's
+	// power state, which lags an action by up to a refresh interval.
+	var lock string
+
+	if reader := h.statusReaderFor(entity.Cluster); reader != nil {
+		if live, err := reader.VMStatus(r.Context(), entity.Node, entity.VMID); err == nil {
+			lock = live.Lock
+
+			if live.Status != "" {
+				entity.Status = live.Status
+				entity.Uptime = live.Uptime
+			}
+		}
+	}
+
 	dto := vmDetailDTO{
 		Cluster:           entity.Cluster,
 		VMID:              entity.VMID,
@@ -68,18 +84,10 @@ func (h *VMDetail) writeEntity(w http.ResponseWriter, r *http.Request, entity vm
 		HasSerial:         entity.HasSerial,
 		Description:       entity.Description,
 		DescriptionHTML:   renderMarkdownToHTML(entity.Description),
+		Lock:              lock,
 	}
 	if entity.Uptime > 0 {
 		dto.UptimeSeconds = int64(entity.Uptime.Seconds())
-	}
-
-	// The detail DTO carries the live Proxmox lock (best-effort
-	// a failed live read must not fail the whole detail) so the page can show
-	// the lock badge; the convergence loop keeps it fresh after actions.
-	if reader := h.statusReaderFor(entity.Cluster); reader != nil {
-		if live, err := reader.VMStatus(r.Context(), entity.Node, entity.VMID); err == nil {
-			dto.Lock = live.Lock
-		}
 	}
 
 	h.fillBaselineState(r.Context(), entity, &dto)

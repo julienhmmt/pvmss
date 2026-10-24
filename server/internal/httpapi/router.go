@@ -22,10 +22,14 @@ import (
 const cloudInitPaused = true
 
 const (
-	authRateLimitMaxRequests    = 10
-	authRateLimitWindow         = time.Minute
-	vmWriteRateLimitMaxRequests = 30
-	vmWriteRateLimitWindow      = time.Minute
+	authRateLimitMaxRequests = 10
+	authRateLimitWindow      = time.Minute
+	// clusterListRateLimitMaxRequests: nearly every page loads the pre-login
+	// cluster list, so it gets its own per-IP budget, apart from login's.
+	clusterListRateLimitMaxRequests = 120
+	clusterListRateLimitWindow      = time.Minute
+	vmWriteRateLimitMaxRequests     = 30
+	vmWriteRateLimitWindow          = time.Minute
 	// vmStatusRateLimitMaxRequests allows the frontend convergence loop to
 	// poll batch live status every 1.5s for up to 30s per action (20 polls),
 	// with headroom for concurrent actions.
@@ -276,13 +280,15 @@ func registerVMRoutes(mux *http.ServeMux, cfg RouterConfig, protect protectFunc,
 func registerAuthRoutes(mux *http.ServeMux, cfg RouterConfig, protect protectFunc, csrf func(http.Handler) http.Handler, authWriteLimiter *userRateLimiter, hops int) {
 	// Unauthenticated credential-check endpoints get a per-IP rate limit -
 	// nothing else gates repeated guesses against them. The pre-login cluster
-	// list is also unauthenticated and discloses cluster
-	// names, so they share the same limiter to bound enumeration/abuse.
+	// list is also unauthenticated and discloses cluster names, so it is
+	// limited too, but on its own budget: pages load it on every visit, and
+	// sharing login's would let browsing lock everyone behind an IP out.
 	authLimiter := newIPRateLimiter(cfg.limitMax(authRateLimitMaxRequests), authRateLimitWindow, hops, cfg.Store)
+	clusterListLimiter := newIPRateLimiter(cfg.limitMax(clusterListRateLimitMaxRequests), clusterListRateLimitWindow, hops, cfg.Store)
 	mux.Handle("POST /api/v1/auth/login", authLimiter.middleware(http.HandlerFunc(cfg.Auth.Login)))
 	mux.Handle("POST /api/v1/auth/admin-login", authLimiter.middleware(http.HandlerFunc(cfg.Auth.AdminLogin)))
 	mux.HandleFunc("GET /api/v1/auth/me", cfg.Auth.Me)
-	mux.Handle("GET /api/v1/auth/clusters", authLimiter.middleware(http.HandlerFunc(cfg.Auth.ServeClusters)))
+	mux.Handle("GET /api/v1/auth/clusters", clusterListLimiter.middleware(http.HandlerFunc(cfg.Auth.ServeClusters)))
 	mux.Handle("POST /api/v1/auth/logout", protect(http.HandlerFunc(cfg.Auth.Logout), authWriteLimiter))
 	mux.Handle("POST /api/v1/auth/password", protect(http.HandlerFunc(cfg.Auth.ChangePassword), authWriteLimiter))
 

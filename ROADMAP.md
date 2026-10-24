@@ -70,7 +70,7 @@ findings cleaned up.
 
 ## Current state
 
-- Version strings: `appVersion = "0.4.0-dev"` (`server/cmd/pvmss/main.go`),
+- Version strings: `appVersion = "0.4.0"` (`server/cmd/pvmss/main.go`),
   `"version": "0.4.0"` (`web/package.json`).
 - No `v0.4.0` tag yet - see "Now" below.
 - Full technical detail: `docs/FEATURES.md`, `WORKFLOWS.md`, `DESIGN.md`,
@@ -80,8 +80,7 @@ findings cleaned up.
 
 Things structurally implied by the current codebase, not a feature backlog:
 
-- **Merge `v0.4` into `main`** (fast-forward), then drop `appVersion`'s
-  `-dev` suffix in `server/cmd/pvmss/main.go`.
+- **Merge `v0.4` into `main`** (fast-forward).
 - **Tag `v0.4.0`.** The rewrite has been the only codebase on `v0.4` since
   the T16 cutover (2026-08-12) and has not been tagged.
 
