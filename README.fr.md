@@ -374,6 +374,7 @@ Il n'y a pas de migration de la v0.3 vers la v0.4. La v0.4 est une réécriture 
   - `PROXMOX_URL` et `PROXMOX_API_TOKEN_*` ne servent qu'à créer le premier cluster au premier démarrage ; ensuite **Admin › Clusters** les gère.
 - **Variables supprimées** (plus lues) : `JWT_SECRET`, `PVMSS_SETTINGS_PATH`, `CSRF_TOKEN_TTL`, `PVMSS_OFFLINE`, `PVMSS_ENV`, `LOG_FILE_PATH`, `PROXMOX_VERIFY_SSL` (désormais une option TLS par cluster dans **Admin › Clusters**), `PVMSS_SSH_KEY_FILE`, `PVMSS_SSH_USER`, `PVMSS_SSH_PORT` (le démarrage avertit pour les variables SSH).
 - **À reconfigurer** : clusters, nœuds approuvés, stockages, ISO, bridges et modèles, profils matériels, limites et quotas, tags, pools utilisateurs et pages de documentation. Vérifiez les rôles Proxmox avec [Roles et permissions](#roles-et-permissions-obligatoire).
+- **Utilisateurs existants** : les pools et utilisateurs Proxmox créés par une installation précédente fonctionnent toujours pour la connexion, mais **Admin › Utilisateurs PVMSS** ne liste que ceux créés par cette base ; les anciens se gèrent dans Proxmox.
 
 ## Exploitation
 

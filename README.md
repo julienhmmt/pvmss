@@ -385,6 +385,7 @@ There is no migration from v0.3 to v0.4. v0.4 is a rewrite (Go API + SvelteKit) 
   - `PROXMOX_URL` and `PROXMOX_API_TOKEN_*` only seed the first cluster on the first boot; afterwards **Admin › Clusters** owns them.
 - **Removed variables** (no longer read): `JWT_SECRET`, `PVMSS_SETTINGS_PATH`, `CSRF_TOKEN_TTL`, `PVMSS_OFFLINE`, `PVMSS_ENV`, `LOG_FILE_PATH`, `PROXMOX_VERIFY_SSL` (now a per-cluster TLS option in **Admin › Clusters**), `PVMSS_SSH_KEY_FILE`, `PVMSS_SSH_USER`, `PVMSS_SSH_PORT` (startup warns about the SSH ones).
 - **To configure again**: clusters, approved nodes, storages, ISOs, bridges and templates, hardware profiles, limits and quotas, tags, user pools and documentation pages. Check the Proxmox roles against [Proxmox roles and permissions](#proxmox-roles-and-permissions-required).
+- **Existing users**: pools and Proxmox users created by an earlier install still work for sign-in, but **Admin › Utilisateurs PVMSS** only lists the ones this database created, so the earlier ones stay managed in Proxmox.
 
 ## Operations
 
