@@ -175,6 +175,7 @@ func withAccessLog(trustedProxyHops int, next http.Handler) http.Handler {
 			// nobody and nothing is broken, so it is a diagnostic only.
 			if errors.Is(r.Context().Err(), context.Canceled) {
 				level = slog.LevelDebug
+
 				attrs = append(attrs, slog.String("result", "canceled"))
 			}
 
