@@ -322,7 +322,7 @@
 				{:else if isoOptions.length > 0}
 					<FormField label={m['vms.create.iso']()} hint={m['common.optional']()}>
 						{#snippet children({ id, describedBy, invalid })}
-							<Select {id} {describedBy} {invalid} bind:value={form.isoFile} placeholder={m['common.none']()} options={isoOptions} />
+							<Select {id} {describedBy} {invalid} bind:value={form.isoFile} options={[{ value: '', label: m['common.none']() }, ...isoOptions]} />
 						{/snippet}
 					</FormField>
 				{/if}
