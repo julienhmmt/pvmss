@@ -33,6 +33,8 @@ jobs:
             DEFAULT_BRANCH: main
             VALIDATE_ALL_CODEBASE: false
             VALIDATE_CSS: true
+            # v9 looks for stylelint.config.mjs by default; ours is JSON.
+            CSS_FILE_NAME: .stylelintrc.json
             VALIDATE_MARKDOWN_PRETTIER: true
             FIX_MARKDOWN_PRETTIER: true
             VALIDATE_YAML: true
