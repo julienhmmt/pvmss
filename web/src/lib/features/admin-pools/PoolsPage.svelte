@@ -11,7 +11,7 @@
 	import PageHeader from '#lib/shared/ui/PageHeader.svelte';
 	import Button from '#lib/shared/ui/Button.svelte';
 	import Pagination from '#lib/shared/ui/Pagination.svelte';
-	import { loadPageSize, paginate } from '#lib/shared/ui/paginate.js';
+	import { createPagination } from '#lib/shared/ui/list-pager.svelte.js';
 	import TableCard from '#lib/shared/ui/TableCard.svelte';
 	import TableSkeleton from '#lib/shared/ui/TableSkeleton.svelte';
 	import EmptyState from '#lib/shared/ui/EmptyState.svelte';
@@ -141,8 +141,7 @@
 		sortDir = 'asc';
 	}
 
-	let page = $state(1);
-	let size = $state(loadPageSize('pools'));
+	const pager = createPagination('pools', () => filteredPools);
 
 	const filteredPools = $derived(
 		sortPools(
@@ -243,7 +242,7 @@
 				</tr>
 			</thead>
 			<tbody>
-				{#each paginate(filteredPools, page, size) as pool (pool.name)}
+				{#each pager.rows as pool (pool.name)}
 					<tr class="group transition-colors hover:bg-muted/40">
 						<td data-label={m['admin.pools.accountColumn']()}>
 							<div class="min-w-0">
@@ -298,7 +297,7 @@
 			</tbody>
 		</table>
 		{#snippet footer()}
-			<Pagination total={filteredPools.length} bind:page bind:size name="pools" />
+			<Pagination {pager} />
 		{/snippet}
 	</TableCard>
 {/if}

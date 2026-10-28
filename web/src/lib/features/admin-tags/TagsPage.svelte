@@ -8,7 +8,7 @@
 	import ClusterSelector from '#lib/shared/ui/ClusterSelector.svelte';
 	import Button from '#lib/shared/ui/Button.svelte';
 	import Pagination from '#lib/shared/ui/Pagination.svelte';
-	import { loadPageSize, paginate } from '#lib/shared/ui/paginate.js';
+	import { createPagination } from '#lib/shared/ui/list-pager.svelte.js';
 	import TableCard from '#lib/shared/ui/TableCard.svelte';
 	import TableSkeleton from '#lib/shared/ui/TableSkeleton.svelte';
 	import EmptyState from '#lib/shared/ui/EmptyState.svelte';
@@ -47,8 +47,7 @@
 		onClearSaveError: () => void;
 	}
 
-	let page = $state(1);
-	let size = $state(loadPageSize('tags'));
+	const pager = createPagination('tags', () => filteredTags);
 
 	let {
 		tags,
@@ -184,7 +183,7 @@
 					</tr>
 				</thead>
 				<tbody>
-					{#each paginate(filteredTags, page, size) as tag (tag.name)}
+					{#each pager.rows as tag (tag.name)}
 						<tr class="group transition-colors hover:bg-muted/40">
 							<td class="font-mono" data-label={m['common.name']()}>
 								{tag.name}
@@ -224,7 +223,7 @@
 				</tbody>
 			</table>
 			{#snippet footer()}
-				<Pagination total={filteredTags.length} bind:page bind:size name="tags" />
+				<Pagination {pager} />
 			{/snippet}
 		</TableCard>
 	{:else}
