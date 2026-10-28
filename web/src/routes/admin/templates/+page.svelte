@@ -88,7 +88,7 @@
 	filteredCount={store.filteredTemplates.length}
 	loadedLabel={m['admin.templates.templatesLoaded']({ count: store.filteredTemplates.length })}
 	emptyTitle={m['admin.templates.emptyTitle']()}
-	emptyDescription={m['admin.templates.emptyDescription']()}
+	emptyDescription=""
 	emptyActionLabel={m['admin.templates.emptyAction']()}
 	noMatchTitle={m['admin.templates.noMatchTitle']()}
 	noMatchDescription={m['admin.templates.noMatchDescription']()}
