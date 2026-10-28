@@ -79,7 +79,7 @@ func (service *Policy) discoveredNodes(ctx context.Context, clusterName string) 
 // snapshotFor reads the named cluster's live inventory. ok is false when no
 // live source is wired, so callers fall back to the inventory projection.
 func (service *Policy) snapshotFor(ctx context.Context, clusterName string) (cluster.Snapshot, bool, error) {
-	var source Snapshotter = service.client
+	source := service.client
 	if service.clusters != nil {
 		client, err := service.clusters.Client(clusterName)
 		if err != nil {

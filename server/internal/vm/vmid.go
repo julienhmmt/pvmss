@@ -16,9 +16,9 @@ const (
 // is in use. Mapped to 409 by the handler.
 var ErrVMIDRangeExhausted = errors.New("vmid range exhausted")
 
-// VMIDLister lists every VM and container id in use on a cluster, whoever
+// IDLister lists every VM and container id in use on a cluster, whoever
 // created it. Creators that do not implement it cannot honour a VMID range.
-type VMIDLister interface {
+type IDLister interface {
 	UsedVMIDs(ctx context.Context) ([]int, error)
 }
 
@@ -46,7 +46,7 @@ func allocateVMID(ctx context.Context, deps CreateDeps) (int, error) {
 		return deps.Creator.NextVMID(ctx)
 	}
 
-	lister, ok := deps.Creator.(VMIDLister)
+	lister, ok := deps.Creator.(IDLister)
 	if !ok {
 		return 0, errors.New("cluster client cannot list used vmids")
 	}

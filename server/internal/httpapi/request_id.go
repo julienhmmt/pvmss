@@ -41,8 +41,11 @@ func newRequestID() string {
 	if _, err := rand.Read(b[:]); err != nil {
 		// crypto/rand does not fail on supported platforms; an empty ID is
 		// still a valid (if useless) value and must not break the request.
-		return "unknown"
+		return unknownValue
 	}
 
 	return hex.EncodeToString(b[:])
 }
+
+// unknownValue stands in for a value that could not be determined.
+const unknownValue = "unknown"

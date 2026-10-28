@@ -2,12 +2,13 @@ package vm_test
 
 import (
 	"errors"
-	"testing"
-
 	"pvmss/server/internal/vm"
+	"testing"
 )
 
 func TestAllocateVMID(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		name    string
 		lo, hi  int
@@ -26,6 +27,8 @@ func TestAllocateVMID(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
 			got, err := vm.AllocateVMID(tt.lo, tt.hi, tt.used)
 			if !errors.Is(err, tt.wantErr) || got != tt.want {
 				t.Fatalf("got (%d, %v), want (%d, %v)", got, err, tt.want, tt.wantErr)

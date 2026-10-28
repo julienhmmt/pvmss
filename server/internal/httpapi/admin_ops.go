@@ -534,7 +534,7 @@ func (h *AdminOps) projectionClusterHealthDTOs() []clusterHealthDTO {
 	clusterRows, err := h.store.ListClusters(context.Background())
 	if err != nil || len(clusterRows) == 0 {
 		return []clusterHealthDTO{{
-			Name:                 "unknown",
+			Name:                 unknownValue,
 			RefreshedAt:          refreshedAt,
 			LastRefreshSucceeded: succeeded,
 		}}

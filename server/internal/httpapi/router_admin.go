@@ -167,7 +167,7 @@ func registerAdminClusterRoutes(mux *http.ServeMux, adminProtect adminRouteProte
 // registerAdminDocsRoutes wires the admin documentation CRUD
 // (list, create, update, delete, toggle). Admin-only.
 //
-//nolint:dupl // registration blocks for distinct handlers stay symmetric on purpose
+
 func registerAdminDocsRoutes(mux *http.ServeMux, adminProtect adminRouteProtect, h *AdminDocs) {
 	mux.Handle("GET /api/v1/admin/docs", adminProtect(http.MethodGet, http.HandlerFunc(h.ServeDocsList)))
 	mux.Handle("POST /api/v1/admin/docs", adminProtect(http.MethodPost, http.HandlerFunc(h.ServeDocCreate)))

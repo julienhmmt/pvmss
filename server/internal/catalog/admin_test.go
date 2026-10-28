@@ -905,6 +905,8 @@ func TestAdminListTemplates_UnreadableDoesNotClobberStoredRow(t *testing.T) {
 
 // TestAdminListStorages_SharedOnceAndFansOut verifies a shared storage is one
 // row, and approving it writes a row on every node reporting it.
+//
+//nolint:gocyclo,paralleltest // serial: shared fake dataset; one scenario, many assertions
 func TestAdminListStorages_SharedOnceAndFansOut(t *testing.T) {
 	st := openAdminStore(t)
 	ctx := context.Background()
@@ -915,6 +917,7 @@ func TestAdminListStorages_SharedOnceAndFansOut(t *testing.T) {
 	}
 
 	var shared []catalog.StorageApproval
+
 	for _, s := range list {
 		if s.Name == "ceph-data" {
 			shared = append(shared, s)
@@ -939,6 +942,7 @@ func TestAdminListStorages_SharedOnceAndFansOut(t *testing.T) {
 	}
 
 	enabledNodes := 0
+
 	for _, r := range rows {
 		if r.Name == "ceph-data" && r.Enabled {
 			enabledNodes++

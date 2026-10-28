@@ -265,7 +265,7 @@ func TestDocumentationPages_UpdateSystemMutatesFields(t *testing.T) {
 	}
 }
 
-//nolint:paralleltest // owns a SQLite fixture
+//nolint:gocyclo,paralleltest // owns a SQLite fixture; one scenario, many assertions
 func TestReorderDocumentationPages(t *testing.T) {
 	ctx := context.Background()
 	st := openDocsStore(t)

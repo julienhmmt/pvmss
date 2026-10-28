@@ -180,7 +180,7 @@ func (h *ProfileSSHKeys) deleteKey(w http.ResponseWriter, r *http.Request, ident
 
 	fingerprint, err := cloudinit.SSHKeyFingerprint(target.PublicKey)
 	if err != nil {
-		fingerprint = "unknown"
+		fingerprint = unknownValue
 	}
 
 	logctx.FromOr(r.Context(), h.log).InfoContext(r.Context(), "profile ssh key deleted", "component", "httpapi", "user", identity.Username, "cluster", identity.Cluster, "fingerprint", fingerprint, "label", target.Label)

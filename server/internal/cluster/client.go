@@ -676,8 +676,11 @@ func CloneNetworkInterfaces(interfaces []NetworkInterface) []NetworkInterface {
 
 // sharedPluginTypes are storage plugins every node sees as one datastore; the
 // fallback for sources that do not report the storage.cfg `shared` flag.
+// pluginNFS is the Proxmox storage plugin type for NFS.
+const pluginNFS = "nfs"
+
 var sharedPluginTypes = map[string]struct{}{
-	"rbd": {}, "cephfs": {}, "nfs": {}, "cifs": {}, "glusterfs": {},
+	"rbd": {}, "cephfs": {}, pluginNFS: {}, "cifs": {}, "glusterfs": {},
 	"iscsi": {}, "iscsidirect": {}, "pbs": {},
 }
 

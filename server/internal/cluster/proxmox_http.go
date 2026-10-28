@@ -107,6 +107,7 @@ func (p *Proxmox) ensureClient() {
 	if err != nil {
 		cfg = &tls.Config{MinVersion: tls.VersionTLS12}
 	}
+
 	p.httpClient = newProxmoxHTTPClientTLS(cfg)
 }
 
