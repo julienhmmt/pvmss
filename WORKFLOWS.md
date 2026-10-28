@@ -367,9 +367,45 @@ Six admin workflows deserve the full template because they are the risky ones.
 | **Entry**       | Any catalog page under `/admin`                                                                                                                                                                                                                                            |
 | **Route**       | `/admin/nodes`, `/admin/storages`, `/admin/isos`, `/admin/templates`, `/admin/bridges`                                                                                                                                                                                     |
 | **API**         | `GET /api/v1/admin/{kind}` → `POST /api/v1/admin/{kind}/toggle`                                                                                                                                                                                                            |
-| **Steps**       | 1. Pick a cluster from the selector. 2. Search, filter by node/state/type, and sort by the available columns. 3. Toggle an item on or off. 4. A toast confirms the change. 5. It appears in, or disappears from, the create-VM catalog.                                    |
+| **Steps**       | 1. Pick a cluster from the selector. 2. Search, filter by node/state/type, and sort by the available columns. 3. Toggle an item on or off (a shared storage is approved once per cluster and enabled for every node that lists it). 4. A toast confirms the change. 5. It appears in, or disappears from, the create-VM catalog.                                    |
 | **States**      | `TableSkeleton` while loading; `EmptyState` with a link to `/admin/clusters` when no items are discovered; a second `EmptyState` with a reset-filters action when filters exclude every row; sortable columns, usage bars for storages, and active-state dots for bridges. |
 | **Safety nets** | Toggling off does not touch existing VMs - it only removes the item from future choices; success and error toasts give feedback after the API call.                                                                                                                        |
+
+### Configure cluster TLS
+
+| Field | Content |
+| --- | --- |
+| **Audience** | admin |
+| **Entry** | Administration -> Infrastructure -> Clusters -> Add or Edit a cluster -> "TLS certificates" section |
+| **Route** | `/admin/clusters` (dialog, no page of its own) |
+| **API** | `GET /api/v1/admin/clusters` (summaries: CA subject and expiry, pinned fingerprints, client certificate subject, `clientKeySet`) → `POST /api/v1/admin/clusters` or `PUT /api/v1/admin/clusters/{name}` (`tls`: `caPem`, `nodeFingerprints`, `clientCertPem`, `clientKeyPem`; an omitted field keeps the stored value) → `POST /api/v1/admin/clusters/{name}/test` (returns `tlsStatus`) |
+| **Steps** | 1. Paste the cluster CA certificate (Proxmox: `/etc/pve/pve-root-ca.pem`) into the CA field, or pin the node SHA-256 fingerprints (one per line or comma-separated, colons allowed). 2. Optionally add a client certificate and its key for mTLS. 3. Save; the dialog shows the subject and expiry of each stored certificate. 4. Run **Test**: `verified`, `skipped` (verification disabled) or `failed` with a reason (unknown CA, host name mismatch, expired, fingerprint mismatch). |
+| **States** | Stored certificates shown as summaries (no PEM echoed back); the Test result says "TLS certificate verified", "verification is disabled" or "verification failed" with the reason; the cluster detail page shows a TLS certificate row (Verified / Verification skipped). |
+| **Safety nets** | Each PEM field is capped at 64 KiB; a CA field holding anything but CERTIFICATE blocks (a private key, for example) is refused; the client certificate and key must be sent together and must match (400 `invalid_tls`, messages never echo key material). The client key is encrypted at rest and never returned (only `clientKeySet`). Changing the URL, skip-verify or any trust anchor without re-entering the token secret is refused (400 `token_secret_required`), so the stored token never reaches a different peer. Pinned fingerprints replace the chain and host name checks by design. |
+
+### Set the VMID range
+
+| Field | Content |
+| --- | --- |
+| **Audience** | admin |
+| **Entry** | Administration -> Policy (`/admin/policy`), "VM ID range" fields in the gabarit section |
+| **Route** | `/admin/policy` |
+| **API** | `GET /api/v1/admin/policy` → `PUT /api/v1/admin/policy` (gabarit `vmidMin`, `vmidMax`) → `POST /api/v1/vms` (409 `vmid_range_exhausted` when the range is full) |
+| **Steps** | 1. Pick the cluster on the Policy page. 2. Enter the first and last ID. Both 0 means Proxmox's next free ID; otherwise use 100 <= first <= last <= 999999999 (for example 9000 and 9999). 3. Save. 4. New VMs take the lowest ID in the range that no VM or container on the cluster uses, whoever created it. |
+| **States** | Inline range error under the first ID field when the range is invalid (same rule as the server); a hint explains the 0/0 default; a server error is shown on the field it names. |
+| **Safety nets** | The range is validated on both sides (400 `invalid_policy` from the server). Existing VMs are never renumbered; the range only chooses ids for new VMs. Each changed bound writes an audit row (`gabarit.vmidMin`, `gabarit.vmidMax`). A full range refuses the create with 409 before the Proxmox create call. |
+
+### Reorder documentation pages
+
+| Field | Content |
+| --- | --- |
+| **Audience** | admin |
+| **Entry** | Administration -> Catalog -> Documentation (`/admin/docs`), drag handle at the start of a row |
+| **Route** | `/admin/docs` |
+| **API** | `GET /api/v1/admin/docs` → `PUT /api/v1/admin/docs/order` (`{"ids": [...]}`, first = top) |
+| **Steps** | 1. Clear search, filters and sorting (the handles are disabled otherwise, with a hint). 2. Drag a page's handle onto another row. 3. The new order is saved as one full list; the public docs index follows the same order. |
+| **States** | The table shows the new order after a successful save; a failed save shows "failed to save the page order". |
+| **Safety nets** | The list must name every page exactly once, else 400 `invalid_order` and nothing changes. The save is audited (`docs.reorder`) and the docs cache is invalidated. Admin-only route and API. |
 
 ### Export / import the database
 

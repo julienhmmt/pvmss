@@ -78,6 +78,25 @@ _Avoid_: cluster name, slug
 The editable name shown in the interface (`clusters.display_name`). Empty means the id is shown. A connection test fills it from Proxmox only while it is empty, so an admin label is never overwritten.
 _Avoid_: display name, alias
 
+**Cluster TLS trust**:
+How PVMSS validates the certificate of a cluster's Proxmox API: a CA
+certificate chain (PEM), or pinned SHA-256 node fingerprints that replace the
+chain and host name checks, or skip-verify. An optional client certificate and
+key (mTLS) is stored with it; the key is encrypted and never returned.
+_Avoid_: TLS settings (too vague), SSL
+
+**VMID range**:
+The per-cluster window (`vmidMin` / `vmidMax` in the policy gabarit) that new VM
+ids are taken from: the lowest id not in use on the cluster. Both 0 means
+Proxmox's next free id. A full range answers 409 `vmid_range_exhausted`.
+_Avoid_: VMID prefix, id pool
+
+**Shared storage**:
+A datastore every node of a cluster sees (Proxmox `shared` flag, such as Ceph,
+NFS or CephFS). Approved once per cluster rather than per node; enabled when any
+of its node rows is.
+_Avoid_: global storage, cluster storage
+
 **Tâche**:
 An asynchronous Proxmox operation tracked by UPID and polled by the task tray
 (create, snapshot, rollback, snapshot delete). Terminal states are
