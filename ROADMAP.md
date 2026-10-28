@@ -84,6 +84,8 @@ Things structurally implied by the current codebase, not a feature backlog:
 - **Tag `v0.4.0`.** The rewrite has been the only codebase on `v0.4` since
   the T16 cutover (2026-08-12) and has not been tagged.
 
+- **Per-cluster node capacity** still reads the default cluster's inventory projection (see `TECH_DEBT.md`).
+
 ## How this file gets updated
 
 Re-derive the history section from git, not from prose memory:

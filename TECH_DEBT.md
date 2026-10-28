@@ -74,7 +74,7 @@ the tables and `docs/cloud-init.md`.
 | Two-column admin grids | only the dashboard uses `xl:grid-cols-2`; no other page clearly gains |
 | "Pool at quota" | means the per-user VM quota (one pool per user), not a CPU/RAM pool quota - none exists |
 | Browser OTel (traces, web-vitals) | errors now report via `POST /api/v1/client-errors`; a full browser SDK (bundle size, CORS, consent) is still undecided |
-| Per-cluster CA certificate | a cluster signed by a private CA can only be reached with TLS skip-verify (`newProxmoxHTTPClient` takes one bool). Deciding it takes: a `clusters.ca_pem` column (and its import exclusion), a PEM field in Admin > Clusters, `RootCAs` from that PEM in the HTTP client, and a rotation story. Parked 2026-10-06 (functional review Q2) |
+| Node capacity uses the default cluster projection | `main.go` wires `policy.New(st, projection, nil)` with the default cluster's inventory projection only, and `policy/nodes.go` falls back to it when no live snapshot is wired, so node capacity usage on a non-default cluster reads the default cluster's nodes. Fix: pick the projection per cluster |
 | `docs/plans/`, `server/internal/recovery/` stale `backend/` refs | historical context only - fix when the surrounding area is touched, no dedicated pass |
 
 ## Resolved 2026-10-22 (full app review)

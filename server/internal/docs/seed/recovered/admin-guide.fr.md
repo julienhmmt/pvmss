@@ -94,7 +94,7 @@ PVMSS peut se connecter à plusieurs environnements Proxmox simultanément. Chaq
 - Ouvrez **Infrastructure > Clusters** (`/admin/clusters`) pour ajouter, modifier, tester et retirer des connexions.
 - Un cluster est identifié par un nom ; les VM sont toujours adressées par `cluster` + `VMID`, deux clusters peuvent donc réutiliser les mêmes VMID sans conflit.
 - Le **Test** vérifie la connectivité et les identifiants avant d'exposer le cluster ; il rapporte la version de Proxmox et le nombre de nœuds et de VM.
-- La **vérification TLS** peut être désactivée par cluster pour un labo auto-signé ; gardez-la active en production.
+- La **vérification TLS** se règle par cluster. Gardez-la active en production : ajoutez le certificat CA du cluster (`/etc/pve/pve-root-ca.pem`) ou épinglez les empreintes SHA-256 des nœuds dans la section « Certificats TLS » du cluster, puis lancez **Test** pour voir l'état TLS. Ne la désactivez que pour un labo auto-signé. Un certificat client et sa clé (mTLS) peuvent aussi être enregistrés ; la clé est chiffrée et n'est plus jamais affichée.
 - Nœuds, stockages, ISO, templates, bridges et politique sont gérés par cluster.
 
 ## Nœuds
@@ -105,7 +105,7 @@ PVMSS peut se connecter à plusieurs environnements Proxmox simultanément. Chaq
 
 Les groupes **Ressources** et **Provisionnement** du menu admin contrôlent ce que la création de VM peut référencer. Les ressources découvertes apparaissent automatiquement ; l'interrupteur « activé » contrôle ce que voient les utilisateurs. Chaque page du catalogue a un sélecteur de cluster, une recherche, des filtres et des colonnes triables.
 
-- **Stockages** (`/admin/storages`) - approuver les stockages pouvant héberger des disques de VM, regroupés par nœud, avec barres d'usage.
+- **Stockages** (`/admin/storages`) - approuver les stockages pouvant héberger des disques de VM, regroupés par nœud, avec barres d'usage. Un stockage partagé (Ceph, NFS, CephFS) est approuvé une seule fois par cluster.
 - **ISO** (`/admin/isos`) - approuver les images ISO de démarrage.
 - **Templates de VM** (`/admin/templates`) - approuver les templates Proxmox clonables, avec surcharges optionnelles par template. Un clone reste sur le nœud du template ; l'assistant prévient quand le stockage cible impose une copie complète. Un clone garde les accès du template : PVMSS n'en ajoute aucun.
 - **Bridges** (`/admin/bridges`) - approuver les bridges réseau (VMBR) pour les cartes réseau. Les bridges Open vSwitch ne sont pas listés.
@@ -141,6 +141,7 @@ Vous saisissez un nom court (1 à 32 caractères alphanumériques minuscules ave
 
 - **Gabarit** - le plafond d'une VM : sockets, cœurs, mémoire, disque par VM, cartes réseau, snapshots, et tag VLAN d'isolation.
 - **Quota** - nombre maximal de VM par utilisateur.
+- **Plage de VMID** - premier et dernier VMID optionnels pour les nouvelles VM de ce cluster (0 et 0 = prochain identifiant libre de Proxmox). Le plus petit identifiant libre de la plage est utilisé, en évitant ceux déjà pris sur le cluster.
 
 `/admin/policy/nodes` plafonne ce que PVMSS peut allouer au total sur un nœud (VM, vCPU, RAM, disque) et montre l'usage courant face à la capacité physique. Tout est appliqué côté serveur avant tout appel à Proxmox : une demande au-delà d'une limite est refusée tôt avec un message clair.
 
@@ -180,7 +181,7 @@ propre compte pendant l'installation, depuis la console du navigateur.
 
 ## Documentation (ce CMS)
 
-Cette page fait partie de celles gérées sous **Documentation** (`/admin/docs`). Les administrateurs peuvent créer, modifier, activer/désactiver et supprimer des pages Markdown en anglais et en français. Les pages intégrées sont marquées **système** et ne peuvent pas être supprimées, mais leur contenu est modifiable. Chaque page a une audience `user` (publique) ou `admin` (administrateurs) ; les pages admin sont masquées aux non-administrateurs et refusées en accès direct.
+Cette page fait partie de celles gérées sous **Documentation** (`/admin/docs`). Les administrateurs peuvent créer, modifier, activer/désactiver et supprimer des pages Markdown en anglais et en français. Les pages intégrées sont marquées **système** et ne peuvent pas être supprimées, mais leur contenu est modifiable. Glissez la poignée d'une page pour réordonner la liste ; le réordonnancement exige une recherche, des filtres et un tri vides. Chaque page a une audience `user` (publique) ou `admin` (administrateurs) ; les pages admin sont masquées aux non-administrateurs et refusées en accès direct.
 
 Les pages intégrées sont insérées une seule fois, si elles manquent, et jamais écrasées au redémarrage : vos modifications survivent aux mises à jour. Pour récupérer un texte intégré plus récent, collez le nouveau contenu de la release dans la page.
 

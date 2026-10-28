@@ -92,7 +92,7 @@ PVMSS supports connecting to more than one Proxmox environment at the same time.
 - Open **Infrastructure > Clusters** (`/admin/clusters`) to add, edit, test, and remove cluster connections.
 - A cluster is identified by a name; VMs are always addressed by their `cluster` and `VMID`, so two clusters may reuse the same VMIDs without conflict.
 - Use the **Test** action to verify connectivity and credentials before exposing the cluster to users; it reports the Proxmox version and the node and VM counts.
-- **TLS verification** can be skipped per cluster for self-signed labs; keep it on in production.
+- **TLS verification** is set per cluster. Keep it on in production: add the cluster CA certificate (`/etc/pve/pve-root-ca.pem`) or pin the node SHA-256 fingerprints in the cluster's TLS certificates section, then run **Test** to see the TLS status. Skip it only for self-signed labs. A client certificate and key (mTLS) can also be stored; the key is encrypted and never shown again.
 - Approved nodes, storages, ISOs, templates, bridges, and the policy are all managed per cluster.
 
 ## Nodes
@@ -103,7 +103,7 @@ PVMSS supports connecting to more than one Proxmox environment at the same time.
 
 The **Resources** and **Provisioning** groups of the admin nav control what VM creation may reference. Discovered resources appear automatically; toggle the enabled switch to control what users see. Every catalog page has a cluster selector, search, filters, and sortable columns.
 
-- **Storages** (`/admin/storages`) - approve the storage backends that may host VM disks, grouped by node, with usage bars.
+- **Storages** (`/admin/storages`) - approve the storage backends that may host VM disks, grouped by node, with usage bars. A shared storage (Ceph, NFS, CephFS) is approved once per cluster.
 - **ISOs** (`/admin/isos`) - approve the ISO images users may boot from.
 - **VM templates** (`/admin/templates`) - approve the Proxmox templates users may clone, with optional per-template overrides. A clone stays on the template's node; the wizard warns when the target storage forces a full copy. A clone keeps the template's sign-in: PVMSS adds none.
 - **Bridges** (`/admin/bridges`) - approve the network bridges (VMBR) available for VM network cards. Open vSwitch bridges are not listed.
@@ -139,6 +139,7 @@ You enter a short name (1-32 lowercase alphanumeric characters with internal hyp
 
 - **Gabarit** - the ceiling for a single VM: max sockets, max cores, max memory, max disk per VM, max network cards, max snapshots, and the isolation VLAN tag.
 - **Quota** - max VMs per user.
+- **VMID range** - optional first and last VM id for new VMs on this cluster (both 0 = Proxmox's next free id). The lowest free id in the range is used, skipping ids in use on the cluster.
 
 `/admin/policy/nodes` caps how much of a single node PVMSS may allocate in total (VMs, vCPUs, RAM, disk) and shows the current usage against the physical capacity. Everything is enforced server-side before any Proxmox call, so requests above a limit are rejected early with a clear message.
 
@@ -175,7 +176,7 @@ the browser console.
 
 ## Documentation (this CMS)
 
-This page is one of several managed under **Documentation** (`/admin/docs`). Administrators can author, edit, toggle, and delete Markdown pages in English and French. Built-in pages are marked **system** and cannot be deleted, but their content may be edited. Each page has an audience of `user` (public) or `admin` (admin-only); admin-only pages are hidden from non-administrators in the public docs list and refused on direct access.
+This page is one of several managed under **Documentation** (`/admin/docs`). Administrators can author, edit, toggle, and delete Markdown pages in English and French. Built-in pages are marked **system** and cannot be deleted, but their content may be edited. Drag a page's handle to reorder the list; reordering needs search, filters and sorting cleared. Each page has an audience of `user` (public) or `admin` (admin-only); admin-only pages are hidden from non-administrators in the public docs list and refused on direct access.
 
 Built-in pages are seeded once, when missing, and never overwritten on restart, so your edits survive upgrades. To pick up a newer built-in text after an upgrade, paste the new content from the release into the page.
 
