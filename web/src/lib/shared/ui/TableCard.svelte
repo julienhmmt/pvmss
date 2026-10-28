@@ -12,11 +12,13 @@
 		toolbar?: Snippet;
 		/** The table content (a `<table>` element). */
 		children: Snippet;
+		/** Rendered below the table (pagination). */
+		footer?: Snippet;
 		/** Extra classes on the outer card. */
 		class?: string;
 	}
 
-	let { toolbar, children, class: extra = '' }: Props = $props();
+	let { toolbar, footer, children, class: extra = '' }: Props = $props();
 </script>
 
 <section class="overflow-hidden rounded-lg border border-border bg-card shadow-card {extra}">
@@ -28,4 +30,5 @@
 	<div class="overflow-x-auto">
 		{@render children()}
 	</div>
+	{@render footer?.()}
 </section>

@@ -2541,5 +2541,7 @@
   "palette.empty": "Keine Treffer.",
   "palette.machinesError": "Maschinen konnten nicht durchsucht werden.",
   "palette.open": "Suchen oder springen",
-  "shortcuts.palette": "Befehlspalette öffnen"
+  "shortcuts.palette": "Befehlspalette öffnen",
+  "common.pagination.perPage": "Zeilen pro Seite",
+  "common.pagination.range": "{from}-{to} von {total}"
 }
