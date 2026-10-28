@@ -371,6 +371,17 @@ LOG_OUTPUT: "/app/pvmss.log"
 A Helm chart lives in [`helm/`](helm/): `helm install pvmss ./helm -f my-values.yaml`.
 `values.yaml` documents every variable.
 
+**Secrets with GitOps (ArgoCD, Flux).** The bcrypt admin hash contains `$` (`$2y$10$...`), which ArgoCD parameters, shells and `envsubst` strip or expand. Two safe options:
+
+- Bring your own Secret (SealedSecrets, External Secrets, SOPS) with the keys `admin-password-hash` (optional), `pve-api-token` and `session-secret`, and set `secrets.existingSecret`.
+- Or pass the hash base64-encoded, which has no `$`:
+
+```bash
+htpasswd -bnBC 10 "" 'StrongPassword' | tr -d ':\n' | base64
+```
+
+then set `secrets.adminPasswordHashBase64`. The chart refuses a hash that does not start with `$2`, so a mangled value fails at render time instead of at login.
+
 ## Coming from v0.3
 
 There is no migration from v0.3 to v0.4. v0.4 is a rewrite (Go API + SvelteKit) and imports nothing from v0.3: deploy it as a new installation, then configure it again from the Admin UI. PVMSS never deletes VMs, so the VMs themselves stay in Proxmox.
