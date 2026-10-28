@@ -8,7 +8,7 @@ Version anglaise : [README.md](README.md)
 
 <!-- markdownlint-disable MD033 -->
 <picture>
-  <source media="(prefers-color-scheme: dark)" srcset="docs/PVMSS-0.4-index-dark.webp">
+  <source media="(prefers-color-scheme: dark)" srcset="docs/PVMSS-0.4-index-overview.webp">
   <img src="docs/PVMSS-0.4-index-overview.webp" alt="Page d'accueil PVMSS avec présentation des VM et des principales fonctionnalités" width="600" loading="lazy">
 </picture>
 <!-- markdownlint-enable MD033 -->
