@@ -15,6 +15,8 @@
 	import { usageTone } from '#lib/features/admin-dashboard/dashboard-alerts.js';
 	import { m } from '#lib/paraglide/messages.js';
 	import { formatDateTime } from '#lib/shared/format-date.js';
+	import Pagination from '#lib/shared/ui/Pagination.svelte';
+	import { createPagination } from '#lib/shared/ui/list-pager.svelte.js';
 
 	const TONE_BG = { success: 'bg-success', warning: 'bg-warning', destructive: 'bg-destructive' } as const;
 	const SECONDS_PER_MINUTE = 60;
@@ -27,6 +29,12 @@
 	let error = $state<string | null>(null);
 	let requestedRoute: string = '';
 	let requestId: number = 0;
+
+	const ifacePager = createPagination('node-interfaces', () => detail?.network.interfaces ?? []);
+	const pciPager = createPagination('node-pci', () => detail?.pci.devices ?? []);
+	const vmsPager = createPagination('node-vms', () => detail?.inventory.vms ?? []);
+	const lxcPager = createPagination('node-lxc', () => detail?.containers.containers ?? []);
+	const storagePager = createPagination('node-storages', () => detail?.inventory.storages ?? []);
 
 	interface NodeHealth {
 		status: string;
@@ -296,7 +304,7 @@
 							<th class="font-medium">{m['admin.nodeDetails.interface']()}</th><th class="font-medium">{m['admin.nodeDetails.type']()}</th><th class="font-medium">{m['admin.nodeDetails.state']()}</th><th class="font-medium">{m['admin.nodeDetails.address']()}</th><th class="font-medium">{m['admin.nodeDetails.gateway']()}</th><th class="font-medium">{m['admin.nodeDetails.topology']()}</th><th class="font-medium">{m['admin.nodeDetails.vlan']()}</th><th class="text-right font-medium">{m['admin.nodeDetails.mtu']()}</th>
 						</tr></thead>
 						<tbody>
-							{#each detail.network.interfaces as iface (iface.name)}
+							{#each ifacePager.rows as iface (iface.name)}
 								<tr>
 									<td class="font-mono font-medium" data-label={m['admin.nodeDetails.interface']()}>{iface.name}</td><td data-label={m['admin.nodeDetails.type']()}>{iface.type}</td><td data-label={m['admin.nodeDetails.state']()}><Pill tone={iface.active ? 'ok' : 'off'} label={iface.active ? m['admin.nodeDetails.active']() : m['admin.nodeDetails.inactive']()} /></td><td class="font-mono text-xs" data-label={m['admin.nodeDetails.address']()}>{interfaceAddresses(iface)}</td><td class="font-mono text-xs" data-label={m['admin.nodeDetails.gateway']()}>{interfaceGateways(iface)}</td><td class="max-w-64 text-xs text-muted-foreground" data-label={m['admin.nodeDetails.topology']()}>{interfaceLinks(iface)}</td><td class="font-mono tabular-nums" data-label={m['admin.nodeDetails.vlan']()}>{#if iface.vlanId > 0}{iface.vlanId}{:else if iface.bridgeVlanAware}{m['admin.nodeDetails.vlanAware']()}{:else}{m['admin.nodeDetails.notReported']()}{/if}</td><td class="text-right font-mono tabular-nums" data-label={m['admin.nodeDetails.mtu']()}>{iface.mtu || m['admin.nodeDetails.notReported']()}</td>
 								</tr>
@@ -304,6 +312,7 @@
 						</tbody>
 					</table>
 				</div>
+				<Pagination pager={ifacePager} />
 			{/if}
 		</Card>
 
@@ -320,12 +329,13 @@
 							<th class="font-medium">{m['admin.nodeDetails.pciId']()}</th><th class="font-medium">{m['admin.nodeDetails.device']()}</th><th class="font-medium">{m['admin.nodeDetails.vendor']()}</th><th class="font-medium">{m['admin.nodeDetails.class']()}</th><th class="font-medium">{m['admin.nodeDetails.iommuGroup']()}</th><th class="font-medium">{m['admin.nodeDetails.mediatedDevice']()}</th>
 						</tr></thead>
 						<tbody>
-							{#each detail.pci.devices as device (device.id)}
+							{#each pciPager.rows as device (device.id)}
 								<tr><td class="font-mono text-xs" data-label={m['admin.nodeDetails.pciId']()}>{device.id}</td><td data-label={m['admin.nodeDetails.device']()}>{device.deviceName || device.deviceId}</td><td data-label={m['admin.nodeDetails.vendor']()}>{device.vendorName || device.vendorId}</td><td class="font-mono text-xs" data-label={m['admin.nodeDetails.class']()}>{device.class}</td><td class="font-mono tabular-nums" data-label={m['admin.nodeDetails.iommuGroup']()}>{device.iommuGroup}</td><td data-label={m['admin.nodeDetails.mediatedDevice']()}>{device.mediatedDevice ? m['admin.nodeDetails.yes']() : m['admin.nodeDetails.no']()}</td></tr>
 							{/each}
 						</tbody>
 					</table>
 				</div>
+				<Pagination pager={pciPager} />
 			{/if}
 		</Card>
 
@@ -339,8 +349,9 @@
 					<div class="overflow-x-auto"><table class="pv-table pv-responsive-table">
 						<caption class="sr-only">{m['admin.nodeDetails.vmsTitle']()}</caption>
 						<thead><tr><th class="font-medium">{m['admin.nodeDetails.vmid']()}</th><th class="font-medium">{m['admin.nodeDetails.name']()}</th><th class="font-medium">{m['admin.nodeDetails.status']()}</th><th class="font-medium">{m['admin.nodeDetails.vcpu']()}</th><th class="text-right font-medium">{m['admin.nodeDetails.memory']()}</th><th class="text-right font-medium">{m['admin.nodeDetails.actions']()}</th></tr></thead>
-						<tbody>{#each detail.inventory.vms as vm (vm.vmid)}<tr><td class="font-mono" data-label={m['admin.nodeDetails.vmid']()}>{vm.vmid}</td><td data-label={m['admin.nodeDetails.name']()}>{vm.name || m['admin.nodeDetails.notReported']()}</td><td data-label={m['admin.nodeDetails.status']()}><Pill tone={guestStatusTone(vm.status)} label={guestStatusLabel(vm.status)} /></td><td class="font-mono tabular-nums" data-label={m['admin.nodeDetails.vcpu']()}>{vm.cpuCores}</td><td class="text-right font-mono tabular-nums" data-label={m['admin.nodeDetails.memory']()}>{formatBytes(vm.memoryTotalBytes)}</td><td class="text-right" data-label={m['admin.nodeDetails.actions']()}>{#if vm.managed}<Button variant="secondary" size="sm" label={m['admin.nodeDetails.migrateActionLabel']({ vmid: vm.vmid, name: vm.name })} onclick={() => (migrating = vm)} data-testid="node-vm-migrate-{vm.vmid}">{m['admin.nodeDetails.migrateAction']()}</Button>{/if}</td></tr>{/each}</tbody>
+						<tbody>{#each vmsPager.rows as vm (vm.vmid)}<tr><td class="font-mono" data-label={m['admin.nodeDetails.vmid']()}>{vm.vmid}</td><td data-label={m['admin.nodeDetails.name']()}>{vm.name || m['admin.nodeDetails.notReported']()}</td><td data-label={m['admin.nodeDetails.status']()}><Pill tone={guestStatusTone(vm.status)} label={guestStatusLabel(vm.status)} /></td><td class="font-mono tabular-nums" data-label={m['admin.nodeDetails.vcpu']()}>{vm.cpuCores}</td><td class="text-right font-mono tabular-nums" data-label={m['admin.nodeDetails.memory']()}>{formatBytes(vm.memoryTotalBytes)}</td><td class="text-right" data-label={m['admin.nodeDetails.actions']()}>{#if vm.managed}<Button variant="secondary" size="sm" label={m['admin.nodeDetails.migrateActionLabel']({ vmid: vm.vmid, name: vm.name })} onclick={() => (migrating = vm)} data-testid="node-vm-migrate-{vm.vmid}">{m['admin.nodeDetails.migrateAction']()}</Button>{/if}</td></tr>{/each}</tbody>
 					</table></div>
+					<Pagination pager={vmsPager} />
 					{/if}
 				</section>
 				<section aria-labelledby="node-lxc-heading">
@@ -351,8 +362,9 @@
 						<div class="overflow-x-auto"><table class="pv-table pv-responsive-table">
 							<caption class="sr-only">{m['admin.nodeDetails.lxcTitle']()}</caption>
 							<thead><tr><th class="font-medium">{m['admin.nodeDetails.vmid']()}</th><th class="font-medium">{m['admin.nodeDetails.name']()}</th><th class="font-medium">{m['admin.nodeDetails.status']()}</th><th class="font-medium">{m['admin.nodeDetails.vcpu']()}</th><th class="font-medium">{m['admin.nodeDetails.memory']()}</th><th class="text-right font-medium">{m['admin.nodeDetails.disk']()}</th></tr></thead>
-							<tbody>{#each detail.containers.containers as container (container.vmid)}<tr><td class="font-mono" data-label={m['admin.nodeDetails.vmid']()}>{container.vmid}</td><td data-label={m['admin.nodeDetails.name']()}>{container.name || m['admin.nodeDetails.notReported']()}</td><td data-label={m['admin.nodeDetails.status']()}><Pill tone={guestStatusTone(container.status)} label={guestStatusLabel(container.status)} /></td><td class="font-mono tabular-nums" data-label={m['admin.nodeDetails.vcpu']()}>{container.cpuCount}</td><td class="font-mono tabular-nums" data-label={m['admin.nodeDetails.memory']()}>{formatBytes(container.memoryUsedBytes)} / {formatBytes(container.memoryTotalBytes)}</td><td class="text-right font-mono tabular-nums" data-label={m['admin.nodeDetails.disk']()}>{formatBytes(container.diskUsedBytes)} / {formatBytes(container.diskTotalBytes)}</td></tr>{/each}</tbody>
+							<tbody>{#each lxcPager.rows as container (container.vmid)}<tr><td class="font-mono" data-label={m['admin.nodeDetails.vmid']()}>{container.vmid}</td><td data-label={m['admin.nodeDetails.name']()}>{container.name || m['admin.nodeDetails.notReported']()}</td><td data-label={m['admin.nodeDetails.status']()}><Pill tone={guestStatusTone(container.status)} label={guestStatusLabel(container.status)} /></td><td class="font-mono tabular-nums" data-label={m['admin.nodeDetails.vcpu']()}>{container.cpuCount}</td><td class="font-mono tabular-nums" data-label={m['admin.nodeDetails.memory']()}>{formatBytes(container.memoryUsedBytes)} / {formatBytes(container.memoryTotalBytes)}</td><td class="text-right font-mono tabular-nums" data-label={m['admin.nodeDetails.disk']()}>{formatBytes(container.diskUsedBytes)} / {formatBytes(container.diskTotalBytes)}</td></tr>{/each}</tbody>
 						</table></div>
+						<Pagination pager={lxcPager} />
 					{/if}
 				</section>
 			</div>
@@ -363,7 +375,7 @@
 				<p class="px-5 py-4 text-sm text-muted-foreground">{m['admin.nodeDetails.storageEmpty']()}</p>
 			{:else}
 				<ul class="divide-y divide-border">
-					{#each detail.inventory.storages as storage (`${storage.name}/${storage.type}`)}
+					{#each storagePager.rows as storage (`${storage.name}/${storage.type}`)}
 						{@const percent = usagePercent(storage.usedBytes, storage.totalBytes)}
 						<li class="space-y-2 px-5 py-3">
 							<div class="flex flex-wrap items-center justify-between gap-2 text-sm"><span><span class="font-mono font-semibold">{storage.name}</span><span class="ml-2 text-xs text-muted-foreground">{storage.type}{#if storage.shared} · {m['admin.nodeDetails.shared']()}{/if}</span></span><span class="font-mono text-xs tabular-nums">{percent}%</span></div>
@@ -371,6 +383,7 @@
 						</li>
 					{/each}
 				</ul>
+				<Pagination pager={storagePager} />
 			{/if}
 		</Card>
 	</div>

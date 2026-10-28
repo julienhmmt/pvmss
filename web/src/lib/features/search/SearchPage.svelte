@@ -14,8 +14,11 @@
 	import Skeleton from '#lib/shared/ui/Skeleton.svelte';
 	import TextField from '#lib/shared/ui/TextField.svelte';
 	import SearchIcon from '#lib/shared/ui/icons/SearchIcon.svelte';
+	import Pagination from '#lib/shared/ui/Pagination.svelte';
+	import { createPagination } from '#lib/shared/ui/list-pager.svelte.js';
 
 	const store = getSearchContext();
+	const pager = createPagination('search', () => store.result?.items ?? []);
 
 	const statusTone: Record<VmStatus, 'ok' | 'off' | 'warn'> = {
 		running: 'ok',
@@ -114,7 +117,7 @@
 				{m['search.showing']({ shown: store.result.items.length, total: store.result.total })}
 			</p>
 			<ul role="list" aria-label={m['search.resultsCaption']()} class="divide-y divide-border">
-				{#each store.result.items as machine (`${machine.cluster}:${machine.vmid}`)}
+				{#each pager.rows as machine (`${machine.cluster}:${machine.vmid}`)}
 					<li data-testid="search-result-row">
 						<a
 							href={vmHref(machine)}
@@ -162,6 +165,7 @@
 					</li>
 				{/each}
 			</ul>
+			<Pagination pager={pager} />
 			{#if store.hasMore}
 				<div class="border-t border-border p-3 text-center">
 					<Button variant="secondary" size="sm" loading={store.loadingMore} onclick={() => void store.loadMore()} data-testid="search-load-more">
