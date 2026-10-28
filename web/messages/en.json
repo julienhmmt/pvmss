@@ -2541,5 +2541,7 @@
   "palette.empty": "Nothing matches.",
   "palette.machinesError": "Machines could not be searched.",
   "palette.open": "Search or jump to",
-  "shortcuts.palette": "Open the command palette"
+  "shortcuts.palette": "Open the command palette",
+  "common.pagination.perPage": "Rows per page",
+  "common.pagination.range": "{from}-{to} of {total}"
 }
