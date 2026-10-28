@@ -72,7 +72,7 @@ func createFromTemplate(ctx context.Context, policyService *policy.Policy, deps 
 		req.StartAfterCreate = false
 	}
 
-	vmid, err := deps.Creator.NextVMID(ctx)
+	vmid, err := allocateVMID(ctx, deps)
 	if err != nil {
 		return CreateResult{}, allocateVMIDError(err)
 	}

@@ -34,7 +34,7 @@ func createFromISO(ctx context.Context, policyService *policy.Policy, deps Creat
 		req.StartAfterCreate = false
 	}
 
-	vmid, err := deps.Creator.NextVMID(ctx)
+	vmid, err := allocateVMID(ctx, deps)
 	if err != nil {
 		return CreateResult{}, allocateVMIDError(err)
 	}

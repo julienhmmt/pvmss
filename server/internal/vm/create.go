@@ -89,6 +89,10 @@ const defaultNetworkModel = "virtio"
 
 // allocateVMIDError wraps a NextVMID failure in ErrClusterCreate.
 func allocateVMIDError(err error) error {
+	if errors.Is(err, ErrVMIDRangeExhausted) {
+		return err
+	}
+
 	return fmt.Errorf("%w: allocate vmid: %w", ErrClusterCreate, err)
 }
 
@@ -314,6 +318,9 @@ type CreateDeps struct {
 	Audit     AuditRecorder
 	Log       *slog.Logger
 	Services  []*policy.Policy
+	// VMIDMin and VMIDMax bound the ids given to new VMs (both 0 = Proxmox's
+	// next free id). Create fills them from the cluster policy.
+	VMIDMin, VMIDMax int
 	// Templates is the clone-time freshness backstop's reader: one TemplateByVMID call before a
 	// VMID is spent. Nil skips the
 	// backstop (unit tests without the live path).
@@ -355,6 +362,13 @@ func Create(ctx context.Context, actor auth.Identity, clusterName string, req Cr
 	}
 
 	policyService := selectPolicyService(deps.Store, deps.Services)
+
+	gabarit, err := policyService.Gabarit(ctx, clusterName)
+	if err != nil {
+		return CreateResult{}, fmt.Errorf("read vmid range: %w", err)
+	}
+
+	deps.VMIDMin, deps.VMIDMax = gabarit.VMIDMin, gabarit.VMIDMax
 
 	// Administrators (local or cluster) cannot create VMs through the
 	// self-service portal - VM ownership requires a personal pool, which admins

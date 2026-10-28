@@ -57,6 +57,8 @@ type policyGabaritDTO struct {
 	MaxNetworkCards  int `json:"maxNetworkCards"`
 	MaxSnapshots     int `json:"maxSnapshots"`
 	IsolationVLANTag int `json:"isolationVlanTag"`
+	VMIDMin          int `json:"vmidMin"`
+	VMIDMax          int `json:"vmidMax"`
 }
 
 type policyQuotaDTO struct {
@@ -77,6 +79,8 @@ type policyGabaritPatch struct {
 	MaxNetworkCards  *int `json:"maxNetworkCards"`
 	MaxSnapshots     *int `json:"maxSnapshots"`
 	IsolationVLANTag *int `json:"isolationVlanTag"`
+	VMIDMin          *int `json:"vmidMin"`
+	VMIDMax          *int `json:"vmidMax"`
 }
 
 type policyQuotaPatch struct {
@@ -179,6 +183,12 @@ func policyChangeDiff(before, after policy.Settings) []any {
 	if before.Gabarit.IsolationVLANTag != after.Gabarit.IsolationVLANTag {
 		changes = append(changes, map[string]any{auditKeyField: "gabarit.isolationVlanTag", auditKeyOld: before.Gabarit.IsolationVLANTag, auditKeyNew: after.Gabarit.IsolationVLANTag})
 	}
+	if before.Gabarit.VMIDMin != after.Gabarit.VMIDMin {
+		changes = append(changes, map[string]any{auditKeyField: "gabarit.vmidMin", auditKeyOld: before.Gabarit.VMIDMin, auditKeyNew: after.Gabarit.VMIDMin})
+	}
+	if before.Gabarit.VMIDMax != after.Gabarit.VMIDMax {
+		changes = append(changes, map[string]any{auditKeyField: "gabarit.vmidMax", auditKeyOld: before.Gabarit.VMIDMax, auditKeyNew: after.Gabarit.VMIDMax})
+	}
 	return changes
 }
 
@@ -192,7 +202,7 @@ func (handler *AdminPolicy) readPolicy(ctx context.Context, clusterName string) 
 }
 
 func policyGabaritDTOFromModel(gabarit policy.Gabarit) policyGabaritDTO {
-	return policyGabaritDTO{MaxSockets: gabarit.MaxSockets, MaxCores: gabarit.MaxCores, MaxMemoryMB: gabarit.MaxMemoryMB, MaxDiskPerVMGB: gabarit.MaxDiskPerVMGB, MaxNetworkCards: gabarit.MaxNetworkCards, MaxSnapshots: gabarit.MaxSnapshots, IsolationVLANTag: gabarit.IsolationVLANTag}
+	return policyGabaritDTO{MaxSockets: gabarit.MaxSockets, MaxCores: gabarit.MaxCores, MaxMemoryMB: gabarit.MaxMemoryMB, MaxDiskPerVMGB: gabarit.MaxDiskPerVMGB, MaxNetworkCards: gabarit.MaxNetworkCards, MaxSnapshots: gabarit.MaxSnapshots, IsolationVLANTag: gabarit.IsolationVLANTag, VMIDMin: gabarit.VMIDMin, VMIDMax: gabarit.VMIDMax}
 }
 
 func applyGabaritPatch(gabarit *policy.Gabarit, patch *policyGabaritPatch) {
@@ -226,6 +236,14 @@ func applyGabaritPatch(gabarit *policy.Gabarit, patch *policyGabaritPatch) {
 
 	if patch.IsolationVLANTag != nil {
 		gabarit.IsolationVLANTag = *patch.IsolationVLANTag
+	}
+
+	if patch.VMIDMin != nil {
+		gabarit.VMIDMin = *patch.VMIDMin
+	}
+
+	if patch.VMIDMax != nil {
+		gabarit.VMIDMax = *patch.VMIDMax
 	}
 }
 

@@ -31,7 +31,7 @@ func createFromImage(ctx context.Context, policyService *policy.Policy, deps Cre
 	startAfterCreate := req.StartAfterCreate
 	req.StartAfterCreate = false
 
-	vmid, err := deps.Creator.NextVMID(ctx)
+	vmid, err := allocateVMID(ctx, deps)
 	if err != nil {
 		return CreateResult{}, allocateVMIDError(err)
 	}

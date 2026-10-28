@@ -214,6 +214,7 @@ var createErrorMappings = []createErrorMapping{
 	{vm.ErrCloudInitWriteUnavailable, http.StatusConflict, "cloudinit_write_unavailable", "cloud-init documents are not enabled on this cluster (Infrastructure > Clusters: snippet storage and SSH publishing)"},
 	{vm.ErrCloudInitNotPublished, http.StatusConflict, "cloudinit_not_published", ""},
 	{vm.ErrNoSnippetStorage, http.StatusBadRequest, "no_snippet_storage", ""},
+	{vm.ErrVMIDRangeExhausted, http.StatusConflict, "vmid_range_exhausted", "every VMID of the configured range is in use on this cluster"},
 	// cluster_error passes the full error chain (empty message → err.Error()):
 	// the Proxmox rejection text ("'import-from' requires special syntax", "has wrong type 'iso'",
 	// ...) is the only way to diagnose a 502 from the
