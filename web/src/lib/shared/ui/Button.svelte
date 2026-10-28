@@ -70,7 +70,8 @@
 
 	const variants: Record<Variant, string> = {
 		primary: 'bg-primary-solid text-primary-foreground hover:bg-primary-solid/90 active:bg-primary-solid/95',
-		secondary: 'border border-border bg-card text-foreground hover:border-muted-foreground-subtle hover:bg-muted',
+		secondary:
+			'border border-muted-foreground-subtle/50 bg-card text-foreground hover:border-muted-foreground-subtle hover:bg-muted',
 		outline: 'border border-border bg-transparent text-foreground hover:border-muted-foreground-subtle hover:bg-muted/60',
 		ghost: 'text-muted-foreground hover:bg-accent hover:text-accent-foreground',
 		subtle: 'bg-muted text-foreground hover:bg-border',

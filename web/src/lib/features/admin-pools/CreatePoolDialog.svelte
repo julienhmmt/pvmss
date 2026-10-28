@@ -61,7 +61,7 @@
 			{/snippet}
 		</FormField>
 		<div class="flex justify-end gap-2 pt-2">
-			<Button variant="ghost" onclick={onClose}>{m['common.cancel']()}</Button>
+			<Button variant="secondary" onclick={onClose}>{m['common.cancel']()}</Button>
 			<Button type="submit" disabled={saving}>
 				{saving ? m['common.creating']() : m['admin.pools.createPool']()}
 			</Button>

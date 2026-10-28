@@ -237,7 +237,7 @@
 
 	{#snippet footer()}
 		{#if phase === 'choose'}
-			<Button variant="ghost" onclick={onClose}>{m['common.cancel']()}</Button>
+			<Button variant="secondary" onclick={onClose}>{m['common.cancel']()}</Button>
 			<Button
 				disabled={preflight === null || preflight.blocked || target === ''}
 				onclick={review}

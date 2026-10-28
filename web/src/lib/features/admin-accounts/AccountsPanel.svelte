@@ -315,7 +315,7 @@
 			{/snippet}
 		</FormField>
 		<div class="flex justify-end gap-2 pt-2">
-			<Button variant="ghost" onclick={closeCreate}>{m['common.cancel']()}</Button>
+			<Button variant="secondary" onclick={closeCreate}>{m['common.cancel']()}</Button>
 			<Button type="submit" loading={store.saving}>{m['admin.accounts.createAccount']()}</Button>
 		</div>
 	</form>
@@ -374,7 +374,7 @@
 			{/snippet}
 		</FormField>
 		<div class="flex justify-end gap-2 pt-2">
-			<Button variant="ghost" onclick={closeReset}>{m['common.cancel']()}</Button>
+			<Button variant="secondary" onclick={closeReset}>{m['common.cancel']()}</Button>
 			<Button type="submit" loading={store.saving}>{m['admin.accounts.resetSubmit']()}</Button>
 		</div>
 	</form>
