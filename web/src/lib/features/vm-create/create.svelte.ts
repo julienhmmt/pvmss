@@ -797,6 +797,9 @@ export class VmCreateStore {
 			name: this.name.trim(),
 			startAfterCreate: this.startAfterCreate
 		};
+		// Tags apply to every source and mode, so they are set before the branches.
+		const tags = this.selectedTags();
+		if (tags.length > 0) request.tags = tags;
 		if (this.mode === 'simple') {
 			// Image mode (cloud image): the image is the source, the disk size
 			// is required and must cover the image; storage is auto-selected
@@ -857,11 +860,6 @@ export class VmCreateStore {
 		request.memoryMB = this.memoryMB;
 		request.disk = { storage: this.diskStorage, sizeGB: this.diskSizeGB };
 		request.network = this.nics.map((nic) => ({ bridge: nic.bridge, model: nic.model }));
-		const tags = this.tagsInput
-			.split(',')
-			.map((tag) => tag.trim())
-			.filter((tag) => tag !== '');
-		if (tags.length > 0) request.tags = tags;
 
 		if (this.sourceType === 'template' && this.templateId !== 0) {
 			request.templateId = this.templateId;
