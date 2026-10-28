@@ -21,7 +21,7 @@ func (service *Policy) RefreshedAt() time.Time {
 // NodeCapacities returns the live discovery set joined with configured capacité
 // and current pvmss-tagged usage.
 func (service *Policy) NodeCapacities(ctx context.Context, clusterName string) ([]Capacity, error) {
-	nodes, err := service.discoveredNodes(ctx)
+	nodes, err := service.discoveredNodes(ctx, clusterName)
 	if err != nil {
 		return nil, err
 	}
@@ -59,13 +59,13 @@ func (service *Policy) NodeCapacities(ctx context.Context, clusterName string) (
 	return result, nil
 }
 
-func (service *Policy) discoveredNodes(ctx context.Context) ([]cluster.Node, error) {
-	if service.client != nil {
-		snapshot, err := service.client.Snapshot(ctx)
-		if err != nil {
-			return nil, fmt.Errorf("discover nodes: %w", err)
-		}
+func (service *Policy) discoveredNodes(ctx context.Context, clusterName string) ([]cluster.Node, error) {
+	snapshot, ok, err := service.snapshotFor(ctx, clusterName)
+	if err != nil {
+		return nil, err
+	}
 
+	if ok {
 		return snapshot.Nodes, nil
 	}
 
@@ -74,6 +74,37 @@ func (service *Policy) discoveredNodes(ctx context.Context) ([]cluster.Node, err
 	}
 
 	return nil, nil
+}
+
+// snapshotFor reads the named cluster's live inventory. ok is false when no
+// live source is wired, so callers fall back to the inventory projection.
+func (service *Policy) snapshotFor(ctx context.Context, clusterName string) (cluster.Snapshot, bool, error) {
+	var source Snapshotter = service.client
+	if service.clusters != nil {
+		client, err := service.clusters.Client(clusterName)
+		if err != nil {
+			return cluster.Snapshot{}, true, fmt.Errorf("discover nodes: %w", err)
+		}
+
+		source = client
+	}
+
+	if source == nil {
+		return cluster.Snapshot{}, false, nil
+	}
+
+	snapshot, err := source.Snapshot(ctx)
+	if err != nil {
+		return cluster.Snapshot{}, true, fmt.Errorf("discover nodes: %w", err)
+	}
+
+	return snapshot, true, nil
+}
+
+// SetClusterProvider makes node discovery follow each request's cluster
+// instead of one fixed client.
+func (service *Policy) SetClusterProvider(provider cluster.ClientProvider) {
+	service.clusters = provider
 }
 
 func compareNode(left, right string) int {
