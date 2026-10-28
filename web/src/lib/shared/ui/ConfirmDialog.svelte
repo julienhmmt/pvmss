@@ -39,7 +39,7 @@
 	<h2 id={TITLE_ID} class="mb-2 text-lg font-semibold">{title}</h2>
 	<p class="mb-4 text-sm text-muted-foreground">{message}</p>
 	<div class="flex justify-end gap-2">
-		<Button variant="ghost" onclick={onClose}>{cancelLabel}</Button>
+		<Button variant="secondary" onclick={onClose}>{cancelLabel}</Button>
 		<Button
 			variant="destructive"
 			loading={confirming}

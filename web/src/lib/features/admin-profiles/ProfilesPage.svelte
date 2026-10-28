@@ -299,7 +299,7 @@
 			</FormField>
 		</div>
 		<div class="flex justify-end gap-2 pt-2">
-			<Button variant="ghost" onclick={closeForm}>{m['common.cancel']()}</Button>
+			<Button variant="secondary" onclick={closeForm}>{m['common.cancel']()}</Button>
 			<Button type="submit" disabled={saving}>
 				{saving ? m['common.saving']() : editingId ? m['common.save']() : m['common.create']()}
 			</Button>

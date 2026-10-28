@@ -179,7 +179,7 @@
 			{m['docs.bodyLength']({ count: String(bodyMd.length), max: String(MAX_DOC_BODY) })}
 		</p>
 		<div class="flex justify-end gap-2 pt-2">
-			<Button variant="ghost" onclick={onCancel}>{m['docs.cancel']()}</Button>
+			<Button variant="secondary" onclick={onCancel}>{m['docs.cancel']()}</Button>
 			<Button type="submit" disabled={saving || !canSubmit}>
 				{saving ? `${m['docs.save']()}…` : editing ? m['docs.save']() : m['docs.create']()}
 			</Button>

@@ -162,7 +162,7 @@
 		{/if}
 	</form>
 	{#snippet footer()}
-		<Button variant="ghost" onclick={onClose} disabled={saving}>{m['common.cancel']()}</Button>
+		<Button variant="secondary" onclick={onClose} disabled={saving}>{m['common.cancel']()}</Button>
 		<Button type="submit" form={FORM_ID} loading={saving} disabled={saving}>{m['common.save']()}</Button>
 	{/snippet}
 </Dialog>

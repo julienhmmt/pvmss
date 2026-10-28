@@ -219,7 +219,7 @@
 									<Button
 										type="button"
 										size="sm"
-										variant="ghost"
+										variant="secondary"
 										disabled={savingComment}
 										onclick={() => (editingComment = false)}>{m['common.cancel']()}</Button
 									>
