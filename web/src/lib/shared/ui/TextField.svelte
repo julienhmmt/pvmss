@@ -13,6 +13,7 @@
 	import type { HTMLInputAttributes } from 'svelte/elements';
 	import EyeIcon from './icons/EyeIcon.svelte';
 	import EyeOffIcon from './icons/EyeOffIcon.svelte';
+	import SearchIcon from './icons/SearchIcon.svelte';
 	import { m } from '#lib/paraglide/messages.js';
 
 	type InputType = 'text' | 'password' | 'email' | 'url' | 'number' | 'search' | 'tel' | 'date' | 'datetime-local';
@@ -87,7 +88,9 @@
 
 	let revealed = $state(false);
 	const effectiveType: InputType = $derived(reveal && revealed ? 'text' : type);
-	const hasLeading = $derived(leading !== undefined);
+	// Search fields always show a magnifier, even when the caller passes no icon.
+	const isSearch = $derived(type === 'search');
+	const hasLeading = $derived(leading !== undefined || isSearch);
 	const hasTrailing = $derived(trailing !== undefined || reveal);
 	const strValue = $derived(typeof value === 'number' ? String(value) : (value ?? ''));
 	const count = $derived(strValue.length);
@@ -99,14 +102,14 @@
 			<span
 				class="pointer-events-none absolute inset-y-0 left-0 flex items-center text-muted-foreground {size === 'lg' ? 'pl-3.5' : 'pl-3'}"
 			>
-				{@render leading!()}
+				{#if leading}{@render leading()}{:else}<SearchIcon class="h-4 w-4" />{/if}
 			</span>
 		{/if}
 		<input
 			{id}
 			{name}
 			type={effectiveType}
-			class="pv-input {hasLeading ? (size === 'lg' ? 'pl-11' : 'pl-9') : ''} {hasTrailing ? 'pr-9' : ''} {size === 'lg' ? 'text-base' : ''}"
+			class="pv-input {hasLeading ? (size === 'lg' ? 'pl-11' : 'pl-9') : ''} {hasTrailing ? 'pr-9' : ''} {size === 'lg' ? 'text-base' : ''} {isSearch ? 'border-muted-foreground-subtle bg-card hover:border-foreground' : ''}"
 			{required}
 			{disabled}
 			{readonly}
