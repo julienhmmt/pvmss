@@ -1,4 +1,6 @@
 <script lang="ts">
+	import Pagination from '#lib/shared/ui/Pagination.svelte';
+	import { createPagination } from '#lib/shared/ui/list-pager.svelte.js';
 	/**
 	 * Activity (DESIGN.md §6.4): what is running right now, and what happened
 	 * recently, across the user's machines. "In progress" reads the task tray
@@ -24,6 +26,7 @@
 	const tray = getTaskTrayContext();
 	const powerActions = getPowerActionsContext();
 	const store = new ActivityStore();
+	const pager = createPagination('activity', () => store.entries ?? []);
 
 	onMount(() => {
 		void store.load();
@@ -139,7 +142,7 @@
 			</EmptyState>
 		{:else if store.entries !== null}
 			<ol>
-				{#each store.entries as entry (entry.id)}
+				{#each pager.rows as entry (entry.id)}
 					<li class="border-b border-border-subtle last:border-b-0">
 						<a
 							href={detailHref(entry.cluster, entry.vmid)}
@@ -155,6 +158,7 @@
 					</li>
 				{/each}
 			</ol>
+			<Pagination {pager} />
 		{/if}
 	</Card>
 </section>

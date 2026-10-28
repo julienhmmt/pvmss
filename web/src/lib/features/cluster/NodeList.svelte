@@ -10,6 +10,9 @@
 	import Button from '#lib/shared/ui/Button.svelte';
 	import StatusDot from '#lib/shared/ui/StatusDot.svelte';
 	import TableCard from '#lib/shared/ui/TableCard.svelte';
+	import Pagination from '#lib/shared/ui/Pagination.svelte';
+	import { createPagination } from '#lib/shared/ui/list-pager.svelte.js';
+	const pager = createPagination('nodes', () => nodes);
 
 	interface Props {
 		nodes: ClusterNode[];
@@ -106,7 +109,7 @@
 				</tr>
 			</thead>
 			<tbody>
-				{#each nodes as node (node.name)}
+				{#each pager.rows as node (node.name)}
 					<tr class="border-t border-border">
 						<td class="font-mono font-medium" data-label={m['nodes.columnName']()}>{node.name}</td>
 						<td data-label={m['nodes.columnStatus']()}>
@@ -145,5 +148,8 @@
 				{/each}
 			</tbody>
 		</table>
+		{#snippet footer()}
+			<Pagination {pager} />
+		{/snippet}
 	</TableCard>
 {/if}
