@@ -182,6 +182,15 @@ func (s *Store) SetStorageEnabled(ctx context.Context, cluster, name, node strin
 	)
 }
 
+// DisableStorageAllNodes revokes a storage approval on every stored node,
+// including nodes no longer in the cluster snapshot.
+func (s *Store) DisableStorageAllNodes(ctx context.Context, cluster, name string) error {
+	return execWrite(ctx, s.db,
+		`UPDATE catalog_storages SET enabled = 0 WHERE cluster = ? AND name = ?`,
+		[]any{cluster, name},
+	)
+}
+
 // SetBridgeEnabled upserts the enabled state for one (node, name) pair.
 func (s *Store) SetBridgeEnabled(ctx context.Context, cluster, node, name string, enabled bool) error {
 	return execWrite(ctx, s.db,

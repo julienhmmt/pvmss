@@ -230,7 +230,7 @@ func AdminListStorages(ctx context.Context, st *store.Store, client cluster.Clie
 		}
 
 		for _, node := range nodes {
-			if enabledByKey[nameNodeKey{Name: name, Node: node}] {
+			if _, exists := enabledByKey[nameNodeKey{Name: name, Node: node}]; exists {
 				continue
 			}
 

@@ -37,12 +37,14 @@ func SetStorageEnabled(ctx context.Context, st *store.Store, client cluster.Clie
 	}
 
 	var targets []string
+	shared := false
 	for _, s := range snap.Storages {
 		if s.Name != name || !cluster.IsVMCapableStorage(s) {
 			continue
 		}
 
 		if cluster.IsSharedStorage(s) {
+			shared = true
 			targets = append(targets, s.Node)
 		} else if s.Node == node {
 			targets = append(targets, s.Node)
@@ -51,6 +53,12 @@ func SetStorageEnabled(ctx context.Context, st *store.Store, client cluster.Clie
 
 	if len(targets) == 0 {
 		return cluster.ErrNotFound
+	}
+
+	// A shared revoke must also cover rows for nodes absent from this snapshot,
+	// otherwise the list path's OR merge would re-approve the storage.
+	if shared && !enabled {
+		return st.DisableStorageAllNodes(ctx, clusterName, name)
 	}
 
 	for _, n := range targets {
