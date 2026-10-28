@@ -16,10 +16,12 @@
 	import PageHeader from '#lib/shared/ui/PageHeader.svelte';
 	import Button from '#lib/shared/ui/Button.svelte';
 	import { fetchClusterOptions, type ClusterOption } from '#lib/shared/clusters.js';
+	import { post } from '#lib/shared/api/client.js';
 	import { onVisibleRefresh } from '#lib/shared/visibility-refresh.js';
 	import { m } from '#lib/paraglide/messages.js';
 
 	let clusterOptions = $state<ClusterOption[]>([]);
+	let refreshing = $state(false);
 
 	const store = setVmListContext({
 		scope: 'all',
@@ -41,6 +43,22 @@
 			clusterOptions = [];
 		}
 		await store.load();
+	}
+
+	// The list reads the cached inventory, so force an inventory refresh first.
+	// A throttled or failed refresh is ignored: the reload still shows current rows.
+	async function refreshList(): Promise<void> {
+		refreshing = true;
+		try {
+			await post('/api/v1/cluster/refresh');
+		} catch {
+			// Throttled (429) or cluster unreachable: re-read what the inventory has.
+		}
+		try {
+			await store.load();
+		} finally {
+			refreshing = false;
+		}
 	}
 
 	onMount(() => {
@@ -81,11 +99,11 @@
 				<Button
 					variant="secondary"
 					size="md"
-					disabled={store.loading}
-					onclick={() => void store.load()}
+					disabled={store.loading || refreshing}
+					onclick={() => void refreshList()}
 					data-testid="admin-vm-refresh"
 				>
-					{store.loading ? m['common.refreshing']() : m['common.refresh']()}
+					{store.loading || refreshing ? m['common.refreshing']() : m['common.refresh']()}
 				</Button>
 			</div>
 		{/snippet}
