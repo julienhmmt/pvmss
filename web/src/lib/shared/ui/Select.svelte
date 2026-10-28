@@ -33,6 +33,9 @@
 		required?: boolean;
 		disabled?: boolean;
 		name?: string;
+		/** Bordered, card-filled surface for controls that must read as
+		 *  clickable on the page background (e.g. the cluster picker). */
+		strong?: boolean;
 		class?: string;
 		[key: string]: unknown;
 	}
@@ -47,6 +50,7 @@
 		required = false,
 		disabled = false,
 		name,
+		strong = false,
 		class: klass = '',
 		...rest
 	}: Props = $props();
@@ -80,7 +84,7 @@
 	<select
 		{id}
 		{name}
-		class="pv-input pv-select"
+		class="pv-input pv-select {strong ? 'border-muted-foreground-subtle bg-card hover:border-foreground' : ''}"
 		{required}
 		{disabled}
 		aria-invalid={invalid ? 'true' : undefined}
