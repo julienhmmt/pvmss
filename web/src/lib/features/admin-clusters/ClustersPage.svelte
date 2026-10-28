@@ -10,6 +10,9 @@
 	import EmptyState from '#lib/shared/ui/EmptyState.svelte';
 	import Pill from '#lib/shared/ui/Pill.svelte';
 	import TableCard from '#lib/shared/ui/TableCard.svelte';
+	import Pagination from '#lib/shared/ui/Pagination.svelte';
+	import { createPagination } from '#lib/shared/ui/list-pager.svelte.js';
+	const pager = createPagination('clusters', () => store.clusters);
 	import TableSkeleton from '#lib/shared/ui/TableSkeleton.svelte';
 	import { m } from '#lib/paraglide/messages.js';
 
@@ -109,7 +112,7 @@
 					</tr>
 				</thead>
 				<tbody>
-					{#each store.clusters as cluster (cluster.name)}
+					{#each pager.rows as cluster (cluster.name)}
 						<tr class="align-top">
 							<td data-label={m['common.name']()}>
 								<a class="font-medium hover:underline" href={resolve('/admin/clusters/[name]', { name: cluster.name })}>{cluster.displayName || cluster.name}</a>
@@ -147,6 +150,9 @@
 					{/each}
 				</tbody>
 			</table>
+			{#snippet footer()}
+				<Pagination {pager} />
+			{/snippet}
 		</TableCard>
 	{/if}
 </section>
