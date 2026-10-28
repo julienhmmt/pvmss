@@ -24,3 +24,26 @@ app.kubernetes.io/managed-by: {{ .Release.Service }}
 {{ toYaml . }}
 {{- end }}
 {{- end -}}
+
+{{/*
+Name of the Secret holding the three secret keys (chart-managed or existing).
+*/}}
+{{- define "pvmss.secretName" -}}
+{{- default (printf "%s-secrets" (include "pvmss.fullname" .)) .Values.secrets.existingSecret -}}
+{{- end -}}
+
+{{/*
+Bcrypt admin hash, from the plain value or its base64 form. The base64 form
+exists because "$" in "$2a$10$..." is mangled by ArgoCD parameter/env
+substitution and by shells; base64 has no "$".
+*/}}
+{{- define "pvmss.adminPasswordHash" -}}
+{{- $hash := .Values.secrets.adminPasswordHash -}}
+{{- with .Values.secrets.adminPasswordHashBase64 -}}
+{{- $hash = b64dec . | trim -}}
+{{- end -}}
+{{- if and $hash (not (hasPrefix "$2" $hash)) -}}
+{{- fail "secrets.adminPasswordHash must be a bcrypt hash starting with $2 (check that $ was not stripped; prefer secrets.adminPasswordHashBase64)" -}}
+{{- end -}}
+{{- $hash -}}
+{{- end -}}
