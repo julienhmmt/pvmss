@@ -123,6 +123,7 @@ type Policy struct {
 	store      *store.Store
 	projection *inventory.Projection
 	client     Snapshotter
+	clusters   cluster.ClientProvider // per-cluster node discovery; wins over client when set
 
 	mu      sync.Mutex // guards pending and nextID (ReserveCreate)
 	pending []pendingCreate

@@ -119,7 +119,7 @@ func (service *Policy) SetNodeCapacity(ctx context.Context, clusterName, node st
 		return err
 	}
 
-	physicalNode, err := service.discoveredNode(ctx, node)
+	physicalNode, err := service.discoveredNode(ctx, clusterName, node)
 	if err != nil {
 		return err
 	}
@@ -194,27 +194,15 @@ func validateCapacity(capacity Capacity) error {
 	return nil
 }
 
-func (service *Policy) discoveredNode(ctx context.Context, node string) (cluster.Node, error) {
-	if service.client != nil {
-		snapshot, err := service.client.Snapshot(ctx)
-		if err != nil {
-			return cluster.Node{}, fmt.Errorf("discover node: %w", err)
-		}
-
-		for _, item := range snapshot.Nodes {
-			if item.Name == node {
-				return item, nil
-			}
-		}
-
-		return cluster.Node{}, cluster.ErrNotFound
+func (service *Policy) discoveredNode(ctx context.Context, clusterName, node string) (cluster.Node, error) {
+	nodes, err := service.discoveredNodes(ctx, clusterName)
+	if err != nil {
+		return cluster.Node{}, err
 	}
 
-	if service.projection != nil && service.projection.Load() != nil {
-		for _, item := range service.projection.Load().Nodes {
-			if item.Name == node {
-				return item, nil
-			}
+	for _, item := range nodes {
+		if item.Name == node {
+			return item, nil
 		}
 	}
 

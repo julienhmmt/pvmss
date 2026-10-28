@@ -453,7 +453,8 @@ func buildRouter(deps routerDeps) (http.Handler, error) {
 	st := deps.st
 	webDir := deps.webDir
 	logger := deps.logger
-	policyService := policy.New(st, projection, registrySnapshotter{registry: clusterRegistry})
+	policyService := policy.New(st, projection, nil)
+	policyService.SetClusterProvider(clusterRegistry)
 	freshness := inventoryFreshness{registry: inventoryRegistry, demoMode: cfg.ClusterSource == "fake"}
 	health := httpapi.NewHealth(st, logger, freshness, 2*cfg.InventoryRefreshInterval)
 	clusterNodes := httpapi.NewClusterNodes(projection, logger)
@@ -568,24 +569,6 @@ type registryClusterRefresh struct {
 
 func (r registryClusterRefresh) Refresh(ctx context.Context) (time.Time, error) {
 	return r.registry.Refresh(ctx, r.name)
-}
-
-// registrySnapshotter reads the primary cluster through the registry on each
-// call, so policy never keeps a client an admin edit has replaced.
-type registrySnapshotter struct{ registry *cluster.Registry }
-
-func (r registrySnapshotter) Snapshot(ctx context.Context) (cluster.Snapshot, error) {
-	names := r.registry.List()
-	if len(names) == 0 {
-		return cluster.Snapshot{}, cluster.ErrClusterNotFound
-	}
-
-	client, err := r.registry.Client(names[0])
-	if err != nil {
-		return cluster.Snapshot{}, err
-	}
-
-	return client.Snapshot(ctx)
 }
 
 // clusterClientInterfaces bundles the cluster.Client capability interfaces
