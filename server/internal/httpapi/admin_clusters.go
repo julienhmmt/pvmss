@@ -178,6 +178,8 @@ func (handler *AdminClusters) ServeCreate(w http.ResponseWriter, r *http.Request
 }
 
 // ServeUpdate handles PUT /api/v1/admin/clusters/:name without accepting a name field.
+//
+//nolint:gocyclo // sequential validation of optional fields
 func (handler *AdminClusters) ServeUpdate(w http.ResponseWriter, r *http.Request) {
 	var request updateClusterRequest
 	if err := decodeJSON(w, r, &request); err != nil {
@@ -265,6 +267,8 @@ func (handler *AdminClusters) secretKeptSafely(w http.ResponseWriter, current st
 }
 
 // ServeTest handles POST /api/v1/admin/clusters/:name/test.
+//
+//nolint:gocyclo // maps each probe outcome to a status
 func (handler *AdminClusters) ServeTest(w http.ResponseWriter, r *http.Request) {
 	name := r.PathValue("name")
 	stored, err := handler.store.GetCluster(r.Context(), name)
@@ -285,7 +289,7 @@ func (handler *AdminClusters) ServeTest(w http.ResponseWriter, r *http.Request) 
 			status = errorLabel
 		}
 		message := shortClusterError(err)
-		tlsStatus := "unknown"
+		tlsStatus := unknownValue
 		if errors.Is(err, cluster.ErrTLSVerify) {
 			tlsStatus = "failed"
 		}

@@ -161,6 +161,8 @@ func AdminListNodes(ctx context.Context, st *store.Store, client cluster.Client,
 // is enabled when any of its per-node rows is. A shared storage approved on
 // some nodes is extended to the nodes that have no approval row yet (nodes
 // added later). Orphan approvals are handled as in AdminListNodes.
+//
+//nolint:gocyclo // linear merge of per-node storage rows; splitting hurts readability
 func AdminListStorages(ctx context.Context, st *store.Store, client cluster.Client, clusterName string) ([]StorageApproval, error) {
 	snap, err := client.Snapshot(ctx)
 	if err != nil {
@@ -174,6 +176,7 @@ func AdminListStorages(ctx context.Context, st *store.Store, client cluster.Clie
 
 	enabledByKey := make(map[nameNodeKey]bool, len(enabledRows))
 	sharedEnabled := make(map[string]bool)
+
 	for _, s := range enabledRows {
 		enabledByKey[nameNodeKey{Name: s.Name, Node: s.Node}] = s.Enabled
 		sharedEnabled[s.Name] = sharedEnabled[s.Name] || s.Enabled
@@ -218,6 +221,7 @@ func AdminListStorages(ctx context.Context, st *store.Store, client cluster.Clie
 	// Shared rows stay out of the orphan sweep: a stale row for a removed node
 	// is harmless (the node is gone), and the storage itself is one row.
 	var sweepRows []store.CatalogStorageEnabled
+
 	for _, row := range enabledRows {
 		if _, shared := sharedRows[row.Name]; !shared {
 			sweepRows = append(sweepRows, row)

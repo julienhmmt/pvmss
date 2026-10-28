@@ -82,7 +82,7 @@ func StorageSnapshotCapability(pluginType, format string) (canSnapshot, canVMSta
 	switch pluginType {
 	case "zfspool", "lvmthin", "rbd", "btrfs":
 		return true, true
-	case "dir", "nfs", "cifs", "cephfs":
+	case "dir", pluginNFS, "cifs", "cephfs":
 		return format == "qcow2", format == "qcow2"
 	default:
 		return false, false

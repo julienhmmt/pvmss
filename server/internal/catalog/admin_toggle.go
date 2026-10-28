@@ -37,7 +37,9 @@ func SetStorageEnabled(ctx context.Context, st *store.Store, client cluster.Clie
 	}
 
 	var targets []string
+
 	shared := false
+
 	for _, s := range snap.Storages {
 		if s.Name != name || !cluster.IsVMCapableStorage(s) {
 			continue
@@ -45,6 +47,7 @@ func SetStorageEnabled(ctx context.Context, st *store.Store, client cluster.Clie
 
 		if cluster.IsSharedStorage(s) {
 			shared = true
+
 			targets = append(targets, s.Node)
 		} else if s.Node == node {
 			targets = append(targets, s.Node)

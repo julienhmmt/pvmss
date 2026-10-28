@@ -356,6 +356,8 @@ type TemplateReader interface {
 // would tell the client creation failed when it did not - the same
 // log-don't-fail rule the task-status handler already applies to a failed
 // post-completion invalidation (tasks.go).
+//
+//nolint:gocyclo // sequential validation steps of VM creation
 func Create(ctx context.Context, actor auth.Identity, clusterName string, req CreateRequest, deps CreateDeps) (CreateResult, error) {
 	if req.Image != nil && cloudImagesDisabled {
 		return CreateResult{}, fmt.Errorf("%w: cloud images are disabled", ErrInvalidSource)

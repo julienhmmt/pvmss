@@ -1,10 +1,9 @@
 package httpapi
 
 import (
-	"strings"
-
 	"pvmss/server/internal/cluster"
 	"pvmss/server/internal/store"
+	"strings"
 )
 
 // tlsRequest carries per-cluster TLS material. A nil field keeps the stored
@@ -33,20 +32,25 @@ type tlsDTO struct {
 // The error text is safe to return to the admin.
 func resolveTLS(current store.ClusterTLS, req *tlsRequest) (store.ClusterTLS, error) {
 	merged := current
+
 	if req != nil {
 		if req.CAPEM != nil {
 			merged.CAPEM = *req.CAPEM
 		}
+
 		if req.NodeFingerprints != nil {
 			merged.NodeFingerprints = *req.NodeFingerprints
 		}
+
 		if req.ClientCertPEM != nil {
 			merged.ClientCertPEM = *req.ClientCertPEM
 		}
+
 		if req.ClientKeyPEM != nil {
 			merged.ClientKeyPEM = *req.ClientKeyPEM
 		}
 	}
+
 	return cluster.ValidateTLS(merged)
 }
 
@@ -60,6 +64,7 @@ func certTime(info *cluster.CertInfo) *string {
 	if info == nil {
 		return nil
 	}
+
 	return formatTime(&info.NotAfter)
 }
 
@@ -68,11 +73,14 @@ func toTLSDTO(t store.ClusterTLS) tlsDTO {
 	if ca := cluster.CertSummary(t.CAPEM); ca != nil {
 		dto.CASet, dto.CASubject, dto.CANotAfter = true, ca.Subject, certTime(ca)
 	}
+
 	if fps, err := cluster.NormalizeFingerprints(t.NodeFingerprints); err == nil && len(fps) > 0 {
 		dto.NodeFingerprints = fps
 	}
+
 	if cc := cluster.CertSummary(t.ClientCertPEM); cc != nil {
 		dto.ClientCertSet, dto.ClientCertSubject, dto.ClientCertNotAfter = true, cc.Subject, certTime(cc)
 	}
+
 	return dto
 }

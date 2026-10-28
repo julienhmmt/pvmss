@@ -310,6 +310,7 @@ func bootOrderFromSpec(spec VMSpec) []string {
 // UsedVMIDs lists the ids of the fake's mutable dataset.
 func (fake Fake) UsedVMIDs(_ context.Context) ([]int, error) {
 	state := fake.stateOrDefault()
+
 	state.vmMu.RLock()
 	defer state.vmMu.RUnlock()
 

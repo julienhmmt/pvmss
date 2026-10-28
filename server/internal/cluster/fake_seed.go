@@ -133,7 +133,7 @@ var fakeStorages = []Storage{
 	{Name: FakeStorageLocalLVM, Node: FakeNode01, Type: storagePluginLVMThin, PluginType: storagePluginLVMThin, Content: "images,rootdir", Total: 549755813888, Used: 219902325555, SupportsVMState: true},
 	{Name: "ceph-data", Node: FakeNode02, Type: storagePluginCephFS, PluginType: storagePluginCephFS, Content: storageContentImages, Total: 1099511627776, Used: 329853488332, SupportsVMState: true, Shared: true},
 	{Name: FakeStorageLocal, Node: FakeNode02, Type: storagePluginDir, PluginType: storagePluginDir, Content: "images,iso", Total: 274877906944, Used: 68719476736, SupportsVMState: false},
-	{Name: FakeStorageBackupNFS, Node: FakeNode03, Type: "nfs", PluginType: "nfs", Content: "backup", Total: 5497558138880, Used: 1099511627776, SupportsVMState: false, Shared: true},
+	{Name: FakeStorageBackupNFS, Node: FakeNode03, Type: pluginNFS, PluginType: pluginNFS, Content: "backup", Total: 5497558138880, Used: 1099511627776, SupportsVMState: false, Shared: true},
 	{Name: FakeStoragePBS, Node: FakeNode03, Type: storagePluginPBS, PluginType: storagePluginPBS, Content: "images,backup", Total: 8796093022208, Used: 2199023255552, SupportsVMState: false, Shared: true},
 }
 

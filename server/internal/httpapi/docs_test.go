@@ -735,7 +735,7 @@ func TestAdminDocs_CreateDuplicate(t *testing.T) {
 // TestAdminDocs_Reorder - the saved order drives the public list, and a bad id
 // list is rejected without changing anything.
 //
-//nolint:paralleltest // serial: shared database fixture
+//nolint:gocyclo,paralleltest // serial: shared database fixture; one scenario, many assertions
 func TestAdminDocs_Reorder(t *testing.T) {
 	docs, admin, auth := newDocsHandlers(t)
 	cookie := adminCookie(t, auth)

@@ -184,17 +184,17 @@ func (s *Store) ReorderDocumentationPages(ctx context.Context, ids []string, upd
 	if err != nil {
 		return fmt.Errorf("query documentation page ids: %w", err)
 	}
+	defer func() { _ = rows.Close() }()
+
 	existing := map[string]bool{}
 	for rows.Next() {
 		var id string
 		if err := rows.Scan(&id); err != nil {
-			_ = rows.Close()
 			return fmt.Errorf("scan documentation page id: %w", err)
 		}
 		existing[id] = true
 	}
 	if err := rows.Err(); err != nil {
-		_ = rows.Close()
 		return fmt.Errorf("iterate documentation page ids: %w", err)
 	}
 	_ = rows.Close()
