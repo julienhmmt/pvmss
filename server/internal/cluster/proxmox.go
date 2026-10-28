@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log/slog"
 	"net/http"
+	"pvmss/server/internal/store"
 )
 
 // Proxmox is the real cluster implementation, talking to the Proxmox VE REST
@@ -24,6 +25,8 @@ type Proxmox struct {
 	APITokenName          string
 	APITokenValue         string
 	TLSInsecureSkipVerify bool
+	// TLS is the per-cluster CA / pin / client-certificate material.
+	TLS store.ClusterTLS
 	// SnippetStorage is the Proxmox storage whose snippets/ content holds
 	// the admin cloud-init documents, written by hand on each node (see
 	// docs/cloud-init.md). Empty means the feature is off.

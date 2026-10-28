@@ -284,9 +284,20 @@ ALTER TABLE sessions ADD COLUMN provider TEXT NOT NULL DEFAULT '';
 UPDATE sessions SET provider = 'pve' WHERE cluster != '';
 `
 
+// schemaV3 adds per-cluster TLS material for validating (and optionally
+// authenticating to) the Proxmox API. The client private key is stored
+// encrypted, like the token secret.
+const schemaV3 = `
+ALTER TABLE clusters ADD COLUMN tls_ca_pem TEXT NOT NULL DEFAULT '';
+ALTER TABLE clusters ADD COLUMN tls_node_fingerprints TEXT NOT NULL DEFAULT '';
+ALTER TABLE clusters ADD COLUMN tls_client_cert_pem TEXT NOT NULL DEFAULT '';
+ALTER TABLE clusters ADD COLUMN tls_client_key_ciphertext BLOB;
+`
+
 // Migrations is the ordered list of schema migrations.
 // Versions must be consecutive integers starting at 1.
 var Migrations = []Migration{
 	{Version: 1, DDL: schemaV1},
 	{Version: 2, DDL: schemaV2},
+	{Version: 3, DDL: schemaV3},
 }

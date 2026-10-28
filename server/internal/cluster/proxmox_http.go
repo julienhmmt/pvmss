@@ -10,6 +10,7 @@ import (
 	"log/slog"
 	"net/http"
 	"net/url"
+	"pvmss/server/internal/store"
 	"strings"
 	"time"
 )
@@ -102,7 +103,11 @@ func (p *Proxmox) ensureClient() {
 		return
 	}
 
-	p.httpClient = newProxmoxHTTPClient(p.TLSInsecureSkipVerify)
+	cfg, err := BuildTLSConfig(p.TLS, p.TLSInsecureSkipVerify)
+	if err != nil {
+		cfg = &tls.Config{MinVersion: tls.VersionTLS12}
+	}
+	p.httpClient = newProxmoxHTTPClientTLS(cfg)
 }
 
 // newProxmoxHTTPClient builds an *http.Client with a tuned Transport: the Go
@@ -110,14 +115,18 @@ func (p *Proxmox) ensureClient() {
 // burst (one /status/current per VM). Pooling eliminates the per-call TLS
 // handshake cost that made the observed 20s timeout more likely.
 func newProxmoxHTTPClient(insecureSkipVerify bool) *http.Client {
+	cfg, _ := BuildTLSConfig(store.ClusterTLS{}, insecureSkipVerify)
+
+	return newProxmoxHTTPClientTLS(cfg)
+}
+
+// newProxmoxHTTPClientTLS is newProxmoxHTTPClient with a prebuilt tls.Config.
+func newProxmoxHTTPClientTLS(cfg *tls.Config) *http.Client {
 	transport := &http.Transport{
 		MaxIdleConns:        100,
 		MaxIdleConnsPerHost: 10,
 		IdleConnTimeout:     90 * time.Second,
-		TLSClientConfig: &tls.Config{
-			MinVersion:         tls.VersionTLS12,   // minimum TLS 1.2 enforced
-			InsecureSkipVerify: insecureSkipVerify, //nolint:gosec // operator-configured per cluster; defaults to false
-		},
+		TLSClientConfig:     cfg,
 	}
 
 	return &http.Client{Timeout: proxmoxTimeout, Transport: transport}
@@ -253,7 +262,7 @@ func (c proxmoxRESTClient) doOnce(ctx context.Context, method, path string, form
 
 	resp, err := c.http.Do(req)
 	if err != nil {
-		if _, ok := errors.AsType[*tls.CertificateVerificationError](err); ok {
+		if _, ok := errors.AsType[*tls.CertificateVerificationError](err); ok || errors.Is(err, ErrTLSVerify) {
 			return nil, 0, fmt.Errorf("%w: %w", ErrTLSVerify, err)
 		}
 
