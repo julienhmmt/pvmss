@@ -10,11 +10,21 @@ serviceAccount:
   automountToken: false
   annotations: {}
 
-# SECRETS (plain values; the chart base64-encodes them - or inject via --set-file)
+# SECRETS
+# Recommended with GitOps (ArgoCD, Flux): create the Secret yourself (SealedSecrets,
+# External Secrets, SOPS, ...) and set existingSecret. It must hold the keys
+# admin-password-hash (optional), pve-api-token and session-secret.
+# Otherwise the chart creates the Secret from the plain values below.
 secrets:
+  existingSecret: ""
   # Optional bcrypt hash for the bootstrap local admin account ("admin").
-  # Leave empty to disable the bootstrap local admin.
-  # Generate with: htpasswd -bnBC 10 "" "StrongPassword" | tr -d ':\n'
+  # Leave both empty to disable the bootstrap local admin.
+  # The hash contains "$" ("$2y$10$..."), which ArgoCD parameters, shells and
+  # envsubst can strip or expand. Prefer the base64 form, which has no "$":
+  #   htpasswd -bnBC 10 "" 'StrongPassword' | tr -d ':\n' | base64
+  # adminPasswordHashBase64 wins when both are set. In a values file, always
+  # single-quote the plain hash: adminPasswordHash: '$2y$10$...'
+  adminPasswordHashBase64: ""
   adminPasswordHash: ""
   # Proxmox API token secret (the value matching deployment.env.PROXMOX_API_TOKEN_NAME).
   pveApiToken: changeme
@@ -106,10 +116,6 @@ deployment:
     # OTEL_SERVICE_NAME: "pvmss"
     # OTEL_SDK_DISABLED: "false"
     TZ: "Europe/Paris"
-  secretEnv:
-    ADMIN_PASSWORD_HASH: admin-password-hash
-    PROXMOX_API_TOKEN_VALUE: pve-api-token
-    SESSION_SECRET: session-secret
 
 # METRICS
 # Prometheus pull endpoint. Off by default. When enabled the pod serves
