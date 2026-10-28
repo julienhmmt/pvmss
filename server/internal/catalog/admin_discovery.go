@@ -18,19 +18,6 @@ func nodeDiscovered(ctx context.Context, client cluster.Client, name string) (bo
 	return slices.ContainsFunc(snap.Nodes, func(n cluster.Node) bool { return n.Name == name }), nil
 }
 
-// storageDiscovered reports whether the cluster reports a (name, node) storage.
-// See nodeDiscovered for the error contract.
-func storageDiscovered(ctx context.Context, client cluster.Client, name, node string) (bool, error) {
-	snap, err := client.Snapshot(ctx)
-	if err != nil {
-		return false, err
-	}
-
-	return slices.ContainsFunc(snap.Storages, func(s cluster.Storage) bool {
-		return s.Name == name && s.Node == node && cluster.IsVMCapableStorage(s)
-	}), nil
-}
-
 // bridgeDiscovered reports whether the cluster reports a bridge with the given
 // (node, name) pair. See nodeDiscovered for the error contract.
 func bridgeDiscovered(ctx context.Context, client cluster.Client, node, name string) (bool, error) {

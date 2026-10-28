@@ -673,3 +673,27 @@ func CloneNetworkInterfaces(interfaces []NetworkInterface) []NetworkInterface {
 
 	return cloned
 }
+
+// sharedPluginTypes are storage plugins every node sees as one datastore; the
+// fallback for sources that do not report the storage.cfg `shared` flag.
+var sharedPluginTypes = map[string]struct{}{
+	"rbd": {}, "cephfs": {}, "nfs": {}, "cifs": {}, "glusterfs": {},
+	"iscsi": {}, "iscsidirect": {}, "pbs": {},
+}
+
+// IsSharedStorage reports whether s is one datastore visible on every node:
+// the Proxmox `shared` flag, or an inherently shared plugin type.
+func IsSharedStorage(s Storage) bool {
+	if s.Shared {
+		return true
+	}
+
+	kind := s.PluginType
+	if kind == "" {
+		kind = s.Type
+	}
+
+	_, ok := sharedPluginTypes[kind]
+
+	return ok
+}

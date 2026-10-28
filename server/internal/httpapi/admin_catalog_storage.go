@@ -17,6 +17,9 @@ type adminStorageDTO struct {
 	Used    int64  `json:"usedBytes"`
 	Enabled bool   `json:"enabled"`
 	Missing bool   `json:"missing"`
+	// Shared rows are one per cluster (Node empty); NodeCount nodes see them.
+	Shared    bool `json:"shared"`
+	NodeCount int  `json:"nodeCount"`
 }
 
 // ServeStorages handles GET /api/v1/admin/storages.
@@ -45,6 +48,7 @@ func (h *AdminCatalog) ServeStorages(w http.ResponseWriter, r *http.Request) {
 		dto[i] = adminStorageDTO{
 			Name: s.Name, Node: s.Node, Type: s.Type,
 			Total: s.Total, Used: s.Used, Enabled: s.Enabled, Missing: s.Missing,
+			Shared: s.Shared, NodeCount: s.NodeCount,
 		}
 	}
 
