@@ -35,4 +35,6 @@
 	onUpdate={(id, lang, input) => store.update(id, lang, input)}
 	onDelete={(id, lang) => void store.remove(id, lang)}
 	onToggle={(id, lang, enabled) => void store.toggle(id, lang, enabled)}
+	onMove={(id, delta) => void store.moveBy(id, delta).catch(() => {})}
+	onMoveTo={(id, target) => void store.moveTo(id, target).catch(() => {})}
 />

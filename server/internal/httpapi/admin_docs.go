@@ -4,6 +4,7 @@ package httpapi
 import (
 	"errors"
 	"log/slog"
+	"time"
 	"net/http"
 	"pvmss/server/internal/catalog"
 	"pvmss/server/internal/store"
@@ -18,7 +19,13 @@ type AdminDocs struct {
 	store *store.Store
 	docs  *DocsAPIHandler
 	log   *slog.Logger
+
+	trustedProxyHops int
 }
+
+// SetTrustedProxyHops configures the X-Forwarded-For hops trusted when
+// recording the client IP in audit rows.
+func (h *AdminDocs) SetTrustedProxyHops(n int) { h.trustedProxyHops = n }
 
 // Admin docs error codes and messages, centralized so the duplicated literals
 // live in one place (go:S1192).
@@ -28,6 +35,9 @@ const (
 	codeDocDuplicatePage   = "duplicate_page"
 	codeDocInvalidPage     = "invalid_page"
 	codeDocSystemProtected = "system_protected"
+	codeDocInvalidOrder    = "invalid_order"
+
+	msgDocInvalidOrder = "ids must list every documentation page exactly once"
 
 	msgDocInvalidRequestBody = "invalid request body"
 	msgDocIDLangRequired     = "documentation id and lang are required"
@@ -249,6 +259,41 @@ func (h *AdminDocs) ServeDocToggle(w http.ResponseWriter, r *http.Request) {
 
 	h.docs.InvalidateDocCache()
 	writeAdminJSON(w, http.StatusOK, docToggleResponse{ID: id, Lang: lang, Enabled: req.Enabled})
+}
+
+type docOrderRequest struct {
+	IDs []string `json:"ids"`
+}
+
+// ServeDocOrder handles PUT /api/v1/admin/docs/order - saves the full page
+// order (every page id exactly once, first = top).
+func (h *AdminDocs) ServeDocOrder(w http.ResponseWriter, r *http.Request) {
+	var req docOrderRequest
+	if err := decodeJSON(w, r, &req); err != nil {
+		writeAdminError(w, http.StatusBadRequest, codeInvalidRequest, msgDocInvalidRequestBody)
+		return
+	}
+
+	stamp := time.Now().UTC().Format(time.RFC3339Nano)
+	err := h.store.ReorderDocumentationPages(r.Context(), req.IDs, stamp)
+	if errors.Is(err, store.ErrDocumentationOrderMismatch) {
+		writeAdminError(w, http.StatusBadRequest, codeDocInvalidOrder, msgDocInvalidOrder)
+		return
+	}
+
+	if err != nil {
+		SetErrorMsg(w, "admin reorder docs failed", err)
+		writeAdminError(w, http.StatusInternalServerError, codeInternalError, msgInternalServerError)
+		return
+	}
+
+	if actor, perr := h.auth.Principal(r); perr == nil {
+		_ = h.store.RecordAdminAction(r.Context(), actor.Username, "docs.reorder", "documentation", "order",
+			detailJSON("reordered documentation pages", []any{map[string]any{"ids": req.IDs}}), clientIP(r, h.trustedProxyHops))
+	}
+
+	h.docs.InvalidateDocCache()
+	writeAdminJSON(w, http.StatusOK, statusResponse{Status: "ok"})
 }
 
 // docToggleResponse is the toggle response shape for docs (carries lang too).

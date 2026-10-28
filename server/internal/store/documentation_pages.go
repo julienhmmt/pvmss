@@ -4,8 +4,14 @@ package store
 import (
 	"context"
 	"database/sql"
+	"errors"
 	"fmt"
 )
+
+// ErrDocumentationOrderMismatch is returned by ReorderDocumentationPages when
+// the submitted ids contain a duplicate, an unknown id, or do not cover every
+// page.
+var ErrDocumentationOrderMismatch = errors.New("documentation order does not match the existing pages")
 
 // DocumentationPageRow is one documentation_pages row. The same
 // struct is returned by both the all-rows (admin) and enabled-only (public)
@@ -162,4 +168,58 @@ func (s *Store) DocumentationPageExists(ctx context.Context, id, lang string) (b
 	}
 
 	return count > 0, nil
+}
+
+// ReorderDocumentationPages stores the full page order: every language row of
+// ids[i] gets sort_order = i. ids must list each existing page id exactly once;
+// otherwise nothing is written and ErrDocumentationOrderMismatch is returned.
+func (s *Store) ReorderDocumentationPages(ctx context.Context, ids []string, updatedAt string) error {
+	tx, err := s.db.BeginTx(ctx, nil)
+	if err != nil {
+		return fmt.Errorf("begin reorder documentation pages: %w", err)
+	}
+	defer func() { _ = tx.Rollback() }()
+
+	rows, err := tx.QueryContext(ctx, `SELECT DISTINCT id FROM documentation_pages`)
+	if err != nil {
+		return fmt.Errorf("query documentation page ids: %w", err)
+	}
+	existing := map[string]bool{}
+	for rows.Next() {
+		var id string
+		if err := rows.Scan(&id); err != nil {
+			_ = rows.Close()
+			return fmt.Errorf("scan documentation page id: %w", err)
+		}
+		existing[id] = true
+	}
+	if err := rows.Err(); err != nil {
+		_ = rows.Close()
+		return fmt.Errorf("iterate documentation page ids: %w", err)
+	}
+	_ = rows.Close()
+
+	if len(ids) != len(existing) {
+		return ErrDocumentationOrderMismatch
+	}
+	seen := map[string]bool{}
+	for _, id := range ids {
+		if !existing[id] || seen[id] {
+			return ErrDocumentationOrderMismatch
+		}
+		seen[id] = true
+	}
+
+	for i, id := range ids {
+		if _, err := tx.ExecContext(ctx,
+			`UPDATE documentation_pages SET sort_order = ?, updated_at = ? WHERE id = ?`, i, updatedAt, id); err != nil {
+			return fmt.Errorf("update documentation page order: %w", err)
+		}
+	}
+
+	if err := tx.Commit(); err != nil {
+		return fmt.Errorf("commit reorder documentation pages: %w", err)
+	}
+
+	return nil
 }
