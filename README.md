@@ -6,6 +6,15 @@
 
 French version: [README.fr.md](README.fr.md)
 
+<!-- markdownlint-disable MD033 -->
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="docs/PVMSS-0.4-index-dark.webp">
+  <img src="docs/PVMSS-0.4-index.webp" alt="PVMSS landing page in French, showing the VM overview and main features" width="600" loading="lazy">
+</picture>
+<!-- markdownlint-enable MD033 -->
+
+Full-size screenshots: [light](docs/PVMSS-0.4-index.webp) / [dark](docs/PVMSS-0.4-index-dark.webp)
+
 ---
 
 ## Table of contents
@@ -211,7 +220,7 @@ You can rely on `.env` + `env_file` or inline `environment:` entries, but **not 
 | `PROXMOX_URL`                                 | Full API URL (`https://host:8006/api2/json`)                                                                 | when source is `proxmox` | -                      |
 | `PROXMOX_API_TOKEN_NAME`                      | Proxmox token name (`user@pve!token`)                                                                        | when source is `proxmox` | -                      |
 | `PROXMOX_API_TOKEN_VALUE`                     | Token secret that matches the name above                                                                     | when source is `proxmox` | -                      |
-| `ADMIN_PASSWORD_HASH`                         | Bcrypt hash of the bootstrap local administrator (`admin`), the only account allowed to manage other local accounts; disabled when empty | ❌                       | -                      |
+| `ADMIN_PASSWORD_HASH`                         | Bcrypt hash for the bootstrap admin (`admin`); only this account manages local admins; empty disables it     | ❌                       | -                      |
 | `PVMSS_HOST`                                  | Address to bind (`0.0.0.0` for all interfaces)                                                               | ❌                       | `127.0.0.1`            |
 | `PVMSS_WEB_DIR`                               | Directory holding the built SPA                                                                              | ❌                       | relative to the binary |
 | `PVMSS_COOKIE_SECURE`                         | `Secure` flag on auth cookies (keep `true` in production)                                                    | ❌                       | `true`                 |
@@ -219,8 +228,8 @@ You can rely on `.env` + `env_file` or inline `environment:` entries, but **not 
 | `PVMSS_INVENTORY_MANUAL_REFRESH_MIN_INTERVAL` | Minimum delay between user-triggered refreshes                                                               | ❌                       | `5s`                   |
 | `PVMSS_INVENTORY_REFRESH_TIMEOUT`             | Timeout for a single inventory refresh                                                                       | ❌                       | `15s`                  |
 | `PVMSS_MAX_LIST_PAGE_SIZE`                    | Upper bound on list endpoint page size                                                                       | ❌                       | `100`                  |
-| `PVMSS_MAX_LOCAL_ADMINS`                      | Maximum number of DB local administrator accounts (1-50); the bootstrap administrator is not counted          | ❌                       | `5`                    |
-| `PVMSS_TRUSTED_PROXY_HOPS`                    | Number of reverse proxies in front of PVMSS (for client IP / rate limits); set it when behind one (Helm sets `1`)           | ❌                       | `0`                    |
+| `PVMSS_MAX_LOCAL_ADMINS`                      | Maximum DB local admins (1-50; excludes the bootstrap admin)                                                 | ❌                       | `5`                    |
+| `PVMSS_TRUSTED_PROXY_HOPS`                    | Trusted proxy count for client IP / rate limits (Helm sets `1`)                                              | ❌                       | `0`                    |
 | `PVMSS_RATE_LIMIT_MAX`                        | Raises every built-in rate-limit ceiling (per-IP auth, per-user writes); `0` keeps the defaults              | ❌                       | `0`                    |
 | `PVMSS_METRICS_PORT`                          | Port of the `GET /metrics` listener on `PVMSS_HOST` (1-65535, different from `PVMSS_PORT`); empty disables it | ❌                       | empty                  |
 | `TZ`                                          | Container timezone                                                                                           | ❌                       | `UTC`                  |
