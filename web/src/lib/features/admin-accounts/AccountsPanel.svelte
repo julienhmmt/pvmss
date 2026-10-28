@@ -8,6 +8,9 @@
 	import FormField from '#lib/shared/ui/FormField.svelte';
 	import Pill from '#lib/shared/ui/Pill.svelte';
 	import TableCard from '#lib/shared/ui/TableCard.svelte';
+	import Pagination from '#lib/shared/ui/Pagination.svelte';
+	import { createPagination } from '#lib/shared/ui/list-pager.svelte.js';
+	const pager = createPagination('accounts', () => store.accounts);
 	import TableSkeleton from '#lib/shared/ui/TableSkeleton.svelte';
 	import TextField from '#lib/shared/ui/TextField.svelte';
 	import { getToastContext } from '#lib/shared/ui/toast.svelte.js';
@@ -178,7 +181,7 @@
 						</tr>
 					</thead>
 					<tbody>
-						{#each store.accounts as account (account.id)}
+						{#each pager.rows as account (account.id)}
 							<tr class="transition-colors hover:bg-muted/40">
 								<td class="font-mono text-xs" data-label={m['admin.accounts.username']()}>
 									{account.username}
@@ -239,6 +242,9 @@
 						{/each}
 					</tbody>
 				</table>
+				{#snippet footer()}
+					<Pagination {pager} />
+				{/snippet}
 			</TableCard>
 		{:else}
 			<EmptyState title={m['admin.accounts.emptyTitle']()} description={m['admin.accounts.emptyBody']()}>

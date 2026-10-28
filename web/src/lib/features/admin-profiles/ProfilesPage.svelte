@@ -7,6 +7,9 @@
 	import Button from '#lib/shared/ui/Button.svelte';
 	import Switch from '#lib/shared/ui/Switch.svelte';
 	import TableCard from '#lib/shared/ui/TableCard.svelte';
+	import Pagination from '#lib/shared/ui/Pagination.svelte';
+	import { createPagination } from '#lib/shared/ui/list-pager.svelte.js';
+	const pager = createPagination('profiles', () => filteredProfiles);
 	import TableSkeleton from '#lib/shared/ui/TableSkeleton.svelte';
 	import EmptyState from '#lib/shared/ui/EmptyState.svelte';
 	import ConfirmDialog from '#lib/shared/ui/ConfirmDialog.svelte';
@@ -209,7 +212,7 @@
 					</tr>
 				</thead>
 				<tbody>
-					{#each filteredProfiles as profile (profile.id)}
+					{#each pager.rows as profile (profile.id)}
 						<tr class="group transition-colors hover:bg-muted/40">
 							<td class="font-mono text-xs" data-label={m['admin.profiles.id']()}>{profile.id}</td>
 							<td data-label={m['admin.profiles.labelField']()}>{profile.label}</td>
@@ -243,6 +246,9 @@
 					{/each}
 				</tbody>
 			</table>
+			{#snippet footer()}
+				<Pagination {pager} />
+			{/snippet}
 		</TableCard>
 	{:else}
 		<EmptyState title={m['admin.profiles.noProfiles']()}>

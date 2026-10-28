@@ -14,6 +14,9 @@
 	import Button from '#lib/shared/ui/Button.svelte';
 	import Pill from '#lib/shared/ui/Pill.svelte';
 	import TableCard from '#lib/shared/ui/TableCard.svelte';
+	import Pagination from '#lib/shared/ui/Pagination.svelte';
+	import { createPagination } from '#lib/shared/ui/list-pager.svelte.js';
+	const pager = createPagination('policyNodes', () => nodes);
 	import TableSkeleton from '#lib/shared/ui/TableSkeleton.svelte';
 	import EmptyState from '#lib/shared/ui/EmptyState.svelte';
 	import TableHeader from '#lib/shared/ui/TableHeader.svelte';
@@ -155,7 +158,7 @@
 					</tr>
 				</thead>
 				<tbody>
-					{#each nodes as node (node.node)}
+					{#each pager.rows as node (node.node)}
 						{@const isOpen = expanded === node.node}
 						<!-- Offline is said by the status pill; dimming the row dragged every cell under AA. -->
 						<tr class="group transition-colors hover:bg-muted/40">
@@ -215,6 +218,9 @@
 					{/each}
 				</tbody>
 			</table>
+			{#snippet footer()}
+				<Pagination {pager} />
+			{/snippet}
 		</TableCard>
 	{/if}
 </section>
