@@ -7,16 +7,14 @@
 	import ClusterSelector from '#lib/shared/ui/ClusterSelector.svelte';
 	import PageHeader from '#lib/shared/ui/PageHeader.svelte';
 	import Pagination from '#lib/shared/ui/Pagination.svelte';
-	import { loadPageSize, paginate } from '#lib/shared/ui/paginate.js';
+	import { createPagination } from '#lib/shared/ui/list-pager.svelte.js';
 	import TableCard from '#lib/shared/ui/TableCard.svelte';
 	import { getToastContext } from '#lib/shared/ui/toast.svelte.js';
 	import { m } from '#lib/paraglide/messages.js';
 
 	const store = setAdminCatalogContext();
 	const toast = getToastContext();
-	let page = $state(1);
-	let size = $state(loadPageSize('bridges'));
-	const visible = $derived(paginate(store.filteredBridges, page, size));
+	const pager = createPagination('bridges', () => store.filteredBridges);
 
 	onMount(() => {
 		void store.loadAll();
@@ -79,7 +77,7 @@
 			<CatalogToolbar {store} kind="bridges" />
 		{/snippet}
 		<BridgesTable
-			bridges={visible}
+			bridges={pager.rows}
 			toggling={store.toggling}
 			onToggle={(n, name, e) => void handleToggle(n, name, e)}
 			onRemove={(n, name) => void handleRemove(n, name)}
@@ -88,7 +86,7 @@
 			onSort={(column) => store.setBridgeSort(column)}
 		/>
 		{#snippet footer()}
-			<Pagination total={store.filteredBridges.length} bind:page bind:size name="bridges" />
+			<Pagination {pager} />
 		{/snippet}
 	</TableCard>
 </CatalogListStates>

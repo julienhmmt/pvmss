@@ -8,16 +8,14 @@
 	import ConfirmDialog from '#lib/shared/ui/ConfirmDialog.svelte';
 	import PageHeader from '#lib/shared/ui/PageHeader.svelte';
 	import Pagination from '#lib/shared/ui/Pagination.svelte';
-	import { loadPageSize, paginate } from '#lib/shared/ui/paginate.js';
+	import { createPagination } from '#lib/shared/ui/list-pager.svelte.js';
 	import TableCard from '#lib/shared/ui/TableCard.svelte';
 	import { getToastContext } from '#lib/shared/ui/toast.svelte.js';
 	import { m } from '#lib/paraglide/messages.js';
 
 	const store = setAdminCatalogContext();
 	const toast = getToastContext();
-	let page = $state(1);
-	let size = $state(loadPageSize('nodes'));
-	const visible = $derived(paginate(store.filteredNodes, page, size));
+	const pager = createPagination('nodes', () => store.filteredNodes);
 
 	onMount(() => {
 		void store.loadAll();
@@ -111,7 +109,7 @@
 		{/snippet}
 		<NodesTable
 			clusterKey={store.cluster}
-			nodes={visible}
+			nodes={pager.rows}
 			toggling={store.toggling}
 			sortBy={store.nodeSortBy}
 			sortDir={store.nodeSortDir}
@@ -120,7 +118,7 @@
 			onSort={(column) => store.setNodeSort(column)}
 		/>
 		{#snippet footer()}
-			<Pagination total={store.filteredNodes.length} bind:page bind:size name="nodes" />
+			<Pagination {pager} />
 		{/snippet}
 	</TableCard>
 </CatalogListStates>
