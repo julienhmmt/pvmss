@@ -10,6 +10,8 @@
 	import Meter from '#lib/shared/ui/Meter.svelte';
 	import PageHeader from '#lib/shared/ui/PageHeader.svelte';
 	import Pill from '#lib/shared/ui/Pill.svelte';
+	import Pagination from '#lib/shared/ui/Pagination.svelte';
+	import { createPagination } from '#lib/shared/ui/list-pager.svelte.js';
 	import Skeleton from '#lib/shared/ui/Skeleton.svelte';
 	import StatCard from '#lib/shared/ui/StatCard.svelte';
 	import TextField from '#lib/shared/ui/TextField.svelte';
@@ -65,6 +67,9 @@
 	}
 
 	let showDelete = $state(false);
+
+	const vmsPager = createPagination('pool-vms', () => detail?.vms ?? []);
+	const activityPager = createPagination('pool-activity', () => detail?.activity ?? []);
 
 	const SECONDS_PER_MINUTE = 60;
 	const MINUTES_PER_HOUR = 60;
@@ -266,7 +271,7 @@
 							</tr>
 						</thead>
 						<tbody>
-							{#each detail.vms as vm (vm.vmid)}
+							{#each vmsPager.rows as vm (vm.vmid)}
 								<tr class="transition-colors hover:bg-muted/40">
 									<td class="font-mono tabular-nums">{vm.vmid}</td>
 									<td>
@@ -287,6 +292,7 @@
 						</tbody>
 					</table>
 				</div>
+				<Pagination pager={vmsPager} />
 			{/if}
 		</Card>
 
@@ -307,7 +313,7 @@
 							</tr>
 						</thead>
 						<tbody>
-							{#each detail.activity as entry (entry.id)}
+							{#each activityPager.rows as entry (entry.id)}
 								<tr>
 									<td class="whitespace-nowrap font-mono text-xs tabular-nums">{formatDateTime(entry.timestamp, 'short')}</td>
 									<td class="font-mono text-xs">{entry.actor}</td>
@@ -319,6 +325,7 @@
 						</tbody>
 					</table>
 				</div>
+				<Pagination pager={activityPager} />
 			{/if}
 		</Card>
 

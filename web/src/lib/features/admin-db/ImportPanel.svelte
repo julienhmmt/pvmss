@@ -6,8 +6,11 @@
 	import { getDbOpsContext } from './dbOps.svelte';
 	import { m } from '#lib/paraglide/messages.js';
 	import { formatDateTime } from '#lib/shared/format-date.js';
+	import Pagination from '#lib/shared/ui/Pagination.svelte';
+	import { createPagination } from '#lib/shared/ui/list-pager.svelte.js';
 
 	const store = getDbOpsContext();
+	const pager = createPagination('db-import-tables', () => store.preview?.tables ?? []);
 
 	let confirmOpen = $state(false);
 
@@ -77,7 +80,7 @@
 					</tr>
 				</thead>
 				<tbody>
-					{#each store.preview.tables as table (table.name)}
+					{#each pager.rows as table (table.name)}
 						<tr class="border-t border-border">
 							<td class="py-1.5 font-mono">{table.name}</td>
 							<td class="py-1.5">{table.rowCount}</td>
@@ -85,6 +88,7 @@
 					{/each}
 				</tbody>
 			</table>
+			<Pagination pager={pager} />
 
 			{#if store.preview.ignoredTables.length > 0}
 				<p class="text-sm text-muted-foreground">

@@ -13,11 +13,14 @@
 	import { saveAdminCluster } from '#lib/shared/clusters.js';
 	import PageHeader from '#lib/shared/ui/PageHeader.svelte';
 	import TableCard from '#lib/shared/ui/TableCard.svelte';
+	import Pagination from '#lib/shared/ui/Pagination.svelte';
+	import { createPagination } from '#lib/shared/ui/list-pager.svelte.js';
 	import { getToastContext } from '#lib/shared/ui/toast.svelte.js';
 	import { m } from '#lib/paraglide/messages.js';
 
 	const store = setAdminCatalogContext();
 	const toast = getToastContext();
+	const pager = createPagination('templates', () => store.filteredTemplates);
 
 	let editing = $state<AdminTemplate | null>(null);
 
@@ -100,7 +103,7 @@
 			<CatalogToolbar {store} kind="templates" />
 		{/snippet}
 		<TemplatesTable
-			templates={store.filteredTemplates}
+			templates={pager.rows}
 			toggling={store.toggling}
 			onToggle={(vmid, e) => void handleToggle(vmid, e)}
 			onRemove={(vmid) => void handleRemove(vmid)}
@@ -109,6 +112,9 @@
 			sortDir={store.templateSortDir}
 			onSort={(column) => store.setTemplateSort(column)}
 		/>
+		{#snippet footer()}
+			<Pagination {pager} />
+		{/snippet}
 	</TableCard>
 </CatalogListStates>
 
