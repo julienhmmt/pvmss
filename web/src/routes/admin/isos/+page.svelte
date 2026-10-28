@@ -6,12 +6,17 @@
 	import CatalogToolbar from '#lib/features/admin-catalog/CatalogToolbar.svelte';
 	import ClusterSelector from '#lib/shared/ui/ClusterSelector.svelte';
 	import PageHeader from '#lib/shared/ui/PageHeader.svelte';
+	import Pagination from '#lib/shared/ui/Pagination.svelte';
+	import { loadPageSize, paginate } from '#lib/shared/ui/paginate.js';
 	import TableCard from '#lib/shared/ui/TableCard.svelte';
 	import { getToastContext } from '#lib/shared/ui/toast.svelte.js';
 	import { m } from '#lib/paraglide/messages.js';
 
 	const store = setAdminCatalogContext();
 	const toast = getToastContext();
+	let page = $state(1);
+	let size = $state(loadPageSize('isos'));
+	const visible = $derived(paginate(store.filteredIsos, page, size));
 
 	onMount(() => {
 		void store.loadAll();
@@ -75,7 +80,7 @@
 		{/snippet}
 		<CatalogFilesTable
 			kind="iso"
-			files={store.filteredIsos}
+			files={visible}
 			toggling={store.toggling}
 			onToggle={(n, s, f, e) => void handleToggle(n, s, f, e)}
 			onRemove={(n, s, f) => void handleRemove(n, s, f)}
@@ -83,5 +88,8 @@
 			sortDir={store.isoSortDir}
 			onSort={(column) => store.setISOSort(column)}
 		/>
+		{#snippet footer()}
+			<Pagination total={store.filteredIsos.length} bind:page bind:size name="isos" />
+		{/snippet}
 	</TableCard>
 </CatalogListStates>

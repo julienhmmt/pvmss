@@ -8,12 +8,17 @@
 	import ClusterSelector from '#lib/shared/ui/ClusterSelector.svelte';
 	import { saveAdminCluster } from '#lib/shared/clusters.js';
 	import PageHeader from '#lib/shared/ui/PageHeader.svelte';
+	import Pagination from '#lib/shared/ui/Pagination.svelte';
+	import { loadPageSize, paginate } from '#lib/shared/ui/paginate.js';
 	import TableCard from '#lib/shared/ui/TableCard.svelte';
 	import { getToastContext } from '#lib/shared/ui/toast.svelte.js';
 	import { m } from '#lib/paraglide/messages.js';
 
 	const store = setAdminCatalogContext();
 	const toast = getToastContext();
+	let pageNo = $state(1);
+	let size = $state(loadPageSize('storages'));
+	const visible = $derived(paginate(store.filteredStorages, pageNo, size));
 
 	onMount(() => {
 		// Deep links from dashboard alerts carry ?cluster= and ?search= hints;
@@ -85,7 +90,7 @@
 			<CatalogToolbar {store} kind="storages" />
 		{/snippet}
 		<StoragesTable
-			storages={store.filteredStorages}
+			storages={visible}
 			toggling={store.toggling}
 			onToggle={(name, node, e) => void handleToggle(name, node, e)}
 			onRemove={(name, node) => void handleRemove(name, node)}
@@ -93,5 +98,8 @@
 			sortDir={store.storageSortDir}
 			onSort={(column) => store.setStorageSort(column)}
 		/>
+		{#snippet footer()}
+			<Pagination total={store.filteredStorages.length} bind:page={pageNo} bind:size name="storages" />
+		{/snippet}
 	</TableCard>
 </CatalogListStates>
