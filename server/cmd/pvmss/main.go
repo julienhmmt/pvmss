@@ -514,6 +514,7 @@ func buildRouter(deps routerDeps) (http.Handler, error) {
 	adminBaseline := httpapi.NewAdminBaseline(authHandler, clusterRegistry, st, logger)
 	docsHandler := httpapi.NewDocsAPIHandler(authHandler, st, logger)
 	adminDocs := httpapi.NewAdminDocs(authHandler, st, docsHandler, logger)
+	adminDocs.SetTrustedProxyHops(cfg.TrustedProxyHops)
 	profileSSHKeys := httpapi.NewProfileSSHKeys(authHandler, st, logger)
 	adminAccounts := httpapi.NewAdminAccounts(authHandler, st, cfg.MaxLocalAdmins, logger)
 	adminAccounts.SetTrustedProxyHops(cfg.TrustedProxyHops)

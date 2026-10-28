@@ -3,6 +3,8 @@ import { setContext, getContext } from 'svelte';
 import { SvelteSet } from 'svelte/reactivity';
 import { m } from '#lib/paraglide/messages.js';
 
+export type DocSortColumn = 'order' | 'title' | 'id' | 'category' | 'lang';
+
 /** AdminDocPage mirrors the adminDocDTO response from GET /api/v1/admin/docs. */
 export interface AdminDocPage {
 	id: string;
@@ -51,7 +53,7 @@ export class AdminDocsStore {
 	categoryFilter = $state('');
 	langFilter = $state('');
 	audienceFilter: 'all' | 'user' | 'admin' = $state('all');
-	sortBy: 'title' | 'id' | 'category' | 'lang' = $state('title');
+	sortBy: DocSortColumn = $state('order');
 	sortDir: 'asc' | 'desc' = $state('asc');
 
 	filteredPages = $derived(
@@ -74,7 +76,7 @@ export class AdminDocsStore {
 	categoryOptions = $derived([...new SvelteSet(this.pages.map((p) => p.category))].sort());
 	langOptions = $derived([...new SvelteSet(this.pages.map((p) => p.lang))].sort());
 
-	setSort(column: 'title' | 'id' | 'category' | 'lang'): void {
+	setSort(column: DocSortColumn): void {
 		if (this.sortBy === column) {
 			this.sortDir = this.sortDir === 'asc' ? 'desc' : 'asc';
 		} else {
@@ -88,7 +90,7 @@ export class AdminDocsStore {
 		this.categoryFilter = '';
 		this.langFilter = '';
 		this.audienceFilter = 'all';
-		this.sortBy = 'title';
+		this.sortBy = 'order';
 		this.sortDir = 'asc';
 	}
 
@@ -145,6 +147,42 @@ export class AdminDocsStore {
 		}
 	}
 
+	/** orderedIds lists each page id once, in the saved order (sortOrder, then title). */
+	orderedIds(): string[] {
+		return [...new SvelteSet(sortDocs(this.pages, 'order', 'asc').map((p) => p.id))];
+	}
+
+	/** moveTo puts page `id` at the position currently held by `targetId` and saves the full order. */
+	async moveTo(id: string, targetId: string): Promise<void> {
+		const ids = this.orderedIds();
+		const from = ids.indexOf(id);
+		const to = ids.indexOf(targetId);
+		if (from < 0 || to < 0 || from === to) return;
+		const next = ids.filter((x) => x !== id);
+		next.splice(to, 0, id);
+		await this.saveOrder(next);
+	}
+
+	/** moveBy shifts page `id` by `delta` positions (-1 up, +1 down). */
+	async moveBy(id: string, delta: number): Promise<void> {
+		const ids = this.orderedIds();
+		const target = ids[ids.indexOf(id) + delta];
+		if (target !== undefined) await this.moveTo(id, target);
+	}
+
+	private async saveOrder(ids: string[]): Promise<void> {
+		const previous = this.pages;
+		this.saveError = null;
+		this.pages = previous.map((p) => ({ ...p, sortOrder: ids.indexOf(p.id) }));
+		try {
+			await put<{ status: string }>('/api/v1/admin/docs/order', { ids });
+		} catch (err) {
+			this.pages = previous;
+			this.saveError = err instanceof ApiRequestError ? err.message : m['admin.docs.orderError']();
+			throw err;
+		}
+	}
+
 	async toggle(id: string, lang: string, enabled: boolean): Promise<void> {
 		this.saveError = null;
 		try {
@@ -162,12 +200,13 @@ export class AdminDocsStore {
 	}
 }
 
-type DocSortColumn = 'title' | 'id' | 'category' | 'lang';
-
 function sortDocs(pages: AdminDocPage[], sortBy: DocSortColumn, dir: 'asc' | 'desc'): AdminDocPage[] {
 	const sorted = [...pages].sort((a, b) => {
 		let cmp = 0;
 		switch (sortBy) {
+			case 'order':
+				cmp = a.sortOrder - b.sortOrder || a.title.localeCompare(b.title) || a.lang.localeCompare(b.lang);
+				break;
 			case 'title':
 				cmp = a.title.localeCompare(b.title) || a.id.localeCompare(b.id);
 				break;

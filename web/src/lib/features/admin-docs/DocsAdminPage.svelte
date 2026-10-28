@@ -1,5 +1,5 @@
 <script lang="ts">
-	import type { AdminDocPage, DocCreateInput, DocUpdateInput } from './docs.svelte';
+	import type { AdminDocPage, DocCreateInput, DocSortColumn, DocUpdateInput } from './docs.svelte';
 	import DocsFormDialog from './DocsFormDialog.svelte';
 	import Alert from '#lib/shared/ui/Alert.svelte';
 	import PageHeader from '#lib/shared/ui/PageHeader.svelte';
@@ -14,8 +14,6 @@
 	import TableHeader from '#lib/shared/ui/TableHeader.svelte';
 	import TextField from '#lib/shared/ui/TextField.svelte';
 	import { m } from '#lib/paraglide/messages.js';
-
-	type DocSortColumn = 'title' | 'id' | 'category' | 'lang';
 
 	interface Props {
 		pages: AdminDocPage[];
@@ -42,6 +40,8 @@
 		onUpdate: (id: string, lang: string, input: DocUpdateInput) => Promise<AdminDocPage | null>;
 		onDelete: (id: string, lang: string) => void;
 		onToggle: (id: string, lang: string, enabled: boolean) => void;
+		onMove: (id: string, delta: number) => void;
+		onMoveTo: (id: string, targetId: string) => void;
 	}
 
 	let {
@@ -68,7 +68,9 @@
 		onCreate,
 		onUpdate,
 		onDelete,
-		onToggle
+		onToggle,
+		onMove,
+		onMoveTo
 	}: Props = $props();
 
 	let showForm = $state(false);
@@ -173,8 +175,24 @@
 	let pendingDelete = $state<AdminDocPage | null>(null);
 
 	const filtersActive = $derived(
-		search !== '' || categoryFilter !== '' || langFilter !== '' || audienceFilter !== 'all' || sortBy !== 'title' || sortDir !== 'asc'
+		search !== '' || categoryFilter !== '' || langFilter !== '' || audienceFilter !== 'all' || sortBy !== 'order' || sortDir !== 'asc'
 	);
+	const canReorder = $derived(!filtersActive);
+
+	let dragId = $state<string | null>(null);
+	let dragOverId = $state<string | null>(null);
+
+	function endDrag(): void {
+		dragId = null;
+		dragOverId = null;
+	}
+
+	function handleDrop(event: DragEvent, targetId: string): void {
+		event.preventDefault();
+		const id = dragId;
+		endDrag();
+		if (id && id !== targetId) onMoveTo(id, targetId);
+	}
 
 	function confirmDelete(): void {
 		if (pendingDelete === null || pendingDelete.isSystem) return;
@@ -195,7 +213,7 @@
 
 {#if loading}
 	<div role="status" aria-live="polite" class="sr-only">{m['docs.loading']()}</div>
-	<TableSkeleton columns={6} />
+	<TableSkeleton columns={7} />
 {:else if error}
 	<Alert>{error}</Alert>
 {:else}
@@ -252,6 +270,7 @@
 				<caption class="sr-only">{m['docs.title']()}</caption>
 				<thead>
 					<tr>
+						<th class="w-24 font-medium"><span class="sr-only">{m['admin.docs.reorder']()}</span></th>
 						<TableHeader text={m['docs.titleField']()} tooltip={m['admin.docs.searchPlaceholder']()} column="title" activeColumn={sortBy} {sortDir} {onSort} />
 						<TableHeader text={m['docs.category']()} tooltip={m['admin.docs.filterCategory']()} column="category" activeColumn={sortBy} {sortDir} {onSort} />
 						<th class="font-medium">{m['docs.audience']()}</th>
@@ -262,7 +281,30 @@
 				</thead>
 				<tbody>
 					{#each filteredPages as page (`${page.id}-${page.lang}`)}
-						<tr class="group transition-colors hover:bg-muted/40">
+						<tr
+							class="group transition-colors hover:bg-muted/40 {dragOverId === page.id && dragId !== page.id ? 'bg-muted/60' : ''} {dragId === page.id ? 'opacity-50' : ''}"
+							ondragover={canReorder && dragId ? (e) => { e.preventDefault(); dragOverId = page.id; } : undefined}
+							ondrop={canReorder && dragId ? (e) => handleDrop(e, page.id) : undefined}
+						>
+							<td data-label={m['admin.docs.reorder']()}>
+								<div class="flex items-center gap-1">
+									<span
+										class="cursor-grab select-none px-1 text-muted-foreground {canReorder ? '' : 'pointer-events-none opacity-40'}"
+										role="img"
+										aria-label={m['admin.docs.dragHandle']({ title: page.title })}
+										title={canReorder ? m['admin.docs.dragHandle']({ title: page.title }) : m['admin.docs.reorderHint']()}
+										draggable={canReorder}
+										ondragstart={(e) => {
+											dragId = page.id;
+											if (e.dataTransfer) e.dataTransfer.effectAllowed = 'move';
+										}}
+										ondragend={endDrag}
+										data-testid="doc-drag-handle"
+									>&#x2807;</span>
+									<Button variant="ghost" size="icon-sm" disabled={!canReorder} label={m['admin.docs.moveUp']({ title: page.title })} onclick={() => onMove(page.id, -1)}>&uarr;</Button>
+									<Button variant="ghost" size="icon-sm" disabled={!canReorder} label={m['admin.docs.moveDown']({ title: page.title })} onclick={() => onMove(page.id, 1)}>&darr;</Button>
+								</div>
+							</td>
 							<td data-label={m['docs.titleField']()}>
 								<div class="flex flex-col">
 									<span>{page.title}</span>
@@ -307,13 +349,16 @@
 							</td>
 						</tr>
 					{:else}
-						<tr><td colspan={6} class="p-0">
+						<tr><td colspan={7} class="p-0">
 							<EmptyState title={m['admin.docs.noFilterMatches']()} />
 						</td></tr>
 					{/each}
 				</tbody>
 			</table>
 		</TableCard>
+		{#if !canReorder}
+			<p class="mt-2 text-xs text-muted-foreground">{m['admin.docs.reorderHint']()}</p>
+		{/if}
 		{#if pages.some((page) => page.isSystem)}
 			<p class="mt-2 text-xs text-muted-foreground">{m['docs.systemProtected']()}</p>
 		{/if}

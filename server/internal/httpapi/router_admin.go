@@ -171,6 +171,7 @@ func registerAdminClusterRoutes(mux *http.ServeMux, adminProtect adminRouteProte
 func registerAdminDocsRoutes(mux *http.ServeMux, adminProtect adminRouteProtect, h *AdminDocs) {
 	mux.Handle("GET /api/v1/admin/docs", adminProtect(http.MethodGet, http.HandlerFunc(h.ServeDocsList)))
 	mux.Handle("POST /api/v1/admin/docs", adminProtect(http.MethodPost, http.HandlerFunc(h.ServeDocCreate)))
+	mux.Handle("PUT /api/v1/admin/docs/order", adminProtect(http.MethodPut, http.HandlerFunc(h.ServeDocOrder)))
 	mux.Handle("PUT /api/v1/admin/docs/{id}/{lang}", adminProtect(http.MethodPut, http.HandlerFunc(h.ServeDocUpdate)))
 	mux.Handle("DELETE /api/v1/admin/docs/{id}/{lang}", adminProtect(http.MethodDelete, http.HandlerFunc(h.ServeDocDelete)))
 	mux.Handle("POST /api/v1/admin/docs/{id}/{lang}/toggle", adminProtect(http.MethodPost, http.HandlerFunc(h.ServeDocToggle)))

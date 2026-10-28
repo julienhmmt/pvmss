@@ -237,4 +237,29 @@ describe('AdminDocsStore', () => {
 			expect(store.filteredPages.length).toBe(3);
 		});
 	});
+
+	it('moveBy saves the full id order and updates sortOrder', async () => {
+		const fetchMock = vi.fn().mockResolvedValueOnce(jsonResponse(200, { status: 'ok' }));
+		vi.stubGlobal('fetch', fetchMock);
+		const store = new AdminDocsStore();
+		store.pages = ['a', 'b', 'c'].map((id, i) => ({ ...samplePage, id, title: id, sortOrder: i }));
+
+		await store.moveBy('c', -1);
+
+		expect(store.orderedIds()).toEqual(['a', 'c', 'b']);
+		const [url, init] = fetchMock.mock.calls[0] as [string, RequestInit];
+		expect(url).toBe('/api/v1/admin/docs/order');
+		expect(JSON.parse(init.body as string)).toEqual({ ids: ['a', 'c', 'b'] });
+	});
+
+	it('moveTo rolls back when the save fails', async () => {
+		vi.stubGlobal('fetch', vi.fn().mockResolvedValueOnce(jsonResponse(500, { code: 'internal_error', message: 'boom' })));
+		const store = new AdminDocsStore();
+		store.pages = ['a', 'b'].map((id, i) => ({ ...samplePage, id, title: id, sortOrder: i }));
+
+		await expect(store.moveTo('a', 'b')).rejects.toBeInstanceOf(ApiRequestError);
+
+		expect(store.orderedIds()).toEqual(['a', 'b']);
+		expect(store.saveError).not.toBeNull();
+	});
 });

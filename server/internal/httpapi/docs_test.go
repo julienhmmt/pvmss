@@ -26,6 +26,7 @@ func docsMux(docs *httpapi.DocsAPIHandler, admin *httpapi.AdminDocs, auth *httpa
 	guard := auth.RequireAdmin
 	mux.Handle("GET /api/v1/admin/docs", guard(http.HandlerFunc(admin.ServeDocsList)))
 	mux.Handle("POST /api/v1/admin/docs", guard(http.HandlerFunc(admin.ServeDocCreate)))
+	mux.Handle("PUT /api/v1/admin/docs/order", guard(http.HandlerFunc(admin.ServeDocOrder)))
 	mux.Handle("PUT /api/v1/admin/docs/{id}/{lang}", guard(http.HandlerFunc(admin.ServeDocUpdate)))
 	mux.Handle("DELETE /api/v1/admin/docs/{id}/{lang}", guard(http.HandlerFunc(admin.ServeDocDelete)))
 	mux.Handle("POST /api/v1/admin/docs/{id}/{lang}/toggle", guard(http.HandlerFunc(admin.ServeDocToggle)))
@@ -303,6 +304,7 @@ func TestAdminDocs_NonAdmin_Returns403(t *testing.T) {
 		{"docs-create", docsRequest(http.MethodPost, "/api/v1/admin/docs", alice, `{"title":"x","lang":"en","bodyMd":"# x","audience":"user"}`)},
 		{"docs-update", docsRequest(http.MethodPut, "/api/v1/admin/docs/x/en", alice, `{"title":"x","lang":"en","bodyMd":"# x","audience":"user","enabled":true,"sortOrder":0}`)},
 		{"docs-delete", docsRequest(http.MethodDelete, "/api/v1/admin/docs/x/en", alice, "")},
+		{"docs-order", docsRequest(http.MethodPut, "/api/v1/admin/docs/order", alice, `{"ids":["x"]}`)},
 		{"docs-toggle", docsRequest(http.MethodPost, "/api/v1/admin/docs/x/en/toggle", alice, `{"enabled":false}`)},
 	}
 
@@ -727,5 +729,69 @@ func TestAdminDocs_CreateDuplicate(t *testing.T) {
 	rec := docsServe(t, docs, admin, auth, docsRequest(http.MethodPost, "/api/v1/admin/docs", cookie, `{"title":"Dup me","lang":"en","bodyMd":"# x","audience":"user"}`))
 	if rec.Code != http.StatusConflict {
 		t.Fatalf("duplicate create status = %d, want 409: %s", rec.Code, rec.Body.String())
+	}
+}
+
+// TestAdminDocs_Reorder - the saved order drives the public list, and a bad id
+// list is rejected without changing anything.
+//
+//nolint:paralleltest // serial: shared database fixture
+func TestAdminDocs_Reorder(t *testing.T) {
+	docs, admin, auth := newDocsHandlers(t)
+	cookie := adminCookie(t, auth)
+	for _, title := range []string{"Alpha", "Bravo", "Charlie"} {
+		createDocViaAdmin(t, docs, admin, auth, cookie, fmt.Sprintf(`{"title":%q,"lang":"en","category":"x","bodyMd":"# x","audience":"user"}`, title))
+	}
+
+	list := docsServe(t, docs, admin, auth, docsRequest(http.MethodGet, "/api/v1/admin/docs", cookie, ""))
+	var pages []adminDocDTO
+	if err := json.Unmarshal(list.Body.Bytes(), &pages); err != nil {
+		t.Fatalf("decode: %v", err)
+	}
+	var ids []string
+	seen := map[string]bool{}
+	for _, p := range pages {
+		if !seen[p.ID] {
+			seen[p.ID] = true
+			ids = append(ids, p.ID)
+		}
+	}
+	if len(ids) < 2 {
+		t.Fatalf("need >= 2 pages, got %d", len(ids))
+	}
+
+	bad, _ := json.Marshal(map[string]any{"ids": ids[1:]})
+	rec := docsServe(t, docs, admin, auth, docsRequest(http.MethodPut, "/api/v1/admin/docs/order", cookie, string(bad)))
+	if rec.Code != http.StatusBadRequest {
+		t.Fatalf("partial order status = %d, want 400", rec.Code)
+	}
+
+	rev := make([]string, len(ids))
+	for i, id := range ids {
+		rev[len(ids)-1-i] = id
+	}
+	body, _ := json.Marshal(map[string]any{"ids": rev})
+	rec = docsServe(t, docs, admin, auth, docsRequest(http.MethodPut, "/api/v1/admin/docs/order", cookie, string(body)))
+	if rec.Code != http.StatusOK {
+		t.Fatalf("reorder status = %d: %s", rec.Code, rec.Body.String())
+	}
+
+	pub := docsServe(t, docs, admin, auth, docsRequest(http.MethodGet, "/api/v1/docs", cookie, ""))
+	var got []docSummaryDTO
+	if err := json.Unmarshal(pub.Body.Bytes(), &got); err != nil {
+		t.Fatalf("decode public: %v", err)
+	}
+	pos := map[string]int{}
+	for i, g := range got {
+		if _, ok := pos[g.ID]; !ok {
+			pos[g.ID] = i
+		}
+	}
+	for i := 1; i < len(rev); i++ {
+		a, aok := pos[rev[i-1]]
+		b, bok := pos[rev[i]]
+		if aok && bok && a > b {
+			t.Fatalf("public list not in saved order: %s after %s", rev[i-1], rev[i])
+		}
 	}
 }

@@ -264,3 +264,43 @@ func TestDocumentationPages_UpdateSystemMutatesFields(t *testing.T) {
 		t.Fatalf("plain row title = %q, want Plain (system update must not touch it)", unchanged.Title)
 	}
 }
+
+//nolint:paralleltest // owns a SQLite fixture
+func TestReorderDocumentationPages(t *testing.T) {
+	ctx := context.Background()
+	st := openDocsStore(t)
+	for _, id := range []string{"a", "b", "c"} {
+		for _, lang := range []string{"en", "fr"} {
+			row := store.DocumentationPageRow{ID: id, Lang: lang, Title: id, Category: "x", BodyMD: "# x", Audience: testDocAudienceUser, Enabled: true, CreatedAt: docTestStamp, UpdatedAt: docTestStamp}
+			if err := st.InsertDocumentationPage(ctx, row); err != nil {
+				t.Fatalf("insert: %v", err)
+			}
+		}
+	}
+
+	all, _ := st.DocumentationPagesAll(ctx)
+	var base []string
+	for _, p := range all {
+		base = append(base, p.ID)
+	}
+
+	for _, bad := range [][]string{{"c", "b"}, {"c", "b", "b"}, {"c", "b", "zz"}} {
+		if err := st.ReorderDocumentationPages(ctx, bad, docTestStamp); !errors.Is(err, store.ErrDocumentationOrderMismatch) {
+			t.Fatalf("ids %v: err = %v, want mismatch", bad, err)
+		}
+	}
+	after, _ := st.DocumentationPagesAll(ctx)
+	for i := range after {
+		if after[i].ID != base[i] {
+			t.Fatal("rejected reorder changed the order")
+		}
+	}
+
+	if err := st.ReorderDocumentationPages(ctx, []string{"c", "a", "b"}, docTestStamp); err != nil {
+		t.Fatalf("reorder: %v", err)
+	}
+	got, _ := st.DocumentationPagesEnabled(ctx)
+	if len(got) < 6 || got[0].ID != "c" || got[1].ID != "c" || got[2].ID != "a" || got[4].ID != "b" {
+		t.Fatalf("unexpected order after reorder: %+v", got)
+	}
+}
