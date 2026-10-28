@@ -902,3 +902,66 @@ func TestAdminListTemplates_UnreadableDoesNotClobberStoredRow(t *testing.T) {
 
 	t.Fatal("stored row 9100 vanished")
 }
+
+// TestAdminListStorages_SharedOnceAndFansOut verifies a shared storage is one
+// row, and approving it writes a row on every node reporting it.
+func TestAdminListStorages_SharedOnceAndFansOut(t *testing.T) {
+	st := openAdminStore(t)
+	ctx := context.Background()
+
+	list, err := catalog.AdminListStorages(ctx, st, cluster.Fake{}, "default")
+	if err != nil {
+		t.Fatalf("AdminListStorages: %v", err)
+	}
+
+	var shared []catalog.StorageApproval
+	for _, s := range list {
+		if s.Name == "ceph-data" {
+			shared = append(shared, s)
+		}
+	}
+
+	if len(shared) != 1 || !shared[0].Shared || shared[0].Node != "" || !shared[0].Enabled {
+		t.Fatalf("ceph-data rows = %+v, want one shared enabled row with empty node", shared)
+	}
+
+	if err := catalog.SetStorageEnabled(ctx, st, cluster.Fake{}, "default", "ceph-data", "", false); err != nil {
+		t.Fatalf("SetStorageEnabled disable: %v", err)
+	}
+
+	if err := catalog.SetStorageEnabled(ctx, st, cluster.Fake{}, "default", "ceph-data", "", true); err != nil {
+		t.Fatalf("SetStorageEnabled shared: %v", err)
+	}
+
+	rows, err := st.CatalogStoragesEnabled(ctx, "default")
+	if err != nil {
+		t.Fatalf("CatalogStoragesEnabled: %v", err)
+	}
+
+	enabledNodes := 0
+	for _, r := range rows {
+		if r.Name == "ceph-data" && r.Enabled {
+			enabledNodes++
+		}
+	}
+
+	if enabledNodes != shared[0].NodeCount || enabledNodes == 0 {
+		t.Fatalf("enabled rows = %d, want NodeCount %d", enabledNodes, shared[0].NodeCount)
+	}
+
+	// A partial legacy approval (one node disabled) still reads as enabled.
+	if err := st.SetStorageEnabled(ctx, "default", "ceph-data", "pve-node-01", false); err != nil {
+		t.Fatalf("SetStorageEnabled store: %v", err)
+	}
+
+	after, err := catalog.AdminListStorages(ctx, st, cluster.Fake{}, "default")
+	if err != nil {
+		t.Fatalf("AdminListStorages after: %v", err)
+	}
+
+	for _, s := range after {
+		if s.Name == "ceph-data" && !s.Enabled {
+			t.Fatal("ceph-data should stay enabled while any node row is enabled")
+		}
+	}
+}

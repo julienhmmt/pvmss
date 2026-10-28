@@ -1436,6 +1436,8 @@
   "admin.storages.emptyAction": "Cluster-Verbindung prüfen",
   "admin.storages.noMatchTitle": "Keine passenden Speicher",
   "admin.storages.noMatchDescription": "Ändern Sie die Suche oder die Filter.",
+  "admin.storages.sharedBadge": "geteilt - {count} Knoten",
+  "admin.storages.allNodes": "Alle Knoten",
   "admin.storages.enabledSuccess": "{name} auf {node} aktiviert",
   "admin.storages.disabledSuccess": "{name} auf {node} deaktiviert",
   "admin.storages.usageLabel": "{used} / {total} ({percent} %)",

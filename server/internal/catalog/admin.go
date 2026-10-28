@@ -36,6 +36,10 @@ type StorageApproval struct {
 	Used    int64
 	Enabled bool
 	Missing bool
+	// Shared marks a datastore every node sees: one row per cluster with Node
+	// empty and NodeCount nodes. Approval fans out to all those nodes.
+	Shared    bool
+	NodeCount int
 }
 
 // BridgeApproval is one discovered bridge with its admin approval state.
@@ -152,8 +156,11 @@ func AdminListNodes(ctx context.Context, st *store.Store, client cluster.Client,
 }
 
 // AdminListStorages returns every VM-capable storage the cluster reports,
-// unioned with its stored approval state per (name, node) pair. Orphan
-// approvals (storage gone from Proxmox) are handled as in AdminListNodes.
+// unioned with its stored approval state. Local storages get one row per
+// (name, node); a shared storage gets ONE row (Node empty, Shared true) that
+// is enabled when any of its per-node rows is. A shared storage approved on
+// some nodes is extended to the nodes that have no approval row yet (nodes
+// added later). Orphan approvals are handled as in AdminListNodes.
 func AdminListStorages(ctx context.Context, st *store.Store, client cluster.Client, clusterName string) ([]StorageApproval, error) {
 	snap, err := client.Snapshot(ctx)
 	if err != nil {
@@ -166,26 +173,38 @@ func AdminListStorages(ctx context.Context, st *store.Store, client cluster.Clie
 	}
 
 	enabledByKey := make(map[nameNodeKey]bool, len(enabledRows))
-	discoveredByKey := make(map[nameNodeKey]bool, len(snap.Storages))
-
+	sharedEnabled := make(map[string]bool)
 	for _, s := range enabledRows {
 		enabledByKey[nameNodeKey{Name: s.Name, Node: s.Node}] = s.Enabled
+		sharedEnabled[s.Name] = sharedEnabled[s.Name] || s.Enabled
 	}
+
+	discoveredByKey := make(map[nameNodeKey]bool, len(snap.Storages))
+	sharedRows := make(map[string]*StorageApproval)
+	sharedNodes := make(map[string][]string)
+	out := make([]StorageApproval, 0, len(snap.Storages)+len(enabledRows))
 
 	for _, storage := range snap.Storages {
 		if !cluster.IsVMCapableStorage(storage) {
+			continue
+		}
+
+		if cluster.IsSharedStorage(storage) {
+			sharedNodes[storage.Name] = append(sharedNodes[storage.Name], storage.Node)
+			if sharedRows[storage.Name] == nil {
+				out = append(out, StorageApproval{
+					Name: storage.Name, Type: storage.Type, Total: storage.Total, Used: storage.Used,
+					Enabled: sharedEnabled[storage.Name], Shared: true,
+				})
+				sharedRows[storage.Name] = &out[len(out)-1]
+			}
+
+			sharedRows[storage.Name].NodeCount++
+
 			continue
 		}
 
 		discoveredByKey[nameNodeKey{Name: storage.Name, Node: storage.Node}] = true
-	}
-
-	out := make([]StorageApproval, 0, len(snap.Storages)+len(enabledRows))
-	for _, storage := range snap.Storages {
-		if !cluster.IsVMCapableStorage(storage) {
-			continue
-		}
-
 		out = append(out, StorageApproval{
 			Name:    storage.Name,
 			Node:    storage.Node,
@@ -196,8 +215,33 @@ func AdminListStorages(ctx context.Context, st *store.Store, client cluster.Clie
 		})
 	}
 
+	// Shared rows stay out of the orphan sweep: a stale row for a removed node
+	// is harmless (the node is gone), and the storage itself is one row.
+	var sweepRows []store.CatalogStorageEnabled
+	for _, row := range enabledRows {
+		if _, shared := sharedRows[row.Name]; !shared {
+			sweepRows = append(sweepRows, row)
+		}
+	}
+
+	for name, nodes := range sharedNodes {
+		if !sharedEnabled[name] {
+			continue
+		}
+
+		for _, node := range nodes {
+			if enabledByKey[nameNodeKey{Name: name, Node: node}] {
+				continue
+			}
+
+			if err := st.SetStorageEnabled(ctx, clusterName, name, node, true); err != nil {
+				return nil, err
+			}
+		}
+	}
+
 	if err := sweepOrphans(ctx, st, clusterName, orphanSweep[nameNodeKey, StorageApproval]{
-		rows:       toOrphanRows(enabledRows, storageOrphanRow),
+		rows:       toOrphanRows(sweepRows, storageOrphanRow),
 		discovered: discoveredByKey,
 		remove:     removeStorageOrphan,
 		missing:    missingStorageApproval,

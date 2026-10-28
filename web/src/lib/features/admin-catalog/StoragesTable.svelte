@@ -59,7 +59,7 @@
 		</tr>
 	</thead>
 	<tbody>
-		{#each storages as storage (storage.name + storage.node)}
+		{#each storages as storage (storage.name + '@' + storage.node)}
 			<tr
 				class="group transition-colors {storage.noStorage ? 'bg-muted/20 text-muted-foreground' : storage.missing ? 'opacity-60' : 'hover:bg-muted/40'}"
 				data-testid="storage-row"
@@ -71,6 +71,15 @@
 						<span class="text-muted-foreground italic">{m['admin.storages.noAvailableStorage']()}</span>
 					{:else}
 						<span class="font-mono font-medium">{storage.name}</span>
+						{#if storage.shared}
+							<Pill
+								tone="info"
+								dot={false}
+								label={m['admin.storages.sharedBadge']({ count: storage.nodeCount ?? 0 })}
+								class="ml-2"
+								data-testid="storage-shared-badge"
+							/>
+						{/if}
 						{#if storage.missing}
 							<Pill
 								tone="error"
@@ -82,7 +91,7 @@
 						{/if}
 					{/if}
 				</td>
-				<td class="font-mono" data-label={m['common.node']()}>{storage.node}</td>
+				<td class="font-mono" data-label={m['common.node']()}>{storage.shared ? m['admin.storages.allNodes']() : storage.node}</td>
 				<td data-label={m['common.type']()}>
 					{#if !storage.noStorage}
 						{storage.type}
@@ -104,7 +113,7 @@
 					{#if !storage.noStorage}
 						<ApprovalCell
 							enabled={storage.enabled}
-							name={`${storage.name} (${storage.node})`}
+							name={storage.shared ? storage.name : `${storage.name} (${storage.node})`}
 							pending={toggling === `storage:${storage.name}@${storage.node}`}
 							missing={storage.missing}
 							onToggle={() => onToggle(storage.name, storage.node, !storage.enabled)}

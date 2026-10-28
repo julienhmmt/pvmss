@@ -36,6 +36,7 @@
 	async function handleToggle(name: string, node: string, enabled: boolean): Promise<void> {
 		try {
 			await store.toggleStorage(name, node, enabled);
+			node = node || m['admin.storages.allNodes']();
 			toast.success(
 				enabled ? m['admin.storages.enabledSuccess']({ name, node }) : m['admin.storages.disabledSuccess']({ name, node })
 			);

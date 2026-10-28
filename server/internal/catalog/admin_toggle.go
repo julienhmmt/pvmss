@@ -26,19 +26,40 @@ func SetNodeEnabled(ctx context.Context, st *store.Store, client cluster.Client,
 	return st.SetNodeEnabled(ctx, clusterName, name, enabled)
 }
 
-// SetStorageEnabled upserts the enabled state for one (name, node) pair.
-// See SetNodeEnabled for the discovery-error contract.
+// SetStorageEnabled upserts the enabled state for a storage. A local storage
+// is addressed by (name, node). A shared storage is one cluster-wide approval:
+// node is ignored and every node that reports it is written. See
+// SetNodeEnabled for the discovery-error contract.
 func SetStorageEnabled(ctx context.Context, st *store.Store, client cluster.Client, clusterName, name, node string, enabled bool) error {
-	discovered, err := storageDiscovered(ctx, client, name, node)
+	snap, err := client.Snapshot(ctx)
 	if err != nil {
 		return err
 	}
 
-	if !discovered {
+	var targets []string
+	for _, s := range snap.Storages {
+		if s.Name != name || !cluster.IsVMCapableStorage(s) {
+			continue
+		}
+
+		if cluster.IsSharedStorage(s) {
+			targets = append(targets, s.Node)
+		} else if s.Node == node {
+			targets = append(targets, s.Node)
+		}
+	}
+
+	if len(targets) == 0 {
 		return cluster.ErrNotFound
 	}
 
-	return st.SetStorageEnabled(ctx, clusterName, name, node, enabled)
+	for _, n := range targets {
+		if err := st.SetStorageEnabled(ctx, clusterName, name, n, enabled); err != nil {
+			return err
+		}
+	}
+
+	return nil
 }
 
 // SetBridgeEnabled upserts the enabled state for one (node, name) pair.

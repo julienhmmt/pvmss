@@ -32,6 +32,9 @@ export interface AdminStorage {
 	totalBytes: number;
 	usedBytes: number;
 	enabled: boolean;
+	/** One row per cluster for a datastore every node sees; node is empty. */
+	shared?: boolean;
+	nodeCount?: number;
 	/** True for a synthetic row representing a node that has no storage. */
 	noStorage?: boolean;
 	/** True for a stored approval whose storage Proxmox no longer reports. */
@@ -247,7 +250,7 @@ export class AdminCatalogStore {
 					storage.type.toLowerCase().includes(search);
 				if (!match) return false;
 			}
-			if (this.storageNodeFilter && storage.node !== this.storageNodeFilter) return false;
+			if (this.storageNodeFilter && !storage.shared && storage.node !== this.storageNodeFilter) return false;
 			if (this.storageTypeFilter && storage.type !== this.storageTypeFilter) return false;
 			if (this.storageEnabledFilter === 'enabled' && !storage.enabled) return false;
 			if (this.storageEnabledFilter === 'disabled' && storage.enabled) return false;
@@ -257,6 +260,8 @@ export class AdminCatalogStore {
 
 	filteredStorages = $derived.by(() => {
 		const search = this.storageSearch.toLowerCase();
+		// A shared storage is available on every node, so no node lacks storage.
+		const hasShared = this.storages.some((s) => s.shared);
 		const storageNodes = new SvelteSet(this.storages.map((s) => s.node));
 		let selectedNodeNames: string[];
 		if (this.storageNodeFilter) {
@@ -268,7 +273,7 @@ export class AdminCatalogStore {
 		}
 
 		const placeholders: AdminStorage[] = selectedNodeNames
-			.filter((node) => !storageNodes.has(node))
+			.filter((node) => !hasShared && !storageNodes.has(node))
 			.map((node) => ({
 				name: '',
 				node,

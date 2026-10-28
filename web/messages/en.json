@@ -1436,6 +1436,8 @@
   "admin.storages.emptyAction": "Check cluster connection",
   "admin.storages.noMatchTitle": "No storages match",
   "admin.storages.noMatchDescription": "Try changing the search or filters.",
+  "admin.storages.sharedBadge": "shared - {count} nodes",
+  "admin.storages.allNodes": "All nodes",
   "admin.storages.enabledSuccess": "{name} on {node} enabled",
   "admin.storages.disabledSuccess": "{name} on {node} disabled",
   "admin.storages.usageLabel": "{used} / {total} ({percent}%)",

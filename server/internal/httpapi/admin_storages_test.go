@@ -51,8 +51,8 @@ func TestAdminStorages_ListShowsAllWithCorrectEnabled(t *testing.T) {
 		t.Error("local@pve-node-02 should be enabled")
 	}
 
-	if !enabledByKey["ceph-data@pve-node-02"] {
-		t.Error("ceph-data@pve-node-02 should be enabled")
+	if !enabledByKey["ceph-data@"] {
+		t.Error("shared ceph-data should be one enabled row")
 	}
 
 	if enabledByKey["local@pve-node-01"] {
