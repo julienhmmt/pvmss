@@ -1,12 +1,11 @@
 <script lang="ts">
 	/**
-	 * ClusterSelector - the cluster-picker label+select pair shown in most
-	 * page headers. Was the last hand-rolled `<select>` in the app (its own
-	 * `rounded-md border border-input px-3 py-1.5`, matching neither the
-	 * radius nor the height of every other control); it now wraps the shared
-	 * Select primitive. The external API is unchanged on purpose - every call
-	 * site keeps passing options/value/onChange/id/label/includeAll/disabled
-	 * exactly as before.
+	 * ClusterSelector - the cluster picker shown in page headers. A small
+	 * uppercase "Cluster" label sits beside a bordered select (chevron, cluster
+	 * name) built on the shared Select primitive with its `strong` surface, so
+	 * it reads as a control on the page background and matches the search
+	 * field's border and fill. The external API is unchanged: every call site
+	 * keeps passing options/value/onChange/id/label/includeAll/disabled.
 	 *
 	 * `includeAll` prepends a real, selectable "All clusters" option (value
 	 * `''`) to the list - the same technique the VM list's own node filter
@@ -40,8 +39,8 @@
 </script>
 
 {#if options.length > 1}
-	<label for={id} class="flex items-center gap-2 text-sm font-medium">
-		{label}
-		<Select {id} {value} options={selectOptions} onchange={handleChange} {disabled} class="w-auto" />
-	</label>
+	<div class="flex items-center gap-2">
+		<label for={id} class="text-xs font-semibold tracking-[0.08em] text-muted-foreground-subtle uppercase">{label}</label>
+		<Select {id} {value} options={selectOptions} onchange={handleChange} {disabled} strong class="w-auto min-w-[11rem]" />
+	</div>
 {/if}
