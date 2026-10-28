@@ -9,7 +9,7 @@ French version: [README.fr.md](README.fr.md)
 <!-- markdownlint-disable MD033 -->
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="docs/PVMSS-0.4-index-dark.webp">
-  <img src="docs/PVMSS-0.4-index.webp" alt="PVMSS landing page in French, showing the VM overview and main features" width="600" loading="lazy">
+  <img src="docs/PVMSS-0.4-index-overview.webp" alt="PVMSS landing page in French, showing the VM overview and main features" width="600" loading="lazy">
 </picture>
 <!-- markdownlint-enable MD033 -->
 
