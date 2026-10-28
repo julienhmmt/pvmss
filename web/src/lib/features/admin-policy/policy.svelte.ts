@@ -16,6 +16,8 @@ export interface Gabarit {
 	maxNetworkCards: number;
 	maxSnapshots: number;
 	isolationVlanTag: number;
+	vmidMin: number;
+	vmidMax: number;
 }
 
 export interface Quota {
@@ -36,6 +38,8 @@ export interface GabaritPatch {
 	maxNetworkCards?: number;
 	maxSnapshots?: number;
 	isolationVlanTag?: number;
+	vmidMin?: number;
+	vmidMax?: number;
 }
 
 export interface AdminPolicyPatch {

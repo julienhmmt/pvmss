@@ -16,6 +16,8 @@ function buildPolicy(overrides: Partial<AdminPolicy['gabarit']> = {}): AdminPoli
 			maxNetworkCards: 4,
 			maxSnapshots: 5,
 			isolationVlanTag: 0,
+			vmidMin: 0,
+			vmidMax: 0,
 			...overrides
 		},
 		quota: { maxVmPerUser: -1 }
@@ -149,7 +151,7 @@ describe('PolicyForm autosave', () => {
 		await tick();
 		expect(onSave).toHaveBeenCalledTimes(1);
 		expect(onSave).toHaveBeenCalledWith({
-			gabarit: { maxSockets: 4, maxCores: 8, maxMemoryMB: 16384, maxDiskPerVmGb: 500, maxNetworkCards: 4, maxSnapshots: 5, isolationVlanTag: 0 },
+			gabarit: { maxSockets: 4, maxCores: 8, maxMemoryMB: 16384, maxDiskPerVmGb: 500, maxNetworkCards: 4, maxSnapshots: 5, isolationVlanTag: 0, vmidMin: 0, vmidMax: 0 },
 			quota: { maxVmPerUser: -1 }
 		});
 	});

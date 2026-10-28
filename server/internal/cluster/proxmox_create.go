@@ -352,3 +352,24 @@ func proxmoxTaskLog(ctx context.Context, rest proxmoxRESTClient, node, upid stri
 
 	return lines, nil
 }
+
+// UsedVMIDs lists every qemu and lxc id the cluster reports, whoever created
+// it (GET /cluster/resources?type=vm).
+func (p Proxmox) UsedVMIDs(ctx context.Context) ([]int, error) {
+	raw, err := p.rest().do(ctx, http.MethodGet, proxmoxClusterResourcesPath, url.Values{proxmoxResourceTypeParam: {"vm"}})
+	if err != nil {
+		return nil, err
+	}
+
+	var rows []proxmoxResourceRow
+	if err := decodeData(raw, &rows); err != nil {
+		return nil, fmt.Errorf("decode used vmids: %w", err)
+	}
+
+	ids := make([]int, 0, len(rows))
+	for _, row := range rows {
+		ids = append(ids, row.VMID)
+	}
+
+	return ids, nil
+}

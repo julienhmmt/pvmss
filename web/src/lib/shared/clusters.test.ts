@@ -60,7 +60,9 @@ describe('Admin active cluster persistence (Ticket 12)', () => {
 							maxDiskPerVmGb: 100,
 							maxNetworkCards: 4,
 							maxSnapshots: 5,
-							isolationVlanTag: 0
+							isolationVlanTag: 0,
+							vmidMin: 0,
+							vmidMax: 0
 						},
 						quota: { maxVmPerUser: 5 }
 					})

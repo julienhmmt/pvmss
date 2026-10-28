@@ -39,7 +39,9 @@
 			form.gabarit.maxDiskPerVmGb !== original.gabarit.maxDiskPerVmGb ||
 			form.gabarit.maxNetworkCards !== original.gabarit.maxNetworkCards ||
 			form.gabarit.maxSnapshots !== original.gabarit.maxSnapshots ||
-			form.gabarit.isolationVlanTag !== original.gabarit.isolationVlanTag
+			form.gabarit.isolationVlanTag !== original.gabarit.isolationVlanTag ||
+			form.gabarit.vmidMin !== original.gabarit.vmidMin ||
+			form.gabarit.vmidMax !== original.gabarit.vmidMax
 	);
 
 	// Notify the parent whenever the dirty state changes so it can guard
@@ -118,6 +120,12 @@
 			: null
 	);
 
+	const vmidRangeError = $derived.by((): string | null => {
+		const { vmidMin: lo, vmidMax: hi } = form.gabarit;
+		if (lo === 0 && hi === 0) return null;
+		return lo < 100 || hi > 999999999 || lo > hi ? m['policy.vmidRangeError']() : null;
+	});
+
 	const isValid = $derived(
 		!maxSocketsError &&
 			!maxCoresError &&
@@ -126,7 +134,8 @@
 			!maxNetworkCardsError &&
 			!maxSnapshotsError &&
 			!maxVmPerUserError &&
-			!isolationVlanError
+			!isolationVlanError &&
+			!vmidRangeError
 	);
 
 	const serverErrorField = $derived.by((): string | null => {
@@ -281,6 +290,22 @@
 					>
 						{#snippet children({ id, describedBy, invalid })}
 							<TextField {id} {describedBy} {invalid} type="number" min={0} max={4094} bind:value={form.gabarit.isolationVlanTag} />
+						{/snippet}
+					</FormField>
+				</div>
+			</fieldset>
+			<fieldset class="mt-6">
+				<legend class="mb-3 text-sm font-medium text-muted-foreground">{m['policy.vmidGroup']()}</legend>
+				<p class="mb-3 text-xs text-muted-foreground-subtle">{m['policy.vmidHint']()}</p>
+				<div class="grid gap-4 sm:grid-cols-2">
+					<FormField label={m['policy.vmidMin']()} error={vmidRangeError ?? serverErrorForField('vmidMin')}>
+						{#snippet children({ id, describedBy, invalid })}
+							<TextField {id} {describedBy} {invalid} type="number" min={0} max={999999999} bind:value={form.gabarit.vmidMin} />
+						{/snippet}
+					</FormField>
+					<FormField label={m['policy.vmidMax']()} error={serverErrorForField('vmidMax')}>
+						{#snippet children({ id, describedBy, invalid })}
+							<TextField {id} {describedBy} {invalid} type="number" min={0} max={999999999} bind:value={form.gabarit.vmidMax} />
 						{/snippet}
 					</FormField>
 				</div>

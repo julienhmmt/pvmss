@@ -54,7 +54,7 @@ func retryWithFreshVMID(ctx context.Context, deps CreateDeps, initialVMID int, l
 
 		deps.Log.InfoContext(ctx, "vmid collision, retrying", "component", "vm", "vmid", vmid, "attempt", attempt+1)
 
-		newVMID, err := deps.Creator.NextVMID(ctx)
+		newVMID, err := allocateVMID(ctx, deps)
 		if err != nil {
 			return 0, "", fmt.Errorf("%w: allocate vmid on retry: %w", ErrClusterCreate, err)
 		}

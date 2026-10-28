@@ -66,6 +66,9 @@ type Gabarit struct {
 	MaxNetworkCards  int
 	MaxSnapshots     int
 	IsolationVLANTag int
+	// VMIDMin/VMIDMax bound the ids of new VMs; both 0 = Proxmox's next free id.
+	VMIDMin int
+	VMIDMax int
 }
 
 // Quota is the actor's pool VM count and the pool allowance.
@@ -186,6 +189,8 @@ func gabaritFromRow(row store.PolicyRow) Gabarit {
 		MaxDiskPerVMGB: row.MaxDiskPerVMGB, MaxNetworkCards: row.MaxNetworkCards,
 		MaxSnapshots:     row.MaxSnapshots,
 		IsolationVLANTag: row.IsolationVLANTag,
+		VMIDMin:          row.VMIDMin,
+		VMIDMax:          row.VMIDMax,
 	}
 }
 
@@ -232,6 +237,8 @@ func policyRowFrom(clusterName string, settings Settings) store.PolicyRow {
 		MaxSnapshots:     settings.Gabarit.MaxSnapshots,
 		MaxVMPerUser:     settings.Allowed,
 		IsolationVLANTag: settings.Gabarit.IsolationVLANTag,
+		VMIDMin:          settings.Gabarit.VMIDMin,
+		VMIDMax:          settings.Gabarit.VMIDMax,
 	}
 }
 

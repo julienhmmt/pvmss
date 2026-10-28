@@ -294,10 +294,17 @@ ALTER TABLE clusters ADD COLUMN tls_client_cert_pem TEXT NOT NULL DEFAULT '';
 ALTER TABLE clusters ADD COLUMN tls_client_key_ciphertext BLOB;
 `
 
+// schemaV4 adds the optional per-cluster VMID range for new VMs (0/0 = off).
+const schemaV4 = `
+ALTER TABLE vm_limits ADD COLUMN vmid_min INTEGER NOT NULL DEFAULT 0;
+ALTER TABLE vm_limits ADD COLUMN vmid_max INTEGER NOT NULL DEFAULT 0;
+`
+
 // Migrations is the ordered list of schema migrations.
 // Versions must be consecutive integers starting at 1.
 var Migrations = []Migration{
 	{Version: 1, DDL: schemaV1},
 	{Version: 2, DDL: schemaV2},
 	{Version: 3, DDL: schemaV3},
+	{Version: 4, DDL: schemaV4},
 }

@@ -172,6 +172,19 @@ func validateGabarit(gabarit Gabarit) error {
 		return fmt.Errorf("%w: isolationVlanTag must be between 0 and 4094", ErrInvalidPolicy)
 	}
 
+	return validateVMIDRange(gabarit.VMIDMin, gabarit.VMIDMax)
+}
+
+// validateVMIDRange accepts 0/0 (off) or 100 <= min <= max <= 999999999.
+func validateVMIDRange(lo, hi int) error {
+	if lo == 0 && hi == 0 {
+		return nil
+	}
+
+	if lo < 100 || hi > 999999999 || lo > hi {
+		return fmt.Errorf("%w: vmid range must be 0/0 (off) or 100 <= min <= max <= 999999999", ErrInvalidPolicy)
+	}
+
 	return nil
 }
 
