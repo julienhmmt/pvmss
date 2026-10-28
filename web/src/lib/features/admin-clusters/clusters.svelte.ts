@@ -1,6 +1,26 @@
 import { get, post, put, del, ApiRequestError } from '#lib/shared/api/client.js';
 import { m } from '#lib/paraglide/messages.js';
 
+export interface ClusterTlsInfo {
+	caSet: boolean;
+	caSubject?: string;
+	caNotAfter: string | null;
+	nodeFingerprints: string[];
+	clientCertSet: boolean;
+	clientCertSubject?: string;
+	clientCertNotAfter: string | null;
+	/** The private key itself is never returned. */
+	clientKeySet: boolean;
+}
+
+/** Omitted field keeps the stored value; an empty string clears it. */
+export interface ClusterTlsInput {
+	caPem?: string;
+	nodeFingerprints?: string;
+	clientCertPem?: string;
+	clientKeyPem?: string;
+}
+
 export interface AdminCluster {
 	name: string;
 	displayName: string;
@@ -18,6 +38,7 @@ export interface AdminCluster {
 	/** Proxmox storage holding the admin cloud-init files ('' = off). */
 	snippetStorage: string;
 	cloudInitWriteEnabled: boolean;
+	tls?: ClusterTlsInfo;
 }
 
 export interface ClusterInput {
@@ -28,11 +49,13 @@ export interface ClusterInput {
 	tokenId: string;
 	tokenSecret: string;
 	snippetStorage: string;
+	tls: ClusterTlsInput;
 }
 
 export interface ClusterTestResult {
 	status: 'ok' | 'unreachable' | 'error';
 	message?: string;
+	tlsStatus?: 'verified' | 'skipped' | 'failed' | 'unknown';
 	proxmoxVersion?: string;
 	nodeCount?: number;
 	vmCount?: number;
@@ -68,6 +91,19 @@ export function statusHint(status: AdminCluster['lastTestStatus']): string | nul
 	if (status === 'unreachable') return m['admin.clusters.unreachableHint']();
 	if (status === 'error') return m['admin.clusters.errorHint']();
 	return null;
+}
+
+function tlsAnnouncement(name: string, result: ClusterTestResult | null): string | null {
+	switch (result?.tlsStatus) {
+		case 'verified':
+			return m['admin.clusters.tlsTestVerified']({ name });
+		case 'skipped':
+			return m['admin.clusters.tlsTestSkipped']({ name });
+		case 'failed':
+			return m['admin.clusters.tlsTestFailed']({ name, message: result.message ?? '' });
+		default:
+			return null;
+	}
 }
 
 export class AdminClustersStore {
@@ -116,7 +152,8 @@ export class AdminClustersStore {
 		await this.run(`test:${name}`, async () => {
 			result = await post<ClusterTestResult>(`/api/v1/admin/clusters/${encodeURIComponent(name)}/test`);
 			await this.load();
-			this.announce = m['admin.clusters.tested']({ name, status: result?.status ?? 'tested' });
+			const tested: ClusterTestResult | null = result;
+			this.announce = tlsAnnouncement(name, tested) ?? m['admin.clusters.tested']({ name, status: tested?.status ?? 'tested' });
 		});
 		return result;
 	}

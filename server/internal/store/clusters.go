@@ -45,6 +45,19 @@ type ClusterRow struct {
 	// holds the admin cloud-init documents (written by hand on the nodes).
 	// Empty = feature off.
 	SnippetStorage string
+	// TLS is the optional per-cluster certificate material. ClientKeyPEM is
+	// decrypted only in memory and is never an API response field.
+	TLS ClusterTLS
+}
+
+// ClusterTLS holds PEM material used to validate the Proxmox API certificate
+// (CAPEM, or pinned NodeFingerprints) and optionally to present a client
+// certificate (ClientCertPEM + ClientKeyPEM, for mTLS).
+type ClusterTLS struct {
+	CAPEM            string
+	NodeFingerprints string // SHA-256 hex, one per line
+	ClientCertPEM    string
+	ClientKeyPEM     string
 }
 
 // serviceTokenID is the deterministic Proxmox service token used to seed the
@@ -97,13 +110,13 @@ func (s *Store) CreateCluster(ctx context.Context, row ClusterRow) error {
 
 // GetCluster returns an active cluster and decrypts its service-account secret.
 func (s *Store) GetCluster(ctx context.Context, name string) (ClusterRow, error) {
-	row := s.db.QueryRowContext(ctx, `SELECT name, display_name, url, tls_insecure_skip_verify, token_id, token_secret_ciphertext, created_at, removed_at, last_test_status, last_test_at, last_test_message, proxmox_version, snippet_storage FROM clusters WHERE name = ? AND removed_at IS NULL`, name)
+	row := s.db.QueryRowContext(ctx, `SELECT name, display_name, url, tls_insecure_skip_verify, token_id, token_secret_ciphertext, created_at, removed_at, last_test_status, last_test_at, last_test_message, proxmox_version, snippet_storage, tls_ca_pem, tls_node_fingerprints, tls_client_cert_pem, tls_client_key_ciphertext FROM clusters WHERE name = ? AND removed_at IS NULL`, name)
 	return s.scanCluster(row)
 }
 
 // ListClusters returns every active cluster ordered by immutable logical name.
 func (s *Store) ListClusters(ctx context.Context) ([]ClusterRow, error) {
-	rows, err := s.db.QueryContext(ctx, `SELECT name, display_name, url, tls_insecure_skip_verify, token_id, token_secret_ciphertext, created_at, removed_at, last_test_status, last_test_at, last_test_message, proxmox_version, snippet_storage FROM clusters WHERE removed_at IS NULL ORDER BY name`)
+	rows, err := s.db.QueryContext(ctx, `SELECT name, display_name, url, tls_insecure_skip_verify, token_id, token_secret_ciphertext, created_at, removed_at, last_test_status, last_test_at, last_test_message, proxmox_version, snippet_storage, tls_ca_pem, tls_node_fingerprints, tls_client_cert_pem, tls_client_key_ciphertext FROM clusters WHERE removed_at IS NULL ORDER BY name`)
 	if err != nil {
 		return nil, fmt.Errorf("list clusters: %w", err)
 	}
@@ -252,6 +265,26 @@ func (s *Store) SetClusterSnippetStorage(ctx context.Context, name, storage stri
 	return nil
 }
 
+// SetClusterTLS replaces the cluster's TLS material. The client key is stored
+// encrypted; an empty key clears it.
+func (s *Store) SetClusterTLS(ctx context.Context, name string, t ClusterTLS) error {
+	var keyCipher []byte
+	if t.ClientKeyPEM != "" {
+		var err error
+		if keyCipher, err = s.encryptToken(t.ClientKeyPEM); err != nil {
+			return err
+		}
+	}
+	res, err := s.db.ExecContext(ctx, `UPDATE clusters SET tls_ca_pem = ?, tls_node_fingerprints = ?, tls_client_cert_pem = ?, tls_client_key_ciphertext = ? WHERE name = ? AND removed_at IS NULL`, t.CAPEM, t.NodeFingerprints, t.ClientCertPEM, keyCipher, name)
+	if err != nil {
+		return fmt.Errorf("set cluster tls: %w", err)
+	}
+	if n, _ := res.RowsAffected(); n == 0 {
+		return ErrInvalidClusterName
+	}
+	return nil
+}
+
 func nullableString(value string) any {
 	if value == "" {
 		return nil
@@ -272,13 +305,20 @@ func (s *Store) scanCluster(scanner clusterScanner) (ClusterRow, error) {
 		createdAt, removedAt            sql.NullString
 		lastStatus, lastAt, lastMessage sql.NullString
 		proxmoxVersion                  sql.NullString
+		keyCiphertext                   []byte
 	)
-	if err := scanner.Scan(&row.Name, &displayName, &row.URL, &tlsInsecure, &row.TokenID, &ciphertext, &createdAt, &removedAt, &lastStatus, &lastAt, &lastMessage, &proxmoxVersion, &row.SnippetStorage); err != nil {
+	if err := scanner.Scan(&row.Name, &displayName, &row.URL, &tlsInsecure, &row.TokenID, &ciphertext, &createdAt, &removedAt, &lastStatus, &lastAt, &lastMessage, &proxmoxVersion, &row.SnippetStorage, &row.TLS.CAPEM, &row.TLS.NodeFingerprints, &row.TLS.ClientCertPEM, &keyCiphertext); err != nil {
 		return ClusterRow{}, err
 	}
 	row.DisplayName = displayName.String
 	row.TLSInsecureSkipVerify = tlsInsecure
 	var err error
+	if len(keyCiphertext) > 0 {
+		row.TLS.ClientKeyPEM, err = s.decryptToken(keyCiphertext)
+		if err != nil {
+			return ClusterRow{}, fmt.Errorf("decrypt cluster client key: %w", err)
+		}
+	}
 	row.TokenSecret, err = s.decryptToken(ciphertext)
 	if err != nil {
 		return ClusterRow{}, fmt.Errorf("decrypt cluster token: %w", err)

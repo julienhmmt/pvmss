@@ -156,13 +156,19 @@ func factoryForSource(source string, log *slog.Logger) (ClientFactory, error) {
 			if row.TokenID == "" || row.TokenSecret == "" {
 				return nil, errors.New("cluster credentials are required")
 			}
+			tlsCfg, err := BuildTLSConfig(row.TLS, row.TLSInsecureSkipVerify)
+			if err != nil {
+				return nil, fmt.Errorf("cluster tls settings: %w", err)
+			}
+			httpClient := newProxmoxHTTPClientTLS(tlsCfg)
 			return Proxmox{
 				BaseURL:               row.URL,
 				APITokenName:          row.TokenID,
 				APITokenValue:         row.TokenSecret,
 				TLSInsecureSkipVerify: row.TLSInsecureSkipVerify,
 				SnippetStorage:        row.SnippetStorage,
-				httpClient:            newProxmoxHTTPClient(row.TLSInsecureSkipVerify),
+				TLS:                   row.TLS,
+				httpClient:            httpClient,
 				log:                   log,
 				name:                  row.Name,
 			}, nil

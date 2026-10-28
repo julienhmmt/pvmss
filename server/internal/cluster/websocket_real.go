@@ -26,6 +26,7 @@ import (
 	"io"
 	"net/http"
 	"net/url"
+	"pvmss/server/internal/store"
 	"slices"
 	"strconv"
 	"strings"
@@ -88,7 +89,7 @@ type proxmoxVNCClient struct {
 // Proxmox is not reachable in the demo or unit tests; this
 // method is exercised only by integration tests against a live endpoint.
 func (p Proxmox) GetVNCTicket(ctx context.Context, _ string, vmid int, node string) (VNCProxyTicket, error) {
-	c := newProxmoxVNCClient(p.BaseURL, p.APITokenName, p.APITokenValue, p.TLSInsecureSkipVerify)
+	c := p.vncClient()
 	return proxmoxGetVNCTicket(ctx, c, node, vmid)
 }
 
@@ -99,7 +100,7 @@ func (p Proxmox) GetVNCTicket(ctx context.Context, _ string, vmid int, node stri
 // Proxmox is not reachable in the demo or unit tests; this
 // method is exercised only by integration tests against a live endpoint.
 func (p Proxmox) RelayConsole(ctx context.Context, _ string, vmid int, proxy VNCProxyTicket, peer io.ReadWriteCloser) error {
-	c := newProxmoxVNCClient(p.BaseURL, p.APITokenName, p.APITokenValue, p.TLSInsecureSkipVerify)
+	c := p.vncClient()
 	return proxmoxRelayConsole(ctx, c, proxy.Node, vmid, proxy, peer)
 }
 
@@ -112,7 +113,7 @@ func (p Proxmox) RelayConsole(ctx context.Context, _ string, vmid int, proxy VNC
 // Proxmox is not reachable in the demo or unit tests; this
 // method is exercised only by integration tests against a live endpoint.
 func (p Proxmox) GetTermProxy(ctx context.Context, _ string, vmid int, node string) (TermProxyTicket, error) {
-	c := newProxmoxVNCClient(p.BaseURL, p.APITokenName, p.APITokenValue, p.TLSInsecureSkipVerify)
+	c := p.vncClient()
 	return proxmoxGetTermProxy(ctx, c, node, vmid)
 }
 
@@ -128,7 +129,7 @@ func (p Proxmox) GetTermProxy(ctx context.Context, _ string, vmid int, node stri
 // Proxmox is not reachable in the demo or unit tests; this
 // method is exercised only by integration tests against a live endpoint.
 func (p Proxmox) RelaySerial(ctx context.Context, _ string, vmid int, proxy TermProxyTicket, peer io.ReadWriteCloser) error {
-	c := newProxmoxVNCClient(p.BaseURL, p.APITokenName, p.APITokenValue, p.TLSInsecureSkipVerify)
+	c := p.vncClient()
 	return proxmoxRelaySerial(ctx, c, proxy.Node, vmid, proxy, peer)
 }
 
@@ -584,17 +585,29 @@ func buildProxmoxVNCWebSocketURL(baseURL, node string, vmid, port int, vncticket
 // certificate verification policy (InsecureSkipVerify is only true when the
 // operator explicitly disabled verification for that cluster).
 func newProxmoxVNCClient(baseURL, tokenName, tokenValue string, insecureSkipVerify bool) proxmoxVNCClient {
-	transport := &http.Transport{
-		TLSClientConfig: &tls.Config{
-			MinVersion:         tls.VersionTLS12,   // minimum TLS 1.2 enforced
-			InsecureSkipVerify: insecureSkipVerify, //nolint:gosec // operator-configured per cluster; defaults to false
-			// Force HTTP/1.1: Go's transport auto-negotiates h2 via ALPN once
-			// NextProtos is left empty, and Proxmox's api daemon doesn't speak
-			// the RFC 8441 extended-CONNECT upgrade h2 would require for the
-			// WebSocket handshake - it just hangs forever instead of erroring.
-			NextProtos: []string{"http/1.1"},
-		},
+	cfg, _ := BuildTLSConfig(store.ClusterTLS{}, insecureSkipVerify)
+
+	return newProxmoxVNCClientTLS(baseURL, tokenName, tokenValue, cfg)
+}
+
+// vncClient builds the VNC client with the cluster's TLS material.
+func (p Proxmox) vncClient() proxmoxVNCClient {
+	cfg, err := BuildTLSConfig(p.TLS, p.TLSInsecureSkipVerify)
+	if err != nil {
+		cfg = &tls.Config{MinVersion: tls.VersionTLS12}
 	}
+
+	return newProxmoxVNCClientTLS(p.BaseURL, p.APITokenName, p.APITokenValue, cfg)
+}
+
+func newProxmoxVNCClientTLS(baseURL, tokenName, tokenValue string, cfg *tls.Config) proxmoxVNCClient {
+	// Force HTTP/1.1: Go's transport auto-negotiates h2 via ALPN once
+	// NextProtos is left empty, and Proxmox's api daemon doesn't speak
+	// the RFC 8441 extended-CONNECT upgrade h2 would require for the
+	// WebSocket handshake - it just hangs forever instead of erroring.
+	cfg = cfg.Clone()
+	cfg.NextProtos = []string{"http/1.1"}
+	transport := &http.Transport{TLSClientConfig: cfg}
 
 	return proxmoxVNCClient{
 		baseURL:      baseURL,

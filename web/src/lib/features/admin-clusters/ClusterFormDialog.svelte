@@ -9,8 +9,10 @@
 	// Cloud-init disabled: Select, Pill and the snippet storage props feed the commented-out section.
 	// import Select from '#lib/shared/ui/Select.svelte';
 	import Checkbox from '#lib/shared/ui/Checkbox.svelte';
+	import Textarea from '#lib/shared/ui/Textarea.svelte';
 	// import Pill from '#lib/shared/ui/Pill.svelte';
-	import type { AdminCluster, ClusterInput, SnippetStorage } from './clusters.svelte';
+	import type { AdminCluster, ClusterInput, ClusterTlsInput, SnippetStorage } from './clusters.svelte';
+	import { formatDate } from '#lib/shared/format-date.js';
 	import { m } from '#lib/paraglide/messages.js';
 
 	interface Props {
@@ -41,11 +43,43 @@
 	let tokenSecret = $state('');
 	let tlsInsecureSkipVerify = $state(false);
 	let snippetStorage = $state('');
+	let caPem = $state('');
+	let nodeFingerprints = $state('');
+	let clientCertPem = $state('');
+	let clientKeyPem = $state('');
+	let clearCa = $state(false);
+	let clearClient = $state(false);
+	const tlsInfo = $derived(editing?.tls);
+	// Changing what the cluster is trusted against must re-enter the secret.
+	const trustChanged = $derived(
+		editing !== null &&
+			(caPem.trim() !== '' ||
+				clearCa ||
+				nodeFingerprints.trim() !== (editing.tls?.nodeFingerprints ?? []).join('\n'))
+	);
 	// The server sends the kept secret to the cluster URL, so it refuses a new
 	// URL or TLS setting without the secret re-entered.
 	const secretRequired = $derived(
-		editing === null || url.trim() !== editing.url || tlsInsecureSkipVerify !== editing.tlsInsecureSkipVerify
+		editing === null || url.trim() !== editing.url || tlsInsecureSkipVerify !== editing.tlsInsecureSkipVerify || trustChanged
 	);
+
+	function showDate(value: string | null): string {
+		return value ? formatDate(value) : '';
+	}
+
+	function tlsInput(): ClusterTlsInput {
+		const tls: ClusterTlsInput = { nodeFingerprints: nodeFingerprints.trim() };
+		if (clearCa) tls.caPem = '';
+		else if (caPem.trim() !== '') tls.caPem = caPem;
+		if (clearClient) {
+			tls.clientCertPem = '';
+			tls.clientKeyPem = '';
+		} else if (clientCertPem.trim() !== '' || clientKeyPem.trim() !== '') {
+			tls.clientCertPem = clientCertPem;
+			tls.clientKeyPem = clientKeyPem;
+		}
+		return tls;
+	}
 	const TITLE_ID = 'cluster-form-title';
 	const FORM_ID = 'cluster-form';
 
@@ -59,6 +93,12 @@
 			tokenSecret = '';
 			tlsInsecureSkipVerify = editing?.tlsInsecureSkipVerify ?? false;
 			snippetStorage = editing?.snippetStorage ?? '';
+			caPem = '';
+			clientCertPem = '';
+			clientKeyPem = '';
+			clearCa = false;
+			clearClient = false;
+			nodeFingerprints = (editing?.tls?.nodeFingerprints ?? []).join('\n');
 		});
 	});
 
@@ -70,7 +110,8 @@
 			tokenId: tokenId.trim(),
 			tokenSecret,
 			tlsInsecureSkipVerify,
-			snippetStorage: snippetStorage.trim()
+			snippetStorage: snippetStorage.trim(),
+			tls: tlsInput()
 		});
 	}
 </script>
@@ -122,6 +163,43 @@
 				onToggle={(checked) => (tlsInsecureSkipVerify = checked)}
 				variant="warning"
 			/>
+		</FormSection>
+
+		<FormSection legend={m['admin.clusters.tlsSection']()} description={m['admin.clusters.tlsHint']()}>
+			{#if tlsInfo?.caSet}
+				<p class="text-sm text-muted-foreground">
+					{m['admin.clusters.caCurrent']({ subject: tlsInfo.caSubject ?? '', expires: showDate(tlsInfo.caNotAfter) })}
+				</p>
+				<Checkbox label={m['admin.clusters.caRemove']()} checked={clearCa} onToggle={(checked) => (clearCa = checked)} />
+			{/if}
+			<FormField label={m['admin.clusters.caPem']()} hint={m['admin.clusters.caPemHint']()}>
+				{#snippet children({ id, describedBy, invalid })}
+					<Textarea {id} {describedBy} {invalid} mono rows={4} bind:value={caPem} placeholder="-----BEGIN CERTIFICATE-----" />
+				{/snippet}
+			</FormField>
+			<FormField label={m['admin.clusters.nodeFingerprints']()} hint={m['admin.clusters.nodeFingerprintsHint']()}>
+				{#snippet children({ id, describedBy, invalid })}
+					<Textarea {id} {describedBy} {invalid} mono rows={2} bind:value={nodeFingerprints} placeholder="AA:BB:CC:..." />
+				{/snippet}
+			</FormField>
+			{#if tlsInfo?.clientCertSet}
+				<p class="text-sm text-muted-foreground">
+					{m['admin.clusters.clientCurrent']({ subject: tlsInfo.clientCertSubject ?? '', expires: showDate(tlsInfo.clientCertNotAfter) })}
+				</p>
+				<Checkbox label={m['admin.clusters.clientRemove']()} checked={clearClient} onToggle={(checked) => (clearClient = checked)} />
+			{/if}
+			<div class="grid gap-4 sm:grid-cols-2">
+				<FormField label={m['admin.clusters.clientCertPem']()}>
+					{#snippet children({ id, describedBy, invalid })}
+						<Textarea {id} {describedBy} {invalid} mono rows={4} bind:value={clientCertPem} />
+					{/snippet}
+				</FormField>
+				<FormField label={m['admin.clusters.clientKeyPem']()} hint={m['admin.clusters.clientKeyHint']()}>
+					{#snippet children({ id, describedBy, invalid })}
+						<Textarea {id} {describedBy} {invalid} mono rows={4} bind:value={clientKeyPem} autocomplete="off" spellcheck={false} />
+					{/snippet}
+				</FormField>
+			</div>
 		</FormSection>
 
 <!-- Cloud-init is disabled for now: not reliable or viable yet, too complex to set up.

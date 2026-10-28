@@ -62,7 +62,8 @@
 						tlsInsecureSkipVerify: input.tlsInsecureSkipVerify,
 						tokenId: input.tokenId,
 						tokenSecret: input.tokenSecret,
-						snippetStorage: input.snippetStorage
+						snippetStorage: input.snippetStorage,
+						tls: input.tls
 					});
 		// Failure leaves the dialog open with store.error rendered inline
 		// (ClusterFormDialog's error prop) - closing unconditionally here hid

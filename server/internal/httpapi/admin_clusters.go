@@ -54,27 +54,30 @@ type adminClusterDTO struct {
 	NodeCount             int     `json:"nodeCount"`
 	VMCount               int     `json:"vmCount"`
 	SnippetStorage        string  `json:"snippetStorage"`
+	TLS                   tlsDTO  `json:"tls"`
 	// CloudInitWriteEnabled is true when a snippet storage is selected:
 	// admin cloud-init documents are then offered (files pasted by hand).
 	CloudInitWriteEnabled bool `json:"cloudInitWriteEnabled"`
 }
 
 type createClusterRequest struct {
-	Name                  string `json:"name"`
-	DisplayName           string `json:"displayName"`
-	URL                   string `json:"url"`
-	TLSInsecureSkipVerify bool   `json:"tlsInsecureSkipVerify"`
-	TokenID               string `json:"tokenId"`
-	TokenSecret           string `json:"tokenSecret"`
+	Name                  string      `json:"name"`
+	DisplayName           string      `json:"displayName"`
+	URL                   string      `json:"url"`
+	TLSInsecureSkipVerify bool        `json:"tlsInsecureSkipVerify"`
+	TokenID               string      `json:"tokenId"`
+	TokenSecret           string      `json:"tokenSecret"`
+	TLS                   *tlsRequest `json:"tls"`
 	snippetSettings
 }
 
 type updateClusterRequest struct {
-	DisplayName           string `json:"displayName"`
-	URL                   string `json:"url"`
-	TLSInsecureSkipVerify bool   `json:"tlsInsecureSkipVerify"`
-	TokenID               string `json:"tokenId"`
-	TokenSecret           string `json:"tokenSecret"`
+	DisplayName           string      `json:"displayName"`
+	URL                   string      `json:"url"`
+	TLSInsecureSkipVerify bool        `json:"tlsInsecureSkipVerify"`
+	TokenID               string      `json:"tokenId"`
+	TokenSecret           string      `json:"tokenSecret"`
+	TLS                   *tlsRequest `json:"tls"`
 	snippetSettings
 }
 
@@ -98,8 +101,11 @@ func validateSnippetSettings(s snippetSettings) string {
 }
 
 type testClusterResponse struct {
-	Status         string `json:"status"`
-	Message        string `json:"message,omitempty"`
+	Status  string `json:"status"`
+	Message string `json:"message,omitempty"`
+	// TLSStatus is "verified", "skipped" (verification disabled), "failed"
+	// (certificate rejected) or "unknown" (no TLS handshake completed).
+	TLSStatus      string `json:"tlsStatus"`
 	ProxmoxVersion string `json:"proxmoxVersion,omitempty"`
 	NodeCount      int    `json:"nodeCount,omitempty"`
 	VMCount        int    `json:"vmCount,omitempty"`
@@ -135,6 +141,11 @@ func (handler *AdminClusters) ServeCreate(w http.ResponseWriter, r *http.Request
 		writeAdminError(w, http.StatusBadRequest, "invalid_request", msg)
 		return
 	}
+	tlsMaterial, err := resolveTLS(store.ClusterTLS{}, request.TLS)
+	if err != nil {
+		writeAdminError(w, http.StatusBadRequest, "invalid_tls", err.Error())
+		return
+	}
 	row := store.ClusterRow{Name: request.Name, DisplayName: request.DisplayName, URL: request.URL, TLSInsecureSkipVerify: request.TLSInsecureSkipVerify, TokenID: request.TokenID, TokenSecret: request.TokenSecret}
 	if err := handler.store.CreateCluster(r.Context(), row); err != nil {
 		handler.writeStoreFailure(w, err)
@@ -145,6 +156,11 @@ func (handler *AdminClusters) ServeCreate(w http.ResponseWriter, r *http.Request
 		return
 	}
 	row.SnippetStorage = request.SnippetStorage
+	if err := handler.store.SetClusterTLS(r.Context(), row.Name, tlsMaterial); err != nil {
+		handler.writeStoreFailure(w, err)
+		return
+	}
+	row.TLS = tlsMaterial
 	if err := handler.register(r.Context(), row); err != nil {
 		handler.writeFailure(w, err)
 		return
@@ -173,7 +189,17 @@ func (handler *AdminClusters) ServeUpdate(w http.ResponseWriter, r *http.Request
 		return
 	}
 	name := r.PathValue("name")
-	if !handler.secretKeptSafely(w, r, name, request) {
+	current, err := handler.store.GetCluster(r.Context(), name)
+	if err != nil {
+		handler.writeStoreFailure(w, err)
+		return
+	}
+	tlsMaterial, err := resolveTLS(current.TLS, request.TLS)
+	if err != nil {
+		writeAdminError(w, http.StatusBadRequest, "invalid_tls", err.Error())
+		return
+	}
+	if !handler.secretKeptSafely(w, current, request, tlsMaterial) {
 		return
 	}
 	row := store.ClusterRow{Name: name, URL: request.URL, TLSInsecureSkipVerify: request.TLSInsecureSkipVerify, TokenID: request.TokenID, TokenSecret: request.TokenSecret}
@@ -182,6 +208,10 @@ func (handler *AdminClusters) ServeUpdate(w http.ResponseWriter, r *http.Request
 			writeAdminError(w, http.StatusNotFound, "not_found", "cluster not found")
 			return
 		}
+		handler.writeStoreFailure(w, err)
+		return
+	}
+	if err := handler.store.SetClusterTLS(r.Context(), name, tlsMaterial); err != nil {
 		handler.writeStoreFailure(w, err)
 		return
 	}
@@ -223,16 +253,11 @@ func (handler *AdminClusters) ServeUpdate(w http.ResponseWriter, r *http.Request
 // changing the endpoint it is sent to: pointing a cluster elsewhere, or
 // dropping TLS verification, must re-enter the secret. It writes the error
 // response and returns false when the update must stop.
-func (handler *AdminClusters) secretKeptSafely(w http.ResponseWriter, r *http.Request, name string, request updateClusterRequest) bool {
+func (handler *AdminClusters) secretKeptSafely(w http.ResponseWriter, current store.ClusterRow, request updateClusterRequest, newTLS store.ClusterTLS) bool {
 	if request.TokenSecret != "" {
 		return true
 	}
-	current, err := handler.store.GetCluster(r.Context(), name)
-	if err != nil {
-		handler.writeStoreFailure(w, err)
-		return false
-	}
-	if current.URL != request.URL || current.TLSInsecureSkipVerify != request.TLSInsecureSkipVerify {
+	if current.URL != request.URL || current.TLSInsecureSkipVerify != request.TLSInsecureSkipVerify || trustChanged(current.TLS, newTLS) {
 		writeAdminError(w, http.StatusBadRequest, "token_secret_required", "re-enter the token secret to change the url or tls verification")
 		return false
 	}
@@ -242,7 +267,8 @@ func (handler *AdminClusters) secretKeptSafely(w http.ResponseWriter, r *http.Re
 // ServeTest handles POST /api/v1/admin/clusters/:name/test.
 func (handler *AdminClusters) ServeTest(w http.ResponseWriter, r *http.Request) {
 	name := r.PathValue("name")
-	if _, err := handler.store.GetCluster(r.Context(), name); err != nil {
+	stored, err := handler.store.GetCluster(r.Context(), name)
+	if err != nil {
 		handler.writeStoreFailure(w, err)
 		return
 	}
@@ -259,11 +285,15 @@ func (handler *AdminClusters) ServeTest(w http.ResponseWriter, r *http.Request) 
 			status = errorLabel
 		}
 		message := shortClusterError(err)
+		tlsStatus := "unknown"
+		if errors.Is(err, cluster.ErrTLSVerify) {
+			tlsStatus = "failed"
+		}
 		if saveErr := handler.store.SetClusterTestResult(r.Context(), name, status, "", message, testedAt); saveErr != nil {
 			handler.writeFailure(w, saveErr)
 			return
 		}
-		writeAdminJSON(w, http.StatusOK, testClusterResponse{Status: status, Message: message, TestedAt: testedAt.Format(time.RFC3339Nano)})
+		writeAdminJSON(w, http.StatusOK, testClusterResponse{Status: status, Message: message, TLSStatus: tlsStatus, TestedAt: testedAt.Format(time.RFC3339Nano)})
 		return
 	}
 	if handler.inventories != nil {
@@ -282,7 +312,11 @@ func (handler *AdminClusters) ServeTest(w http.ResponseWriter, r *http.Request) 
 			logctx.FromOr(r.Context(), handler.log).WarnContext(r.Context(), "cluster display name persist failed", "component", "httpapi", "cluster", name, "error", err)
 		}
 	}
-	writeAdminJSON(w, http.StatusOK, testClusterResponse{Status: "ok", ProxmoxVersion: snapshot.ProxmoxVersion, NodeCount: len(snapshot.Nodes), VMCount: len(snapshot.VMs), TestedAt: testedAt.Format(time.RFC3339Nano)})
+	tlsStatus := "verified"
+	if stored.TLSInsecureSkipVerify {
+		tlsStatus = "skipped"
+	}
+	writeAdminJSON(w, http.StatusOK, testClusterResponse{Status: "ok", TLSStatus: tlsStatus, ProxmoxVersion: snapshot.ProxmoxVersion, NodeCount: len(snapshot.Nodes), VMCount: len(snapshot.VMs), TestedAt: testedAt.Format(time.RFC3339Nano)})
 }
 
 // ServeDelete handles DELETE /api/v1/admin/clusters/:name as a soft delete.
@@ -397,7 +431,7 @@ func (handler *AdminClusters) clusterDTO(row store.ClusterRow) adminClusterDTO {
 		TokenSet: row.TokenSecret != "", RemovedAt: formatTime(row.RemovedAt),
 		LastTestStatus: lastTestStatus, LastTestAt: lastTestAt, LastTestMessage: lastTestMessage,
 		ProxmoxVersion: optionalValue(version), NodeCount: nodeCount, VMCount: vmCount,
-		SnippetStorage: row.SnippetStorage, CloudInitWriteEnabled: row.SnippetStorage != "",
+		SnippetStorage: row.SnippetStorage, TLS: toTLSDTO(row.TLS), CloudInitWriteEnabled: row.SnippetStorage != "",
 	}
 }
 
@@ -424,7 +458,7 @@ func (handler *AdminClusters) writeFailure(w http.ResponseWriter, err error) {
 func shortClusterError(err error) string {
 	switch {
 	case errors.Is(err, cluster.ErrTLSVerify):
-		return "TLS certificate verification failed - enable \"Skip TLS certificate verification\" if the cluster uses a self-signed certificate"
+		return "TLS certificate verification failed: " + cluster.TLSFailureReason(err) + " (or enable \"Skip TLS certificate verification\")"
 	case errors.Is(err, cluster.ErrUnreachable):
 		return "connection refused"
 	default:

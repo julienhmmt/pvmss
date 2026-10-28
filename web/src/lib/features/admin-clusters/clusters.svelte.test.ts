@@ -40,6 +40,7 @@ describe('AdminClustersStore', () => {
 		const store = new AdminClustersStore();
 		await store.create({
 			name: 'secondary',
+			tls: {},
 			url: 'https://secondary.invalid',
 			tlsInsecureSkipVerify: false,
 			tokenId: 'pvmss@pve!service',
