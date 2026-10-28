@@ -105,7 +105,7 @@
 							id="login-cluster"
 							disabled={form.pveDisabled}
 						/>
-						<div class="grid grid-cols-[1fr_auto] items-end gap-3">
+						<div class="grid gap-4">
 							<FormField label={m['login.username']()} required>
 								{#snippet children({ id, describedBy, invalid })}
 									<TextField
