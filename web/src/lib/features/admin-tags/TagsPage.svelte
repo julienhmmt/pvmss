@@ -18,6 +18,7 @@
 	import TextField from '#lib/shared/ui/TextField.svelte';
 	import Select from '#lib/shared/ui/Select.svelte';
 	import ColorPicker from '#lib/shared/ui/ColorPicker.svelte';
+	import TagVMsDialog from './TagVMsDialog.svelte';
 	import TableHeader from '#lib/shared/ui/TableHeader.svelte';
 	import { m } from '#lib/paraglide/messages.js';
 
@@ -79,6 +80,7 @@
 	let editingTag = $state<string | null>(null);
 	let editColor = $state('');
 	let pendingDelete = $state<AdminTag | null>(null);
+	let viewingTag = $state<string | null>(null);
 
 	function openCreate(): void {
 		newName = '';
@@ -186,7 +188,12 @@
 					{#each pager.rows as tag (tag.name)}
 						<tr class="group transition-colors hover:bg-muted/40">
 							<td class="font-mono" data-label={m['common.name']()}>
-								{tag.name}
+								<button
+									type="button"
+									class="pv-focus text-left underline-offset-2 hover:text-primary hover:underline"
+									aria-label={m['admin.tags.viewVMsLabel']({ name: tag.name })}
+									onclick={() => (viewingTag = tag.name)}
+								>{tag.name}</button>
 								{#if tag.protected}
 									<span class="ml-2 rounded bg-muted px-1.5 py-0.5 text-xs text-muted-foreground">{m['admin.tags.protected']()}</span>
 								{/if}
@@ -267,6 +274,8 @@
 		</div>
 	</form>
 </Dialog>
+
+<TagVMsDialog tag={viewingTag} {cluster} onClose={() => (viewingTag = null)} />
 
 <ConfirmDialog
 	open={pendingDelete !== null}
