@@ -1493,6 +1493,8 @@
   "admin.audit.vmid": "VM ID",
   "admin.audit.from": "From",
   "admin.audit.to": "To",
+  "admin.audit.dateFormatHint": "Dates: {pattern} (time optional).",
+  "admin.audit.dateInvalid": "Enter dates as {pattern}.",
   "admin.audit.clear": "Clear",
   "admin.audit.time": "Time",
   "admin.audit.empty": "No audit entries match the current filter.",
