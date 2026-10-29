@@ -399,9 +399,23 @@ The VM consoles (noVNC and serial) are WebSockets on `/api/v1/vms/{cluster}/{vmi
 - forwards the WebSocket upgrade (`Upgrade` and `Connection` headers, or HTTP/2 extended CONNECT, RFC 8441);
 - keeps idle connections open for the length of a console session (for example `timeout tunnel 1h` in HAProxy, `proxy_read_timeout 3600s` in nginx, an HTTPRoute `timeouts.request` of `0s` or longer).
 
-PVMSS accepts the WebSocket when the browser reports `Sec-Fetch-Site: same-origin`, which every current browser sends and no proxy alters. For older clients, the `Origin` host must match `Host` or `X-Forwarded-Host`. The connection still needs the single-use console ticket.
+PVMSS never compares the WebSocket `Origin` to `Host`. Each single-use console ticket is bound to the `Origin` of the page that requested it, and the WebSocket must present that same `Origin`. A proxy that rewrites `Host` or drops `X-Forwarded-Host` therefore changes nothing.
 
 When the console stays black or the browser reports `ERR_HTTP2_REFUSED_STREAM`/`1006`, the WebSocket did not reach PVMSS. The VNC ticket call still succeeds, and Proxmox then logs a `vncproxy` timeout because nothing ever connected. Check the proxy hops above. If one of them cannot forward WebSockets over HTTP/2, serve the site over HTTP/1.1 on that hop (HAProxy: `alpn http/1.1` on the `bind`).
+
+**Testing proxies locally.** `make up` starts `pvmss-dev` behind five reverse proxies (configs in [`dev/proxies/`](dev/proxies/)). PVMSS itself is not published, so every request goes through a proxy:
+
+| Port                     | Proxy               | Case covered                                                                    |
+| ------------------------ | ------------------- | ------------------------------------------------------------------------------- |
+| `https://localhost:50000` | HAProxy             | HTTP/2 (WebSocket over extended CONNECT), `Host` rewritten to `pvmss.internal`, no `X-Forwarded-Host` |
+| `https://localhost:50001` | nginx               | Classic `Upgrade`/`Connection` recipe, WebSocket over HTTP/1.1                  |
+| `https://localhost:50002` | Caddy               | Defaults only                                                                   |
+| `https://localhost:50003` | Traefik             | File provider                                                                   |
+| `http://localhost:50004`  | Nginx Proxy Manager | Plain HTTP; admin UI on `http://localhost:50081`, proxy host created by `dev/proxies/npm-setup.sh` |
+
+The HTTPS proxies share one self-signed certificate, which you accept once per port. Each port is its own origin, so sign in on each one separately.
+
+`make proxy-e2e` checks the VNC console through each proxy automatically. It restarts `pvmss-dev` on the fake cluster source with its own database, then runs a Playwright test (Chromium) per proxy. The test passes only if the console WebSocket connects and stays open. Nginx Proxy Manager is set up through its API with its first-boot admin; set `NPM_EMAIL`/`NPM_PASSWORD` if you changed it. Run `make up` afterwards to go back to your `.env` cluster.
 
 ## Coming from v0.3
 

@@ -29,7 +29,7 @@ GO_VERSION      ?= latest
 # Tag Docker par défaut pour docker-build (surcharge: make docker-build PVMSS_TAG=v1.2.3)
 PVMSS_TAG ?= latest
 
-.PHONY: help dev dev-logs build docker-build helm-package helm-upgrade \
+.PHONY: help proxy-e2e dev dev-logs build docker-build helm-package helm-upgrade \
         up down restart logs clean \
         qualif \
         buildkit-start buildkit-stop buildkit-status \
@@ -90,6 +90,13 @@ down: ## Arrête et supprime les conteneurs dev
 	$(COMPOSE_DEV) down
 
 restart: down up ## Redémarre les conteneurs dev (down puis up)
+
+PROXIES := proxy-haproxy proxy-nginx proxy-caddy proxy-traefik proxy-npm
+
+proxy-e2e: ## Teste la console VNC via chaque reverse proxy dev (fake cluster, Playwright)
+	$(COMPOSE_DEV) -f dev/proxies/docker-compose.fake.yml up -d --build --wait pvmss-dev $(PROXIES)
+	dev/proxies/npm-setup.sh
+	cd $(WEB_DIR) && bunx playwright test -c playwright.proxies.config.ts
 
 logs: ## Suit les logs des conteneurs dev
 	$(COMPOSE_DEV) logs -f

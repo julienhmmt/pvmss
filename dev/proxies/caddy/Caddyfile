@@ -1,0 +1,10 @@
+# Caddy handles WebSockets (HTTP/1.1 and HTTP/2) with no extra directive.
+{
+  auto_https disable_redirects
+  admin off
+}
+
+https://localhost:50002 {
+  tls /certs/tls.crt /certs/tls.key
+  reverse_proxy pvmss-dev:50000
+}

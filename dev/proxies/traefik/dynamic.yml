@@ -1,0 +1,19 @@
+# File provider: one router on the websecure entrypoint to PVMSS.
+http:
+  routers:
+    pvmss:
+      rule: PathPrefix(`/`)
+      entryPoints: [websecure]
+      service: pvmss
+      tls: {}
+  services:
+    pvmss:
+      loadBalancer:
+        servers:
+          - url: http://pvmss-dev:50000
+tls:
+  stores:
+    default:
+      defaultCertificate:
+        certFile: /certs/tls.crt
+        keyFile: /certs/tls.key

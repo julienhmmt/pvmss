@@ -8,7 +8,9 @@
 	},
 	"include": [
 		"e2e/**/*.ts",
+		"e2e-proxies/**/*.ts",
 		"playwright.config.ts",
+		"playwright.proxies.config.ts",
 		"vite.config.ts",
 		"vitest.config.ts",
 		"src/lib/features/vm-console/test-hooks.d.ts"
