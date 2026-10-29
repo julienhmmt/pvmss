@@ -186,7 +186,10 @@ func acceptConsoleWebSocket(
 	_ = rc.SetReadDeadline(time.Time{})
 	_ = rc.SetWriteDeadline(time.Time{})
 
-	wsConn, err := websocket.Accept(w, r, nil)
+	// Origin was already validated by isConsoleOriginAllowed; coder/websocket's
+	// own check compares Origin to Host only and would refuse every deployment
+	// where a reverse proxy rewrites Host.
+	wsConn, err := websocket.Accept(w, r, &websocket.AcceptOptions{InsecureSkipVerify: true})
 	if err != nil {
 		env.log.WarnContext(r.Context(), params.wsUpgradeMsg, "component", "httpapi", "error", err) //nolint:sloglint // message differs per console kind (vnc/serial)
 		return vm.ConsoleTicket{}, nil, false

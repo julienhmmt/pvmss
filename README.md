@@ -27,10 +27,11 @@ Full-size screenshots: [light](docs/PVMSS-0.4-index.webp) / [dark](docs/PVMSS-0.
 6. [Quick start with Docker run](#quick-start-with-docker-run)
 7. [Start with Docker compose](#start-with-docker-compose)
 8. [Start with Kubernetes](#start-with-kubernetes)
-9. [Coming from v0.3](#coming-from-v03)
-10. [Operations](#operations)
-11. [Limitations](#limitations)
-12. [License](#license)
+9. [Behind a reverse proxy](#behind-a-reverse-proxy)
+10. [Coming from v0.3](#coming-from-v03)
+11. [Operations](#operations)
+12. [Limitations](#limitations)
+13. [License](#license)
 
 ---
 
@@ -390,6 +391,17 @@ htpasswd -bnBC 10 "" 'StrongPassword' | tr -d ':\n' | base64
 ```
 
 then set `secrets.adminPasswordHashBase64`. The chart refuses a hash that does not start with `$2`, so a mangled value fails at render time instead of at login.
+
+## Behind a reverse proxy
+
+The VM consoles (noVNC and serial) are WebSockets on `/api/v1/vms/{cluster}/{vmid}/console/websocket` and `.../serial/websocket`. Any proxy chain works (HAProxy, nginx, Traefik, a Kubernetes Ingress or Gateway API), even one that rewrites `Host` to an internal name, as long as each hop:
+
+- forwards the WebSocket upgrade (`Upgrade` and `Connection` headers, or HTTP/2 extended CONNECT, RFC 8441);
+- keeps idle connections open for the length of a console session (for example `timeout tunnel 1h` in HAProxy, `proxy_read_timeout 3600s` in nginx, an HTTPRoute `timeouts.request` of `0s` or longer).
+
+PVMSS accepts the WebSocket when the browser reports `Sec-Fetch-Site: same-origin`, which every current browser sends and no proxy alters. For older clients, the `Origin` host must match `Host` or `X-Forwarded-Host`. The connection still needs the single-use console ticket.
+
+When the console stays black or the browser reports `ERR_HTTP2_REFUSED_STREAM`/`1006`, the WebSocket did not reach PVMSS. The VNC ticket call still succeeds, and Proxmox then logs a `vncproxy` timeout because nothing ever connected. Check the proxy hops above. If one of them cannot forward WebSockets over HTTP/2, serve the site over HTTP/1.1 on that hop (HAProxy: `alpn http/1.1` on the `bind`).
 
 ## Coming from v0.3
 
