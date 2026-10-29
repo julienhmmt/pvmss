@@ -63,6 +63,10 @@ func (p Proxmox) CreateVM(ctx context.Context, spec VMSpec) (string, error) {
 		form.Set("tags", strings.Join(spec.Tags, ";"))
 	}
 
+	// Always pick the controller explicitly: Proxmox otherwise defaults to the
+	// emulated LSI 53C895A, which also applies to SCSI disks added later.
+	form.Set("scsihw", scsiController)
+
 	setDiskFormKeys(form, spec)
 
 	// Enable the QEMU guest agent. Without agent=1 in the config, every
@@ -163,8 +167,6 @@ func setDiskFormKeys(form url.Values, spec VMSpec) {
 	// virtio-scsi-pci makes Proxmox drop it with a warning.
 	if spec.Disk.Bus == string(DiskBusSCSI) {
 		diskValue += ",iothread=1"
-
-		form.Set("scsihw", scsiController)
 	}
 
 	form.Set(spec.Disk.Bus+"0", diskValue)
