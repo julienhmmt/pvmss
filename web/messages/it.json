@@ -1493,6 +1493,8 @@
   "admin.audit.vmid": "ID VM",
   "admin.audit.from": "Da",
   "admin.audit.to": "A",
+  "admin.audit.dateFormatHint": "Date: {pattern} (ora facoltativa).",
+  "admin.audit.dateInvalid": "Inserisci le date nel formato {pattern}.",
   "admin.audit.clear": "Cancella",
   "admin.audit.time": "Ora",
   "admin.audit.empty": "Nessuna voce di audit corrisponde al filtro attuale.",

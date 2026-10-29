@@ -10,7 +10,7 @@
 	import EmptyState from '#lib/shared/ui/EmptyState.svelte';
 	import Pill from '#lib/shared/ui/Pill.svelte';
 	import { m } from '#lib/paraglide/messages.js';
-	import { formatDateTime } from '#lib/shared/format-date.js';
+	import { dateTimeInputPattern, formatDateTime, parseDateTimeInput } from '#lib/shared/format-date.js';
 	import { activityMessage, auditTarget, isKnownAction, knownActions } from '#lib/features/activity/activity.svelte.js';
 
 	const store = getAuditLogContext();
@@ -20,6 +20,8 @@
 	let vmidFilter = $state('');
 	let fromFilter = $state('');
 	let toFilter = $state('');
+	let dateError = $state(false);
+	const datePattern = $derived(dateTimeInputPattern());
 	let severityFilter = $state('');
 	let selectedDetail = $state<number | null>(null);
 
@@ -42,23 +44,17 @@
 				filter.vmid = vmid;
 			}
 		}
-		if (fromFilter) {
-			const fromDate = new Date(fromFilter);
-			if (!isNaN(fromDate.getTime())) {
-				filter.from = fromDate.toISOString();
-			}
-		}
+		const fromDate = fromFilter ? parseDateTimeInput(fromFilter) : null;
+		const toDate = toFilter ? parseDateTimeInput(toFilter) : null;
+		dateError = (fromFilter !== '' && fromDate === null) || (toFilter !== '' && toDate === null);
+		if (dateError) return;
+		if (fromDate) filter.from = fromDate.toISOString();
 		if (severityFilter) {
 			filter.severity = severityFilter;
 		}
-		if (toFilter) {
-			// eslint-disable-next-line svelte/prefer-svelte-reactivity -- local parse scratch var, not $state
-			const toDate = new Date(toFilter);
-			if (!isNaN(toDate.getTime())) {
-				toDate.setSeconds(59);
-				toDate.setMilliseconds(999);
-				filter.to = toDate.toISOString();
-			}
+		if (toDate) {
+			toDate.setSeconds(59, 999);
+			filter.to = toDate.toISOString();
 		}
 		store.setFilter(filter);
 	}
@@ -69,6 +65,7 @@
 		vmidFilter = '';
 		fromFilter = '';
 		toFilter = '';
+		dateError = false;
 		severityFilter = '';
 		store.clearFilter();
 	}
@@ -135,11 +132,11 @@
 					</label>
 					<label class="flex flex-col gap-1 text-sm">
 						<span class="text-muted-foreground">{m['admin.audit.from']()}</span>
-						<TextField type="datetime-local" bind:value={fromFilter} />
+						<TextField class="w-44" bind:value={fromFilter} placeholder={datePattern} describedBy="audit-date-format" invalid={dateError} />
 					</label>
 					<label class="flex flex-col gap-1 text-sm">
 						<span class="text-muted-foreground">{m['admin.audit.to']()}</span>
-						<TextField type="datetime-local" bind:value={toFilter} />
+						<TextField class="w-44" bind:value={toFilter} placeholder={datePattern} describedBy="audit-date-format" invalid={dateError} />
 					</label>
 					<label class="flex flex-col gap-1 text-sm">
 						<span class="text-muted-foreground">{m['admin.audit.severity']()}</span>
@@ -156,6 +153,11 @@
 					<Button type="submit">{m['common.filter']()}</Button>
 					<Button variant="secondary" onclick={clearFilter}>{m['admin.audit.clear']()}</Button>
 				</form>
+				<p id="audit-date-format" class="mt-2 text-xs {dateError ? 'text-destructive' : 'text-muted-foreground'}" aria-live="polite">
+					{dateError
+						? m['admin.audit.dateInvalid']({ pattern: datePattern })
+						: m['admin.audit.dateFormatHint']({ pattern: datePattern })}
+				</p>
 			{/snippet}
 			<table class="pv-table pv-responsive-table">
 				<caption class="sr-only">{m['admin.audit.title']()}</caption>
