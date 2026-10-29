@@ -154,7 +154,8 @@ services:
       pvmss-dev:
         condition: service_started
 
-  # 50004: Nginx Proxy Manager, plain HTTP. Admin UI on http://localhost:50081.
+  # 50004: Nginx Proxy Manager, plain HTTP. Admin UI on http://localhost:50081,
+  # loopback only: it keeps the first-boot admin (admin@example.com/changeme).
   # dev/proxies/npm-setup.sh creates the proxy host localhost ->
   # http pvmss-dev:50000 with WebSockets on (make proxy-e2e runs it).
   proxy-npm:
@@ -162,8 +163,8 @@ services:
     container_name: pvmss-proxy-npm
     restart: unless-stopped
     ports:
-      - "50004:80"
-      - "50081:81"
+      - "127.0.0.1:50004:80"
+      - "127.0.0.1:50081:81"
     volumes:
       - proxy_npm_data:/data
       - proxy_npm_letsencrypt:/etc/letsencrypt
