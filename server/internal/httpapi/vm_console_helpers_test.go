@@ -69,7 +69,7 @@ func assertTicketBoundToDifferentVMRejected(t *testing.T, p consoleTestParams) {
 
 	// The ticket is NOT consumed by the mismatched attempt - it remains valid
 	// for its real (cluster, vmid). Verify by consuming it directly.
-	if _, err := p.tickets.Consume(p.kind, ticket.Token, cluster.FakeUserAlice, "default", 100); err != nil {
+	if _, err := p.tickets.Consume(p.kind, ticket.Token, cluster.FakeUserAlice, "default", 100, "http://example.com"); err != nil {
 		t.Fatalf("ticket was consumed by the mismatched attempt: %v", err)
 	}
 }

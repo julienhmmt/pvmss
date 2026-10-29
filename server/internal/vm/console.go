@@ -16,6 +16,7 @@ import (
 	"pvmss/server/internal/auth"
 	"pvmss/server/internal/inventory"
 	"slices"
+	"strings"
 	"sync"
 	"time"
 )
@@ -36,6 +37,11 @@ const ticketStoreCapacity = 256
 // vmid) than the one in the WebSocket URL. The WebSocket handler maps this to
 // a 400 without upgrading the connection.
 var ErrInvalidTicket = errors.New("invalid console ticket")
+
+// ErrConsoleOriginMismatch is returned by Consume when the WebSocket Origin
+// differs from the Origin the ticket was requested from (a cross-site
+// WebSocket hijacking attempt). The ticket is not consumed.
+var ErrConsoleOriginMismatch = errors.New("console origin does not match the ticket request")
 
 // ErrClusterConsoleUnavailable is returned by GetConsoleTicket when the
 // cluster client's proxy ticket call fails - Proxmox is unreachable, the VM
@@ -74,8 +80,12 @@ type ConsoleTicket struct {
 	Node          string
 	ProxmoxTicket string
 	Port          int
-	IssuedAt      time.Time
-	ExpiresAt     time.Time
+	// Origin is the browser Origin of the ticket request; the WebSocket must
+	// present the same one. Compared to the ticket, not to Host, so it holds
+	// behind reverse proxies that rewrite Host.
+	Origin    string
+	IssuedAt  time.Time
+	ExpiresAt time.Time
 }
 
 // ConsoleTicketStore is the in-memory ticket store. Constructed once in
@@ -99,13 +109,13 @@ func NewConsoleTicketStore() *ConsoleTicketStore {
 // Issue generates an opaque, cryptographically random token, stores the entry,
 // appends to the insertion-order slice, and evicts the oldest entry if the
 // fixed capacity is exceeded. Returns the new ticket.
-func (s *ConsoleTicketStore) Issue(kind ConsoleKind, username, clusterName string, vmid int, node, proxmoxTicket string, port int) ConsoleTicket {
+func (s *ConsoleTicketStore) Issue(kind ConsoleKind, username, clusterName string, vmid int, node, proxmoxTicket string, port int, origin string) ConsoleTicket {
 	token, err := generateConsoleToken()
 	if err != nil {
 		// crypto/rand failure is a fatal environment condition - surface it as
 		// a ticket with an empty token so the caller can detect it, and let the
 		// HTTP layer turn it into a 500. This path is not reachable in practice.
-		return ConsoleTicket{Kind: kind, Username: username, Cluster: clusterName, VMID: vmid, Node: node, ProxmoxTicket: proxmoxTicket, Port: port}
+		return ConsoleTicket{Kind: kind, Username: username, Cluster: clusterName, VMID: vmid, Node: node, ProxmoxTicket: proxmoxTicket, Port: port, Origin: origin}
 	}
 
 	now := time.Now()
@@ -118,6 +128,7 @@ func (s *ConsoleTicketStore) Issue(kind ConsoleKind, username, clusterName strin
 		Node:          node,
 		ProxmoxTicket: proxmoxTicket,
 		Port:          port,
+		Origin:        origin,
 		IssuedAt:      now,
 		ExpiresAt:     now.Add(TicketTTL),
 	}
@@ -136,12 +147,12 @@ func (s *ConsoleTicketStore) Issue(kind ConsoleKind, username, clusterName strin
 }
 
 // Consume looks up the token. Missing, expired, or a (kind, user, cluster,
-// vmid) mismatch against what was bound at issuance → ErrInvalidTicket. On success,
+// vmid, origin) mismatch against what was bound at issuance → ErrInvalidTicket. On success,
 // the entry is deleted from the map BEFORE returning it - a concurrent second
 // Consume for the same token cannot observe it as still present, closing the
 // single-use race. A mismatched Consume does NOT consume the ticket:
 // it remains valid for its real (kind, user, cluster, vmid).
-func (s *ConsoleTicketStore) Consume(kind ConsoleKind, token, username, clusterName string, vmid int) (ConsoleTicket, error) {
+func (s *ConsoleTicketStore) Consume(kind ConsoleKind, token, username, clusterName string, vmid int, origin string) (ConsoleTicket, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
@@ -159,6 +170,10 @@ func (s *ConsoleTicketStore) Consume(kind ConsoleKind, token, username, clusterN
 
 	if ticket.Kind != kind || ticket.Username != username || ticket.Cluster != clusterName || ticket.VMID != vmid {
 		return ConsoleTicket{}, ErrInvalidTicket
+	}
+
+	if ticket.Origin == "" || !strings.EqualFold(ticket.Origin, origin) {
+		return ConsoleTicket{}, ErrConsoleOriginMismatch
 	}
 
 	s.removeOrderLocked(token)
@@ -219,6 +234,8 @@ type ConsoleTicketDeps struct {
 	Fetcher     ProxyFetcher
 	Store       *ConsoleTicketStore
 	Audit       AuditRecorder
+	// Origin is the ticket request's Origin header, bound to the ticket.
+	Origin string
 }
 
 // GetConsoleTicket is the only path from a ticket HTTP request to a console
@@ -238,7 +255,7 @@ func GetConsoleTicket(ctx context.Context, deps ConsoleTicketDeps) (ConsoleTicke
 		return ConsoleTicket{}, fmt.Errorf("%w: %w", ErrClusterConsoleUnavailable, err)
 	}
 
-	ticket := deps.Store.Issue(deps.Kind, deps.Actor.Username, deps.ClusterName, deps.VMID, entity.Node, proxyTicket, port)
+	ticket := deps.Store.Issue(deps.Kind, deps.Actor.Username, deps.ClusterName, deps.VMID, entity.Node, proxyTicket, port, deps.Origin)
 
 	if err := deps.Audit.RecordAction(ctx, deps.Actor.Username, deps.ClusterName, deps.VMID, AuditActionConsoleOpen); err != nil {
 		return ConsoleTicket{}, fmt.Errorf(auditWrapFmt, err)

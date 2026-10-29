@@ -236,7 +236,7 @@ func TestVMConsole_WebSocket_ValidTokenUpgradesAndRelaysRFBHandshake(t *testing.
 	// before it will upgrade.
 	header := http.Header{}
 	header.Set("Cookie", cookie.String())
-	header.Set("Origin", server.URL)
+	header.Set("Origin", "http://example.com") // the ticket request's Origin, not the server Host
 
 	conn, _, err := websocket.Dial(ctx, wsURL, &websocket.DialOptions{HTTPHeader: header}) //nolint:bodyclose // coder/websocket owns the response body lifecycle per its Dial docs
 	if err != nil {
@@ -317,7 +317,25 @@ func TestVMConsole_WebSocket_CrossOriginDoesNotBurnTicket(t *testing.T) {
 		t.Fatalf("cross-origin status = %d, want 403", rec.Code)
 	}
 
-	if _, err := tickets.Consume(vm.KindVNC, ticket.Token, "alice@pve", "default", 100); err != nil {
+	if _, err := tickets.Consume(vm.KindVNC, ticket.Token, "alice@pve", "default", 100, "http://example.com"); err != nil {
 		t.Fatalf("ticket burned by a cross-origin attempt: %v", err)
+	}
+}
+
+// A ticket is bound to the requesting page's Origin, so a request without one
+// gets no ticket at all.
+//
+//nolint:paralleltest // serial: shared fake VM and database fixtures
+func TestVMConsole_TicketWithoutOriginIsRefused(t *testing.T) {
+	handler, authHandler, _ := newVMConsoleHandler(t)
+
+	req := consoleRequest(http.MethodPost, "/api/v1/vms/default/100/vnc-ticket", "", aliceCookie(t, authHandler))
+	req.Header.Del("Origin")
+
+	rec := httptest.NewRecorder()
+	handler.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusForbidden {
+		t.Fatalf("status = %d, want 403", rec.Code)
 	}
 }
