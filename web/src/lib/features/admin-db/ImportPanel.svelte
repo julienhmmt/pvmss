@@ -16,11 +16,14 @@
 
 	const CONFIRM_DIALOG_ID = 'import-confirm-title';
 
+	let selectedFileName = $state('');
+
 	function onFileChange(event: Event): void {
 		const target = event.target as HTMLInputElement;
 		const fileList = target.files;
 		if (fileList && fileList.length > 0) {
 			const file: File = fileList.item(0) as File;
+			selectedFileName = file.name;
 			void store.uploadImport(file);
 		}
 	}
@@ -55,12 +58,19 @@
 		</p>
 	{/if}
 
-	<input
-		type="file"
-		accept=".db,application/octet-stream"
-		onchange={onFileChange}
-		class="block w-full text-sm text-muted-foreground file:mr-4 file:rounded-md file:border-0 file:bg-primary-solid file:px-4 file:py-2 file:text-sm file:font-medium file:text-primary-foreground"
-	/>
+	<div class="flex flex-wrap items-center gap-3">
+		<label class="inline-flex cursor-pointer items-center rounded-md bg-primary-solid px-4 py-2 text-sm font-medium text-primary-foreground focus-within:ring-2 focus-within:ring-ring hover:opacity-90">
+			{m['admin.db.chooseFile']()}
+			<input
+				type="file"
+				accept=".db,application/octet-stream"
+				onchange={onFileChange}
+				class="sr-only"
+				data-testid="db-import-file"
+			/>
+		</label>
+		<span class="text-sm text-muted-foreground">{selectedFileName || m['admin.db.noFileChosen']()}</span>
+	</div>
 
 	{#if store.importing}
 		<p role="status" aria-live="polite" class="text-muted-foreground">{m['common.uploading']()}</p>
