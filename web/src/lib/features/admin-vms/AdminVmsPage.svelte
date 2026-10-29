@@ -339,7 +339,8 @@
 									<Button
 										variant="secondary"
 										size="sm"
-										loading={inFlight}
+										loading={powerActions.get(machine.cluster, machine.vmid) === 'start'}
+										disabled={inFlight}
 										aria-label={m['vms.list.actionStartFor']({ name: machine.name })}
 										onclick={() => request(machine, 'start')}
 										data-testid="admin-vm-start"
