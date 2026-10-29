@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { getLocaleContext, LOCALE_NAMES, SUPPORTED_LOCALES } from './locale.svelte';
+	import { getLocaleContext, LOCALE_NAMES, LOCALE_SHORT_LABELS, SUPPORTED_LOCALES } from './locale.svelte';
 	import { m } from '#lib/paraglide/messages.js';
 	import type { Locale } from '#lib/paraglide/runtime.js';
 	import GlobeIcon from '#lib/shared/ui/icons/GlobeIcon.svelte';
@@ -18,7 +18,7 @@
 	title={m['nav.language']()}
 >
 	<GlobeIcon class="h-4 w-4" />
-	<span aria-hidden="true">{locale.current.toUpperCase()}</span>
+	<span aria-hidden="true">{LOCALE_SHORT_LABELS[locale.current]}</span>
 	<ChevronDownIcon class="h-3 w-3" />
 	<select
 		class="absolute inset-0 cursor-pointer opacity-0"

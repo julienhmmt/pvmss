@@ -17,6 +17,14 @@ export const LOCALE_NAMES: Record<Locale, string> = {
 	it: 'Italiano'
 };
 
+/** Three-letter label shown on the switcher button. Locale codes stay en/fr/de/it. */
+export const LOCALE_SHORT_LABELS: Record<Locale, string> = {
+	fr: 'FRA',
+	en: 'ENG',
+	de: 'DEU',
+	it: 'ITA'
+};
+
 /** localStorage key for the persisted locale preference (FR-005). */
 export const LOCALE_STORAGE_KEY = 'pvmss-locale';
 
