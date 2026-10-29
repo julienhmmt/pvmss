@@ -1,5 +1,5 @@
 <script lang="ts">
-	import type { AdminProfile } from './profiles.svelte';
+	import { vcpuTotal, type AdminProfile } from './profiles.svelte';
 	import type { ClusterOption } from '#lib/shared/clusters.js';
 	import Alert from '#lib/shared/ui/Alert.svelte';
 	import PageHeader from '#lib/shared/ui/PageHeader.svelte';
@@ -216,7 +216,7 @@
 						<tr class="group transition-colors hover:bg-muted/40">
 							<td class="font-mono text-xs" data-label={m['admin.profiles.id']()}>{profile.id}</td>
 							<td data-label={m['admin.profiles.labelField']()}>{profile.label}</td>
-							<td data-label={m['admin.profiles.vcpu']()}>{profile.cpuCores}</td>
+							<td data-label={m['admin.profiles.vcpu']()}>{vcpuTotal(profile)}</td>
 							<td data-label={m['common.memory']()}>{profile.memoryMB} MB</td>
 							<td data-label={m['admin.profiles.disk']()}>{profile.diskGB} GB</td>
 							<td data-label={m['admin.profiles.bus']()}>{profile.bus}</td>

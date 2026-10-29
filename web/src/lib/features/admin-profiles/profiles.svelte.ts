@@ -20,6 +20,11 @@ export interface AdminProfile {
 	enabled: boolean;
 }
 
+/** vCPU total a VM gets from this profile: sockets x cores (sockets default to 1). */
+export function vcpuTotal(p: Pick<AdminProfile, 'sockets' | 'cpuCores'>): number {
+	return (p.sockets ?? 1) * p.cpuCores;
+}
+
 /**
  * AdminProfilesStore manages the CRUD state for VM profiles. API responses are
  * $state.raw - they are API data, not form edits.
@@ -180,7 +185,7 @@ function sortProfiles(profiles: AdminProfile[], sortBy: ProfileSortColumn, dir: 
 				cmp = a.label.localeCompare(b.label) || a.id.localeCompare(b.id);
 				break;
 			case 'cpuCores':
-				cmp = a.cpuCores - b.cpuCores || a.label.localeCompare(b.label);
+				cmp = vcpuTotal(a) - vcpuTotal(b) || a.label.localeCompare(b.label);
 				break;
 			case 'memoryMB':
 				cmp = a.memoryMB - b.memoryMB || a.label.localeCompare(b.label);

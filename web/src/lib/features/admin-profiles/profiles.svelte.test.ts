@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
-import { AdminProfilesStore } from './profiles.svelte';
+import { AdminProfilesStore, vcpuTotal } from './profiles.svelte';
 import { m } from '#lib/paraglide/messages.js';
 
 const testProfiles = [
@@ -73,6 +73,16 @@ describe('AdminProfilesStore filteredProfiles', () => {
 		store.enabledFilter = 'enabled';
 		store.resetFilters();
 		expect(store.filteredProfiles.length).toBe(3);
+	});
+});
+
+describe('vcpuTotal', () => {
+	it('multiplies sockets by cores', () => {
+		expect(vcpuTotal({ sockets: 2, cpuCores: 4 })).toBe(8);
+	});
+
+	it('equals cores when sockets is 1', () => {
+		expect(vcpuTotal({ sockets: 1, cpuCores: 4 })).toBe(4);
 	});
 });
 
