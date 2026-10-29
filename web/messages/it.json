@@ -1574,6 +1574,8 @@
   "admin.db.exportError": "esportazione non riuscita",
   "admin.db.importTitle": "Importa database",
   "admin.db.importDescription": "Carica un file di database esportato in precedenza. Vedrai un'anteprima prima che venga scritto qualcosa. I cluster non vengono mai importati (contengono segreti dei token API): aggiungili di nuovo in Cluster. Anche sessioni, storico di audit e stato delle singole VM non vengono importati.",
+  "admin.db.chooseFile": "Scegli file",
+  "admin.db.noFileChosen": "Nessun file selezionato",
   "admin.db.importSuccess": "Importazione riuscita - {tables} sostituite.",
   "admin.db.preview": "Anteprima",
   "admin.db.previewDescription": "Le seguenti tabelle verranno sostituite (righe esistenti eliminate, poi ricaricate dal file caricato):",

@@ -1574,6 +1574,8 @@
   "admin.db.exportError": "Export fehlgeschlagen",
   "admin.db.importTitle": "Datenbank importieren",
   "admin.db.importDescription": "Laden Sie eine zuvor exportierte Datenbankdatei hoch. Sie sehen eine Vorschau, bevor etwas geschrieben wird. Cluster werden nie importiert (sie enthalten API-Token-Geheimnisse): Fügen Sie sie unter Cluster erneut hinzu. Sitzungen, Audit-Verlauf und VM-Zustände werden ebenfalls nicht importiert.",
+  "admin.db.chooseFile": "Datei auswählen",
+  "admin.db.noFileChosen": "Keine Datei ausgewählt",
   "admin.db.importSuccess": "Import erfolgreich - {tables} ersetzt.",
   "admin.db.preview": "Vorschau",
   "admin.db.previewDescription": "Die folgenden Tabellen werden ersetzt (bestehende Zeilen gelöscht und dann aus dem Upload neu geladen):",

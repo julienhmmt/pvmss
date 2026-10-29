@@ -1574,6 +1574,8 @@
   "admin.db.exportError": "export failed",
   "admin.db.importTitle": "Import Database",
   "admin.db.importDescription": "Upload a previously exported database file. You'll see a preview before anything is written. Clusters are never imported (they hold API token secrets): add them again under Clusters. Sessions, audit history and per-VM state are not imported either.",
+  "admin.db.chooseFile": "Choose file",
+  "admin.db.noFileChosen": "No file chosen",
   "admin.db.importSuccess": "Import successful - {tables} replaced.",
   "admin.db.preview": "Preview",
   "admin.db.previewDescription": "The following tables will be replaced (existing rows deleted, then reloaded from the upload):",
