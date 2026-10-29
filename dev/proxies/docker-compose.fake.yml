@@ -1,0 +1,8 @@
+# Overlay for `make proxy-e2e`: pvmss-dev on the fake cluster source (demo
+# users and VMs, no Proxmox needed) with its own database.
+services:
+  pvmss-dev:
+    environment:
+      PVMSS_CLUSTER_SOURCE: fake
+      PVMSS_DB_PATH: /data/pvmss-proxy-e2e.db
+      PVMSS_RATE_LIMIT_MAX: "100000"
