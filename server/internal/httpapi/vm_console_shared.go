@@ -73,6 +73,14 @@ func serveConsoleTicket(
 		return
 	}
 
+	// The ticket is bound to the requesting page's Origin; the WebSocket must
+	// present the same one (see vm.ConsoleTicketStore.Consume).
+	origin := r.Header.Get("Origin")
+	if origin == "" {
+		writeError(w, http.StatusForbidden, "forbidden", "invalid origin")
+		return
+	}
+
 	index, ok := loadClusterIndex(env.resolver, clusterName, func(status int, code, message string) { writeError(w, status, code, message) })
 	if !ok {
 		return
@@ -95,6 +103,7 @@ func serveConsoleTicket(
 		Fetcher:     params.fetcher,
 		Store:       env.tickets,
 		Audit:       env.store,
+		Origin:      origin,
 	})
 	if err != nil {
 		writeConsoleTicketError(w, env.log, err, writeError, params.invalidMsg)
@@ -169,14 +178,15 @@ func acceptConsoleWebSocket(
 		return vm.ConsoleTicket{}, nil, false
 	}
 
-	// Checked before Consume: a cross-origin attempt must not burn the
-	// user's single-use ticket.
-	if !isConsoleOriginAllowed(r) {
+	// Origin is compared to the ticket request's Origin, never to Host, so a
+	// reverse proxy that rewrites Host cannot break it. A mismatch does not
+	// burn the user's single-use ticket.
+	consumed, err := env.tickets.Consume(params.kind, token, principal.Username, clusterName, vmid, r.Header.Get("Origin"))
+	if errors.Is(err, vm.ErrConsoleOriginMismatch) {
 		writeError(w, http.StatusForbidden, "forbidden", "invalid origin")
 		return vm.ConsoleTicket{}, nil, false
 	}
 
-	consumed, err := env.tickets.Consume(params.kind, token, principal.Username, clusterName, vmid)
 	if err != nil {
 		writeError(w, http.StatusBadRequest, "invalid_ticket", params.invalidTicketMsg)
 		return vm.ConsoleTicket{}, nil, false
@@ -186,7 +196,7 @@ func acceptConsoleWebSocket(
 	_ = rc.SetReadDeadline(time.Time{})
 	_ = rc.SetWriteDeadline(time.Time{})
 
-	// Origin was already validated by isConsoleOriginAllowed; coder/websocket's
+	// Origin was already checked against the ticket by Consume; coder/websocket's
 	// own check compares Origin to Host only and would refuse every deployment
 	// where a reverse proxy rewrites Host.
 	wsConn, err := websocket.Accept(w, r, &websocket.AcceptOptions{InsecureSkipVerify: true})

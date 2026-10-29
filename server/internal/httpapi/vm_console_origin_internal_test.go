@@ -1,71 +1,13 @@
 package httpapi
 
 import (
-	"context"
 	"errors"
 	"fmt"
 	"io"
-	"net/http"
-	"net/http/httptest"
 	"testing"
 
 	"github.com/coder/websocket"
 )
-
-const consoleTestHost = "pvmss.example.com"
-
-// The console WebSocket carries a live VM session, so the Origin check is the
-// only defence against cross-site WebSocket hijacking.
-func TestIsConsoleOriginAllowed(t *testing.T) {
-	t.Parallel()
-
-	cases := []struct {
-		name          string
-		origin        string
-		host          string
-		secFetchSite  string
-		forwardedHost string
-		want          bool
-	}{
-		{"same host over https", "https://" + consoleTestHost, consoleTestHost, "", "", true},
-		{"same host and port", "http://localhost:5173", "localhost:5173", "", "", true},
-		{"ws scheme is accepted", "wss://" + consoleTestHost, consoleTestHost, "", "", true},
-		{"missing origin", "", consoleTestHost, "", "", false},
-		{"other host", "https://evil.example.net", consoleTestHost, "", "", false},
-		{"same host other port", "https://" + consoleTestHost + ":8443", consoleTestHost, "", "", false},
-		{"unparseable origin", "http://[::1", consoleTestHost, "", "", false},
-		// Behind reverse proxies Host is often rewritten to an internal name.
-		{"proxy rewrote host, browser says same-origin", "https://" + consoleTestHost, "pvmss.svc.internal", "same-origin", "", true},
-		{"proxy rewrote host, x-forwarded-host matches", "https://" + consoleTestHost, "pvmss.svc.internal", "", consoleTestHost + ", pvmss.svc.internal", true},
-		{"cross-site even with same-origin host", "https://" + consoleTestHost, consoleTestHost, "cross-site", "", false},
-		{"same-site sibling refused", "https://other." + consoleTestHost, "pvmss.svc.internal", "same-site", "", false},
-		{"forwarded host mismatch", "https://evil.example.net", "pvmss.svc.internal", "", consoleTestHost, false},
-	}
-	for _, tc := range cases {
-		t.Run(tc.name, func(t *testing.T) {
-			t.Parallel()
-
-			req := httptest.NewRequestWithContext(context.Background(), http.MethodGet, "/", nil)
-			req.Host = tc.host
-
-			if tc.origin != "" {
-				req.Header.Set("Origin", tc.origin)
-			}
-
-			if tc.secFetchSite != "" {
-				req.Header.Set("Sec-Fetch-Site", tc.secFetchSite)
-			}
-
-			if tc.forwardedHost != "" {
-				req.Header.Set("X-Forwarded-Host", tc.forwardedHost)
-			}
-
-			if got := isConsoleOriginAllowed(req); got != tc.want {
-				t.Fatalf("isConsoleOriginAllowed(origin=%q, host=%q) = %v, want %v", tc.origin, tc.host, got, tc.want)
-			}
-		})
-	}
-}
 
 func TestIsNormalClose(t *testing.T) {
 	t.Parallel()

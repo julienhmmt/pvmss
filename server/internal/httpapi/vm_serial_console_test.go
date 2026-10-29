@@ -223,7 +223,7 @@ func TestVMSerialConsole_WebSocket_ValidTokenUpgradesAndRelaysEcho(t *testing.T)
 
 	header := http.Header{}
 	header.Set("Cookie", cookie.String())
-	header.Set("Origin", server.URL)
+	header.Set("Origin", "http://example.com") // the ticket request's Origin, not the server Host
 
 	conn, _, err := websocket.Dial(ctx, wsURL, &websocket.DialOptions{HTTPHeader: header}) //nolint:bodyclose // coder/websocket owns the response body lifecycle per its Dial docs
 	if err != nil {

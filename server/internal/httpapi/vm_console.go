@@ -6,7 +6,6 @@ import (
 	"io"
 	"log/slog"
 	"net/http"
-	"net/url"
 	"pvmss/server/internal/cluster"
 	"pvmss/server/internal/inventory"
 	"pvmss/server/internal/logctx"
@@ -187,42 +186,6 @@ func (h *VMConsole) writeConsoleError(w http.ResponseWriter, status int, code, m
 	if err := writeClusterError(w, status, code, message); err != nil {
 		h.log.Warn("failed to write console error", "component", "httpapi", "code", code, "error", err)
 	}
-}
-
-// isConsoleOriginAllowed is the cross-site WebSocket hijacking guard. A
-// missing or unparseable Origin is refused. A browser's Sec-Fetch-Site is
-// authoritative when present: it cannot be forged by a page and survives any
-// reverse proxy, so "same-origin" is accepted even when a proxy rewrote Host
-// (HAProxy, Gateway API, ingress with a different internal domain). Without
-// it, the Origin host must equal Host or one of the X-Forwarded-Host values.
-func isConsoleOriginAllowed(r *http.Request) bool {
-	origin := r.Header.Get("Origin")
-	if origin == "" {
-		return false
-	}
-
-	originURL, err := url.Parse(origin)
-	if err != nil || originURL.Host == "" {
-		return false
-	}
-
-	if site := r.Header.Get("Sec-Fetch-Site"); site != "" {
-		return site == "same-origin"
-	}
-
-	// Compare only the host (hostname:port) - the Origin scheme may be http(s)
-	// or ws(s) depending on the client.
-	if strings.EqualFold(originURL.Host, r.Host) {
-		return true
-	}
-
-	for _, host := range strings.Split(r.Header.Get("X-Forwarded-Host"), ",") {
-		if strings.EqualFold(originURL.Host, strings.TrimSpace(host)) {
-			return true
-		}
-	}
-
-	return false
 }
 
 func isNormalClose(err error) bool {
