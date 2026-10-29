@@ -356,7 +356,7 @@ func TestProxmox_CreateVM_DiskDefaults(t *testing.T) {
 		wantSCSIHW string
 	}{
 		{"scsi bus gets discard and iothread", string(DiskBusSCSI), "local-lvm:20,discard=on,iothread=1", scsiController},
-		{"virtio bus gets discard only", string(DiskBusVirtio), "local-lvm:20,discard=on", ""},
+		{"virtio bus gets discard only", string(DiskBusVirtio), "local-lvm:20,discard=on", scsiController},
 	}
 
 	for _, tc := range cases {
