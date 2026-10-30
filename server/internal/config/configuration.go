@@ -58,6 +58,12 @@ type Configuration struct {
 	// Intended for the e2e suite and load tests: raising it weakens the
 	// per-IP login brute-force protection, so it is opt-in and never defaulted.
 	RateLimitMax int
+	// Native TLS listener (PVMSS_TLS_*). Empty cert keeps plain HTTP; a client
+	// CA turns on mutual TLS, TLSClientAuth "require" (default) or "optional".
+	TLSCertFile     string
+	TLSKeyFile      string
+	TLSClientCAFile string
+	TLSClientAuth   string
 	// DeprecatedSSHEnv lists retired SSH publishing variables that were set
 	// and are ignored (PVMSS_SSH_KEY_FILE, PVMSS_SSH_USER, PVMSS_SSH_PORT).
 	// Startup logs a warning for each: cloud-init files are now pasted by

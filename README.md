@@ -233,6 +233,9 @@ You can rely on `.env` + `env_file` or inline `environment:` entries, but **not 
 | `PVMSS_TRUSTED_PROXY_HOPS`                    | Trusted proxy count for client IP / rate limits (Helm sets `1`)                                              | ❌                       | `0`                    |
 | `PVMSS_RATE_LIMIT_MAX`                        | Raises every built-in rate-limit ceiling (per-IP auth, per-user writes); `0` keeps the defaults              | ❌                       | `0`                    |
 | `PVMSS_METRICS_PORT`                          | Port of the `GET /metrics` listener on `PVMSS_HOST` (1-65535, different from `PVMSS_PORT`); empty disables it | ❌                       | empty                  |
+| `PVMSS_TLS_CERT_FILE` / `PVMSS_TLS_KEY_FILE`   | Serve HTTPS with this PEM certificate and key (set both); see [docs/tls.md](docs/tls.md)                    | ❌                       | empty (plain HTTP)     |
+| `PVMSS_TLS_CLIENT_CA_FILE`                    | PEM CA bundle for client certificates: turns on mutual TLS (**recommended**)                                  | ❌                       | empty                  |
+| `PVMSS_TLS_CLIENT_AUTH`                       | `require` or `optional` client certificate (needs `PVMSS_TLS_CLIENT_CA_FILE`)                                 | ❌                       | `require`              |
 | `TZ`                                          | Container timezone                                                                                           | ❌                       | `UTC`                  |
 
 The Docker image presets `PVMSS_DB_PATH=/data/pvmss.db`, `PVMSS_HOST=0.0.0.0`
@@ -411,11 +414,11 @@ When the console stays black or the browser reports `ERR_HTTP2_REFUSED_STREAM`/`
 | `https://localhost:50001` | nginx               | Classic `Upgrade`/`Connection` recipe, WebSocket over HTTP/1.1                  |
 | `https://localhost:50002` | Caddy               | Defaults only                                                                   |
 | `https://localhost:50003` | Traefik             | File provider                                                                   |
-| `http://localhost:50004`  | Nginx Proxy Manager | Plain HTTP; admin UI on `http://localhost:50081`, proxy host created by `dev/proxies/npm-setup.sh` |
+| `https://pvmss.localhost:50004` | Nginx Proxy Manager | Admin UI on `http://localhost:50081`, proxy host created by `dev/proxies/npm-setup.sh` (NPM keeps `localhost` for its own default site) |
 
-The HTTPS proxies share one self-signed certificate, which you accept once per port. Each port is its own origin, so sign in on each one separately.
+The stack runs **mutual TLS on both hops**. `dev/proxies/gen-cert.sh` writes a dev PKI to `dev/proxies/certs/` (gitignored): `pvmss-dev` only accepts the proxies' client certificate, and every proxy only accepts browsers holding `client.p12`. Import `client.p12` (password `pvmss`) and trust `ca.crt` in your keychain or browser once; without the client certificate the proxies refuse the connection. Each port is its own origin, so sign in on each one separately. To start over with a new PKI, delete `dev/proxies/certs/` and run `make up`. See [docs/tls.md](docs/tls.md) to enable TLS/mTLS in your own deployment.
 
-`make proxy-e2e` checks the VNC console through each proxy automatically. It restarts `pvmss-dev` on the fake cluster source with its own database, then runs a Playwright test (Chromium) per proxy. The test passes only if the console WebSocket connects and stays open. Nginx Proxy Manager is set up through its API with its first-boot admin; set `NPM_EMAIL`/`NPM_PASSWORD` if you changed it. Run `make up` afterwards to go back to your `.env` cluster.
+`make proxy-e2e` checks the VNC console through each proxy automatically. It restarts `pvmss-dev` on the fake cluster source with its own database, then runs a Playwright test (Chromium) per proxy. The test passes only if the console WebSocket connects and stays open. Nginx Proxy Manager is set up through its API (the admin `admin@example.com`/`changeme` is created on first boot); set `NPM_EMAIL`/`NPM_PASSWORD` if you changed it. Run `make up` afterwards to go back to your `.env` cluster.
 
 ## Coming from v0.3
 

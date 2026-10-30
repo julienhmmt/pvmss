@@ -22,7 +22,7 @@ for context only).
 | `server/`         | Go REST API - module `pvmss/server`, own `go.mod`                        |
 | `web/`            | SvelteKit SPA - app `pvmss-web`, own `package.json` (bun)                |
 | `helm/`           | Helm chart                                                               |
-| `docs/`           | `FEATURES.md`, `cloud-init.md`, `observability.md`, `design/`, `agents/` |
+| `docs/`           | `FEATURES.md`, `cloud-init.md`, `observability.md`, `tls.md`, `design/`, `agents/` |
 | `specs/`          | Feature specifications (speckit); gitignored but real work               |
 | `sonar-projects/` | Per-project SonarScanner `.properties` files                             |
 | `tools/`          | Helper scripts (`pq`, sonar, superlint)                                  |
@@ -217,6 +217,9 @@ cluster on first boot only; afterwards the admin UI owns clusters.
 | `PVMSS_TRUSTED_PROXY_HOPS`                    | `0`                                                             |
 | `PVMSS_RATE_LIMIT_MAX`                        | `0` (built-in ceilings; positive raises them, used by e2e)      |
 | `PVMSS_METRICS_PORT`                          | empty (off); a port != `PVMSS_PORT` enables `GET /metrics`      |
+| `PVMSS_TLS_CERT_FILE` / `PVMSS_TLS_KEY_FILE`  | empty (plain HTTP); both set = HTTPS listener                   |
+| `PVMSS_TLS_CLIENT_CA_FILE`                    | empty; set = mutual TLS (advised, `docs/tls.md`)                |
+| `PVMSS_TLS_CLIENT_AUTH`                       | `require` (or `optional`); needs the client CA                  |
 
 Tracing/OTLP use the standard `OTEL_*` variables read by the SDK (see
 `docs/observability.md`). `LOG_LEVEL` is only the startup level; admins can

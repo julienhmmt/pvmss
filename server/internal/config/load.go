@@ -58,6 +58,10 @@ func Load() (Configuration, error) {
 		return cfg, err
 	}
 
+	if err := loadTLSSettings(&cfg); err != nil {
+		return cfg, err
+	}
+
 	if err := loadSSHSettings(&cfg); err != nil {
 		return cfg, err
 	}

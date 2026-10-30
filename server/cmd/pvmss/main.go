@@ -126,6 +126,7 @@ func run() int {
 	}
 
 	logBanner(logger, cfg, clusterRegistry.List(), bi, telemetry.EndpointHost(os.Getenv))
+	logTLSAdvice(logger, cfg)
 
 	if _, err := telemetry.RegisterInventoryGauges(otel.Meter("pvmss"), inventoryStats(inventoryRegistry)); err != nil {
 		logger.Warn("inventory gauges not registered", "component", "main", "error", err)
@@ -377,7 +378,17 @@ func serve(router http.Handler, cfg config.Configuration, logger *slog.Logger) i
 		WriteTimeout:      writeTimeout,
 		IdleTimeout:       idleTimeout,
 		MaxHeaderBytes:    maxHeaderBytes,
+		// Failed handshakes (missing client cert, ...) go to slog, not stderr.
+		ErrorLog: slog.NewLogLogger(logger.With("component", "http").Handler(), slog.LevelWarn),
 	}
+
+	tlsCfg, err := cfg.ServerTLSConfig()
+	if err != nil {
+		logger.Error("server tls config failed", "component", "main", "error", err)
+		return 1
+	}
+
+	srv.TLSConfig = tlsCfg
 
 	ln, err := new(net.ListenConfig).Listen(context.Background(), "tcp", srv.Addr)
 	if err != nil {
@@ -388,7 +399,13 @@ func serve(router http.Handler, cfg config.Configuration, logger *slog.Logger) i
 	logger.Info("server ready", "component", "main", "addr", srv.Addr)
 
 	errCh := make(chan error, 1)
-	go func() { errCh <- srv.Serve(ln) }()
+	go func() {
+		if tlsCfg != nil {
+			errCh <- srv.ServeTLS(ln, "", "")
+			return
+		}
+		errCh <- srv.Serve(ln)
+	}()
 
 	sigCh := make(chan os.Signal, 1)
 	signal.Notify(sigCh, os.Interrupt, syscall.SIGTERM)

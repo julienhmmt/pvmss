@@ -65,7 +65,19 @@ func logBanner(logger *slog.Logger, cfg config.Configuration, clusters []string,
 		"otel", otelHost != "",
 		"otelEndpoint", otelHost,
 		"metricsAddr", metricsAddr,
+		"tls", cfg.TLSMode(),
 	)
+}
+
+// logTLSAdvice warns when the listener is not mutual TLS. It is not forced
+// (TLS is often terminated by a reverse proxy) but strongly advised: docs/tls.md.
+func logTLSAdvice(logger *slog.Logger, cfg config.Configuration) {
+	switch cfg.TLSMode() {
+	case "http":
+		logger.Warn("listener serves plain http, mutual tls is recommended", "component", "main", "event", "tls_advice")
+	case "tls":
+		logger.Warn("listener does not require client certificates, mutual tls is recommended", "component", "main", "event", "tls_advice")
+	}
 }
 
 // startMetricsServer serves handler at GET /metrics on its own listener

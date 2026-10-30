@@ -19,12 +19,21 @@ services:
       # Dev DBs outlive schema squashes: move an incompatible one aside
       # (pvmss.db.incompatible-<time>) and start fresh instead of crash-looping.
       PVMSS_DB_RESET_ON_INCOMPATIBLE: "true"
+      # Mutual TLS on the listener: only clients holding a cert from the dev
+      # CA (the proxies, Vite) get in. See docs/tls.md.
+      PVMSS_TLS_CERT_FILE: /certs/pvmss.crt
+      PVMSS_TLS_KEY_FILE: /certs/pvmss.key
+      PVMSS_TLS_CLIENT_CA_FILE: /certs/ca.crt
     # Not published: reach PVMSS through one of the reverse proxies below
     # (https://localhost:50000-50004), the way production does.
     expose:
       - "50000"
     volumes:
       - pvmss_dev_data:/data
+      - ./dev/proxies/certs:/certs:ro
+    depends_on:
+      proxy-certs:
+        condition: service_completed_successfully
     cap_drop:
       - ALL
     security_opt:
@@ -36,7 +45,9 @@ services:
           memory: 256M
 
   # --- Reverse proxies in front of pvmss-dev (one port each) ---------------
-  # All serve the same self-signed certificate (accept it once per port).
+  # Mutual TLS on both hops: browser -> proxy needs dev/proxies/certs/client.p12
+  # (password pvmss), proxy -> pvmss-dev uses proxy-client.pem. Trust ca.crt
+  # once instead of accepting a self-signed certificate per port.
   # Configs live in dev/proxies/. See README "Behind a reverse proxy".
   proxy-certs:
     image: alpine:3.24
@@ -45,7 +56,7 @@ services:
     command: /gen-cert.sh
     volumes:
       - ./dev/proxies/gen-cert.sh:/gen-cert.sh:ro
-      - proxy_certs:/certs
+      - ./dev/proxies/certs:/certs
 
   # 50000: HTTP/2 + Host rewritten to an internal name (prod-like setup).
   proxy-haproxy:
@@ -56,7 +67,7 @@ services:
       - "50000:50000"
     volumes:
       - ./dev/proxies/haproxy/haproxy.cfg:/usr/local/etc/haproxy/haproxy.cfg:ro
-      - proxy_certs:/certs:ro
+      - ./dev/proxies/certs:/certs:ro
     depends_on:
       proxy-certs:
         condition: service_completed_successfully
@@ -72,7 +83,7 @@ services:
       - "50001:50001"
     volumes:
       - ./dev/proxies/nginx/default.conf:/etc/nginx/conf.d/default.conf:ro
-      - proxy_certs:/certs:ro
+      - ./dev/proxies/certs:/certs:ro
     depends_on:
       proxy-certs:
         condition: service_completed_successfully
@@ -88,7 +99,7 @@ services:
       - "50002:50002"
     volumes:
       - ./dev/proxies/caddy/Caddyfile:/etc/caddy/Caddyfile:ro
-      - proxy_certs:/certs:ro
+      - ./dev/proxies/certs:/certs:ro
     depends_on:
       proxy-certs:
         condition: service_completed_successfully
@@ -109,27 +120,29 @@ services:
       - "50003:50003"
     volumes:
       - ./dev/proxies/traefik/dynamic.yml:/etc/traefik/dynamic.yml:ro
-      - proxy_certs:/certs:ro
+      - ./dev/proxies/certs:/certs:ro
     depends_on:
       proxy-certs:
         condition: service_completed_successfully
       pvmss-dev:
         condition: service_started
 
-  # 50004: Nginx Proxy Manager, plain HTTP. Admin UI on http://localhost:50081,
+  # 50004: Nginx Proxy Manager (HTTPS, mTLS via advanced config). Admin UI on http://localhost:50081,
   # loopback only: it keeps the first-boot admin (admin@example.com/changeme).
   # dev/proxies/npm-setup.sh creates the proxy host localhost ->
-  # http pvmss-dev:50000 with WebSockets on (make proxy-e2e runs it).
+  # https pvmss-dev:50000 with WebSockets on (make proxy-e2e runs it). NPM keeps
+  # "localhost" for its own default site: open https://pvmss.localhost:50004.
   proxy-npm:
     image: jc21/nginx-proxy-manager:2.16.0
     container_name: pvmss-proxy-npm
     restart: unless-stopped
     ports:
-      - "127.0.0.1:50004:80"
+      - "127.0.0.1:50004:443"
       - "127.0.0.1:50081:81"
     volumes:
       - proxy_npm_data:/data
       - proxy_npm_letsencrypt:/etc/letsencrypt
+      - ./dev/proxies/certs:/certs:ro
     depends_on:
       - pvmss-dev
 
@@ -176,7 +189,6 @@ services:
 
 volumes:
   pvmss_dev_data: {}
-  proxy_certs: {}
   proxy_npm_data: {}
   proxy_npm_letsencrypt: {}
   sonarqube_data: {}
