@@ -54,6 +54,31 @@ func UpdateNetwork(ctx context.Context, deps NetworkDependencies, requested []cl
 		return nil, ErrNetworkCardsExceedLimit
 	}
 
+	updated, err := mergeNetworkRequest(deps, requested, entity, gabarit)
+	if err != nil {
+		return nil, err
+	}
+
+	if err := deps.Writer.UpdateNetwork(ctx, entity.Node, entity.VMID, updated); err != nil {
+		return nil, fmt.Errorf("update network: %w", err)
+	}
+
+	if err := deps.Audit.RecordAction(ctx, deps.Actor.Username, deps.ClusterName, deps.VMID, "network_update"); err != nil {
+		return nil, fmt.Errorf("record network audit: %w", err)
+	}
+
+	if _, err := deps.Refresher.Refresh(ctx); err != nil {
+		return nil, fmt.Errorf("refresh inventory after network write: %w", err)
+	}
+
+	return updated, nil
+}
+
+// mergeNetworkRequest validates the requested NIC list and merges each entry
+// with the server-owned state of the live NIC at the same index: MAC and
+// guest-agent IPs, options the request cannot set (firewall, mtu), and tenant
+// isolation for non-admins.
+func mergeNetworkRequest(deps NetworkDependencies, requested []cluster.NetworkInterface, entity Entity, gabarit policy.Gabarit) ([]cluster.NetworkInterface, error) {
 	existing := networkByIndex(entity.NetworkInterfaces)
 	updated := make([]cluster.NetworkInterface, 0, len(requested))
 
@@ -72,8 +97,6 @@ func UpdateNetwork(ctx context.Context, deps NetworkDependencies, requested []cl
 			return nil, fmt.Errorf("%w: %s", ErrInvalidNetworkModel, iface.Model)
 		}
 
-		// Server-owned NIC state (MAC, guest-agent IPs) and options the request
-		// cannot set (firewall, mtu) come from the live NIC, not the request.
 		current := existing[iface.Index]
 		iface.MAC = current.MAC
 		iface.IPAddresses = append([]string(nil), current.IPAddresses...)
@@ -85,18 +108,6 @@ func UpdateNetwork(ctx context.Context, deps NetworkDependencies, requested []cl
 		}
 
 		updated = append(updated, iface)
-	}
-
-	if err := deps.Writer.UpdateNetwork(ctx, entity.Node, entity.VMID, updated); err != nil {
-		return nil, fmt.Errorf("update network: %w", err)
-	}
-
-	if err := deps.Audit.RecordAction(ctx, deps.Actor.Username, deps.ClusterName, deps.VMID, "network_update"); err != nil {
-		return nil, fmt.Errorf("record network audit: %w", err)
-	}
-
-	if _, err := deps.Refresher.Refresh(ctx); err != nil {
-		return nil, fmt.Errorf("refresh inventory after network write: %w", err)
 	}
 
 	return updated, nil

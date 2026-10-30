@@ -108,30 +108,22 @@ func NewConsoleTicketStore() *ConsoleTicketStore {
 
 // Issue generates an opaque, cryptographically random token, stores the entry,
 // appends to the insertion-order slice, and evicts the oldest entry if the
-// fixed capacity is exceeded. Returns the new ticket.
-func (s *ConsoleTicketStore) Issue(kind ConsoleKind, username, clusterName string, vmid int, node, proxmoxTicket string, port int, origin string) ConsoleTicket {
+// fixed capacity is exceeded. Returns the new ticket. The caller supplies the
+// binding fields (Kind, Username, Cluster, VMID, Node, ProxmoxTicket, Port,
+// Origin); Issue fills Token, IssuedAt and ExpiresAt.
+func (s *ConsoleTicketStore) Issue(ticket ConsoleTicket) ConsoleTicket {
 	token, err := generateConsoleToken()
 	if err != nil {
 		// crypto/rand failure is a fatal environment condition - surface it as
 		// a ticket with an empty token so the caller can detect it, and let the
 		// HTTP layer turn it into a 500. This path is not reachable in practice.
-		return ConsoleTicket{Kind: kind, Username: username, Cluster: clusterName, VMID: vmid, Node: node, ProxmoxTicket: proxmoxTicket, Port: port, Origin: origin}
+		return ticket
 	}
 
 	now := time.Now()
-	ticket := ConsoleTicket{
-		Kind:          kind,
-		Token:         token,
-		Username:      username,
-		Cluster:       clusterName,
-		VMID:          vmid,
-		Node:          node,
-		ProxmoxTicket: proxmoxTicket,
-		Port:          port,
-		Origin:        origin,
-		IssuedAt:      now,
-		ExpiresAt:     now.Add(TicketTTL),
-	}
+	ticket.Token = token
+	ticket.IssuedAt = now
+	ticket.ExpiresAt = now.Add(TicketTTL)
 
 	s.mu.Lock()
 	defer s.mu.Unlock()
@@ -255,7 +247,16 @@ func GetConsoleTicket(ctx context.Context, deps ConsoleTicketDeps) (ConsoleTicke
 		return ConsoleTicket{}, fmt.Errorf("%w: %w", ErrClusterConsoleUnavailable, err)
 	}
 
-	ticket := deps.Store.Issue(deps.Kind, deps.Actor.Username, deps.ClusterName, deps.VMID, entity.Node, proxyTicket, port, deps.Origin)
+	ticket := deps.Store.Issue(ConsoleTicket{
+		Kind:          deps.Kind,
+		Username:      deps.Actor.Username,
+		Cluster:       deps.ClusterName,
+		VMID:          deps.VMID,
+		Node:          entity.Node,
+		ProxmoxTicket: proxyTicket,
+		Port:          port,
+		Origin:        deps.Origin,
+	})
 
 	if err := deps.Audit.RecordAction(ctx, deps.Actor.Username, deps.ClusterName, deps.VMID, AuditActionConsoleOpen); err != nil {
 		return ConsoleTicket{}, fmt.Errorf(auditWrapFmt, err)

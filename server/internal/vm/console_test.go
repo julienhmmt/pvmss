@@ -23,6 +23,15 @@ var consoleKindCases = []consoleKindCase{
 	{"terminal", KindTerminal, "proxmox-term-ticket", 5902},
 }
 
+// issueTestTicket issues a ticket bound to the shared fixture values
+// (testConsoleUser / "default" / "pve-node-01").
+func issueTestTicket(s *ConsoleTicketStore, kind ConsoleKind, vmid int, proxmoxTicket string, port int, origin string) ConsoleTicket {
+	return s.Issue(ConsoleTicket{
+		Kind: kind, Username: testConsoleUser, Cluster: "default", VMID: vmid,
+		Node: "pve-node-01", ProxmoxTicket: proxmoxTicket, Port: port, Origin: origin,
+	})
+}
+
 // TestConsoleTicketStore_IssueThenConsume_Succeeds - a freshly issued
 // ticket is consumable exactly once for the (cluster, vmid) it was bound to.
 func TestConsoleTicketStore_IssueThenConsume_Succeeds(t *testing.T) {
@@ -41,7 +50,7 @@ func assertTicketIssuedAndConsumed(t *testing.T, tc consoleKindCase) {
 
 	store := NewConsoleTicketStore()
 
-	ticket := store.Issue(tc.kind, testConsoleUser, "default", 101, "pve-node-01", tc.ticket, tc.port, testConsoleOrigin)
+	ticket := issueTestTicket(store, tc.kind, 101, tc.ticket, tc.port, testConsoleOrigin)
 
 	if ticket.Token == "" {
 		t.Fatalf("Issue returned an empty token")
@@ -80,7 +89,7 @@ func TestConsoleTicketStore_ConsumeTwice_FailsOnSecondCall(t *testing.T) {
 
 			store := NewConsoleTicketStore()
 
-			ticket := store.Issue(tc.kind, testConsoleUser, "default", 101, "pve-node-01", tc.ticket, tc.port, testConsoleOrigin)
+			ticket := issueTestTicket(store, tc.kind, 101, tc.ticket, tc.port, testConsoleOrigin)
 
 			if _, err := store.Consume(tc.kind, ticket.Token, testConsoleUser, "default", 101, testConsoleOrigin); err != nil {
 				t.Fatalf("first Consume: %v", err)
@@ -104,7 +113,7 @@ func TestConsoleTicketStore_ConsumeAfterExpiry_Fails(t *testing.T) {
 
 			store := NewConsoleTicketStore()
 
-			ticket := store.Issue(tc.kind, testConsoleUser, "default", 101, "pve-node-01", tc.ticket, tc.port, testConsoleOrigin)
+			ticket := issueTestTicket(store, tc.kind, 101, tc.ticket, tc.port, testConsoleOrigin)
 			// Force the ticket into the past by rewriting ExpiresAt through the store
 			// map. This is a white-box hook only this test uses.
 			store.expireForTest(ticket.Token)
@@ -128,7 +137,7 @@ func TestConsoleTicketStore_ConsumeWithWrongClusterOrVMID_Fails(t *testing.T) {
 
 			store := NewConsoleTicketStore()
 
-			ticket := store.Issue(tc.kind, testConsoleUser, "default", 101, "pve-node-01", tc.ticket, tc.port, testConsoleOrigin)
+			ticket := issueTestTicket(store, tc.kind, 101, tc.ticket, tc.port, testConsoleOrigin)
 
 			if _, err := store.Consume(tc.kind, ticket.Token, testConsoleUser, "default", 202, testConsoleOrigin); !errors.Is(err, ErrInvalidTicket) {
 				t.Fatalf("wrong vmid Consume err = %v, want ErrInvalidTicket", err)
@@ -139,7 +148,7 @@ func TestConsoleTicketStore_ConsumeWithWrongClusterOrVMID_Fails(t *testing.T) {
 				t.Fatalf("after wrong-vmid attempt, correct Consume: %v", err)
 			}
 
-			ticket2 := store.Issue(tc.kind, testConsoleUser, "default", 101, "pve-node-01", tc.ticket, tc.port, testConsoleOrigin)
+			ticket2 := issueTestTicket(store, tc.kind, 101, tc.ticket, tc.port, testConsoleOrigin)
 			if _, err := store.Consume(tc.kind, ticket2.Token, testConsoleUser, "other", 101, testConsoleOrigin); !errors.Is(err, ErrInvalidTicket) {
 				t.Fatalf("wrong cluster Consume err = %v, want ErrInvalidTicket", err)
 			}
@@ -155,7 +164,7 @@ func TestConsoleTicketStore_ConsumeWithWrongKind_Fails(t *testing.T) {
 
 	store := NewConsoleTicketStore()
 
-	vnc := store.Issue(KindVNC, testConsoleUser, "default", 101, "pve-node-01", "vnc-ticket", 5901, testConsoleOrigin)
+	vnc := issueTestTicket(store, KindVNC, 101, "vnc-ticket", 5901, testConsoleOrigin)
 
 	if _, err := store.Consume(KindTerminal, vnc.Token, testConsoleUser, "default", 101, testConsoleOrigin); !errors.Is(err, ErrInvalidTicket) {
 		t.Fatalf("VNC ticket consumed as terminal err = %v, want ErrInvalidTicket", err)
@@ -177,7 +186,7 @@ func TestConsoleTicketStore_EvictsOldestWhenFull(t *testing.T) {
 	var first ConsoleTicket
 
 	for i := range ticketStoreCapacity {
-		ticket := store.Issue(KindVNC, testConsoleUser, "default", 100+i, "pve-node-01", "ticket", 5901, testConsoleOrigin)
+		ticket := issueTestTicket(store, KindVNC, 100+i, "ticket", 5901, testConsoleOrigin)
 		if i == 0 {
 			first = ticket
 		}
@@ -191,14 +200,14 @@ func TestConsoleTicketStore_EvictsOldestWhenFull(t *testing.T) {
 
 	// Re-issue the consumed slot so the store is exactly full again, then
 	// issue one more - that overflow evicts the oldest remaining ticket.
-	store.Issue(KindVNC, testConsoleUser, "default", 100, "pve-node-01", "ticket", 5901, testConsoleOrigin)
+	issueTestTicket(store, KindVNC, 100, "ticket", 5901, testConsoleOrigin)
 
 	oldest := store.oldestTokenForTest()
 	if oldest == "" {
 		t.Fatalf("expected at least one ticket in the store before overflow")
 	}
 
-	store.Issue(KindVNC, testConsoleUser, "default", 999, "pve-node-01", "ticket", 5901, testConsoleOrigin)
+	issueTestTicket(store, KindVNC, 999, "ticket", 5901, testConsoleOrigin)
 
 	if _, err := store.Consume(KindVNC, oldest, testConsoleUser, "default", 101, testConsoleOrigin); !errors.Is(err, ErrInvalidTicket) {
 		t.Fatalf("oldest ticket after overflow err = %v, want ErrInvalidTicket (evicted)", err)
@@ -213,7 +222,7 @@ func TestConsoleTicketStore_TTLIsThirtySeconds(t *testing.T) {
 	store := NewConsoleTicketStore()
 
 	before := time.Now()
-	ticket := store.Issue(KindVNC, testConsoleUser, "default", 101, "pve-node-01", "proxmox-ticket", 5901, testConsoleOrigin)
+	ticket := issueTestTicket(store, KindVNC, 101, "proxmox-ticket", 5901, testConsoleOrigin)
 	after := time.Now()
 
 	want := before.Add(TicketTTL)
@@ -230,7 +239,7 @@ func TestConsoleTicketStore_OtherUserCannotConsume(t *testing.T) {
 	t.Parallel()
 
 	store := NewConsoleTicketStore()
-	ticket := store.Issue(KindVNC, testConsoleUser, "default", 101, "pve-node-01", "vnc-ticket", 5901, testConsoleOrigin)
+	ticket := issueTestTicket(store, KindVNC, 101, "vnc-ticket", 5901, testConsoleOrigin)
 
 	if _, err := store.Consume(KindVNC, ticket.Token, "bob@pve", "default", 101, testConsoleOrigin); !errors.Is(err, ErrInvalidTicket) {
 		t.Fatalf("other user consume: err = %v, want ErrInvalidTicket", err)
@@ -250,7 +259,7 @@ func TestConsoleTicketStore_OriginBinding(t *testing.T) {
 	t.Parallel()
 
 	store := NewConsoleTicketStore()
-	ticket := store.Issue(KindVNC, testConsoleUser, "default", 101, "pve-node-01", "vnc-ticket", 5901, testConsoleOrigin)
+	ticket := issueTestTicket(store, KindVNC, 101, "vnc-ticket", 5901, testConsoleOrigin)
 
 	for _, origin := range []string{"", "https://evil.example.net", "https://pvmss.example.com:8443", "http://pvmss.example.com"} {
 		if _, err := store.Consume(KindVNC, ticket.Token, testConsoleUser, "default", 101, origin); !errors.Is(err, ErrConsoleOriginMismatch) {
@@ -268,7 +277,7 @@ func TestConsoleTicketStore_EmptyIssuingOriginNeverMatches(t *testing.T) {
 	t.Parallel()
 
 	store := NewConsoleTicketStore()
-	ticket := store.Issue(KindVNC, testConsoleUser, "default", 101, "pve-node-01", "vnc-ticket", 5901, "")
+	ticket := issueTestTicket(store, KindVNC, 101, "vnc-ticket", 5901, "")
 
 	if _, err := store.Consume(KindVNC, ticket.Token, testConsoleUser, "default", 101, ""); !errors.Is(err, ErrConsoleOriginMismatch) {
 		t.Fatalf("empty origins: err = %v, want ErrConsoleOriginMismatch", err)

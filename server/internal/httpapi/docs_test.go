@@ -735,7 +735,7 @@ func TestAdminDocs_CreateDuplicate(t *testing.T) {
 // TestAdminDocs_Reorder - the saved order drives the public list, and a bad id
 // list is rejected without changing anything.
 //
-//nolint:gocyclo,paralleltest // serial: shared database fixture; one scenario, many assertions
+//nolint:paralleltest // serial: shared database fixture; one scenario, many assertions
 func TestAdminDocs_Reorder(t *testing.T) {
 	docs, admin, auth := newDocsHandlers(t)
 	cookie := adminCookie(t, auth)
@@ -744,21 +744,7 @@ func TestAdminDocs_Reorder(t *testing.T) {
 	}
 
 	list := docsServe(t, docs, admin, auth, docsRequest(http.MethodGet, "/api/v1/admin/docs", cookie, ""))
-	var pages []adminDocDTO
-	if err := json.Unmarshal(list.Body.Bytes(), &pages); err != nil {
-		t.Fatalf("decode: %v", err)
-	}
-	var ids []string
-	seen := map[string]bool{}
-	for _, p := range pages {
-		if !seen[p.ID] {
-			seen[p.ID] = true
-			ids = append(ids, p.ID)
-		}
-	}
-	if len(ids) < 2 {
-		t.Fatalf("need >= 2 pages, got %d", len(ids))
-	}
+	ids := adminDocIDs(t, list)
 
 	bad, _ := json.Marshal(map[string]any{"ids": ids[1:]})
 	rec := docsServe(t, docs, admin, auth, docsRequest(http.MethodPut, "/api/v1/admin/docs/order", cookie, string(bad)))
@@ -766,10 +752,7 @@ func TestAdminDocs_Reorder(t *testing.T) {
 		t.Fatalf("partial order status = %d, want 400", rec.Code)
 	}
 
-	rev := make([]string, len(ids))
-	for i, id := range ids {
-		rev[len(ids)-1-i] = id
-	}
+	rev := reversedStrings(ids)
 	body, _ := json.Marshal(map[string]any{"ids": rev})
 	rec = docsServe(t, docs, admin, auth, docsRequest(http.MethodPut, "/api/v1/admin/docs/order", cookie, string(body)))
 	if rec.Code != http.StatusOK {
@@ -777,16 +760,62 @@ func TestAdminDocs_Reorder(t *testing.T) {
 	}
 
 	pub := docsServe(t, docs, admin, auth, docsRequest(http.MethodGet, "/api/v1/docs", cookie, ""))
+	assertDocSummariesOrdered(t, pub, rev)
+}
+
+// adminDocIDs decodes the admin doc list response and returns each page's id
+// in first-seen order.
+func adminDocIDs(t *testing.T, rec *httptest.ResponseRecorder) []string {
+	t.Helper()
+
+	var pages []adminDocDTO
+	if err := json.Unmarshal(rec.Body.Bytes(), &pages); err != nil {
+		t.Fatalf("decode: %v", err)
+	}
+
+	var ids []string
+	seen := map[string]bool{}
+	for _, p := range pages {
+		if seen[p.ID] {
+			continue
+		}
+		seen[p.ID] = true
+		ids = append(ids, p.ID)
+	}
+
+	if len(ids) < 2 {
+		t.Fatalf("need >= 2 pages, got %d", len(ids))
+	}
+
+	return ids
+}
+
+// reversedStrings returns a copy of ids in reverse order.
+func reversedStrings(ids []string) []string {
+	rev := make([]string, len(ids))
+	for i, id := range ids {
+		rev[len(ids)-1-i] = id
+	}
+	return rev
+}
+
+// assertDocSummariesOrdered decodes the public doc list response and fails
+// when the ids of rev do not appear in that relative order.
+func assertDocSummariesOrdered(t *testing.T, rec *httptest.ResponseRecorder, rev []string) {
+	t.Helper()
+
 	var got []docSummaryDTO
-	if err := json.Unmarshal(pub.Body.Bytes(), &got); err != nil {
+	if err := json.Unmarshal(rec.Body.Bytes(), &got); err != nil {
 		t.Fatalf("decode public: %v", err)
 	}
+
 	pos := map[string]int{}
 	for i, g := range got {
 		if _, ok := pos[g.ID]; !ok {
 			pos[g.ID] = i
 		}
 	}
+
 	for i := 1; i < len(rev); i++ {
 		a, aok := pos[rev[i-1]]
 		b, bok := pos[rev[i]]

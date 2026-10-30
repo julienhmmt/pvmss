@@ -236,13 +236,25 @@ func TestUpdateNetwork_UserCannotMoveVLANOrRate(t *testing.T) {
 				t.Errorf("VLAN = %v, want %d", got.VLAN, tc.wantVLAN)
 			}
 
-			if tc.wantRate == nil {
-				if got.RateMbps != nil {
-					t.Errorf("RateMbps = %d, want nil (admin cleared it)", *got.RateMbps)
-				}
-			} else if got.RateMbps == nil || *got.RateMbps != currentRate {
-				t.Errorf("RateMbps = %v, want %d (kept from live NIC)", got.RateMbps, currentRate)
-			}
+			assertNICRate(t, got, tc.wantRate, currentRate)
 		})
+	}
+}
+
+// assertNICRate checks the NIC rate outcome: a nil wantRate means the request
+// cleared the limit, non-nil means the live NIC's rate must have been kept.
+func assertNICRate(t *testing.T, got cluster.NetworkInterface, wantRate *int, currentRate int) {
+	t.Helper()
+
+	if wantRate == nil {
+		if got.RateMbps != nil {
+			t.Errorf("RateMbps = %d, want nil (admin cleared it)", *got.RateMbps)
+		}
+
+		return
+	}
+
+	if got.RateMbps == nil || *got.RateMbps != currentRate {
+		t.Errorf("RateMbps = %v, want %d (kept from live NIC)", got.RateMbps, currentRate)
 	}
 }

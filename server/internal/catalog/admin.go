@@ -161,8 +161,6 @@ func AdminListNodes(ctx context.Context, st *store.Store, client cluster.Client,
 // is enabled when any of its per-node rows is. A shared storage approved on
 // some nodes is extended to the nodes that have no approval row yet (nodes
 // added later). Orphan approvals are handled as in AdminListNodes.
-//
-//nolint:gocyclo // linear merge of per-node storage rows; splitting hurts readability
 func AdminListStorages(ctx context.Context, st *store.Store, client cluster.Client, clusterName string) ([]StorageApproval, error) {
 	snap, err := client.Snapshot(ctx)
 	if err != nil {
@@ -174,13 +172,7 @@ func AdminListStorages(ctx context.Context, st *store.Store, client cluster.Clie
 		return nil, err
 	}
 
-	enabledByKey := make(map[nameNodeKey]bool, len(enabledRows))
-	sharedEnabled := make(map[string]bool)
-
-	for _, s := range enabledRows {
-		enabledByKey[nameNodeKey{Name: s.Name, Node: s.Node}] = s.Enabled
-		sharedEnabled[s.Name] = sharedEnabled[s.Name] || s.Enabled
-	}
+	enabledByKey, sharedEnabled := storageEnabledIndexes(enabledRows)
 
 	discoveredByKey := make(map[nameNodeKey]bool, len(snap.Storages))
 	sharedRows := make(map[string]*StorageApproval)
@@ -193,17 +185,7 @@ func AdminListStorages(ctx context.Context, st *store.Store, client cluster.Clie
 		}
 
 		if cluster.IsSharedStorage(storage) {
-			sharedNodes[storage.Name] = append(sharedNodes[storage.Name], storage.Node)
-			if sharedRows[storage.Name] == nil {
-				out = append(out, StorageApproval{
-					Name: storage.Name, Type: storage.Type, Total: storage.Total, Used: storage.Used,
-					Enabled: sharedEnabled[storage.Name], Shared: true,
-				})
-				sharedRows[storage.Name] = &out[len(out)-1]
-			}
-
-			sharedRows[storage.Name].NodeCount++
-
+			out = recordSharedStorage(out, sharedRows, sharedNodes, storage, sharedEnabled)
 			continue
 		}
 
@@ -218,30 +200,10 @@ func AdminListStorages(ctx context.Context, st *store.Store, client cluster.Clie
 		})
 	}
 
-	// Shared rows stay out of the orphan sweep: a stale row for a removed node
-	// is harmless (the node is gone), and the storage itself is one row.
-	var sweepRows []store.CatalogStorageEnabled
+	sweepRows := nonSharedEnabledRows(enabledRows, sharedRows)
 
-	for _, row := range enabledRows {
-		if _, shared := sharedRows[row.Name]; !shared {
-			sweepRows = append(sweepRows, row)
-		}
-	}
-
-	for name, nodes := range sharedNodes {
-		if !sharedEnabled[name] {
-			continue
-		}
-
-		for _, node := range nodes {
-			if _, exists := enabledByKey[nameNodeKey{Name: name, Node: node}]; exists {
-				continue
-			}
-
-			if err := st.SetStorageEnabled(ctx, clusterName, name, node, true); err != nil {
-				return nil, err
-			}
-		}
+	if err := extendSharedApprovals(ctx, st, clusterName, sharedNodes, sharedEnabled, enabledByKey); err != nil {
+		return nil, err
 	}
 
 	if err := sweepOrphans(ctx, st, clusterName, orphanSweep[nameNodeKey, StorageApproval]{
@@ -255,6 +217,75 @@ func AdminListStorages(ctx context.Context, st *store.Store, client cluster.Clie
 	}
 
 	return out, nil
+}
+
+// storageEnabledIndexes builds the lookup maps for stored storage approvals:
+// per (name, node) enabled flags plus a per-name OR used by shared rows.
+func storageEnabledIndexes(rows []store.CatalogStorageEnabled) (map[nameNodeKey]bool, map[string]bool) {
+	enabledByKey := make(map[nameNodeKey]bool, len(rows))
+	sharedEnabled := make(map[string]bool)
+
+	for _, s := range rows {
+		enabledByKey[nameNodeKey{Name: s.Name, Node: s.Node}] = s.Enabled
+		sharedEnabled[s.Name] = sharedEnabled[s.Name] || s.Enabled
+	}
+
+	return enabledByKey, sharedEnabled
+}
+
+// recordSharedStorage registers one shared-storage sighting: the first node
+// reporting it appends the single Shared row, later nodes only bump NodeCount.
+// Returns the (possibly grown) output slice.
+func recordSharedStorage(out []StorageApproval, sharedRows map[string]*StorageApproval, sharedNodes map[string][]string, storage cluster.Storage, sharedEnabled map[string]bool) []StorageApproval {
+	sharedNodes[storage.Name] = append(sharedNodes[storage.Name], storage.Node)
+	if sharedRows[storage.Name] == nil {
+		out = append(out, StorageApproval{
+			Name: storage.Name, Type: storage.Type, Total: storage.Total, Used: storage.Used,
+			Enabled: sharedEnabled[storage.Name], Shared: true,
+		})
+		sharedRows[storage.Name] = &out[len(out)-1]
+	}
+
+	sharedRows[storage.Name].NodeCount++
+
+	return out
+}
+
+// nonSharedEnabledRows keeps the stored rows for the orphan sweep: shared
+// rows stay out because a stale row for a removed node is harmless (the node
+// is gone), and the storage itself is one row.
+func nonSharedEnabledRows(rows []store.CatalogStorageEnabled, sharedRows map[string]*StorageApproval) []store.CatalogStorageEnabled {
+	var sweepRows []store.CatalogStorageEnabled
+
+	for _, row := range rows {
+		if _, shared := sharedRows[row.Name]; !shared {
+			sweepRows = append(sweepRows, row)
+		}
+	}
+
+	return sweepRows
+}
+
+// extendSharedApprovals enables each approved shared storage on the nodes
+// that report it but have no approval row yet (nodes added later).
+func extendSharedApprovals(ctx context.Context, st *store.Store, clusterName string, sharedNodes map[string][]string, sharedEnabled map[string]bool, enabledByKey map[nameNodeKey]bool) error {
+	for name, nodes := range sharedNodes {
+		if !sharedEnabled[name] {
+			continue
+		}
+
+		for _, node := range nodes {
+			if _, exists := enabledByKey[nameNodeKey{Name: name, Node: node}]; exists {
+				continue
+			}
+
+			if err := st.SetStorageEnabled(ctx, clusterName, name, node, true); err != nil {
+				return err
+			}
+		}
+	}
+
+	return nil
 }
 
 // AdminListBridges returns every bridge the cluster reports, unioned with its

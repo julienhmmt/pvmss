@@ -267,8 +267,6 @@ func (handler *AdminClusters) secretKeptSafely(w http.ResponseWriter, current st
 }
 
 // ServeTest handles POST /api/v1/admin/clusters/:name/test.
-//
-//nolint:gocyclo // maps each probe outcome to a status
 func (handler *AdminClusters) ServeTest(w http.ResponseWriter, r *http.Request) {
 	name := r.PathValue("name")
 	stored, err := handler.store.GetCluster(r.Context(), name)
@@ -284,20 +282,7 @@ func (handler *AdminClusters) ServeTest(w http.ResponseWriter, r *http.Request) 
 	testedAt := time.Now().UTC()
 	snapshot, err := client.Snapshot(r.Context())
 	if err != nil {
-		status := "unreachable"
-		if !errors.Is(err, cluster.ErrUnreachable) {
-			status = errorLabel
-		}
-		message := shortClusterError(err)
-		tlsStatus := unknownValue
-		if errors.Is(err, cluster.ErrTLSVerify) {
-			tlsStatus = "failed"
-		}
-		if saveErr := handler.store.SetClusterTestResult(r.Context(), name, status, "", message, testedAt); saveErr != nil {
-			handler.writeFailure(w, saveErr)
-			return
-		}
-		writeAdminJSON(w, http.StatusOK, testClusterResponse{Status: status, Message: message, TLSStatus: tlsStatus, TestedAt: testedAt.Format(time.RFC3339Nano)})
+		handler.writeTestFailure(w, r, name, err, testedAt)
 		return
 	}
 	if handler.inventories != nil {
@@ -309,18 +294,48 @@ func (handler *AdminClusters) ServeTest(w http.ResponseWriter, r *http.Request) 
 		handler.writeFailure(w, err)
 		return
 	}
-	if displayName, err := client.DisplayName(r.Context()); err != nil {
-		logctx.FromOr(r.Context(), handler.log).WarnContext(r.Context(), "cluster display name discovery failed", "component", "httpapi", "cluster", name, "error", err)
-	} else if displayName != "" {
-		if err := handler.store.SetDiscoveredClusterDisplayName(r.Context(), name, displayName); err != nil {
-			logctx.FromOr(r.Context(), handler.log).WarnContext(r.Context(), "cluster display name persist failed", "component", "httpapi", "cluster", name, "error", err)
-		}
-	}
+	handler.syncDisplayName(r.Context(), client, name)
 	tlsStatus := "verified"
 	if stored.TLSInsecureSkipVerify {
 		tlsStatus = "skipped"
 	}
 	writeAdminJSON(w, http.StatusOK, testClusterResponse{Status: "ok", TLSStatus: tlsStatus, ProxmoxVersion: snapshot.ProxmoxVersion, NodeCount: len(snapshot.Nodes), VMCount: len(snapshot.VMs), TestedAt: testedAt.Format(time.RFC3339Nano)})
+}
+
+// writeTestFailure records a failed probe outcome and writes its response;
+// the test endpoint answers 200 either way since the probe result is the
+// payload.
+func (handler *AdminClusters) writeTestFailure(w http.ResponseWriter, r *http.Request, name string, err error, testedAt time.Time) {
+	status := "unreachable"
+	if !errors.Is(err, cluster.ErrUnreachable) {
+		status = errorLabel
+	}
+	message := shortClusterError(err)
+	tlsStatus := unknownValue
+	if errors.Is(err, cluster.ErrTLSVerify) {
+		tlsStatus = "failed"
+	}
+	if saveErr := handler.store.SetClusterTestResult(r.Context(), name, status, "", message, testedAt); saveErr != nil {
+		handler.writeFailure(w, saveErr)
+		return
+	}
+	writeAdminJSON(w, http.StatusOK, testClusterResponse{Status: status, Message: message, TLSStatus: tlsStatus, TestedAt: testedAt.Format(time.RFC3339Nano)})
+}
+
+// syncDisplayName best-effort persists the cluster's discovered display name;
+// failures are only logged since the probe itself succeeded.
+func (handler *AdminClusters) syncDisplayName(ctx context.Context, client cluster.Client, name string) {
+	displayName, err := client.DisplayName(ctx)
+	if err != nil {
+		logctx.FromOr(ctx, handler.log).WarnContext(ctx, "cluster display name discovery failed", "component", "httpapi", "cluster", name, "error", err)
+		return
+	}
+	if displayName == "" {
+		return
+	}
+	if err := handler.store.SetDiscoveredClusterDisplayName(ctx, name, displayName); err != nil {
+		logctx.FromOr(ctx, handler.log).WarnContext(ctx, "cluster display name persist failed", "component", "httpapi", "cluster", name, "error", err)
+	}
 }
 
 // ServeDelete handles DELETE /api/v1/admin/clusters/:name as a soft delete.
