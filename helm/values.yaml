@@ -62,22 +62,24 @@ deployment:
     limits:
       cpu: "200m"
       memory: "128Mi"
+  # Probe timings. The chart picks the handler from tls.*: httpGet /health
+  # (HTTPS when TLS is on), or tcpSocket in strict mTLS where the kubelet
+  # cannot present a client certificate.
   livenessProbe:
-    httpGet:
-      path: /health
-      port: backend
     initialDelaySeconds: 5
     periodSeconds: 15
     timeoutSeconds: 3
     failureThreshold: 3
   readinessProbe:
-    httpGet:
-      path: /health
-      port: backend
     initialDelaySeconds: 3
     periodSeconds: 10
     timeoutSeconds: 3
     failureThreshold: 3
+  # Extra env entries (full EnvVar objects, valueFrom allowed) and envFrom sources.
+  extraEnv: []
+  extraEnvFrom: []
+  extraVolumes: []
+  extraVolumeMounts: []
   # Every variable is validated at boot by server/internal/config/load.go;
   # the pod crash-loops if a required one is missing or malformed.
   env:
@@ -117,6 +119,36 @@ deployment:
     # OTEL_SDK_DISABLED: "false"
     TZ: "Europe/Paris"
 
+# NATIVE TLS / MUTUAL TLS (docs/tls.md)
+# Encrypts the Gateway-to-PVMSS hop. Mutual TLS is recommended: only clients
+# with a certificate from clientCA reach the pod, even from inside the cluster.
+# Certificates are read once at startup: restart the pod after renewal (or let
+# a reloader such as stakater/Reloader do it via podAnnotations).
+tls:
+  enabled: false
+  # kubernetes.io/tls Secret with tls.crt (full chain) and tls.key. Ignored
+  # when certManager.enabled (the Certificate writes this Secret).
+  secretName: ""
+  certManager:
+    enabled: false
+    # Defaults to <fullname>-tls when secretName is empty.
+    issuerRef:
+      name: ""
+      kind: ClusterIssuer
+    # SANs the proxy dials. Default: the Service DNS names.
+    dnsNames: []
+    duration: 2160h
+    renewBefore: 360h
+  clientCA:
+    # Turns on mTLS. The Secret (or ConfigMap) key holds the PEM CA bundle that
+    # signs client certificates (extendedKeyUsage=clientAuth).
+    enabled: false
+    # Secret name; defaults to the TLS Secret (cert-manager writes ca.crt there).
+    secretName: ""
+    key: ca.crt
+    # require: no valid client cert, no connection. optional: verified when sent.
+    clientAuth: require
+
 # METRICS
 # Prometheus pull endpoint. Off by default. When enabled the pod serves
 # GET /metrics on its own port (PVMSS_METRICS_PORT), separate from the app port,
@@ -140,10 +172,22 @@ service:
   nodePort: null
 
 # GATEWAY-API (gateway.networking.k8s.io/v1)
+# Optional Gateway scaffold. Leave disabled to attach to an existing Gateway.
+gateway:
+  enabled: false
+  className: ""
+  annotations: {}
+  hostname: pvmss.example.com
+  # kubernetes.io/tls Secret for the HTTPS listener (browser-facing).
+  tlsSecretName: pvmss-gateway-tls
+  # Adds an HTTP listener and an HTTPRoute redirecting it to HTTPS.
+  httpRedirect: true
+
 httpRoute:
   enabled: false
   annotations: {}
-  # Which Gateways this Route is attached to.
+  # Which Gateways this Route is attached to. With gateway.enabled, leave empty
+  # to attach to the chart's Gateway (https listener).
   parentRefs:
     - name: gateway
       sectionName: http
@@ -151,6 +195,22 @@ httpRoute:
   # Hostnames matching HTTP header.
   hostnames:
     - pvmss.example.com
+  # When tls.enabled, the Gateway must speak HTTPS to the pod. This renders a
+  # BackendTLSPolicy (standard channel v1 since Gateway API 1.4; set
+  # apiVersion to v1alpha3 for older CRDs). Client certificates for mTLS are
+  # configured on the Gateway/controller side (Gateway spec.tls.backend in 1.4).
+  backendTLSPolicy:
+    enabled: false
+    apiVersion: gateway.networking.k8s.io/v1
+    # Must match a SAN of the PVMSS certificate.
+    hostname: ""
+    # ConfigMap(s) holding the CA that signed the PVMSS server certificate.
+    caCertificateRefs: []
+    # - group: ""
+    #   kind: ConfigMap
+    #   name: pvmss-ca
+    # Or trust the controller's system roots instead:
+    wellKnownCACertificates: ""
   # List of rules and filters applied.
   rules:
     - matches:
@@ -161,6 +221,10 @@ httpRoute:
 # OPTIONAL CUSTOMISATIONS
 extraAnnotations: {}
 extraLabels: {}
+podAnnotations: {}
+podLabels: {}
+imagePullSecrets: []
+priorityClassName: ""
 nodeSelector: {}
 tolerations: []
 affinity: {}

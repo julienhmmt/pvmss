@@ -1,0 +1,60 @@
+{{- if .Values.gateway.enabled }}
+apiVersion: gateway.networking.k8s.io/v1
+kind: Gateway
+metadata:
+  name: {{ include "pvmss.fullname" . }}
+  namespace: {{ .Values.namespace }}
+  labels:
+    {{- include "pvmss.labels" . | nindent 4 }}
+  {{- with .Values.gateway.annotations }}
+  annotations:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+spec:
+  gatewayClassName: {{ required "gateway.className is required when gateway.enabled" .Values.gateway.className }}
+  listeners:
+    {{- if .Values.gateway.httpRedirect }}
+    - name: http
+      protocol: HTTP
+      port: 80
+      hostname: {{ .Values.gateway.hostname | quote }}
+      allowedRoutes:
+        namespaces:
+          from: Same
+    {{- end }}
+    - name: https
+      protocol: HTTPS
+      port: 443
+      hostname: {{ .Values.gateway.hostname | quote }}
+      tls:
+        mode: Terminate
+        certificateRefs:
+          - kind: Secret
+            name: {{ .Values.gateway.tlsSecretName }}
+      allowedRoutes:
+        namespaces:
+          from: Same
+{{- if .Values.gateway.httpRedirect }}
+---
+# Session cookies are Secure: plain HTTP only redirects.
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: {{ include "pvmss.fullname" . }}-redirect
+  namespace: {{ .Values.namespace }}
+  labels:
+    {{- include "pvmss.labels" . | nindent 4 }}
+spec:
+  parentRefs:
+    - name: {{ include "pvmss.fullname" . }}
+      sectionName: http
+  hostnames:
+    - {{ .Values.gateway.hostname | quote }}
+  rules:
+    - filters:
+        - type: RequestRedirect
+          requestRedirect:
+            scheme: https
+            statusCode: 301
+{{- end }}
+{{- end }}

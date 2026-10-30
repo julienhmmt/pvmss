@@ -1,0 +1,27 @@
+{{- if and .Values.httpRoute.enabled .Values.httpRoute.backendTLSPolicy.enabled }}
+{{- $p := .Values.httpRoute.backendTLSPolicy }}
+{{- if not .Values.tls.enabled }}
+{{- fail "httpRoute.backendTLSPolicy needs tls.enabled (the pod serves plain HTTP otherwise)" }}
+{{- end }}
+apiVersion: {{ $p.apiVersion }}
+kind: BackendTLSPolicy
+metadata:
+  name: {{ include "pvmss.fullname" . }}
+  namespace: {{ .Values.namespace }}
+  labels:
+    {{- include "pvmss.labels" . | nindent 4 }}
+spec:
+  targetRefs:
+    - group: ""
+      kind: Service
+      name: {{ include "pvmss.fullname" . }}
+      sectionName: backend
+  validation:
+    hostname: {{ required "httpRoute.backendTLSPolicy.hostname is required (a SAN of the PVMSS certificate)" $p.hostname | quote }}
+    {{- if $p.wellKnownCACertificates }}
+    wellKnownCACertificates: {{ $p.wellKnownCACertificates }}
+    {{- else }}
+    caCertificateRefs:
+      {{- required "httpRoute.backendTLSPolicy.caCertificateRefs or wellKnownCACertificates is required" $p.caCertificateRefs | toYaml | nindent 6 }}
+    {{- end }}
+{{- end }}
