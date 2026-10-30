@@ -26,10 +26,9 @@ describe('primaryAddress', () => {
 });
 
 describe('sshCommand', () => {
-	it('uses the known user, a placeholder otherwise, and brackets IPv6', () => {
+	it('joins the user and address, and brackets IPv6', () => {
 		expect(sshCommand('debian', '10.0.0.5')).toBe('ssh debian@10.0.0.5');
-		expect(sshCommand(null, '10.0.0.5')).toBe('ssh USER@10.0.0.5');
-		expect(sshCommand(' ', '2001:db8::7')).toBe('ssh USER@[2001:db8::7]');
+		expect(sshCommand('<account>', '2001:db8::7')).toBe('ssh <account>@[2001:db8::7]');
 	});
 });
 

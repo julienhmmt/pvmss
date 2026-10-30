@@ -10,7 +10,7 @@
 	import { resolve } from '$app/paths';
 	import { getVmDetailContext } from './detail.svelte';
 	import { canConnect, type MachineDisplayStatus } from './display-status';
-	import { connectState, isWindowsOs, primaryAddress, sshCommand } from './connection';
+	import { connectState, isWindowsOs, primaryAddress, sshCommand, sshHost } from './connection';
 	import { compactBytes } from './machine-row';
 	import { get } from '#lib/shared/api/client.js';
 	import Button from '#lib/shared/ui/Button.svelte';
@@ -49,7 +49,8 @@
 			});
 	});
 
-	const command = $derived(address ? sshCommand(sshUser, address.address) : '');
+	const userPlaceholder = $derived(`<${m['vms.detail.connect.userPlaceholder']()}>`);
+	const command = $derived(address ? sshCommand(sshUser ?? userPlaceholder, address.address) : '');
 	const consoleHref = $derived(resolve('/vms/[cluster]/[vmid]/console', { cluster: store.cluster, vmid: String(store.vmid) }));
 	const running = $derived(store.entity?.status === 'running');
 </script>
@@ -102,13 +103,13 @@
 				<p class="mt-1 text-sm text-muted-foreground">{m['vms.detail.connect.body']()}</p>
 				<div class="mt-4 flex items-center gap-2 rounded-lg border border-border bg-muted/50 py-1.5 pl-3 pr-1.5">
 					<code class="min-w-0 flex-1 overflow-x-auto whitespace-nowrap font-mono text-sm" data-testid="vm-ssh-command">
-						<span class="select-none text-muted-foreground-subtle" aria-hidden="true">$&nbsp;</span>{command}
+						<span class="select-none text-muted-foreground-subtle" aria-hidden="true">$&nbsp;</span>{#if sshUser === null}ssh <span class="rounded bg-primary/10 px-1 italic text-primary" data-testid="vm-ssh-user-placeholder">{userPlaceholder}</span>@{sshHost(address.address)}{:else}{command}{/if}
 					</code>
 					<CopyButton value={command} />
 				</div>
 				<p class="mt-2 text-xs text-muted-foreground">
 					{m['vms.detail.connect.addressNote']()}
-					{#if sshUser === null}{m['vms.detail.connect.userUnknown']()}{/if}
+					{#if sshUser === null}{m['vms.detail.connect.userUnknown']({ placeholder: userPlaceholder })}{/if}
 				</p>
 				<dl class="mt-5 grid gap-x-6 gap-y-3 text-sm sm:grid-cols-3">
 					<div>

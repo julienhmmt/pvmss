@@ -36,10 +36,16 @@ export function primaryAddress(interfaces: readonly VmNetworkInterface[] | undef
 	return null;
 }
 
-/** The SSH command line. The user is a placeholder when PVMSS does not know it. */
-export function sshCommand(user: string | null, address: string): string {
-	const host = address.includes(':') ? `[${address}]` : address;
-	return `ssh ${user && user.trim() !== '' ? user.trim() : 'USER'}@${host}`;
+/** The host part of an SSH target: IPv6 needs brackets. */
+export function sshHost(address: string): string {
+	return address.includes(':') ? `[${address}]` : address;
+}
+
+/** The SSH command line. The caller passes a visible placeholder (e.g.
+ * "<account>") when PVMSS does not know the user: the shell rejects "<", so
+ * pasting it unedited fails loudly instead of trying a wrong account. */
+export function sshCommand(user: string, address: string): string {
+	return `ssh ${user.trim()}@${sshHost(address)}`;
 }
 
 /** Proxmox Windows ostypes all start with "w" (w11, w2k22, win10, wxp...). */
