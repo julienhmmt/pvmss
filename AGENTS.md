@@ -77,12 +77,12 @@ make docker-build     # multi-arch build + push, tag via PVMSS_TAG
 make buildkit-start / buildkit-stop / buildkit-status
 make helm-package / helm-upgrade
 
-# Dev stack (docker-compose.dev.yml: pvmss-dev Go server + SonarQube)
+# Dev stack (docker-compose.dev.yml: pvmss-dev Go server + proxies)
 make up / down / restart / logs
 
-# SonarQube (projects pvmss-server, pvmss-web)
+# SonarQube (shared server in ~/git/gh/sonarqube; projects pvmss-server, pvmss-web)
 make sonar              # full pipeline
-make sonar-up / sonar-down / sonar-clean
+make sonar-up / sonar-down
 make sonar-scan         # also sonar-scan-server, sonar-scan-web
 make sonar-query CMD="summary"   # also: projects, issues, metrics, gate, file
 ```

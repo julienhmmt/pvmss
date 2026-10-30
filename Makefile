@@ -37,7 +37,7 @@ PVMSS_TAG ?= latest
         server-deps-update server-update \
         web-install web-deps-update web-lint web-lint-fix web-check web-test \
         lint \
-        sonar sonar-up sonar-down sonar-logs sonar-status sonar-bootstrap sonar-coverage sonar-lint sonar-scan sonar-scan-server sonar-scan-web sonar-query sonar-clean
+        sonar sonar-up sonar-down sonar-coverage sonar-lint sonar-scan sonar-scan-server sonar-scan-web sonar-query
 
 # qualif doit exécuter ses prérequis séquentiellement (fmt → lint → test), jamais en parallèle
 .NOTPARALLEL: qualif
@@ -235,29 +235,13 @@ lint: server-lint web-lint ## Lance le lint sur server/ (Go) et web/ (SvelteKit)
 # SonarQube local analysis
 # =============================================================================
 
-COMPOSE_SONAR := $(COMPOSE_DEV)
+SONAR_HOME ?= $(HOME)/git/gh/sonarqube
 
-sonar-up: ## Start the SonarQube server (http://localhost:9000)
-	@echo "$(BLUE)Starting SonarQube...$(NC)"
-	$(COMPOSE_SONAR) up -d sonarqube
-	@echo "$(GREEN)✓ SonarQube started at http://localhost:9000$(NC)"
+sonar-up: ## Start the shared SonarQube server (http://localhost:9000)
+	@$(MAKE) -C $(SONAR_HOME) up
 
-sonar-down: ## Stop the SonarQube server
-	@echo "$(BLUE)Stopping SonarQube...$(NC)"
-	$(COMPOSE_SONAR) stop sonarqube
-	@echo "$(GREEN)✓ SonarQube stopped$(NC)"
-
-sonar-logs: ## Follow SonarQube logs
-	$(COMPOSE_SONAR) logs -f sonarqube
-
-sonar-status: ## Check SonarQube server status
-	@docker ps --filter "name=pvmss-sonarqube" --format "table {{.Names}}\t{{.Status}}\t{{.Ports}}"
-
-sonar-bootstrap: ## Provision or rotate the SonarQube analysis token
-	@echo "$(BLUE)Bootstrapping SonarQube token...$(NC)"
-	@chmod +x tools/sonar-bootstrap.sh
-	@tools/sonar-bootstrap.sh
-	@echo "$(GREEN)✓ SonarQube token ready in .sonar/token$(NC)"
+sonar-down: ## Stop the shared SonarQube server
+	@$(MAKE) -C $(SONAR_HOME) down
 
 sonar-coverage: ## Generate Go coverage reports for SonarQube
 	@echo "$(BLUE)Generating Go coverage reports...$(NC)"
@@ -271,30 +255,17 @@ sonar-lint: ## Run ESLint on web/ (including .svelte) for SonarQube import
 	@tools/sonar-frontend-lint.sh
 	@echo "$(GREEN)✓ ESLint reports ready in .sonar/$(NC)"
 
-sonar-scan: sonar-coverage sonar-lint ## Run SonarScanner for both projects (requires sonar-up + sonar-bootstrap)
-	@echo "$(BLUE)Running SonarScanner for all projects...$(NC)"
-	@chmod +x tools/sonar-scan.sh
-	@tools/sonar-scan.sh
-	@echo "$(GREEN)✓ All scans complete. See http://localhost:9000/projects$(NC)"
+sonar-scan: sonar-coverage sonar-lint ## Scan both projects into the shared SonarQube (starts it if needed)
+	@$(SONAR_HOME)/scan.sh
 
 sonar-scan-server: sonar-coverage ## Scan only the server/ Go project
-	@chmod +x tools/sonar-scan.sh
-	@tools/sonar-scan.sh server
+	@$(SONAR_HOME)/scan.sh server
 
 sonar-scan-web: sonar-lint ## Scan only the web/ SvelteKit project (includes ESLint on .svelte)
-	@chmod +x tools/sonar-scan.sh
-	@tools/sonar-scan.sh web
+	@$(SONAR_HOME)/scan.sh web
 
-sonar: sonar-up sonar-bootstrap sonar-scan ## Full pipeline: start, token, coverage, lint, scan all projects
-	@echo "$(GREEN)✓ SonarQube analysis complete. See http://localhost:9000/projects$(NC)"
+sonar: sonar-scan ## Full pipeline: coverage, lint, scan all projects
 
 sonar-query: ## Query SonarQube results (usage: make sonar-query CMD="summary")
-	@python3 tools/sonar-query.py $(CMD)
-
-sonar-clean: sonar-down ## Stop SonarQube and remove its data and local token
-	@echo "$(BLUE)Cleaning SonarQube data...$(NC)"
-	$(COMPOSE_SONAR) rm -sf sonarqube
-	docker volume rm -f pvmss_sonarqube_data pvmss_sonarqube_logs pvmss_sonarqube_extensions pvmss_sonar_cache
-	rm -rf .sonar
-	@echo "$(GREEN)✓ SonarQube data cleaned$(NC)"
+	@python3 $(SONAR_HOME)/query.py $(CMD)
 

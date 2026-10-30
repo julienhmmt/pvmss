@@ -442,7 +442,7 @@ There is no migration from v0.3 to v0.4. v0.4 is a rewrite (Go API + SvelteKit) 
 - **Health**: startup logs include cluster connectivity and inventory refresh status. The admin "Application Info" page shows runtime metrics, environment variables, and Proxmox cluster status.
 - **Upgrades** (within v0.4.x): pull the desired image tag and restart the container. Configuration is stored in the SQLite database and persists automatically.
 - **Built-in documentation**: the in-app pages (`/docs`) are seeded once into the database and never overwritten, so admin edits survive upgrades. To pick up a newer built-in text after an upgrade, delete the page in **Admin › Documentation** and restart, or paste the new content from `server/internal/docs/seed/`.
-- **Static analysis (SonarQube)**: run `make sonar` to start a local SonarQube container, provision tokens, generate Go coverage, and scan the two projects - `pvmss-server` (Go) and `pvmss-web` (SvelteKit TS). Results are at `http://localhost:9000/projects`. Stop with `make sonar-down` and clean data with `make sonar-clean`.
+- **Static analysis (SonarQube)**: run `make sonar` to generate Go coverage and scan the two projects into the shared local SonarQube (`~/git/gh/sonarqube`, started on demand) - `pvmss-server` (Go) and `pvmss-web` (SvelteKit TS). Results are at `http://localhost:9000/projects`. Stop it with `make sonar-down`.
 
 ## Limitations
 
