@@ -123,7 +123,7 @@ deployment:
 # Encrypts the Gateway-to-PVMSS hop. Mutual TLS is recommended: only clients
 # with a certificate from clientCA reach the pod, even from inside the cluster.
 # Certificates are read once at startup: restart the pod after renewal (or let
-# a reloader such as stakater/Reloader do it via podAnnotations).
+# a reloader do it, e.g. extraAnnotations: reloader.stakater.com/auto: "true").
 tls:
   enabled: false
   # kubernetes.io/tls Secret with tls.crt (full chain) and tls.key. Ignored
