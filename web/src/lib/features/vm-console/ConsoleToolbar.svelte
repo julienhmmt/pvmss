@@ -35,7 +35,7 @@
 		onclick={() => store.toggleScale()}
 		data-testid="vm-console-scale"
 	>
-		{m['vms.console.scale']()} {store.scaleViewport ? m['common.on']() : m['common.off']()}
+		{store.scaleViewport ? m['vms.console.scaleOn']() : m['vms.console.scaleOff']()}
 	</Button>
 
 	<Button

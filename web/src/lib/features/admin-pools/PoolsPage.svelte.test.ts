@@ -124,7 +124,7 @@ describe('PoolsPage', () => {
 		mount(PoolsPage, buildProps([pool('pvmss-alice', true)]));
 		const text = document.body.textContent ?? '';
 		expect(text).toContain('pvmss-alice@pve');
-		expect(text).toContain('Pool de VMs');
+		expect(text).toContain('Pool de VM');
 		document.body.innerHTML = '';
 	});
 

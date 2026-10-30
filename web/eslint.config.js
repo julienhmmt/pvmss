@@ -16,7 +16,9 @@ export default [
       },
       parserOptions: {
         project: ['./tsconfig.json', './tsconfig.e2e.json'],
-        tsconfigRootDir: import.meta.dirname
+        tsconfigRootDir: import.meta.dirname,
+        // CLI-inferred single-run mode spins forever on admin-catalog.svelte.ts.
+        disallowAutomaticSingleRunInference: true
       }
     }
   },
