@@ -2147,7 +2147,7 @@
   "vms.detail.banner.technicalDetails": "Technical details for your administrator",
   "vms.detail.banner.busyStarting": "Starting your machine. Connection options will appear once it is running.",
   "vms.detail.banner.busyStopping": "Waiting for a graceful shutdown. Your files will be kept.",
-  "vms.detail.tabConnect": "Connect",
+  "vms.detail.tabConnect": "General information",
   "vms.detail.tabConfiguration": "Configuration",
   "vms.detail.tabSummary": "Summary",
   "vms.detail.connect.eyebrow": "From your computer",

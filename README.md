@@ -169,7 +169,7 @@ every template you approve with the sign-in users need:
 1. In the template's **Cloud-Init** tab in Proxmox, set the user and an SSH
    public key or a password (or bake an account into the image).
 2. Install and enable `qemu-guest-agent`, so VMs report their address and the
-   **Connect** tab can show the SSH command.
+   **General information** tab can show the SSH command.
 3. Convert it (`qm template <vmid>`) and approve it in **Admin > VM templates**.
 
 Every VM cloned from one template shares that sign-in: hand it to the users

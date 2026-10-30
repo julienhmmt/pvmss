@@ -2147,7 +2147,7 @@
   "vms.detail.banner.technicalDetails": "Détails techniques pour votre administrateur",
   "vms.detail.banner.busyStarting": "Démarrage de votre machine. Les options de connexion apparaîtront quand elle tournera.",
   "vms.detail.banner.busyStopping": "Arrêt propre en cours. Vos fichiers seront conservés.",
-  "vms.detail.tabConnect": "Connexion",
+  "vms.detail.tabConnect": "Informations générales",
   "vms.detail.tabConfiguration": "Configuration",
   "vms.detail.tabSummary": "Résumé",
   "vms.detail.connect.eyebrow": "Depuis votre ordinateur",

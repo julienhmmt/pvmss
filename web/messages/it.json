@@ -2147,7 +2147,7 @@
   "vms.detail.banner.technicalDetails": "Dettagli tecnici per il tuo amministratore",
   "vms.detail.banner.busyStarting": "Avvio della macchina in corso. Le opzioni di connessione compariranno quando sarà in esecuzione.",
   "vms.detail.banner.busyStopping": "In attesa di uno spegnimento ordinato. I tuoi file verranno conservati.",
-  "vms.detail.tabConnect": "Connetti",
+  "vms.detail.tabConnect": "Informazioni generali",
   "vms.detail.tabConfiguration": "Configurazione",
   "vms.detail.tabSummary": "Riepilogo",
   "vms.detail.connect.eyebrow": "Dal tuo computer",
