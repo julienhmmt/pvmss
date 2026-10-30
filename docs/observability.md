@@ -136,7 +136,7 @@ TLS: a decimal byte count, a space, then the message. There are no newline
 separators inside the TCP stream, so a receiver must read by count, not by
 line. The receiver in the example below writes each message on its own line.
 
-One real line, captured from the dev receiver after a login:
+One real line, captured from an rsyslog receiver after a login:
 
 ```text
 <134>1 2026-10-30T23:09:44.245828Z ac1c7c9d25fe pvmss 1 auth [pvmss@32473 level="INFO" requestId="5d2b14f95138d10d6b5616bf24339294" clientIp="192.168.107.4" component="httpapi" event="auth" result="success" user="admin@pve"] login succeeded
@@ -292,15 +292,94 @@ deployment:
       value: /etc/pvmss/siem/ca.crt
 ```
 
-### Dev receiver
+### Dev receiver: VictoriaLogs
 
-`docker-compose.dev.yml` has an optional rsyslog receiver under the `siem`
-profile. It writes the lines to the `syslog_data` volume:
+`docker-compose.dev.yml` has a VictoriaLogs receiver under the `siem` profile.
+It listens for RFC 5425 TLS syslog on `127.0.0.1:6514`, stores the records,
+and serves a query UI on `http://127.0.0.1:9428/select/vmui`.
 
 ```sh
-PVMSS_SYSLOG_ADDR=syslog:6514 PVMSS_SYSLOG_TLS_CA_FILE=/syslog-tls/ca.crt \
-  docker compose -f docker-compose.dev.yml --profile siem up -d --build pvmss-dev syslog
-docker exec pvmss-syslog cat /var/log/siem/pvmss.log
+make up-siem          # pvmss-dev (PVMSS_SYSLOG_ADDR=victorialogs:6514) + victorialogs
+make up               # pvmss-dev without the sink; the receiver keeps running
+make down             # stops everything, receiver included
+```
+
+`make up-siem` sets `PVMSS_SYSLOG_ADDR` and `PVMSS_SYSLOG_TLS_CA_FILE` for
+`pvmss-dev`. The CA comes from `dev/victorialogs/tls/ca.crt`, written by
+`dev/victorialogs/gen-cert.sh` on first start. The server certificate has the
+SANs `victorialogs`, `localhost` and `127.0.0.1`.
+
+The service runs `victoriametrics/victoria-logs:v1.53.0` with these flags
+(from the [VictoriaLogs syslog docs](https://docs.victoriametrics.com/victorialogs/data-ingestion/syslog/)):
+
+| Flag                              | Value in the dev stack                       |
+| --------------------------------- | -------------------------------------------- |
+| `-syslog.listenAddr.tcp`          | `:6514`                                      |
+| `-syslog.tls`                     | enables TLS on that listener                 |
+| `-syslog.tlsCertFile`             | `/tls/server.crt` (the dev PKI)              |
+| `-syslog.tlsKeyFile`              | `/tls/server.key`                            |
+
+PVMSS sends RFC 5425 octet-counted frames over TLS, and the live test below
+stored them. The container drops all capabilities. The image runs as root,
+because a non-root user cannot lock a fresh named volume (tested).
+
+#### Fields
+
+VictoriaLogs maps the header and the structured data into fields:
+
+- `msg_id` is the MSGID (`auth`, `audit`, or `-` for HTTP request records).
+  Use it instead of `event`, which lives in the structured data.
+- `pvmss@32473.<name>` is each SD parameter, such as `pvmss@32473.user`,
+  `pvmss@32473.status` or `pvmss@32473.route`. The field name contains `@` and
+  `.`, so quote it in LogsQL: `"pvmss@32473.status":404`.
+- `level` is the VictoriaLogs level derived from PRI (`info`, `warning`, ...).
+  The SD `level` parameter keeps the PVMSS spelling (`INFO`, `WARN`).
+
+#### Example queries
+
+Run in the UI, or with `curl`. The output below is the real result of these
+queries after a login, a VM action and a request to an unknown route, on the
+fake cluster:
+
+```sh
+curl -s http://127.0.0.1:9428/select/logsql/query --data-urlencode \
+  'query=msg_id:auth | fields _time,msg_id,_msg,"pvmss@32473.user","pvmss@32473.result"'
+curl -s http://127.0.0.1:9428/select/logsql/query --data-urlencode \
+  'query=msg_id:audit | fields _time,msg_id,_msg,"pvmss@32473.actor","pvmss@32473.action","pvmss@32473.vmid"'
+curl -s http://127.0.0.1:9428/select/logsql/query --data-urlencode \
+  'query="pvmss@32473.status":404 | fields _time,level,_msg,"pvmss@32473.method","pvmss@32473.route","pvmss@32473.status"'
+curl -s http://127.0.0.1:9428/select/logsql/query --data-urlencode \
+  'query=* | stats by (msg_id) count() n | sort by (n desc) | limit 5'
+```
+
+```text
+{"_time":"2026-10-30T23:17:18.519386Z","msg_id":"auth","_msg":"login succeeded","pvmss@32473.user":"admin@pve","pvmss@32473.result":"success"}
+{"_time":"2026-10-30T23:17:18.54797Z","msg_id":"audit","_msg":"audit event","pvmss@32473.actor":"admin@pve","pvmss@32473.action":"shutdown","pvmss@32473.vmid":"100"}
+{"_time":"2026-10-30T23:18:34.823777Z","level":"warning","_msg":"http request","pvmss@32473.method":"GET","pvmss@32473.route":"/api/","pvmss@32473.status":"404"}
+{"n":"35","msg_id":"-"}
+{"n":"1","msg_id":"auth"}
+{"n":"1","msg_id":"audit"}
+```
+
+A query that uses `event:audit` returns nothing, because `event` is not a
+top-level field. Use `msg_id:audit`.
+
+### Receiver example (rsyslog)
+
+Any RFC 5425 receiver works. This rsyslog listener writes each frame as
+received; the TLS files are the CA and the server pair from `docs/tls.md`:
+
+```text
+global(
+  defaultNetstreamDriver="gtls"
+  defaultNetstreamDriverCAFile="/etc/rsyslog.d/tls/ca.crt"
+  defaultNetstreamDriverCertFile="/etc/rsyslog.d/tls/server.crt"
+  defaultNetstreamDriverKeyFile="/etc/rsyslog.d/tls/server.key"
+)
+module(load="imtcp" StreamDriver.Name="gtls" StreamDriver.Mode="1" StreamDriver.AuthMode="anon")
+input(type="imtcp" port="6514")
+template(name="raw" type="string" string="%rawmsg%\n")
+action(type="omfile" file="/var/log/siem/pvmss.log" template="raw")
 ```
 
 ## Traces

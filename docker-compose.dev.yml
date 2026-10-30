@@ -24,8 +24,8 @@ services:
       PVMSS_TLS_CERT_FILE: /certs/pvmss.crt
       PVMSS_TLS_KEY_FILE: /certs/pvmss.key
       PVMSS_TLS_CLIENT_CA_FILE: /certs/ca.crt
-      # SIEM sink (off unless set). Use with --profile siem, see docs/observability.md:
-      #   PVMSS_SYSLOG_ADDR=syslog:6514 PVMSS_SYSLOG_TLS_CA_FILE=/syslog-tls/ca.crt
+      # SIEM sink (off unless set). `make up-siem` sets both and starts the
+      # VictoriaLogs receiver; see docs/observability.md.
       PVMSS_SYSLOG_ADDR: ${PVMSS_SYSLOG_ADDR:-}
       PVMSS_SYSLOG_TLS_CA_FILE: ${PVMSS_SYSLOG_TLS_CA_FILE:-}
     # Not published: reach PVMSS through one of the reverse proxies below
@@ -35,10 +35,14 @@ services:
     volumes:
       - pvmss_dev_data:/data
       - ./dev/proxies/certs:/certs:ro
-      - ./dev/rsyslog/tls:/syslog-tls:ro
+      - ./dev/victorialogs/tls:/syslog-tls:ro
     depends_on:
       proxy-certs:
         condition: service_completed_successfully
+      # Only exists with the siem profile: the CA must be written before the sink reads it.
+      victorialogs-certs:
+        condition: service_completed_successfully
+        required: false
     cap_drop:
       - ALL
     security_opt:
@@ -50,37 +54,41 @@ services:
           memory: 256M
 
   # --- SIEM receiver (profile siem, not started by default) ----------------
-  # Dev PKI in dev/rsyslog/tls, then an rsyslog listener on TLS 6514 writing
-  # every received RFC 5424 line to the syslog_data volume (pvmss.log).
-  syslog-certs:
+  # Dev PKI in dev/victorialogs/tls, then VictoriaLogs listens for RFC 5425 TLS
+  # syslog on 6514 and stores the records. Query UI: http://127.0.0.1:9428/select/vmui
+  victorialogs-certs:
     image: alpine:3.24
     profiles: [siem]
-    container_name: pvmss-syslog-certs
+    container_name: pvmss-victorialogs-certs
     restart: "no"
     command: /gen-cert.sh
     volumes:
-      - ./dev/rsyslog/gen-cert.sh:/gen-cert.sh:ro
-      - ./dev/rsyslog/tls:/certs
+      - ./dev/victorialogs/gen-cert.sh:/gen-cert.sh:ro
+      - ./dev/victorialogs/tls:/certs
 
-  syslog:
-    image: rsyslog/rsyslog:latest
+  victorialogs:
+    image: victoriametrics/victoria-logs:v1.53.0
     profiles: [siem]
-    container_name: pvmss-syslog
+    container_name: pvmss-victorialogs
     restart: unless-stopped
-    # The image ships without the gtls driver; install it (apt needs root) before the listener starts.
-    user: "0"
     command:
-      - sh
-      - -c
-      - apt-get update -qq && apt-get install -y -qq rsyslog-gnutls >/dev/null && exec rsyslogd -n -f /etc/rsyslog.conf
+      - -syslog.listenAddr.tcp=:6514
+      - -syslog.tls
+      - -syslog.tlsCertFile=/tls/server.crt
+      - -syslog.tlsKeyFile=/tls/server.key
     ports:
       - "127.0.0.1:6514:6514"
+      - "127.0.0.1:9428:9428"
     volumes:
-      - ./dev/rsyslog/rsyslog.conf:/etc/rsyslog.conf:ro
-      - ./dev/rsyslog/tls:/etc/rsyslog.d/tls:ro
-      - syslog_data:/var/log/siem
+      - ./dev/victorialogs/tls:/tls:ro
+      - victorialogs_data:/victoria-logs-data
+    # The image runs as root; a non-root user cannot lock a fresh named volume.
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
     depends_on:
-      syslog-certs:
+      victorialogs-certs:
         condition: service_completed_successfully
 
   # --- Reverse proxies in front of pvmss-dev (one port each) ---------------
@@ -189,4 +197,4 @@ volumes:
   pvmss_dev_data: {}
   proxy_npm_data: {}
   proxy_npm_letsencrypt: {}
-  syslog_data: {}
+  victorialogs_data: {}
