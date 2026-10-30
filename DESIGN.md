@@ -854,7 +854,7 @@ running) or "Start machine" (primary, stopped).
 
 **Tabs** (underline-style, accent on active):
 
-1. **Connect** (default) - a two-column layout: SSH section (fluid) + browser
+1. **General information** (default) - a two-column layout: SSH section (fluid) + browser
    console aside (260px).
    - **SSH section** - eyebrow "FROM YOUR COMPUTER", title "Connect with SSH",
      one line of body, then the command in a bordered bar: `$ ssh user@address`
@@ -870,6 +870,8 @@ running) or "Start machine" (primary, stopped).
    - **Resource strip** - below the layout: vCPU / memory / storage, each with
      an icon, a bold value, and a one-line caption ("Allocated, not live
      usage").
+   - **Usage charts** - below the resource strip: CPU / memory / disk / network
+     history (hour / day / week) and the live stream.
 2. **Configuration** - a read-only `<dl>`: OS, approved size, disk, network &
    placement ("Managed by your team"), machine identifier (mono). Hardware
    editing and snapshots are designed later.

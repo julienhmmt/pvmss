@@ -34,6 +34,8 @@ test.describe('T05 VM detail & actions (closes S01)', () => {
 		await expect(page.getByTestId('vm-status')).toContainText(/running/i);
 		// Raw node/pool metadata is hidden from regular pool users (PRODUCT.md, Ticket 10).
 		await expect(page.getByTestId('vm-meta')).toHaveCount(0);
+		// The subtitle discreetly names the cluster and node the VM runs on.
+		await expect(page.getByTestId('vm-placement')).toContainText('/ pve-node-01');
 		await expect(page.getByTestId('vm-stat-cpu')).toContainText('2');
 		// Connection-first: the Connect tab is the default and shows the SSH
 		// command built from the address the guest agent reports.
@@ -77,7 +79,6 @@ test.describe('T05 VM detail & actions (closes S01)', () => {
 	test('T02: metrics history row renders and the range toggle switches without error', async ({ page }) => {
 		await signInAlice(page.request);
 		await page.goto('/vms/default/100');
-		await page.getByTestId('vm-tab-configuration').click();
 
 		await expect(page.getByTestId('vm-metrics-row')).toBeVisible();
 		await expect(page.getByTestId('vm-metrics-charts')).toBeVisible({ timeout: 10000 });
@@ -186,7 +187,6 @@ test.describe('T05 VM detail & actions (closes S01)', () => {
 	test('T03: live metrics tick updates the running VM chart', async ({ page }) => {
 		await signInAlice(page.request);
 		await page.goto('/vms/default/100');
-		await page.getByTestId('vm-tab-configuration').click();
 
 		await expect(page.getByTestId('vm-metrics-charts')).toBeVisible({ timeout: 10000 });
 		await expect(page.getByTestId('line-chart')).toHaveCount(4);

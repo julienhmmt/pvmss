@@ -54,7 +54,7 @@ Cloud-init is not reliable or viable yet and too complex to set up. Paused, not 
 `server/internal/httpapi/router.go`, two `+page.ts` redirects under
 `web/src/routes/admin/{cloudinit-templates,baseline}`, commented-out UI blocks
 marked "Cloud-init is disabled for now", and skipped tests/e2e specs. The VM
-cloud-init read (`GET …/cloudinit`, SSH user on the Connect tab) and the
+cloud-init read (`GET …/cloudinit`, SSH user on the General information tab) and the
 console password stay. Consequence for users: PVMSS gives a VM no SSH key
 or password, so template clones rely on the sign-in built into the template
 (documented in README and the in-app guides) and the `/profile` SSH-key
@@ -112,7 +112,7 @@ the tables and `docs/cloud-init.md`.
 - **Dashboard storage/policy alerts deep-link** (`f9b22e13`). They land on
   `/admin/storages?cluster=&search=` and `/admin/policy?cluster=` instead of
   the unfiltered pages.
-- **Connect tab: RDP card for `w*` ostypes, install detection by boot
+- **General information tab: RDP card for `w*` ostypes, install detection by boot
   order** (`db90590d`). The detail DTO exposes `bootOrder`; "installing"
   now means "the boot order still leads with the mounted ISO", so finishing
   an install no longer needs the Eject click.

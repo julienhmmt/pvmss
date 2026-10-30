@@ -312,6 +312,7 @@
 					<p class="mt-1 text-sm text-muted-foreground">
 						{m['vms.detail.identityLine']({ cpu: entity.cpuCores, memory: compactBytes(entity.memoryTotal), disk: compactBytes(entity.diskTotal) })}
 						· <span class="font-mono">VM {entity.vmid}</span>
+						<span class="text-muted-foreground-subtle" data-testid="vm-placement">· <span class="font-mono">{clusterLabel} / {entity.node}</span></span>
 					</p>
 					{#if session.isAdmin}
 						<p class="mt-0.5 font-mono text-xs text-muted-foreground-subtle" data-testid="vm-meta">
@@ -384,7 +385,13 @@
 	<Tabs {tabs} look="underline" bind:active={() => activeTab, selectTab} />
 
 	<div id="panel-connect" role="tabpanel" aria-labelledby="tab-connect" hidden={activeTab !== 'connect'} class="mt-5">
-		<VmConnectTab {status} />
+		<div class="grid gap-5">
+			<VmConnectTab {status} />
+			<section aria-labelledby="vm-usage-heading">
+				<h2 id="vm-usage-heading" class="sr-only">{m['vms.detail.config.usage']()}</h2>
+				<VmMetricsRow />
+			</section>
+		</div>
 	</div>
 
 	<div id="panel-configuration" role="tabpanel" aria-labelledby="tab-configuration" hidden={activeTab !== 'configuration'} class="mt-5">
@@ -499,10 +506,6 @@
 				{/if}
 			</Card>
 
-			<section aria-labelledby="vm-usage-heading">
-				<h2 id="vm-usage-heading" class="sr-only">{m['vms.detail.config.usage']()}</h2>
-				<VmMetricsRow />
-			</section>
 		</div>
 
 		<div id="panel-disks" role="tabpanel" aria-labelledby="tab-disks" hidden={configTab !== 'disks'} class="mt-4">

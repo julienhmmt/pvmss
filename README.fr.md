@@ -154,7 +154,7 @@ Proxmox : préparez donc chaque modèle approuvé avec les accès nécessaires :
    l'utilisateur et une clé SSH publique ou un mot de passe (ou intégrez un
    compte dans l'image).
 2. Installez et activez `qemu-guest-agent`, pour que les VM signalent leur
-   adresse et que l'onglet **Connexion** affiche la commande SSH.
+   adresse et que l'onglet **Informations générales** affiche la commande SSH.
 3. Convertissez-le (`qm template <vmid>`) et approuvez-le dans **Admin >
    Modèles de VM**.
 
