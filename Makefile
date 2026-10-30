@@ -96,7 +96,9 @@ PROXIES := proxy-haproxy proxy-nginx proxy-caddy proxy-traefik proxy-npm
 proxy-e2e: ## Teste la console VNC via chaque reverse proxy dev (fake cluster, Playwright)
 	$(COMPOSE_DEV) -f dev/proxies/docker-compose.fake.yml up -d --build --wait pvmss-dev $(PROXIES)
 	dev/proxies/npm-setup.sh
-	cd $(WEB_DIR) && bunx playwright test -c playwright.proxies.config.ts
+	# Always put pvmss-dev back on the .env config (real cluster, real DB) afterwards.
+	cd $(WEB_DIR) && bunx playwright test -c playwright.proxies.config.ts; \
+		status=$$?; $(COMPOSE_DEV) up -d pvmss-dev; exit $$status
 
 logs: ## Suit les logs des conteneurs dev
 	$(COMPOSE_DEV) logs -f
