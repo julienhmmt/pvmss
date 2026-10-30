@@ -62,6 +62,10 @@ func Load() (Configuration, error) {
 		return cfg, err
 	}
 
+	if err := loadSyslogSettings(&cfg); err != nil {
+		return cfg, err
+	}
+
 	if err := loadSSHSettings(&cfg); err != nil {
 		return cfg, err
 	}
@@ -337,6 +341,35 @@ func loadSSHSettings(cfg *Configuration) error {
 	}
 
 	return nil
+}
+
+// loadSyslogSettings reads the optional SIEM syslog sink. An empty address keeps
+// it off; the TLS files are read here so a bad path fails startup.
+func loadSyslogSettings(cfg *Configuration) error {
+	cfg.SyslogAddr = strings.TrimSpace(os.Getenv("PVMSS_SYSLOG_ADDR"))
+	cfg.SyslogTLSCAFile = strings.TrimSpace(os.Getenv("PVMSS_SYSLOG_TLS_CA_FILE"))
+	cfg.SyslogTLSCertFile = strings.TrimSpace(os.Getenv("PVMSS_SYSLOG_TLS_CERT_FILE"))
+	cfg.SyslogTLSKeyFile = strings.TrimSpace(os.Getenv("PVMSS_SYSLOG_TLS_KEY_FILE"))
+
+	if cfg.SyslogAddr == "" {
+		if cfg.SyslogTLSCAFile != "" || cfg.SyslogTLSCertFile != "" || cfg.SyslogTLSKeyFile != "" {
+			return errors.New("PVMSS_SYSLOG_TLS_* require PVMSS_SYSLOG_ADDR")
+		}
+
+		return nil
+	}
+
+	if _, err := parseSyslogAddr(cfg.SyslogAddr); err != nil {
+		return err
+	}
+
+	if (cfg.SyslogTLSCertFile == "") != (cfg.SyslogTLSKeyFile == "") {
+		return errors.New("PVMSS_SYSLOG_TLS_CERT_FILE and PVMSS_SYSLOG_TLS_KEY_FILE must be set together")
+	}
+
+	_, err := cfg.syslogTLSConfig()
+
+	return err
 }
 
 func loadInt(envKey string, defaultVal int) (int, error) {

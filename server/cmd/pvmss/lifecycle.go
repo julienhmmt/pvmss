@@ -66,6 +66,7 @@ func logBanner(logger *slog.Logger, cfg config.Configuration, clusters []string,
 		"otelEndpoint", otelHost,
 		"metricsAddr", metricsAddr,
 		"tls", cfg.TLSMode(),
+		"syslog", cfg.SyslogHost(),
 	)
 }
 
