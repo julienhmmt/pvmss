@@ -12,6 +12,10 @@ metadata:
   {{- end }}
 spec:
   parentRefs:
+  {{- if and .Values.gateway.enabled (not .Values.httpRoute.parentRefs) }}
+    - name: {{ include "pvmss.fullname" . }}
+      sectionName: https
+  {{- end }}
   {{- range .Values.httpRoute.parentRefs }}
     - name: {{ .name }}
       {{- with .namespace }}

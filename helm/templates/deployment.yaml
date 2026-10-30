@@ -10,7 +10,10 @@ metadata:
     {{- toYaml . | nindent 4 }}
   {{- end }}
 spec:
-  replicas: {{ .Values.deployment.replicaCount }}
+  {{- if ne (int .Values.deployment.replicaCount) 1 }}
+  {{- fail "deployment.replicaCount must be 1 (SQLite, rate limits and quota reservations live in one process)" }}
+  {{- end }}
+  replicas: 1
   strategy:
     type: {{ .Values.deployment.strategy }}
   selector:
@@ -20,6 +23,9 @@ spec:
     metadata:
       labels:
         {{- include "pvmss.labels" . | nindent 8 }}
+        {{- with .Values.podLabels }}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
       annotations:
         {{- if not .Values.secrets.existingSecret }}
         # Roll the pod when chart-managed secrets change.
@@ -28,7 +34,17 @@ spec:
         {{- with .Values.extraAnnotations }}
         {{- toYaml . | nindent 8 }}
         {{- end }}
+        {{- with .Values.podAnnotations }}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
     spec:
+      {{- with .Values.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.priorityClassName }}
+      priorityClassName: {{ . }}
+      {{- end }}
       {{- if or .Values.serviceAccount.create .Values.serviceAccount.name }}
       serviceAccountName: {{ .Values.serviceAccount.name }}
       {{- end }}
@@ -86,25 +102,55 @@ spec:
             - name: PVMSS_METRICS_PORT
               value: "{{ .Values.metrics.port }}"
             {{- end }}
+            {{- if .Values.tls.enabled }}
+            - name: PVMSS_TLS_CERT_FILE
+              value: /tls/server/tls.crt
+            - name: PVMSS_TLS_KEY_FILE
+              value: /tls/server/tls.key
+            {{- if .Values.tls.clientCA.enabled }}
+            - name: PVMSS_TLS_CLIENT_CA_FILE
+              value: /tls/client-ca/{{ .Values.tls.clientCA.key }}
+            - name: PVMSS_TLS_CLIENT_AUTH
+              value: {{ .Values.tls.clientCA.clientAuth | quote }}
+            {{- end }}
+            {{- end }}
             # Plain variables
             {{- range $k, $v := .Values.deployment.env }}
             - name: {{ $k }}
               value: {{ $v | toString | quote }}
             {{- end }}
-          {{- with .Values.deployment.livenessProbe }}
+            {{- with .Values.deployment.extraEnv }}
+            {{- toYaml . | nindent 12 }}
+            {{- end }}
+          {{- with .Values.deployment.extraEnvFrom }}
+          envFrom:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
           livenessProbe:
-            {{- toYaml . | nindent 12 }}
-          {{- end }}
-          {{- with .Values.deployment.readinessProbe }}
+            {{- include "pvmss.probeHandler" . | nindent 12 }}
+            {{- toYaml .Values.deployment.livenessProbe | nindent 12 }}
           readinessProbe:
-            {{- toYaml . | nindent 12 }}
-          {{- end }}
+            {{- include "pvmss.probeHandler" . | nindent 12 }}
+            {{- toYaml .Values.deployment.readinessProbe | nindent 12 }}
           volumeMounts:
             - name: pvmss-data
               mountPath: /data
             {{- if .Values.persistence.logs.enabled }}
             - name: pvmss-logs
               mountPath: /data/logs
+            {{- end }}
+            {{- if .Values.tls.enabled }}
+            - name: tls-server
+              mountPath: /tls/server
+              readOnly: true
+            {{- if .Values.tls.clientCA.enabled }}
+            - name: tls-client-ca
+              mountPath: /tls/client-ca
+              readOnly: true
+            {{- end }}
+            {{- end }}
+            {{- with .Values.deployment.extraVolumeMounts }}
+            {{- toYaml . | nindent 12 }}
             {{- end }}
           resources:
             {{- toYaml .Values.deployment.resources | nindent 12 }}
@@ -128,4 +174,27 @@ spec:
         - name: pvmss-logs
           persistentVolumeClaim:
             claimName: {{ include "pvmss.fullname" . }}-logs-pvc
+        {{- end }}
+        {{- if .Values.tls.enabled }}
+        - name: tls-server
+          secret:
+            defaultMode: 0440
+            secretName: {{ include "pvmss.tlsSecretName" . }}
+            items:
+              - key: tls.crt
+                path: tls.crt
+              - key: tls.key
+                path: tls.key
+        {{- if .Values.tls.clientCA.enabled }}
+        - name: tls-client-ca
+          secret:
+            defaultMode: 0440
+            secretName: {{ include "pvmss.clientCASecretName" . }}
+            items:
+              - key: {{ .Values.tls.clientCA.key }}
+                path: {{ .Values.tls.clientCA.key }}
+        {{- end }}
+        {{- end }}
+        {{- with .Values.deployment.extraVolumes }}
+        {{- toYaml . | nindent 8 }}
         {{- end }}

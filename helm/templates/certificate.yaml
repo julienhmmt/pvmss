@@ -1,0 +1,33 @@
+{{- if and .Values.tls.enabled .Values.tls.certManager.enabled }}
+{{- $fullname := include "pvmss.fullname" . }}
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: {{ $fullname }}
+  namespace: {{ .Values.namespace }}
+  labels:
+    {{- include "pvmss.labels" . | nindent 4 }}
+spec:
+  secretName: {{ include "pvmss.tlsSecretName" . }}
+  duration: {{ .Values.tls.certManager.duration }}
+  renewBefore: {{ .Values.tls.certManager.renewBefore }}
+  issuerRef:
+    name: {{ required "tls.certManager.issuerRef.name is required" .Values.tls.certManager.issuerRef.name }}
+    kind: {{ .Values.tls.certManager.issuerRef.kind }}
+    group: cert-manager.io
+  privateKey:
+    algorithm: ECDSA
+    size: 256
+    rotationPolicy: Always
+  usages:
+    - server auth
+  dnsNames:
+    {{- with .Values.tls.certManager.dnsNames }}
+    {{- toYaml . | nindent 4 }}
+    {{- else }}
+    - {{ $fullname }}
+    - {{ $fullname }}.{{ .Values.namespace }}
+    - {{ $fullname }}.{{ .Values.namespace }}.svc
+    - {{ $fullname }}.{{ .Values.namespace }}.svc.cluster.local
+    {{- end }}
+{{- end }}

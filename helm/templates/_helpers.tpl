@@ -42,8 +42,38 @@ substitution and by shells; base64 has no "$".
 {{- with .Values.secrets.adminPasswordHashBase64 -}}
 {{- $hash = b64dec . | trim -}}
 {{- end -}}
-{{- if and $hash (not (hasPrefix "$2" $hash)) -}}
-{{- fail "secrets.adminPasswordHash must be a bcrypt hash starting with $2 (check that $ was not stripped; prefer secrets.adminPasswordHashBase64)" -}}
+{{- if and $hash (not (regexMatch "^\\$2[abxy]?\\$[0-9]{2}\\$[./A-Za-z0-9]{53}$" $hash)) -}}
+{{- fail "secrets.adminPasswordHash must be a full bcrypt hash ($2y$10$ + 53 chars); a $ was probably stripped, prefer secrets.adminPasswordHashBase64" -}}
 {{- end -}}
 {{- $hash -}}
+{{- end -}}
+
+{{/*
+Kubernetes TLS Secret holding the PVMSS server certificate.
+*/}}
+{{- define "pvmss.tlsSecretName" -}}
+{{- default (printf "%s-tls" (include "pvmss.fullname" .)) .Values.tls.secretName -}}
+{{- end -}}
+
+{{/*
+Secret holding the client CA bundle (mTLS); defaults to the TLS Secret.
+*/}}
+{{- define "pvmss.clientCASecretName" -}}
+{{- default (include "pvmss.tlsSecretName" .) .Values.tls.clientCA.secretName -}}
+{{- end -}}
+
+{{/*
+Probe handler. Strict mTLS refuses the kubelet (no client certificate), so it
+gets a tcpSocket probe; otherwise /health over HTTP or HTTPS.
+*/}}
+{{- define "pvmss.probeHandler" -}}
+{{- if and .Values.tls.enabled .Values.tls.clientCA.enabled (eq .Values.tls.clientCA.clientAuth "require") -}}
+tcpSocket:
+  port: backend
+{{- else -}}
+httpGet:
+  path: /health
+  port: backend
+  scheme: {{ ternary "HTTPS" "HTTP" .Values.tls.enabled }}
+{{- end -}}
 {{- end -}}
