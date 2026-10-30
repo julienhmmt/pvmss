@@ -62,7 +62,7 @@
 </script>
 
 <span
-	class="inline-flex items-center whitespace-nowrap rounded-full border font-medium {tones[tone].wrap} {sizes[size]} {klass}"
+	class="inline-flex items-center whitespace-nowrap rounded-[var(--radius-control)] border font-medium {tones[tone].wrap} {sizes[size]} {klass}"
 	{...rest}
 >
 	{#if dot}
