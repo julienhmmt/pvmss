@@ -35,44 +35,6 @@ services:
           cpus: "1"
           memory: 256M
 
-  pvmss-web-dev:
-    # Bun installs deps; Node runs the Vite dev server. Bun cannot run Vite's
-    # WebSocket dev-proxy (its http.request emits 'response' instead of
-    # 'upgrade' for 101), which breaks the VNC console WebSocket. See
-    # Dockerfile.web-dev.
-    build:
-      context: .
-      dockerfile: Dockerfile.web-dev
-    working_dir: /app
-    restart: unless-stopped
-    container_name: pvmss-web-dev
-    env_file:
-      - .env
-    environment:
-      # Vite proxy target - the Go backend on the docker network.
-      VITE_BACKEND_URL: http://pvmss-dev:50000
-      # ORIGIN controls the public base for Vite asset URLs and HMR.
-      # For OrbStack TLS access via https://pvmss-web-dev.pvmss.orb.local (standard port),
-      # set ORIGIN=https://pvmss-web-dev.pvmss.orb.local (no port) in your local .env
-      # (or shell). This makes the HMR client connect via wss://... without :5173.
-      # With ORIGIN set, open the app on that URL only: asset URLs and HMR are
-      # built from it, so another host (localhost, 127.0.0.1) gets CORS-blocked
-      # fonts and a failing HMR socket.
-      ORIGIN: ${ORIGIN:-http://localhost:5173}
-      NODE_ENV: development
-    ports:
-      - "5173:5173"
-    volumes:
-      - ./web:/app
-      - /app/node_modules
-    cap_drop:
-      - ALL
-    security_opt:
-      - no-new-privileges:true
-    command: sh -c "bun install && node node_modules/vite/bin/vite.js dev --host 0.0.0.0 --port 5173"
-    depends_on:
-      - pvmss-dev
-
   # --- Reverse proxies in front of pvmss-dev (one port each) ---------------
   # All serve the same self-signed certificate (accept it once per port).
   # Configs live in dev/proxies/. See README "Behind a reverse proxy".

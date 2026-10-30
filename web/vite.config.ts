@@ -42,11 +42,9 @@ export default defineConfig({
 		port: 5173,
 		strictPort: true,
 		// Allow any hostname in development so the server is agnostic of the URL
-		// used to reach it (localhost, web-dev.pvmss.orb.local, or any other
-		// internal DNS/hosts entry).
+		// used to reach it (localhost or any other internal DNS/hosts entry).
 		allowedHosts: true,
 		// Public origin used for asset URLs and HMR base when behind a proxy.
-		// Set ORIGIN=https://web-dev.pvmss.orb.local (no port) for OrbStack TLS.
 		origin: process.env.ORIGIN || 'http://localhost:5173',
 		watch: {
 			// Polling is required inside Docker bind-mount containers where
@@ -60,8 +58,8 @@ export default defineConfig({
 			// failure). Omitting it lets the Vite client infer the host from
 			// the page URL, so HMR works for any proxy/OrbStack URL.
 			port: 5173,
-			// When ORIGIN is set (e.g. https://web-dev.pvmss.orb.local for
-			// OrbStack TLS termination on standard port), emit protocol +
+			// When ORIGIN is set (e.g. a TLS-terminating proxy on a
+			// standard port), emit protocol +
 			// clientPort derived from it. Vite client URL selection order:
 			// clientPort > hmr.port > server.port.
 			...(process.env.ORIGIN
