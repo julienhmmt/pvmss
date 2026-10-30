@@ -56,10 +56,12 @@ Kubernetes TLS Secret holding the PVMSS server certificate.
 {{- end -}}
 
 {{/*
-Secret holding the client CA bundle (mTLS); defaults to the TLS Secret.
+Secret holding the client CA bundle (mTLS). Required, never the TLS Secret:
+its ca.crt is the server issuer, which may sign far more than the clients
+allowed to reach PVMSS (a cluster-wide ClusterIssuer, for example).
 */}}
 {{- define "pvmss.clientCASecretName" -}}
-{{- default (include "pvmss.tlsSecretName" .) .Values.tls.clientCA.secretName -}}
+{{- required "tls.clientCA.secretName is required when tls.clientCA.enabled: use a CA dedicated to the proxies' client certificates" .Values.tls.clientCA.secretName -}}
 {{- end -}}
 
 {{/*
