@@ -40,41 +40,60 @@ func (l *windowLimiter) allow(key string, now time.Time) (bool, time.Duration) {
 	if swept := sweepIdle(l.hits, l.lastSweep, now, l.window); swept != l.lastSweep {
 		l.lastSweep = swept
 
-		for k, at := range l.audited {
-			if !at.After(cutoff) {
-				delete(l.audited, k)
-			}
-		}
+		l.pruneAudited(cutoff)
 	}
 
-	hits := l.hits[key]
-	kept := hits[:0]
-
-	var oldest time.Time
-
-	for _, t := range hits {
-		if t.After(cutoff) {
-			kept = append(kept, t)
-			if oldest.IsZero() || t.Before(oldest) {
-				oldest = t
-			}
-		}
-	}
+	kept, oldest := freshHits(l.hits[key], cutoff)
 
 	if len(kept) >= l.max {
 		l.hits[key] = kept
 
-		remaining := oldest.Add(l.window).Sub(now)
-		if oldest.IsZero() || remaining <= 0 {
-			return false, l.window
-		}
-
-		return false, remaining
+		return false, retryAfter(oldest, now, l.window)
 	}
 
 	l.hits[key] = append(kept, now)
 
 	return true, 0
+}
+
+// pruneAudited drops audit timestamps that have left the window; the caller
+// holds the limiter's lock.
+func (l *windowLimiter) pruneAudited(cutoff time.Time) {
+	for k, at := range l.audited {
+		if !at.After(cutoff) {
+			delete(l.audited, k)
+		}
+	}
+}
+
+// freshHits keeps the hits still inside the window and reports the oldest
+// one. kept reuses the hits backing array.
+func freshHits(hits []time.Time, cutoff time.Time) (kept []time.Time, oldest time.Time) {
+	kept = hits[:0]
+
+	for _, t := range hits {
+		if !t.After(cutoff) {
+			continue
+		}
+
+		kept = append(kept, t)
+		if oldest.IsZero() || t.Before(oldest) {
+			oldest = t
+		}
+	}
+
+	return kept, oldest
+}
+
+// retryAfter is how long until the oldest hit leaves the window; a zero-oldest
+// or already-past deadline falls back to the whole window.
+func retryAfter(oldest, now time.Time, window time.Duration) time.Duration {
+	remaining := oldest.Add(window).Sub(now)
+	if oldest.IsZero() || remaining <= 0 {
+		return window
+	}
+
+	return remaining
 }
 
 // exhausted reports whether key has used its whole budget in the current

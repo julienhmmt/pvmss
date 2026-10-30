@@ -127,6 +127,33 @@ func routeOf(r *http.Request) string {
 	return r.Pattern
 }
 
+// accessLogAttrs builds the attribute list for one access-log line. Route
+// path values stand in for the cluster/vmid attrs handlers no longer repeat
+// on their own error logs.
+func accessLogAttrs(r *http.Request, lw *logWriter, route string, start time.Time) []slog.Attr {
+	attrs := []slog.Attr{
+		slog.String("method", r.Method),
+		slog.String("route", route),
+		slog.Int("status", lw.status),
+		slog.Int("bytes", lw.bytes),
+		slog.Int64("durationMs", time.Since(start).Milliseconds()),
+	}
+
+	if c := r.PathValue("cluster"); c != "" {
+		attrs = append(attrs, slog.String("cluster", c))
+	}
+
+	if v, err := strconv.Atoi(r.PathValue("vmid")); err == nil {
+		attrs = append(attrs, slog.Int("vmid", v))
+	}
+
+	if lw.err != nil {
+		attrs = append(attrs, slog.Any("error", lw.err))
+	}
+
+	return attrs
+}
+
 // withAccessLog writes one line per request (two for a hijacked WebSocket:
 // upgrade and close). Place it inside withRequestID so the line carries
 // requestId and, once auth resolves, user.
@@ -149,27 +176,7 @@ func withAccessLog(trustedProxyHops int, next http.Handler) http.Handler {
 
 		emit := func(msg string, lw *logWriter) {
 			route := routeOf(r)
-			attrs := []slog.Attr{
-				slog.String("method", r.Method),
-				slog.String("route", route),
-				slog.Int("status", lw.status),
-				slog.Int("bytes", lw.bytes),
-				slog.Int64("durationMs", time.Since(start).Milliseconds()),
-			}
-			// Route path values stand in for the cluster/vmid attrs handlers no
-			// longer repeat on their own error logs.
-			if c := r.PathValue("cluster"); c != "" {
-				attrs = append(attrs, slog.String("cluster", c))
-			}
-
-			if v, err := strconv.Atoi(r.PathValue("vmid")); err == nil {
-				attrs = append(attrs, slog.Int("vmid", v))
-			}
-
-			if lw.err != nil {
-				attrs = append(attrs, slog.Any("error", lw.err))
-			}
-
+			attrs := accessLogAttrs(r, lw, route, start)
 			level := accessLevel(r.Method, route, lw.status)
 			// The client left (page change, closed tab): the status reached
 			// nobody and nothing is broken, so it is a diagnostic only.

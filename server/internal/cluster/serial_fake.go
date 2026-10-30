@@ -35,31 +35,42 @@ func serialFakeServe(ctx context.Context, peer io.ReadWriteCloser) error {
 
 		n, err := peer.Read(buf)
 		if n > 0 {
-			// Echo the bytes back as a single "0:len:data" frame so xterm.js
-			// renders the typed characters. Written as one peer.Write so it
-			// arrives as one WebSocket message (NetConn maps each Write to a
-			// message); splitting the header and payload would deliver them as
-			// two separate frames.
-			frame := fmt.Sprintf("0:%d:", n)
-			out := make([]byte, 0, len(frame)+n)
-			out = append(out, frame...)
-			out = append(out, buf[:n]...)
-
-			if _, werr := peer.Write(out); werr != nil {
+			if werr := echoFrame(peer, buf[:n]); werr != nil {
 				return werr
 			}
 		}
 
 		if err != nil {
-			if ctx.Err() != nil {
-				return ctx.Err()
-			}
-
-			if errors.Is(err, io.EOF) {
-				return nil
-			}
-
-			return err
+			return readError(ctx, err)
 		}
 	}
+}
+
+// echoFrame echoes the bytes back as a single "0:len:data" frame so xterm.js
+// renders the typed characters. Written as one peer.Write so it arrives as one
+// WebSocket message (NetConn maps each Write to a message); splitting the
+// header and payload would deliver them as two separate frames.
+func echoFrame(peer io.Writer, data []byte) error {
+	frame := fmt.Sprintf("0:%d:", len(data))
+	out := make([]byte, 0, len(frame)+len(data))
+	out = append(out, frame...)
+	out = append(out, data...)
+
+	_, err := peer.Write(out)
+
+	return err
+}
+
+// readError maps a peer read failure to the serve result: a cancellation wins
+// over EOF and real errors so a blocked read ends cleanly.
+func readError(ctx context.Context, err error) error {
+	if ctx.Err() != nil {
+		return ctx.Err()
+	}
+
+	if errors.Is(err, io.EOF) {
+		return nil
+	}
+
+	return err
 }

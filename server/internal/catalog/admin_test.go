@@ -906,7 +906,7 @@ func TestAdminListTemplates_UnreadableDoesNotClobberStoredRow(t *testing.T) {
 // TestAdminListStorages_SharedOnceAndFansOut verifies a shared storage is one
 // row, and approving it writes a row on every node reporting it.
 //
-//nolint:gocyclo,paralleltest // serial: shared fake dataset; one scenario, many assertions
+//nolint:paralleltest // serial: shared fake dataset; one scenario, many assertions
 func TestAdminListStorages_SharedOnceAndFansOut(t *testing.T) {
 	st := openAdminStore(t)
 	ctx := context.Background()
@@ -916,14 +916,7 @@ func TestAdminListStorages_SharedOnceAndFansOut(t *testing.T) {
 		t.Fatalf("AdminListStorages: %v", err)
 	}
 
-	var shared []catalog.StorageApproval
-
-	for _, s := range list {
-		if s.Name == "ceph-data" {
-			shared = append(shared, s)
-		}
-	}
-
+	shared := storageRowsNamed(list, "ceph-data")
 	if len(shared) != 1 || !shared[0].Shared || shared[0].Node != "" || !shared[0].Enabled {
 		t.Fatalf("ceph-data rows = %+v, want one shared enabled row with empty node", shared)
 	}
@@ -936,19 +929,7 @@ func TestAdminListStorages_SharedOnceAndFansOut(t *testing.T) {
 		t.Fatalf("SetStorageEnabled shared: %v", err)
 	}
 
-	rows, err := st.CatalogStoragesEnabled(ctx, "default")
-	if err != nil {
-		t.Fatalf("CatalogStoragesEnabled: %v", err)
-	}
-
-	enabledNodes := 0
-
-	for _, r := range rows {
-		if r.Name == "ceph-data" && r.Enabled {
-			enabledNodes++
-		}
-	}
-
+	enabledNodes := enabledStorageRowCount(ctx, t, st, "default", "ceph-data")
 	if enabledNodes != shared[0].NodeCount || enabledNodes == 0 {
 		t.Fatalf("enabled rows = %d, want NodeCount %d", enabledNodes, shared[0].NodeCount)
 	}
@@ -963,9 +944,49 @@ func TestAdminListStorages_SharedOnceAndFansOut(t *testing.T) {
 		t.Fatalf("AdminListStorages after: %v", err)
 	}
 
-	for _, s := range after {
-		if s.Name == "ceph-data" && !s.Enabled {
-			t.Fatal("ceph-data should stay enabled while any node row is enabled")
+	assertStorageEnabled(t, after, "ceph-data")
+}
+
+// storageRowsNamed returns the approvals for one storage name.
+func storageRowsNamed(list []catalog.StorageApproval, name string) []catalog.StorageApproval {
+	var rows []catalog.StorageApproval
+
+	for _, s := range list {
+		if s.Name == name {
+			rows = append(rows, s)
+		}
+	}
+
+	return rows
+}
+
+// enabledStorageRowCount counts the enabled stored approval rows for name.
+func enabledStorageRowCount(ctx context.Context, t *testing.T, st *store.Store, clusterName, name string) int {
+	t.Helper()
+
+	rows, err := st.CatalogStoragesEnabled(ctx, clusterName)
+	if err != nil {
+		t.Fatalf("CatalogStoragesEnabled: %v", err)
+	}
+
+	count := 0
+
+	for _, r := range rows {
+		if r.Name == name && r.Enabled {
+			count++
+		}
+	}
+
+	return count
+}
+
+// assertStorageEnabled fails when any row for name is disabled.
+func assertStorageEnabled(t *testing.T, list []catalog.StorageApproval, name string) {
+	t.Helper()
+
+	for _, s := range list {
+		if s.Name == name && !s.Enabled {
+			t.Fatalf("%s should stay enabled while any node row is enabled", name)
 		}
 	}
 }
