@@ -77,7 +77,7 @@ make docker-build     # multi-arch build + push, tag via PVMSS_TAG
 make buildkit-start / buildkit-stop / buildkit-status
 make helm-package / helm-upgrade
 
-# Dev stack (docker-compose.dev.yml: pvmss-dev Go server + web-dev Vite (/api proxied) + SonarQube)
+# Dev stack (docker-compose.dev.yml: pvmss-dev Go server + SonarQube)
 make up / down / restart / logs
 
 # SonarQube (projects pvmss-server, pvmss-web)
