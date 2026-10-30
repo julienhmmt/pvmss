@@ -90,7 +90,10 @@ with the proxy as a sidecar in the same pod. The Helm chart handles this: with
 `tls.enabled` it mounts the certificate Secret (or issues it with
 `tls.certManager`), sets `PVMSS_TLS_*`, probes `/health` over HTTPS, and
 switches to a `tcpSocket` probe when `tls.clientCA.enabled` with
-`clientAuth: require`. `httpRoute.backendTLSPolicy` makes the Gateway dial the
+`clientAuth: require`. `tls.clientCA.secretName` is required and must hold a
+CA dedicated to client certificates: reusing the server issuer's CA (a
+cluster-wide ClusterIssuer, say) would let in every certificate it signs.
+`httpRoute.backendTLSPolicy` makes the Gateway dial the
 pod over HTTPS; the Gateway's client certificate is set on the controller side.
 
 ## Proxy recipes (hop 2)
