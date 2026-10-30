@@ -76,6 +76,12 @@ deployment:
     timeoutSeconds: 3
     failureThreshold: 3
   # Extra env entries (full EnvVar objects, valueFrom allowed) and envFrom sources.
+  # Example: mount a SIEM receiver CA from a Secret and enable the syslog sink
+  # (see docs/observability.md, "Ship logs to a SIEM"):
+  #   extraVolumes: [{name: siem-ca, secret: {secretName: pvmss-siem-ca}}]
+  #   extraVolumeMounts: [{name: siem-ca, mountPath: /etc/pvmss/siem, readOnly: true}]
+  #   extraEnv: [{name: PVMSS_SYSLOG_ADDR, value: "siem.example.internal:6514"},
+  #              {name: PVMSS_SYSLOG_TLS_CA_FILE, value: /etc/pvmss/siem/ca.crt}]
   extraEnv: []
   extraEnvFrom: []
   extraVolumes: []

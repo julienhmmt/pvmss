@@ -110,6 +110,199 @@ sum by (route) (count_over_time({app="pvmss"} | json | message="http request" | 
 {app="pvmss"} | json | requestId="3f9c0b1a2d4e4b7a9c1d2e3f4a5b6c7d"
 ```
 
+## Ship logs to a SIEM
+
+PVMSS can send the same records it writes to stdout to a syslog receiver over
+TLS. The sink is off until `PVMSS_SYSLOG_ADDR` is set. Stdout always stays on:
+the sink adds a copy, it never replaces one.
+
+### SIEM sink configuration
+
+| Variable                     | Effect                                                                                             |
+| ---------------------------- | -------------------------------------------------------------------------------------------------- |
+| `PVMSS_SYSLOG_ADDR`          | `host:port` of the receiver (RFC 5425 port, usually 6514). Empty (default): sink off.              |
+| `PVMSS_SYSLOG_TLS_CA_FILE`   | PEM CA that signed the receiver's certificate. Empty: the system roots. Verification is always on. |
+| `PVMSS_SYSLOG_TLS_CERT_FILE` | Client certificate for mutual TLS. Set together with the key.                                      |
+| `PVMSS_SYSLOG_TLS_KEY_FILE`  | Client key for mutual TLS. Set together with the cert.                                             |
+
+The TLS variables require `PVMSS_SYSLOG_ADDR`, and the server refuses to boot
+on a bad address, a missing file or a cert without its key. See `docs/tls.md`
+for building the CA and the client pair.
+
+### Wire format
+
+Each record is one RFC 5424 message in an RFC 5425 octet-counting frame over
+TLS: a decimal byte count, a space, then the message. There are no newline
+separators inside the TCP stream, so a receiver must read by count, not by
+line. The receiver in the example below writes each message on its own line.
+
+One real line, captured from the dev receiver after a login:
+
+```text
+<134>1 2026-10-30T23:09:44.245828Z ac1c7c9d25fe pvmss 1 auth [pvmss@32473 level="INFO" requestId="5d2b14f95138d10d6b5616bf24339294" clientIp="192.168.107.4" component="httpapi" event="auth" result="success" user="admin@pve"] login succeeded
+```
+
+Reading it: `<134>` is facility local0 and severity 6 (info). The APP-NAME is
+`pvmss`. The MSGID is the `event` attribute (`auth` here) or `-` when a record
+has none. The structured data ID `pvmss@32473` carries the flattened
+attributes, `level` first. The message text follows the brackets.
+
+### Parsing it
+
+- **rsyslog**: `imtcp` with `StreamDriver.Mode="1"` and `Name="gtls"` reads
+  octet-counted frames by itself. Use `%rawmsg%` to store the line as received.
+- **Splunk**: a TCP or TLS data input with `sourcetype=syslog`. Splunk reads
+  the RFC 5424 header; the `[pvmss@32473 ...]` block stays as text, so extract
+  `key="value"` pairs with a `rex` or a props `EXTRACT`.
+- **Wazuh**: a `<remote>` block with `connection="secure"` and `protocol="tcp"`
+  and a decoder that reads the SD block, or a custom decoder for `pvmss`.
+- **Elastic**: the `syslog` input of Elastic Agent or Filebeat, or Logstash
+  with the `syslog` codec. Filter on `program` = `pvmss` and parse the SD with
+  `kv`.
+- **Microsoft Sentinel**: a Syslog connector on the Log Analytics agent or the
+  AMA, with the same TLS receiver. Facility `local0`, severities as above.
+
+### What is sent
+
+- Every record that passes `LOG_LEVEL`, so the same levels as stdout. There is
+  no separate SIEM level. `info` is the production level; `debug` adds one line
+  per GET and per Proxmox call and multiplies the volume.
+- Attributes are flattened to `group.key` and redacted by the same rule as
+  stdout. Secret-looking values never reach the SIEM.
+- Not sent: request bodies, headers, raw URLs and query strings, session or
+  CSRF tokens, passwords. The sink never adds fields that stdout lacks.
+- Records longer than 8192 bytes are cut at the limit and marked
+  `truncated="true"` in the SD block.
+
+### TLS and mTLS
+
+Create a CA and a receiver certificate on the receiver side, give PVMSS the
+CA file, and point `PVMSS_SYSLOG_ADDR` at the receiver's name. The certificate
+must carry that name as a SAN, since PVMSS checks the host it dialed. For
+mutual TLS, issue a client certificate from the same CA and set
+`PVMSS_SYSLOG_TLS_CERT_FILE` and `PVMSS_SYSLOG_TLS_KEY_FILE`.
+
+### Drops and the `syslog_drop` warning
+
+The sink uses a queue of 1024 records. The write path only enqueues and never
+blocks, so a slow or down receiver cannot slow requests. When the queue is
+full, or a write fails, the record is dropped from the SIEM copy (stdout keeps
+it). A warning with `event="syslog_drop"` and a running `dropped` count is
+written to stdout at most once a minute. Treat it as a receiver outage or
+undersized network: check the receiver and the path, then the count stops
+rising. On shutdown the sink drains for up to 2 seconds.
+
+Connections are dialed lazily and redialed after a failure, with backoff from
+1 second up to 30 seconds.
+
+### Volume and level
+
+Expect one line per write request and per audited action, plus one per login,
+logout and cluster state change at `info`. Inventory refreshes and GETs appear
+only at `debug`. Size the receiver for the `info` rate of your user count, and
+keep `LOG_LEVEL=info` in production.
+
+### Kubernetes
+
+On Kubernetes, a collector that reads the pod's stdout is still the
+recommended path: it keeps the pod free of network dependencies and the
+Helm chart defaults to `LOG_FORMAT: json`. The stdout records have the JSON
+keys `timestamp`, `level`, `message`, plus the attributes. Both snippets
+below parse those keys and send them on.
+
+Vector (`sources.pvmss` reads the container logs, `transforms.parse` decodes
+the JSON):
+
+```yaml
+sources:
+  pvmss:
+    type: kubernetes_logs
+    extra_label_selector: "app.kubernetes.io/name=pvmss"
+transforms:
+  parse:
+    type: remap
+    inputs: [pvmss]
+    source: |
+      . = merge!(., parse_json!(.message))
+sinks:
+  siem:
+    type: syslog
+    inputs: [parse]
+    mode: tcp
+    address: "siem.example.internal:6514"
+    encoding:
+      codec: json
+    tls:
+      enabled: true
+      ca_file: /etc/vector/siem-ca.crt
+```
+
+Fluent Bit (a `parser` for the JSON body, then the `syslog` output):
+
+```ini
+[INPUT]
+    Name              tail
+    Tag               pvmss.*
+    Path              /var/log/containers/*pvmss*.log
+    multiline.parser  docker, cri
+
+[FILTER]
+    Name         parser
+    Match        pvmss.*
+    Key_Name     log
+    Parser       json
+    Reserve_Data On
+
+[OUTPUT]
+    Name           syslog
+    Match          pvmss.*
+    Host           siem.example.internal
+    Port           6514
+    Mode           tls
+    tls            on
+    tls.ca_file    /fluent-bit/etc/siem-ca.crt
+    Syslog_Format  rfc5424
+    Syslog_Message_Key  log
+```
+
+Adjust the `Match` and selector labels to your install. Both snippets are
+untested against your receiver; check the first record with the receiver
+before relying on them.
+
+### Helm chart
+
+The chart mounts volumes and sets env through `deployment.extraVolumes` and
+`deployment.extraEnv`. Mount the receiver CA from a Secret and point the
+variables at it:
+
+```yaml
+deployment:
+  extraVolumes:
+    - name: siem-ca
+      secret:
+        secretName: pvmss-siem-ca
+  extraVolumeMounts:
+    - name: siem-ca
+      mountPath: /etc/pvmss/siem
+      readOnly: true
+  extraEnv:
+    - name: PVMSS_SYSLOG_ADDR
+      value: "siem.example.internal:6514"
+    - name: PVMSS_SYSLOG_TLS_CA_FILE
+      value: /etc/pvmss/siem/ca.crt
+```
+
+### Dev receiver
+
+`docker-compose.dev.yml` has an optional rsyslog receiver under the `siem`
+profile. It writes the lines to the `syslog_data` volume:
+
+```sh
+PVMSS_SYSLOG_ADDR=syslog:6514 PVMSS_SYSLOG_TLS_CA_FILE=/syslog-tls/ca.crt \
+  docker compose -f docker-compose.dev.yml --profile siem up -d --build pvmss-dev syslog
+docker exec pvmss-syslog cat /var/log/siem/pvmss.log
+```
+
 ## Traces
 
 Set `OTEL_EXPORTER_OTLP_ENDPOINT` and restart. PVMSS then sends:
