@@ -1,4 +1,5 @@
-# File provider: one router on the websecure entrypoint to PVMSS.
+# File provider: one router on the websecure entrypoint to PVMSS, mTLS on
+# both hops.
 http:
   routers:
     pvmss:
@@ -9,9 +10,24 @@ http:
   services:
     pvmss:
       loadBalancer:
+        serversTransport: pvmss-mtls
         servers:
-          - url: http://pvmss-dev:50000
+          - url: https://pvmss-dev:50000
+  serversTransports:
+    pvmss-mtls:
+      serverName: pvmss-dev
+      rootCAs: [/certs/ca.crt]
+      certificates:
+        - certFile: /certs/proxy-client.crt
+          keyFile: /certs/proxy-client.key
+      disableHTTP2: true
 tls:
+  options:
+    # Browsers must present a client cert signed by the dev CA.
+    default:
+      clientAuth:
+        caFiles: [/certs/ca.crt]
+        clientAuthType: RequireAndVerifyClientCert
   stores:
     default:
       defaultCertificate:

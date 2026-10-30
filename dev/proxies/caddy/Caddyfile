@@ -5,6 +5,20 @@
 }
 
 https://localhost:50002 {
-  tls /certs/tls.crt /certs/tls.key
-  reverse_proxy pvmss-dev:50000
+  tls /certs/tls.crt /certs/tls.key {
+    # mTLS: browsers must present a client cert signed by the dev CA.
+    client_auth {
+      mode require_and_verify
+      trust_pool file /certs/ca.crt
+    }
+  }
+  # mTLS to pvmss-dev.
+  reverse_proxy https://pvmss-dev:50000 {
+    transport http {
+      tls_client_auth /certs/proxy-client.crt /certs/proxy-client.key
+      tls_trust_pool file /certs/ca.crt
+      tls_server_name pvmss-dev
+      versions 1.1
+    }
+  }
 }

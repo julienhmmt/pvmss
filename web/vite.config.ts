@@ -3,6 +3,7 @@ import { sveltekit } from '@sveltejs/kit/vite';
 import { vitePreprocess } from '@sveltejs/vite-plugin-svelte';
 import tailwindcss from '@tailwindcss/vite';
 import { paraglideVitePlugin } from '@inlang/paraglide-js';
+import { readFileSync } from 'node:fs';
 import { defineConfig } from 'vite';
 
 // @lix-js/sdk (used by @inlang/paraglide-js during buildStart) schedules 30s
@@ -22,6 +23,23 @@ globalThis.setTimeout = Object.assign(
 );
 
 const backendUrl = process.env.VITE_BACKEND_URL ?? 'http://localhost:50000';
+
+// Backend behind mutual TLS (docker-compose.dev.yml): VITE_BACKEND_TLS_DIR
+// holds the dev PKI; the proxy presents proxy-client.crt and trusts ca.crt.
+const tlsDir = process.env.VITE_BACKEND_TLS_DIR;
+const backendTarget = tlsDir
+	? (() => {
+			const u = new URL(backendUrl);
+			return {
+				protocol: u.protocol,
+				host: u.hostname,
+				port: Number(u.port) || 443,
+				ca: readFileSync(`${tlsDir}/ca.crt`),
+				cert: readFileSync(`${tlsDir}/proxy-client.crt`),
+				key: readFileSync(`${tlsDir}/proxy-client.key`)
+			};
+		})()
+	: backendUrl;
 
 export default defineConfig({
 	plugins: [
@@ -90,11 +108,11 @@ export default defineConfig({
 			// browser's Host header keeps them in sync; rewriting it would
 			// cause a mismatch and reject the console WebSocket.
 			'/api': {
-				target: backendUrl,
+				target: backendTarget,
 				ws: true
 			},
 			// The app polls /health for its "service unreachable" banner.
-			'/health': backendUrl
+			'/health': { target: backendTarget }
 		}
 	}
 });
