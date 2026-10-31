@@ -2377,5 +2377,6 @@
 	"shortcuts.palette": "Open the command palette",
 	"common.pagination.perPage": "Rows per page",
 	"common.pagination.range": "{from}-{to} of {total}",
+	"vms.detail.goneRedirect": "This VM no longer exists: it was deleted, possibly by an administrator. You were redirected to your VMs.",
 	"admin.audit.exportCsv": "Export CSV"
 }

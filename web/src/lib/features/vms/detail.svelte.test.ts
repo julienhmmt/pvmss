@@ -105,6 +105,51 @@ describe('VmDetailStore.action', () => {
 		expect(calls).not.toContain('/api/v1/vms/default/100');
 	});
 
+	it('refreshLiveStatus stops polling once the VM is gone (404)', async () => {
+		const { calls } = stubFetchSequence([
+			{ status: 404, body: { code: 'not_found', message: 'vm not found' } }
+		]);
+		const store = makeStore({ ...baseEntity, status: 'running' });
+
+		await store.refreshLiveStatus();
+		await store.refreshLiveStatus();
+
+		expect(calls).toHaveLength(1);
+		expect(store.entity).toBeNull();
+		expect(store.error).not.toBeNull();
+		expect(store.gone).toBe(true);
+	});
+
+	it('load flags a previously shown VM as gone on 404', async () => {
+		stubFetchSequence([{ status: 404, body: { code: 'not_found', message: 'vm not found' } }]);
+		const store = makeStore();
+
+		await store.load();
+
+		expect(store.gone).toBe(true);
+		expect(store.entity).toBeNull();
+	});
+
+	it('load of an unknown VM is an error, not a redirect', async () => {
+		stubFetchSequence([{ status: 404, body: { code: 'not_found', message: 'vm not found' } }]);
+		const store = new VmDetailStore('default', 100);
+
+		await store.load();
+
+		expect(store.gone).toBe(false);
+		expect(store.error).not.toBeNull();
+	});
+
+	it('refreshLiveStatus keeps the entity on a transient error', async () => {
+		stubFetchSequence([{ status: 502, body: { code: 'cluster_error', message: 'boom' } }]);
+		const store = makeStore({ ...baseEntity, status: 'running' });
+
+		await store.refreshLiveStatus();
+
+		expect(store.entity?.status).toBe('running');
+		expect(store.gone).toBe(false);
+	});
+
 	it('refreshLiveStatus skips while a power action is in flight', async () => {
 		const { calls } = stubFetchSequence([]);
 		const store = makeStore({ ...baseEntity, status: 'stopped' });

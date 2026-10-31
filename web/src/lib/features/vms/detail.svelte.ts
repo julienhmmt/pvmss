@@ -216,6 +216,10 @@ export class VmDetailStore {
 	/** Set after a successful delete so the page can navigate away. */
 	deleted = $state.raw(false);
 
+	/** Set when a VM this page was showing answers 404 (deleted elsewhere,
+	 *  e.g. by an admin) so the page can redirect with a notice. */
+	gone = $state.raw(false);
+
 	#basePath: string;
 
 	constructor(cluster: string, vmid: number) {
@@ -231,6 +235,11 @@ export class VmDetailStore {
 			this.entity = await get<VmDetailEntity>(this.#basePath);
 			if (this.hardwareOptions === null) await this.loadHardwareOptions();
 		} catch (err) {
+			// A refresh of a VM that was loaded before: it was deleted elsewhere.
+			if (this.entity !== null && err instanceof ApiRequestError && err.status === 404) {
+				this.entity = null;
+				this.gone = true;
+			}
 			this.error = errorMessage(err, () => m['vms.detail.errorLoading']());
 		} finally {
 			this.loading = false;
@@ -256,7 +265,8 @@ export class VmDetailStore {
 	 * Reads the live status (bypassing the up-to-30s-old projection) and patches
 	 * the entity. For pages that must show the true power state right away, e.g.
 	 * the console opened right after a start. Skips while a power action is in
-	 * flight (its convergence loop owns the status); read errors are ignored.
+	 * flight (its convergence loop owns the status). A 404 clears the entity and
+	 * ends polling; other read errors are ignored.
 	 */
 	async refreshLiveStatus(): Promise<void> {
 		if (this.entity === null || this.actionInFlight) return;
@@ -266,8 +276,15 @@ export class VmDetailStore {
 			this.entity = live.lock === undefined
 				? { ...this.entity, status: live.status }
 				: { ...this.entity, status: live.status, lock: live.lock };
-		} catch {
-			// Keep the last known status; the next tick retries.
+		} catch (err) {
+			// The VM is gone (deleted or out of scope): drop the entity so the
+			// `entity === null` guard ends this poll instead of hitting the
+			// audited status route forever. Other errors keep the last status.
+			if (err instanceof ApiRequestError && err.status === 404) {
+				this.entity = null;
+				this.error = err.message;
+				this.gone = true;
+			}
 		}
 	}
 
