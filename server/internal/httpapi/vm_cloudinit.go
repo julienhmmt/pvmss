@@ -13,10 +13,10 @@ import (
 	"pvmss/server/internal/vm"
 	"strconv"
 	"strings"
-	"time"
 )
 
-// VMCloudInit serves the four per-VM cloud-init endpoints.
+// VMCloudInit serves the per-VM cloud-init read (SSH user for the Connect
+// tab) and the console-password action.
 type VMCloudInit struct {
 	projection   *inventory.Projection
 	resolver     vm.ClusterIndexResolver
@@ -148,72 +148,20 @@ type cloudInitConfigDTO struct {
 	SearchDomain string                  `json:"searchDomain,omitempty"`
 }
 
-type cloudInitUpdateRequest struct {
-	User         *string                  `json:"user"`
-	Password     *string                  `json:"password"`
-	SSHKeys      *[]string                `json:"sshKeys"`
-	IPMode       *cluster.CloudInitIPMode `json:"ipMode"`
-	IPAddress    *string                  `json:"ipAddress"`
-	Gateway      *string                  `json:"gateway"`
-	DNSServer    *string                  `json:"dnsServer"`
-	SearchDomain *string                  `json:"searchDomain"`
-	RebootNow    bool                     `json:"rebootNow"`
-}
-
-type cloudInitUpdateResponse struct {
-	Status   string `json:"status"`
-	Rebooted bool   `json:"rebooted"`
-}
-
 // cloudInitDocumentDTO is the document a VM uses. TemplateID is "" when
 // none, "__baseline__" for the standalone baseline; Legacy marks a per-VM
 // document written before documents became admin-published.
-type cloudInitDocumentDTO struct {
-	TemplateID *string `json:"templateId"`
-	Filename   *string `json:"filename"`
-	Legacy     bool    `json:"legacy"`
-	UpdatedAt  *string `json:"updatedAt"`
-	UpdatedBy  *string `json:"updatedBy"`
-}
-
-type cloudInitDocumentRequest struct {
-	TemplateID *string `json:"templateId"`
-}
-
-type cloudInitDocumentResponse struct {
-	Status string `json:"status"`
-}
-
-type cloudInitSSHKeyRequest struct {
-	User string `json:"user"`
-	Key  string `json:"key"`
-}
-
-type cloudInitSSHKeyResponse struct {
-	Status string `json:"status"`
-}
-
-// ServeHTTP dispatches config, snippet, ssh-key, and console-password routes by path suffix.
+// ServeHTTP dispatches the cloud-init read and console-password routes by path suffix.
 func (h *VMCloudInit) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	switch {
-	case strings.HasSuffix(r.URL.Path, "/cloudinit/document"):
-		h.handleDocument(w, r)
-	case strings.HasSuffix(r.URL.Path, "/cloudinit/ssh-keys"):
-		h.handleSSHKey(w, r)
-	case strings.HasSuffix(r.URL.Path, "/console-password"):
+	if strings.HasSuffix(r.URL.Path, "/console-password") {
 		h.handleConsolePassword(w, r)
-	default:
-		h.handleConfig(w, r)
+		return
 	}
-}
 
-type cloudInitRouteHandler func(http.ResponseWriter, *http.Request, auth.Identity, string, int)
+	h.handleConfig(w, r)
+}
 
 func (h *VMCloudInit) handleConfig(w http.ResponseWriter, r *http.Request) {
-	h.serveRoute(w, r, h.getConfig, h.putConfig)
-}
-
-func (h *VMCloudInit) serveRoute(w http.ResponseWriter, r *http.Request, getHandler, putHandler cloudInitRouteHandler) {
 	clusterName, vmid, ok := parseCloudInitPath(r)
 	if !ok {
 		h.writeError(w, http.StatusBadRequest, "invalid_request", msgInvalidVMPath)
@@ -226,15 +174,14 @@ func (h *VMCloudInit) serveRoute(w http.ResponseWriter, r *http.Request, getHand
 		return
 	}
 
-	switch r.Method {
-	case http.MethodGet:
-		getHandler(w, r, identity, clusterName, vmid)
-	case http.MethodPut:
-		putHandler(w, r, identity, clusterName, vmid)
-	default:
-		w.Header().Set("Allow", "GET, PUT")
+	if r.Method != http.MethodGet {
+		w.Header().Set("Allow", "GET")
 		h.writeError(w, http.StatusMethodNotAllowed, "method_not_allowed", msgMethodNotAllowed)
+
+		return
 	}
+
+	h.getConfig(w, r, identity, clusterName, vmid)
 }
 
 func (h *VMCloudInit) getConfig(w http.ResponseWriter, r *http.Request, actor auth.Identity, clusterName string, vmid int) {
@@ -259,113 +206,6 @@ func (h *VMCloudInit) getConfig(w http.ResponseWriter, r *http.Request, actor au
 		User: config.User, SSHKeys: sshKeys, IPMode: config.IPMode,
 		IPAddress: config.IPAddress, Gateway: config.Gateway, DNSServer: config.DNSServer, SearchDomain: config.SearchDomain,
 	})
-}
-
-func (h *VMCloudInit) putConfig(w http.ResponseWriter, r *http.Request, actor auth.Identity, clusterName string, vmid int) {
-	var request cloudInitUpdateRequest
-	if err := decodeJSON(w, r, &request); err != nil {
-		h.writeError(w, http.StatusBadRequest, "invalid_config", msgInvalidRequestBody)
-		return
-	}
-
-	index, ok := h.index(w, clusterName)
-	if !ok {
-		return
-	}
-
-	reader, ok := h.readerFor(w, clusterName)
-	if !ok {
-		return
-	}
-
-	writer, ok := h.writerFor(w, clusterName)
-	if !ok {
-		return
-	}
-
-	rebooted, err := vm.SetCloudInitConfig(r.Context(), vm.CloudInitConfigDeps{
-		Index: index, Actor: actor, ClusterName: clusterName, VMID: vmid,
-		Reader: reader, Writer: writer, Audit: h.store, Refresher: h.refresherFor(clusterName),
-		StatusReader: h.statusReaderFor(clusterName),
-	}, cluster.CloudInitUpdate{
-		User: request.User, Password: request.Password, SSHKeys: request.SSHKeys, IPMode: request.IPMode,
-		IPAddress: request.IPAddress, Gateway: request.Gateway, DNSServer: request.DNSServer, SearchDomain: request.SearchDomain,
-	}, request.RebootNow)
-	if err != nil {
-		h.writeDomainError(w, err)
-		return
-	}
-
-	h.writeJSONStatus(w, http.StatusOK, cloudInitUpdateResponse{Status: "updated", Rebooted: rebooted})
-}
-
-func (h *VMCloudInit) handleSSHKey(w http.ResponseWriter, r *http.Request) {
-	clusterName, vmid, ok := parseCloudInitPath(r)
-	if !ok {
-		h.writeError(w, http.StatusBadRequest, "invalid_request", msgInvalidVMPath)
-		return
-	}
-
-	if r.Method != http.MethodPost {
-		w.Header().Set("Allow", "POST")
-		h.writeError(w, http.StatusMethodNotAllowed, "method_not_allowed", msgMethodNotAllowed)
-
-		return
-	}
-
-	identity, err := h.auth.Principal(r)
-	if err != nil {
-		h.writeError(w, http.StatusUnauthorized, "unauthenticated", msgAuthRequired)
-		return
-	}
-
-	var request cloudInitSSHKeyRequest
-	if err := decodeJSON(w, r, &request); err != nil {
-		h.writeError(w, http.StatusBadRequest, "invalid_request", msgInvalidRequestBody)
-		return
-	}
-
-	if strings.TrimSpace(request.Key) == "" {
-		h.writeError(w, http.StatusBadRequest, "invalid_key", "a non-empty ssh public key is required")
-		return
-	}
-
-	index, ok := h.index(w, clusterName)
-	if !ok {
-		return
-	}
-
-	reader, ok := h.readerFor(w, clusterName)
-	if !ok {
-		return
-	}
-
-	writer, ok := h.writerFor(w, clusterName)
-	if !ok {
-		return
-	}
-
-	user := request.User
-	if user == "" {
-		// Default to the cloud-init user so a bare key still lands on the
-		// guest's primary account (mirrors how ciuser seeds the VM).
-		if cfg, cfgErr := vm.GetCloudInitConfig(r.Context(), index, identity, clusterName, vmid, reader); cfgErr == nil && cfg.User != "" {
-			user = cfg.User
-		} else {
-			user = "root"
-		}
-	}
-
-	if err := vm.AddCloudInitSSHKey(r.Context(), vm.AddCloudInitSSHKeyDeps{
-		Index: index, Actor: identity, ClusterName: clusterName, VMID: vmid,
-		Reader: reader, Writer: writer, Audit: h.store,
-		StatusReader: h.statusReaderFor(clusterName),
-	}, user, strings.TrimSpace(request.Key)); err != nil {
-		h.writeDomainError(w, err)
-		return
-	}
-
-	h.writeJSONStatus(w, http.StatusOK, cloudInitSSHKeyResponse{Status: "injected"})
 }
 
 // consolePasswordResponse carries the generated password once for display.
@@ -423,75 +263,8 @@ func (h *VMCloudInit) handleConsolePassword(w http.ResponseWriter, r *http.Reque
 	h.writeJSONStatus(w, http.StatusOK, consolePasswordResponse{Password: password})
 }
 
-func (h *VMCloudInit) handleDocument(w http.ResponseWriter, r *http.Request) {
-	h.serveRoute(w, r, h.getDocument, h.putDocument)
-}
-
-func (h *VMCloudInit) getDocument(w http.ResponseWriter, r *http.Request, actor auth.Identity, clusterName string, vmid int) {
-	index, ok := h.index(w, clusterName)
-	if !ok {
-		return
-	}
-
-	doc, found, err := vm.GetCloudInitDocument(r.Context(), index, actor, clusterName, vmid, h.store)
-	if err != nil {
-		h.writeDomainError(w, err)
-		return
-	}
-
-	if !found {
-		h.writeJSONStatus(w, http.StatusOK, cloudInitDocumentDTO{})
-		return
-	}
-
-	templateID := doc.TemplateID
-	filename := doc.Filename
-	updatedAt := doc.UpdatedAt.Format(time.RFC3339Nano)
-	updatedBy := doc.UpdatedBy
-	h.writeJSONStatus(w, http.StatusOK, cloudInitDocumentDTO{
-		TemplateID: &templateID, Filename: &filename, Legacy: doc.Legacy, UpdatedAt: &updatedAt, UpdatedBy: &updatedBy,
-	})
-}
-
-func (h *VMCloudInit) putDocument(w http.ResponseWriter, r *http.Request, actor auth.Identity, clusterName string, vmid int) {
-	var request cloudInitDocumentRequest
-	if err := decodeJSON(w, r, &request); err != nil || request.TemplateID == nil {
-		h.writeError(w, http.StatusBadRequest, "invalid_request", "templateId is required (empty string detaches)")
-		return
-	}
-
-	index, ok := h.index(w, clusterName)
-	if !ok {
-		return
-	}
-
-	reader, ok := h.readerFor(w, clusterName)
-	if !ok {
-		return
-	}
-
-	writer, ok := h.writerFor(w, clusterName)
-	if !ok {
-		return
-	}
-
-	if err := vm.SetCloudInitDocument(r.Context(), vm.CloudInitDocumentDeps{
-		Index: index, Actor: actor, ClusterName: clusterName, VMID: vmid,
-		Reader: reader, Writer: writer, Store: h.store,
-	}, *request.TemplateID); err != nil {
-		h.writeDomainError(w, err)
-		return
-	}
-
-	h.writeJSONStatus(w, http.StatusOK, cloudInitDocumentResponse{Status: "saved"})
-}
-
 func (h *VMCloudInit) writeDomainError(w http.ResponseWriter, err error) {
 	switch {
-	case errors.Is(err, vm.ErrCloudInitWriteUnavailable):
-		h.writeError(w, http.StatusConflict, "cloudinit_write_unavailable", "cloud-init documents are not enabled on this cluster (Infrastructure > Clusters: snippet storage and SSH publishing)")
-	case errors.Is(err, vm.ErrCloudInitNotPublished):
-		h.writeError(w, http.StatusConflict, "cloudinit_not_published", err.Error())
 	case errors.Is(err, vm.ErrNotApproved):
 		h.writeError(w, http.StatusBadRequest, "not_approved", err.Error())
 	case errors.Is(err, policy.ErrUnavailable):
@@ -500,20 +273,12 @@ func (h *VMCloudInit) writeDomainError(w http.ResponseWriter, err error) {
 		h.writeError(w, http.StatusForbidden, "forbidden", msgNotYourVM)
 	case errors.Is(err, vm.ErrNotFound):
 		h.writeError(w, http.StatusNotFound, "not_found", msgVMNotFound)
-	case errors.Is(err, vm.ErrInvalidCloudInitConfig):
-		h.writeError(w, http.StatusBadRequest, "invalid_config", err.Error())
-	case errors.Is(err, vm.ErrSSHKeyInvalid):
-		h.writeError(w, http.StatusBadRequest, "invalid_key", err.Error())
-	case errors.Is(err, cluster.ErrSSHKeyUserUnknown):
-		h.writeError(w, http.StatusBadRequest, "ssh_user_unknown", "the cloud-init user does not exist on the guest")
 	case h.writeGuestAgentError(w, err):
 		// Already written by the helper (password-path errors).
-	case errors.Is(err, vm.ErrSnippetPushFailed):
-		h.writeError(w, http.StatusBadGateway, "push_failed", "the cloud-init document could not be applied to the VM")
 	case h.writeClusterFailure(w, err):
 		// Already written: the cluster failed or refused the call.
 	default:
-		SetErrorMsg(w, "cloud-init request failed", err)
+		SetErrorMsg(w, "cloud-init read failed", err)
 		h.writeError(w, http.StatusInternalServerError, "internal_error", msgInternalServerError)
 	}
 }

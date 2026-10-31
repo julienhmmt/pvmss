@@ -4,98 +4,7 @@ package cluster
 import (
 	"context"
 	"fmt"
-	"strings"
 )
-
-// EnsureCloudInitDrive implements Writer and records drive assurance.
-func (fake Fake) EnsureCloudInitDrive(_ context.Context, node string, vmid int) error {
-	state := fake.stateOrDefault()
-	state.vmMu.Lock()
-	defer state.vmMu.Unlock()
-
-	if state.findVM(node, vmid) < 0 {
-		return ErrNotFound
-	}
-
-	state.cloudInitDrives[fakeCloudInitKey{node: node, vmid: vmid}] = true
-	state.record(FakeCall{Node: node, VMID: vmid, Action: "ensure_cloudinit_drive"})
-
-	return nil
-}
-
-// SetCloudInitConfig implements Writer and ensures a cloud-init drive first.
-func (fake Fake) SetCloudInitConfig(ctx context.Context, node string, vmid int, config CloudInitConfig) error {
-	state := fake.stateOrDefault()
-	if err := fake.EnsureCloudInitDrive(ctx, node, vmid); err != nil {
-		return err
-	}
-
-	state.vmMu.Lock()
-	defer state.vmMu.Unlock()
-
-	state.cloudInitConfigs[fakeCloudInitKey{node: node, vmid: vmid}] = cloneCloudInitConfig(config)
-	state.record(FakeCall{Node: node, VMID: vmid, Action: "set_cloudinit_config", CloudInitData: cloneCloudInitConfig(config)})
-
-	return nil
-}
-
-// SnippetStorageID implements SnippetChecker.
-func (fake Fake) SnippetStorageID() string { return FakeSnippetStorage }
-
-// CheckSnippet implements SnippetChecker: HasSnippet on every fake node.
-func (fake Fake) CheckSnippet(ctx context.Context, filename string) ([]NodeSnippetStatus, error) {
-	state := fake.stateOrDefault()
-	state.vmMu.RLock()
-	nodes := make([]string, 0, len(state.nodes))
-	for _, n := range state.nodes {
-		nodes = append(nodes, n.Name)
-	}
-	state.vmMu.RUnlock()
-
-	results := make([]NodeSnippetStatus, 0, len(nodes))
-	for _, node := range nodes {
-		present, _ := fake.HasSnippet(ctx, node, FakeSnippetStorage, filename)
-		results = append(results, NodeSnippetStatus{Node: node, Present: present})
-	}
-
-	return results, nil
-}
-
-// AttachCloudInitSnippet implements Writer and records the cicustom attach.
-// Like the real client, attaching ensures the cloud-init drive first -
-// Proxmox silently ignores cicustom without one - so the fake's call log
-// shows the same ensure-then-attach order the contract test asserts.
-func (fake Fake) AttachCloudInitSnippet(ctx context.Context, node, storage, filename string, vmid int) error {
-	if filename != "" {
-		if err := fake.EnsureCloudInitDrive(ctx, node, vmid); err != nil {
-			return err
-		}
-	}
-
-	state := fake.stateOrDefault()
-	if state.findVM(node, vmid) < 0 {
-		return ErrNotFound
-	}
-	state.record(FakeCall{Node: node, VMID: vmid, Action: "attach_cloudinit_snippet", Storage: storage, Filename: filename})
-	return nil
-}
-
-// HasSnippet implements Writer. A file is present once PublishSnippet put it
-// on the node, or when a test opts a (node, storage, filename) triple in via
-// SetFakeSnippetPresent.
-func (fake Fake) HasSnippet(_ context.Context, node, storage, filename string) (bool, error) {
-	state := fake.stateOrDefault()
-	state.snippetMu.RLock()
-	defer state.snippetMu.RUnlock()
-
-	if present, ok := state.snippetPresence[fakeSnippetKey{node: node, storage: storage, filename: filename}]; ok {
-		return present, nil
-	}
-
-	// The fake cannot receive a pasted file: every PVMSS document on the
-	// fake snippet storage is present unless a test turns that off.
-	return state.snippetsPresentByDefault && storage == FakeSnippetStorage && strings.HasPrefix(filename, "pvmss-"), nil
-}
 
 // SetCloudInitPassword implements Writer and records the agent password apply
 // with its target user. The password itself is never retained.
@@ -216,26 +125,6 @@ func SetFakeGuestAgentPingFailures(n int) {
 	state.pingMu.Lock()
 	defer state.pingMu.Unlock()
 	state.agentPingFailures = n
-}
-
-// SetFakeSnippetPresent configures the default fake's HasSnippet answer for
-// one (node, storage, filename) triple - tests use it to exercise the
-// baseline-snippet-found branch of image-mode create.
-func SetFakeSnippetPresent(node, storage, filename string, present bool) {
-	state := defaultState()
-	state.snippetMu.Lock()
-	defer state.snippetMu.Unlock()
-	state.snippetPresence[fakeSnippetKey{node: node, storage: storage, filename: filename}] = present
-}
-
-// SetFakeSnippetVisibility controls whether PVMSS documents (pvmss-*) are
-// listed on every fake node by default. True (the default) is the demo
-// stack; false simulates an admin who has not pasted the file yet.
-func SetFakeSnippetVisibility(presentByDefault bool) {
-	state := defaultState()
-	state.snippetMu.Lock()
-	defer state.snippetMu.Unlock()
-	state.snippetsPresentByDefault = presentByDefault
 }
 
 // SetFakeCreateError configures the default fake's CreateVM error for the

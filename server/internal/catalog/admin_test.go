@@ -336,7 +336,7 @@ func TestAdminListISOs_IncludesSuperset(t *testing.T) {
 // TestSetISOEnabled_ToggleIsolatesByStorageFile verifies toggling one ISO does
 // not affect another.
 //
-//nolint:paralleltest,dupl // serial: shared fake dataset; parallel to the image variant (same contract, different resource)
+//nolint:paralleltest // serial: shared fake dataset
 func TestSetISOEnabled_ToggleIsolatesByStorageFile(t *testing.T) {
 	st := openAdminStore(t)
 	ctx := context.Background()
@@ -668,7 +668,7 @@ func TestAdminListTemplates_DiscoveryWinsOnValues(t *testing.T) {
 	// Approval row with stale values (VMID 9100 is unused by the other
 	// tests, so InsertTemplate creates it).
 	stale := store.TemplateValues{
-		Node: "old-node", Name: "old-name", CloudInitCapable: false,
+		Node: "old-node", Name: "old-name",
 		DiskStorage: "old-storage", DiskSizeGB: 4, DiskBus: "virtio",
 	}
 	if err := st.InsertTemplate(ctx, "default", 9100, stale, true); err != nil {
@@ -678,7 +678,7 @@ func TestAdminListTemplates_DiscoveryWinsOnValues(t *testing.T) {
 	// Discovery reports the template has since been renamed, migrated,
 	// resized, and given a cloud-init drive.
 	fresh := cluster.TemplateVM{
-		VMID: 9100, Node: node01, Name: "debian-13-cloud", CloudInitCapable: true,
+		VMID: 9100, Node: node01, Name: "debian-13-cloud",
 		DiskStorage: storageLocalLVM, DiskSizeGB: 40, DiskBus: testProfileBus,
 	}
 	client := templateSetClient{Fake: cluster.Fake{}, templates: []cluster.TemplateVM{fresh}}
@@ -703,7 +703,7 @@ func TestAdminListTemplates_DiscoveryWinsOnValues(t *testing.T) {
 		}
 
 		assertTemplateMatchesDiscovery(t, catalog.TemplateApproval{
-			Node: row.Node, Name: row.Name, CloudInitCapable: row.CloudInitCapable,
+			Node: row.Node, Name: row.Name,
 			DiskStorage: row.DiskStorage, DiskSizeGB: row.DiskSizeGB, DiskBus: row.DiskBus,
 		}, fresh)
 
@@ -723,7 +723,7 @@ func TestAdminListTemplates_DiscoveryWinsOnValues(t *testing.T) {
 func assertTemplateMatchesDiscovery(t *testing.T, got catalog.TemplateApproval, want cluster.TemplateVM) {
 	t.Helper()
 
-	if got.Node != want.Node || got.Name != want.Name || !got.CloudInitCapable ||
+	if got.Node != want.Node || got.Name != want.Name ||
 		got.DiskStorage != want.DiskStorage || got.DiskSizeGB != want.DiskSizeGB || got.DiskBus != want.DiskBus {
 		t.Errorf("approval = %+v, want discovered values %+v", got, want)
 	}
@@ -739,7 +739,7 @@ func TestAdminListTemplates_SurfacesOrphanApprovals(t *testing.T) {
 	ctx := context.Background()
 
 	orphan := store.TemplateValues{
-		Node: node02, Name: "deleted-template", CloudInitCapable: false,
+		Node: node02, Name: "deleted-template",
 		DiskStorage: storageLocal, DiskSizeGB: 2, DiskBus: testProfileBus,
 	}
 	if err := st.InsertTemplate(ctx, "default", 9999, orphan, true); err != nil {
@@ -748,7 +748,7 @@ func TestAdminListTemplates_SurfacesOrphanApprovals(t *testing.T) {
 
 	// Discovery only reports 9000 - 9999 is gone from Proxmox.
 	client := templateSetClient{Fake: cluster.Fake{}, templates: []cluster.TemplateVM{
-		{VMID: 9000, Node: node02, Name: "debian-12-cloud", CloudInitCapable: true, DiskStorage: storageLocalLVM, DiskSizeGB: 8, DiskBus: testProfileBus},
+		{VMID: 9000, Node: node02, Name: "debian-12-cloud", DiskStorage: storageLocalLVM, DiskSizeGB: 8, DiskBus: testProfileBus},
 	}}
 
 	approvals, err := catalog.AdminListTemplates(ctx, st, client, "default")
@@ -825,7 +825,7 @@ func TestSetTemplateEnabled_AllowsDisablingUnreadable(t *testing.T) {
 	ctx := context.Background()
 
 	values := store.TemplateValues{
-		Node: node02, Name: "unreadable", CloudInitCapable: false,
+		Node: node02, Name: "unreadable",
 		DiskStorage: storageLocal, DiskSizeGB: 2, DiskBus: testProfileBus,
 	}
 	if err := st.InsertTemplate(ctx, "default", 9100, values, true); err != nil {
@@ -861,7 +861,7 @@ func TestAdminListTemplates_UnreadableDoesNotClobberStoredRow(t *testing.T) {
 	ctx := context.Background()
 
 	values := store.TemplateValues{
-		Node: node02, Name: "approved-template", CloudInitCapable: true,
+		Node: node02, Name: "approved-template",
 		DiskStorage: storageLocalLVM, DiskSizeGB: 8, DiskBus: testProfileBus,
 	}
 	if err := st.InsertTemplate(ctx, "default", 9100, values, true); err != nil {

@@ -123,47 +123,6 @@ func (p Proxmox) ListISOs(ctx context.Context) ([]ISOImage, error) {
 // skipped). .img files are vtype 'iso' and rejected, and absolute filesystem
 // paths are root@pam-only. Node scoping matches ListISOs: one row per
 // (node, storage) pairing.
-func (p Proxmox) ListCloudImages(ctx context.Context) ([]CloudImage, error) {
-	rest := p.rest()
-
-	raw, err := rest.do(ctx, http.MethodGet, proxmoxClusterResourcesPath, url.Values{proxmoxResourceTypeParam: {proxmoxStorageType}})
-	if err != nil {
-		return nil, err
-	}
-
-	var rows []proxmoxResourceRow
-	if err := decodeData(raw, &rows); err != nil {
-		return nil, fmt.Errorf("decode storages: %w", err)
-	}
-
-	var images []CloudImage
-
-	for _, row := range rows {
-		if !proxmoxStorageAvailable(row.Status) {
-			continue
-		}
-
-		found, err := proxmoxListContent(ctx, rest, row.Node, row.Storage, "import")
-		if err != nil {
-			if isNodeUnavailable(err) {
-				continue
-			}
-
-			return nil, fmt.Errorf("list import content on %q/%q: %w", row.Node, row.Storage, err)
-		}
-
-		for _, f := range found {
-			if !IsCloudImageFile(f.File) {
-				continue
-			}
-
-			images = append(images, CloudImage{Storage: row.Storage, Node: row.Node, File: f.File, SizeBytes: f.SizeBytes})
-		}
-	}
-
-	return images, nil
-}
-
 // cloudImageFileExtensions are the import-vtype extensions
 // (PVE::Storage::IMPORT_EXT_RE_1) that import-from accepts as a plain
 // <storage>:import/<file> volid: .qcow2, .raw, .vmdk. .ova is import-vtype
@@ -254,7 +213,7 @@ func (p Proxmox) ListTemplates(ctx context.Context) ([]TemplateVM, error) {
 		// Degrade per template instead of aborting the whole list
 		// one unreadable config must not blank the admin page or block every
 		// toggle.
-		diskStorage, diskSizeGB, diskBus, cloudInitCapable, err := proxmoxTemplateDisk(ctx, rest, row.Node, row.VMID)
+		diskStorage, diskSizeGB, diskBus, err := proxmoxTemplateDisk(ctx, rest, row.Node, row.VMID)
 		if err != nil {
 			//nolint:sloglint // Proxmox has no injected logger yet; ticket 06 (observability) adds one
 			slog.WarnContext(ctx, "template config unreadable, keeping row without disk fields",
@@ -268,13 +227,12 @@ func (p Proxmox) ListTemplates(ctx context.Context) ([]TemplateVM, error) {
 		}
 
 		templates = append(templates, TemplateVM{
-			VMID:             row.VMID,
-			Node:             row.Node,
-			Name:             row.Name,
-			CloudInitCapable: cloudInitCapable,
-			DiskStorage:      diskStorage,
-			DiskSizeGB:       diskSizeGB,
-			DiskBus:          diskBus,
+			VMID:        row.VMID,
+			Node:        row.Node,
+			Name:        row.Name,
+			DiskStorage: diskStorage,
+			DiskSizeGB:  diskSizeGB,
+			DiskBus:     diskBus,
 		})
 	}
 
@@ -311,7 +269,7 @@ func (p Proxmox) TemplateByVMID(ctx context.Context, vmid int) (TemplateVM, erro
 		return TemplateVM{}, ErrNotFound
 	}
 
-	diskStorage, diskSizeGB, diskBus, cloudInitCapable, err := proxmoxTemplateDisk(ctx, rest, found.Node, found.VMID)
+	diskStorage, diskSizeGB, diskBus, err := proxmoxTemplateDisk(ctx, rest, found.Node, found.VMID)
 	if err != nil {
 		//nolint:sloglint // Proxmox has no injected logger yet; ticket 06 (observability) adds one
 		slog.WarnContext(ctx, "template config unreadable, returning row without disk fields",
@@ -321,13 +279,12 @@ func (p Proxmox) TemplateByVMID(ctx context.Context, vmid int) (TemplateVM, erro
 	}
 
 	return TemplateVM{
-		VMID:             found.VMID,
-		Node:             found.Node,
-		Name:             found.Name,
-		CloudInitCapable: cloudInitCapable,
-		DiskStorage:      diskStorage,
-		DiskSizeGB:       diskSizeGB,
-		DiskBus:          diskBus,
+		VMID:        found.VMID,
+		Node:        found.Node,
+		Name:        found.Name,
+		DiskStorage: diskStorage,
+		DiskSizeGB:  diskSizeGB,
+		DiskBus:     diskBus,
 	}, nil
 }
 
@@ -360,10 +317,10 @@ func (p Proxmox) StorageFreeSpace(ctx context.Context, node, storage string) (in
 // the create wizard. CloudInitCapable is true when the fixed ide3 slot
 // (cloudInitDiskKey) holds a cloud-init drive - the same slot EnsureCloudInitDrive
 // writes, so a template that already has one is cloud-init capable.
-func proxmoxTemplateDisk(ctx context.Context, rest proxmoxRESTClient, node string, vmid int) (storage string, sizeGB int, bus string, cloudInitCapable bool, err error) {
+func proxmoxTemplateDisk(ctx context.Context, rest proxmoxRESTClient, node string, vmid int) (storage string, sizeGB int, bus string, err error) {
 	cfg, err := fetchVMConfig(ctx, rest, node, vmid)
 	if err != nil {
-		return "", 0, "", false, err
+		return "", 0, "", err
 	}
 
 	for _, b := range []string{"scsi", "virtio", "sata", "ide"} {
@@ -383,27 +340,11 @@ func proxmoxTemplateDisk(ctx context.Context, rest proxmoxRESTClient, node strin
 				continue
 			}
 
-			cloudInitCapable = proxmoxConfigHasCloudInitDrive(cfg)
-
-			return diskStorage, diskSizeGB, b, cloudInitCapable, nil
+			return diskStorage, diskSizeGB, b, nil
 		}
 	}
 
-	cloudInitCapable = proxmoxConfigHasCloudInitDrive(cfg)
-
-	return "", 0, "", cloudInitCapable, nil
-}
-
-// proxmoxConfigHasCloudInitDrive reports whether cfg's fixed cloudInitDiskKey
-// slot holds a cloud-init drive. Mirrors EnsureCloudInitDrive's own detection
-// (proxmox_cloudinit.go): the slot value contains "cloudinit" when the drive
-// is present.
-func proxmoxConfigHasCloudInitDrive(cfg proxmoxVMConfig) bool {
-	if value, ok := cfg[cloudInitDiskKey].(string); ok && strings.Contains(value, "cloudinit") {
-		return true
-	}
-
-	return false
+	return "", 0, "", nil
 }
 
 // proxmoxNodeRow is one row of /nodes: the node name plus the cluster's own

@@ -21,12 +21,6 @@ documented here so the next reader does not reopen them.
   Future work; PVMSS local administrators cover the "no password in Proxmox"
   case meanwhile. See `normalizePVEUsername` in
   `server/internal/httpapi/auth.go`.
-- **No garbage collection of published snippet files.** PVMSS cannot write
-  or delete snippet files through the Proxmox API (`upload`/`download-url`
-  accept `iso`, `vztmpl`, `import` only, and files placed by hand under
-  `snippets/` are not API-deletable volumes). Old `pvmss-*-<hash>.yml`
-  versions accumulate a few KB each; operators remove them by hand on the
-  nodes. Won't-fix while the API stays that way.
 - **Logs stay on stdout as JSON.** `traceId`/`spanId` correlate them with
   traces. No OTLP log export - it would need an `otelslog` bridge and a log-
   routing decision nobody asked for.
@@ -48,21 +42,18 @@ documented here so the next reader does not reopen them.
   tab reads `ostype` from the detail DTO and shows an RDP card for `w*`
   types, so hand-created Windows VMs are covered.
 
-## Cloud-init paused (2026-10-20)
+## Cloud-init removed (2026-10-31)
 
-Cloud-init is not reliable or viable yet and too complex to set up. Paused, not removed: `cloudInitPaused` in
-`server/internal/httpapi/router.go`, two `+page.ts` redirects under
-`web/src/routes/admin/{cloudinit-templates,baseline}`, commented-out UI blocks
-marked "Cloud-init is disabled for now", and skipped tests/e2e specs. The VM
-cloud-init read (`GET …/cloudinit`, SSH user on the General information tab) and the
-console password stay. Consequence for users: PVMSS gives a VM no SSH key
-or password, so template clones rely on the sign-in built into the template
-(documented in README and the in-app guides) and the `/profile` SSH-key
-section is hidden. The `cloud-init-howto` and `cloud-init-setup` built-in
-docs are seeded disabled (`pausedPages` in `docs/seed/seed.go`); databases
-seeded before that keep them enabled with the old texts until an admin edits
-or disables them. Deciding it: rework the feature, or delete the code,
-the tables and `docs/cloud-init.md`.
+The paused cloud-init feature is deleted end to end (web + server + schema
+V5): admin cloud-init templates, the generated baseline, per-VM cloud-init
+writes, cloud-image creation and the cluster snippet-storage setting are
+gone; recoverable from git history. Kept on purpose: `GET …/cloudinit` (the
+VM page reads the SSH user), the console-password guest-agent flow, and the
+`vm_cloudinit_snippets`/`vm_cloudinit_documents` tables so the VM-delete
+cleanup still warns about files a pre-removal deployment left on the nodes
+(remove them by hand; new `pvmss-*.yml` files are never created). Databases
+seeded before keep the `cloud-init-howto`/`cloud-init-setup` doc pages until
+an admin disables or deletes them.
 
 ## Still open (low priority)
 
@@ -70,7 +61,6 @@ the tables and `docs/cloud-init.md`.
 | --- | --- |
 | ADR practice | `docs/adr/` holds 0001-0003; new decisions with real alternatives take the next number |
 | `vm_cloudinit_snippets` | kept for the cleanup of legacy per-VM `pvmss-<vmid>.yml` files only |
-| `vm_baseline_state` `override` rows | historical; the state cannot be written anymore |
 | Two-column admin grids | only the dashboard uses `xl:grid-cols-2`; no other page clearly gains |
 | "Pool at quota" | means the per-user VM quota (one pool per user), not a CPU/RAM pool quota - none exists |
 | Browser OTel (traces, web-vitals) | errors now report via `POST /api/v1/client-errors`; a full browser SDK (bundle size, CORS, consent) is still undecided |
@@ -150,7 +140,7 @@ Docs had drifted from the code they describe:
 
 ## Left behind by the SSH-only cloud-init publishing (2026-09-23)
 
-Spec: `.scratch/cloudinit-admin-ssh/spec.md` (not committed).
+Superseded by the full cloud-init removal (2026-10-31).
 
 - **No garbage collection of published files** - see "Accepted limitations"
   above; this is the same constraint, stated where it originated.

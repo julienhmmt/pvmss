@@ -49,8 +49,6 @@ const (
 	FakeStorageBackupNFS = "backup-nfs"
 	// FakeStoragePBS is the Proxmox Backup Server fixture.
 	FakeStoragePBS = "pbs-backup"
-	// FakeSnippetStorage is the deterministic snippets-capable fake storage.
-	FakeSnippetStorage = "local"
 	// FakeClusterOffline is the cluster name that makes a Fake report
 	// ErrUnreachable - the offline demo and tests share it.
 	FakeClusterOffline = "offline-demo"
@@ -152,15 +150,6 @@ var fakeISOs = []ISOImage{
 	{Storage: FakeStorageLocal, Node: FakeNode01, File: "debian-12-generic-amd64.iso", SizeBytes: 691945472},
 	{Storage: FakeStorageLocal, Node: FakeNode01, File: "ubuntu-24.04-server-amd64.iso", SizeBytes: 1258291200},
 	{Storage: FakeStorageLocal, Node: FakeNode02, File: "rocky-9-generic-x86_64.iso", SizeBytes: 1476395008},
-}
-
-// fakeCloudImages is the cloud-image discovery dataset. The ubuntu row
-// mirrors the catalog_images seed (approved); debian-12 is the demo's
-// discover-and-approve target and rocky-9 the unapproved rejection target.
-var fakeCloudImages = []CloudImage{
-	{Storage: FakeStorageLocal, Node: FakeNode01, File: "ubuntu-24.04-server-cloudimg-amd64.qcow2", SizeBytes: 644245094},
-	{Storage: FakeStorageLocal, Node: FakeNode01, File: "debian-12-generic-cloudimg-amd64.qcow2", SizeBytes: 601295421},
-	{Storage: FakeStorageLocal, Node: FakeNode02, File: "rocky-9-generic-cloudimg-x86_64.raw", SizeBytes: 734003200},
 }
 
 // fakeTemplates is the template discovery dataset. Two template

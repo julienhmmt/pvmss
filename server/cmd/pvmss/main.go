@@ -503,7 +503,6 @@ func buildRouter(deps routerDeps) (http.Handler, error) {
 		st,
 		clusterRegistry,
 		clients.creator,
-		clients.writer,
 		logger,
 		policyService,
 	)
@@ -530,7 +529,6 @@ func buildRouter(deps routerDeps) (http.Handler, error) {
 	adminOps.SetInventorySource(inventoryRegistry, 2*cfg.InventoryRefreshInterval)
 	adminClusters := httpapi.NewAdminClusters(authHandler, st, clusterRegistry, inventoryRegistry, logger)
 	adminClusters.SetTrustedProxyHops(cfg.TrustedProxyHops)
-	adminBaseline := httpapi.NewAdminBaseline(authHandler, clusterRegistry, st, logger)
 	docsHandler := httpapi.NewDocsAPIHandler(authHandler, st, logger)
 	adminDocs := httpapi.NewAdminDocs(authHandler, st, docsHandler, logger)
 	adminDocs.SetTrustedProxyHops(cfg.TrustedProxyHops)
@@ -568,7 +566,6 @@ func buildRouter(deps routerDeps) (http.Handler, error) {
 		Docs:             docsHandler,
 		AdminDocs:        adminDocs,
 		ProfileSSHKeys:   profileSSHKeys,
-		AdminBaseline:    adminBaseline,
 		AdminMigration:   adminMigration,
 		AdminAccounts:    adminAccounts,
 		TrustedProxyHops: cfg.TrustedProxyHops,

@@ -317,15 +317,6 @@ type vmDetailDTO struct {
 	// may still be empty while DHCP is pending). Empty when the VM is not
 	// running - the status field already explains it.
 	GuestAgent string `json:"guestAgent,omitempty"`
-	// BaselineState is the delivery state of the generated cloud-init
-	// baseline for image-mode VMs: "applied", "override", "not_delivered". Empty for non-image
-	// VMs.
-	BaselineState string `json:"baselineState,omitempty"`
-	// BaselineError is the reason when BaselineState is "not_delivered".
-	BaselineError string `json:"baselineError,omitempty"`
-	// BaselineErrorCode is the stable reason the UI translates:
-	// cloudinit_write_unavailable, no_document or delivery_failed.
-	BaselineErrorCode string `json:"baselineErrorCode,omitempty"`
 }
 
 type diskRequest struct {

@@ -78,10 +78,6 @@ func extractRoutePatterns(t *testing.T) []extractedRoute {
 			method := parts[0]
 			path := parts[1]
 
-			if httpapi.IsPausedCloudInitRoute(pattern) {
-				continue
-			}
-
 			routes = append(routes, extractedRoute{
 				Pattern:    pattern,
 				Method:     method,
@@ -541,7 +537,7 @@ func newAuthzContractRouter(t *testing.T) (http.Handler, *httpapi.Auth) {
 	})
 	vmBulk := httpapi.NewVMBulk(projection, authHandler, cluster.Fake{}, st, worker, logger)
 	vmStatusBatch := httpapi.NewVMStatusBatchSingle(projection, authHandler, cluster.Fake{}, logger)
-	vmCreate := httpapi.NewVMCreate(authHandler, st, cluster.Fake{}, cluster.Fake{}, cluster.Fake{}, logger, policyService)
+	vmCreate := httpapi.NewVMCreate(authHandler, st, cluster.Fake{}, cluster.Fake{}, logger, policyService)
 	vmConsole := httpapi.NewVMConsole(projection, authHandler, consoleRelayStub{}, vm.NewConsoleTicketStore(), st, logger)
 	vmSerial := httpapi.NewVMSerialConsole(projection, authHandler, terminalRelayStub{}, vm.NewConsoleTicketStore(), st, logger)
 	vmSnapshots := httpapi.NewVMSnapshots(projection, authHandler, cluster.Fake{}, cluster.Fake{}, st, logger)
@@ -557,7 +553,6 @@ func newAuthzContractRouter(t *testing.T) (http.Handler, *httpapi.Auth) {
 	adminOps.SetLogLevel(new(slog.LevelVar), slog.LevelInfo)
 
 	adminClusters := httpapi.NewAdminClusters(authHandler, st, nil, nil, logger)
-	adminBaseline := httpapi.NewAdminBaseline(authHandler, nil, st, logger)
 	docs := httpapi.NewDocsAPIHandler(authHandler, st, logger)
 	adminDocs := httpapi.NewAdminDocs(authHandler, st, docs, logger)
 	profileSSHKeys := httpapi.NewProfileSSHKeys(authHandler, st, logger)
@@ -585,7 +580,6 @@ func newAuthzContractRouter(t *testing.T) (http.Handler, *httpapi.Auth) {
 		AdminOps:         adminOps,
 		AdminClusters:    adminClusters,
 		AdminDocs:        adminDocs,
-		AdminBaseline:    adminBaseline,
 		AdminMigration:   adminMigration,
 		AdminAccounts:    adminAccounts,
 		ProfileSSHKeys:   profileSSHKeys,

@@ -13,14 +13,13 @@ import (
 )
 
 type adminTemplateDTO struct {
-	VMID             int    `json:"vmid"`
-	Node             string `json:"node"`
-	Name             string `json:"name"`
-	CloudInitCapable bool   `json:"cloudInitCapable"`
-	DiskStorage      string `json:"diskStorage"`
-	DiskSizeGB       int    `json:"diskSizeGB"`
-	DiskBus          string `json:"diskBus"`
-	Enabled          bool   `json:"enabled"`
+	VMID        int    `json:"vmid"`
+	Node        string `json:"node"`
+	Name        string `json:"name"`
+	DiskStorage string `json:"diskStorage"`
+	DiskSizeGB  int    `json:"diskSizeGB"`
+	DiskBus     string `json:"diskBus"`
+	Enabled     bool   `json:"enabled"`
 }
 
 // TestAdminTemplates_ListShowsDiscovered - GET /admin/templates returns the
@@ -159,7 +158,7 @@ func TestAdminTemplates_ListDiscoveryWinsOnValues(t *testing.T) {
 	// Override the stored row's values so they drift from discovery (fake
 	// reports local-lvm / 8 GB / scsi for 9000).
 	if err := st.UpdateTemplate(context.Background(), "default", 9000, store.TemplateValues{
-		Node: cluster.FakeNode02, Name: "debian-12-cloud", CloudInitCapable: true,
+		Node: cluster.FakeNode02, Name: "debian-12-cloud",
 		DiskStorage: "overridden-storage", DiskSizeGB: 99, DiskBus: string(cluster.DiskBusVirtio),
 	}); err != nil {
 		t.Fatalf("UpdateTemplate: %v", err)
@@ -232,7 +231,7 @@ func TestAdminTemplates_UpdateOverridesDiscovery(t *testing.T) {
 	)
 
 	update := adminPut(t, handler, authHandler, cookie, "/api/v1/admin/templates/default/9000",
-		`{"node":"pve-node-02","name":"debian-12-cloud","cloudInitCapable":true,"diskStorage":"local","diskSizeGB":4,"diskBus":"virtio"}`)
+		`{"node":"pve-node-02","name":"debian-12-cloud","diskStorage":"local","diskSizeGB":4,"diskBus":"virtio"}`)
 	if update.Code != http.StatusOK {
 		t.Fatalf("update status = %d: %s", update.Code, update.Body.String())
 	}
@@ -297,7 +296,7 @@ func TestAdminTemplates_UpdateUnknownReturns404(t *testing.T) {
 	cookie := adminCookie(t, authHandler)
 
 	rec := adminPut(t, handler, authHandler, cookie, "/api/v1/admin/templates/default/99999",
-		`{"node":"pve-node-02","name":"x","cloudInitCapable":false,"diskStorage":"local","diskSizeGB":4,"diskBus":"scsi"}`)
+		`{"node":"pve-node-02","name":"x","diskStorage":"local","diskSizeGB":4,"diskBus":"scsi"}`)
 	if rec.Code != http.StatusNotFound {
 		t.Fatalf("status = %d, want %d: %s", rec.Code, http.StatusNotFound, rec.Body.String())
 	}
@@ -319,7 +318,7 @@ func TestAdminTemplates_UpdateInvalidBodyReturns400(t *testing.T) {
 	}
 
 	bad := adminPut(t, handler, authHandler, cookie, "/api/v1/admin/templates/default/9000",
-		`{"node":"","name":"x","cloudInitCapable":false,"diskStorage":"","diskSizeGB":4,"diskBus":""}`)
+		`{"node":"","name":"x","diskStorage":"","diskSizeGB":4,"diskBus":""}`)
 	if bad.Code != http.StatusBadRequest {
 		t.Fatalf("status = %d, want %d: %s", bad.Code, http.StatusBadRequest, bad.Body.String())
 	}
@@ -407,7 +406,7 @@ func TestAdminTemplates_DeleteRemovesOrphanApproval(t *testing.T) {
 
 	// Ship an approval for 9000, then delete it.
 	if err := st.InsertTemplate(ctx, "default", 9000, store.TemplateValues{
-		Node: cluster.FakeNode02, Name: "debian-12-cloud", CloudInitCapable: true,
+		Node: cluster.FakeNode02, Name: "debian-12-cloud",
 		DiskStorage: "local-lvm", DiskSizeGB: 8, DiskBus: string(cluster.DiskBusSCSI),
 	}, true); err != nil {
 		t.Fatalf("InsertTemplate: %v", err)

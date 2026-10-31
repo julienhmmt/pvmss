@@ -165,62 +165,6 @@ func runChangePasswordCase(t *testing.T, impl cluster.Client) {
 	}
 }
 
-//nolint:paralleltest // serial: shared fake cloud-init fixture
-func TestContract_CloudInitReaderAndWriter(t *testing.T) {
-	cluster.ResetFake()
-
-	config := cluster.CloudInitConfig{User: cluster.FakeCloudInitUser, IPMode: cluster.CloudInitIPModeDHCP}
-	if err := (cluster.Fake{}).SetCloudInitConfig(context.Background(), cluster.FakeNode01, 101, config); err != nil {
-		t.Fatalf("SetCloudInitConfig: %v", err)
-	}
-
-	got, err := (cluster.Fake{}).GetCloudInitConfig(context.Background(), cluster.FakeNode01, 101)
-	if err != nil {
-		t.Fatalf("GetCloudInitConfig: %v", err)
-	}
-
-	if got.User != config.User || got.IPMode != config.IPMode {
-		t.Fatalf("config = %+v, want %+v", got, config)
-	}
-
-	if _, err := (cluster.Fake{}).FindSnippetStorage(context.Background(), cluster.FakeNode01); err != nil {
-		t.Fatalf("FindSnippetStorage: %v", err)
-	}
-
-	if calls := cluster.FakeCallsFor(101); len(calls) != 2 || calls[0].Action != "ensure_cloudinit_drive" || calls[1].Action != "set_cloudinit_config" {
-		t.Fatalf("calls = %+v, want ensure, set", calls)
-	}
-}
-
-// TestContract_AttachEnsuresDriveFirst - the contract: attaching a
-// snippet provisions the cloud-init drive before the cicustom write, in the
-// fake exactly like in the real client (Proxmox silently ignores cicustom
-// without a drive). Detaching needs no drive.
-//
-//nolint:paralleltest // serial: shared fake cloud-init fixture
-func TestContract_AttachEnsuresDriveFirst(t *testing.T) {
-	cluster.ResetFake()
-
-	if err := (cluster.Fake{}).AttachCloudInitSnippet(context.Background(), cluster.FakeNode01, cluster.FakeSnippetStorage, "pvmss-101.yml", 101); err != nil {
-		t.Fatalf("AttachCloudInitSnippet: %v", err)
-	}
-
-	calls := cluster.FakeCallsFor(101)
-	if len(calls) != 2 || calls[0].Action != "ensure_cloudinit_drive" || calls[1].Action != "attach_cloudinit_snippet" {
-		t.Fatalf("calls = %+v, want ensure then attach", calls)
-	}
-
-	cluster.ResetFake()
-
-	if err := (cluster.Fake{}).AttachCloudInitSnippet(context.Background(), cluster.FakeNode01, cluster.FakeSnippetStorage, "", 101); err != nil {
-		t.Fatalf("detach AttachCloudInitSnippet: %v", err)
-	}
-
-	if calls := cluster.FakeCallsFor(101); len(calls) != 1 || calls[0].Action != "attach_cloudinit_snippet" {
-		t.Fatalf("detach calls = %+v, want a single attach (no drive provisioning)", calls)
-	}
-}
-
 // TestContract_SetCloudInitPasswordCarriesUser - the contract: the
 // password apply records the target user, which the caller resolves from the
 // VM's ciuser (never a hardcoded root).

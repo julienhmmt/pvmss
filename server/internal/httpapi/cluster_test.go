@@ -42,10 +42,6 @@ func (stubClusterClient) ListISOs(_ context.Context) ([]cluster.ISOImage, error)
 	return nil, cluster.ErrNotImplemented
 }
 
-func (stubClusterClient) ListCloudImages(_ context.Context) ([]cluster.CloudImage, error) {
-	return nil, cluster.ErrNotImplemented
-}
-
 func (stubClusterClient) ListTemplates(_ context.Context) ([]cluster.TemplateVM, error) {
 	return nil, cluster.ErrNotImplemented
 }

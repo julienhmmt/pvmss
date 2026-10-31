@@ -12,24 +12,13 @@ import (
 
 // createPlan holds the resolved and validated values for a VM creation request.
 type createPlan struct {
-	node    string
-	storage string
-	// document is the published cloud-init file resolved at plan time and
-	// proven present on the node: the requested template, or the baseline
-	// for an image VM without one. Empty on the plain ISO path.
-	document publishedDocument
-	// documentSkipReason explains an empty document on the image path so
-	// the baseline state reports the real cause.
-	documentSkipReason string
-	sockets            int
-	cpuCores           int
-	memoryMB           int
-	diskGB             int
-	bus                string
-	// imageSizeGB is the cloud image's size in whole GB (rounded up), set
-	// only in image mode. import-from lands the disk at this size; the
-	// caller grows it to diskGB after the create task completes.
-	imageSizeGB      int
+	node             string
+	storage          string
+	sockets          int
+	cpuCores         int
+	memoryMB         int
+	diskGB           int
+	bus              string
 	nics             []nicPlan
 	isolationVLANTag int
 	uefi             bool
@@ -56,10 +45,6 @@ type nicPlan struct {
 func resolveUEFI(req CreateRequest) bool {
 	if req.UEFI != nil {
 		return *req.UEFI
-	}
-
-	if req.Image != nil {
-		return false
 	}
 
 	return true
@@ -108,20 +93,6 @@ func planCreate(ctx context.Context, policyService *policy.Policy, deps CreateDe
 		return createPlan{}, err
 	}
 
-	// (image mode): reject a disk size below the cloud image before any
-	// VMID is spent - the import lands at the image's size and only grows.
-	// Run after planCreate so the check sees the resolved disk size (profile
-	// overrides applied). The image size rides on the plan so createFromImage
-	// can grow the imported disk to the requested size.
-	var imageSizeGB int
-
-	if req.Image != nil {
-		imageSizeGB, err = checkDiskAboveImage(resources, req, node, diskGB)
-		if err != nil {
-			return createPlan{}, err
-		}
-	}
-
 	if err := checkGabaritAndCapacity(ctx, policyService, gabaritRequest{
 		clusterName: clusterName, node: node,
 		sockets: sockets, cpuCores: cpuCores, memoryMB: memoryMB, diskGB: diskGB,
@@ -135,17 +106,11 @@ func planCreate(ctx context.Context, policyService *policy.Policy, deps CreateDe
 		return createPlan{}, err
 	}
 
-	document, skipReason, err := resolvePlanDocument(ctx, deps, documentTarget{Cluster: clusterName, Node: node}, req)
-	if err != nil {
-		return createPlan{}, err
-	}
-
 	return createPlan{
-		node: node, storage: storage, document: document, documentSkipReason: skipReason,
+		node: node, storage: storage,
 		sockets: sockets, cpuCores: cpuCores,
 		memoryMB: memoryMB, diskGB: diskGB, bus: bus, nics: nics,
 		isolationVLANTag: vlanTag, uefi: resolveUEFI(req), tpm: req.TPM,
-		imageSizeGB: imageSizeGB,
 	}, nil
 }
 
@@ -387,13 +352,6 @@ func resolveNode(req CreateRequest, resources catalog.Resources, capacities map[
 		}
 	}
 
-	if req.Image != nil {
-		candidates = nodesWithImage(resources, req.Image.Storage, req.Image.File)
-		if len(candidates) == 0 {
-			return "", fmt.Errorf("%w: no approved node holds image %q on storage %q", ErrNotApproved, req.Image.File, req.Image.Storage)
-		}
-	}
-
 	// Hard filter: node must have at least one approved storage and bridge.
 	candidates = hostableNodes(resources, candidates)
 	if len(candidates) == 0 {
@@ -513,10 +471,6 @@ func placementCandidates(req CreateRequest, resources catalog.Resources) []catal
 		candidates = nodesWithISO(resources, req.ISO.Storage, req.ISO.File)
 	}
 
-	if req.Image != nil {
-		candidates = nodesWithImage(resources, req.Image.Storage, req.Image.File)
-	}
-
 	return hostableNodes(resources, candidates)
 }
 
@@ -588,20 +542,6 @@ func nodesWithISO(resources catalog.Resources, storage, file string) []catalog.N
 	return matched
 }
 
-// nodesWithImage returns the approved nodes that hold the given cloud image,
-// preserving catalog order so auto-selection is deterministic.
-func nodesWithImage(resources catalog.Resources, storage, file string) []catalog.Node {
-	var matched []catalog.Node
-
-	for _, node := range resources.Nodes {
-		if resources.HasCloudImage(storage, file, node.Name) {
-			matched = append(matched, node)
-		}
-	}
-
-	return matched
-}
-
 // validateCatalog checks that the resolved node, storage, each NIC's bridge
 // and model, the optional ISO, and every requested tag are all present in the
 // approved catalog.
@@ -626,10 +566,6 @@ func validateCatalog(req CreateRequest, resources catalog.Resources, node, stora
 
 	if req.ISO != nil && !resources.HasISO(req.ISO.Storage, req.ISO.File, node) {
 		return fmt.Errorf("%w: iso %q on storage %q on node %q", ErrNotApproved, req.ISO.File, req.ISO.Storage, node)
-	}
-
-	if req.Image != nil && !resources.HasCloudImage(req.Image.Storage, req.Image.File, node) {
-		return fmt.Errorf("%w: image %q on storage %q on node %q", ErrNotApproved, req.Image.File, req.Image.Storage, node)
 	}
 
 	for _, tag := range req.Tags {

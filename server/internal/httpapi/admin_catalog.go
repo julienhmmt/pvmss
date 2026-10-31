@@ -53,8 +53,6 @@ type adminNodeDTO struct {
 }
 
 // ServeNodes handles GET /api/v1/admin/nodes.
-//
-//nolint:dupl // structurally similar to ServeTemplates by design (row→DTO mapping)
 func (h *AdminCatalog) ServeNodes(w http.ResponseWriter, r *http.Request) {
 	clusterName, clusterErr := ResolveClusterParam(r, h.clusters)
 	if clusterErr != nil {

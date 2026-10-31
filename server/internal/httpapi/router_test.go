@@ -84,44 +84,7 @@ func TestRouter_SPAFallback(t *testing.T) {
 	}
 }
 
-const cloudInitRoutePath = "/api/v1/vms/default/101/cloudinit"
-
 // TestRouter_CloudInitRoutesAreSpecific verifies that cloudinit routes require
-// the exact (vm, node) pair and reject near-miss paths.
-func TestRouter_CloudInitRoutesAreSpecific(t *testing.T) {
-	if httpapi.CloudInitPaused {
-		t.Skip("cloud-init is paused")
-	}
-
-	t.Parallel()
-
-	logger := slog.New(slog.NewJSONHandler(os.Stdout, nil))
-	authHandler := newAuthHandler(t)
-	projection := inventory.NewProjection()
-	health := httpapi.NewHealth(fakeHealthPinger{}, logger, nil, 60*time.Second)
-	clusterNodes := httpapi.NewClusterNodes(projection, logger)
-	clusterRefresh := httpapi.NewClusterRefresh(inventory.NewRefresher(inventory.NewWorker(&stubClusterClient{}, projection, time.Hour, logger), 5*time.Second), logger)
-	vms := httpapi.NewVMs(projection, authHandler, 100, -1, logger)
-	vmDetail := httpapi.NewVMDetail(projection, authHandler, cluster.Fake{}, nil, nil, logger)
-	cloudInit := httpapi.NewVMCloudInit(httpapi.VMCloudInitDeps{Projection: projection, Auth: authHandler, Reader: cluster.Fake{}, Writer: cluster.Fake{}, Store: nil, Refresher: nil, Log: logger})
-	mux := httpapi.NewRouter(httpapi.RouterConfig{
-		Health: health, ClusterNodes: clusterNodes, ClusterRefresh: clusterRefresh,
-		VMs: vms, VMDetail: vmDetail, VMCloudInit: cloudInit, Auth: authHandler, Log: logger,
-	})
-
-	for _, path := range []string{
-		cloudInitRoutePath,
-		"/api/v1/vms/default/101/cloudinit/document",
-	} {
-		recorder := httptest.NewRecorder()
-		request := httptest.NewRequestWithContext(context.Background(), http.MethodGet, path, nil)
-		mux.ServeHTTP(recorder, request)
-
-		if recorder.Code != http.StatusUnauthorized {
-			t.Fatalf("GET %s status = %d, want 401 (route reached handler)", path, recorder.Code)
-		}
-	}
-}
 
 // TestRouter_BootCDROMRouteRegistered verifies the boot-cdrom route is wired
 // through NewRouter: an unauthenticated POST must reach the handler (401), not

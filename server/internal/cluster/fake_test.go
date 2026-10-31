@@ -115,44 +115,6 @@ func TestFakeDataset_MixedPvmssTagging(t *testing.T) {
 	}
 }
 
-//nolint:paralleltest // serial: shared fake cloud-init state
-func TestFakeCloudInit_CallOrderAndFailureReset(t *testing.T) {
-	ResetFake()
-	defer ResetFake()
-
-	config := CloudInitConfig{User: FakeCloudInitUser, IPMode: CloudInitIPModeDHCP}
-	if err := (Fake{}).SetCloudInitConfig(context.Background(), FakeNode01, 101, config); err != nil {
-		t.Fatalf("SetCloudInitConfig: %v", err)
-	}
-
-	results, err := (Fake{}).CheckSnippet(context.Background(), "pvmss-tpl-web-abc.yml")
-	if err != nil || len(results) == 0 || !results[0].Present {
-		t.Fatalf("CheckSnippet = %+v/%v", results, err)
-	}
-
-	calls := FakeCallsFor(101)
-	if len(calls) != 2 || calls[0].Action != "ensure_cloudinit_drive" || calls[1].Action != "set_cloudinit_config" {
-		t.Fatalf("calls = %+v", calls)
-	}
-
-	SetFakeSnippetVisibility(false)
-
-	results, err = (Fake{}).CheckSnippet(context.Background(), "pvmss-tpl-web-def.yml")
-	if err != nil || results[0].Present {
-		t.Fatalf("check with files not pasted = %+v/%v, want absent", results, err)
-	}
-
-	ResetFake()
-
-	if len(FakeCalls()) != 0 {
-		t.Fatalf("calls after reset = %+v", FakeCalls())
-	}
-
-	if _, err := (Fake{}).GetCloudInitConfig(context.Background(), FakeNode01, 101); err != nil {
-		t.Fatalf("config after reset: %v", err)
-	}
-}
-
 func nodeNames(t *testing.T) map[string]bool {
 	t.Helper()
 

@@ -18,7 +18,6 @@ type adminTemplateDTO struct {
 	VMID              int    `json:"vmid"`
 	Node              string `json:"node"`
 	Name              string `json:"name"`
-	CloudInitCapable  bool   `json:"cloudInitCapable"`
 	DiskStorage       string `json:"diskStorage"`
 	DiskSizeGB        int    `json:"diskSizeGB"`
 	DiskBus           string `json:"diskBus"`
@@ -29,8 +28,6 @@ type adminTemplateDTO struct {
 }
 
 // ServeTemplates handles GET /api/v1/admin/templates.
-//
-//nolint:dupl // structurally similar to ServeNodes by design (row→DTO mapping)
 func (h *AdminCatalog) ServeTemplates(w http.ResponseWriter, r *http.Request) {
 	clusterName, clusterErr := ResolveClusterParam(r, h.clusters)
 	if clusterErr != nil {
@@ -56,8 +53,8 @@ func (h *AdminCatalog) ServeTemplates(w http.ResponseWriter, r *http.Request) {
 	for i, tmpl := range templates {
 		dto[i] = adminTemplateDTO{
 			VMID: tmpl.VMID, Node: tmpl.Node, Name: tmpl.Name,
-			CloudInitCapable: tmpl.CloudInitCapable, DiskStorage: tmpl.DiskStorage,
-			DiskSizeGB: tmpl.DiskSizeGB, DiskBus: tmpl.DiskBus, Enabled: tmpl.Enabled,
+			DiskStorage: tmpl.DiskStorage,
+			DiskSizeGB:  tmpl.DiskSizeGB, DiskBus: tmpl.DiskBus, Enabled: tmpl.Enabled,
 			Missing: tmpl.Missing, DiskUnreadable: tmpl.DiskUnreadable,
 			OverrideDiscovery: tmpl.OverrideDiscovery,
 		}
@@ -165,12 +162,11 @@ func (h *AdminCatalog) ServeTemplateDelete(w http.ResponseWriter, r *http.Reques
 // (override_discovery flag). The cluster is taken from the path to match the
 // delete handler's convention; the body carries the editable field values.
 type templateUpdateRequest struct {
-	Node             string `json:"node"`
-	Name             string `json:"name"`
-	CloudInitCapable bool   `json:"cloudInitCapable"`
-	DiskStorage      string `json:"diskStorage"`
-	DiskSizeGB       int    `json:"diskSizeGB"`
-	DiskBus          string `json:"diskBus"`
+	Node        string `json:"node"`
+	Name        string `json:"name"`
+	DiskStorage string `json:"diskStorage"`
+	DiskSizeGB  int    `json:"diskSizeGB"`
+	DiskBus     string `json:"diskBus"`
 }
 
 // ServeTemplateUpdate handles PUT /api/v1/admin/templates/{cluster}/{vmid}.
@@ -208,7 +204,7 @@ func (h *AdminCatalog) ServeTemplateUpdate(w http.ResponseWriter, r *http.Reques
 	}
 
 	values := store.TemplateValues{
-		Node: req.Node, Name: req.Name, CloudInitCapable: req.CloudInitCapable,
+		Node: req.Node, Name: req.Name,
 		DiskStorage: req.DiskStorage, DiskSizeGB: req.DiskSizeGB, DiskBus: req.DiskBus,
 	}
 	if err := catalog.UpdateTemplate(r.Context(), h.store, clusterName, vmid, values); err != nil {
@@ -224,15 +220,14 @@ func (h *AdminCatalog) ServeTemplateUpdate(w http.ResponseWriter, r *http.Reques
 	}
 
 	h.recordAdminAction(r, "admin.templates.update", "template", strconv.Itoa(vmid),
-		fmt.Sprintf("overrode template vmid %d on cluster %s: node=%s name=%q disk=%dGB@%s bus=%s cloudinit=%v",
-			vmid, clusterName, req.Node, req.Name, req.DiskSizeGB, req.DiskStorage, req.DiskBus, req.CloudInitCapable),
+		fmt.Sprintf("overrode template vmid %d on cluster %s: node=%s name=%q disk=%dGB@%s bus=%s",
+			vmid, clusterName, req.Node, req.Name, req.DiskSizeGB, req.DiskStorage, req.DiskBus),
 		[]any{map[string]any{
 			auditKeyCluster: clusterName, "vmid": vmid, auditKeyNode: req.Node, "name": req.Name,
 			"diskStorage": req.DiskStorage, "diskSizeGB": req.DiskSizeGB, "diskBus": req.DiskBus,
-			"cloudInitCapable": req.CloudInitCapable,
 		}})
 	writeAdminJSON(w, http.StatusOK, adminTemplateDTO{
-		VMID: vmid, Node: req.Node, Name: req.Name, CloudInitCapable: req.CloudInitCapable,
+		VMID: vmid, Node: req.Node, Name: req.Name,
 		DiskStorage: req.DiskStorage, DiskSizeGB: req.DiskSizeGB, DiskBus: req.DiskBus,
 		OverrideDiscovery: true,
 	})

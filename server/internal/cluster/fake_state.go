@@ -11,13 +11,12 @@ import (
 // A zero-value Fake{} still works: methods fall back to the process-wide
 // default state, which is what ResetFake / FakeCalls inspect.
 type fakeState struct {
-	vmMu      sync.RWMutex
-	callMu    sync.Mutex
-	createMu  sync.Mutex
-	identMu   sync.RWMutex
-	sshMu     sync.RWMutex
-	pingMu    sync.Mutex
-	snippetMu sync.RWMutex
+	vmMu     sync.RWMutex
+	callMu   sync.Mutex
+	createMu sync.Mutex
+	identMu  sync.RWMutex
+	sshMu    sync.RWMutex
+	pingMu   sync.Mutex
 
 	vms           []VM
 	nodes         []Node
@@ -69,20 +68,6 @@ type fakeState struct {
 	// or absent means unlocked. Tests inject a lock to exercise retry-on-lock
 	// and the lock field in VMLiveStatus.
 	vmLocks map[int]string
-	// snippetPresence records explicit per-file answers set by tests via
-	// SetFakeSnippetPresent; they override snippetsPresentByDefault.
-	snippetPresence map[fakeSnippetKey]bool
-	// snippetsPresentByDefault lists every pvmss-* file on every node (demo
-	// stack). Tests turn it off to simulate files not pasted yet.
-	snippetsPresentByDefault bool
-}
-
-// fakeSnippetKey identifies one (node, storage, filename) snippet-presence
-// entry.
-type fakeSnippetKey struct {
-	node     string
-	storage  string
-	filename string
 }
 
 var (
@@ -113,14 +98,12 @@ func (fake Fake) stateOrDefault() *fakeState {
 
 func newFakeState(clusterName string) *fakeState {
 	state := &fakeState{
-		cloudInitConfigs:         originalFakeCloudInitConfigs(),
-		cloudInitDrives:          make(map[fakeCloudInitKey]bool),
-		snapshots:                make(map[fakeSnapshotKey][]VMSnapshot),
-		identities:               originalFakeIdentities(),
-		roleState:                make(map[string][]string),
-		vmLocks:                  make(map[int]string),
-		snippetPresence:          make(map[fakeSnippetKey]bool),
-		snippetsPresentByDefault: true,
+		cloudInitConfigs: originalFakeCloudInitConfigs(),
+		cloudInitDrives:  make(map[fakeCloudInitKey]bool),
+		snapshots:        make(map[fakeSnapshotKey][]VMSnapshot),
+		identities:       originalFakeIdentities(),
+		roleState:        make(map[string][]string),
+		vmLocks:          make(map[int]string),
 	}
 	if clusterName == "secondary" {
 		state.nodes = slices.Clone(secondaryNodes)
@@ -166,11 +149,6 @@ func (s *fakeState) reset(clusterName string) {
 	s.migrateErr = nil
 	s.migrationPrechecks = nil
 	s.vmLocks = make(map[int]string)
-
-	s.snippetMu.Lock()
-	s.snippetPresence = fresh.snippetPresence
-	s.snippetsPresentByDefault = fresh.snippetsPresentByDefault
-	s.snippetMu.Unlock()
 
 	s.identMu.Lock()
 	s.identities = fresh.identities

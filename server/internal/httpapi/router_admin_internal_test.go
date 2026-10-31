@@ -42,11 +42,6 @@ func TestRegisterAdminRoutes_AllGroupsRegistered(t *testing.T) {
 		"POST /api/v1/admin/tags",
 		"PUT /api/v1/admin/tags/{name}/color",
 		"DELETE /api/v1/admin/tags/{name}",
-		"GET /api/v1/admin/cloudinit-templates",
-		"POST /api/v1/admin/cloudinit-templates",
-		"PUT /api/v1/admin/cloudinit-templates/{id}",
-		"DELETE /api/v1/admin/cloudinit-templates/{id}",
-		"POST /api/v1/admin/cloudinit-templates/{id}/toggle",
 		"GET /api/v1/admin/templates",
 		"POST /api/v1/admin/templates/toggle",
 		"PUT /api/v1/admin/templates/{cluster}/{vmid}",
@@ -84,10 +79,6 @@ func TestRegisterAdminRoutes_AllGroupsRegistered(t *testing.T) {
 	}
 
 	for _, pattern := range wantRoutes {
-		if IsPausedCloudInitRoute(pattern) {
-			continue
-		}
-
 		req := httptest.NewRequestWithContext(context.Background(), methodFromPattern(pattern), pathFromPattern(pattern), nil)
 
 		_, pattern2 := mux.Handler(req)

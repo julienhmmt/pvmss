@@ -106,7 +106,6 @@ func runPolicyCase(
 	_, err = vm.Create(context.Background(), aliceIdentity(), req.Cluster, req, vm.CreateDeps{
 		Store:    fixture.store,
 		Creator:  fixture.fake,
-		Pusher:   fixture.fake,
 		Audit:    fixture.store,
 		Log:      slog.New(slog.DiscardHandler),
 		Services: []*policy.Policy{service},

@@ -49,7 +49,7 @@ func newVMCreateHandlerWithPolicy(t *testing.T) (*httpapi.VMCreate, *httpapi.Aut
 	service := policy.New(st, inventory.NewProjectionFromIndex(&index), cluster.Fake{})
 	provider := vmCreateClientProvider{clients: map[string]cluster.Client{auditTestCluster: cluster.Fake{}}}
 
-	return httpapi.NewVMCreateWithRegistry(authHandler, st, provider, cluster.Fake{}, cluster.Fake{}, slog.New(slog.DiscardHandler), service), authHandler
+	return httpapi.NewVMCreateWithRegistry(authHandler, st, provider, cluster.Fake{}, slog.New(slog.DiscardHandler), service), authHandler
 }
 
 // With a policy service wired in, the catalog carries the gabarit and the

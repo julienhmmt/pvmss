@@ -50,27 +50,7 @@ var (
 	// indistinguishable). Mapped to 400 by the
 	// handler with the code "name_taken".
 	ErrNameTaken = errors.New("name already taken")
-	// ErrNoSnippetStorage - a cloud-init template was requested but no
-	// snippet-capable storage exists on the chosen node, so the snippet could
-	// never be uploaded. Refused before VMID allocation (the same "never spend a VMID on a request
-	// that will be rejected" discipline as the template resolution) instead of creating a VM whose
-	// cloud-init is
-	// silently absent.
-	ErrNoSnippetStorage = errors.New("no snippet-capable storage on the selected node")
-	// ErrCloudInitWriteUnavailable - a cloud-init document was requested but
-	// the cluster has no snippet write target (Infrastructure › Clusters). Refused at
-	// plan time, before a VMID is spent. Mapped to 409.
-	ErrCloudInitWriteUnavailable = errors.New("cloud-init documents are not enabled on this cluster")
-	// ErrDiskBelowImage - the requested disk size is smaller than the cloud
-	// image being imported (the import lands at the image's size and only
-	// grows). Refused before VMID allocation.
-	ErrDiskBelowImage = errors.New("disk size below cloud image")
 )
-
-// cloudImagesDisabled turns off cloud-image (.img) creation: it does not work
-// reliably yet, so only ISO and template clone are accepted. Set to false to
-// re-enable (the image-mode tests flip it in cloud_images_enabled_test.go).
-var cloudImagesDisabled = true
 
 // Fixed technical safety ceilings - hardcoded anti-abuse bounds,
 // not admin-configurable.
@@ -100,18 +80,6 @@ func allocateVMIDError(err error) error {
 func notApprovedError(err error) error {
 	return fmt.Errorf("%w: %s", ErrNotApproved, err.Error())
 }
-
-// Image-mode fallback hardware - applied only when no profile was selected
-// (a cluster with no profiles configured yet). Deliberately bigger than the
-// shared technical minimum (1 vCPU/128 MB): a cloud image needs real
-// headroom to boot, not just pass checkTechnicalRange. The wizard's manual
-// disk field always sends a nonzero size in practice; imageDefaultDiskGB is
-// a defensive floor for a direct API caller that omits it.
-const (
-	imageDefaultCPUCores = 1
-	imageDefaultMemoryMB = 2048
-	imageDefaultDiskGB   = 12
-)
 
 // defaultDiskBus is applied when no profile is used (detailed mode). Profiles
 // override this with their own bus value.
@@ -152,9 +120,6 @@ type CreateRequest struct {
 	Cluster   string `json:"cluster"`
 	Name      string `json:"name"`
 	ProfileID string `json:"profileId,omitempty"`
-	// CloudInitTemplateID names an admin cloud-init template published on
-	// the cluster. Users never author cloud-init YAML themselves.
-	CloudInitTemplateID string `json:"cloudInitTemplateId,omitempty"`
 
 	Node       string         `json:"node,omitempty"`
 	Tags       []string       `json:"tags,omitempty"`
@@ -165,7 +130,6 @@ type CreateRequest struct {
 	Network    NetworkRequest `json:"network"`
 	ISO        *ISORequest    `json:"iso,omitempty"`
 	TemplateID int            `json:"templateId,omitempty"`
-	Image      *ImageRequest  `json:"image,omitempty"`
 	// UEFI requests bios=ovmf + machine=q35 + efidisk0.
 	// Pointer so "omitted" (default true - modern OSes expect UEFI boot) is
 	// distinguishable from an explicit false (legacy SeaBIOS). TPM requests
@@ -203,46 +167,6 @@ type ISORequest struct {
 	File    string `json:"file"`
 }
 
-// ImageRequest is an optional cloud image source: the image is imported as
-// the VM's primary disk (import-from) and configured by cloud-init on first
-// boot. ImageCloudInit is mandatory in image mode - a cloud image has no
-// installer, so cloud-init is the only way in.
-type ImageRequest struct {
-	Storage   string                `json:"storage"`
-	File      string                `json:"file"`
-	CloudInit ImageCloudInitRequest `json:"cloudInit"`
-}
-
-// ImageCloudInitRequest is the cloud-init configuration applied at first
-// boot, delivered entirely through Proxmox's native cloud-init keys
-// (ciuser/sshkeys/ipconfig0 - Writer.SetCloudInitConfig). Proxmox's REST API
-// cannot write a per-VM snippet file (see cluster.Writer.HasSnippet), so
-// there is deliberately no packages or raw user-data field here: neither can
-// be delivered per VM. A fixed, admin-preplaced baseline snippet
-// (imageBaselineSnippetFilename) is attached automatically when present,
-// covering cluster-wide needs like installing qemu-guest-agent. Password is
-// deliberately absent too - access is granted through SSH keys, and a
-// password is set post-boot via the guest agent.
-type ImageCloudInitRequest struct {
-	User      string   `json:"user,omitempty"`
-	SSHKeys   []string `json:"sshKeys,omitempty"`
-	IPMode    string   `json:"ipMode,omitempty"` // "dhcp" (default) | "static"
-	IPAddress string   `json:"ipAddress,omitempty"`
-	Gateway   string   `json:"gateway,omitempty"`
-}
-
-// CloudInitPusher applies cloud-init configuration to a VM: the native keys
-// (ciuser/sshkeys/ipconfig0) and the vendor-data cicustom pointing at an
-// admin-published document. It never writes a file - publishing is an admin
-// action (the pasted command, catalog.WriteCommand) - and HasSnippet proves the
-// file is on the VM's node before any cicustom is set. Narrow consumer
-// contract: cluster.Fake and the real Proxmox client both satisfy it.
-type CloudInitPusher interface {
-	AttachCloudInitSnippet(ctx context.Context, node, storage, filename string, vmid int) error
-	SetCloudInitConfig(ctx context.Context, node string, vmid int, config cluster.CloudInitConfig) error
-	HasSnippet(ctx context.Context, node, storage, filename string) (bool, error)
-}
-
 // HardwareUpdater is the post-clone mutation contract. After the clone task completes, the
 // caller applies hardware
 // overrides (cores/memory/sockets), resizes the disk if enlargement is
@@ -268,41 +192,14 @@ type FreeSpaceChecker interface {
 	StorageFreeSpace(ctx context.Context, node, storage string) (int64, error)
 }
 
-// SnippetStorageFinder resolves a snippet-capable storage on a node. planCreate resolves the
-// snippet target at plan time - the same rule
-// the snippet editor uses - instead of the create path guessing from the VM
-// disk's storage, which is block-backed and cannot host a snippet. Narrow
-// interface so vm.Create depends only on the method it calls; cluster.Fake
-// and the real Proxmox client both satisfy it.
-type SnippetStorageFinder interface {
-	FindSnippetStorage(ctx context.Context, node string) (string, error)
-}
-
 // CreateResult is what a successful creation returns - the task is accepted,
 // the VM does not necessarily exist yet.
 type CreateResult struct {
-	Cluster             string
-	VMID                int
-	Name                string
-	Node                string
-	UPID                string
-	CloudInitTemplateID string
-	CloudInitPushError  string
-	// BaselineState is the delivery state of the generated cloud-init
-	// baseline for image-mode VMs:
-	// - "applied" - a published document (the baseline, or a template that
-	//   embeds it) was attached
-	// - "not_delivered" - nothing could be attached (see BaselineError)
-	// - "" - not an image-mode VM (no baseline)
-	BaselineState string
-	// BaselineError is the reason the baseline could not be delivered, when
-	// BaselineState is "not_delivered". Does NOT block the VM start - the
-	// native keys (ciuser/sshkeys/ipconfig0) were already set.
-	BaselineError string
-	// FromImage is true when the VM was created from a cloud image
-	// the create summary warns that SSH is
-	// the only access until a console password is set.
-	FromImage bool
+	Cluster string
+	VMID    int
+	Name    string
+	Node    string
+	UPID    string
 }
 
 // CreateDeps groups the collaborators vm.Create needs beyond the per-request
@@ -311,10 +208,8 @@ type CreateResult struct {
 type CreateDeps struct {
 	Store     *store.Store
 	Creator   cluster.Creator
-	Pusher    CloudInitPusher
 	Writer    HardwareUpdater
 	FreeSpace FreeSpaceChecker
-	Snippets  SnippetStorageFinder
 	Audit     AuditRecorder
 	Log       *slog.Logger
 	Services  []*policy.Policy
@@ -356,13 +251,7 @@ type TemplateReader interface {
 // would tell the client creation failed when it did not - the same
 // log-don't-fail rule the task-status handler already applies to a failed
 // post-completion invalidation (tasks.go).
-//
-//nolint:gocyclo // sequential validation steps of VM creation
 func Create(ctx context.Context, actor auth.Identity, clusterName string, req CreateRequest, deps CreateDeps) (CreateResult, error) {
-	if req.Image != nil && cloudImagesDisabled {
-		return CreateResult{}, fmt.Errorf("%w: cloud images are disabled", ErrInvalidSource)
-	}
-
 	policyService := selectPolicyService(deps.Store, deps.Services)
 
 	gabarit, err := policyService.Gabarit(ctx, clusterName)
@@ -383,7 +272,7 @@ func Create(ctx context.Context, actor auth.Identity, clusterName string, req Cr
 		return CreateResult{}, ErrNoPool
 	}
 
-	// ISO, template, and cloud image are mutually
+	// ISO and template are mutually
 	// exclusive sources.
 	sources := 0
 	if req.ISO != nil {
@@ -394,18 +283,8 @@ func Create(ctx context.Context, actor auth.Identity, clusterName string, req Cr
 		sources++
 	}
 
-	if req.Image != nil {
-		sources++
-	}
-
 	if sources > 1 {
-		return CreateResult{}, fmt.Errorf("%w: request carries more than one of iso, templateId, image", ErrInvalidSource)
-	}
-
-	// Cloud-init is off for ISO installs for now: the installer ignores the
-	// cloud-init drive, so the document would only act after the install.
-	if req.ISO != nil && req.CloudInitTemplateID != "" {
-		return CreateResult{}, fmt.Errorf("%w: cloud-init is not supported with an iso", ErrInvalidSource)
+		return CreateResult{}, fmt.Errorf("%w: request carries more than one of iso, templateId", ErrInvalidSource)
 	}
 
 	release, err := reserveCreate(ctx, policyService, clusterName, actor, req.Name)
@@ -439,10 +318,6 @@ func reserveCreate(ctx context.Context, policyService *policy.Policy, clusterNam
 }
 
 func createFromSource(ctx context.Context, policyService *policy.Policy, deps CreateDeps, clusterName string, actor auth.Identity, req CreateRequest) (CreateResult, error) {
-	if req.Image != nil {
-		return createFromImage(ctx, policyService, deps, clusterName, actor, req)
-	}
-
 	if req.TemplateID != 0 {
 		return createFromTemplate(ctx, policyService, deps, clusterName, actor, req)
 	}

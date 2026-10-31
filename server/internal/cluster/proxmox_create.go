@@ -142,23 +142,7 @@ func setDiskFormKeys(form url.Values, spec VMSpec) {
 	// ("'import-from' requires special syntax"). The import lands at the
 	// source image's size; the vm layer grows the disk to the requested
 	// size after the create task completes (createFromImage).
-	sizeGB := spec.Disk.SizeGB
-	if spec.Image != nil {
-		sizeGB = 0
-	}
-
-	diskValue := fmt.Sprintf("%s:%d,discard=on", spec.Disk.Storage, sizeGB)
-
-	// A cloud image imports as the primary disk via import-from
-	// (PVE ≥ 7.2): Proxmox copies the image onto the target storage.
-	// The source must be a PVE-managed volume of vtype 'import' (not
-	//  'iso' - .img files are rejected) and must be passed as a volid,
-	// not an absolute path (absolute paths are root@pam-only).
-	// Cloud images live in the storage's import/ directory with
-	// .qcow2/.raw/.vmdk extensions → volid <storage>:import/<file>.
-	if spec.Image != nil {
-		diskValue += ",import-from=" + spec.Image.Storage + ":import/" + spec.Image.File
-	}
+	diskValue := fmt.Sprintf("%s:%d,discard=on", spec.Disk.Storage, spec.Disk.SizeGB)
 
 	// Iothread is gated on SCSI - it is not supported
 	// on virtio/IDE/SATA and Proxmox silently ignores the option there,
@@ -170,20 +154,6 @@ func setDiskFormKeys(form url.Values, spec VMSpec) {
 	}
 
 	form.Set(spec.Disk.Bus+"0", diskValue)
-
-	// A cloud image needs its cloud-init drive from the moment the VM
-	// exists - ProxMate and pegaprox both attach it in the very same
-	// create call as the imported disk ("<storage>:cloudinit" on a fixed
-	// IDE slot), never as a later follow-up. PVMSS previously only
-	// attached it lazily, on the first SetCloudInitConfig/
-	// AttachCloudInitSnippet call after the create task finished -
-	// functionally idempotent (EnsureCloudInitDrive no-ops once this is
-	// set) but one more round trip that can fail on its own. Attaching
-	// it here removes that gap for the one path that always needs
-	// cloud-init: an imported cloud image has no installer.
-	if spec.Image != nil {
-		form.Set(cloudInitDiskKey, spec.Disk.Storage+":cloudinit")
-	}
 }
 
 // setBootOrderForm emits boot=order=<devices> built only from the devices the
