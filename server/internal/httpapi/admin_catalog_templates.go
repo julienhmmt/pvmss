@@ -122,7 +122,7 @@ func (h *AdminCatalog) ServeTemplateToggle(w http.ResponseWriter, r *http.Reques
 
 	h.recordAdminAction(r, "admin.templates.toggle", "template", strconv.Itoa(req.VMID),
 		fmt.Sprintf("template vmid %d cluster %s set enabled=%v", req.VMID, clusterName, req.Enabled),
-		[]any{map[string]any{auditKeyCluster: clusterName, "vmid": req.VMID, auditKeyEnabled: req.Enabled}})
+		[]any{map[string]any{auditKeyCluster: clusterName, auditKeyVMID: req.VMID, auditKeyEnabled: req.Enabled}})
 	writeAdminJSON(w, http.StatusOK, templateToggleResponse{VMID: req.VMID, Enabled: req.Enabled})
 }
 
@@ -154,7 +154,7 @@ func (h *AdminCatalog) ServeTemplateDelete(w http.ResponseWriter, r *http.Reques
 
 	h.recordAdminAction(r, "admin.templates.delete", "template", strconv.Itoa(vmid),
 		fmt.Sprintf("deleted template approval vmid %d on cluster %s", vmid, clusterName),
-		[]any{map[string]any{auditKeyCluster: clusterName, "vmid": vmid}})
+		[]any{map[string]any{auditKeyCluster: clusterName, auditKeyVMID: vmid}})
 	w.WriteHeader(http.StatusNoContent)
 }
 

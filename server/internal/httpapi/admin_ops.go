@@ -577,6 +577,7 @@ const (
 	auditKeySummary = "summary"
 	auditKeyChanges = "changes"
 	auditKeyCluster = "cluster"
+	auditKeyVMID    = "vmid"
 	auditKeyName    = "name"
 	auditKeyField   = "field"
 	auditKeyEnabled = "enabled"
