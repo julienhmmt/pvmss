@@ -22,8 +22,6 @@ const cluster: AdminCluster = {
 	proxmoxVersion: '8.2.4',
 	nodeCount: 2,
 	vmCount: 18,
-	snippetStorage: 'shared',
-	cloudInitWriteEnabled: true
 };
 
 describe('ClustersPage remove confirmation', () => {

@@ -29,13 +29,6 @@
 
 	let mode = $state<ConsoleMode>('graphical');
 
-	// cloud-image-console issue 06: image-born VMs (carrying the pvmss-image
-	// tag) default to the text/serial tab - the graphical console under UEFI
-	// renders as static for a cloud kernel, and SeaBIOS image VMs ship a
-	// working text console from first boot. The user's manual switch still
-	// wins; this only seeds the initial mode before the entity loads.
-	const IMAGE_TAG = 'pvmss-image';
-
 	const stateLabels: Record<string, () => string> = {
 		idle: () => m['vms.console.state.idle'](),
 		connecting: () => m['vms.console.state.connecting'](),
@@ -77,15 +70,7 @@
 		// The projection can be ~30s stale (VM just started): read the live
 		// status once loaded, then keep it fresh while the console is open.
 		const liveTimer = setInterval(() => void vmStore.refreshLiveStatus(), LIVE_STATUS_POLL_MS);
-		void vmStore.load().then(() => {
-			void vmStore.refreshLiveStatus();
-			// Issue 06: an image-born VM (pvmss-image tag) opens on the text
-			// tab. Only seeds when the user has not yet switched - a manual
-			// switch before load() lands keeps the user's choice.
-			if (mode === 'graphical' && vmStore.entity?.tags?.includes(IMAGE_TAG)) {
-				mode = 'text';
-			}
-		});
+		void vmStore.load().then(() => void vmStore.refreshLiveStatus());
 		// The connect happens inside VmConsole.svelte's onMount, which runs
 		// after the container element is bound.
 		return () => clearInterval(liveTimer);
@@ -209,39 +194,6 @@
 			{m['vms.console.serial.hint']()}
 		</p>
 
-	{#if vmStore.entity?.tags?.includes(IMAGE_TAG) || vmStore.entity?.baselineState}
-		<div class="mt-3 rounded-md border border-border bg-muted/40 p-3 text-sm" data-testid="vm-console-password-action">
-			<p class="text-muted-foreground">{m['vms.console.setPasswordHint']()}</p>
-			<div class="mt-2 flex flex-wrap items-center gap-2">
-				<Button
-					size="sm"
-					disabled={vmStore.consolePasswordInFlight || vmStore.entity?.guestAgent === 'disabled' || vmStore.entity?.guestAgent === 'unreachable' || vmStore.entity?.status !== 'running'}
-					onclick={() => void vmStore.setConsolePassword()}
-					data-testid="vm-console-set-password-btn"
-				>
-					{vmStore.consolePasswordInFlight ? m['common.loading']() : m['vms.console.setPassword']()}
-				</Button>
-				{#if vmStore.entity?.guestAgent === 'disabled'}
-					<p class="text-xs text-muted-foreground" data-testid="vm-console-password-agent-disabled">{m['vms.console.setPasswordAgentDisabled']()}</p>
-				{:else if vmStore.entity?.guestAgent === 'unreachable' || (vmStore.entity?.status === 'running' && vmStore.entity?.guestAgent !== 'ok')}
-					<p class="text-xs text-muted-foreground" data-testid="vm-console-password-disabled">{m['vms.console.setPasswordDisabled']()}</p>
-				{/if}
-			</div>
-			{#if vmStore.consolePasswordError}
-				<p class="mt-2 text-destructive text-sm" data-testid="vm-console-password-error">{vmStore.consolePasswordError}</p>
-			{/if}
-			{#if vmStore.generatedPassword}
-				<div class="mt-2 rounded-md border border-success-soft bg-success-soft/40 p-2" data-testid="vm-console-password-generated">
-					<p class="font-semibold text-sm">{m['vms.console.passwordGenerated']()}:</p>
-					<div class="mt-1 flex flex-wrap items-center gap-2">
-						<code class="font-mono text-sm break-all">{vmStore.generatedPassword}</code>
-						<CopyButton value={vmStore.generatedPassword} variant="secondary" testId="vm-console-password-copy" />
-					</div>
-					<p class="mt-1 text-xs text-muted-foreground">{m['vms.console.passwordCopyHint']()}</p>
-				</div>
-			{/if}
-		</div>
-	{/if}
 	{/if}
 
 	<div class="mt-3 min-h-0 flex-1 overflow-hidden">

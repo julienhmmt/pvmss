@@ -18,11 +18,8 @@ function catalogWith(templates: VmCreateCatalog['templates']): VmCreateCatalog {
 		storages: [{ name: 'local-lvm', node: 'pve-node-01' }],
 		bridges: [],
 		isos: [],
-		images: [],
 		profiles: [],
 		templates,
-		cloudInitTemplates: [],
-		cloudInitWriteEnabled: false,
 		tags: []
 	};
 }
@@ -45,7 +42,7 @@ describe('StepBase source selector', () => {
 	it('offers both sources when at least one template is approved', () => {
 		storeInstance = new VmCreateStore();
 		storeInstance.catalog = catalogWith([
-			{ vmid: 9000, node: 'pve-node-02', name: 'debian-12-cloud', cloudInitCapable: true, diskSizeGB: 8, diskStorage: 'local-lvm' }
+			{ vmid: 9000, node: 'pve-node-02', name: 'debian-12-cloud', diskSizeGB: 8, diskStorage: 'local-lvm' }
 		]);
 		mount(StepBase, { target: document.body });
 		expect(sourceOptions()).toEqual(['iso', 'template']);
@@ -63,7 +60,7 @@ describe('StepBase source selector', () => {
 	it('hides the no-template hint once a template is approved', () => {
 		storeInstance = new VmCreateStore();
 		storeInstance.catalog = catalogWith([
-			{ vmid: 9000, node: 'pve-node-02', name: 'debian-12-cloud', cloudInitCapable: true, diskSizeGB: 8, diskStorage: 'local-lvm' }
+			{ vmid: 9000, node: 'pve-node-02', name: 'debian-12-cloud', diskSizeGB: 8, diskStorage: 'local-lvm' }
 		]);
 		mount(StepBase, { target: document.body });
 		expect(document.querySelector('[data-testid="no-templates-hint"]')).toBeNull();
@@ -90,7 +87,7 @@ describe('StepBase template disk minimum (issue 04)', () => {
 
 	it('raises the disk size to the template minimum on selection', () => {
 		const store = mountWithTemplate(
-			{ vmid: 9000, node: 'pve-node-02', name: 'big', cloudInitCapable: false, diskSizeGB: 32, diskStorage: 'local-lvm' },
+			{ vmid: 9000, node: 'pve-node-02', name: 'big', diskSizeGB: 32, diskStorage: 'local-lvm' },
 			20
 		);
 		const select = templateSelect();
@@ -103,7 +100,7 @@ describe('StepBase template disk minimum (issue 04)', () => {
 
 	it('never auto-shrinks a larger user-set size', () => {
 		const store = mountWithTemplate(
-			{ vmid: 9001, node: 'pve-node-02', name: 'small', cloudInitCapable: false, diskSizeGB: 8, diskStorage: 'local' },
+			{ vmid: 9001, node: 'pve-node-02', name: 'small', diskSizeGB: 8, diskStorage: 'local' },
 			40
 		);
 		const select = templateSelect();
@@ -116,7 +113,7 @@ describe('StepBase template disk minimum (issue 04)', () => {
 
 	it('clears the minimum when the source switches back to ISO', () => {
 		const store = mountWithTemplate(
-			{ vmid: 9000, node: 'pve-node-02', name: 'big', cloudInitCapable: false, diskSizeGB: 32, diskStorage: 'local-lvm' },
+			{ vmid: 9000, node: 'pve-node-02', name: 'big', diskSizeGB: 32, diskStorage: 'local-lvm' },
 			20
 		);
 		store.templateMinDiskGB = 32;
@@ -128,12 +125,12 @@ describe('StepBase template disk minimum (issue 04)', () => {
 });
 
 describe('StepBase template picker grouping (issue 04)', () => {
-	it('groups template options by node and carries size and cloud-init in the label', () => {
+	it('groups template options by node and carries size in the label', () => {
 		storeInstance = new VmCreateStore();
 		storeInstance.catalog = catalogWith([
-			{ vmid: 9000, node: 'pve-node-02', name: 'debian-12-cloud', cloudInitCapable: true, diskSizeGB: 8, diskStorage: 'local-lvm' },
-			{ vmid: 9001, node: 'pve-node-01', name: 'alpine', cloudInitCapable: false, diskSizeGB: 2, diskStorage: 'local' },
-			{ vmid: 9002, node: 'pve-node-02', name: 'rocky', cloudInitCapable: false, diskSizeGB: 4, diskStorage: 'local' }
+			{ vmid: 9000, node: 'pve-node-02', name: 'debian-12-cloud', diskSizeGB: 8, diskStorage: 'local-lvm' },
+			{ vmid: 9001, node: 'pve-node-01', name: 'alpine', diskSizeGB: 2, diskStorage: 'local' },
+			{ vmid: 9002, node: 'pve-node-02', name: 'rocky', diskSizeGB: 4, diskStorage: 'local' }
 		]);
 		storeInstance.sourceType = 'template';
 		mount(StepBase, { target: document.body });
@@ -141,7 +138,7 @@ describe('StepBase template picker grouping (issue 04)', () => {
 		const groups = [...document.querySelectorAll('optgroup')];
 		expect(groups.map((g) => g.label)).toEqual(['pve-node-01', 'pve-node-02']);
 		const labels = groups.flatMap((g) => [...g.querySelectorAll('option')].map((o) => o.textContent ?? ''));
-		expect(labels.some((l) => l.includes('debian-12-cloud') && l.includes('8 GB') && l.includes('cloud-init'))).toBe(true);
+		expect(labels.some((l) => l.includes('debian-12-cloud') && l.includes('8 GB'))).toBe(true);
 		document.body.innerHTML = '';
 	});
 });

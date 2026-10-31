@@ -56,16 +56,9 @@
 				if (name === '' || !HOSTNAME_PATTERN.test(name) || form.machineNamed(name) !== null) return false;
 				if (form.sourceType !== 'template' && form.node === '') return false;
 				if (form.sourceType === 'template' && form.templateId === 0) return false;
-				if (form.sourceType === 'image') {
-					if (form.imageFile === '' || form.ciUser.trim() === '' || form.sshKeys().length === 0) return false;
-					if (form.ciIpMode === 'static' && form.ciIpAddress.trim() === '') return false;
-				}
 				return true;
 			}
 			case 'Hardware': {
-				if (form.sourceType === 'image' && form.hasProfiles()) {
-					return form.profileId !== '' && cat.profiles.some((p) => p.id === form.profileId);
-				}
 				const maxSockets = gabaritCeiling(cat.gabarit?.maxSockets, 4);
 				const maxCores = gabaritCeiling(cat.gabarit?.maxCores, 32);
 				const maxMemoryMB = gabaritCeiling(cat.gabarit?.maxMemoryMB, 65536);
@@ -83,9 +76,8 @@
 			}
 			case 'Disk': {
 				if (form.diskStorage === '') return false;
-				if (form.sourceType === 'image' && form.hasProfiles()) return true;
 				const maxDiskGB = gabaritCeiling(cat.gabarit?.maxDiskPerVMGB, 2048);
-				const minDiskGB = Math.max(1, form.templateMinDiskGB, form.sourceType === 'image' ? form.imageMinDiskGB : 0);
+				const minDiskGB = Math.max(1, form.templateMinDiskGB);
 				return Number.isInteger(form.diskSizeGB) && form.diskSizeGB >= minDiskGB && form.diskSizeGB <= maxDiskGB;
 			}
 			case 'Network':
@@ -172,7 +164,6 @@
 	const tray = getTaskTrayContext();
 	const toast = getToastContext();
 	const outcomeLedger = getTaskOutcomeLedgerContext();
-	const imageBlocker = $derived(form.imageModeBlocker());
 
 	async function submit(): Promise<void> {
 		// Belt and braces: never POST a form with an incomplete step, even if
@@ -187,7 +178,7 @@
 			if (form.submitError) toast.error(m['toast.vmCreateFailed']({ error: form.submitError }));
 			return;
 		}
-		await handleAccepted(accepted, { tray, toast, outcomeLedger, keyToSave: form.sshSelection.keyToSave() });
+		await handleAccepted(accepted, { tray, toast, outcomeLedger });
 	}
 
 	function goBack(): void {
@@ -282,7 +273,7 @@
 			{#if current === 'Review'}
 				<Button
 					loading={form.submitting}
-					disabled={blockerStep !== null || imageBlocker !== null}
+					disabled={blockerStep !== null}
 					onclick={() => void submit()}
 				>
 					{form.submitting ? m['common.creating']() : m['vms.create.submit']()}

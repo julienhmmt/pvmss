@@ -43,17 +43,6 @@ export interface VmDetailEntity {
 	 *  still be empty while DHCP is pending). Absent when the VM is not
 	 *  running. */
 	guestAgent?: 'ok' | 'disabled' | 'unreachable';
-	/** Cloud-init baseline delivery state for image-mode VMs (issue 03):
-	 *  "applied" (generated baseline pushed+attached), "override" (a
-	 *  cluster-wide pvmss-baseline.yml replaced the generated baseline),
-	 *  "not_delivered" (baseline could not be delivered - see baselineError).
-	 *  Absent for non-image VMs. */
-	baselineState?: 'applied' | 'override' | 'not_delivered';
-	/** Reason the baseline could not be delivered, when baselineState is
-	 *  "not_delivered". */
-	baselineError?: string;
-	/** Stable reason: cloudinit_write_unavailable | no_document | delivery_failed. */
-	baselineErrorCode?: string;
 }
 
 export interface VmDisk {
@@ -226,36 +215,6 @@ export class VmDetailStore {
 
 	/** Set after a successful delete so the page can navigate away. */
 	deleted = $state.raw(false);
-
-	/** In-flight flag for the console-password action (issue 05). */
-	consolePasswordInFlight = $state(false);
-
-	/** Error from the last console-password attempt (issue 05). */
-	consolePasswordError = $state<string | null>(null);
-
-	/** The generated password, shown once after a successful call (issue 05).
-	 *  Not persisted - cleared on the next action or on navigation. */
-	generatedPassword = $state<string | null>(null);
-
-	/** Generates a random console password server-side, applies it via the
-	 *  QEMU guest agent to the VM's ciuser, and returns it once for display
-	 *  (issue 05). The password is not persisted anywhere in the portal. */
-	async setConsolePassword(): Promise<boolean> {
-		if (this.consolePasswordInFlight) return false;
-		this.consolePasswordInFlight = true;
-		this.consolePasswordError = null;
-		this.generatedPassword = null;
-		try {
-			const result = await post<{ password: string }>(`${this.#basePath}/console-password`, {});
-			this.generatedPassword = result.password;
-			return true;
-		} catch (err) {
-			this.consolePasswordError = errorMessage(err, () => m['vms.detail.errorConsolePassword']());
-			return false;
-		} finally {
-			this.consolePasswordInFlight = false;
-		}
-	}
 
 	#basePath: string;
 

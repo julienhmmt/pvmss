@@ -12,7 +12,7 @@
 	import Button from '#lib/shared/ui/Button.svelte';
 	import { m } from '#lib/paraglide/messages.js';
 
-	type CatalogKind = 'nodes' | 'bridges' | 'storages' | 'isos' | 'images' | 'templates';
+	type CatalogKind = 'nodes' | 'bridges' | 'storages' | 'isos' | 'templates';
 
 	type Store = AdminCatalogStore;
 	type SelectOption = { value: string; label: string };
@@ -262,55 +262,6 @@
 			count: (s) => s.filteredIsos.length,
 			countLabel: (n) => m['admin.isos.resultCount']({ count: n }),
 			countTestId: 'iso-result-count'
-		},
-		images: {
-			search: {
-				get: (s) => s.imageSearch,
-				set: (s, v) => (s.imageSearch = v),
-				placeholder: () => m['admin.images.searchPlaceholder'](),
-				testid: 'image-search'
-			},
-			selects: [
-				{
-					options: (s) => s.imageStorageOptions,
-					get: (s) => s.imageStorageFilter,
-					set: (s, v) => (s.imageStorageFilter = v),
-					placeholder: () => m['admin.images.filterStorage'](),
-					label: () => m['common.storage'](),
-					testid: 'image-storage-filter'
-				},
-				{
-					options: (s) => s.imageNodeOptions,
-					get: (s) => s.imageNodeFilter,
-					set: (s, v) => (s.imageNodeFilter = v),
-					placeholder: () => m['admin.images.filterNode'](),
-					label: () => m['common.node'](),
-					testid: 'image-node-filter'
-				},
-				enabledSelect(
-					(s) => s.imageEnabledFilter,
-					(s, v) => (s.imageEnabledFilter = v),
-					[
-						() => m['admin.images.filterEnabled'](),
-						() => m['admin.images.filterEnabledOnly'](),
-						() => m['admin.images.filterDisabledOnly']()
-					],
-					'image-enabled-filter'
-				)
-			],
-			active: (s) =>
-				s.imageSearch !== '' ||
-				s.imageStorageFilter !== '' ||
-				s.imageNodeFilter !== '' ||
-				s.imageEnabledFilter !== 'all' ||
-				s.imageSortBy !== 'file' ||
-				s.imageSortDir !== 'asc',
-			reset: (s) => s.resetImageFilters(),
-			resetLabel: () => m['admin.images.resetFilters'](),
-			resetTestId: 'image-reset-filters',
-			count: (s) => s.filteredImages.length,
-			countLabel: (n) => m['admin.images.resultCount']({ count: n }),
-			countTestId: 'image-result-count'
 		},
 		templates: {
 			search: {

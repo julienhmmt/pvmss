@@ -35,9 +35,6 @@ export interface AdminCluster {
 	proxmoxVersion: string | null;
 	nodeCount: number;
 	vmCount: number;
-	/** Proxmox storage holding the admin cloud-init files ('' = off). */
-	snippetStorage: string;
-	cloudInitWriteEnabled: boolean;
 	tls?: ClusterTlsInfo;
 }
 
@@ -48,7 +45,6 @@ export interface ClusterInput {
 	tlsInsecureSkipVerify: boolean;
 	tokenId: string;
 	tokenSecret: string;
-	snippetStorage: string;
 	tls: ClusterTlsInput;
 }
 
@@ -60,12 +56,6 @@ export interface ClusterTestResult {
 	nodeCount?: number;
 	vmCount?: number;
 	testedAt: string;
-}
-
-export interface SnippetStorage {
-	name: string;
-	node: string;
-	type: string;
 }
 
 export function statusLabel(status: AdminCluster['lastTestStatus']): string {
@@ -123,12 +113,6 @@ export class AdminClustersStore {
 		} finally {
 			this.loading = false;
 		}
-	}
-
-	/** loadSnippetStorages fetches the snippet-capable storages for one cluster,
-	 *  so the cluster form can offer a picker instead of a free-text field. */
-	async loadSnippetStorages(cluster: string): Promise<SnippetStorage[]> {
-		return get<SnippetStorage[]>(`/api/v1/admin/snippet-storages?cluster=${encodeURIComponent(cluster)}`);
 	}
 
 	async create(input: ClusterInput): Promise<boolean> {

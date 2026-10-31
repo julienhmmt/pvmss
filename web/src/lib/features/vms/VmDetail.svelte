@@ -8,7 +8,7 @@
 	import VmDisksTab from './disks/VmDisksTab.svelte';
 	import VmNetworkTab from './network/VmNetworkTab.svelte';
 	import VmHardwareTab from './hardware/VmHardwareTab.svelte';
-	// import CloudInitTab from './CloudInitTab.svelte';
+
 	import VmSnapshotsTab from './VmSnapshotsTab.svelte';
 	import VmActivityTab from './VmActivityTab.svelte';
 	import VmMetricsRow from './VmMetricsRow.svelte';
@@ -52,15 +52,6 @@
 
 	let { backHref = resolve('/vms'), backLabel = m['vms.detail.back']() }: Props = $props();
 
-	const baselineReasons: Record<string, () => string> = {
-		cloudinit_write_unavailable: () => m['vms.detail.baselineReason.writeUnavailable'](),
-		no_document: () => m['vms.detail.baselineReason.noDocument'](),
-		delivery_failed: () => m['vms.detail.baselineReason.deliveryFailed']()
-	};
-
-	function baselineReason(code: string): string {
-		return (baselineReasons[code] ?? baselineReasons.delivery_failed!)();
-	}
 	const tray = getTaskTrayContext();
 	const ledger = getTaskOutcomeLedgerContext();
 	const powerActions = getPowerActionsContext();
@@ -80,11 +71,9 @@
 		{ id: 'disks', label: () => m['vms.detail.tabDisks']() },
 		{ id: 'network', label: () => m['vms.detail.tabNetwork']() },
 		{ id: 'hardware', label: () => m['vms.detail.tabHardware']() },
-		// Cloud-init is disabled for now: not reliable or viable yet, too complex to set up.
-		// { id: 'cloudinit', label: () => m['vms.detail.tabCloudinit']() },
 		{ id: 'snapshots', label: () => m['vms.detail.tabSnapshots']() }
 	];
-	type ConfigTab = 'overview' | 'disks' | 'network' | 'hardware' | 'cloudinit' | 'snapshots';
+	type ConfigTab = 'overview' | 'disks' | 'network' | 'hardware' | 'snapshots';
 
 	function parseTab(raw: string | null): MainTab {
 		if (raw === 'configuration' || raw === 'activity') return raw;
@@ -368,18 +357,6 @@
 			onCancelShutdown={() => (confirmingShutdown = false)}
 			detail={ledger.detail(store.cluster, store.vmid)}
 		/>
-		{#if entity.baselineState === 'not_delivered' && entity.tags?.includes('pvmss-image')}
-			<div class="rounded-xl border border-warning-soft-border bg-warning-soft p-4 text-warning-soft-foreground" data-testid="vm-baseline-not-delivered">
-				<p class="text-sm font-medium">{m['vms.detail.baselineNotDelivered']()}</p>
-				<p class="text-xs">{m['vms.detail.baselineNotDeliveredHint']()}</p>
-				{#if entity.baselineErrorCode}
-					<p class="mt-1 text-xs" data-testid="vm-baseline-reason">{baselineReason(entity.baselineErrorCode)}</p>
-				{/if}
-				{#if entity.baselineError && session.isAdmin}
-					<p class="mt-1 font-mono text-xs" data-testid="vm-baseline-error">{entity.baselineError}</p>
-				{/if}
-			</div>
-		{/if}
 	</div>
 
 	<Tabs {tabs} look="underline" bind:active={() => activeTab, selectTab} />
@@ -428,11 +405,6 @@
 						<dd class="mt-0.5 font-mono">{clusterLabel} / {entity.vmid}</dd>
 					</div>
 				</dl>
-				{#if entity.baselineState === 'applied'}
-					<p class="mt-4 text-sm text-muted-foreground" data-testid="vm-baseline-applied">{m['vms.detail.baselineApplied']()}</p>
-				{:else if entity.baselineState === 'override'}
-					<p class="mt-4 text-sm text-muted-foreground" data-testid="vm-baseline-override">{m['vms.detail.baselineOverride']()}</p>
-				{/if}
 			</Card>
 
 			<Card pad="lg">
@@ -520,14 +492,7 @@
 			<VmHardwareTab />
 		</div>
 
-		<!-- Cloud-init is disabled for now: not reliable or viable yet, too complex to set up.
-		<div id="panel-cloudinit" role="tabpanel" aria-labelledby="tab-cloudinit" hidden={configTab !== 'cloudinit'} class="mt-4">
-			{#if activeTab === 'configuration' && configTab === 'cloudinit'}
-				<CloudInitTab />
-			{/if}
-		</div> -->
-
-		<div id="panel-snapshots" role="tabpanel" aria-labelledby="tab-snapshots" hidden={configTab !== 'snapshots'} class="mt-4">
+			<div id="panel-snapshots" role="tabpanel" aria-labelledby="tab-snapshots" hidden={configTab !== 'snapshots'} class="mt-4">
 			{#if activeTab === 'configuration' && configTab === 'snapshots'}
 				<VmSnapshotsTab />
 			{/if}

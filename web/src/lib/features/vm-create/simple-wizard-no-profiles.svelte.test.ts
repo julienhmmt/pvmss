@@ -39,11 +39,8 @@ function catalogWithoutProfiles(): VmCreateCatalog {
 		storages: [{ name: 'local-lvm', node: 'pve-node-01' }],
 		bridges: [],
 		isos: [],
-		images: [],
 		profiles: [],
 		templates: [],
-		cloudInitTemplates: [],
-		cloudInitWriteEnabled: false,
 		tags: []
 	};
 }

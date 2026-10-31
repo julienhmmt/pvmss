@@ -6,12 +6,9 @@
 	import FormField from '#lib/shared/ui/FormField.svelte';
 	import FormSection from '#lib/shared/ui/FormSection.svelte';
 	import TextField from '#lib/shared/ui/TextField.svelte';
-	// Cloud-init disabled: Select, Pill and the snippet storage props feed the commented-out section.
-	// import Select from '#lib/shared/ui/Select.svelte';
 	import Checkbox from '#lib/shared/ui/Checkbox.svelte';
 	import Textarea from '#lib/shared/ui/Textarea.svelte';
-	// import Pill from '#lib/shared/ui/Pill.svelte';
-	import type { AdminCluster, ClusterInput, ClusterTlsInput, SnippetStorage } from './clusters.svelte';
+	import type { AdminCluster, ClusterInput, ClusterTlsInput } from './clusters.svelte';
 	import { formatDate } from '#lib/shared/format-date.js';
 	import { m } from '#lib/paraglide/messages.js';
 
@@ -20,8 +17,6 @@
 		editing: AdminCluster | null;
 		saving: boolean;
 		error: string | null;
-		snippetStorages: SnippetStorage[];
-		snippetStoragesLoading: boolean;
 		onClose: () => void;
 		onSubmit: (input: ClusterInput) => void;
 	}
@@ -31,8 +26,6 @@
 		editing,
 		saving,
 		error,
-		// snippetStorages,
-		// snippetStoragesLoading,
 		onClose,
 		onSubmit
 	}: Props = $props();
@@ -42,7 +35,6 @@
 	let tokenId = $state('');
 	let tokenSecret = $state('');
 	let tlsInsecureSkipVerify = $state(false);
-	let snippetStorage = $state('');
 	let caPem = $state('');
 	let nodeFingerprints = $state('');
 	let clientCertPem = $state('');
@@ -92,7 +84,7 @@
 			tokenId = editing?.tokenId ?? '';
 			tokenSecret = '';
 			tlsInsecureSkipVerify = editing?.tlsInsecureSkipVerify ?? false;
-			snippetStorage = editing?.snippetStorage ?? '';
+
 			caPem = '';
 			clientCertPem = '';
 			clientKeyPem = '';
@@ -110,7 +102,7 @@
 			tokenId: tokenId.trim(),
 			tokenSecret,
 			tlsInsecureSkipVerify,
-			snippetStorage: snippetStorage.trim(),
+
 			tls: tlsInput()
 		});
 	}
@@ -201,39 +193,6 @@
 				</FormField>
 			</div>
 		</FormSection>
-
-<!-- Cloud-init is disabled for now: not reliable or viable yet, too complex to set up.
-		<FormSection legend={m['admin.clusters.cloudinitSection']()} description={m['admin.clusters.cloudinitHint']()} variant="panel">
-			{#snippet actions()}
-				{#if editing}
-					<Pill
-						tone={editing.cloudInitWriteEnabled ? 'ok' : 'off'}
-						label={editing.cloudInitWriteEnabled ? m['admin.clusters.cloudinitOn']() : m['admin.clusters.cloudinitOff']()}
-					/>
-				{/if}
-			{/snippet}
-			<FormField
-				label={m['admin.clusters.snippetStorage']()}
-				hint={snippetStoragesLoading ? m['admin.clusters.snippetStorageLoading']() : (snippetStorages.length > 0 ? m['admin.clusters.snippetStorageHint']() : m['admin.clusters.snippetStorageEmpty']())}
-			>
-				{#snippet children({ id, describedBy, invalid })}
-					{#if snippetStorages.length > 0}
-						<Select
-							{id}
-							{describedBy}
-							{invalid}
-							bind:value={snippetStorage}
-							placeholder={m['admin.clusters.snippetStoragePlaceholder']()}
-							options={snippetStorages.map((s) => ({ value: s.name, label: `${s.name} (${s.node})` }))}
-						/>
-					{:else}
-						<TextField {id} {describedBy} {invalid} bind:value={snippetStorage} placeholder="local" disabled={snippetStoragesLoading} />
-					{/if}
-				{/snippet}
-			</FormField>
-
-		</FormSection>
--->
 
 		{#if error}
 			<Alert>{error}</Alert>

@@ -1,6 +1,6 @@
 <script lang="ts">
 	import ClusterFormDialog from './ClusterFormDialog.svelte';
-	import { statusHint, statusLabel, statusTone, type AdminCluster, type AdminClustersStore, type ClusterInput, type SnippetStorage } from './clusters.svelte';
+	import { statusHint, statusLabel, statusTone, type AdminCluster, type AdminClustersStore, type ClusterInput } from './clusters.svelte';
 	import { resolve } from '$app/paths';
 	import Alert from '#lib/shared/ui/Alert.svelte';
 	import PageHeader from '#lib/shared/ui/PageHeader.svelte';
@@ -24,28 +24,10 @@
 	let formOpen = $state(false);
 	let editing = $state<AdminCluster | null>(null);
 	let pendingDelete = $state<AdminCluster | null>(null);
-	let snippetStorages = $state<SnippetStorage[]>([]);
-	let snippetStoragesLoading = $state(false);
 
-	async function openForm(cluster: AdminCluster | null): Promise<void> {
+	function openForm(cluster: AdminCluster | null): void {
 		editing = cluster;
 		formOpen = true;
-		snippetStorages = [];
-		snippetStoragesLoading = true;
-		try {
-			const name = cluster?.name ?? '';
-			// For a new cluster (no name yet), fall back to the first existing
-			// cluster so the picker is populated; the admin can still type a
-			// custom value if needed.
-			const target = name || store.clusters[0]?.name || '';
-			if (target) {
-				snippetStorages = await store.loadSnippetStorages(target);
-			}
-		} catch {
-			// Non-fatal: the picker falls back to free text.
-		} finally {
-			snippetStoragesLoading = false;
-		}
 	}
 
 	async function confirmRemove(): Promise<void> {
@@ -65,7 +47,6 @@
 						tlsInsecureSkipVerify: input.tlsInsecureSkipVerify,
 						tokenId: input.tokenId,
 						tokenSecret: input.tokenSecret,
-						snippetStorage: input.snippetStorage,
 						tls: input.tls
 					});
 		// Failure leaves the dialog open with store.error rendered inline
@@ -105,9 +86,6 @@
 						<th scope="col" class="font-medium">{m['common.status']()}</th>
 						<th scope="col" class="font-medium">{m['admin.clusters.version']()}</th>
 						<th scope="col" class="font-medium">{m['admin.clusters.nodesVms']()}</th>
-<!-- Cloud-init is disabled for now: not reliable or viable yet, too complex to set up.
-						<th scope="col" class="font-medium">{m['admin.clusters.cloudinitSection']()}</th>
--->
 						<th scope="col" class="font-medium">{m['common.actions']()}</th>
 					</tr>
 				</thead>
@@ -129,15 +107,7 @@
 							</td>
 							<td class="text-muted-foreground" data-label={m['admin.clusters.version']()}>{cluster.proxmoxVersion ?? ' - '}</td>
 							<td data-label={m['admin.clusters.nodesVms']()}>{cluster.nodeCount} / {cluster.vmCount}</td>
-<!-- Cloud-init is disabled for now: not reliable or viable yet, too complex to set up.
-							<td class="text-muted-foreground" data-label={m['admin.clusters.cloudinitSection']()}>
-								{#if cluster.cloudInitWriteEnabled}
-									{m['admin.clusters.cloudinitOn']()}
-								{:else}
-									{m['admin.clusters.cloudinitOff']()}
-								{/if}
-							</td>
--->
+
 							<td data-label={m['common.actions']()}>
 								<div class="flex flex-wrap gap-2">
 									<ButtonLink variant="secondary" size="sm" href={resolve('/admin/clusters/[name]', { name: cluster.name })} label={m['admin.clusters.detailsLabel']({ name: cluster.name })}>{m['admin.clusters.details']()}</ButtonLink>
@@ -174,8 +144,6 @@
 	{editing}
 	saving={store.busy === 'create' || store.busy === `update:${editing?.name}`}
 	error={store.error}
-	{snippetStorages}
-	{snippetStoragesLoading}
 	onClose={() => (formOpen = false)}
 	onSubmit={saveCluster}
 />
