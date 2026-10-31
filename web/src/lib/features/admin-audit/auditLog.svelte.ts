@@ -52,19 +52,29 @@ export class AuditLogStore {
 	loading = $state.raw(false);
 	error = $state.raw<string | null>(null);
 
+	/** URL of the CSV export for the current filter (all pages). */
+	get exportUrl(): string {
+		return `/api/v1/admin/audit/export?${this.filterParams().toString()}`;
+	}
+
+	private filterParams(): URLSearchParams {
+		// eslint-disable-next-line svelte/prefer-svelte-reactivity -- local request-building scratch var, not $state
+		const params = new URLSearchParams();
+		if (this.filter.cluster) params.set('cluster', this.filter.cluster);
+		if (this.filter.vmid !== undefined) params.set('vmid', String(this.filter.vmid));
+		if (this.filter.actor) params.set('actor', this.filter.actor);
+		if (this.filter.action) params.set('action', this.filter.action);
+		if (this.filter.from) params.set('from', this.filter.from);
+		if (this.filter.to) params.set('to', this.filter.to);
+		if (this.filter.severity) params.set('severity', this.filter.severity);
+		return params;
+	}
+
 	async load(): Promise<void> {
 		this.loading = true;
 		this.error = null;
 		try {
-			// eslint-disable-next-line svelte/prefer-svelte-reactivity -- local request-building scratch var, not $state
-			const params = new URLSearchParams();
-			if (this.filter.cluster) params.set('cluster', this.filter.cluster);
-			if (this.filter.vmid !== undefined) params.set('vmid', String(this.filter.vmid));
-			if (this.filter.actor) params.set('actor', this.filter.actor);
-			if (this.filter.action) params.set('action', this.filter.action);
-			if (this.filter.from) params.set('from', this.filter.from);
-			if (this.filter.to) params.set('to', this.filter.to);
-			if (this.filter.severity) params.set('severity', this.filter.severity);
+			const params = this.filterParams();
 			params.set('page', String(this.filter.page ?? 1));
 			params.set('pageSize', String(this.filter.pageSize ?? 20));
 

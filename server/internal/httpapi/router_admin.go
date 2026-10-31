@@ -123,6 +123,7 @@ func registerAdminOpsRoutes(mux *http.ServeMux, adminProtect adminRouteProtect, 
 	mux.Handle("GET /api/v1/admin/audit/config", adminProtect(http.MethodGet, http.HandlerFunc(h.ServeAuditConfig)))
 	mux.Handle("PUT /api/v1/admin/audit/config", adminProtect(http.MethodPut, http.HandlerFunc(h.ServeAuditConfigUpdate)))
 	mux.Handle("GET /api/v1/admin/audit/prune-preview", adminProtect(http.MethodGet, http.HandlerFunc(h.ServeAuditPrunePreview)))
+	mux.Handle("GET /api/v1/admin/audit/export", adminProtect(http.MethodGet, http.HandlerFunc(h.ServeAuditExport)))
 	mux.Handle("GET /api/v1/admin/dashboard", adminProtect(http.MethodGet, http.HandlerFunc(h.ServeDashboard)))
 	mux.Handle("GET /api/v1/admin/db/export", adminProtect(http.MethodGet, http.HandlerFunc(h.ServeDBExport)))
 	mux.Handle("POST /api/v1/admin/db/import", adminProtect(http.MethodPost, http.HandlerFunc(h.ServeDBImport)))

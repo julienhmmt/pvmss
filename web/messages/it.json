@@ -2376,5 +2376,6 @@
 	"palette.open": "Cerca o vai a",
 	"shortcuts.palette": "Apri la palette dei comandi",
 	"common.pagination.perPage": "Righe per pagina",
-	"common.pagination.range": "{from}-{to} di {total}"
+	"common.pagination.range": "{from}-{to} di {total}",
+	"admin.audit.exportCsv": "Esporta CSV"
 }
