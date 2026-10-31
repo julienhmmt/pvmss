@@ -152,6 +152,7 @@
 					</label>
 					<Button type="submit">{m['common.filter']()}</Button>
 					<Button variant="secondary" onclick={clearFilter}>{m['admin.audit.clear']()}</Button>
+					<Button variant="secondary" onclick={() => window.location.assign(store.exportUrl)}>{m['admin.audit.exportCsv']()}</Button>
 				</form>
 				<p id="audit-date-format" class="mt-2 text-xs {dateError ? 'text-destructive' : 'text-muted-foreground'}" aria-live="polite">
 					{dateError
