@@ -2049,7 +2049,6 @@
   "vms.list.hint.provisioning": "Setting up. You can leave this page, it keeps going.",
   "vms.list.hint.starting": "Starting. Connection details appear once it is running.",
   "vms.list.hint.stopping": "Shutting down gracefully. Your files are kept.",
-  "vms.list.hint.stopped": "Stopped. Your files are kept.",
   "vms.list.hint.failed": "The creation did not finish. Nothing was taken from your allowance.",
   "vms.list.hint.partial": "Created, but its access setup failed. Do not create a duplicate: open it to get help.",
   "vms.list.allowanceUsed": [

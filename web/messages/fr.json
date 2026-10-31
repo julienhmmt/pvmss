@@ -2049,7 +2049,6 @@
   "vms.list.hint.provisioning": "Préparation en cours. Vous pouvez quitter cette page, elle continue.",
   "vms.list.hint.starting": "Démarrage en cours. Les informations de connexion apparaîtront quand elle tournera.",
   "vms.list.hint.stopping": "Arrêt propre en cours. Vos fichiers sont conservés.",
-  "vms.list.hint.stopped": "Arrêtée. Vos fichiers sont conservés.",
   "vms.list.hint.failed": "La création n'a pas abouti. Rien n'a été décompté de votre quota.",
   "vms.list.hint.partial": "Créée, mais la configuration de l'accès a échoué. Ne créez pas de doublon : ouvrez-la pour obtenir de l'aide.",
   "vms.list.allowanceUsed": [

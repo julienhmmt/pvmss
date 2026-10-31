@@ -2049,7 +2049,6 @@
   "vms.list.hint.provisioning": "In preparazione. Puoi lasciare questa pagina, il processo continua.",
   "vms.list.hint.starting": "Avvio in corso. I dettagli di connessione compaiono quando è in esecuzione.",
   "vms.list.hint.stopping": "Spegnimento ordinato in corso. I tuoi file vengono conservati.",
-  "vms.list.hint.stopped": "Arrestata. I tuoi file vengono conservati.",
   "vms.list.hint.failed": "La creazione non è stata completata. Nulla è stato scalato dalla tua quota.",
   "vms.list.hint.partial": "Creata, ma la configurazione dell'accesso non è riuscita. Non crearne un duplicato: aprila per ricevere aiuto.",
   "vms.list.allowanceUsed": [

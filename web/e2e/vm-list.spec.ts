@@ -75,13 +75,13 @@ test.describe('T04 VM list', () => {
 		await expect(page).toHaveURL(/[?&]status=stopped/);
 	});
 
-	test('a stopped machine explains itself and offers Start; running ones never claim Connect', async ({ page }) => {
+	test('a stopped machine offers Start without a repeated hint; running ones never claim Connect', async ({ page }) => {
 		await signInAlice(page.request);
 		await page.goto('/vms?cluster=default');
 
 		const stopped = vmRows(page).filter({ hasText: 'dev-02' });
 		await expect(stopped).toHaveAttribute('data-status', 'stopped');
-		await expect(stopped.getByTestId('vm-row-hint')).toContainText('Your files are kept');
+		await expect(stopped.getByTestId('vm-row-hint')).toHaveCount(0);
 		await expect(stopped.getByTestId('vm-row-start')).toBeVisible();
 
 		const running = vmRows(page).filter({ hasText: 'web-01' });

@@ -2049,7 +2049,6 @@
   "vms.list.hint.provisioning": "Wird eingerichtet. Sie können diese Seite verlassen, es läuft weiter.",
   "vms.list.hint.starting": "Startet. Verbindungsdetails erscheinen, sobald sie läuft.",
   "vms.list.hint.stopping": "Wird sauber heruntergefahren. Ihre Dateien bleiben erhalten.",
-  "vms.list.hint.stopped": "Gestoppt. Ihre Dateien bleiben erhalten.",
   "vms.list.hint.failed": "Die Erstellung wurde nicht abgeschlossen. Ihr Kontingent wurde nicht belastet.",
   "vms.list.hint.partial": "Erstellt, aber die Zugangseinrichtung ist fehlgeschlagen. Erstellen Sie kein Duplikat: Öffnen Sie sie, um Hilfe zu erhalten.",
   "vms.list.allowanceUsed": [
