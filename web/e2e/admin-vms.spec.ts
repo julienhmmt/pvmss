@@ -41,6 +41,9 @@ test.describe('Admin all machines', () => {
 		await expect(page).toHaveURL(/\/admin\/vms\/[^/]+\/\d+$/);
 		await expect(page.getByTestId('vm-detail-header')).toBeVisible();
 
+		// Admins still see the Proxmox node in the placement line (audit 13).
+		await expect(page.getByTestId('vm-placement')).toContainText('/ pve-node-');
+
 		await page.getByTestId('page-back-link').click();
 		await expect(page).toHaveURL(/\/admin\/vms$/);
 		await expect(page.getByRole('heading', { name: 'All machines' })).toBeVisible();

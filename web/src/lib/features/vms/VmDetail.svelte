@@ -312,7 +312,7 @@
 					<p class="mt-1 text-sm text-muted-foreground">
 						{m['vms.detail.identityLine']({ cpu: entity.cpuCores, memory: compactBytes(entity.memoryTotal), disk: compactBytes(entity.diskTotal) })}
 						· <span class="font-mono">VM {entity.vmid}</span>
-						<span class="text-muted-foreground-subtle" data-testid="vm-placement">· <span class="font-mono">{clusterLabel} / {entity.node}</span></span>
+						<span class="text-muted-foreground-subtle" data-testid="vm-placement">· <span class="font-mono">{clusterLabel}{#if session.isAdmin} / {entity.node}{/if}</span></span>
 					</p>
 					{#if session.isAdmin}
 						<p class="mt-0.5 font-mono text-xs text-muted-foreground-subtle" data-testid="vm-meta">
