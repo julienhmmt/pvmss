@@ -537,6 +537,7 @@
   "vms.detail.metricsRangeWeek": "Settimana",
   "vms.detail.metricsDiskIO": "I/O disco",
   "vms.detail.metricsNetworkIO": "I/O rete",
+  "vms.detail.metricsPeak": "max {value}",
   "vms.detail.metricsStreamReconnecting": "Riconnessione…",
   "vms.detail.metricsStreamError": "Errore del flusso in tempo reale",
   "vms.detail.metricsStreamLive": "In tempo reale",

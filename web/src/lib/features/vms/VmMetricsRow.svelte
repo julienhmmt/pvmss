@@ -8,6 +8,7 @@
 	import { onMount } from 'svelte';
 	import { getVmDetailContext } from './detail.svelte';
 	import { MetricsStore, type MetricsRange } from './metrics.svelte';
+	import { formatMetricPercent, formatMetricRate, formatMetricSize, metricLast, metricPeak } from './metrics.js';
 	import Alert from '#lib/shared/ui/Alert.svelte';
 	import Card from '#lib/shared/ui/Card.svelte';
 	import LineChart from '#lib/shared/ui/LineChart.svelte';
@@ -99,23 +100,25 @@
 			<Skeleton class="h-24 w-full" />
 		</div>
 	{:else}
+		{#snippet metricTile(title: string, current: string, peak: string, values: number[], key: string)}
+			<div class="rounded-lg bg-muted/40 p-4">
+				<div class="flex items-baseline justify-between gap-2">
+					<p class="text-xs text-muted-foreground">{title}</p>
+					<p class="text-right text-sm font-semibold tabular-nums" data-testid="vm-metrics-{key}-current">
+						{current}
+						{#if values.length > 0}
+							<span class="ml-1 text-2xs font-normal text-muted-foreground-subtle">{m['vms.detail.metricsPeak']({ value: peak })}</span>
+						{/if}
+					</p>
+				</div>
+				<LineChart {values} label={title} class="mt-3 h-16 w-full" />
+			</div>
+		{/snippet}
 		<div class="mt-5 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4" data-testid="vm-metrics-charts">
-			<div class="rounded-lg bg-muted/40 p-4">
-				<p class="text-xs text-muted-foreground">{m['common.cpu']()}</p>
-				<LineChart values={cpuValues} label={m['common.cpu']()} class="mt-3 h-16 w-full" />
-			</div>
-			<div class="rounded-lg bg-muted/40 p-4">
-				<p class="text-xs text-muted-foreground">{m['common.memory']()}</p>
-				<LineChart values={memoryValues} label={m['common.memory']()} class="mt-3 h-16 w-full" />
-			</div>
-			<div class="rounded-lg bg-muted/40 p-4">
-				<p class="text-xs text-muted-foreground">{m['vms.detail.metricsDiskIO']()}</p>
-				<LineChart values={diskValues} label={m['vms.detail.metricsDiskIO']()} class="mt-3 h-16 w-full" />
-			</div>
-			<div class="rounded-lg bg-muted/40 p-4">
-				<p class="text-xs text-muted-foreground">{m['vms.detail.metricsNetworkIO']()}</p>
-				<LineChart values={netValues} label={m['vms.detail.metricsNetworkIO']()} class="mt-3 h-16 w-full" />
-			</div>
+			{@render metricTile(m['common.cpu'](), formatMetricPercent(metricLast(cpuValues)), formatMetricPercent(metricPeak(cpuValues)), cpuValues, 'cpu')}
+			{@render metricTile(m['common.memory'](), formatMetricSize(metricLast(memoryValues)), formatMetricSize(metricPeak(memoryValues)), memoryValues, 'memory')}
+			{@render metricTile(m['vms.detail.metricsDiskIO'](), formatMetricRate(metricLast(diskValues)), formatMetricRate(metricPeak(diskValues)), diskValues, 'disk')}
+			{@render metricTile(m['vms.detail.metricsNetworkIO'](), formatMetricRate(metricLast(netValues)), formatMetricRate(metricPeak(netValues)), netValues, 'net')}
 		</div>
 	{/if}
 </Card>

@@ -537,6 +537,7 @@
   "vms.detail.metricsRangeWeek": "Woche",
   "vms.detail.metricsDiskIO": "Festplatten-E/A",
   "vms.detail.metricsNetworkIO": "Netzwerk-E/A",
+  "vms.detail.metricsPeak": "Spitze {value}",
   "vms.detail.metricsStreamReconnecting": "Verbindung wird wiederhergestellt…",
   "vms.detail.metricsStreamError": "Fehler im Live-Stream",
   "vms.detail.metricsStreamLive": "Live",
