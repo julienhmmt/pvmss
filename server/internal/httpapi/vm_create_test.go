@@ -381,7 +381,7 @@ func TestVMCreateCatalog_SelectsStorageClientByCluster(t *testing.T) {
 
 	_, authHandler, st := newVMCreateHandler(t)
 
-	cookie := loginCookie(t, authHandler, `{"username":"alice","password":"pvmss-alice"}`)
+	cookie := adminCookie(t, authHandler)
 
 	if err := st.SetStorageEnabled(
 		context.Background(),

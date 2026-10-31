@@ -42,7 +42,7 @@ func newDuplicateBridgeAdminHandler(t *testing.T) (*httpapi.AdminCatalog, *httpa
 	authHandler := newAuthHandler(t)
 	st := newAdminStore(t)
 	logger := slog.New(slog.NewTextHandler(testWriter{t}, nil))
-	handler := httpapi.NewAdminCatalog(authHandler, st, duplicateBridgeHTTPClient{}, nil, logger)
+	handler := httpapi.NewAdminCatalogWithRegistry(authHandler, st, singleClientProvider(duplicateBridgeHTTPClient{}), nil, logger)
 
 	return handler, authHandler
 }

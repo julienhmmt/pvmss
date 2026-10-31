@@ -149,7 +149,7 @@ func TestAdminNodeDetails_PartialFailureKeepsCachedSections(t *testing.T) {
 	index := inventory.BuildIndex(snapshot)
 	projection := inventory.NewProjectionFromIndex(&index)
 	client := nodeDetailFailureClient{Fake: fake, failHealth: true, failNetwork: true}
-	handler := httpapi.NewAdminCatalog(authHandler, st, client, projection, slog.New(slog.DiscardHandler))
+	handler := httpapi.NewAdminCatalogWithRegistry(authHandler, st, singleClientProvider(client), projection, slog.New(slog.DiscardHandler))
 	cookie := adminCookie(t, authHandler)
 	rec := adminGet(t, handler, authHandler, cookie, "/api/v1/admin/nodes/"+auditTestCluster+"/pve-node-01")
 	if rec.Code != http.StatusOK {

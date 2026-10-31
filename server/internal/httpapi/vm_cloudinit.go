@@ -62,14 +62,9 @@ func NewVMCloudInit(deps VMCloudInitDeps, services ...*policy.Policy) *VMCloudIn
 		policyService = policy.New(deps.Store, deps.Projection, nil)
 	}
 
-	resolver := vm.ClusterIndexResolver(singleClusterResolver{projection: deps.Projection})
-
-	var refreshers ClusterRefresherResolver
-
-	if registry, ok := deps.Source.(*inventory.Registry); ok {
-		resolver = registryResolver{registry: registry}
-		refreshers = registryRefresherResolver{registry: registry}
-	}
+	registry := depsSourceRegistry(deps.Source)
+	resolver := vm.ClusterIndexResolver(registryResolver{registry: registry})
+	refreshers := registryRefresherResolver{registry: registry}
 
 	return &VMCloudInit{projection: deps.Projection, resolver: resolver, auth: deps.Auth, reader: deps.Reader, writer: deps.Writer, statusReader: deps.StatusReader, clients: deps.Clients, store: deps.Store, refresher: deps.Refresher, refreshers: refreshers, policy: policyService, log: deps.Log}
 }

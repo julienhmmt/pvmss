@@ -384,7 +384,7 @@ func TestAdminTemplates_ListClusterUnreachableReturns503(t *testing.T) {
 	authHandler := newAuthHandler(t)
 	st := newAdminStore(t)
 	logger := slog.New(slog.NewTextHandler(testWriter{t}, nil))
-	handler := httpapi.NewAdminCatalog(authHandler, st, unreachableTemplateClient{}, nil, logger)
+	handler := httpapi.NewAdminCatalogWithRegistry(authHandler, st, singleClientProvider(unreachableTemplateClient{}), nil, logger)
 	cookie := adminCookie(t, authHandler)
 
 	rec := adminGet(t, handler, authHandler, cookie, "/api/v1/admin/templates?cluster=default")
@@ -466,7 +466,7 @@ func TestAdminTemplates_ToggleUnreadable(t *testing.T) {
 	authHandler := newAuthHandler(t)
 	st := newAdminStore(t)
 	logger := slog.New(slog.NewTextHandler(testWriter{t}, nil))
-	handler := httpapi.NewAdminCatalog(authHandler, st, unreadableTemplateHTTPClient{}, nil, logger)
+	handler := httpapi.NewAdminCatalogWithRegistry(authHandler, st, singleClientProvider(unreadableTemplateHTTPClient{}), nil, logger)
 	cookie := adminCookie(t, authHandler)
 
 	rec := adminPost(t, handler, authHandler, cookie, "/api/v1/admin/templates/toggle",

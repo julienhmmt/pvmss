@@ -25,13 +25,8 @@ type AdminCatalog struct {
 	trustedProxyHops int
 }
 
-// NewAdminCatalog creates the handler for all admin catalog endpoints. The
-// projection feeds tag counts and the single-cluster node detail fallback.
-func NewAdminCatalog(authHandler *Auth, st *store.Store, client cluster.Client, projection *inventory.Projection, log *slog.Logger) *AdminCatalog {
-	return &AdminCatalog{auth: authHandler, store: st, client: client, projection: projection, inventory: projection, log: log}
-}
-
-// NewAdminCatalogWithRegistry creates catalog handlers with mandatory cluster selection.
+// NewAdminCatalogWithRegistry creates the handler for all admin catalog
+// endpoints with mandatory cluster selection; the projection feeds tag counts.
 func NewAdminCatalogWithRegistry(authHandler *Auth, st *store.Store, registry cluster.ClientProvider, projection *inventory.Projection, log *slog.Logger) *AdminCatalog {
 	return &AdminCatalog{auth: authHandler, store: st, projection: projection, inventory: projection, clusters: registry, clients: registry, log: log}
 }

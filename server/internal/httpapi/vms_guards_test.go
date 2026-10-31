@@ -7,7 +7,6 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"pvmss/server/internal/httpapi"
-	"pvmss/server/internal/inventory"
 	"testing"
 )
 
@@ -73,7 +72,7 @@ func errorCode(t *testing.T, body []byte) string {
 //nolint:paralleltest // serial: shared fake authentication state
 func TestVMs_ListBeforeFirstRefreshIsUnavailable(t *testing.T) {
 	authHandler := newAuthHandler(t)
-	handler := httpapi.NewVMs(inventory.NewProjection(), authHandler, testMaxListPageSize, testDefaultQuota, slog.New(slog.DiscardHandler))
+	handler := httpapi.NewVMsWithRegistry(emptyRegistry(), authHandler, testMaxListPageSize, testDefaultQuota, slog.New(slog.DiscardHandler), nil)
 
 	req := httptest.NewRequestWithContext(context.Background(), http.MethodGet, "/api/v1/vms", nil)
 	req.AddCookie(aliceCookie(t, authHandler))

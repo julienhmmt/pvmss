@@ -24,11 +24,6 @@ type ClusterRefresh struct {
 	log       *slog.Logger
 }
 
-// NewClusterRefresh creates the handler for the given refresher.
-func NewClusterRefresh(refresher *inventory.Refresher, log *slog.Logger) *ClusterRefresh {
-	return &ClusterRefresh{refresher: refresher, log: log}
-}
-
 // NewClusterRefreshWithRegistry creates the handler that scopes refreshes per
 // request cluster: a non-admin refreshes only the cluster it signed in to
 // (?cluster= is ignored); an admin may name one via ?cluster= and without it

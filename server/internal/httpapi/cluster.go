@@ -23,11 +23,6 @@ type ClusterNodes struct {
 	log        *slog.Logger
 }
 
-// NewClusterNodes creates the handler for the given inventory projection.
-func NewClusterNodes(projection *inventory.Projection, log *slog.Logger) *ClusterNodes {
-	return &ClusterNodes{projection: projection, log: log}
-}
-
 // NewClusterNodesWithRegistry creates the handler that scopes nodes per
 // request cluster: a non-admin always sees the cluster it signed in to
 // (?cluster= is ignored); an admin may name one via ?cluster= and without it

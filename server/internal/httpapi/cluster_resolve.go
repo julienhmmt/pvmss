@@ -69,6 +69,10 @@ type registryRefresherResolver struct {
 }
 
 func (r registryRefresherResolver) RefresherFor(clusterName string) (vm.IndexRefresher, error) {
+	if r.registry == nil {
+		return nil, inventory.ErrClusterNotFound
+	}
+
 	return r.registry.Worker(clusterName)
 }
 

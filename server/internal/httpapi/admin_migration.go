@@ -41,16 +41,13 @@ type AdminMigrationRegistryDeps struct {
 // index and capability resolution keyed on the request's {cluster} path value.
 func NewAdminMigrationWithRegistry(deps AdminMigrationRegistryDeps) *AdminMigration {
 	handler := &AdminMigration{
-		resolver: singleClusterResolver{projection: deps.Projection},
+		resolver: registryResolver{registry: depsSourceRegistry(deps.Source)},
 		auth:     deps.Auth,
 		migrator: deps.Migrator,
 		status:   deps.Status,
 		clients:  deps.Clients,
 		store:    deps.Store,
 		log:      deps.Log,
-	}
-	if registry, ok := deps.Source.(*inventory.Registry); ok {
-		handler.resolver = registryResolver{registry: registry}
 	}
 
 	return handler

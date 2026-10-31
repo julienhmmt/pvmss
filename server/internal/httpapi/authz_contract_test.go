@@ -527,26 +527,26 @@ func newAuthzContractRouter(t *testing.T) (http.Handler, *httpapi.Auth) {
 	policyService := policy.New(st, projection, nil)
 
 	health := httpapi.NewHealth(authzFakePinger{}, logger, nil, 60*time.Second)
-	clusterNodes := httpapi.NewClusterNodes(projection, logger)
-	clusterRefresh := httpapi.NewClusterRefresh(refresher, logger)
-	vms := httpapi.NewVMs(projection, authHandler, 100, -1, logger)
-	vmDetail := httpapi.NewVMDetail(projection, authHandler, cluster.Fake{}, st, worker, logger)
+	clusterNodes := httpapi.NewClusterNodesWithRegistry(projectionRegistry(projection), newAuthHandler(t), logger)
+	clusterRefresh := httpapi.NewClusterRefreshWithRegistry(refreshRegistryFor(projection, refresher), nil, newAuthHandler(t), logger)
+	vms := httpapi.NewVMsWithRegistry(projectionRegistry(projection), authHandler, 100, -1, logger, nil)
+	vmDetail := httpapi.NewVMDetailWithRegistry(httpapi.VMDetailDeps{Source: projectionRegistry(projection), Projection: projection, Auth: authHandler, Writer: cluster.Fake{}, Store: st, Refresher: worker, Log: logger})
 	vmCloudInit := httpapi.NewVMCloudInit(httpapi.VMCloudInitDeps{
-		Projection: projection, Auth: authHandler, Reader: cluster.Fake{}, Writer: cluster.Fake{},
+		Source: projectionRegistry(projection), Projection: projection, Auth: authHandler, Reader: cluster.Fake{}, Writer: cluster.Fake{},
 		Store: st, Refresher: worker, Log: logger,
 	})
-	vmBulk := httpapi.NewVMBulk(projection, authHandler, cluster.Fake{}, st, worker, logger)
-	vmStatusBatch := httpapi.NewVMStatusBatchSingle(projection, authHandler, cluster.Fake{}, logger)
-	vmCreate := httpapi.NewVMCreate(authHandler, st, cluster.Fake{}, cluster.Fake{}, logger, policyService)
-	vmConsole := httpapi.NewVMConsole(projection, authHandler, consoleRelayStub{}, vm.NewConsoleTicketStore(), st, logger)
-	vmSerial := httpapi.NewVMSerialConsole(projection, authHandler, terminalRelayStub{}, vm.NewConsoleTicketStore(), st, logger)
-	vmSnapshots := httpapi.NewVMSnapshots(projection, authHandler, cluster.Fake{}, cluster.Fake{}, st, logger)
-	vmMetrics := httpapi.NewVMMetrics(projection, authHandler, cluster.Fake{}, cluster.Fake{}, logger)
+	vmBulk := httpapi.NewVMBulkWithRegistry(httpapi.VMBulkRegistryDeps{Registry: projectionRegistry(projection), Projection: projection, Auth: authHandler, Writer: cluster.Fake{}, Store: st, Refresher: worker, Log: logger})
+	vmStatusBatch := httpapi.NewVMStatusBatch(httpapi.VMStatusBatchDeps{Source: projectionRegistry(projection), Auth: authHandler, StatusReader: cluster.Fake{}, Log: logger})
+	vmCreate := httpapi.NewVMCreateWithRegistry(authHandler, st, singleClientProvider(cluster.Fake{}), cluster.Fake{}, logger, policyService)
+	vmConsole := httpapi.NewVMConsoleWithRegistry(httpapi.VMConsoleRegistryDeps{Source: projectionRegistry(projection), Projection: projection, Auth: authHandler, Relay: consoleRelayStub{}, Tickets: vm.NewConsoleTicketStore(), Store: st, Log: logger})
+	vmSerial := httpapi.NewVMSerialConsoleWithRegistry(httpapi.VMSerialConsoleRegistryDeps{Source: projectionRegistry(projection), Projection: projection, Auth: authHandler, Relay: terminalRelayStub{}, Tickets: vm.NewConsoleTicketStore(), Store: st, Log: logger})
+	vmSnapshots := httpapi.NewVMSnapshotsWithRegistry(httpapi.VMSnapshotsRegistryDeps{Source: projectionRegistry(projection), Projection: projection, Auth: authHandler, Reader: cluster.Fake{}, Writer: cluster.Fake{}, Store: st, Log: logger})
+	vmMetrics := httpapi.NewVMMetricsWithRegistry(projectionRegistry(projection), projection, authHandler, cluster.Fake{}, cluster.Fake{}, nil, logger)
 
-	adminCatalog := httpapi.NewAdminCatalog(authHandler, st, cluster.Fake{}, projection, logger)
-	adminPolicy := httpapi.NewAdminPolicy(authHandler, policyService, logger)
-	adminPools := httpapi.NewAdminPools(httpapi.AdminPoolsDeps{
-		Auth: authHandler, Client: cluster.Fake{}, Projection: projection, Writer: cluster.Fake{},
+	adminCatalog := httpapi.NewAdminCatalogWithRegistry(authHandler, st, singleClientProvider(cluster.Fake{}), projection, logger)
+	adminPolicy := httpapi.NewAdminPolicyWithRegistry(authHandler, policyService, singleClientProvider(cluster.Fake{}), logger)
+	adminPools := httpapi.NewAdminPoolsWithRegistry(httpapi.AdminPoolsRegistryDeps{
+		Auth: authHandler, Clients: singleClientProvider(cluster.Fake{}), Source: projectionRegistry(projection), Projection: projection, Writer: cluster.Fake{},
 		Audit: st, Refresher: worker, Store: st, Log: logger,
 	})
 	adminOps := httpapi.NewAdminOps(authHandler, st, projection, "0.4.0-test", logger)
@@ -556,7 +556,7 @@ func newAuthzContractRouter(t *testing.T) (http.Handler, *httpapi.Auth) {
 	docs := httpapi.NewDocsAPIHandler(authHandler, st, logger)
 	adminDocs := httpapi.NewAdminDocs(authHandler, st, docs, logger)
 	profileSSHKeys := httpapi.NewProfileSSHKeys(authHandler, st, logger)
-	adminMigration := httpapi.NewAdminMigrationWithRegistry(httpapi.AdminMigrationRegistryDeps{Projection: projection, Auth: authHandler, Migrator: cluster.Fake{}, Status: cluster.Fake{}, Store: st, Log: logger})
+	adminMigration := httpapi.NewAdminMigrationWithRegistry(httpapi.AdminMigrationRegistryDeps{Source: projectionRegistry(projection), Projection: projection, Auth: authHandler, Migrator: cluster.Fake{}, Status: cluster.Fake{}, Store: st, Log: logger})
 	adminAccounts := httpapi.NewAdminAccounts(authHandler, st, 5, logger)
 
 	mux := httpapi.NewRouter(httpapi.RouterConfig{

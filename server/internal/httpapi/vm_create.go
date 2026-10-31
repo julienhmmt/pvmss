@@ -139,17 +139,12 @@ func NewVMCreateWithRegistry(
 	log *slog.Logger,
 	services ...*policy.Policy,
 ) *VMCreate {
-	handler := NewVMCreate(
-		authHandler,
-		st,
-		nil,
-		creator,
-		log,
-		services...,
-	)
-	handler.clients = clients
+	var policyService *policy.Policy
+	if len(services) > 0 {
+		policyService = services[0]
+	}
 
-	return handler
+	return &VMCreate{auth: authHandler, store: st, clients: clients, creator: creator, policy: policyService, log: log}
 }
 
 // SetTrustedProxyHops configures how many X-Forwarded-For hops to trust for

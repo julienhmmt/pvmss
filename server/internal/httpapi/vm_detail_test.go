@@ -108,7 +108,7 @@ func newVMDetailHandler(t *testing.T) (*httpapi.VMDetail, *httpapi.Auth, *invent
 	// Production wiring: post-write refreshes go through the Refresher, so the
 	// fixture must too - a bare Worker skips the guard and hides stale projections.
 	refresher := inventory.NewRefresher(worker, time.Minute)
-	handler := httpapi.NewVMDetail(projection, authHandler, cluster.Fake{}, st, refresher, logger)
+	handler := httpapi.NewVMDetailWithRegistry(httpapi.VMDetailDeps{Source: projectionRegistry(projection), Projection: projection, Auth: authHandler, Writer: cluster.Fake{}, Store: st, Refresher: refresher, Log: logger})
 
 	return handler, authHandler, projection, st
 }

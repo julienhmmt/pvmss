@@ -29,22 +29,6 @@ type VMSnapshots struct {
 	log        *slog.Logger
 }
 
-// NewVMSnapshots creates the snapshot handler with the Resolve projection,
-// bound to a single cluster. Use NewVMSnapshotsWithRegistry for multi-cluster
-// deployments.
-//
-//nolint:wsl_v5 // snapshot request boundaries keep validation and dispatch adjacent
-func NewVMSnapshots(projection *inventory.Projection, authHandler *Auth, reader cluster.SnapshotReader, writer cluster.SnapshotWriter, st *store.Store, log *slog.Logger, services ...*policy.Policy) *VMSnapshots {
-	var policyService *policy.Policy
-	if len(services) > 0 {
-		policyService = services[0]
-	}
-	if policyService == nil && st != nil {
-		policyService = policy.New(st, projection, nil)
-	}
-	return &VMSnapshots{projection: projection, resolver: singleClusterResolver{projection: projection}, auth: authHandler, reader: reader, writer: writer, store: st, policy: policyService, log: log}
-}
-
 // VMSnapshotsRegistryDeps groups the collaborators NewVMSnapshotsWithRegistry
 // needs for multi-cluster wiring. Bundling them keeps the parameter count
 // under go:S107 without losing the optional-policy-services variadic contract.
@@ -64,14 +48,15 @@ type VMSnapshotsRegistryDeps struct {
 // index and cluster.SnapshotReader/Writer resolution, keyed on the request's
 // own :cluster path value.
 func NewVMSnapshotsWithRegistry(deps VMSnapshotsRegistryDeps) *VMSnapshots {
-	handler := NewVMSnapshots(deps.Projection, deps.Auth, deps.Reader, deps.Writer, deps.Store, deps.Log, deps.Services...)
-	if registry, ok := deps.Source.(*inventory.Registry); ok {
-		handler.resolver = registryResolver{registry: registry}
+	var policyService *policy.Policy
+	if len(deps.Services) > 0 {
+		policyService = deps.Services[0]
+	}
+	if policyService == nil && deps.Store != nil {
+		policyService = policy.New(deps.Store, deps.Projection, nil)
 	}
 
-	handler.clients = deps.Clients
-
-	return handler
+	return &VMSnapshots{projection: deps.Projection, resolver: registryResolver{registry: depsSourceRegistry(deps.Source)}, auth: deps.Auth, reader: deps.Reader, writer: deps.Writer, store: deps.Store, clients: deps.Clients, policy: policyService, log: deps.Log}
 }
 
 type snapshotCreateRequest struct {
