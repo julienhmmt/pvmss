@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { tick } from 'svelte';
-	import { getVmCreateContext, gabaritCeiling, memoryLabel, type SimpleSource } from './create.svelte';
+	import { getVmCreateContext, memoryLabel, type SimpleSource } from './create.svelte';
 	import { getTaskTrayContext } from '#lib/features/tasks/tasks.svelte.js';
 	import { getTaskOutcomeLedgerContext } from '#lib/features/tasks/task-outcome-ledger.svelte.js';
 	import { handleAccepted } from './post-submit';
@@ -30,7 +30,6 @@
 	const outcomeLedger = getTaskOutcomeLedgerContext();
 
 	const hasTemplates = $derived((form.catalog?.templates ?? []).length > 0);
-	const hasProfiles = $derived(form.hasProfiles());
 
 	const catalogTags = $derived(form.catalog?.tags ?? []);
 	const selectedTags = $derived(new Set(form.selectedTags()));

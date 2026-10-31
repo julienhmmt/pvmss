@@ -5,12 +5,6 @@
 	import FormField from '#lib/shared/ui/FormField.svelte';
 	import TextField from '#lib/shared/ui/TextField.svelte';
 
-	interface Props {
-		showErrors?: boolean;
-	}
-
-	let { showErrors = false }: Props = $props();
-
 	// Hardware step: vCPU and memory. Client-side bounds are a convenience
 	// only - the server re-checks against the same ceiling (constitution VI).
 	const form = getVmCreateContext();

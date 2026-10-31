@@ -251,7 +251,7 @@
 			{#if current === 'Base'}
 				<StepBase showErrors={stepAttempted.Base} />
 			{:else if current === 'Hardware'}
-				<StepHardware showErrors={stepAttempted.Hardware} />
+				<StepHardware />
 			{:else if current === 'Disk'}
 				<StepDisk showErrors={stepAttempted.Disk} />
 			{:else if current === 'Network'}

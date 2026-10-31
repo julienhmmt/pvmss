@@ -12,7 +12,6 @@
 	import { setVmDetailContext } from '#lib/features/vms/detail.svelte.js';
 	import VmActionBar from '#lib/features/vms/VmActionBar.svelte';
 	import Pill from '#lib/shared/ui/Pill.svelte';
-	import CopyButton from '#lib/shared/ui/CopyButton.svelte';
 	import { m } from '#lib/paraglide/messages.js';
 
 	/** Live-status poll cadence while the console is open. */
