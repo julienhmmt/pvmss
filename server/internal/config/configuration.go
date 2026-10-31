@@ -64,6 +64,11 @@ type Configuration struct {
 	TLSKeyFile      string
 	TLSClientCAFile string
 	TLSClientAuth   string
+	// SIEM syslog sink (PVMSS_SYSLOG_*). An empty SyslogAddr keeps it off.
+	SyslogAddr        string
+	SyslogTLSCAFile   string
+	SyslogTLSCertFile string
+	SyslogTLSKeyFile  string
 	// DeprecatedSSHEnv lists retired SSH publishing variables that were set
 	// and are ignored (PVMSS_SSH_KEY_FILE, PVMSS_SSH_USER, PVMSS_SSH_PORT).
 	// Startup logs a warning for each: cloud-init files are now pasted by

@@ -169,6 +169,7 @@ Clusters have two names. The **id** (`clusters.name`, e.g. `default` for the env
 | Env-only configuration validated at boot (fail fast)                                                                  | `server/internal/config`                                                     | ✅     |
 | SQLite (pure Go, CGO-free) with migrations; one file to back up                                                       | `PVMSS_DB_PATH`                                                              | ✅     |
 | Structured `slog` logging, console or JSON, stdout/stderr/file                                                        | `LOG_*`                                                                      | ✅     |
+| SIEM syslog sink (RFC 5424 over TLS, RFC 5425 framing), optional                                                      | `PVMSS_SYSLOG_*`, `make up-siem`, see [observability.md](observability.md)   | ✅     |
 | Health endpoint                                                                                                       | `GET /health`                                                                | ✅     |
 | Public version endpoint                                                                                               | `GET /api/v1/public/version`                                                 | ✅     |
 | Prometheus metrics (optional separate listener) and OpenTelemetry tracing / OTLP export                               | `PVMSS_METRICS_PORT`, `OTEL_*`, see [observability.md](observability.md)     | ✅     |

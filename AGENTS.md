@@ -220,6 +220,10 @@ cluster on first boot only; afterwards the admin UI owns clusters.
 | `PVMSS_TLS_CERT_FILE` / `PVMSS_TLS_KEY_FILE`  | empty (plain HTTP); both set = HTTPS listener                   |
 | `PVMSS_TLS_CLIENT_CA_FILE`                    | empty; set = mutual TLS (advised, `docs/tls.md`)                |
 | `PVMSS_TLS_CLIENT_AUTH`                       | `require` (or `optional`); needs the client CA                  |
+| `PVMSS_SYSLOG_ADDR`                           | `host:port` of the SIEM receiver (RFC 5425 TLS). Empty: off.   |
+| `PVMSS_SYSLOG_TLS_CA_FILE`                    | PEM CA for the receiver certificate; empty uses system roots.   |
+| `PVMSS_SYSLOG_TLS_CERT_FILE`                  | Client cert for mutual TLS; needs `PVMSS_SYSLOG_TLS_KEY_FILE`.  |
+| `PVMSS_SYSLOG_TLS_KEY_FILE`                   | Client key for mutual TLS; needs `PVMSS_SYSLOG_TLS_CERT_FILE`.  |
 
 Tracing/OTLP use the standard `OTEL_*` variables read by the SDK (see
 `docs/observability.md`). `LOG_LEVEL` is only the startup level; admins can
@@ -274,6 +278,9 @@ Binding for all server code. Operator detail lives in `docs/observability.md`.
   `action`, `result`, `status` (+ otelhttp semconv). Never `vmid`, `user`,
   `node`.
 - Enforced by `sloglint` in `server/.golangci.yml`.
+
+The syslog sink (`server/internal/config/syslog*.go`) reuses the records above,
+so it must not add fields: a new attribute reaches stdout and the SIEM together.
 
 ## CI
 
