@@ -12,7 +12,6 @@ import (
 	"pvmss/server/internal/inventory"
 	"pvmss/server/internal/logctx"
 	"pvmss/server/internal/store"
-	"regexp"
 	"time"
 )
 
@@ -53,11 +52,7 @@ type adminClusterDTO struct {
 	ProxmoxVersion        *string `json:"proxmoxVersion"`
 	NodeCount             int     `json:"nodeCount"`
 	VMCount               int     `json:"vmCount"`
-	SnippetStorage        string  `json:"snippetStorage"`
 	TLS                   tlsDTO  `json:"tls"`
-	// CloudInitWriteEnabled is true when a snippet storage is selected:
-	// admin cloud-init documents are then offered (files pasted by hand).
-	CloudInitWriteEnabled bool `json:"cloudInitWriteEnabled"`
 }
 
 type createClusterRequest struct {
@@ -68,7 +63,6 @@ type createClusterRequest struct {
 	TokenID               string      `json:"tokenId"`
 	TokenSecret           string      `json:"tokenSecret"`
 	TLS                   *tlsRequest `json:"tls"`
-	snippetSettings
 }
 
 type updateClusterRequest struct {
@@ -78,26 +72,6 @@ type updateClusterRequest struct {
 	TokenID               string      `json:"tokenId"`
 	TokenSecret           string      `json:"tokenSecret"`
 	TLS                   *tlsRequest `json:"tls"`
-	snippetSettings
-}
-
-// snippetSettings are the cloud-init fields shared by the create and
-// update requests.
-type snippetSettings struct {
-	SnippetStorage string `json:"snippetStorage"`
-}
-
-// snippetStorageIDRE is the storage-id grammar - the same shape
-// Proxmox itself accepts for a storage identifier.
-var snippetStorageIDRE = regexp.MustCompile(`^[A-Za-z][A-Za-z0-9_.-]*$`)
-
-// validateSnippetSettings checks the cloud-init settings. Returns the
-// message for a 400 invalid_request, or "".
-func validateSnippetSettings(s snippetSettings) string {
-	if s.SnippetStorage != "" && !snippetStorageIDRE.MatchString(s.SnippetStorage) {
-		return "snippetStorage is not a valid storage id"
-	}
-	return ""
 }
 
 type testClusterResponse struct {
@@ -137,10 +111,6 @@ func (handler *AdminClusters) ServeCreate(w http.ResponseWriter, r *http.Request
 		writeAdminError(w, http.StatusBadRequest, "invalid_request", "invalid cluster request")
 		return
 	}
-	if msg := validateSnippetSettings(request.snippetSettings); msg != "" {
-		writeAdminError(w, http.StatusBadRequest, "invalid_request", msg)
-		return
-	}
 	tlsMaterial, err := resolveTLS(store.ClusterTLS{}, request.TLS)
 	if err != nil {
 		writeAdminError(w, http.StatusBadRequest, "invalid_tls", err.Error())
@@ -151,11 +121,6 @@ func (handler *AdminClusters) ServeCreate(w http.ResponseWriter, r *http.Request
 		handler.writeStoreFailure(w, err)
 		return
 	}
-	if err := handler.store.SetClusterSnippetStorage(r.Context(), row.Name, request.SnippetStorage); err != nil {
-		handler.writeStoreFailure(w, err)
-		return
-	}
-	row.SnippetStorage = request.SnippetStorage
 	if err := handler.store.SetClusterTLS(r.Context(), row.Name, tlsMaterial); err != nil {
 		handler.writeStoreFailure(w, err)
 		return
@@ -173,21 +138,15 @@ func (handler *AdminClusters) ServeCreate(w http.ResponseWriter, r *http.Request
 	}
 	handler.recordAdminAction(r, "admin.clusters.create", "cluster", created.Name,
 		"created cluster "+created.Name,
-		[]any{map[string]any{auditKeyName: created.Name, "url": created.URL, "tlsInsecureSkipVerify": created.TLSInsecureSkipVerify, "tokenId": created.TokenID, "snippetStorage": created.SnippetStorage}})
+		[]any{map[string]any{auditKeyName: created.Name, "url": created.URL, "tlsInsecureSkipVerify": created.TLSInsecureSkipVerify, "tokenId": created.TokenID}})
 	writeAdminJSON(w, http.StatusCreated, handler.clusterDTO(created))
 }
 
 // ServeUpdate handles PUT /api/v1/admin/clusters/:name without accepting a name field.
-//
-//nolint:gocyclo // sequential validation of optional fields
 func (handler *AdminClusters) ServeUpdate(w http.ResponseWriter, r *http.Request) {
 	var request updateClusterRequest
 	if err := decodeJSON(w, r, &request); err != nil {
 		writeAdminError(w, http.StatusBadRequest, "invalid_request", "invalid cluster request")
-		return
-	}
-	if msg := validateSnippetSettings(request.snippetSettings); msg != "" {
-		writeAdminError(w, http.StatusBadRequest, "invalid_request", msg)
 		return
 	}
 	name := r.PathValue("name")
@@ -221,10 +180,6 @@ func (handler *AdminClusters) ServeUpdate(w http.ResponseWriter, r *http.Request
 		handler.writeStoreFailure(w, err)
 		return
 	}
-	if err := handler.store.SetClusterSnippetStorage(r.Context(), name, request.SnippetStorage); err != nil {
-		handler.writeStoreFailure(w, err)
-		return
-	}
 	// Re-fetch the stored row so the registry factory receives the decrypted
 	// token secret. The HTTP request omits TokenSecret on edit (the field is
 	// only required on create), so the in-memory row above has it empty -
@@ -247,7 +202,7 @@ func (handler *AdminClusters) ServeUpdate(w http.ResponseWriter, r *http.Request
 	}
 	handler.recordAdminAction(r, "admin.clusters.update", "cluster", name,
 		"updated cluster "+name,
-		[]any{map[string]any{auditKeyName: name, "url": updated.URL, "tlsInsecureSkipVerify": updated.TLSInsecureSkipVerify, "tokenId": updated.TokenID, "snippetStorage": updated.SnippetStorage}})
+		[]any{map[string]any{auditKeyName: name, "url": updated.URL, "tlsInsecureSkipVerify": updated.TLSInsecureSkipVerify, "tokenId": updated.TokenID}})
 	writeAdminJSON(w, http.StatusOK, handler.clusterDTO(updated))
 }
 
@@ -450,7 +405,7 @@ func (handler *AdminClusters) clusterDTO(row store.ClusterRow) adminClusterDTO {
 		TokenSet: row.TokenSecret != "", RemovedAt: formatTime(row.RemovedAt),
 		LastTestStatus: lastTestStatus, LastTestAt: lastTestAt, LastTestMessage: lastTestMessage,
 		ProxmoxVersion: optionalValue(version), NodeCount: nodeCount, VMCount: vmCount,
-		SnippetStorage: row.SnippetStorage, TLS: toTLSDTO(row.TLS), CloudInitWriteEnabled: row.SnippetStorage != "",
+		TLS: toTLSDTO(row.TLS),
 	}
 }
 

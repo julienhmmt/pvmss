@@ -35,25 +35,12 @@ const (
 	metricsStreamRetryMs      = 3000
 )
 
-// NewVMMetrics creates the metrics handler bound to a single cluster. Use
-// NewVMMetricsWithRegistry for multi-cluster deployments.
-func NewVMMetrics(projection *inventory.Projection, authHandler *Auth, reader cluster.MetricsHistoryReader, currentReader cluster.MetricsCurrentReader, log *slog.Logger) *VMMetrics {
-	return &VMMetrics{projection: projection, resolver: singleClusterResolver{projection: projection}, auth: authHandler, reader: reader, currentReader: currentReader, log: log}
-}
-
 // NewVMMetricsWithRegistry creates the metrics handler with per-request
 // index and cluster reader resolution, keyed on the request's own :cluster
 // path value - the fix for the cross-cluster leak this endpoint's
 // single-client wiring surfaced.
 func NewVMMetricsWithRegistry(source inventory.LookupSource, projection *inventory.Projection, authHandler *Auth, reader cluster.MetricsHistoryReader, currentReader cluster.MetricsCurrentReader, clients cluster.ClientProvider, log *slog.Logger) *VMMetrics {
-	handler := NewVMMetrics(projection, authHandler, reader, currentReader, log)
-	if registry, ok := source.(*inventory.Registry); ok {
-		handler.resolver = registryResolver{registry: registry}
-	}
-
-	handler.clients = clients
-
-	return handler
+	return &VMMetrics{projection: projection, resolver: registryResolver{registry: depsSourceRegistry(source)}, auth: authHandler, reader: reader, currentReader: currentReader, clients: clients, log: log}
 }
 
 type metricsSampleDTO struct {

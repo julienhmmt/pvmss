@@ -38,12 +38,6 @@ type VMSerialConsole struct {
 	log        *slog.Logger
 }
 
-// NewVMSerialConsole creates the handler bound to a single cluster. Mirrors
-// NewVMConsole. Use NewVMSerialConsoleWithRegistry for multi-cluster.
-func NewVMSerialConsole(projection *inventory.Projection, authHandler *Auth, relay cluster.TerminalRelay, tickets *vm.ConsoleTicketStore, st *store.Store, log *slog.Logger) *VMSerialConsole {
-	return &VMSerialConsole{projection: projection, resolver: singleClusterResolver{projection: projection}, auth: authHandler, relay: relay, tickets: tickets, store: st, log: log}
-}
-
 // consoleEnv bundles this handler's shared collaborators for the shared
 // console ticket and websocket helpers.
 func (h *VMSerialConsole) consoleEnv() consoleEnv {
@@ -78,14 +72,7 @@ type VMSerialConsoleRegistryDeps struct {
 //
 // value. Mirrors NewVMConsoleWithRegistry.
 func NewVMSerialConsoleWithRegistry(deps VMSerialConsoleRegistryDeps) *VMSerialConsole {
-	handler := NewVMSerialConsole(deps.Projection, deps.Auth, deps.Relay, deps.Tickets, deps.Store, deps.Log)
-	if registry, ok := deps.Source.(*inventory.Registry); ok {
-		handler.resolver = registryResolver{registry: registry}
-	}
-
-	handler.clients = deps.Clients
-
-	return handler
+	return &VMSerialConsole{projection: deps.Projection, resolver: registryResolver{registry: depsSourceRegistry(deps.Source)}, auth: deps.Auth, relay: deps.Relay, clients: deps.Clients, tickets: deps.Tickets, store: deps.Store, log: deps.Log}
 }
 
 // ServeHTTP dispatches between the serial ticket endpoint and the serial

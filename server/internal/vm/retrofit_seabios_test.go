@@ -20,7 +20,7 @@ func TestRetrofitToSeaBIOS_HappyPath(t *testing.T) {
 
 	// Create a UEFI VM (explicit uefi=true), stopped.
 	uefi := true
-	req := imageRequest()
+	req := detailedRequest()
 	req.UEFI = &uefi
 	req.StartAfterCreate = false
 
@@ -87,7 +87,7 @@ func TestRetrofitToSeaBIOS_RefusesTPM(t *testing.T) {
 
 	// Create a UEFI VM with TPM.
 	uefi := true
-	req := imageRequest()
+	req := detailedRequest()
 	req.UEFI = &uefi
 	req.TPM = true
 	req.StartAfterCreate = false
@@ -131,7 +131,7 @@ func TestRetrofitToSeaBIOS_RefusesSecureBoot(t *testing.T) {
 	fixture := newCreateFixture(t)
 
 	uefi := true
-	req := imageRequest()
+	req := detailedRequest()
 	req.UEFI = &uefi
 	req.StartAfterCreate = false
 
@@ -168,7 +168,7 @@ func TestRetrofitToSeaBIOS_RunningRequiresConfirmation(t *testing.T) {
 	fixture := newCreateFixture(t)
 
 	uefi := true
-	req := imageRequest()
+	req := detailedRequest()
 	req.UEFI = &uefi
 	req.StartAfterCreate = true // running
 
@@ -210,7 +210,7 @@ func TestRetrofitToSeaBIOS_RunningWithConfirmStopsAndStarts(t *testing.T) {
 	fixture := newCreateFixture(t)
 
 	uefi := true
-	req := imageRequest()
+	req := detailedRequest()
 	req.UEFI = &uefi
 	req.StartAfterCreate = true // running
 

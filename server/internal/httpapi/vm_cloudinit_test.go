@@ -9,7 +9,6 @@ import (
 	"net/http/httptest"
 	"net/url"
 	"path/filepath"
-	"pvmss/server/internal/catalog"
 	"pvmss/server/internal/cluster"
 	"pvmss/server/internal/config"
 	"pvmss/server/internal/httpapi"
@@ -54,7 +53,7 @@ func newVMCloudInitHandlerDeps(t *testing.T, writer cluster.Writer, status clust
 	t.Cleanup(func() { _ = st.Close() })
 	logger := slog.New(slog.NewTextHandler(testWriter{t}, nil))
 	worker := inventory.NewWorker(cluster.Fake{}, projection, time.Hour, logger)
-	handler := httpapi.NewVMCloudInit(httpapi.VMCloudInitDeps{Projection: projection, Auth: authHandler, Reader: cluster.Fake{}, Writer: writer, StatusReader: status, Store: st, Refresher: worker, Log: logger})
+	handler := httpapi.NewVMCloudInit(httpapi.VMCloudInitDeps{Source: projectionRegistry(projection), Projection: projection, Auth: authHandler, Reader: cluster.Fake{}, Writer: writer, StatusReader: status, Store: st, Refresher: worker, Log: logger})
 
 	return handler, authHandler, st
 }
@@ -100,19 +99,16 @@ func TestVMCloudInit_ConfigAuthorizationAndValidation(t *testing.T) {
 		name   string
 		cookie *http.Cookie
 		path   string
-		body   string
 		status int
 		code   string
 	}{
-		{name: "non owner", cookie: bobCookie(t, authHandler), path: cloudInitConfigPath, body: `{"user":"x"}`, status: http.StatusForbidden, code: apiCodeForbidden},
-		{name: "untagged", cookie: aliceCookie(t, authHandler), path: "/api/v1/vms/default/109/cloudinit", body: `{"user":"x"}`, status: http.StatusNotFound, code: apiCodeNotFound},
-		{name: "invalid static", cookie: aliceCookie(t, authHandler), path: cloudInitConfigPath, body: `{"ipMode":"invalid"}`, status: http.StatusBadRequest, code: "invalid_config"},
-		{name: "forged node", cookie: aliceCookie(t, authHandler), path: cloudInitConfigPath, body: `{"user":"x","node":"evil"}`, status: http.StatusBadRequest, code: "invalid_config"},
+		{name: "non owner", cookie: bobCookie(t, authHandler), path: cloudInitConfigPath, status: http.StatusForbidden, code: apiCodeForbidden},
+		{name: "untagged", cookie: aliceCookie(t, authHandler), path: "/api/v1/vms/default/109/cloudinit", status: http.StatusNotFound, code: apiCodeNotFound},
 	}
 	for _, tt := range cases {
 		t.Run(tt.name, func(t *testing.T) {
 			recorder := httptest.NewRecorder()
-			handler.ServeHTTP(recorder, cloudInitRequest(http.MethodPut, tt.path, tt.body, tt.cookie))
+			handler.ServeHTTP(recorder, cloudInitRequest(http.MethodGet, tt.path, ``, tt.cookie))
 
 			if recorder.Code != tt.status {
 				t.Fatalf("status = %d, want %d: %s", recorder.Code, tt.status, recorder.Body.String())
@@ -120,108 +116,6 @@ func TestVMCloudInit_ConfigAuthorizationAndValidation(t *testing.T) {
 
 			assertAPIError(t, recorder.Body.Bytes(), tt.code)
 		})
-	}
-}
-
-//nolint:paralleltest // serial: shared fake VM and SQLite fixtures
-func TestVMCloudInit_AdminCanUpdateAnyTaggedVM(t *testing.T) {
-	handler, authHandler, _ := newVMCloudInitHandler(t)
-	recorder := httptest.NewRecorder()
-	handler.ServeHTTP(recorder, cloudInitRequest(http.MethodPut, "/api/v1/vms/default/103/cloudinit", `{"user":"admin-updated"}`, adminCookie(t, authHandler)))
-
-	if recorder.Code != http.StatusOK {
-		t.Fatalf("status = %d, want 200: %s", recorder.Code, recorder.Body.String())
-	}
-}
-
-//nolint:paralleltest // serial: shared fake VM and SQLite fixtures
-func TestVMCloudInit_AddSSHKey(t *testing.T) {
-	handler, authHandler, _ := newVMCloudInitHandler(t)
-	path := "/api/v1/vms/default/101/cloudinit/ssh-keys"
-
-	t.Run("unauthenticated", func(t *testing.T) {
-		recorder := httptest.NewRecorder()
-		handler.ServeHTTP(recorder, cloudInitRequest(http.MethodPost, path, `{"key":"ssh-ed25519 AAAA x"}`, nil))
-
-		if recorder.Code != http.StatusUnauthorized {
-			t.Fatalf("status = %d, want 401", recorder.Code)
-		}
-	})
-
-	t.Run("forbidden non owner", func(t *testing.T) {
-		recorder := httptest.NewRecorder()
-		handler.ServeHTTP(recorder, cloudInitRequest(http.MethodPost, path, `{"key":"ssh-ed25519 AAAA x"}`, bobCookie(t, authHandler)))
-
-		if recorder.Code != http.StatusForbidden {
-			t.Fatalf("status = %d, want 403", recorder.Code)
-		}
-	})
-
-	t.Run("invalid key rejected before agent", func(t *testing.T) {
-		recorder := httptest.NewRecorder()
-		handler.ServeHTTP(recorder, cloudInitRequest(http.MethodPost, path, `{"key":"ssh-rsa AAAA\ninjected"}`, aliceCookie(t, authHandler)))
-
-		if recorder.Code != http.StatusBadRequest {
-			t.Fatalf("status = %d, want 400", recorder.Code)
-		}
-
-		assertAPIError(t, recorder.Body.Bytes(), "invalid_key")
-
-		if len(cluster.FakeCallsFor(101)) != 0 {
-			t.Fatalf("invalid key reached fake: %+v", cluster.FakeCallsFor(101))
-		}
-	})
-
-	t.Run("injects valid key", func(t *testing.T) {
-		startFakeVM101(t)
-		assertSSHKeyInjected(t, handler, path, authHandler)
-	})
-
-	t.Run("agent failure maps to bad gateway", func(t *testing.T) {
-		cluster.SetFakeSSHKeyError(cluster.ErrUnreachable)
-
-		recorder := httptest.NewRecorder()
-		handler.ServeHTTP(recorder, cloudInitRequest(http.MethodPost, path, `{"key":"ssh-ed25519 AAAA x"}`, aliceCookie(t, authHandler)))
-
-		if recorder.Code != http.StatusBadGateway {
-			t.Fatalf("status = %d, want 502", recorder.Code)
-		}
-	})
-}
-
-// startFakeVM101 starts VM 101; the fake creates it stopped.
-func startFakeVM101(t *testing.T) {
-	t.Helper()
-
-	if err := (cluster.Fake{}).Action(context.Background(), cluster.FakeNode01, 101, "start"); err != nil {
-		t.Fatalf("start VM 101: %v", err)
-	}
-}
-
-func assertSSHKeyInjected(t *testing.T, handler http.Handler, path string, authHandler *httpapi.Auth) {
-	t.Helper()
-
-	recorder := httptest.NewRecorder()
-	handler.ServeHTTP(recorder, cloudInitRequest(http.MethodPost, path, `{"user":"debian","key":"ssh-ed25519 AAAA x"}`, aliceCookie(t, authHandler)))
-
-	if recorder.Code != http.StatusOK {
-		t.Fatalf("status = %d, body = %s", recorder.Code, recorder.Body.String())
-	}
-
-	var sawAgent bool
-
-	for _, c := range cluster.FakeCallsFor(101) {
-		if c.Action == "add_ssh_key" {
-			sawAgent = true
-
-			if c.Content != "ssh-ed25519 AAAA x" || c.Name != "debian" {
-				t.Errorf("add_ssh_key call = %+v", c)
-			}
-		}
-	}
-
-	if !sawAgent {
-		t.Fatal("expected an add_ssh_key agent call")
 	}
 }
 
@@ -256,115 +150,13 @@ func TestVMCloudInit_ConsolePassword(t *testing.T) {
 // TestVMCloudInit_DocumentSwitch - a user switches the VM to a published
 // admin template (200), GET reports it, and "" detaches.
 //
-//nolint:paralleltest // serial: shared fake VM and SQLite fixtures
-func TestVMCloudInit_DocumentSwitch(t *testing.T) {
-	handler, authHandler, st := newVMCloudInitHandler(t)
-	cookie := aliceCookie(t, authHandler)
-	path := "/api/v1/vms/default/101/cloudinit/document"
-
-	get := func() map[string]any {
-		recorder := httptest.NewRecorder()
-		handler.ServeHTTP(recorder, cloudInitRequest(http.MethodGet, path, "", cookie))
-
-		if recorder.Code != http.StatusOK {
-			t.Fatalf("GET status = %d, body = %s", recorder.Code, recorder.Body.String())
-		}
-
-		var body map[string]any
-		if err := json.Unmarshal(recorder.Body.Bytes(), &body); err != nil {
-			t.Fatal(err)
-		}
-
-		return body
-	}
-
-	if body := get(); body["templateId"] != nil {
-		t.Fatalf("fresh templateId = %v, want null", body["templateId"])
-	}
-
-	tmplID := createCatalogTemplate(t, st)
-
-	recorder := httptest.NewRecorder()
-	handler.ServeHTTP(recorder, cloudInitRequest(http.MethodPut, path, `{"templateId":"`+tmplID+`"}`, cookie))
-
-	if recorder.Code != http.StatusOK {
-		t.Fatalf("switch status = %d, want 200, body = %s", recorder.Code, recorder.Body.String())
-	}
-
-	if body := get(); body["templateId"] != tmplID {
-		t.Fatalf("templateId = %v, want %q", body["templateId"], tmplID)
-	}
-
-	recorder = httptest.NewRecorder()
-	handler.ServeHTTP(recorder, cloudInitRequest(http.MethodPut, path, `{"templateId":""}`, cookie))
-
-	if recorder.Code != http.StatusOK {
-		t.Fatalf("detach status = %d, body = %s", recorder.Code, recorder.Body.String())
-	}
-
-	if body := get(); body["templateId"] != nil {
-		t.Fatalf("templateId after detach = %v, want null", body["templateId"])
-	}
-}
-
 // TestVMCloudInit_DocumentSwitch_Refusals - users cannot send YAML, and an
 // unpublished template is a 409.
 //
-//nolint:paralleltest // serial: shared fake VM and SQLite fixtures
-func TestVMCloudInit_DocumentSwitch_Refusals(t *testing.T) {
-	handler, authHandler, st := newVMCloudInitHandler(t)
-	cookie := aliceCookie(t, authHandler)
-	path := "/api/v1/vms/default/101/cloudinit/document"
-
-	recorder := httptest.NewRecorder()
-	handler.ServeHTTP(recorder, cloudInitRequest(http.MethodPut, path, `{"content":"#cloud-config\n"}`, cookie))
-
-	if recorder.Code != http.StatusBadRequest {
-		t.Fatalf("YAML body status = %d, want 400, body = %s", recorder.Code, recorder.Body.String())
-	}
-
-	if _, err := catalog.CreateCloudInitTemplate(context.Background(), st, auditTestCluster, "Draft", "#cloud-config\n"); err != nil {
-		t.Fatalf("CreateCloudInitTemplate: %v", err)
-	}
-
-	cluster.SetFakeSnippetVisibility(false) // file not pasted on the node
-	t.Cleanup(func() { cluster.SetFakeSnippetVisibility(true) })
-
-	recorder = httptest.NewRecorder()
-	handler.ServeHTTP(recorder, cloudInitRequest(http.MethodPut, path, `{"templateId":"draft"}`, cookie))
-
-	if recorder.Code != http.StatusConflict {
-		t.Fatalf("unpublished status = %d, want 409, body = %s", recorder.Code, recorder.Body.String())
-	}
-
-	assertAPIError(t, recorder.Body.Bytes(), "cloudinit_not_published")
-}
-
 // TestVMCloudInit_AddSSHKey_StoppedVM - injecting a key into a stopped guest is
 // refused with 409 vm_not_running before any agent call is made. The fake
 // starts VM 101 stopped.
 //
-//nolint:paralleltest // serial: shared fake VM and SQLite fixtures
-func TestVMCloudInit_AddSSHKey_StoppedVM(t *testing.T) {
-	handler, authHandler, _ := newVMCloudInitHandler(t)
-	path := "/api/v1/vms/default/101/cloudinit/ssh-keys"
-
-	recorder := httptest.NewRecorder()
-	handler.ServeHTTP(recorder, cloudInitRequest(http.MethodPost, path, `{"user":"claude","key":"ssh-ed25519 AAAA x"}`, aliceCookie(t, authHandler)))
-
-	if recorder.Code != http.StatusConflict {
-		t.Fatalf("status = %d, want 409; body = %s", recorder.Code, recorder.Body.String())
-	}
-
-	assertAPIError(t, recorder.Body.Bytes(), "vm_not_running")
-
-	for _, c := range cluster.FakeCallsFor(101) {
-		if c.Action == "add_ssh_key" {
-			t.Fatalf("agent called on a stopped VM: %+v", c)
-		}
-	}
-}
-
 // urlFailingAgentWriter answers the guest agent ping with the wrapped
 // *url.Error the Proxmox HTTP client produces when the node times out.
 type urlFailingAgentWriter struct{ cluster.Fake }

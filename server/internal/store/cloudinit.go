@@ -55,29 +55,6 @@ func (s *Store) GetCloudInitSnippet(ctx context.Context, cluster string, vmid in
 	return snippet, true, nil
 }
 
-// PutCloudInitSnippet upserts one snippet row. Empty content is retained to represent explicit clear.
-func (s *Store) PutCloudInitSnippet(ctx context.Context, cluster string, vmid int, storage, filename, content, actor string) error {
-	stamp := time.Now().UTC().Format(time.RFC3339Nano)
-
-	_, err := s.db.ExecContext(ctx,
-		`INSERT INTO vm_cloudinit_snippets
-			(cluster, vmid, content, storage, filename, updated_at, updated_by)
-		 VALUES (?, ?, ?, ?, ?, ?, ?)
-		 ON CONFLICT(cluster, vmid) DO UPDATE SET
-			content = excluded.content,
-			storage = excluded.storage,
-			filename = excluded.filename,
-			updated_at = excluded.updated_at,
-			updated_by = excluded.updated_by`,
-		cluster, vmid, content, storage, filename, stamp, actor,
-	)
-	if err != nil {
-		return fmt.Errorf("upsert cloud-init snippet: %w", err)
-	}
-
-	return nil
-}
-
 // DeleteCloudInitSnippet removes the VM's document row. No row is not an error.
 func (s *Store) DeleteCloudInitSnippet(ctx context.Context, cluster string, vmid int) error {
 	_, err := s.db.ExecContext(ctx,

@@ -5,7 +5,7 @@ import (
 	"testing"
 )
 
-var adminCatalogListResources = []string{"nodes", "storages", "bridges", "isos", "images", "templates", "snippet-storages"}
+var adminCatalogListResources = []string{"nodes", "storages", "bridges", "isos", "templates"}
 
 //nolint:paralleltest // serial: shared fake dataset and database fixture
 func TestAdminCatalogLists_RejectBadClusterAndAnonymous(t *testing.T) {
@@ -45,7 +45,6 @@ func TestAdminCatalogDeletes_UnknownRowIsNotFound(t *testing.T) {
 		"/api/v1/admin/storages/default/nope/nope",
 		"/api/v1/admin/bridges/default/nope/nope",
 		"/api/v1/admin/isos/default/nope/nope/nope.iso",
-		"/api/v1/admin/images/default/nope/nope/nope.qcow2",
 	}
 	for _, path := range paths {
 		t.Run(path, func(t *testing.T) {

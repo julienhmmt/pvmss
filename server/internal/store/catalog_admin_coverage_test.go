@@ -645,61 +645,7 @@ func TestCatalogProfilesEnabled_Empty(t *testing.T) {
 }
 
 //nolint:paralleltest // migration fixtures are intentionally serial
-func TestSetImageEnabled_AndList(t *testing.T) {
-	st := openClusterStore(t)
-	ctx := context.Background()
-
-	if err := st.SetImageEnabled(ctx, catalogTestCluster, catalogTestNode, catalogTestStorageHost, "ubuntu.qcow2", 2048, true); err != nil {
-		t.Fatalf("SetImageEnabled: %v", err)
-	}
-
-	images, err := st.CatalogImagesEnabled(ctx, catalogTestCluster)
-	if err != nil {
-		t.Fatalf("CatalogImagesEnabled: %v", err)
-	}
-
-	if len(images) != 1 {
-		t.Fatalf("images count = %d, want 1", len(images))
-	}
-
-	img := images[0]
-	if img.Node != catalogTestNode || img.Storage != catalogTestStorageHost || img.File != "ubuntu.qcow2" {
-		t.Errorf("image key = (%q, %q, %q)", img.Node, img.Storage, img.File)
-	}
-
-	if img.SizeBytes != 2048 {
-		t.Errorf("size_bytes = %d, want 2048", img.SizeBytes)
-	}
-
-	if !img.Enabled {
-		t.Error("enabled = false, want true")
-	}
-}
-
 //nolint:paralleltest // migration fixtures are intentionally serial
-func TestSetImageEnabled_Upsert(t *testing.T) {
-	st := openClusterStore(t)
-	ctx := context.Background()
-
-	if err := st.SetImageEnabled(ctx, catalogTestCluster, catalogTestNode, catalogTestStorageHost, "ubuntu.qcow2", 2048, true); err != nil {
-		t.Fatalf("SetImageEnabled: %v", err)
-	}
-
-	// Upsert flips enabled and refreshes the discovered size.
-	if err := st.SetImageEnabled(ctx, catalogTestCluster, catalogTestNode, catalogTestStorageHost, "ubuntu.qcow2", 4096, false); err != nil {
-		t.Fatalf("SetImageEnabled upsert: %v", err)
-	}
-
-	images, err := st.CatalogImagesEnabled(ctx, catalogTestCluster)
-	if err != nil {
-		t.Fatalf("CatalogImagesEnabled after upsert: %v", err)
-	}
-
-	if len(images) != 1 || images[0].Enabled || images[0].SizeBytes != 4096 {
-		t.Errorf("after upsert: %+v, want one disabled image of 4096 bytes", images)
-	}
-}
-
 //nolint:paralleltest // migration fixtures are intentionally serial
 func TestDeleteApprovals_SuccessAndNotFound(t *testing.T) {
 	st := openClusterStore(t)
@@ -742,15 +688,6 @@ func TestDeleteApprovals_SuccessAndNotFound(t *testing.T) {
 				return st.DeleteISO(ctx, catalogTestCluster, catalogTestNode, catalogTestStorageHost, catalogTestISOFile)
 			},
 		},
-		{
-			"image",
-			func() error {
-				return st.SetImageEnabled(ctx, catalogTestCluster, catalogTestNode, catalogTestStorageHost, "ubuntu.qcow2", 1024, true)
-			},
-			func() error {
-				return st.DeleteImage(ctx, catalogTestCluster, catalogTestNode, catalogTestStorageHost, "ubuntu.qcow2")
-			},
-		},
 	}
 
 	for _, tt := range seed {
@@ -776,7 +713,6 @@ func TestInsertTemplate_AndList(t *testing.T) {
 	values := store.TemplateValues{
 		Node:              catalogTestNode,
 		Name:              "debian-13-tmpl",
-		CloudInitCapable:  true,
 		DiskStorage:       catalogTestStorageName,
 		DiskSizeGB:        8,
 		DiskBus:           catalogTestStorageBus,
@@ -800,8 +736,8 @@ func TestInsertTemplate_AndList(t *testing.T) {
 		t.Errorf("template key = (%d, %q, %q)", tmpl.VMID, tmpl.Node, tmpl.Name)
 	}
 
-	if !tmpl.CloudInitCapable || !tmpl.OverrideDiscovery || !tmpl.Enabled {
-		t.Errorf("flags = capable:%v override:%v enabled:%v, want all true", tmpl.CloudInitCapable, tmpl.OverrideDiscovery, tmpl.Enabled)
+	if !tmpl.OverrideDiscovery || !tmpl.Enabled {
+		t.Errorf("flags = override:%v enabled:%v, want all true", tmpl.OverrideDiscovery, tmpl.Enabled)
 	}
 
 	if tmpl.DiskStorage != catalogTestStorageName || tmpl.DiskSizeGB != 8 || tmpl.DiskBus != catalogTestStorageBus {
@@ -837,7 +773,6 @@ func TestUpdateTemplate_SuccessAndNotFound(t *testing.T) {
 	updated := store.TemplateValues{
 		Node:              catalogTestNodeAlpha,
 		Name:              "tmpl-new",
-		CloudInitCapable:  true,
 		DiskStorage:       catalogTestStorageName,
 		DiskSizeGB:        16,
 		DiskBus:           catalogTestStorageBus,
@@ -922,20 +857,6 @@ func TestCatalogTemplatesEnabled_Empty(t *testing.T) {
 }
 
 //nolint:paralleltest // migration fixtures are intentionally serial
-func TestCatalogImagesEnabled_Empty(t *testing.T) {
-	st := openClusterStore(t)
-	ctx := context.Background()
-
-	images, err := st.CatalogImagesEnabled(ctx, catalogTestCluster)
-	if err != nil {
-		t.Fatalf("CatalogImagesEnabled: %v", err)
-	}
-
-	if len(images) != 0 {
-		t.Fatalf("images count = %d, want 0", len(images))
-	}
-}
-
 //nolint:paralleltest // migration fixtures are intentionally serial
 func TestCatalogEnabledFilters_NodesAndStorages(t *testing.T) {
 	st := openClusterStore(t)
@@ -986,15 +907,6 @@ func TestCatalogEnabledFilters_BridgesISOsAndImages(t *testing.T) {
 	if err != nil || len(isos) != 1 || isos[0].File != catalogTestISOFile {
 		t.Fatalf("CatalogISOs = %+v, %v", isos, err)
 	}
-
-	if err := st.SetImageEnabled(ctx, catalogTestCluster, catalogTestNode, catalogTestStorageHost, "ubuntu.qcow2", 2048, true); err != nil {
-		t.Fatalf("SetImageEnabled: %v", err)
-	}
-
-	images, err := st.CatalogImages(ctx, catalogTestCluster)
-	if err != nil || len(images) != 1 || images[0].SizeBytes != 2048 {
-		t.Fatalf("CatalogImages = %+v, %v", images, err)
-	}
 }
 
 //nolint:paralleltest // migration fixtures are intentionally serial
@@ -1012,13 +924,13 @@ func TestCatalogEnabledFilters_ProfilesAndTemplates(t *testing.T) {
 		t.Fatalf("CatalogProfiles = %+v, %v", profiles, err)
 	}
 
-	tmpl := store.TemplateValues{Node: catalogTestNode, Name: "debian-13", CloudInitCapable: true, DiskStorage: catalogTestStorageName, DiskSizeGB: 8, DiskBus: catalogTestStorageBus}
+	tmpl := store.TemplateValues{Node: catalogTestNode, Name: "debian-13", DiskStorage: catalogTestStorageName, DiskSizeGB: 8, DiskBus: catalogTestStorageBus}
 	if err := st.InsertTemplate(ctx, catalogTestCluster, 9001, tmpl, true); err != nil {
 		t.Fatalf("InsertTemplate: %v", err)
 	}
 
 	templates, err := st.CatalogTemplates(ctx, catalogTestCluster)
-	if err != nil || len(templates) != 1 || !templates[0].CloudInitCapable {
+	if err != nil || len(templates) != 1 || templates[0].Name != "debian-13" {
 		t.Fatalf("CatalogTemplates = %+v, %v", templates, err)
 	}
 }

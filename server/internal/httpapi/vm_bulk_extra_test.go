@@ -53,9 +53,9 @@ func TestVMBulk_InvalidBody(t *testing.T) {
 }
 
 // TestVMBulk_NilInventoryProducesErrorEntry - when the projection was never
-// populated, singleClusterResolver.IndexFor returns an error and BulkAction
+// populated, registryResolver.IndexFor returns an error and BulkAction
 // records one "error" entry per target (the batch never fails as a whole).
-// This covers the nil-index branch of singleClusterResolver.IndexFor.
+// This covers the nil-index branch of registryResolver.IndexFor.
 //
 //nolint:paralleltest // serial: shared fake authentication state
 func TestVMBulk_NilInventoryProducesErrorEntry(t *testing.T) {
@@ -77,7 +77,7 @@ func TestVMBulk_NilInventoryProducesErrorEntry(t *testing.T) {
 	t.Cleanup(func() { _ = st.Close() })
 
 	projection := inventory.NewProjection()
-	handler := httpapi.NewVMBulk(projection, authHandler, cluster.Fake{}, st, bulkNoopRefresher{}, logger)
+	handler := httpapi.NewVMBulkWithRegistry(httpapi.VMBulkRegistryDeps{Registry: projectionRegistry(projection), Projection: projection, Auth: authHandler, Writer: cluster.Fake{}, Store: st, Refresher: bulkNoopRefresher{}, Log: logger})
 	cookie := aliceCookie(t, authHandler)
 
 	rec, resp := serveBulk(handler, bulkRequest(bulkBody("start", bulkTargets(101)), cookie))

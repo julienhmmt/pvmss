@@ -32,31 +32,25 @@ type VMBulk struct {
 	log               *slog.Logger
 }
 
-// singleClusterResolver adapts a default projection to the
-// ClusterIndexResolver interface - every target resolves against this one
-// projection's current Index, keyed under whatever cluster name the target
-// carries. This is the single-cluster wiring; NewVMBulkWithRegistry supplies
-// the multi-cluster variant.
-type singleClusterResolver struct {
-	projection *inventory.Projection
-}
-
-func (r singleClusterResolver) IndexFor(_ string) (*inventory.Index, error) {
-	// A nil Index is reported via a nil error, not an error value - same
-	// contract as registryResolver.IndexFor (inventory.Registry.Index
-	// returns (nil, nil) for a known-but-not-yet-populated cluster). Callers
-	//  that only distinguish "err!= nil" (unknown cluster) from "index ==
-	// nil" (not ready yet), like loadClusterIndex, depend on this.
-	return r.projection.Load(), nil
-}
-
 // registryResolver adapts the inventory Registry to ClusterIndexResolver -
 // each target's cluster name resolves to that cluster's own projection.
+// depsSourceRegistry extracts the concrete inventory registry the deps
+// structs carry; nil when Source is absent so registryResolver answers
+// cluster_not_found instead of panicking.
+func depsSourceRegistry(source inventory.LookupSource) *inventory.Registry {
+	registry, _ := source.(*inventory.Registry)
+	return registry
+}
+
 type registryResolver struct {
 	registry *inventory.Registry
 }
 
 func (r registryResolver) IndexFor(clusterName string) (*inventory.Index, error) {
+	if r.registry == nil {
+		return nil, inventory.ErrClusterNotFound
+	}
+
 	return r.registry.Index(clusterName)
 }
 
@@ -72,20 +66,6 @@ type clientWriterResolver struct {
 
 func (r clientWriterResolver) WriterFor(clusterName string) (cluster.Writer, error) {
 	return resolveCapability(r.clients, r.fallback, clusterName, "Writer")
-}
-
-// NewVMBulk creates the handler wired to a single default projection. Use
-// NewVMBulkWithRegistry when targets may span multiple clusters.
-func NewVMBulk(projection *inventory.Projection, authHandler *Auth, writer cluster.Writer, st *store.Store, refresher vm.IndexRefresher, log *slog.Logger) *VMBulk {
-	return &VMBulk{
-		resolver:   singleClusterResolver{projection: projection},
-		projection: projection,
-		auth:       authHandler,
-		writer:     writer,
-		store:      st,
-		refresher:  refresher,
-		log:        log,
-	}
 }
 
 // VMBulkRegistryDeps groups the collaborators NewVMBulkWithRegistry needs for
@@ -198,6 +178,5 @@ func (h *VMBulk) writeJSONStatus(w http.ResponseWriter, status int, value any) {
 
 // Compile-time interface checks.
 var (
-	_ vm.ClusterIndexResolver = singleClusterResolver{}
 	_ vm.ClusterIndexResolver = registryResolver{}
 )

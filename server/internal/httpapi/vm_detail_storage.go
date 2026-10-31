@@ -88,7 +88,7 @@ func (h *VMDetail) handleDiskResize(w http.ResponseWriter, r *http.Request, deps
 		return
 	}
 
-	entity, err := vm.Resolve(refreshed, identity, clusterName, vmid)
+	entity, err := vm.Resolve(refreshed, identity, clusterName, vmid, h.store)
 	if err != nil {
 		h.writeResolveError(w, err)
 		return

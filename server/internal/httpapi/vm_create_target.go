@@ -15,20 +15,16 @@ import (
 type createTarget struct {
 	clusterName string
 	creator     cluster.Creator
-	pusher      vm.CloudInitPusher
 	writer      vm.HardwareUpdater
 	freeSpace   vm.FreeSpaceChecker
-	snippets    vm.SnippetStorageFinder
-	templates   vm.TemplateReader
 }
 
 // resolveCreateTarget resolves the effective cluster name from req.Cluster
 // (defaulting the same way ResolveClusterParam does for the catalog route)
-// plus that cluster's own Creator, CloudInitPusher, HardwareUpdater, and
-// SnippetStorageFinder - without this, VM creation ran through the default
-// cluster's client regardless of which cluster the request named. The
-// HardwareUpdater is needed for post-clone configuration; the
-// SnippetStorageFinder for the plan-time snippet storage resolution.
+// plus that cluster's own Creator and HardwareUpdater - without this, VM
+// creation ran through the default cluster's client regardless of which
+// cluster the request named. The HardwareUpdater is needed for post-clone
+// configuration.
 func (h *VMCreate) resolveCreateTarget(w http.ResponseWriter, requestedCluster string) (createTarget, bool) {
 	clusterName, err := ResolveClusterValue(requestedCluster, h.clients)
 	if err != nil {
@@ -41,10 +37,8 @@ func (h *VMCreate) resolveCreateTarget(w http.ResponseWriter, requestedCluster s
 	if h.clients == nil {
 		writer, _ := h.creator.(vm.HardwareUpdater)
 		freeSpace, _ := h.creator.(vm.FreeSpaceChecker)
-		snippets, _ := h.creator.(vm.SnippetStorageFinder)
-		templates, _ := h.creator.(vm.TemplateReader)
 
-		return createTarget{clusterName: clusterName, creator: h.creator, pusher: h.pusher, writer: writer, freeSpace: freeSpace, snippets: snippets, templates: templates}, true
+		return createTarget{clusterName: clusterName, creator: h.creator, writer: writer, freeSpace: freeSpace}, true
 	}
 
 	client, err := h.clients.Client(clusterName)
@@ -61,7 +55,6 @@ func (h *VMCreate) resolveCreateTarget(w http.ResponseWriter, requestedCluster s
 		return createTarget{}, false
 	}
 
-	pusher, ok := client.(vm.CloudInitPusher)
 	if !ok {
 		SetError(w, errors.New("cluster client does not implement CloudInitPusher"))
 		h.writeCreateError(w, http.StatusInternalServerError, "internal_error", msgInternalServerError)
@@ -85,16 +78,7 @@ func (h *VMCreate) resolveCreateTarget(w http.ResponseWriter, requestedCluster s
 		return createTarget{}, false
 	}
 
-	// Optional capability: a client without FindSnippetStorage only blocks
-	// cloud-init template requests (planCreate refuses before VMID
-	// allocation), not plain ISO creations.
-	snippets, _ := client.(vm.SnippetStorageFinder)
-
-	// Optional capability: the clone-time freshness backstop. A client
-	// without TemplateByVMID skips the backstop.
-	templates, _ := client.(vm.TemplateReader)
-
-	return createTarget{clusterName: clusterName, creator: creator, pusher: pusher, writer: writer, freeSpace: freeSpace, snippets: snippets, templates: templates}, true
+	return createTarget{clusterName: clusterName, creator: creator, writer: writer, freeSpace: freeSpace}, true
 }
 
 func (h *VMCreate) clientFor(clusterName string) (cluster.Client, error) {
@@ -209,11 +193,7 @@ var createErrorMappings = []createErrorMapping{
 	{vm.ErrInvalidSource, http.StatusBadRequest, "invalid_source", ""},
 	{vm.ErrInvalidRequest, http.StatusBadRequest, codeInvalidRequest, ""},
 	{vm.ErrDiskReduction, http.StatusBadRequest, "disk_reduction", ""},
-	{vm.ErrDiskBelowImage, http.StatusBadRequest, "disk_below_image", ""},
 	{vm.ErrInsufficientDiskSpace, http.StatusBadRequest, "insufficient_disk_space", ""},
-	{vm.ErrCloudInitWriteUnavailable, http.StatusConflict, "cloudinit_write_unavailable", "cloud-init documents are not enabled on this cluster (Infrastructure > Clusters: snippet storage and SSH publishing)"},
-	{vm.ErrCloudInitNotPublished, http.StatusConflict, "cloudinit_not_published", ""},
-	{vm.ErrNoSnippetStorage, http.StatusBadRequest, "no_snippet_storage", ""},
 	{vm.ErrVMIDRangeExhausted, http.StatusConflict, "vmid_range_exhausted", "every VMID of the configured range is in use on this cluster"},
 	// cluster_error passes the full error chain (empty message → err.Error()):
 	// the Proxmox rejection text ("'import-from' requires special syntax", "has wrong type 'iso'",

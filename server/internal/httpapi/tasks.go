@@ -74,13 +74,6 @@ func (h *Tasks) firstOk(upid string) bool {
 	return true
 }
 
-// NewTasks creates the handler bound to a single cluster.Creator. Use
-// NewTasksWithRegistry for multi-cluster deployments so the polled Creator is
-// resolved per request from the ?cluster= query param.
-func NewTasks(authHandler *Auth, creator cluster.Creator, invalidator TaskInvalidator, log *slog.Logger) *Tasks {
-	return &Tasks{auth: authHandler, creator: creator, invalidator: invalidator, log: log}
-}
-
 // NewTasksWithRegistry creates the handler with per-request Creator resolution,
 // keyed on the request's ?cluster= query param. creator is the default
 // cluster's Creator, kept as the fallback for the single-cluster / unit-test
@@ -88,11 +81,7 @@ func NewTasks(authHandler *Auth, creator cluster.Creator, invalidator TaskInvali
 // refreshers resolves the per-cluster invalidator; nil keeps
 // invalidator as the fallback for every cluster.
 func NewTasksWithRegistry(authHandler *Auth, clients cluster.ClientProvider, creator cluster.Creator, invalidator TaskInvalidator, refreshers ClusterRefresherResolver, log *slog.Logger) *Tasks {
-	handler := NewTasks(authHandler, creator, invalidator, log)
-	handler.clients = clients
-	handler.refreshers = refreshers
-
-	return handler
+	return &Tasks{auth: authHandler, clients: clients, creator: creator, invalidator: invalidator, refreshers: refreshers, log: log}
 }
 
 type taskStatusDTO struct {

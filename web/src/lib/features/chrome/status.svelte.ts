@@ -5,27 +5,28 @@ import { get, post } from '#lib/shared/api/client.js';
 export interface CheckResult {
 	status: string;
 	detail?: string;
+	unreachable?: number;
+	total?: number;
 }
 
 /**
- * Cluster-down detail extracted from checks.clusters.detail. The backend
- * returns the detail as a fixed string such as "1 of 1 clusters unreachable".
- * This function parses it into (unreachable, total) counts so the banner can
- * render a localized, parameterized message instead of concatenating the
- * raw English detail to a translated base message.
+ * Cluster-down counts from the structured check fields. A scoped user's
+ * myCluster check maps to {0|1, 1} so the same "own cluster down" semantics
+ * drive the banner and the all-down overlay; admins and anonymous sessions
+ * read the aggregate clusters check instead.
  */
 export function clusterDownCounts(raw: HealthResponse | null): { unreachable: number; total: number } | null {
-	const detail = raw?.checks?.clusters?.detail;
-	if (raw?.checks?.clusters?.status !== 'unhealthy' || !detail) {
+	const mine = raw?.checks?.myCluster;
+	if (mine !== undefined) {
+		return { unreachable: mine.status === 'unhealthy' ? 1 : 0, total: 1 };
+	}
+
+	const clusters = raw?.checks?.clusters;
+	if (clusters?.status !== 'unhealthy' || clusters.unreachable == null || clusters.total == null) {
 		return null;
 	}
 
-	const match = /(\d+)\s+of\s+(\d+)\s+clusters?\s+unreachable/i.exec(detail);
-	if (match == null || match[1] == null || match[2] == null) {
-		return null;
-	}
-
-	return { unreachable: parseInt(match[1], 10), total: parseInt(match[2], 10) };
+	return { unreachable: clusters.unreachable, total: clusters.total };
 }
 
 /** GET /health response shape (extended by T19 with checks.clusters + demoMode). */
@@ -78,7 +79,13 @@ export class StatusState {
 		const data = this.#raw;
 		if (data === null) return 'none';
 		if (data.status === 'unhealthy') return 'unhealthy';
-		if (data.checks?.clusters?.status === 'unhealthy') return 'degraded';
+		const mine = data.checks?.myCluster;
+		if (mine !== undefined) {
+			// Scoped session: only the user's own cluster degrades the banner.
+			if (mine.status === 'unhealthy') return 'degraded';
+		} else if (data.checks?.clusters?.status === 'unhealthy') {
+			return 'degraded';
+		}
 		if (data.demoMode === true) return 'info';
 		return 'none';
 	}
@@ -86,6 +93,11 @@ export class StatusState {
 	/** The cluster-unreachable counts when severity is 'degraded', else null. */
 	get clusterDownCounts(): { unreachable: number; total: number } | null {
 		return clusterDownCounts(this.#raw);
+	}
+
+	/** True when the scoped user's own cluster is down (myCluster present and unhealthy). */
+	get ownClusterDown(): boolean {
+		return this.#raw?.checks?.myCluster?.status === 'unhealthy';
 	}
 
 	/** True when every configured cluster is unreachable. */

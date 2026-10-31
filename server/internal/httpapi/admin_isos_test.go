@@ -43,7 +43,7 @@ func newDuplicateISOAdminHandler(t *testing.T) (*httpapi.AdminCatalog, *httpapi.
 	authHandler := newAuthHandler(t)
 	st := newAdminStore(t)
 	logger := slog.New(slog.NewTextHandler(testWriter{t}, nil))
-	handler := httpapi.NewAdminCatalog(authHandler, st, duplicateISOHTTPClient{}, nil, logger)
+	handler := httpapi.NewAdminCatalogWithRegistry(authHandler, st, singleClientProvider(duplicateISOHTTPClient{}), nil, logger)
 
 	return handler, authHandler
 }

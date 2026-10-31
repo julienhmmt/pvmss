@@ -18,9 +18,6 @@ var gettingStartedMD string
 //go:embed vm-creation-guidelines.md
 var vmCreationGuidelinesMD string
 
-//go:embed cloud-init-howto.md
-var cloudInitHowtoMD string
-
 //go:embed admin.md
 var adminMD string
 
@@ -29,9 +26,6 @@ var gettingStartedFR string
 
 //go:embed vm-creation-guidelines.fr.md
 var vmCreationGuidelinesFR string
-
-//go:embed cloud-init-howto.fr.md
-var cloudInitHowtoFR string
 
 //go:embed admin.fr.md
 var adminFR string
@@ -48,12 +42,6 @@ var userGuideEN string
 //go:embed recovered/user-guide.fr.md
 var userGuideFR string
 
-//go:embed recovered/cloud-init-setup.en.md
-var cloudInitSetupEN string
-
-//go:embed recovered/cloud-init-setup.fr.md
-var cloudInitSetupFR string
-
 //go:embed recovered/proxmox-permissions.en.md
 var proxmoxPermissionsEN string
 
@@ -65,11 +53,9 @@ var proxmoxPermissionsFR string
 const (
 	idGettingStarted       = "getting-started"
 	idVMCreationGuidelines = "vm-creation-guidelines"
-	idCloudInitHowto       = "cloud-init-howto"
 	idAdmin                = "admin"
 	idUserGuide            = "user-guide"
 	idAdminGuide           = "admin-guide"
-	idCloudInitSetup       = "cloud-init-setup"
 	idProxmoxPermissions   = "proxmox-permissions"
 )
 
@@ -89,10 +75,6 @@ const (
 	categoryAdministration = "Administration"
 	categoryGuides         = "Guides"
 )
-
-// pausedPages are seeded disabled while cloud-init is paused (cloudInitPaused
-// in httpapi/router.go); an admin can enable them from Admin > Documentation.
-var pausedPages = map[string]bool{idCloudInitHowto: true, idCloudInitSetup: true}
 
 // seedPage describes one built-in page to insert.
 type seedPage struct {
@@ -126,11 +108,9 @@ func (p seedPage) enVariant() seedVariant {
 var builtInPages = []seedPage{
 	{id: idGettingStarted, title: "Getting started", category: categoryGettingStarted, bodyMD: gettingStartedMD, audience: audienceUser, sortOrder: 1},
 	{id: idVMCreationGuidelines, title: "VM creation guidelines", category: categoryCreatingVMs, bodyMD: vmCreationGuidelinesMD, audience: audienceUser, sortOrder: 2},
-	{id: idCloudInitHowto, title: "Cloud-init how-to", category: categoryCreatingVMs, bodyMD: cloudInitHowtoMD, audience: audienceUser, sortOrder: 3},
 	{id: idAdmin, title: "Admin guide", category: categoryAdministration, bodyMD: adminMD, audience: audienceAdmin, sortOrder: 100},
 	{id: idUserGuide, title: "User guide", category: categoryGuides, bodyMD: userGuideEN, audience: audienceUser, sortOrder: 4},
 	{id: idAdminGuide, title: "Administrator guide", category: categoryGuides, bodyMD: adminGuideEN, audience: audienceAdmin, sortOrder: 101},
-	{id: idCloudInitSetup, title: "Cloud-init setup (admin)", category: categoryGuides, bodyMD: cloudInitSetupEN, audience: audienceAdmin, sortOrder: 102},
 	{id: idProxmoxPermissions, title: "Proxmox permissions for PVMSS", category: categoryGuides, bodyMD: proxmoxPermissionsEN, audience: audienceAdmin, sortOrder: 103},
 }
 
@@ -184,14 +164,10 @@ func frenchVariants(id string) *seedVariant {
 		return &seedVariant{id: idGettingStarted, lang: "fr", title: "Premiers pas", category: "Premiers pas", bodyMD: gettingStartedFR, audience: audienceUser, sortOrder: 1}
 	case idVMCreationGuidelines:
 		return &seedVariant{id: idVMCreationGuidelines, lang: "fr", title: "Recommandations de création de VM", category: "Création de VMs", bodyMD: vmCreationGuidelinesFR, audience: audienceUser, sortOrder: 2}
-	case idCloudInitHowto:
-		return &seedVariant{id: idCloudInitHowto, lang: "fr", title: "Guide cloud-init", category: "Création de VMs", bodyMD: cloudInitHowtoFR, audience: audienceUser, sortOrder: 3}
 	case idUserGuide:
 		return &seedVariant{id: idUserGuide, lang: "fr", title: "Guide de l'utilisateur", category: categoryGuides, bodyMD: userGuideFR, audience: audienceUser, sortOrder: 4}
 	case idAdminGuide:
 		return &seedVariant{id: idAdminGuide, lang: "fr", title: "Guide de l'administrateur", category: categoryGuides, bodyMD: adminGuideFR, audience: audienceAdmin, sortOrder: 101}
-	case idCloudInitSetup:
-		return &seedVariant{id: idCloudInitSetup, lang: "fr", title: "Configuration cloud-init (administrateur)", category: categoryGuides, bodyMD: cloudInitSetupFR, audience: audienceAdmin, sortOrder: 102}
 	case idProxmoxPermissions:
 		return &seedVariant{id: idProxmoxPermissions, lang: "fr", title: "Permissions Proxmox pour PVMSS", category: categoryGuides, bodyMD: proxmoxPermissionsFR, audience: audienceAdmin, sortOrder: 103}
 	}
@@ -212,7 +188,7 @@ func insertSeedRow(ctx context.Context, st *store.Store, v seedVariant, stamp st
 
 	row := store.DocumentationPageRow{
 		ID: v.id, Lang: v.lang, Title: v.title, Category: v.category, BodyMD: v.bodyMD,
-		Audience: v.audience, Enabled: !pausedPages[v.id], IsSystem: true, SortOrder: v.sortOrder,
+		Audience: v.audience, Enabled: true, IsSystem: true, SortOrder: v.sortOrder,
 		CreatedAt: stamp, UpdatedAt: stamp,
 	}
 

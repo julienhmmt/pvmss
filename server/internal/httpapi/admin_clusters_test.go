@@ -22,9 +22,8 @@ import (
 )
 
 const (
-	adminClusterTestSecret    = "admin-cluster-test-secret-with-32-bytes"
-	adminClustersPath         = "/api/v1/admin/clusters"
-	adminClusterSnippetTarget = "shared"
+	adminClusterTestSecret = "admin-cluster-test-secret-with-32-bytes"
+	adminClustersPath      = "/api/v1/admin/clusters"
 )
 
 type adminClusterFixture struct {
@@ -588,44 +587,6 @@ func TestAdminClusters_SnippetSettingsValidation(t *testing.T) {
 	}
 }
 
-// TestAdminClusters_SnippetStoragePersisted - the snippet storage is echoed,
-// turns cloud-init documents on, persists, and clearing it turns them off.
-//
-//nolint:paralleltest // HTTP fixture shares fake cluster state
-func TestAdminClusters_SnippetStoragePersisted(t *testing.T) {
-	fixture := newAdminClusterFixture(t)
-	cookie := adminClusterCookie(t, fixture.auth)
-
-	update := func(settings string) adminClusterDTOForTest {
-		body := `{"url":"https://pve-b.example.com:8006/api2/json","tokenId":"pvmss@pve!service"` + settings + `}`
-		response := adminClusterRequest(t, fixture, cookie, clusterRequestSpec{Method: fixture.handler.ServeUpdate, HTTPMethod: http.MethodPut, Path: adminClustersSecondaryPath, Name: crossSecondaryCluster, Body: body})
-		if response.Code != http.StatusOK {
-			t.Fatalf("status = %d: %s", response.Code, response.Body.String())
-		}
-
-		var updated adminClusterDTOForTest
-		if err := json.Unmarshal(response.Body.Bytes(), &updated); err != nil {
-			t.Fatalf("decode updated: %v", err)
-		}
-
-		return updated
-	}
-
-	updated := update(`,"snippetStorage":"` + adminClusterSnippetTarget + `"`)
-	if updated.SnippetStorage != adminClusterSnippetTarget || !updated.CloudInitWriteEnabled {
-		t.Fatalf("updated cluster = %+v, want the storage echoed and documents on", updated)
-	}
-
-	row, err := fixture.store.GetCluster(context.Background(), crossSecondaryCluster)
-	if err != nil || row.SnippetStorage != adminClusterSnippetTarget {
-		t.Fatalf("stored = %+v/%v", row, err)
-	}
-
-	if cleared := update(``); cleared.SnippetStorage != "" || cleared.CloudInitWriteEnabled {
-		t.Fatalf("cleared cluster = %+v, want documents off", cleared)
-	}
-}
-
 type adminClusterDTOForTest struct {
 	Name                  string  `json:"name"`
 	DisplayName           string  `json:"displayName"`
@@ -636,8 +597,6 @@ type adminClusterDTOForTest struct {
 	LastTestStatus        *string `json:"lastTestStatus"`
 	LastTestAt            *string `json:"lastTestAt"`
 	ProxmoxVersion        *string `json:"proxmoxVersion"`
-	SnippetStorage        string  `json:"snippetStorage"`
-	CloudInitWriteEnabled bool    `json:"cloudInitWriteEnabled"`
 }
 
 func assertClusterErrorBody(t *testing.T, response *httptest.ResponseRecorder, wantCode string) {

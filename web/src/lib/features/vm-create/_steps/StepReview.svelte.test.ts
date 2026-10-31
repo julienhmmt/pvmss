@@ -17,11 +17,8 @@ const catalog: VmCreateCatalog = {
 	storages: [{ name: 'ceph-data', node: 'pve-node-02' }],
 	bridges: [{ name: 'vmbr2', node: 'pve-node-02' }],
 	isos: [],
-	images: [{ storage: 'local', node: 'pve-node-02', file: 'debian-12.qcow2', sizeBytes: 1 }],
 	profiles: [{ id: 'small', label: 'Small', sockets: 1, cpuCores: 2, memoryMB: 2048, diskGB: 20, bus: 'scsi' }],
 	templates: [],
-	cloudInitTemplates: [],
-	cloudInitWriteEnabled: false,
 	tags: []
 };
 
@@ -62,16 +59,4 @@ describe('StepReview', () => {
 		expect(document.querySelector('[data-testid="review-summary"]')).toBeNull();
 	});
 
-	it('shows the profile, not the ignored explicit hardware, for an image with a profile', () => {
-		mountDetailed((store) => {
-			store.sourceType = 'image';
-			store.imageFile = 'debian-12.qcow2';
-			store.imageStorage = 'local';
-			store.profileId = 'small';
-			store.memoryMB = 8192;
-		});
-		expect(summary()).toContain('debian-12.qcow2');
-		expect(summary()).toContain('Small');
-		expect(summary()).not.toContain('8 GiB');
-	});
 });

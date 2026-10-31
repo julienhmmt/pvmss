@@ -88,10 +88,10 @@ func newMigrationFixture(t *testing.T) *migrationFixture {
 	st := newAdminStore(t)
 	worker := inventory.NewWorker(cluster.Fake{}, projection, time.Hour, logger)
 	migration := httpapi.NewAdminMigrationWithRegistry(httpapi.AdminMigrationRegistryDeps{
-		Projection: projection, Auth: authHandler,
+		Source: projectionRegistry(projection), Projection: projection, Auth: authHandler,
 		Migrator: cluster.Fake{}, Status: cluster.Fake{}, Store: st, Log: logger,
 	})
-	tasks := httpapi.NewTasks(authHandler, cluster.Fake{}, worker, logger)
+	tasks := httpapi.NewTasksWithRegistry(authHandler, nil, cluster.Fake{}, worker, nil, logger)
 
 	return &migrationFixture{
 		mux:        migrationMux(authHandler, migration, tasks),

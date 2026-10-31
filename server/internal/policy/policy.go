@@ -123,14 +123,26 @@ type CapacityDelta struct {
 // calculate current usage. The cluster client is only used for admin writes'
 // physical-node validation.
 type Policy struct {
-	store      *store.Store
-	projection *inventory.Projection
-	client     Snapshotter
-	clusters   cluster.ClientProvider // per-cluster node discovery; wins over client when set
+	store *store.Store
+	// projection is the legacy single-cluster projection. It is only read when
+	// no ProjectionSource is wired (unit tests, degraded deployments).
+	projection  *inventory.Projection
+	projections ProjectionSource // per-cluster projections; wins over projection when set
+	client      Snapshotter
+	clusters    cluster.ClientProvider // per-cluster node discovery; wins over client when set
+	auditor     adminActionRecorder    // quota-denial audit; nil skips recording
 
 	mu      sync.Mutex // guards pending and nextID (ReserveCreate)
 	pending []pendingCreate
 	nextID  uint64
+}
+
+// ProjectionSource resolves each cluster's inventory projection. The inventory
+// registry implements it; policy reads per request cluster instead of a single
+// boot-time projection, so quotas and name checks never evaluate another
+// cluster's VMs.
+type ProjectionSource interface {
+	Projection(name string) (*inventory.Projection, error)
 }
 
 // Snapshotter is the one cluster read policy needs (physical-node checks).
@@ -141,6 +153,44 @@ type Snapshotter interface {
 // New creates a policy service backed by the store and inventory projection.
 func New(st *store.Store, projection *inventory.Projection, client Snapshotter) *Policy {
 	return &Policy{store: st, projection: projection, client: client}
+}
+
+// SetProjectionSource makes usage, quota, and name reads follow each request's
+// cluster instead of the single projection passed to New.
+func (service *Policy) SetProjectionSource(source ProjectionSource) {
+	service.projections = source
+}
+
+// projectionFor returns the projection for clusterName, falling back to the
+// service projection when no source is wired (single-cluster tests). A source
+// error is never swallowed: serving another cluster's numbers is worse than
+// failing the request.
+func (service *Policy) projectionFor(clusterName string) (*inventory.Projection, error) {
+	if service.projections != nil {
+		projection, err := service.projections.Projection(clusterName)
+		if err != nil {
+			return nil, fmt.Errorf("read %q inventory projection: %w", clusterName, err)
+		}
+
+		return projection, nil
+	}
+
+	return service.projection, nil
+}
+
+// indexFor resolves the cluster's loaded index. A nil index with a nil error
+// means the cluster's inventory has not completed a refresh yet.
+func (service *Policy) indexFor(clusterName string) (*inventory.Index, error) {
+	projection, err := service.projectionFor(clusterName)
+	if err != nil {
+		return nil, err
+	}
+
+	if projection == nil {
+		return nil, nil
+	}
+
+	return projection.Load(), nil
 }
 
 // DefaultGabarit returns the compatibility values shipped.
@@ -256,7 +306,12 @@ func (service *Policy) Quota(ctx context.Context, clusterName string, actor auth
 		return Quota{Allowed: defaultMaxVMPerUser}, nil
 	}
 
-	return Quota{Used: service.poolVMCount(actor.Pool), Allowed: row.MaxVMPerUser}, nil
+	index, err := service.indexFor(clusterName)
+	if err != nil {
+		return Quota{}, err
+	}
+
+	return Quota{Used: ManagedPoolVMCount(index, actor.Pool), Allowed: row.MaxVMPerUser}, nil
 }
 
 // NodeCapacity reads one node's configured capacité and live usage. Only VMs
@@ -270,11 +325,15 @@ func (service *Policy) NodeCapacity(ctx context.Context, clusterName, node strin
 	}
 
 	capacity := Capacity{Node: node, MaxVMs: row.MaxVMs, MaxVCPUs: row.MaxVCPUs, MaxRAMGB: row.MaxRAMGB, MaxDiskGB: row.MaxDiskGB}
-	if service.projection == nil || service.projection.Load() == nil {
-		return capacity, nil
+
+	index, err := service.indexFor(clusterName)
+	if err != nil {
+		return Capacity{}, err
 	}
 
-	index := service.projection.Load()
+	if index == nil {
+		return capacity, nil
+	}
 
 	usage := pvmssUsage(index, node)
 	capacity.TotalVMs = len(index.ByNode[node])
@@ -352,17 +411,14 @@ func NodeOverflow(index *inventory.Index, caps store.NodePolicyRow, node string,
 	return overflow
 }
 
-func (service *Policy) poolVMCount(pool string) int {
-	if service.projection == nil || service.projection.Load() == nil {
+// ManagedPoolVMCount counts the VMs of pool that carry the pvmss tag: only
+// those count toward the pool quota, like pvmssUsage for node capacity. A nil
+// index counts nothing (inventory not loaded yet).
+func ManagedPoolVMCount(index *inventory.Index, pool string) int {
+	if index == nil {
 		return 0
 	}
 
-	return ManagedPoolVMCount(service.projection.Load(), pool)
-}
-
-// ManagedPoolVMCount counts the VMs of pool that carry the pvmss tag: only
-// those count toward the pool quota, like pvmssUsage for node capacity.
-func ManagedPoolVMCount(index *inventory.Index, pool string) int {
 	count := 0
 
 	for _, machine := range index.ByPool[pool] {
@@ -374,24 +430,29 @@ func ManagedPoolVMCount(index *inventory.Index, pool string) int {
 	return count
 }
 
-// PoolHasName reports whether any VM in the given pool already carries name
-// (per-pool name uniqueness). The check is case-sensitive
+// PoolHasName reports whether any VM in the given pool of clusterName already
+// carries name (per-pool name uniqueness). The check is case-sensitive
 // ValidateName already enforces lowercase hostname form, so "Web" and "web"
-// cannot both pass validation. Returns false when no projection is wired
-// (unit tests that don't need the check); callers that need a hard check
+// cannot both pass validation. A missing projection or loaded index reports
+// false (unit tests that don't need the check); callers that need a hard check
 // must ensure a projection is configured.
-func (service *Policy) PoolHasName(pool, name string) bool {
-	if service.projection == nil || service.projection.Load() == nil {
-		return false
+func (service *Policy) PoolHasName(clusterName, pool, name string) (bool, error) {
+	index, err := service.indexFor(clusterName)
+	if err != nil {
+		return false, err
 	}
 
-	for _, machine := range service.projection.Load().ByPool[pool] {
+	if index == nil {
+		return false, nil
+	}
+
+	for _, machine := range index.ByPool[pool] {
 		if machine.Name == name {
-			return true
+			return true, nil
 		}
 	}
 
-	return false
+	return false, nil
 }
 
 func vmVCPUs(machine cluster.VM) int {

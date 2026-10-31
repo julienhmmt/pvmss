@@ -72,6 +72,31 @@ func NewRegistryFromIndexes(indexes map[string]*Index) *Registry {
 	return registry
 }
 
+// SetRefresherForTest binds a prebuilt Refresher to one cluster entry so
+// registry-based tests can drive refresh cycles through their own worker.
+// Production registries attach refreshers themselves; only use this from
+// tests that built a Refresher outside the registry.
+func (registry *Registry) SetRefresherForTest(name string, refresher *Refresher) {
+	registry.mu.Lock()
+	defer registry.mu.Unlock()
+	if entry, ok := registry.entries[name]; ok {
+		entry.refresher = refresher
+	}
+}
+
+// NewRegistryFromProjections builds a registry around existing Projection
+// handles - Index reads then follow later store calls on the same
+// projection, matching the live-projection behaviour the retired
+// single-cluster resolver had. Used by handler tests that keep a projection
+// they refresh mid-test.
+func NewRegistryFromProjections(projections map[string]*Projection) *Registry {
+	registry := &Registry{entries: make(map[string]*registryEntry, len(projections)), interval: time.Hour, log: slog.Default()}
+	for name, projection := range projections {
+		registry.entries[name] = &registryEntry{projection: projection}
+	}
+	return registry
+}
+
 // Start launches one independent refresh loop per active cluster.
 func (registry *Registry) Start(ctx context.Context) {
 	registry.mu.Lock()

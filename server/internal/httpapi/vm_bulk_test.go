@@ -74,7 +74,7 @@ func newVMBulkHandler(t *testing.T) (*httpapi.VMBulk, *httpapi.Auth) {
 	t.Cleanup(func() { _ = st.Close() })
 
 	worker := inventory.NewWorker(cluster.Fake{}, projection, time.Hour, logger)
-	handler := httpapi.NewVMBulk(projection, authHandler, cluster.Fake{}, st, worker, logger)
+	handler := httpapi.NewVMBulkWithRegistry(httpapi.VMBulkRegistryDeps{Registry: projectionRegistry(projection), Projection: projection, Auth: authHandler, Writer: cluster.Fake{}, Store: st, Refresher: worker, Log: logger})
 
 	return handler, authHandler
 }
@@ -197,7 +197,7 @@ func TestVMBulk_SpansTwoClusters(t *testing.T) {
 	t.Cleanup(func() { _ = st.Close() })
 
 	handler := httpapi.NewVMBulkWithRegistry(httpapi.VMBulkRegistryDeps{Registry: registry, Projection: projection, Auth: authHandler, Writer: cluster.Fake{}, Store: st, Refresher: bulkNoopRefresher{}, Log: logger, Clients: nil})
-	cookie := aliceCookie(t, authHandler)
+	cookie := adminCookie(t, authHandler)
 
 	// VM 101 in default (stopped) and VM 124 in secondary (stopped) - both
 	// owned by alice, both start succeeds.

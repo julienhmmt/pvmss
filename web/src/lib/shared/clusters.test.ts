@@ -8,7 +8,7 @@ import {
 } from './clusters';
 import { AdminCatalogStore } from '#lib/features/admin-catalog/admin-catalog.svelte.js';
 import { AdminPolicyStore } from '#lib/features/admin-policy/policy.svelte.js';
-import { AdminBaselineStore } from '#lib/features/admin-baseline/baseline.svelte.js';
+import { AdminTagsStore } from '#lib/features/admin-tags/tags.svelte.js';
 
 const options: ClusterOption[] = [
 	{ name: 'default', displayName: 'Default' },
@@ -43,7 +43,7 @@ describe('Admin active cluster persistence (Ticket 12)', () => {
 		expect(resolveInitialAdminCluster(options, 'default')).toBe('default');
 	});
 
-	it('carries the selected cluster from AdminCatalogStore to AdminPolicyStore and AdminBaselineStore', async () => {
+	it('carries the selected cluster from AdminCatalogStore to AdminPolicyStore and AdminTagsStore', async () => {
 		const fetchMock = vi.fn().mockImplementation((input: RequestInfo | URL) => {
 			const url = typeof input === 'string' ? input : input instanceof URL ? input.href : input.url;
 			if (url.includes('/api/v1/auth/clusters')) {
@@ -68,8 +68,8 @@ describe('Admin active cluster persistence (Ticket 12)', () => {
 					})
 				);
 			}
-			if (url.includes('/api/v1/admin/baseline')) {
-				return Promise.resolve(jsonResponse(200, { generated: '#cloud-config\n', document: null }));
+			if (url.includes('/api/v1/admin/tags')) {
+				return Promise.resolve(jsonResponse(200, []));
 			}
 			return Promise.resolve(jsonResponse(200, []));
 		});
@@ -82,9 +82,9 @@ describe('Admin active cluster persistence (Ticket 12)', () => {
 		await policy.load();
 		expect(policy.cluster).toBe('secondary');
 
-		const baseline = new AdminBaselineStore();
-		await baseline.init();
-		expect(baseline.cluster).toBe('secondary');
+		const tags = new AdminTagsStore();
+		await tags.load();
+		expect(tags.cluster).toBe('secondary');
 	});
 });
 

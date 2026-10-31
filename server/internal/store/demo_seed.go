@@ -41,8 +41,6 @@ INSERT OR IGNORE INTO vm_limits (
 	max_network_cards, max_snapshots, max_vm_per_user, isolation_vlan_tag
 ) VALUES ('default', 4, 8, 16384, 500, 4, 5, -1, 0);
 
-INSERT OR IGNORE INTO catalog_images (cluster, node, storage, file, size_bytes) VALUES
-	('default', 'pve-node-01', 'local', 'ubuntu-24.04-server-cloudimg-amd64.qcow2', 644245094);
 `
 
 // SeedDemoCatalog writes the demo catalog fixture rows. Called by Open for

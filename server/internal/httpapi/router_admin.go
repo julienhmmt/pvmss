@@ -39,10 +39,6 @@ func registerAdminRoutes(mux *http.ServeMux, cfg RouterConfig, adminProtect admi
 		registerAdminDocsRoutes(mux, adminProtect, cfg.AdminDocs)
 	}
 
-	if cfg.AdminBaseline != nil && !cloudInitPaused {
-		registerAdminBaselineRoutes(mux, adminProtect, cfg.AdminBaseline)
-	}
-
 	if cfg.AdminMigration != nil {
 		mux.Handle("GET /api/v1/admin/vms/{cluster}/{vmid}/migrate", adminProtect(http.MethodGet, http.HandlerFunc(cfg.AdminMigration.ServePreflight)))
 		mux.Handle("POST /api/v1/admin/vms/{cluster}/{vmid}/migrate", adminProtect(http.MethodPost, http.HandlerFunc(cfg.AdminMigration.ServeStart)))
@@ -75,7 +71,6 @@ func registerAdminCatalogRoutes(mux *http.ServeMux, adminProtect adminRouteProte
 	mux.Handle("POST /api/v1/admin/nodes/toggle", adminProtect(http.MethodPost, http.HandlerFunc(h.ServeNodeToggle)))
 	mux.Handle("DELETE /api/v1/admin/nodes/{cluster}/{name}", adminProtect(http.MethodDelete, http.HandlerFunc(h.ServeNodeDelete)))
 	mux.Handle("GET /api/v1/admin/storages", adminProtect(http.MethodGet, http.HandlerFunc(h.ServeStorages)))
-	mux.Handle("GET /api/v1/admin/snippet-storages", adminProtect(http.MethodGet, http.HandlerFunc(h.ServeSnippetStorages)))
 	mux.Handle("POST /api/v1/admin/storages/toggle", adminProtect(http.MethodPost, http.HandlerFunc(h.ServeStorageToggle)))
 	mux.Handle("DELETE /api/v1/admin/storages/{cluster}/{node}/{name}", adminProtect(http.MethodDelete, http.HandlerFunc(h.ServeStorageDelete)))
 	mux.Handle("GET /api/v1/admin/bridges", adminProtect(http.MethodGet, http.HandlerFunc(h.ServeBridges)))
@@ -84,10 +79,6 @@ func registerAdminCatalogRoutes(mux *http.ServeMux, adminProtect adminRouteProte
 	mux.Handle("GET /api/v1/admin/isos", adminProtect(http.MethodGet, http.HandlerFunc(h.ServeISOs)))
 	mux.Handle("POST /api/v1/admin/isos/toggle", adminProtect(http.MethodPost, http.HandlerFunc(h.ServeISOToggle)))
 	mux.Handle("DELETE /api/v1/admin/isos/{cluster}/{node}/{storage}/{file}", adminProtect(http.MethodDelete, http.HandlerFunc(h.ServeISODelete)))
-	// Cloud images (.img) are disabled for now: they do not work reliably yet.
-	// mux.Handle("GET /api/v1/admin/images", adminProtect(http.MethodGet, http.HandlerFunc(h.ServeImages)))
-	// mux.Handle("POST /api/v1/admin/images/toggle", adminProtect(http.MethodPost, http.HandlerFunc(h.ServeImageToggle)))
-	// mux.Handle("DELETE /api/v1/admin/images/{cluster}/{node}/{storage}/{file}", adminProtect(http.MethodDelete, http.HandlerFunc(h.ServeImageDelete)))
 	mux.Handle("GET /api/v1/admin/templates", adminProtect(http.MethodGet, http.HandlerFunc(h.ServeTemplates)))
 	mux.Handle("POST /api/v1/admin/templates/toggle", adminProtect(http.MethodPost, http.HandlerFunc(h.ServeTemplateToggle)))
 	mux.Handle("PUT /api/v1/admin/templates/{cluster}/{vmid}", adminProtect(http.MethodPut, http.HandlerFunc(h.ServeTemplateUpdate)))
@@ -101,13 +92,6 @@ func registerAdminCatalogRoutes(mux *http.ServeMux, adminProtect adminRouteProte
 	mux.Handle("POST /api/v1/admin/tags", adminProtect(http.MethodPost, http.HandlerFunc(h.ServeTagCreate)))
 	mux.Handle("PUT /api/v1/admin/tags/{name}/color", adminProtect(http.MethodPut, http.HandlerFunc(h.ServeTagColor)))
 	mux.Handle("DELETE /api/v1/admin/tags/{name}", adminProtect(http.MethodDelete, http.HandlerFunc(h.ServeTagDelete)))
-	if !cloudInitPaused {
-		mux.Handle("GET /api/v1/admin/cloudinit-templates", adminProtect(http.MethodGet, http.HandlerFunc(h.ServeCloudInitTemplates)))
-		mux.Handle("POST /api/v1/admin/cloudinit-templates", adminProtect(http.MethodPost, http.HandlerFunc(h.ServeCloudInitTemplateCreate)))
-		mux.Handle("PUT /api/v1/admin/cloudinit-templates/{id}", adminProtect(http.MethodPut, http.HandlerFunc(h.ServeCloudInitTemplateUpdate)))
-		mux.Handle("DELETE /api/v1/admin/cloudinit-templates/{id}", adminProtect(http.MethodDelete, http.HandlerFunc(h.ServeCloudInitTemplateDelete)))
-		mux.Handle("POST /api/v1/admin/cloudinit-templates/{id}/toggle", adminProtect(http.MethodPost, http.HandlerFunc(h.ServeCloudInitTemplateToggle)))
-	}
 }
 
 // registerAdminPolicyRoutes wires the admin policy endpoints (gabarits,
@@ -175,11 +159,4 @@ func registerAdminDocsRoutes(mux *http.ServeMux, adminProtect adminRouteProtect,
 	mux.Handle("PUT /api/v1/admin/docs/{id}/{lang}", adminProtect(http.MethodPut, http.HandlerFunc(h.ServeDocUpdate)))
 	mux.Handle("DELETE /api/v1/admin/docs/{id}/{lang}", adminProtect(http.MethodDelete, http.HandlerFunc(h.ServeDocDelete)))
 	mux.Handle("POST /api/v1/admin/docs/{id}/{lang}/toggle", adminProtect(http.MethodPost, http.HandlerFunc(h.ServeDocToggle)))
-}
-
-// registerAdminBaselineRoutes wires the admin baseline view
-// (read-only: the generated baseline + the cluster override state).
-// Admin-only.
-func registerAdminBaselineRoutes(mux *http.ServeMux, adminProtect adminRouteProtect, h *AdminBaseline) {
-	mux.Handle("GET /api/v1/admin/baseline", adminProtect(http.MethodGet, http.HandlerFunc(h.ServeBaseline)))
 }

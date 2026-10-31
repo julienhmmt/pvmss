@@ -42,10 +42,6 @@ func (stubClusterClient) ListISOs(_ context.Context) ([]cluster.ISOImage, error)
 	return nil, cluster.ErrNotImplemented
 }
 
-func (stubClusterClient) ListCloudImages(_ context.Context) ([]cluster.CloudImage, error) {
-	return nil, cluster.ErrNotImplemented
-}
-
 func (stubClusterClient) ListTemplates(_ context.Context) ([]cluster.TemplateVM, error) {
 	return nil, cluster.ErrNotImplemented
 }
@@ -131,10 +127,12 @@ func TestClusterNodes_Success(t *testing.T) {
 	refreshedAt := time.Date(2026, 8, 1, 12, 0, 0, 0, time.UTC)
 	projection := buildProjectionWithIndex(t, snap, refreshedAt)
 	logger := slog.New(slog.NewJSONHandler(os.Stdout, nil))
-	h := httpapi.NewClusterNodes(projection, logger)
+	auth := nodesTestAuth(t)
+	h := httpapi.NewClusterNodesWithRegistry(projectionRegistry(projection), auth, logger)
 
 	w := httptest.NewRecorder()
 	r := httptest.NewRequest(http.MethodGet, "/api/v1/cluster/nodes", nil)
+	r.AddCookie(aliceCookie(t, auth))
 	h.ServeHTTP(w, r)
 
 	if w.Code != http.StatusOK {
@@ -186,10 +184,12 @@ func TestClusterNodes_Success(t *testing.T) {
 func TestClusterNodes_NotReady(t *testing.T) {
 	projection := inventory.NewProjection()
 	logger := slog.New(slog.NewJSONHandler(os.Stdout, nil))
-	h := httpapi.NewClusterNodes(projection, logger)
+	auth := nodesTestAuth(t)
+	h := httpapi.NewClusterNodesWithRegistry(projectionRegistry(projection), auth, logger)
 
 	w := httptest.NewRecorder()
 	r := httptest.NewRequest(http.MethodGet, "/api/v1/cluster/nodes", nil)
+	r.AddCookie(aliceCookie(t, auth))
 	h.ServeHTTP(w, r)
 
 	if w.Code != http.StatusServiceUnavailable {
@@ -216,10 +216,12 @@ func TestClusterNodes_NotReady(t *testing.T) {
 func TestClusterNodes_EmptyIsOK(t *testing.T) {
 	projection := buildProjectionWithIndex(t, cluster.Snapshot{}, time.Now())
 	logger := slog.New(slog.NewJSONHandler(os.Stdout, nil))
-	h := httpapi.NewClusterNodes(projection, logger)
+	auth := nodesTestAuth(t)
+	h := httpapi.NewClusterNodesWithRegistry(projectionRegistry(projection), auth, logger)
 
 	w := httptest.NewRecorder()
 	r := httptest.NewRequest(http.MethodGet, "/api/v1/cluster/nodes", nil)
+	r.AddCookie(aliceCookie(t, auth))
 	h.ServeHTTP(w, r)
 
 	if w.Code != http.StatusOK {
@@ -249,7 +251,7 @@ func TestClusterNodes_EmptyIsOK(t *testing.T) {
 func TestClusterNodes_MethodNotAllowed(t *testing.T) {
 	projection := inventory.NewProjection()
 	logger := slog.New(slog.NewJSONHandler(os.Stdout, nil))
-	h := httpapi.NewClusterNodes(projection, logger)
+	h := httpapi.NewClusterNodesWithRegistry(projectionRegistry(projection), nodesTestAuth(t), logger)
 
 	w := httptest.NewRecorder()
 	r := httptest.NewRequest(http.MethodPost, "/api/v1/cluster/nodes", nil)

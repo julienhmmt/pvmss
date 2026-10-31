@@ -40,15 +40,6 @@ type CatalogISOEnabled struct {
 	Enabled bool
 }
 
-// CatalogImageEnabled is one catalog_images row with its enabled state.
-type CatalogImageEnabled struct {
-	Node      string
-	Storage   string
-	File      string
-	SizeBytes int64
-	Enabled   bool
-}
-
 // CatalogProfileEnabled is one catalog_profiles row with its enabled state.
 type CatalogProfileEnabled struct {
 	ID       string
@@ -64,14 +55,13 @@ type CatalogProfileEnabled struct {
 // CatalogTemplateEnabled is one catalog_templates row with its enabled state.
 // Used by the admin listing endpoint.
 type CatalogTemplateEnabled struct {
-	VMID             int
-	Node             string
-	Name             string
-	CloudInitCapable bool
-	DiskStorage      string
-	DiskSizeGB       int
-	DiskBus          string
-	Enabled          bool
+	VMID        int
+	Node        string
+	Name        string
+	DiskStorage string
+	DiskSizeGB  int
+	DiskBus     string
+	Enabled     bool
 	// OverrideDiscovery is true when an admin pinned the editable fields;
 	// the catalog admin list then skips the discovery-wins write-back for
 	// this row.
@@ -138,19 +128,6 @@ func (s *Store) CatalogISOsEnabled(ctx context.Context, cluster string) ([]Catal
 	)
 }
 
-// CatalogImagesEnabled returns all catalog_images rows (including disabled)
-// with their enabled state, ordered by node then file.
-func (s *Store) CatalogImagesEnabled(ctx context.Context, cluster string) ([]CatalogImageEnabled, error) {
-	return queryCatalog(ctx, s.db, "catalog images enabled",
-		`SELECT node, storage, file, size_bytes, enabled FROM catalog_images WHERE cluster = ? ORDER BY node, file`,
-		[]any{cluster},
-		func(rows *sql.Rows) (CatalogImageEnabled, error) {
-			var img CatalogImageEnabled
-			return img, rows.Scan(&img.Node, &img.Storage, &img.File, &img.SizeBytes, &img.Enabled)
-		},
-	)
-}
-
 // CatalogProfilesEnabled returns all catalog_profiles rows (including disabled)
 // with their full fields, ordered by id.
 func (s *Store) CatalogProfilesEnabled(ctx context.Context, cluster string) ([]CatalogProfileEnabled, error) {
@@ -209,16 +186,6 @@ func (s *Store) SetISOEnabled(ctx context.Context, cluster, node, storage, file 
 	)
 }
 
-// SetImageEnabled upserts the enabled state and discovered size for one
-// (node, storage, file) triple.
-func (s *Store) SetImageEnabled(ctx context.Context, cluster, node, storage, file string, sizeBytes int64, enabled bool) error {
-	return execWrite(ctx, s.db,
-		`INSERT INTO catalog_images (cluster, node, storage, file, size_bytes, enabled) VALUES (?, ?, ?, ?, ?, ?)
-		 ON CONFLICT(cluster, node, storage, file) DO UPDATE SET enabled = excluded.enabled, size_bytes = excluded.size_bytes`,
-		[]any{cluster, node, storage, file, sizeBytes, enabled},
-	)
-}
-
 // DeleteNode removes a node approval row. Returns sql.ErrNoRows if the node
 // did not exist - used to drop an orphan approval whose node Proxmox no longer
 // reports.
@@ -256,15 +223,6 @@ func (s *Store) DeleteISO(ctx context.Context, cluster, node, storage, file stri
 	)
 }
 
-// DeleteImage removes a cloud image approval row. Returns sql.ErrNoRows if
-// the (node, storage, file) triple did not exist.
-func (s *Store) DeleteImage(ctx context.Context, cluster, node, storage, file string) error {
-	return execUpdateOne(ctx, s.db,
-		`DELETE FROM catalog_images WHERE cluster = ? AND node = ? AND storage = ? AND file = ?`,
-		[]any{cluster, node, storage, file},
-	)
-}
-
 // SetProfileEnabled updates the enabled state for one profile. Returns
 // sql.ErrNoRows if the profile does not exist (the catalog layer maps this to
 // ErrProfileNotFound) - guards against a delete between the catalog layer's
@@ -280,20 +238,17 @@ func (s *Store) SetProfileEnabled(ctx context.Context, cluster, id string, enabl
 // disabled) with their enabled state, ordered by vmid.
 func (s *Store) CatalogTemplatesEnabled(ctx context.Context, cluster string) ([]CatalogTemplateEnabled, error) {
 	return queryCatalog(ctx, s.db, "catalog templates enabled",
-		`SELECT vmid, node, name, cloud_init_capable, disk_storage, disk_size_gb, disk_bus, enabled, override_discovery
+		`SELECT vmid, node, name, disk_storage, disk_size_gb, disk_bus, enabled, override_discovery
 		 FROM catalog_templates WHERE cluster = ? ORDER BY vmid`,
 		[]any{cluster},
 		func(rows *sql.Rows) (CatalogTemplateEnabled, error) {
 			var t CatalogTemplateEnabled
 
-			var cloudInit int
-
 			var override int
-			if err := rows.Scan(&t.VMID, &t.Node, &t.Name, &cloudInit, &t.DiskStorage, &t.DiskSizeGB, &t.DiskBus, &t.Enabled, &override); err != nil {
+			if err := rows.Scan(&t.VMID, &t.Node, &t.Name, &t.DiskStorage, &t.DiskSizeGB, &t.DiskBus, &t.Enabled, &override); err != nil {
 				return t, err
 			}
 
-			t.CloudInitCapable = cloudInit == 1
 			t.OverrideDiscovery = override == 1
 
 			return t, nil
@@ -306,7 +261,6 @@ func (s *Store) CatalogTemplatesEnabled(ctx context.Context, cluster string) ([]
 type TemplateValues struct {
 	Node              string
 	Name              string
-	CloudInitCapable  bool
 	DiskStorage       string
 	DiskSizeGB        int
 	DiskBus           string
@@ -317,10 +271,10 @@ type TemplateValues struct {
 // Returns ErrDuplicate if the vmid already exists for the cluster.
 func (s *Store) InsertTemplate(ctx context.Context, cluster string, vmid int, values TemplateValues, enabled bool) error {
 	return execInsertOne(ctx, s.db,
-		`INSERT INTO catalog_templates (cluster, node, vmid, name, cloud_init_capable, disk_storage, disk_size_gb, disk_bus, enabled, override_discovery)
-		 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+		`INSERT INTO catalog_templates (cluster, node, vmid, name, disk_storage, disk_size_gb, disk_bus, enabled, override_discovery)
+		 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
 		 ON CONFLICT(cluster, vmid) DO NOTHING`,
-		[]any{cluster, values.Node, vmid, values.Name, values.CloudInitCapable, values.DiskStorage, values.DiskSizeGB, values.DiskBus, enabled, values.OverrideDiscovery},
+		[]any{cluster, values.Node, vmid, values.Name, values.DiskStorage, values.DiskSizeGB, values.DiskBus, enabled, values.OverrideDiscovery},
 	)
 }
 
@@ -330,9 +284,9 @@ func (s *Store) InsertTemplate(ctx context.Context, cluster string, vmid int, va
 // catalog admin list stops overwriting these fields with discovery values.
 func (s *Store) UpdateTemplate(ctx context.Context, cluster string, vmid int, values TemplateValues) error {
 	return execUpdateOne(ctx, s.db,
-		`UPDATE catalog_templates SET node = ?, name = ?, cloud_init_capable = ?, disk_storage = ?, disk_size_gb = ?, disk_bus = ?, override_discovery = ?
+		`UPDATE catalog_templates SET node = ?, name = ?, disk_storage = ?, disk_size_gb = ?, disk_bus = ?, override_discovery = ?
 		 WHERE cluster = ? AND vmid = ?`,
-		[]any{values.Node, values.Name, values.CloudInitCapable, values.DiskStorage, values.DiskSizeGB, values.DiskBus, values.OverrideDiscovery, cluster, vmid},
+		[]any{values.Node, values.Name, values.DiskStorage, values.DiskSizeGB, values.DiskBus, values.OverrideDiscovery, cluster, vmid},
 	)
 }
 
@@ -348,8 +302,8 @@ func (s *Store) DeleteTemplate(ctx context.Context, cluster string, vmid int) er
 // SetTemplateEnabled upserts the enabled state for one template.
 func (s *Store) SetTemplateEnabled(ctx context.Context, cluster string, vmid int, enabled bool) error {
 	return execWrite(ctx, s.db,
-		`INSERT INTO catalog_templates (cluster, node, vmid, name, cloud_init_capable, disk_storage, disk_size_gb, enabled)
-		 VALUES (?, '', ?, '', 0, '', 0, ?)
+		`INSERT INTO catalog_templates (cluster, node, vmid, name, disk_storage, disk_size_gb, enabled)
+		 VALUES (?, '', ?, '', '', 0, ?)
 		 ON CONFLICT(cluster, vmid) DO UPDATE SET enabled = excluded.enabled`,
 		[]any{cluster, vmid, enabled},
 	)

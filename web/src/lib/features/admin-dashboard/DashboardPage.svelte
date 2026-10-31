@@ -47,8 +47,6 @@
 	// each card linking to its full page.
 	const STORAGE_LIMIT = 5;
 	const RECENT_LIMIT = 5;
-	// Slots kept for quick actions still to come.
-	const QUICK_ACTION_PLACEHOLDERS = 4;
 
 	const busiestStorages = $derived([...(store.summary?.storages ?? [])].sort((a, b) => b.percent - a.percent).slice(0, STORAGE_LIMIT));
 
@@ -98,9 +96,6 @@
 				<span class="text-xs text-muted-foreground">{m['admin.dashboard.createUserHint']()}</span>
 			</span>
 		</a>
-		{#each { length: QUICK_ACTION_PLACEHOLDERS }, slot (slot)}
-			<div class="hidden min-h-24 rounded-xl border border-dashed border-border md:block" aria-hidden="true" data-testid="dashboard-quick-action-slot"></div>
-		{/each}
 	</div>
 </section>
 

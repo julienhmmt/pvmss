@@ -19,8 +19,6 @@ const cluster = {
 	proxmoxVersion: '8.2.4',
 	nodeCount: 2,
 	vmCount: 18,
-	snippetStorage: 'shared',
-	cloudInitWriteEnabled: true
 };
 
 describe('AdminClustersStore', () => {
@@ -34,7 +32,7 @@ describe('AdminClustersStore', () => {
 		expect(store.error).toBeNull();
 	});
 
-	it('create() forwards the snippet storage', async () => {
+	it('creates a cluster through the admin route', async () => {
 		const fetchMock = vi.fn().mockResolvedValue(jsonResponse(200, cluster));
 		vi.stubGlobal('fetch', fetchMock);
 		const store = new AdminClustersStore();
@@ -45,20 +43,7 @@ describe('AdminClustersStore', () => {
 			tlsInsecureSkipVerify: false,
 			tokenId: 'pvmss@pve!service',
 			tokenSecret: 'secret',
-			snippetStorage: 'shared'
 		});
-		const init = fetchMock.mock.calls[0]?.[1] as RequestInit | undefined;
-		expect(JSON.parse(init?.body as string)).toMatchObject({ snippetStorage: 'shared' });
-	});
-
-	it('loadSnippetStorages() queries the snippet-storages endpoint with the cluster name', async () => {
-		const fetchMock = vi.fn().mockResolvedValue(
-			jsonResponse(200, [{ name: 'shared', node: 'pve-node-01', type: 'dir' }])
-		);
-		vi.stubGlobal('fetch', fetchMock);
-		const store = new AdminClustersStore();
-		const storages = await store.loadSnippetStorages('default');
-		expect(storages).toEqual([{ name: 'shared', node: 'pve-node-01', type: 'dir' }]);
-		expect(fetchMock.mock.calls[0]?.[0]).toContain('/api/v1/admin/snippet-storages?cluster=default');
+		expect(fetchMock).toHaveBeenCalled();
 	});
 });

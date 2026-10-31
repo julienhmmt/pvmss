@@ -166,7 +166,6 @@ func factoryForSource(source string, log *slog.Logger) (ClientFactory, error) {
 				APITokenName:          row.TokenID,
 				APITokenValue:         row.TokenSecret,
 				TLSInsecureSkipVerify: row.TLSInsecureSkipVerify,
-				SnippetStorage:        row.SnippetStorage,
 				TLS:                   row.TLS,
 				httpClient:            httpClient,
 				log:                   log,

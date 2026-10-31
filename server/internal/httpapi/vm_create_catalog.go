@@ -7,7 +7,6 @@ import (
 	"pvmss/server/internal/auth"
 	"pvmss/server/internal/catalog"
 	"pvmss/server/internal/cluster"
-	"pvmss/server/internal/store"
 	"pvmss/server/internal/vm"
 	"slices"
 )
@@ -19,10 +18,7 @@ type catalogData struct {
 	snap             cluster.Snapshot
 	bridges          []cluster.Bridge
 	isos             []cluster.ISOImage
-	images           []catalog.Image
 	profiles         []catalog.Profile
-	templates        []catalog.CloudInitTemplate
-	templateNodes    map[string][]string
 	proxmoxTemplates []catalog.Template
 	tags             []catalog.TagWithCount
 }
@@ -50,13 +46,6 @@ func (h *VMCreate) loadCatalogData(ctx context.Context, client cluster.Client, c
 	}
 
 	data.profiles = profiles
-
-	templates, err := catalog.CloudInitTemplates(ctx, h.store, clusterName)
-	if err != nil {
-		return catalogData{}, fmt.Errorf("cloudinit templates: %w", err)
-	}
-
-	data.templates, data.templateNodes = templatesOnNodes(ctx, client, templates)
 
 	// Approved Proxmox templates (clone source).
 	proxmoxTemplates, err := catalog.Templates(ctx, h.store, clusterName)
@@ -102,13 +91,6 @@ func loadClusterDiscovery(ctx context.Context, client cluster.Client, data *cata
 
 	data.isos = isos
 
-	// Cloud images (.img) are disabled for now: they do not work reliably yet.
-	// With no live image discovered, the user catalog lists no image and the
-	// create wizard hides the image source. Uncomment to re-enable.
-	// images, err := client.ListCloudImages(ctx)
-	// if err != nil {
-	// 	return fmt.Errorf("image discovery: %w", err)
-	// }
 	//
 	// for _, image := range images {
 	// 	data.images = append(data.images, catalog.Image{Storage: image.Storage, Node: image.Node, File: image.File, SizeBytes: image.SizeBytes})
@@ -123,20 +105,16 @@ func loadClusterDiscovery(ctx context.Context, client cluster.Client, data *cata
 // catalog even if its approval row still exists in the store (the admin list
 // surfaces those orphans for manual cleanup, and enabled orphans are
 // auto-removed there).
-func buildCatalogDTO(clusterName string, data catalogData, cloudInitWriteEnabled bool) catalogDTO {
+func buildCatalogDTO(clusterName string, data catalogData) catalogDTO {
 	return catalogDTO{
-		Cluster:               clusterName,
-		Nodes:                 catalogNodeNames(data.resources, data.snap),
-		Storages:              catalogStorageDTOs(data.resources.Storages, data.snap.Storages),
-		Bridges:               catalogBridgeDTOs(data.resources.Bridges, data.bridges),
-		ISOs:                  catalogFileDTOs(data.resources.ISOs, catalogISOKey, liveISOKeys(data.isos), catalogISOView),
-		Images:                catalogImageDTOs(data),
-		Profiles:              mapCatalogSlice(data.profiles, catalogProfileView),
-		Templates:             mapCatalogSlice(data.proxmoxTemplates, catalogTemplateView),
-		CloudInitTemplates:    catalogCloudInitTemplateDTOs(data.templates, data.templateNodes, cloudInitWriteEnabled),
-		CloudInitWriteEnabled: cloudInitWriteEnabled,
-		CloudInitBaselineID:   store.BaselineTemplateID,
-		Tags:                  catalogTagDTOs(data.tags),
+		Cluster:   clusterName,
+		Nodes:     catalogNodeNames(data.resources, data.snap),
+		Storages:  catalogStorageDTOs(data.resources.Storages, data.snap.Storages),
+		Bridges:   catalogBridgeDTOs(data.resources.Bridges, data.bridges),
+		ISOs:      catalogFileDTOs(data.resources.ISOs, catalogISOKey, liveISOKeys(data.isos), catalogISOView),
+		Profiles:  mapCatalogSlice(data.profiles, catalogProfileView),
+		Templates: mapCatalogSlice(data.proxmoxTemplates, catalogTemplateView),
+		Tags:      catalogTagDTOs(data.tags),
 	}
 }
 
@@ -225,11 +203,6 @@ func catalogISOKey(iso catalog.ISO) isoDiscoveryKey {
 	return isoDiscoveryKey{Node: iso.Node, Storage: iso.Storage, File: iso.File}
 }
 
-// catalogImageKey is the discovery key of an approved cloud image row.
-func catalogImageKey(image catalog.Image) isoDiscoveryKey {
-	return isoDiscoveryKey{Node: image.Node, Storage: image.Storage, File: image.File}
-}
-
 // liveISOKeys builds the discovery lookup set for ISOs.
 func liveISOKeys(isos []cluster.ISOImage) map[isoDiscoveryKey]bool {
 	live := make(map[isoDiscoveryKey]bool, len(isos))
@@ -240,34 +213,13 @@ func liveISOKeys(isos []cluster.ISOImage) map[isoDiscoveryKey]bool {
 	return live
 }
 
-// liveImageKeys builds the discovery lookup set for cloud images.
-func liveImageKeys(images []catalog.Image) map[isoDiscoveryKey]bool {
-	live := make(map[isoDiscoveryKey]bool, len(images))
-	for _, image := range images {
-		live[catalogImageKey(image)] = true
-	}
-
-	return live
-}
-
 // catalogISOView maps an approved ISO row to its catalog DTO.
 func catalogISOView(iso catalog.ISO) catalogISODTO {
 	return catalogISODTO{Storage: iso.Storage, Node: iso.Node, File: iso.File}
 }
 
-// catalogImageView maps an approved cloud image row to its catalog DTO.
-func catalogImageView(image catalog.Image) catalogImageDTO {
-	return catalogImageDTO{
-		Storage: image.Storage, Node: image.Node, File: image.File, SizeBytes: image.SizeBytes,
-	}
-}
-
 // catalogImageDTOs maps approved cloud images, dropping any the cluster no
 // longer reports (the live discovery key set).
-func catalogImageDTOs(data catalogData) []catalogImageDTO {
-	return catalogFileDTOs(data.resources.Images, catalogImageKey, liveImageKeys(data.images), catalogImageView)
-}
-
 // catalogProfileView maps a profile row to its catalog DTO.
 func catalogProfileView(profile catalog.Profile) catalogProfileDTO {
 	return catalogProfileDTO{
@@ -284,62 +236,12 @@ func catalogProfileView(profile catalog.Profile) catalogProfileDTO {
 // catalogTemplateView maps an approved Proxmox template (clone source) to its catalog DTO.
 func catalogTemplateView(tmpl catalog.Template) catalogTemplateDTO {
 	return catalogTemplateDTO{
-		VMID:             tmpl.VMID,
-		Node:             tmpl.Node,
-		Name:             tmpl.Name,
-		CloudInitCapable: tmpl.CloudInitCapable,
-		DiskSizeGB:       tmpl.DiskSizeGB,
-		DiskStorage:      tmpl.DiskStorage,
+		VMID:        tmpl.VMID,
+		Node:        tmpl.Node,
+		Name:        tmpl.Name,
+		DiskSizeGB:  tmpl.DiskSizeGB,
+		DiskStorage: tmpl.DiskStorage,
 	}
-}
-
-// templatesOnNodes keeps the templates whose file is on at least one node,
-// with those nodes, read live through the API. A template on no node would
-// be refused at create time anyway. A cluster that cannot check offers none.
-func templatesOnNodes(ctx context.Context, client cluster.Client, templates []catalog.CloudInitTemplate) ([]catalog.CloudInitTemplate, map[string][]string) {
-	checker, ok := client.(cluster.SnippetChecker)
-	if !ok || checker.SnippetStorageID() == "" {
-		return nil, nil
-	}
-
-	var offered []catalog.CloudInitTemplate
-
-	nodes := make(map[string][]string, len(templates))
-
-	for _, t := range templates {
-		status, err := catalog.CheckCloudInitDocument(ctx, checker, t.ID, t.Content)
-		if err != nil {
-			continue
-		}
-
-		for _, n := range status.Nodes {
-			if n.Present {
-				nodes[t.ID] = append(nodes[t.ID], n.Node)
-			}
-		}
-
-		if len(nodes[t.ID]) > 0 {
-			offered = append(offered, t)
-		}
-	}
-
-	return offered, nodes
-}
-
-// catalogCloudInitTemplateDTOs maps cloud-init templates - the catalog
-// exposes id, label and the nodes that have the file, never content. The
-// list is empty when the cluster has no snippet storage.
-func catalogCloudInitTemplateDTOs(templates []catalog.CloudInitTemplate, nodes map[string][]string, writeEnabled bool) []catalogCloudInitTemplateDTO {
-	out := make([]catalogCloudInitTemplateDTO, 0, len(templates))
-	if !writeEnabled {
-		return out
-	}
-
-	for _, tmpl := range templates {
-		out = append(out, catalogCloudInitTemplateDTO{ID: tmpl.ID, Label: tmpl.Label, Nodes: nodes[tmpl.ID]})
-	}
-
-	return out
 }
 
 // ServeCatalog handles GET /api/v1/vm-create/catalog. The catalog is the same
@@ -365,14 +267,7 @@ func (h *VMCreate) ServeCatalog(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// The document picker is offered only when this cluster has a snippet
-	// storage for cloud-init documents.
-	writeEnabled := false
-	if checker, ok := client.(cluster.SnippetChecker); ok {
-		writeEnabled = checker.SnippetStorageID() != ""
-	}
-
-	dto := buildCatalogDTO(clusterName, data, writeEnabled)
+	dto := buildCatalogDTO(clusterName, data)
 
 	if err := h.attachLimits(r.Context(), &dto, clusterName, identity); err != nil {
 		SetErrorMsg(w, "policy read failed", err)

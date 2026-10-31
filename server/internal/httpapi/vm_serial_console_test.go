@@ -46,7 +46,7 @@ func newVMSerialConsoleHandler(t *testing.T) (*httpapi.VMSerialConsole, *httpapi
 		func(snap cluster.Snapshot, auth *httpapi.Auth, tk *vm.ConsoleTicketStore, st *store.Store, logger *slog.Logger) http.Handler {
 			tickets = tk
 			projection := buildProjectionWithIndex(t, snap, time.Now())
-			handler = httpapi.NewVMSerialConsole(projection, auth, cluster.Fake{}, tk, st, logger)
+			handler = httpapi.NewVMSerialConsoleWithRegistry(httpapi.VMSerialConsoleRegistryDeps{Source: projectionRegistry(projection), Projection: projection, Auth: auth, Relay: cluster.Fake{}, Tickets: tk, Store: st, Log: logger})
 
 			return handler
 		},
@@ -258,14 +258,19 @@ func TestVMSerialConsole_WebSocket_ValidTokenUpgradesAndRelaysEcho(t *testing.T)
 
 // TestVMSerialConsole_PostSerialTicket_ClusterUnavailableReturns502 - when the
 // cluster client's GetTermProxy fails, the response is 502 console_unavailable.
-//
+func serial502Handler(t *testing.T, snap cluster.Snapshot, authHandler *httpapi.Auth, tickets *vm.ConsoleTicketStore, st *store.Store, logger *slog.Logger) http.Handler {
+	t.Helper()
+
+	projection := buildProjectionWithIndex(t, snap, time.Now())
+
+	return httpapi.NewVMSerialConsoleWithRegistry(httpapi.VMSerialConsoleRegistryDeps{Source: projectionRegistry(projection), Projection: projection, Auth: authHandler, Relay: &failingTerminalRelay{}, Tickets: tickets, Store: st, Log: logger})
+}
+
 //nolint:paralleltest // serial: shared fake VM and database fixtures
 func TestVMSerialConsole_PostSerialTicket_ClusterUnavailableReturns502(t *testing.T) {
 	handler, _, cookie := buildFailingRelayHandler(t, 50003, "vm-serial-console-502.db",
 		func(snap cluster.Snapshot, authHandler *httpapi.Auth, tickets *vm.ConsoleTicketStore, st *store.Store, logger *slog.Logger) http.Handler {
-			projection := buildProjectionWithIndex(t, snap, time.Now())
-
-			return httpapi.NewVMSerialConsole(projection, authHandler, &failingTerminalRelay{}, tickets, st, logger)
+			return serial502Handler(t, snap, authHandler, tickets, st, logger)
 		},
 	)
 

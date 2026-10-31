@@ -61,21 +61,10 @@ export interface AdminISO {
 	missing?: boolean;
 }
 
-export interface AdminImage {
-	storage: string;
-	node: string;
-	file: string;
-	sizeBytes: number;
-	enabled: boolean;
-	/** True for a stored approval whose image file Proxmox no longer reports. */
-	missing?: boolean;
-}
-
 export interface AdminTemplate {
 	vmid: number;
 	node: string;
 	name: string;
-	cloudInitCapable: boolean;
 	diskStorage: string;
 	diskSizeGB: number;
 	diskBus: string;
@@ -97,7 +86,6 @@ export interface AdminTemplate {
 export interface AdminTemplatePatch {
 	node: string;
 	name: string;
-	cloudInitCapable: boolean;
 	diskStorage: string;
 	diskSizeGB: number;
 	diskBus: string;
@@ -127,13 +115,6 @@ interface ISOToggleResponse {
 	enabled: boolean;
 }
 
-interface ImageToggleResponse {
-	node: string;
-	storage: string;
-	file: string;
-	enabled: boolean;
-}
-
 interface TemplateToggleResponse {
 	vmid: number;
 	enabled: boolean;
@@ -152,7 +133,6 @@ export class AdminCatalogStore {
 	storages = $state.raw<AdminStorage[]>([]);
 	bridges = $state.raw<AdminBridge[]>([]);
 	isos = $state.raw<AdminISO[]>([]);
-	images = $state.raw<AdminImage[]>([]);
 	templates = $state.raw<AdminTemplate[]>([]);
 
 	loading = $state.raw(false);
@@ -168,12 +148,6 @@ export class AdminCatalogStore {
 	isoSortBy: ISOSortColumn = $state('file');
 	isoSortDir: 'asc' | 'desc' = $state('asc');
 
-	imageSearch = $state('');
-	imageStorageFilter = $state('');
-	imageNodeFilter = $state('');
-	imageEnabledFilter: 'all' | 'enabled' | 'disabled' = $state('all');
-	imageSortBy: ImageSortColumn = $state('file');
-	imageSortDir: 'asc' | 'desc' = $state('asc');
 
 	storageSearch = $state('');
 	storageNodeFilter = $state('');
@@ -221,24 +195,6 @@ export class AdminCatalogStore {
 	isoStorageOptions = $derived([...new SvelteSet(this.isos.map((i) => i.storage))].sort());
 	isoNodeOptions = $derived([...new SvelteSet(this.isos.map((i) => i.node))].sort());
 
-	filteredImages = $derived(
-		sortImages(
-			this.images.filter((image) => {
-				const search = this.imageSearch.toLowerCase();
-				if (search && !image.file.toLowerCase().includes(search)) return false;
-				if (this.imageStorageFilter && image.storage !== this.imageStorageFilter) return false;
-				if (this.imageNodeFilter && image.node !== this.imageNodeFilter) return false;
-				if (this.imageEnabledFilter === 'enabled' && !image.enabled) return false;
-				if (this.imageEnabledFilter === 'disabled' && image.enabled) return false;
-				return true;
-			}),
-			this.imageSortBy,
-			this.imageSortDir
-		)
-	);
-
-	imageStorageOptions = $derived([...new SvelteSet(this.images.map((i) => i.storage))].sort());
-	imageNodeOptions = $derived([...new SvelteSet(this.images.map((i) => i.node))].sort());
 
 	filteredRealStorages = $derived.by(() => {
 		const search = this.storageSearch.toLowerCase();
@@ -381,15 +337,6 @@ export class AdminCatalogStore {
 		}
 	}
 
-	setImageSort(column: ImageSortColumn): void {
-		if (this.imageSortBy === column) {
-			this.imageSortDir = this.imageSortDir === 'asc' ? 'desc' : 'asc';
-		} else {
-			this.imageSortBy = column;
-			this.imageSortDir = 'asc';
-		}
-	}
-
 	setNodeSort(column: NodeSortColumn): void {
 		if (this.nodeSortBy === column) {
 			this.nodeSortDir = this.nodeSortDir === 'asc' ? 'desc' : 'asc';
@@ -406,15 +353,6 @@ export class AdminCatalogStore {
 		this.isoEnabledFilter = 'all';
 		this.isoSortBy = 'file';
 		this.isoSortDir = 'asc';
-	}
-
-	resetImageFilters(): void {
-		this.imageSearch = '';
-		this.imageStorageFilter = '';
-		this.imageNodeFilter = '';
-		this.imageEnabledFilter = 'all';
-		this.imageSortBy = 'file';
-		this.imageSortDir = 'asc';
 	}
 
 	resetStorageFilters(): void {
@@ -516,196 +454,147 @@ export class AdminCatalogStore {
 		}
 	}
 
-	/** Loads only the image list (plus cluster options). Like loadTemplates(),
-	 *  images get their own split load so the nodes/storages/bridges/ISOs
-	 *  pages never pay for them. */
-	async loadImages(): Promise<void> {
-		await this.loadClusters();
-		this.loading = true;
-		this.error = null;
+	// #mutate holds the one mutation skeleton every toggle/remove shares:
+	// toggling key set, error reset, run, apply, translate-or-rethrow.
+	async #mutate(opts: {
+		key: string;
+		fallbackMsg: string;
+		run: () => Promise<unknown>;
+		apply: () => void;
+	}): Promise<void> {
+		this.toggling = opts.key;
+		this.toggleError = null;
 		try {
-			this.images = await get<AdminImage[]>(`/api/v1/admin/images?cluster=${encodeURIComponent(this.cluster)}`);
+			await opts.run();
+			opts.apply();
 		} catch (err) {
-			this.error = err instanceof ApiRequestError ? err.message : m['admin.catalog.loadError']();
+			this.toggleError = err instanceof ApiRequestError ? err.message : opts.fallbackMsg;
+			throw err;
 		} finally {
-			this.loading = false;
+			this.toggling = null;
 		}
 	}
 
 	async toggleNode(name: string, enabled: boolean): Promise<void> {
-		this.toggling = `node:${name}`;
-		this.toggleError = null;
-		try {
-			await post<ToggleResponse>('/api/v1/admin/nodes/toggle', { cluster: this.cluster, name, enabled });
-			this.nodes = this.nodes.map((n) => (n.name === name ? { ...n, enabled } : n));
-		} catch (err) {
-			this.toggleError = err instanceof ApiRequestError ? err.message : m['admin.catalog.toggleNodeError']();
-			throw err;
-		} finally {
-			this.toggling = null;
-		}
+		await this.#mutate({
+			key: `node:${name}`,
+			fallbackMsg: m['admin.catalog.toggleNodeError'](),
+			run: () => post<ToggleResponse>('/api/v1/admin/nodes/toggle', { cluster: this.cluster, name, enabled }),
+			apply: () => {
+				this.nodes = this.nodes.map((n) => (n.name === name ? { ...n, enabled } : n));
+			}
+		});
 	}
 
 	async toggleStorage(name: string, node: string, enabled: boolean): Promise<void> {
-		this.toggling = `storage:${name}@${node}`;
-		this.toggleError = null;
-		try {
-			await post<StorageToggleResponse>('/api/v1/admin/storages/toggle', {
-				cluster: this.cluster,
-				name,
-				node,
-				enabled
-			});
-			this.storages = this.storages.map((s) =>
-				s.name === name && s.node === node ? { ...s, enabled } : s
-			);
-		} catch (err) {
-			this.toggleError = err instanceof ApiRequestError ? err.message : m['admin.catalog.toggleStorageError']();
-			throw err;
-		} finally {
-			this.toggling = null;
-		}
+		await this.#mutate({
+			key: `storage:${name}@${node}`,
+			fallbackMsg: m['admin.catalog.toggleStorageError'](),
+			run: () =>
+				post<StorageToggleResponse>('/api/v1/admin/storages/toggle', {
+					cluster: this.cluster,
+					name,
+					node,
+					enabled
+				}),
+			apply: () => {
+				this.storages = this.storages.map((s) =>
+					s.name === name && s.node === node ? { ...s, enabled } : s
+				);
+			}
+		});
 	}
 
 	async toggleBridge(node: string, name: string, enabled: boolean): Promise<void> {
-		this.toggling = `bridge:${node}/${name}`;
-		this.toggleError = null;
-		try {
-			await post<BridgeToggleResponse>('/api/v1/admin/bridges/toggle', {
-				cluster: this.cluster,
-				node,
-				name,
-				enabled
-			});
-			this.bridges = this.bridges.map((bridge) =>
-				bridge.node === node && bridge.name === name ? { ...bridge, enabled } : bridge
-			);
-		} catch (err) {
-			this.toggleError = err instanceof ApiRequestError ? err.message : m['admin.catalog.toggleBridgeError']();
-			throw err;
-		} finally {
-			this.toggling = null;
-		}
+		await this.#mutate({
+			key: `bridge:${node}/${name}`,
+			fallbackMsg: m['admin.catalog.toggleBridgeError'](),
+			run: () =>
+				post<BridgeToggleResponse>('/api/v1/admin/bridges/toggle', {
+					cluster: this.cluster,
+					node,
+					name,
+					enabled
+				}),
+			apply: () => {
+				this.bridges = this.bridges.map((bridge) =>
+					bridge.node === node && bridge.name === name ? { ...bridge, enabled } : bridge
+				);
+			}
+		});
 	}
 
 	async toggleISO(node: string, storage: string, file: string, enabled: boolean): Promise<void> {
-		this.toggling = `iso:${node}:${storage}:${file}`;
-		this.toggleError = null;
-		try {
-			await post<ISOToggleResponse>('/api/v1/admin/isos/toggle', {
-				cluster: this.cluster,
-				node,
-				storage,
-				file,
-				enabled
-			});
-			this.isos = this.isos.map((i) =>
-				i.node === node && i.storage === storage && i.file === file ? { ...i, enabled } : i
-			);
-		} catch (err) {
-			this.toggleError = err instanceof ApiRequestError ? err.message : m['admin.catalog.toggleIsoError']();
-			throw err;
-		} finally {
-			this.toggling = null;
-		}
-	}
-
-	async toggleImage(node: string, storage: string, file: string, enabled: boolean): Promise<void> {
-		this.toggling = `image:${node}:${storage}:${file}`;
-		this.toggleError = null;
-		try {
-			await post<ImageToggleResponse>('/api/v1/admin/images/toggle', {
-				cluster: this.cluster,
-				node,
-				storage,
-				file,
-				enabled
-			});
-			this.images = this.images.map((i) =>
-				i.node === node && i.storage === storage && i.file === file ? { ...i, enabled } : i
-			);
-		} catch (err) {
-			this.toggleError = err instanceof ApiRequestError ? err.message : m['admin.images.toggleError']();
-			throw err;
-		} finally {
-			this.toggling = null;
-		}
+		await this.#mutate({
+			key: `iso:${node}:${storage}:${file}`,
+			fallbackMsg: m['admin.catalog.toggleIsoError'](),
+			run: () =>
+				post<ISOToggleResponse>('/api/v1/admin/isos/toggle', {
+					cluster: this.cluster,
+					node,
+					storage,
+					file,
+					enabled
+				}),
+			apply: () => {
+				this.isos = this.isos.map((i) =>
+					i.node === node && i.storage === storage && i.file === file ? { ...i, enabled } : i
+				);
+			}
+		});
 	}
 
 	/** Removes an orphan node approval - offered by the UI on missing rows only. */
 	async removeNode(name: string): Promise<void> {
-		this.toggling = `node:${name}`;
-		this.toggleError = null;
-		try {
-			await del(`/api/v1/admin/nodes/${encodeURIComponent(this.cluster)}/${encodeURIComponent(name)}`);
-			this.nodes = this.nodes.filter((n) => n.name !== name);
-		} catch (err) {
-			this.toggleError = err instanceof ApiRequestError ? err.message : m['admin.catalog.removeNodeError']();
-			throw err;
-		} finally {
-			this.toggling = null;
-		}
+		await this.#mutate({
+			key: `node:${name}`,
+			fallbackMsg: m['admin.catalog.removeNodeError'](),
+			run: () => del(`/api/v1/admin/nodes/${encodeURIComponent(this.cluster)}/${encodeURIComponent(name)}`),
+			apply: () => {
+				this.nodes = this.nodes.filter((n) => n.name !== name);
+			}
+		});
 	}
 
 	/** Removes an orphan storage approval - offered by the UI on missing rows only. */
 	async removeStorage(name: string, node: string): Promise<void> {
-		this.toggling = `storage:${name}@${node}`;
-		this.toggleError = null;
-		try {
-			await del(`/api/v1/admin/storages/${encodeURIComponent(this.cluster)}/${encodeURIComponent(node)}/${encodeURIComponent(name)}`);
-			this.storages = this.storages.filter((s) => !(s.name === name && s.node === node));
-		} catch (err) {
-			this.toggleError = err instanceof ApiRequestError ? err.message : m['admin.catalog.removeStorageError']();
-			throw err;
-		} finally {
-			this.toggling = null;
-		}
+		await this.#mutate({
+			key: `storage:${name}@${node}`,
+			fallbackMsg: m['admin.catalog.removeStorageError'](),
+			run: () =>
+				del(`/api/v1/admin/storages/${encodeURIComponent(this.cluster)}/${encodeURIComponent(node)}/${encodeURIComponent(name)}`),
+			apply: () => {
+				this.storages = this.storages.filter((s) => !(s.name === name && s.node === node));
+			}
+		});
 	}
 
 	/** Removes an orphan bridge approval - offered by the UI on missing rows only. */
 	async removeBridge(node: string, name: string): Promise<void> {
-		this.toggling = `bridge:${node}/${name}`;
-		this.toggleError = null;
-		try {
-			await del(`/api/v1/admin/bridges/${encodeURIComponent(this.cluster)}/${encodeURIComponent(node)}/${encodeURIComponent(name)}`);
-			this.bridges = this.bridges.filter((b) => !(b.node === node && b.name === name));
-		} catch (err) {
-			this.toggleError = err instanceof ApiRequestError ? err.message : m['admin.catalog.removeBridgeError']();
-			throw err;
-		} finally {
-			this.toggling = null;
-		}
+		await this.#mutate({
+			key: `bridge:${node}/${name}`,
+			fallbackMsg: m['admin.catalog.removeBridgeError'](),
+			run: () =>
+				del(`/api/v1/admin/bridges/${encodeURIComponent(this.cluster)}/${encodeURIComponent(node)}/${encodeURIComponent(name)}`),
+			apply: () => {
+				this.bridges = this.bridges.filter((b) => !(b.node === node && b.name === name));
+			}
+		});
 	}
 
 	/** Removes an orphan ISO approval - offered by the UI on missing rows only. */
 	async removeISO(node: string, storage: string, file: string): Promise<void> {
-		this.toggling = `iso:${node}:${storage}:${file}`;
-		this.toggleError = null;
-		try {
-			await del(`/api/v1/admin/isos/${encodeURIComponent(this.cluster)}/${encodeURIComponent(node)}/${encodeURIComponent(storage)}/${encodeURIComponent(file)}`);
-			this.isos = this.isos.filter((i) => !(i.node === node && i.storage === storage && i.file === file));
-		} catch (err) {
-			this.toggleError = err instanceof ApiRequestError ? err.message : m['admin.catalog.removeIsoError']();
-			throw err;
-		} finally {
-			this.toggling = null;
-		}
+		await this.#mutate({
+			key: `iso:${node}:${storage}:${file}`,
+			fallbackMsg: m['admin.catalog.removeIsoError'](),
+			run: () =>
+				del(`/api/v1/admin/isos/${encodeURIComponent(this.cluster)}/${encodeURIComponent(node)}/${encodeURIComponent(storage)}/${encodeURIComponent(file)}`),
+			apply: () => {
+				this.isos = this.isos.filter((i) => !(i.node === node && i.storage === storage && i.file === file));
+			}
+		});
 	}
 
-	/** Removes an orphan image approval - offered by the UI on missing rows only. */
-	async removeImage(node: string, storage: string, file: string): Promise<void> {
-		this.toggling = `image:${node}:${storage}:${file}`;
-		this.toggleError = null;
-		try {
-			await del(`/api/v1/admin/images/${encodeURIComponent(this.cluster)}/${encodeURIComponent(node)}/${encodeURIComponent(storage)}/${encodeURIComponent(file)}`);
-			this.images = this.images.filter((i) => !(i.node === node && i.storage === storage && i.file === file));
-		} catch (err) {
-			this.toggleError = err instanceof ApiRequestError ? err.message : m['admin.images.removeError']();
-			throw err;
-		} finally {
-			this.toggling = null;
-		}
-	}
 
 	async toggleTemplate(vmid: number, enabled: boolean): Promise<void> {
 		this.toggling = `template:${vmid}`;
@@ -731,17 +620,14 @@ export class AdminCatalogStore {
 	/** Removes an approval row (issue 02) - offered by the UI on missing
 	 *  (orphaned) rows only; the API deletes any approval. */
 	async removeTemplate(vmid: number): Promise<void> {
-		this.toggling = `template:${vmid}`;
-		this.toggleError = null;
-		try {
-			await del(`/api/v1/admin/templates/${encodeURIComponent(this.cluster)}/${vmid}`);
-			this.templates = this.templates.filter((t) => t.vmid !== vmid);
-		} catch (err) {
-			this.toggleError = err instanceof ApiRequestError ? err.message : m['admin.templates.removeError']();
-			throw err;
-		} finally {
-			this.toggling = null;
-		}
+		await this.#mutate({
+			key: `template:${vmid}`,
+			fallbackMsg: m['admin.templates.removeError'](),
+			run: () => del(`/api/v1/admin/templates/${encodeURIComponent(this.cluster)}/${vmid}`),
+			apply: () => {
+				this.templates = this.templates.filter((t) => t.vmid !== vmid);
+			}
+		});
 	}
 
 	/** Overrides a template's editable fields and pins the row against
@@ -772,11 +658,10 @@ export class AdminCatalogStore {
 }
 
 export type ISOSortColumn = 'file' | 'storage' | 'node' | 'size' | 'enabled';
-export type ImageSortColumn = 'file' | 'storage' | 'node' | 'size' | 'enabled';
 export type StorageSortColumn = 'name' | 'node' | 'type' | 'usage' | 'enabled';
 export type BridgeSortColumn = 'name' | 'node' | 'active' | 'comment' | 'enabled';
 export type NodeSortColumn = 'name' | 'status' | 'vmCount' | 'cpuUsage' | 'memoryUsage' | 'enabled';
-export type TemplateSortColumn = 'vmid' | 'name' | 'node' | 'disk' | 'cloudInit' | 'enabled';
+export type TemplateSortColumn = 'vmid' | 'name' | 'node' | 'disk' | 'enabled';
 
 function sortBridges(bridges: AdminBridge[], sortBy: BridgeSortColumn, dir: 'asc' | 'desc'): AdminBridge[] {
 	const sorted = [...bridges].sort((a, b) => {
@@ -856,31 +741,6 @@ function sortIsos(isos: AdminISO[], sortBy: ISOSortColumn, dir: 'asc' | 'desc'):
 	return dir === 'asc' ? sorted : sorted.reverse();
 }
 
-function sortImages(images: AdminImage[], sortBy: ImageSortColumn, dir: 'asc' | 'desc'): AdminImage[] {
-	const sorted = [...images].sort((a, b) => {
-		let cmp = 0;
-		switch (sortBy) {
-			case 'file':
-				cmp = a.file.localeCompare(b.file);
-				break;
-			case 'storage':
-				cmp = a.storage.localeCompare(b.storage) || a.file.localeCompare(b.file);
-				break;
-			case 'node':
-				cmp = a.node.localeCompare(b.node) || a.file.localeCompare(b.file);
-				break;
-			case 'size':
-				cmp = a.sizeBytes - b.sizeBytes || a.file.localeCompare(b.file);
-				break;
-			case 'enabled':
-				cmp = Number(a.enabled) - Number(b.enabled) || a.file.localeCompare(b.file);
-				break;
-		}
-		return cmp;
-	});
-	return dir === 'asc' ? sorted : sorted.reverse();
-}
-
 function sortTemplates(templates: AdminTemplate[], sortBy: TemplateSortColumn, dir: 'asc' | 'desc'): AdminTemplate[] {
 	const sorted = [...templates].sort((a, b) => {
 		let cmp = 0;
@@ -896,9 +756,6 @@ function sortTemplates(templates: AdminTemplate[], sortBy: TemplateSortColumn, d
 				break;
 			case 'disk':
 				cmp = a.diskSizeGB - b.diskSizeGB || a.diskStorage.localeCompare(b.diskStorage) || a.vmid - b.vmid;
-				break;
-			case 'cloudInit':
-				cmp = Number(a.cloudInitCapable) - Number(b.cloudInitCapable) || a.vmid - b.vmid;
 				break;
 			case 'enabled':
 				cmp = Number(a.enabled) - Number(b.enabled) || a.vmid - b.vmid;

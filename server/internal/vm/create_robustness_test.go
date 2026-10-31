@@ -21,10 +21,8 @@ func createWithServices(t *testing.T, fixture createFixture, actor auth.Identity
 	return vm.Create(context.Background(), actor, req.Cluster, req, vm.CreateDeps{
 		Store:     fixture.store,
 		Creator:   fixture.fake,
-		Pusher:    fixture.fake,
 		Writer:    fixture.fake,
 		FreeSpace: fixture.fake,
-		Snippets:  fixture.fake,
 		Audit:     fixture.store,
 		Log:       slog.New(slog.DiscardHandler),
 		Services:  []*policy.Policy{service},
@@ -115,65 +113,6 @@ func TestCreate_VMIDCollisionRetry_ExhaustsAfterThreeAttempts(t *testing.T) {
 
 //  - (b): Rollback on failed task -
 
-// TestCreate_RollbackOnFailedTask_PurgesHalfMadeVM - when the create
-// task fails, the half-made VM is purged (best-effort Delete) so it does not
-// consume the user's quota. The original error is what reaches the client
-// (via CloudInitPushError for the ISO path).
-//
-//nolint:paralleltest // serial: shared fake VM and database fixtures
-func TestCreate_RollbackOnFailedTask_PurgesHalfMadeVM(t *testing.T) {
-	fixture := newCreateFixture(t)
-
-	// Inject a task error on the next registered task.
-	cluster.SetFakeTaskError("storage full")
-
-	// Use a cloud-init template so the ISO path waits for the task.
-	tmplID := createTestTemplate(t, fixture.store)
-
-	req := detailedRequest()
-	req.CloudInitTemplateID = tmplID
-
-	result, err := fixture.create(t, aliceIdentity(), req)
-	if err != nil {
-		t.Fatalf("Create: %v, want nil (task error is surfaced via CloudInitPushError)", err)
-	}
-
-	if result.CloudInitPushError == "" {
-		t.Fatalf("CloudInitPushError = empty, want the task error message")
-	}
-
-	// The half-made VM should have been purged - it must not appear in the
-	// snapshot.
-	snap, err := fixture.fake.Snapshot(context.Background())
-	if err != nil {
-		t.Fatalf("Snapshot: %v", err)
-	}
-
-	idx := slices.IndexFunc(snap.VMs, func(v cluster.VM) bool { return v.VMID == result.VMID })
-	if idx >= 0 {
-		t.Fatalf("half-made VM %d still in snapshot after rollback", result.VMID)
-	}
-
-	// A rollback audit entry should have been recorded.
-	entries, err := fixture.store.QueryAudit(context.Background())
-	if err != nil {
-		t.Fatalf("QueryAudit: %v", err)
-	}
-
-	foundRollback := false
-
-	for _, e := range entries {
-		if e.Action == "vm_create_rollback" && e.VMID != nil && *e.VMID == result.VMID {
-			foundRollback = true
-			break
-		}
-	}
-
-	if !foundRollback {
-		t.Errorf("no vm_create_rollback audit entry for VMID %d", result.VMID)
-	}
-}
-
 // TestCreate_RollbackOnFailedCloneTask_PurgesHalfMadeVM - when the clone
 // task fails, the half-made VM is purged. The clone path always waits for the
 // task, so a task error triggers rollback regardless of cloud-init.
@@ -184,25 +123,24 @@ func TestCreate_RollbackOnFailedCloneTask_PurgesHalfMadeVM(t *testing.T) {
 
 	cluster.SetFakeTaskError("clone: disk allocation failed")
 
-	req := templateRequest(9000)
-
-	result, err := fixture.create(t, aliceIdentity(), req)
-	if err != nil {
-		t.Fatalf("Create: %v, want nil (task error is surfaced via CloudInitPushError)", err)
-	}
-
-	if result.CloudInitPushError == "" {
-		t.Fatalf("CloudInitPushError = empty, want the task error message")
-	}
-
-	snap, err := fixture.fake.Snapshot(context.Background())
+	before, err := fixture.fake.Snapshot(context.Background())
 	if err != nil {
 		t.Fatalf("Snapshot: %v", err)
 	}
 
-	idx := slices.IndexFunc(snap.VMs, func(v cluster.VM) bool { return v.VMID == result.VMID })
-	if idx >= 0 {
-		t.Fatalf("half-made clone %d still in snapshot after rollback", result.VMID)
+	req := templateRequest(9000)
+
+	if _, err := fixture.create(t, aliceIdentity(), req); err == nil {
+		t.Fatalf("Create: nil error, want the task failure")
+	}
+
+	after, err := fixture.fake.Snapshot(context.Background())
+	if err != nil {
+		t.Fatalf("Snapshot: %v", err)
+	}
+
+	if len(after.VMs) != len(before.VMs) {
+		t.Fatalf("half-made clone still in snapshot after rollback: %d VMs, want %d", len(after.VMs), len(before.VMs))
 	}
 }
 

@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { tick } from 'svelte';
-	import { getVmCreateContext, gabaritCeiling, memoryLabel, type SimpleSource } from './create.svelte';
+	import { getVmCreateContext, memoryLabel, type SimpleSource } from './create.svelte';
 	import { getTaskTrayContext } from '#lib/features/tasks/tasks.svelte.js';
 	import { getTaskOutcomeLedgerContext } from '#lib/features/tasks/task-outcome-ledger.svelte.js';
 	import { handleAccepted } from './post-submit';
@@ -12,9 +12,7 @@
 	import TextField from '#lib/shared/ui/TextField.svelte';
 	import Select from '#lib/shared/ui/Select.svelte';
 	import TemplatePicker from './TemplatePicker.svelte';
-	import ImagePicker from './ImagePicker.svelte';
-	import ImageCloudInitFields from './ImageCloudInitFields.svelte';
-	// import CloudInitDocumentSelect from './CloudInitDocumentSelect.svelte';
+
 	import Card from '#lib/shared/ui/Card.svelte';
 	import Checkbox from '#lib/shared/ui/Checkbox.svelte';
 	import Button from '#lib/shared/ui/Button.svelte';
@@ -32,8 +30,6 @@
 	const outcomeLedger = getTaskOutcomeLedgerContext();
 
 	const hasTemplates = $derived((form.catalog?.templates ?? []).length > 0);
-	const hasImages = $derived((form.catalog?.images ?? []).length > 0);
-	const hasProfiles = $derived(form.hasProfiles());
 
 	const catalogTags = $derived(form.catalog?.tags ?? []);
 	const selectedTags = $derived(new Set(form.selectedTags()));
@@ -42,33 +38,18 @@
 		if (!hasTemplates && form.simpleSource === 'template') {
 			form.simpleSource = 'profile';
 		}
-		if (!hasImages && form.simpleSource === 'image') {
-			form.simpleSource = 'profile';
-		}
 	});
 
 	// Simple mode has no placement controls - node and storage are always
 	// automatic (the server picks them, FR-010). Reset any placement so it
-	// cannot silently pin a node. Template clones and cloud images also
-	// ignore ISO; clear it when switching to those sources (template/image
-	// + ISO is mutually exclusive, ErrInvalidSource).
+	// cannot silently pin a node. Template clones also ignore ISO; clear it
+	// when switching to that source (template + ISO is mutually exclusive,
+	// ErrInvalidSource).
 	$effect(() => {
 		form.nodeAdjusted = false;
 		form.storageAdjusted = false;
-		if (form.simpleSource === 'template' || form.simpleSource === 'image') {
+		if (form.simpleSource === 'template') {
 			form.isoFile = '';
-		}
-	});
-
-	// ISO install and cloud-init are incompatible use cases: ISO is for a
-	// manual OS install, cloud-init is for pre-built cloud images. When a
-	// cloud-init document is selected, the server suppresses start=1 and
-	// starts the VM only after attaching the snippet (lifecycle-04) - so an
-	// ISO install with a stale cloud-init selection leaves the VM stopped.
-	// Clear the cloud-init document when an ISO is picked.
-	$effect(() => {
-		if (form.isoFile !== '') {
-			form.cloudInitDocumentValue = '';
 		}
 	});
 
@@ -76,9 +57,6 @@
 		{ value: 'profile' as SimpleSource, title: m['vms.create.source.profileTitle'](), body: m['vms.create.source.profileBody']() },
 		...(hasTemplates
 			? [{ value: 'template' as SimpleSource, title: m['vms.create.source.templateTitle'](), body: m['vms.create.source.templateBody']() }]
-			: []),
-		...(hasImages
-			? [{ value: 'image' as SimpleSource, title: m['vms.create.source.imageTitle'](), body: m['vms.create.source.imageBody']() }]
 			: [])
 	]);
 
@@ -125,53 +103,11 @@
 			: null
 	);
 
-	const cloudInitDocumentError = $derived(
-		form.cloudInitTemplateId !== '' && form.catalog && !form.cloudInitTemplatesOnNode().some((template) => template.id === form.cloudInitTemplateId)
-			? m['vms.create.errorCloudinitTemplateInvalid']()
-			: null
-	);
-
-	const imageError = $derived(
-		form.simpleSource === 'image' && form.imageFile === '' ? m['vms.create.errorImageRequired']() : null
-	);
-
-	// Image mode: when the cluster has no profiles, an explicit disk size
-	// covering the image is required (the server rejects a smaller disk
-	// with "disk_below_image"). When profiles exist, the profile's disk
-	// size is authoritative and this field is not shown at all.
-	const maxDiskGB = $derived(gabaritCeiling(form.catalog?.gabarit?.maxDiskPerVMGB, 2048));
-	const diskSizeError = $derived(
-		form.simpleSource !== 'image' || hasProfiles
-			? null
-			: form.diskSizeGB < form.imageMinDiskGB
-				? m['vms.create.diskBelowImageMin']({ min: form.imageMinDiskGB })
-				: !Number.isInteger(form.diskSizeGB) || form.diskSizeGB < 1 || form.diskSizeGB > maxDiskGB
-					? m['vms.create.diskOutOfRange']({ min: 1, max: maxDiskGB })
-					: null
-	);
-
-	// Image mode: when profiles exist, picking one is mandatory (the
-	// profile's CPU/memory/disk/bus replace the tiny 1 vCPU/128 MB default
-	// cloud images used to get).
-	const imageProfileError = $derived(
-		form.simpleSource === 'image' && hasProfiles
-			? form.profileId !== '' && form.catalog?.profiles.some((profile) => profile.id === form.profileId)
-				? null
-				: m['vms.create.errorProfileRequired']()
-			: null
-	);
-
 	const canSubmit = $derived(
 		form.catalog !== null &&
 			!form.submitting &&
 			!nameError &&
-			!cloudInitDocumentError &&
-			!form.imageModeBlocker() &&
-			(form.simpleSource === 'image'
-				? !imageError && !diskSizeError && !imageProfileError
-				: form.simpleSource === 'template'
-					? !templateError
-					: !profileError)
+			(form.simpleSource === 'template' ? !templateError : !profileError)
 	);
 
 	// DESIGN.md §6.2: never render red field errors on initial mount; reveal
@@ -179,26 +115,12 @@
 	// offending field on an invalid submit.
 	let submitted = $state(false);
 	let nameTouched = $state(false);
-	let diskTouched = $state(false);
 	let formEl: HTMLFormElement | undefined = $state();
 
 	const visibleNameError = $derived(submitted || nameTouched || form.name !== '' ? nameError : null);
 	const visibleProfileError = $derived(submitted ? profileError : null);
 	const visibleTemplateError = $derived(submitted ? templateError : null);
-	const visibleImageError = $derived(submitted ? imageError : null);
-	const visibleDiskSizeError = $derived(submitted || diskTouched ? diskSizeError : null);
-	const visibleImageProfileError = $derived(submitted ? imageProfileError : null);
-	const hasVisibleError = $derived(
-		Boolean(
-			visibleNameError ||
-				visibleProfileError ||
-				visibleTemplateError ||
-				visibleImageError ||
-				visibleDiskSizeError ||
-				visibleImageProfileError ||
-				cloudInitDocumentError
-		)
-	);
+	const hasVisibleError = $derived(Boolean(visibleNameError || visibleProfileError || visibleTemplateError));
 
 	function focusFirstInvalid(): void {
 		const invalidControl = formEl?.querySelector<HTMLElement>('[aria-invalid="true"]');
@@ -206,10 +128,7 @@
 			invalidControl.focus();
 			return;
 		}
-		if (
-			(form.simpleSource === 'profile' && profileError) ||
-			(form.simpleSource === 'image' && hasProfiles && imageProfileError)
-		) {
+		if (form.simpleSource === 'profile' && profileError) {
 			formEl?.querySelector<HTMLElement>('input[name="simple-size"]')?.focus();
 		}
 	}
@@ -222,29 +141,25 @@
 			? selectedTemplate
 				? selectedTemplate.name || `VMID ${selectedTemplate.vmid}`
 				: null
-			: form.simpleSource === 'image'
-				? form.imageFile || null
-				: form.isoFile
-					? `${m['vms.create.source.profileTitle']()} · ${form.isoFile}`
-					: m['vms.create.source.profileTitle']()
+			: form.isoFile
+				? `${m['vms.create.source.profileTitle']()} · ${form.isoFile}`
+				: m['vms.create.source.profileTitle']()
 	);
-	const usesProfile = $derived(form.simpleSource === 'profile' || (form.simpleSource === 'image' && hasProfiles));
+	const usesProfile = $derived(form.simpleSource === 'profile');
 	const summaryStorage = $derived(
 		form.simpleSource === 'template'
 			? selectedTemplate
 				? `${selectedTemplate.diskSizeGB} GB`
 				: null
-			: usesProfile
-				? selectedProfile
-					? `${selectedProfile.diskGB} GB`
-					: null
-				: `${form.diskSizeGB} GB`
+			: selectedProfile
+				? `${selectedProfile.diskGB} GB`
+				: null
 	);
 	const quota = $derived(form.catalog?.quota ?? null);
 
 	// A disabled submit says why (decision 2026-10-21: no size is preselected).
 	const submitHint = $derived(
-		(form.simpleSource === 'profile' && profileError) || imageProfileError ? m['vms.create.hintChooseSize']() : m['vms.create.hintFixFields']()
+		form.simpleSource === 'profile' && profileError ? m['vms.create.hintChooseSize']() : m['vms.create.hintFixFields']()
 	);
 
 	async function submit(): Promise<void> {
@@ -259,7 +174,7 @@
 			if (form.submitError) toast.error(m['toast.vmCreateFailed']({ error: form.submitError }));
 			return;
 		}
-		await handleAccepted(accepted, { tray, toast, outcomeLedger, keyToSave: form.sshSelection.keyToSave() });
+		await handleAccepted(accepted, { tray, toast, outcomeLedger });
 	}
 </script>
 
@@ -315,9 +230,7 @@
 					<p class="text-sm" data-testid="vm-create-start-fixed">{m['vms.create.startFixed']({ name: sourceCards[0].title })}</p>
 				{/if}
 
-				{#if form.simpleSource === 'image'}
-					<ImagePicker error={visibleImageError} />
-				{:else if form.simpleSource === 'template'}
+				{#if form.simpleSource === 'template'}
 					<TemplatePicker error={visibleTemplateError} />
 				{:else if isoOptions.length > 0}
 					<FormField label={m['vms.create.iso']()} hint={m['common.optional']()}>
@@ -343,21 +256,10 @@
 								</RadioCard>
 							{/each}
 						</div>
-						{#if form.simpleSource === 'image' ? visibleImageProfileError : visibleProfileError}
-							<p role="alert" class="text-xs font-medium text-destructive">{form.simpleSource === 'image' ? visibleImageProfileError : visibleProfileError}</p>
+						{#if visibleProfileError}
+							<p role="alert" class="text-xs font-medium text-destructive">{visibleProfileError}</p>
 						{/if}
 						<p class="text-xs text-muted-foreground">{m['vms.create.fieldNote.size']()}</p>
-					{:else}
-						<FormField
-							label={m['vms.create.size']()}
-							required
-							hint={m['vms.create.diskLimitHint']({ min: Math.max(1, form.imageMinDiskGB), max: maxDiskGB })}
-							error={visibleDiskSizeError}
-						>
-							{#snippet children({ id, describedBy, invalid })}
-								<TextField {id} {describedBy} {invalid} type="number" min={Math.max(1, form.imageMinDiskGB)} max={maxDiskGB} bind:value={form.diskSizeGB} onblur={() => (diskTouched = true)} required />
-							{/snippet}
-						</FormField>
 					{/if}
 				</FormSection>
 			{/if}
@@ -368,14 +270,6 @@
 						<TextField {id} {describedBy} {invalid} bind:value={form.name} onblur={() => (nameTouched = true)} required maxlength={63} data-testid="vm-create-name" autocomplete="off" />
 					{/snippet}
 				</FormField>
-
-				{#if form.simpleSource === 'image'}
-					<ImageCloudInitFields showErrors={submitted} />
-					<p class="border-t border-border pt-3 text-xs text-muted-foreground">{m['vms.create.fieldNote.access']()}</p>
-				{/if}
-
-				<!-- Cloud-init is disabled for now: not reliable or viable yet, too complex to set up.
-				<CloudInitDocumentSelect error={cloudInitDocumentError} /> -->
 
 				<FormField label={m['vms.create.tags']()} hint={m['vms.create.tagsHelp']()}>
 					{#if catalogTags.length === 0}
@@ -405,7 +299,7 @@
 				{#if form.simpleSource !== 'template'}
 					<Checkbox
 						label={m['vms.create.uefi']()}
-						hint={form.simpleSource === 'image' ? m['vms.create.uefiImageHint']() : m['vms.create.uefiHint']()}
+						hint={m['vms.create.uefiHint']()}
 						checked={form.uefi}
 						onToggle={(checked) => (form.uefi = checked)}
 					/>
@@ -444,12 +338,6 @@
 				{/if}
 				<dt class="text-muted-foreground">{m['vms.create.summary.storage']()}</dt>
 				<dd class="text-right font-mono tabular-nums">{summaryStorage ?? m['common.dash']()}</dd>
-				{#if form.simpleSource === 'image'}
-					<dt class="text-muted-foreground">{m['vms.create.summary.login']()}</dt>
-					<dd class="text-right font-mono [overflow-wrap:anywhere]">{form.ciUser.trim() || m['common.dash']()}</dd>
-					<dt class="text-muted-foreground">{m['vms.create.summary.sshKey']()}</dt>
-					<dd class="text-right">{form.sshKeys().length > 0 ? m['vms.create.summary.sshKeyCount']({ count: form.sshKeys().length }) : m['vms.create.summary.none']()}</dd>
-				{/if}
 			</dl>
 			<div class="border-t border-border pt-3">
 				<p class="text-xs font-medium text-muted-foreground">{m['vms.create.summary.included']()}</p>

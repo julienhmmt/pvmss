@@ -38,7 +38,7 @@ func TestAuth_LoginPVE_StoresSession(t *testing.T) {
 		t.Fatalf("decode response: %v", err)
 	}
 
-	if got != (auth.Identity{Username: cluster.FakeUserAlice, DisplayName: "alice", Pool: cluster.FakePoolAlice, Provider: auth.ProviderPVE}) {
+	if got != (auth.Identity{Username: cluster.FakeUserAlice, DisplayName: "alice", Pool: cluster.FakePoolAlice, Provider: auth.ProviderPVE, Cluster: auditTestCluster, ClusterDisplayName: auditTestCluster}) {
 		t.Fatalf("identity = %+v", got)
 	}
 }
@@ -251,7 +251,7 @@ func newAuthHandler(t *testing.T) *httpapi.Auth {
 
 	logger := slog.New(slog.NewTextHandler(testWriter{t}, nil))
 
-	return httpapi.NewAuth(cluster.Fake{}, sessions, string(hash), logger)
+	return httpapi.NewAuthWithRegistry(singleClientProvider(cluster.Fake{}), nil, sessions, string(hash), logger)
 }
 
 func newAuthHandlerWithStore(t *testing.T) (*httpapi.Auth, *store.Store) {

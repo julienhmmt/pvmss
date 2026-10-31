@@ -46,22 +46,8 @@ func NewVMStatusBatch(deps VMStatusBatchDeps) *VMStatusBatch {
 		fallback:     deps.StatusReader,
 		log:          deps.Log,
 	}
-	if registry, ok := deps.Source.(*inventory.Registry); ok {
-		h.resolver = registryResolver{registry: registry}
-	}
+	h.resolver = registryResolver{registry: depsSourceRegistry(deps.Source)}
 	return h
-}
-
-// NewVMStatusBatchSingle creates the handler wired to a single projection.
-// Use NewVMStatusBatch for multi-cluster deployments.
-func NewVMStatusBatchSingle(projection *inventory.Projection, authHandler *Auth, statusReader cluster.VMStatusReader, log *slog.Logger) *VMStatusBatch {
-	return &VMStatusBatch{
-		resolver:     singleClusterResolver{projection: projection},
-		auth:         authHandler,
-		statusReader: statusReader,
-		fallback:     statusReader,
-		log:          log,
-	}
 }
 
 // statusTargetRequest is one element of the POST /vms/status body.

@@ -130,32 +130,26 @@ Packages under `server/internal/`:
 | `cluster/`   | Cluster clients (`proxmox` and `fake` sources), multi-cluster |
 | `store/`     | SQLite persistence                                            |
 | `inventory/` | Background inventory refresh + cache                          |
-| `catalog/`   | Approved nodes/ISOs/storages/bridges, cloud-init templates    |
+| `catalog/`   | Approved nodes/ISOs/storages/bridges, templates, profiles, tags |
 | `policy/`    | Limits, quotas, authorization policy                          |
 | `pools/`     | Proxmox pool handling                                         |
 | `recovery/`  | Recovery runs and fixtures                                    |
 | `checklist/` | Operational checklist walkthroughs                            |
 | `auth/`      | Sessions, password hashing, admin auth                        |
-| `cloudinit/` | Cloud-init document validation + slug helpers                 |
+| `cloudinit/` | SSH-key validation + slug helpers                               |
 | `config/`    | Env-based configuration, validation, slog logger, redaction   |
 | `telemetry/` | OTel tracing and metrics, Prometheus `/metrics`               |
 | `logctx/`    | Request-scoped log attributes (requestId, user, span IDs)     |
 
-#### Cloud-init (paused since 2026-10-20)
+#### Cloud-init removed (2026-10-31)
 
-Cloud-init is not reliable enough yet. `cloudInitPaused` in
-`server/internal/httpapi/router.go` leaves the admin template/baseline routes
-and per-VM cloud-init writes unregistered, and `POST /api/v1/vms` refuses
-`cloudInitTemplateId`. The web hides every cloud-init control and redirects
-`/admin/cloudinit-templates` and `/admin/baseline`.
-
-When enabled: admins author templates per cluster. **PVMSS never writes on the
-nodes** (the Proxmox API cannot upload snippets; SSH publishing was removed).
-The admin page shows a content-addressed file and a copy-paste command
-(`catalog.WriteCommand`) the admin runs on the nodes. Presence is read live via
-`cluster.SnippetChecker`; VM creation re-checks `HasSnippet` before setting
-`cicustom`. Users cannot write cloud-init YAML. Operator procedure:
-`docs/cloud-init.md`.
+The paused cloud-init feature is deleted: admin templates, the baseline,
+per-VM cloud-init writes, cloud-image creation and the snippet-storage
+cluster setting are gone (recoverable from git history). What stays on
+purpose: the read-only `GET …/cloudinit` (the VM page shows the SSH user),
+the console-password guest-agent flow, and the `vm_cloudinit_*` tables so
+the VM-delete path can still warn about files a pre-removal deployment left
+on the nodes.
 
 ### Web (`web/`)
 

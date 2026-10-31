@@ -35,28 +35,6 @@ type AdminPools struct {
 	trustedProxyHops int
 }
 
-// AdminPoolsDeps groups the collaborators AdminPools needs. Bundling them
-// keeps NewAdminPools's parameter count under go:S107's ceiling and makes
-// mis-ordering at call sites impossible.
-type AdminPoolsDeps struct {
-	Auth       *Auth
-	Client     cluster.Client
-	Projection *inventory.Projection
-	Writer     cluster.Writer
-	Audit      vm.AuditRecorder
-	Refresher  vm.IndexRefresher
-	Store      *store.Store
-	Log        *slog.Logger
-}
-
-// NewAdminPools creates the pool administration handler, bound to a single
-// cluster. The store enables managed-pool tracking: only pools PVMSS
-// provisioned may be deleted. Use NewAdminPoolsWithRegistry for multi-cluster
-// deployments.
-func NewAdminPools(deps AdminPoolsDeps) *AdminPools {
-	return &AdminPools{auth: deps.Auth, client: deps.Client, projection: deps.Projection, writer: deps.Writer, audit: deps.Audit, refresher: deps.Refresher, store: deps.Store, log: deps.Log}
-}
-
 // AdminPoolsRegistryDeps groups the collaborators NewAdminPoolsWithRegistry
 // needs for multi-cluster wiring. Bundling them keeps the parameter count
 // under go:S107's ceiling and makes mis-ordering at call sites impossible.
@@ -78,11 +56,7 @@ type AdminPoolsRegistryDeps struct {
 // non-default cluster would silently operate against the default cluster's
 // Proxmox API instead.
 func NewAdminPoolsWithRegistry(deps AdminPoolsRegistryDeps) *AdminPools {
-	handler := NewAdminPools(AdminPoolsDeps{Auth: deps.Auth, Client: nil, Projection: deps.Projection, Writer: deps.Writer, Audit: deps.Audit, Refresher: deps.Refresher, Store: deps.Store, Log: deps.Log})
-	handler.clients = deps.Clients
-	handler.source = deps.Source
-
-	return handler
+	return &AdminPools{auth: deps.Auth, clients: deps.Clients, source: deps.Source, projection: deps.Projection, writer: deps.Writer, audit: deps.Audit, refresher: deps.Refresher, store: deps.Store, log: deps.Log}
 }
 
 // clientFor resolves the cluster.Client for clusterName, falling back to the

@@ -300,6 +300,19 @@ ALTER TABLE vm_limits ADD COLUMN vmid_min INTEGER NOT NULL DEFAULT 0;
 ALTER TABLE vm_limits ADD COLUMN vmid_max INTEGER NOT NULL DEFAULT 0;
 `
 
+// schemaV5 drops the paused cloud-init and cloud-image schema: the admin
+// document/template tables, the image approval table, the per-VM baseline
+// state, and the two dead columns. vm_cloudinit_documents and
+// vm_cloudinit_snippets stay on purpose - the VM-delete cleanup still reads
+// them for rows a pre-removal deployment left behind.
+const schemaV5 = `
+DROP TABLE IF EXISTS catalog_images;
+DROP TABLE IF EXISTS catalog_cloudinit_templates;
+DROP TABLE IF EXISTS vm_baseline_state;
+ALTER TABLE clusters DROP COLUMN snippet_storage;
+ALTER TABLE catalog_templates DROP COLUMN cloud_init_capable;
+`
+
 // Migrations is the ordered list of schema migrations.
 // Versions must be consecutive integers starting at 1.
 var Migrations = []Migration{
@@ -307,4 +320,5 @@ var Migrations = []Migration{
 	{Version: 2, DDL: schemaV2},
 	{Version: 3, DDL: schemaV3},
 	{Version: 4, DDL: schemaV4},
+	{Version: 5, DDL: schemaV5},
 }

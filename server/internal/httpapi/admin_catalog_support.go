@@ -87,7 +87,3 @@ func bridgeNotFoundMsg(node, name string) string {
 func isoNotFoundMsg(node, storage, file string) string {
 	return "iso \"" + file + "\" on storage \"" + storage + msgOnNode + node + "\"" + msgNotReportedByCluster
 }
-
-func imageNotFoundMsg(node, storage, file string) string {
-	return "image \"" + file + "\" on storage \"" + storage + msgOnNode + node + "\"" + msgNotReportedByCluster
-}

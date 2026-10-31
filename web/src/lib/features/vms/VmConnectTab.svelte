@@ -174,7 +174,6 @@
 			<li class="flex flex-col gap-0.5 rounded-xl border border-border bg-card px-4 py-3" data-testid="vm-stat-{resource.key}">
 				<span class="text-xs text-muted-foreground">{resource.label}</span>
 				<span class="font-mono text-lg font-semibold tabular-nums">{resource.value}</span>
-				<span class="text-2xs text-muted-foreground-subtle">{m['vms.detail.resource.caption']()}</span>
 			</li>
 		{/each}
 	</ul>

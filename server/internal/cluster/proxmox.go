@@ -27,10 +27,6 @@ type Proxmox struct {
 	TLSInsecureSkipVerify bool
 	// TLS is the per-cluster CA / pin / client-certificate material.
 	TLS store.ClusterTLS
-	// SnippetStorage is the Proxmox storage whose snippets/ content holds
-	// the admin cloud-init documents, written by hand on each node (see
-	// docs/cloud-init.md). Empty means the feature is off.
-	SnippetStorage string
 	// httpClient is the cached *http.Client reused across every REST call so
 	// the underlying Transport's keep-alive connection pool is shared. Set at construction in
 	// registry.go; rest() lazily initializes it

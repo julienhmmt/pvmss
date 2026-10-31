@@ -209,18 +209,3 @@ func (fake Fake) GetCloudInitConfig(_ context.Context, node string, vmid int) (C
 
 	return cloneCloudInitConfig(config), nil
 }
-
-// FindSnippetStorage implements CloudInitReader with deterministic fake cluster data.
-func (fake Fake) FindSnippetStorage(_ context.Context, node string) (string, error) {
-	state := fake.stateOrDefault()
-	state.vmMu.RLock()
-	defer state.vmMu.RUnlock()
-
-	for _, fakeNode := range state.nodes {
-		if fakeNode.Name == node {
-			return FakeSnippetStorage, nil
-		}
-	}
-
-	return "", ErrNotFound
-}
