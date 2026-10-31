@@ -1,6 +1,7 @@
 package config
 
 import (
+	"crypto/tls"
 	"fmt"
 	"io"
 	"log/slog"
@@ -19,6 +20,17 @@ func NewLogger(cfg Configuration) (*slog.Logger, *slog.LevelVar, io.WriteCloser,
 
 	levelVar := new(slog.LevelVar)
 	levelVar.Set(level)
+
+	// Build the SIEM TLS settings before opening the log file, so a bad
+	// certificate path cannot leak an open file.
+	var syslogTLS *tls.Config
+
+	if cfg.SyslogAddr != "" {
+		syslogTLS, err = cfg.syslogTLSConfig()
+		if err != nil {
+			return nil, nil, nil, err
+		}
+	}
 
 	var w io.WriteCloser
 
@@ -55,7 +67,14 @@ func NewLogger(cfg Configuration) (*slog.Logger, *slog.LevelVar, io.WriteCloser,
 		return nil, nil, nil, fmt.Errorf("unknown log format %q", cfg.LogFormat)
 	}
 
-	return slog.New(sourceGate{Handler: handler, level: levelVar}), levelVar, w, nil
+	if cfg.SyslogAddr == "" {
+		return slog.New(sourceGate{Handler: handler, level: levelVar}), levelVar, w, nil
+	}
+
+	sink := newSyslogSink(cfg.SyslogAddr, syslogTLS)
+
+	return slog.New(sourceGate{Handler: newSyslogHandler(handler, sink), level: levelVar}),
+		levelVar, multiCloser{WriteCloser: w, sink: sink}, nil
 }
 
 func parseLogLevel(level string) (slog.Level, error) {

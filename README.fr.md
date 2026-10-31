@@ -210,6 +210,9 @@ Utilisez **soit** un `.env` (via `env_file`) **soit** des variables inline, pas 
 | `LOG_LEVEL`                                   | `debug`, `info`, `warn`, `error` - minuscules uniquement                                                                             | ✅                    | -                  |
 | `LOG_FORMAT`                                  | `console` (lisible humainment) ou `json` (pour SIEM/collecte)                                                                        | ✅                    | -                  |
 | `LOG_OUTPUT`                                  | `stdout`, `stderr`, ou un chemin de fichier accessible en écriture                                                                   | ✅                    | -                  |
+| `PVMSS_SYSLOG_ADDR`                           | `host:port` d'un récepteur syslog SIEM (RFC 5425 sur TLS, en général 6514). Vide = désactivé                                         | ❌                    | vide               |
+| `PVMSS_SYSLOG_TLS_CA_FILE`                    | Certificat CA PEM ayant signé le certificat du récepteur ; vide = racines système. La vérification reste active                     | ❌                    | racines système    |
+| `PVMSS_SYSLOG_TLS_CERT_FILE` / `PVMSS_SYSLOG_TLS_KEY_FILE` | Certificat et clé client pour le mTLS (les deux) ; voir [docs/observability.md](docs/observability.md)                     | ❌                    | vide               |
 | `PROXMOX_URL`                                 | URL complète de l'API (`https://host:8006/api2/json`)                                                                                | si source = `proxmox` | -                  |
 | `PROXMOX_API_TOKEN_NAME`                      | Nom du token Proxmox (`user@pve!token`)                                                                                              | si source = `proxmox` | -                  |
 | `PROXMOX_API_TOKEN_VALUE`                     | Valeur du token ci-dessus                                                                                                            | si source = `proxmox` | -                  |
@@ -246,7 +249,7 @@ tenant compte de la casse et n'accepte que des minuscules. `LOG_OUTPUT` accepte
   LOG_FORMAT=console
   ```
 
-- Logs JSON sur stdout pour un collecteur de logs / SIEM :
+- Logs JSON sur stdout pour un collecteur de logs :
 
   ```bash
   LOG_LEVEL=info
@@ -263,6 +266,8 @@ tenant compte de la casse et n'accepte que des minuscules. `LOG_OUTPUT` accepte
   ```
 
 Le format JSON est une ligne par événement, avec un champ `component` (main, cluster, inventory, ...). Cela facilite l'ingestion par Fluent Bit, Filebeat ou un SIEM.
+
+Pour un SIEM qui accepte directement le syslog, renseignez `PVMSS_SYSLOG_ADDR` : les mêmes enregistrements partent en RFC 5424 sur TLS, voir [docs/observability.md](docs/observability.md).
 
 ## Options de déploiement
 

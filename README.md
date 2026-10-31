@@ -218,6 +218,9 @@ You can rely on `.env` + `env_file` or inline `environment:` entries, but **not 
 | `LOG_LEVEL`                                   | `debug`, `info`, `warn`, `error` - lowercase only                                                            | ✅                       | -                      |
 | `LOG_FORMAT`                                  | `console` (human readable) or `json` (machine/SIEM)                                                          | ✅                       | -                      |
 | `LOG_OUTPUT`                                  | `stdout`, `stderr`, or a writable file path                                                                  | ✅                       | -                      |
+| `PVMSS_SYSLOG_ADDR`                           | `host:port` of a SIEM syslog receiver (RFC 5425 over TLS, usually 6514). Empty disables the sink | ❌                       | empty                  |
+| `PVMSS_SYSLOG_TLS_CA_FILE`                    | PEM CA that signed the receiver's certificate; empty uses the system roots. Verification stays on | ❌                       | system roots           |
+| `PVMSS_SYSLOG_TLS_CERT_FILE` / `PVMSS_SYSLOG_TLS_KEY_FILE` | Client certificate and key for mutual TLS (set both); see [docs/observability.md](docs/observability.md) | ❌                       | empty                  |
 | `PROXMOX_URL`                                 | Full API URL (`https://host:8006/api2/json`)                                                                 | when source is `proxmox` | -                      |
 | `PROXMOX_API_TOKEN_NAME`                      | Proxmox token name (`user@pve!token`)                                                                        | when source is `proxmox` | -                      |
 | `PROXMOX_API_TOKEN_VALUE`                     | Token secret that matches the name above                                                                     | when source is `proxmox` | -                      |
@@ -258,12 +261,19 @@ lowercase values. Typical setups:
   LOG_FORMAT=console
   ```
 
-- JSON logs on stdout for log aggregation / SIEM:
+- JSON logs on stdout for log aggregation:
 
   ```bash
   LOG_LEVEL=info
   LOG_OUTPUT=stdout
   LOG_FORMAT=json
+  ```
+
+- Syslog (RFC 5424) over TLS to a SIEM receiver, in addition to stdout:
+
+  ```bash
+  PVMSS_SYSLOG_ADDR=siem.example.internal:6514
+  PVMSS_SYSLOG_TLS_CA_FILE=/etc/pvmss/siem-ca.crt
   ```
 
 - JSON logs into a file inside the container:
@@ -277,7 +287,9 @@ lowercase values. Typical setups:
 `LOG_OUTPUT` takes `stdout`, `stderr`, or a writable file path - there is no
 "both" mode. The JSON format is line-delimited and includes a `component` field
 (main, cluster, inventory, ...), making it easy to consume with Fluent Bit,
-Filebeat, or any SIEM.
+Filebeat, or any SIEM. For a SIEM that takes syslog directly, set
+`PVMSS_SYSLOG_ADDR`: the same records go over TLS as RFC 5424, see
+[docs/observability.md](docs/observability.md).
 
 ## Deployment options
 

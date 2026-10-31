@@ -77,8 +77,11 @@ The server validates all environment variables at startup and refuses to start i
 | `SESSION_SECRET`                              | 32+ byte secret to sign/encrypt sessions (`openssl rand -hex 32`)                                  | ✅                       | -                |
 | `PVMSS_CLUSTER_SOURCE`                        | `proxmox` for a real cluster, `fake` for demo data (no default on purpose)                         | ✅                       | -                |
 | `LOG_LEVEL`                                   | `debug`, `info`, `warn`, or `error` (**lowercase only**)                                           | ✅                       | -                |
-| `LOG_FORMAT`                                  | `console` (human-readable) or `json` (SIEM / log aggregators)                                      | ✅                       | -                |
+| `LOG_FORMAT`                                  | `console` (human-readable) or `json` (log aggregators)                                      | ✅                       | -                |
 | `LOG_OUTPUT`                                  | `stdout`, `stderr`, or a writable file path                                                        | ✅                       | -                |
+| `PVMSS_SYSLOG_ADDR`                           | `host:port` of a SIEM syslog receiver (RFC 5425 over TLS, usually 6514). Empty disables the sink    | ❌                       | empty            |
+| `PVMSS_SYSLOG_TLS_CA_FILE`                    | PEM CA that signed the receiver's certificate; empty uses the system roots (verification stays on)  | ❌                       | system roots     |
+| `PVMSS_SYSLOG_TLS_CERT_FILE` / `PVMSS_SYSLOG_TLS_KEY_FILE` | Client certificate and key for mutual TLS (set both); see [observability.md](https://github.com/julienhmmt/pvmss/blob/main/docs/observability.md) | ❌                       | empty            |
 | `PROXMOX_URL`                                 | Full Proxmox API URL (`https://host:8006/api2/json`) to seed the initial `default` cluster         | when source is `proxmox` | -                |
 | `PROXMOX_API_TOKEN_NAME`                      | Proxmox API token name (`user@pve!token`)                                                          | when source is `proxmox` | -                |
 | `PROXMOX_API_TOKEN_VALUE`                     | Proxmox API token secret                                                                           | when source is `proxmox` | -                |

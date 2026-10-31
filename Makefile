@@ -30,7 +30,7 @@ GO_VERSION      ?= latest
 PVMSS_TAG ?= latest
 
 .PHONY: help proxy-e2e dev dev-logs build docker-build helm-package helm-upgrade \
-        up down restart logs clean \
+        up up-siem down restart logs clean \
         qualif \
         buildkit-start buildkit-stop buildkit-status \
         server-lint server-fmt server-vet server-test server-go-update \
@@ -86,8 +86,11 @@ helm-upgrade: ## Met à jour l'application avec Helm
 up: ## Démarre l'environnement dev (pvmss, web, SonarQube) en arrière-plan
 	$(COMPOSE_DEV) up -d
 
-down: ## Arrête et supprime les conteneurs dev
-	$(COMPOSE_DEV) down
+up-siem: ## Démarre le dev + le récepteur SIEM VictoriaLogs (syslog TLS 6514, UI http://127.0.0.1:9428/select/vmui)
+	PVMSS_SYSLOG_ADDR=victorialogs:6514 PVMSS_SYSLOG_TLS_CA_FILE=/syslog-tls/ca.crt $(COMPOSE_DEV) --profile siem up -d
+
+down: ## Arrête et supprime les conteneurs dev (y compris le profil siem)
+	$(COMPOSE_DEV) --profile siem down
 
 restart: down up ## Redémarre les conteneurs dev (down puis up)
 
