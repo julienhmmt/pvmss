@@ -205,7 +205,7 @@ func (h *VMDetail) handleAudit(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if _, err := vm.Resolve(index, identity, clusterName, vmid); err != nil {
+	if _, err := vm.Resolve(index, identity, clusterName, vmid, h.store); err != nil {
 		h.writeResolveError(w, err)
 		return
 	}

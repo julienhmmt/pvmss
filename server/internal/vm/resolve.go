@@ -7,6 +7,7 @@ import (
 	"pvmss/server/internal/auth"
 	"pvmss/server/internal/cluster"
 	"pvmss/server/internal/inventory"
+	"pvmss/server/internal/store"
 	"slices"
 	"time"
 )
@@ -40,22 +41,14 @@ type adminActionRecorder interface {
 	RecordAdminAction(ctx context.Context, actor, action, targetType, targetID, detail, ip string) error
 }
 
-var resolveAuditor adminActionRecorder
-
-// SetResolveAuditor wires the audit recorder used by Resolve for NotFound and
-// Forbidden paths. It is set from the main composition root.
-func SetResolveAuditor(recorder adminActionRecorder) {
-	resolveAuditor = recorder
-}
-
-func recordResolveFailed(actor auth.Identity, clusterName string, vmid int, reason string) {
-	if resolveAuditor == nil {
+func recordResolveFailed(auditor adminActionRecorder, actor auth.Identity, clusterName string, vmid int, reason string) {
+	if auditor == nil {
 		return
 	}
 
 	targetID := FormatVMRef(clusterName, vmid)
 	detail := fmt.Sprintf(`{"summary":"%s","changes":[]}`, reason)
-	_ = resolveAuditor.RecordAdminAction(context.Background(), actor.Username, "vm.resolve_failed", "vm", targetID, detail, "")
+	_ = auditor.RecordAdminAction(context.Background(), actor.Username, "vm.resolve_failed", "vm", targetID, detail, "")
 }
 
 // Entity is a single VM resolved through the ownership gate - the only value
@@ -128,28 +121,40 @@ type Entity struct {
 // backward-compatible widening: every existing call site keeps compiling and
 // behaving identically. actor/clusterName/vmid's order, types, and the
 // (Entity, error) return are unchanged.
-func Resolve(source inventory.LookupSource, actor auth.Identity, clusterName string, vmid int) (Entity, error) {
+func Resolve(source inventory.LookupSource, actor auth.Identity, clusterName string, vmid int, auditors ...adminActionRecorder) (Entity, error) {
+	// Resolve failures are audited when the caller passes a recorder - the
+	// same opt-in variadic List uses for its policy read.
+	var auditor adminActionRecorder
+	if len(auditors) > 0 {
+		auditor = auditors[0]
+	}
+
+	// A typed-nil store sails past the interface nil check and panics on use.
+	if st, ok := auditor.(*store.Store); ok && st == nil {
+		auditor = nil
+	}
+
 	// The caller already picked the index for clusterName, so a pinned actor
 	// must name its own cluster exactly: an empty name would resolve to its
 	// cluster here but may have selected another cluster's index upstream.
 	if resolved, ok := TargetCluster(actor, clusterName); !ok || resolved != clusterName {
-		recordResolveFailed(actor, clusterName, vmid, "cross-cluster access denied")
+		recordResolveFailed(auditor, actor, clusterName, vmid, "cross-cluster access denied")
 		return Entity{}, ErrNotFound
 	}
 
 	machine, ok := source.Lookup(clusterName, vmid)
 	if !ok {
-		recordResolveFailed(actor, clusterName, vmid, "vm not found or not in PVMSS scope")
+		recordResolveFailed(auditor, actor, clusterName, vmid, "vm not found or not in PVMSS scope")
 		return Entity{}, ErrNotFound
 	}
 
 	if !slices.Contains(machine.Tags, pvmssTag) {
-		recordResolveFailed(actor, clusterName, vmid, "vm not in PVMSS scope")
+		recordResolveFailed(auditor, actor, clusterName, vmid, "vm not in PVMSS scope")
 		return Entity{}, ErrNotFound
 	}
 
 	if !actor.IsAdmin && (actor.Pool == "" || machine.Pool != actor.Pool) {
-		recordResolveFailed(actor, clusterName, vmid, "cross-pool access denied")
+		recordResolveFailed(auditor, actor, clusterName, vmid, "cross-pool access denied")
 		return Entity{}, ErrForbidden
 	}
 

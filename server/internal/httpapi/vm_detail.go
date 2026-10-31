@@ -224,7 +224,7 @@ func (h *VMDetail) writeRefreshedEntity(w http.ResponseWriter, r *http.Request, 
 		return
 	}
 
-	entity, err := vm.Resolve(refreshed, identity, clusterName, vmid)
+	entity, err := vm.Resolve(refreshed, identity, clusterName, vmid, h.store)
 	if err != nil {
 		h.writeResolveError(w, err)
 		return

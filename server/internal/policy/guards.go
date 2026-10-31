@@ -12,12 +12,10 @@ type adminActionRecorder interface {
 	RecordAdminAction(ctx context.Context, actor, action, targetType, targetID, detail, ip string) error
 }
 
-var quotaAuditor adminActionRecorder
-
 // SetQuotaAuditor wires the audit recorder used by CheckQuota. It is set from
 // the main composition root.
-func SetQuotaAuditor(recorder adminActionRecorder) {
-	quotaAuditor = recorder
+func (service *Policy) SetQuotaAuditor(recorder adminActionRecorder) {
+	service.auditor = recorder
 }
 
 type auditIPKey struct{}
@@ -51,18 +49,18 @@ func (service *Policy) checkQuota(ctx context.Context, clusterName string, actor
 		return nil
 	}
 
-	recordQuotaExceeded(ctx, actor, quota.Used, quota.Allowed)
+	service.recordQuotaExceeded(ctx, actor, quota.Used, quota.Allowed)
 
 	return &QuotaExceededError{Pool: actor.Pool, Username: actor.Username, Used: quota.Used, Allowed: quota.Allowed}
 }
 
-func recordQuotaExceeded(ctx context.Context, actor auth.Identity, used, allowed int) {
-	if quotaAuditor == nil {
+func (service *Policy) recordQuotaExceeded(ctx context.Context, actor auth.Identity, used, allowed int) {
+	if service.auditor == nil {
 		return
 	}
 
 	detail := fmt.Sprintf(`{"summary":"quota exceeded for %s in pool %s (used %d of %d)","changes":[{"used":%d,"allowed":%d}]}`, actor.Username, actor.Pool, used, allowed, used, allowed)
-	_ = quotaAuditor.RecordAdminAction(ctx, actor.Username, "quota.exceeded", "quota", actor.Username, detail, auditIPFromContext(ctx))
+	_ = service.auditor.RecordAdminAction(ctx, actor.Username, "quota.exceeded", "quota", actor.Username, detail, auditIPFromContext(ctx))
 }
 
 // CheckGabarit validates the resolved initial VM hardware in field order. A

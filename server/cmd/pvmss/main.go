@@ -539,8 +539,7 @@ func buildRouter(deps routerDeps) (http.Handler, error) {
 	adminAccounts.SetTrustedProxyHops(cfg.TrustedProxyHops)
 
 	authHandler.SetTrustedProxyHops(cfg.TrustedProxyHops)
-	vm.SetResolveAuditor(st)
-	policy.SetQuotaAuditor(st)
+	policyService.SetQuotaAuditor(st)
 
 	return httpapi.NewRouter(httpapi.RouterConfig{
 		Health:           health,

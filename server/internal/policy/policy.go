@@ -130,6 +130,7 @@ type Policy struct {
 	projections ProjectionSource // per-cluster projections; wins over projection when set
 	client      Snapshotter
 	clusters    cluster.ClientProvider // per-cluster node discovery; wins over client when set
+	auditor     adminActionRecorder    // quota-denial audit; nil skips recording
 
 	mu      sync.Mutex // guards pending and nextID (ReserveCreate)
 	pending []pendingCreate

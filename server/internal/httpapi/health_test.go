@@ -357,6 +357,7 @@ func TestHealth_MyClusterScopedToIdentity(t *testing.T) {
 	}
 
 	alice := serve(secondaryAliceCookie(t, authHandler))
+
 	mine, ok := alice.Checks["myCluster"]
 	if !ok || mine.Status != healthStatusUnhealthy {
 		t.Fatalf("alice myCluster = %+v (present %v), want unhealthy - her own cluster is stale", mine, ok)

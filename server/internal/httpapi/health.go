@@ -9,7 +9,10 @@ import (
 	"time"
 )
 
-const healthStatusHealthy = "healthy"
+const (
+	healthStatusHealthy   = "healthy"
+	healthStatusUnhealthy = "unhealthy"
+)
 
 // Health checks the runtime dependencies and writes the health contract.
 type Health struct {
@@ -47,6 +50,7 @@ func (h *Health) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	if mine := h.ownClusterCheck(r); mine != nil {
 		checks["myCluster"] = *mine
 	}
+
 	resp := HealthResponse{
 		Status:    healthStatusHealthy,
 		Checks:    checks,
@@ -60,8 +64,8 @@ func (h *Health) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		// dependency must be logged here to stay visible.
 		logctx.FromOr(r.Context(), h.log).ErrorContext(r.Context(), "database health check failed", "component", "httpapi", "error", err)
 
-		resp.Status = "unhealthy"
-		resp.Checks["database"] = CheckResult{Status: "unhealthy", Detail: "database unreachable"}
+		resp.Status = healthStatusUnhealthy
+		resp.Checks["database"] = CheckResult{Status: healthStatusUnhealthy, Detail: "database unreachable"}
 		status = http.StatusServiceUnavailable
 	}
 
@@ -109,7 +113,7 @@ func (h *Health) clustersCheck() CheckResult {
 	}
 
 	return CheckResult{
-		Status:      "unhealthy",
+		Status:      healthStatusUnhealthy,
 		Detail:      fmt.Sprintf("%d of %d clusters unreachable", stale, len(clusters)),
 		Unreachable: stale,
 		Total:       len(clusters),
@@ -136,7 +140,7 @@ func (h *Health) ownClusterCheck(r *http.Request) *CheckResult {
 		}
 
 		if time.Since(c.RefreshedAt) > h.staleThreshold {
-			return &CheckResult{Status: "unhealthy", Detail: "cluster unreachable"}
+			return &CheckResult{Status: healthStatusUnhealthy, Detail: "cluster unreachable"}
 		}
 
 		return &CheckResult{Status: healthStatusHealthy}
