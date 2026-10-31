@@ -16,7 +16,15 @@ type Health struct {
 	store          Pinger
 	freshness      ClusterFreshnessChecker
 	staleThreshold time.Duration
+	auth           *Auth
 	log            *slog.Logger
+}
+
+// SetAuthHandler wires session resolution so a non-admin scoped session also
+// gets a myCluster check for its own cluster. The aggregate clusters check
+// keeps answering counts for everyone - the public login page needs them.
+func (h *Health) SetAuthHandler(auth *Auth) {
+	h.auth = auth
 }
 
 // ServeHTTP implements http.Handler.
@@ -35,6 +43,10 @@ func (h *Health) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	checks := make(map[string]CheckResult, 2)
 	checks["database"] = CheckResult{Status: healthStatusHealthy}
 	checks["clusters"] = h.clustersCheck()
+
+	if mine := h.ownClusterCheck(r); mine != nil {
+		checks["myCluster"] = *mine
+	}
 	resp := HealthResponse{
 		Status:    healthStatusHealthy,
 		Checks:    checks,
@@ -97,9 +109,40 @@ func (h *Health) clustersCheck() CheckResult {
 	}
 
 	return CheckResult{
-		Status: "unhealthy",
-		Detail: fmt.Sprintf("%d of %d clusters unreachable", stale, len(clusters)),
+		Status:      "unhealthy",
+		Detail:      fmt.Sprintf("%d of %d clusters unreachable", stale, len(clusters)),
+		Unreachable: stale,
+		Total:       len(clusters),
 	}
+}
+
+// ownClusterCheck reports the freshness of the caller's own cluster for a
+// non-admin scoped session, so the banner only fires when THEIR cluster is
+// down. Anonymous callers, admins (who watch the aggregate), and sessions
+// without a cluster get nil - no myCluster check at all.
+func (h *Health) ownClusterCheck(r *http.Request) *CheckResult {
+	if h.auth == nil || h.freshness == nil {
+		return nil
+	}
+
+	identity, err := h.auth.Principal(r)
+	if err != nil || identity.IsAdmin || identity.Cluster == "" {
+		return nil
+	}
+
+	for _, c := range h.freshness.Clusters() {
+		if c.Name != identity.Cluster {
+			continue
+		}
+
+		if time.Since(c.RefreshedAt) > h.staleThreshold {
+			return &CheckResult{Status: "unhealthy", Detail: "cluster unreachable"}
+		}
+
+		return &CheckResult{Status: healthStatusHealthy}
+	}
+
+	return nil
 }
 
 // demoMode reports whether the instance is wired to the fake cluster client.

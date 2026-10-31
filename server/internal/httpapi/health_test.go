@@ -325,3 +325,54 @@ func TestHealth_ClustersAggregate(t *testing.T) {
 		})
 	}
 }
+
+//nolint:paralleltest // serial: shared health + auth fixtures
+func TestHealth_MyClusterScopedToIdentity(t *testing.T) {
+	freshness := fakeFreshnessChecker{clusters: []httpapi.ClusterFreshness{
+		{Name: auditTestCluster, RefreshedAt: time.Now()},
+		{Name: crossSecondaryCluster, RefreshedAt: time.Now().Add(-10 * time.Minute)},
+	}}
+
+	authHandler := newScopedAuthFixture(t)
+	h := httpapi.NewHealth(fakeHealthPinger{}, slog.Default(), freshness, 60*time.Second)
+	h.SetAuthHandler(authHandler)
+
+	serve := func(cookie *http.Cookie) httpapi.HealthResponse {
+		t.Helper()
+
+		request := httptest.NewRequest(http.MethodGet, "/health", nil)
+		if cookie != nil {
+			request.AddCookie(cookie)
+		}
+
+		response := httptest.NewRecorder()
+		h.ServeHTTP(response, request)
+
+		var got httpapi.HealthResponse
+		if err := json.Unmarshal(response.Body.Bytes(), &got); err != nil {
+			t.Fatalf("decode health: %v", err)
+		}
+
+		return got
+	}
+
+	alice := serve(secondaryAliceCookie(t, authHandler))
+	mine, ok := alice.Checks["myCluster"]
+	if !ok || mine.Status != healthStatusUnhealthy {
+		t.Fatalf("alice myCluster = %+v (present %v), want unhealthy - her own cluster is stale", mine, ok)
+	}
+
+	admin := serve(scopedAdminCookie(t, authHandler))
+	if _, ok := admin.Checks["myCluster"]; ok {
+		t.Fatal("admin response carries myCluster - admins only get the aggregate")
+	}
+
+	anonymous := serve(nil)
+	if _, ok := anonymous.Checks["myCluster"]; ok {
+		t.Fatal("anonymous response carries myCluster - no session, no scoped check")
+	}
+
+	if anonymous.Checks["clusters"].Unreachable != 1 || anonymous.Checks["clusters"].Total != 2 {
+		t.Fatalf("clusters counts = %+v, want unreachable=1 total=2 as structured fields", anonymous.Checks["clusters"])
+	}
+}

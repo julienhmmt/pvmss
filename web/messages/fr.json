@@ -21,6 +21,7 @@
   "banner.info.demo": "Vous consultez un jeu de données de démonstration.",
   "banner.degraded.clusters": "Certains clusters sont actuellement injoignables.",
   "banner.degraded.clustersDetail": "{unreachable} cluster(s) sur {total} injoignable(s)",
+  "banner.degraded.ownCluster": "Votre cluster est actuellement injoignable.",
   "banner.unhealthy.service": "Le service est dégradé.",
   "banner.unknown.poll": "Impossible de joindre le service pour vérifier son état.",
   "banner.degraded.retry": "Réessayer la connexion",

@@ -21,6 +21,7 @@
   "banner.info.demo": "You are viewing a demonstration dataset.",
   "banner.degraded.clusters": "One or more clusters are currently unreachable.",
   "banner.degraded.clustersDetail": "{unreachable} of {total} clusters unreachable",
+  "banner.degraded.ownCluster": "Your cluster is currently unreachable.",
   "banner.unhealthy.service": "The service is degraded.",
   "banner.unknown.poll": "Unable to reach the service to check its status.",
   "banner.degraded.retry": "Retry connection",
