@@ -2376,5 +2376,6 @@
 	"palette.open": "Suchen oder springen",
 	"shortcuts.palette": "Befehlspalette öffnen",
 	"common.pagination.perPage": "Zeilen pro Seite",
-	"common.pagination.range": "{from}-{to} von {total}"
+	"common.pagination.range": "{from}-{to} von {total}",
+	"vms.detail.goneRedirect": "Diese VM existiert nicht mehr: Sie wurde gelöscht, möglicherweise von einem Administrator. Sie wurden zu Ihren VMs weitergeleitet."
 }

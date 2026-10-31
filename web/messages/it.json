@@ -2376,5 +2376,6 @@
 	"palette.open": "Cerca o vai a",
 	"shortcuts.palette": "Apri la palette dei comandi",
 	"common.pagination.perPage": "Righe per pagina",
-	"common.pagination.range": "{from}-{to} di {total}"
+	"common.pagination.range": "{from}-{to} di {total}",
+	"vms.detail.goneRedirect": "Questa VM non esiste più: è stata eliminata, forse da un amministratore. Sei stato reindirizzato alle tue VM."
 }

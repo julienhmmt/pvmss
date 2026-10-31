@@ -216,6 +216,10 @@ export class VmDetailStore {
 	/** Set after a successful delete so the page can navigate away. */
 	deleted = $state.raw(false);
 
+	/** Set when a VM this page was showing answers 404 (deleted elsewhere,
+	 *  e.g. by an admin) so the page can redirect with a notice. */
+	gone = $state.raw(false);
+
 	#basePath: string;
 
 	constructor(cluster: string, vmid: number) {
@@ -231,6 +235,11 @@ export class VmDetailStore {
 			this.entity = await get<VmDetailEntity>(this.#basePath);
 			if (this.hardwareOptions === null) await this.loadHardwareOptions();
 		} catch (err) {
+			// A refresh of a VM that was loaded before: it was deleted elsewhere.
+			if (this.entity !== null && err instanceof ApiRequestError && err.status === 404) {
+				this.entity = null;
+				this.gone = true;
+			}
 			this.error = errorMessage(err, () => m['vms.detail.errorLoading']());
 		} finally {
 			this.loading = false;
@@ -274,6 +283,7 @@ export class VmDetailStore {
 			if (err instanceof ApiRequestError && err.status === 404) {
 				this.entity = null;
 				this.error = err.message;
+				this.gone = true;
 			}
 		}
 	}

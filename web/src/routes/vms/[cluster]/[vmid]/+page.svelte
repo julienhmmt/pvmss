@@ -6,15 +6,24 @@
 	import { setVmDetailContext } from '#lib/features/vms/detail.svelte.js';
 	import { onVisibleRefresh } from '#lib/shared/visibility-refresh.js';
 	import VmDetail from '#lib/features/vms/VmDetail.svelte';
+	import { getToastContext } from '#lib/shared/ui/toast.svelte.js';
 	import { m } from '#lib/paraglide/messages.js';
 
 	const cluster = page.params.cluster ?? '';
 	const vmid = Number(page.params.vmid);
 
 	const store = setVmDetailContext(cluster, vmid);
+	const toast = getToastContext();
 
 	$effect(() => {
 		if (store.deleted) {
+			void goto(resolve('/vms'));
+		}
+	});
+
+	$effect(() => {
+		if (store.gone) {
+			toast.info(m['vms.detail.goneRedirect']());
 			void goto(resolve('/vms'));
 		}
 	});
