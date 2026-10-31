@@ -12,6 +12,7 @@
 	import { setVmDetailContext } from '#lib/features/vms/detail.svelte.js';
 	import VmActionBar from '#lib/features/vms/VmActionBar.svelte';
 	import Pill from '#lib/shared/ui/Pill.svelte';
+	import { getToastContext } from '#lib/shared/ui/toast.svelte.js';
 	import { m } from '#lib/paraglide/messages.js';
 
 	/** Live-status poll cadence while the console is open. */
@@ -25,6 +26,14 @@
 	const store = setConsoleContext(cluster, vmid);
 	const serialStore = setSerialConsoleContext(cluster, vmid);
 	const vmStore = setVmDetailContext(cluster, vmid);
+	const toast = getToastContext();
+
+	$effect(() => {
+		if (vmStore.gone) {
+			toast.info(m['vms.detail.goneRedirect']());
+			void goto(resolve('/vms'));
+		}
+	});
 
 	let mode = $state<ConsoleMode>('graphical');
 
