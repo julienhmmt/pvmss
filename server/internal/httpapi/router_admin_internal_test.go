@@ -55,6 +55,7 @@ func TestRegisterAdminRoutes_AllGroupsRegistered(t *testing.T) {
 		"PATCH /api/v1/admin/pools/{name}",
 		"DELETE /api/v1/admin/pools/{name}",
 		"GET /api/v1/admin/audit",
+		"GET /api/v1/admin/audit/export",
 		"GET /api/v1/admin/dashboard",
 		"GET /api/v1/admin/db/export",
 		"POST /api/v1/admin/db/import",
