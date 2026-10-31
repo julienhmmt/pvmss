@@ -103,11 +103,6 @@ func isoOrphanRow(row store.CatalogISOEnabled) orphanRow[fileKey] {
 	return orphanRow[fileKey]{key: fileKey{Node: row.Node, Storage: row.Storage, File: row.File}, enabled: row.Enabled}
 }
 
-// imageOrphanRow flattens a stored cloud image approval row for sweepOrphans.
-func imageOrphanRow(row store.CatalogImageEnabled) orphanRow[fileKey] {
-	return orphanRow[fileKey]{key: fileKey{Node: row.Node, Storage: row.Storage, File: row.File}, enabled: row.Enabled}
-}
-
 // removeNodeOrphan deletes an enabled orphan node approval row.
 func removeNodeOrphan(ctx context.Context, st *store.Store, clusterName string, row orphanRow[string]) error {
 	if err := st.DeleteNode(ctx, clusterName, row.key); err != nil {
@@ -139,15 +134,6 @@ func removeBridgeOrphan(ctx context.Context, st *store.Store, clusterName string
 func removeISOOrphan(ctx context.Context, st *store.Store, clusterName string, row orphanRow[fileKey]) error {
 	if err := st.DeleteISO(ctx, clusterName, row.key.Node, row.key.Storage, row.key.File); err != nil {
 		return fmt.Errorf("auto-remove orphan iso %q on %q: %w", row.key.File, row.key.Node, err)
-	}
-
-	return nil
-}
-
-// removeImageOrphan deletes an enabled orphan cloud image approval row.
-func removeImageOrphan(ctx context.Context, st *store.Store, clusterName string, row orphanRow[fileKey]) error {
-	if err := st.DeleteImage(ctx, clusterName, row.key.Node, row.key.Storage, row.key.File); err != nil {
-		return fmt.Errorf("auto-remove orphan image %q on %q: %w", row.key.File, row.key.Node, err)
 	}
 
 	return nil
@@ -194,16 +180,6 @@ func isoFileEntries(discovered []cluster.ISOImage) []fileEntry {
 	return out
 }
 
-// imageFileEntries normalizes discovered cloud images for adminListFiles.
-func imageFileEntries(discovered []cluster.CloudImage) []fileEntry {
-	out := make([]fileEntry, 0, len(discovered))
-	for _, image := range discovered {
-		out = append(out, fileEntry{Storage: image.Storage, Node: image.Node, File: image.File, SizeBytes: image.SizeBytes})
-	}
-
-	return out
-}
-
 // isoApprovalView builds the approval view of one discovered ISO.
 func isoApprovalView(file fileEntry, enabled bool) ISOApproval {
 	return ISOApproval{
@@ -212,23 +188,9 @@ func isoApprovalView(file fileEntry, enabled bool) ISOApproval {
 	}
 }
 
-// imageApprovalView builds the approval view of one discovered cloud image.
-func imageApprovalView(file fileEntry, enabled bool) ImageApproval {
-	return ImageApproval{
-		Storage: file.Storage, Node: file.Node, File: file.File,
-		SizeBytes: file.SizeBytes, Enabled: enabled,
-	}
-}
-
 // missingISOApproval builds the Missing=true view of a disabled orphan ISO.
 func missingISOApproval(row orphanRow[fileKey]) ISOApproval {
 	return ISOApproval{Storage: row.key.Storage, Node: row.key.Node, File: row.key.File, Missing: true}
-}
-
-// missingImageApproval builds the Missing=true view of a disabled orphan
-// cloud image.
-func missingImageApproval(row orphanRow[fileKey]) ImageApproval {
-	return ImageApproval{Storage: row.key.Storage, Node: row.key.Node, File: row.key.File, Missing: true}
 }
 
 // fileListing carries the inputs of adminListFiles: the discovered files and

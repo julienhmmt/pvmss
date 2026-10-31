@@ -12,10 +12,6 @@ import (
 	"time"
 )
 
-// vmConfigEndpointFmt is the Proxmox REST path for a VM's config endpoint,
-// formatted with the URL-escaped node name and the numeric VMID.
-const vmConfigEndpointFmt = "/nodes/%s/qemu/%d/config"
-
 // GetCloudInitConfig implements CloudInitReader by reading the live VM
 // config. Password is always left empty: Proxmox does not return cipassword
 // on read (write-only), matching the fake's own cloneCloudInitConfig, which
@@ -44,10 +40,6 @@ func (p Proxmox) GetCloudInitConfig(ctx context.Context, node string, vmid int) 
 // space. The read side (parseCloudInitConfig) stays PathUnescape - a
 // general percent-decoder that handles %40, %20, %2B and everything else
 // this produces identically.
-func encodeSSHKeys(keys []string) string {
-	return strings.ReplaceAll(url.QueryEscape(strings.Join(keys, "\n")), "+", "%20")
-}
-
 func parseCloudInitConfig(cfg proxmoxVMConfig) CloudInitConfig {
 	result := CloudInitConfig{IPMode: CloudInitIPModeDHCP, User: cfg.str("ciuser"), Agent: agentEnabled(cfg.str("agent"))}
 
@@ -108,205 +100,6 @@ func parseIPConfig(raw string, result *CloudInitConfig) {
 			result.Gateway = val
 		}
 	}
-}
-
-// FindSnippetStorage implements CloudInitReader: the cluster's configured
-// snippet storage, provided one is configured and the node lists that
-// storage as an active snippets provider. Whether a given file is actually
-// there is proven per file with HasSnippet before any cicustom is set.
-func (p Proxmox) FindSnippetStorage(ctx context.Context, node string) (string, error) {
-	if p.SnippetStorage == "" {
-		return "", ErrSnippetWriteUnavailable
-	}
-
-	rows, err := listSnippetStorages(ctx, p.rest(), node)
-	if err != nil {
-		return "", err
-	}
-
-	for _, row := range rows {
-		if row.Storage == p.SnippetStorage && row.Active == 1 {
-			return p.SnippetStorage, nil
-		}
-	}
-
-	return "", fmt.Errorf("%w: storage %q is not snippets-enabled or not active on node %s", ErrNotFound, p.SnippetStorage, node)
-}
-
-// snippetStorageRow is one row of GET /nodes/{node}/storage?content=snippets.
-type snippetStorageRow struct {
-	Storage string `json:"storage"`
-	Active  int    `json:"active"`
-	Shared  int    `json:"shared"`
-}
-
-func listSnippetStorages(ctx context.Context, rest proxmoxRESTClient, node string) ([]snippetStorageRow, error) {
-	raw, err := rest.do(ctx, http.MethodGet, fmt.Sprintf("/nodes/%s/storage", url.PathEscape(node)), url.Values{"content": {"snippets"}})
-	if err != nil {
-		return nil, err
-	}
-
-	var rows []snippetStorageRow
-	if err := decodeData(raw, &rows); err != nil {
-		return nil, fmt.Errorf("decode node storages: %w", err)
-	}
-
-	return rows, nil
-}
-
-// proxmoxFindSnippetStorage picks any active snippet-capable storage on the
-// node - the fallback for the cloud-init DRIVE placement (ide3), which only
-// needs a storage the VM's node can see. It is unrelated to the configured
-// snippet write target, which FindSnippetStorage owns.
-func proxmoxFindSnippetStorage(ctx context.Context, rest proxmoxRESTClient, node string) (string, error) {
-	rows, err := listSnippetStorages(ctx, rest, node)
-	if err != nil {
-		return "", err
-	}
-
-	// Prefer a shared storage over a node-local one: a snippet on local
-	// storage is invisible to the other nodes, so a later migration would
-	// leave the VM pointing at a file it cannot read. Inactive
-	// storages are skipped outright. Proxmox reports the flags as 1/0.
-	best := ""
-
-	for _, row := range rows {
-		if row.Active != 1 {
-			continue
-		}
-
-		if row.Shared == 1 {
-			return row.Storage, nil
-		}
-
-		if best == "" {
-			best = row.Storage
-		}
-	}
-
-	if best == "" {
-		return "", ErrNotFound
-	}
-
-	return best, nil
-}
-
-// EnsureCloudInitDrive implements Writer: idempotently ensures the fixed
-// cloudInitDiskKey slot (proxmox_config.go) holds a cloud-init drive. The
-// drive's storage is the VM's own first data disk's storage when one exists
-// (always valid, since the VM already has a disk there), falling back to a
-// snippet-capable storage on node otherwise.
-func (p Proxmox) EnsureCloudInitDrive(ctx context.Context, node string, vmid int) error {
-	rest := p.rest()
-
-	cfg, err := fetchVMConfig(ctx, rest, node, vmid)
-	if err != nil {
-		return err
-	}
-
-	if value, ok := cfg[cloudInitDiskKey].(string); ok && strings.Contains(value, "cloudinit") {
-		return nil
-	}
-
-	storage, err := cloudInitDriveStorage(ctx, rest, node, cfg)
-	if err != nil {
-		return err
-	}
-
-	_, err = rest.do(ctx, http.MethodPut, fmt.Sprintf(vmConfigEndpointFmt, url.PathEscape(node), vmid), url.Values{
-		cloudInitDiskKey: {storage + ":cloudinit"},
-	})
-
-	return err
-}
-
-func cloudInitDriveStorage(ctx context.Context, rest proxmoxRESTClient, node string, cfg proxmoxVMConfig) (string, error) {
-	disks, _ := parseDisks(cfg)
-	if len(disks) > 0 {
-		return disks[0].Storage, nil
-	}
-
-	return proxmoxFindSnippetStorage(ctx, rest, node)
-}
-
-// SetCloudInitConfig implements Writer. It ensures the cloud-init drive
-// exists first - Proxmox silently ignores ciuser/sshkeys/ipconfig0/... params
-// without one - matching the fake's own EnsureCloudInitDrive-first contract.
-func (p Proxmox) SetCloudInitConfig(ctx context.Context, node string, vmid int, config CloudInitConfig) error {
-	if err := p.EnsureCloudInitDrive(ctx, node, vmid); err != nil {
-		return err
-	}
-
-	form := url.Values{}
-	if config.User != "" {
-		form.Set("ciuser", config.User)
-	}
-
-	if len(config.SSHKeys) > 0 {
-		form.Set("sshkeys", encodeSSHKeys(config.SSHKeys))
-	}
-
-	form.Set("ipconfig0", encodeIPConfig(config))
-
-	if config.DNSServer != "" {
-		form.Set("nameserver", config.DNSServer)
-	}
-
-	if config.SearchDomain != "" {
-		form.Set("searchdomain", config.SearchDomain)
-	}
-
-	_, err := p.rest().do(ctx, http.MethodPut, fmt.Sprintf(vmConfigEndpointFmt, url.PathEscape(node), vmid), form)
-
-	return err
-}
-
-// HasSnippet implements Writer by listing storage's snippets content and
-// checking for filename: the proof an admin-placed file is on the node.
-func (p Proxmox) HasSnippet(ctx context.Context, node, storage, filename string) (bool, error) {
-	found, err := proxmoxListContent(ctx, p.rest(), node, storage, "snippets")
-	if err != nil {
-		return false, err
-	}
-
-	for _, f := range found {
-		if f.File == filename {
-			return true, nil
-		}
-	}
-
-	return false, nil
-}
-
-// AttachCloudInitSnippet points the VM at an already-uploaded snippet file
-// through the vendor-data slot. vendor-data MERGES with the generated
-// user-data, so ciuser/sshkeys/ipconfig0 keep applying; a user= slot would
-// replace the generated user-data and silently drop the structured config.
-// An empty filename detaches the snippet by clearing cicustom.
-//
-// Like SetCloudInitConfig, the attach path ensures the cloud-init drive first:
-// without one in the fixed ide3 slot, Proxmox silently ignores cicustom - no
-// seed ISO is generated and the snippet never reaches the guest. Detaching
-// needs no drive, so the ensure runs only when a filename is given; the
-// ordering matches the fake's own ordering.
-func (p Proxmox) AttachCloudInitSnippet(ctx context.Context, node, storage, filename string, vmid int) error {
-	if filename != "" {
-		if err := p.EnsureCloudInitDrive(ctx, node, vmid); err != nil {
-			return err
-		}
-	}
-
-	form := url.Values{}
-
-	if filename == "" {
-		form.Set(actionDelete, "cicustom")
-	} else {
-		form.Set("cicustom", fmt.Sprintf("vendor=%s:snippets/%s", storage, filename))
-	}
-
-	_, err := p.rest().do(ctx, http.MethodPut, fmt.Sprintf(vmConfigEndpointFmt, url.PathEscape(node), vmid), form)
-
-	return err
 }
 
 // SetCloudInitPassword applies the cloud-init password for user via the QEMU
@@ -377,18 +170,6 @@ func (p Proxmox) PingGuestAgent(ctx context.Context, node string, vmid int) erro
 	}
 
 	return nil
-}
-
-func encodeIPConfig(config CloudInitConfig) string {
-	if config.IPMode == CloudInitIPModeStatic && config.IPAddress != "" {
-		if config.Gateway != "" {
-			return fmt.Sprintf("ip=%s,gw=%s", config.IPAddress, config.Gateway)
-		}
-
-		return "ip=" + config.IPAddress
-	}
-
-	return "ip=dhcp"
 }
 
 // sshKeyAddScript is the fixed guest-side script the SSH key is appended

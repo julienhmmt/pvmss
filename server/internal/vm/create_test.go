@@ -15,7 +15,6 @@ import (
 	"pvmss/server/internal/testfixture"
 	"pvmss/server/internal/vm"
 	"slices"
-	"strings"
 	"testing"
 	"time"
 )
@@ -34,6 +33,17 @@ const (
 	testLogLevel  = "info"
 	testLogFormat = "json"
 	testLogOutput = "stdout"
+
+	// testStorageLocal is the fake-local storage name the fixtures share.
+	testStorageLocal = "local"
+	// testActionSetCloudInitPassword is the fake's agent password-apply action.
+	testActionSetCloudInitPassword = "set_cloudinit_password"
+	// testActionCreate is the fake's VM-create action name.
+	testActionCreate = "create"
+	// testBIOSOVMF is the Proxmox bios value selecting UEFI firmware.
+	testBIOSOVMF = "ovmf"
+
+	testISOFile = "debian-12-generic-amd64.iso"
 )
 
 func newCreateFixture(t *testing.T) createFixture {
@@ -73,8 +83,8 @@ func newCreateFixture(t *testing.T) createFixture {
 	// Template approvals are admin-curated - seed the two the
 	// clone tests reference (the schema ships no demo rows).
 	templates := map[int]store.TemplateValues{
-		9000: {Node: cluster.FakeNode02, Name: "debian-12-cloud", CloudInitCapable: true, DiskStorage: cluster.FakeStorageLocalLVM, DiskSizeGB: 8, DiskBus: string(cluster.DiskBusSCSI)},
-		9001: {Node: cluster.FakeNode02, Name: "alpine-appliance", CloudInitCapable: false, DiskStorage: cluster.FakeStorageLocal, DiskSizeGB: 2, DiskBus: string(cluster.DiskBusSCSI)},
+		9000: {Node: cluster.FakeNode02, Name: "debian-12-cloud", DiskStorage: cluster.FakeStorageLocalLVM, DiskSizeGB: 8, DiskBus: string(cluster.DiskBusSCSI)},
+		9001: {Node: cluster.FakeNode02, Name: "alpine-appliance", DiskStorage: cluster.FakeStorageLocal, DiskSizeGB: 2, DiskBus: string(cluster.DiskBusSCSI)},
 	}
 	for vmid, values := range templates {
 		if err := st.InsertTemplate(ctx, testClusterName, vmid, values, true); err != nil {
@@ -95,10 +105,8 @@ func (f createFixture) create(t *testing.T, actor auth.Identity, req vm.CreateRe
 	return vm.Create(context.Background(), actor, req.Cluster, req, vm.CreateDeps{
 		Store:     f.store,
 		Creator:   f.fake,
-		Pusher:    f.fake,
 		Writer:    f.fake,
 		FreeSpace: f.fake,
-		Snippets:  f.fake,
 		Audit:     f.store,
 		Log:       log,
 	})
@@ -445,7 +453,6 @@ func TestCreate_AuditFailureDoesNotFailCreate(t *testing.T) {
 	result, err := vm.Create(context.Background(), aliceIdentity(), testClusterName, detailedRequest(), vm.CreateDeps{
 		Store:   fixture.store,
 		Creator: fixture.fake,
-		Pusher:  fixture.fake,
 		Writer:  fixture.fake,
 		Audit:   failingAudit{},
 		Log:     log,
@@ -456,400 +463,6 @@ func TestCreate_AuditFailureDoesNotFailCreate(t *testing.T) {
 
 	if result.VMID < 1 || result.UPID == "" {
 		t.Fatalf("unexpected result: %+v", result)
-	}
-}
-
-//  - cloud-init template application -
-
-const testCloudInitContent = "#cloud-config\npackages:\n  - nginx\n"
-
-// createTestTemplate inserts an enabled cloud-init template into the fixture
-// store, publishes it to every fake node like the admin API does, and
-// returns its id.
-func createTestTemplate(t *testing.T, st *store.Store) string {
-	t.Helper()
-
-	tmpl, err := catalog.CreateCloudInitTemplate(context.Background(), st, testClusterName, "Web server", testCloudInitContent)
-	if err != nil {
-		t.Fatalf("CreateCloudInitTemplate: %v", err)
-	}
-
-	cluster.ClearFakeCalls()
-
-	return tmpl.ID
-}
-
-// publishedFilename returns the published file of a template ("" = baseline).
-func publishedFilename(t *testing.T, st *store.Store, templateID string) string {
-	t.Helper()
-
-	filename, err := catalog.PublishedFile(context.Background(), st, testClusterName, templateID)
-	if err != nil {
-		t.Fatalf("PublishedFile(%q): %v", templateID, err)
-	}
-
-	return filename
-}
-
-// attachedFilename returns the filename of the last cicustom attach recorded
-// for vmid ("" when none), failing on any per-VM file write: VM creation
-// never writes a cloud-init file.
-func attachedFilename(t *testing.T, vmid int) string {
-	t.Helper()
-
-	filename := ""
-
-	for _, c := range cluster.FakeCallsFor(vmid) {
-		if c.Action == "publish_snippet" || c.Action == "push_cloudinit_snippet" {
-			t.Errorf("VM creation wrote a cloud-init file: %+v", c)
-		}
-
-		if c.Action == testActionAttachCloudInitSnippet {
-			filename = c.Filename
-		}
-	}
-
-	return filename
-}
-
-// assertDocumentRow checks the vm_cloudinit_documents row for vmid.
-func assertDocumentRow(t *testing.T, st *store.Store, vmid int, wantTemplateID, wantFilename, wantActor string) {
-	t.Helper()
-
-	doc, found, err := st.GetVMCloudInitDocument(context.Background(), testClusterName, vmid)
-	if err != nil || !found {
-		t.Fatalf("GetVMCloudInitDocument: found=%v err=%v", found, err)
-	}
-
-	if doc.TemplateID != wantTemplateID || doc.Filename != wantFilename || doc.UpdatedBy != wantActor {
-		t.Errorf("document row = %+v, want template %q file %q by %q", doc, wantTemplateID, wantFilename, wantActor)
-	}
-}
-
-// TestCreate_CloudInitTemplate_AttachesPublishedFile - a published template
-// is attached as the VM's vendor-data by its published (shared) filename;
-// nothing is written for the VM; the VM starts after the attach.
-//
-//nolint:paralleltest // serial: shared fake VM and database fixtures
-func TestCreate_CloudInitTemplate_AttachesPublishedFile(t *testing.T) {
-	fixture := newCreateFixture(t)
-	tmplID := createTestTemplate(t, fixture.store)
-	wantFilename := publishedFilename(t, fixture.store, tmplID)
-
-	req := detailedRequest()
-	req.CloudInitTemplateID = tmplID
-	req.StartAfterCreate = true
-
-	result, err := fixture.create(t, aliceIdentity(), req)
-	if err != nil {
-		t.Fatalf("Create: %v", err)
-	}
-
-	if result.CloudInitTemplateID != tmplID || result.CloudInitPushError != "" {
-		t.Errorf("result = %+v, want template %q without error", result, tmplID)
-	}
-
-	if got := attachedFilename(t, result.VMID); got != wantFilename {
-		t.Errorf("attached %q, want the published %q", got, wantFilename)
-	}
-
-	calls := cluster.FakeCallsFor(result.VMID)
-	attachIdx := slices.IndexFunc(calls, func(c cluster.FakeCall) bool { return c.Action == testActionAttachCloudInitSnippet })
-	startIdx := slices.IndexFunc(calls, func(c cluster.FakeCall) bool { return c.Action == testActionStart })
-
-	if startIdx < 0 || startIdx < attachIdx {
-		t.Errorf("start=%d attach=%d, want the start after the attach", startIdx, attachIdx)
-	}
-
-	assertDocumentRow(t, fixture.store, result.VMID, tmplID, wantFilename, aliceIdentity().Username)
-}
-
-// TestCreate_CloudInitTemplate_TwoVMsShareOneFile - the published file is
-// shared: two VMs from the same template point at the same file.
-//
-//nolint:paralleltest // serial: shared fake VM and database fixtures
-func TestCreate_CloudInitTemplate_TwoVMsShareOneFile(t *testing.T) {
-	fixture := newCreateFixture(t)
-	tmplID := createTestTemplate(t, fixture.store)
-	wantFilename := publishedFilename(t, fixture.store, tmplID)
-
-	for _, name := range []string{"web-a", "web-b"} {
-		req := detailedRequest()
-		req.Name = name
-		req.CloudInitTemplateID = tmplID
-
-		result, err := fixture.create(t, aliceIdentity(), req)
-		if err != nil {
-			t.Fatalf("Create %s: %v", name, err)
-		}
-
-		if got := attachedFilename(t, result.VMID); got != wantFilename {
-			t.Errorf("%s attached %q, want %q", name, got, wantFilename)
-		}
-	}
-}
-
-// failingSnippetFinder refuses every resolution - the stand-in for a node
-// without any snippet-capable storage.
-type failingSnippetFinder struct{}
-
-func (failingSnippetFinder) FindSnippetStorage(context.Context, string) (string, error) {
-	return "", cluster.ErrNotFound
-}
-
-// writeUnavailableSnippetFinder reports a cluster with no snippet write
-// target - the stand-in for an unconfigured Proxmox cluster.
-type writeUnavailableSnippetFinder struct{}
-
-func (writeUnavailableSnippetFinder) FindSnippetStorage(context.Context, string) (string, error) {
-	return "", cluster.ErrSnippetWriteUnavailable
-}
-
-// fixedSnippetFinder always resolves to one storage and counts calls, so
-// tests can assert the create path used the plan-resolved target.
-type fixedSnippetFinder struct {
-	calls   int
-	storage string
-}
-
-func (f *fixedSnippetFinder) FindSnippetStorage(context.Context, string) (string, error) {
-	f.calls++
-
-	return f.storage, nil
-}
-
-// assertNoVMCreated fails when any VM create/clone reached the fake.
-func assertNoVMCreated(t *testing.T) {
-	t.Helper()
-
-	for _, c := range cluster.FakeCalls() {
-		if c.Action == testActionCreate {
-			t.Fatalf("a VM was created for a refused request: %+v", c)
-		}
-	}
-}
-
-// assertTemplateRefusedBeforeVMID asserts Create refuses the cloud-init
-// template with wantErr before any VMID is allocated: the snippet finder
-// decides which refusal the request hits.
-func assertTemplateRefusedBeforeVMID(t *testing.T, snippets vm.SnippetStorageFinder, wantErr error) {
-	t.Helper()
-
-	fixture := newCreateFixture(t)
-	req := detailedRequest()
-	req.CloudInitTemplateID = createTestTemplate(t, fixture.store)
-
-	_, err := vm.Create(context.Background(), aliceIdentity(), testClusterName, req, vm.CreateDeps{
-		Store: fixture.store, Creator: fixture.fake, Pusher: fixture.fake,
-		Writer: fixture.fake, FreeSpace: fixture.fake, Snippets: snippets,
-		Audit: fixture.store, Log: slog.New(slog.DiscardHandler),
-	})
-	if !errors.Is(err, wantErr) {
-		t.Fatalf("error = %v, want %v", err, wantErr)
-	}
-
-	assertNoVMCreated(t)
-}
-
-// TestCreate_CloudInitTemplate_NoSnippetStorage_RejectedBeforeVMID - a
-// template on a node without the snippet storage is refused before NextVMID.
-//
-//nolint:paralleltest // serial: shared fake VM and database fixtures
-func TestCreate_CloudInitTemplate_NoSnippetStorage_RejectedBeforeVMID(t *testing.T) {
-	assertTemplateRefusedBeforeVMID(t, failingSnippetFinder{}, vm.ErrNoSnippetStorage)
-}
-
-// TestCreate_CloudInitTemplate_UsesPlanSnippetStorage - the visibility check
-// and the attach use the storage resolved at plan time.
-//
-//nolint:paralleltest // serial: shared fake VM and database fixtures
-func TestCreate_CloudInitTemplate_UsesPlanSnippetStorage(t *testing.T) {
-	fixture := newCreateFixture(t)
-	tmplID := createTestTemplate(t, fixture.store)
-	filename := publishedFilename(t, fixture.store, tmplID)
-
-	cluster.SetFakeSnippetPresent(cluster.FakeNode01, "snippet-vol", filename, true)
-
-	finder := &fixedSnippetFinder{storage: "snippet-vol"}
-
-	req := detailedRequest()
-	req.CloudInitTemplateID = tmplID
-
-	result, err := vm.Create(context.Background(), aliceIdentity(), testClusterName, req, vm.CreateDeps{
-		Store: fixture.store, Creator: fixture.fake, Pusher: fixture.fake,
-		Writer: fixture.fake, FreeSpace: fixture.fake, Snippets: finder,
-		Audit: fixture.store, Log: slog.New(slog.DiscardHandler),
-	})
-	if err != nil {
-		t.Fatalf("Create: %v", err)
-	}
-
-	attached := false
-
-	for _, c := range cluster.FakeCallsFor(result.VMID) {
-		if c.Action == testActionAttachCloudInitSnippet {
-			attached = true
-
-			if c.Storage != "snippet-vol" {
-				t.Fatalf("attach on %q, want the plan-resolved snippet-vol", c.Storage)
-			}
-		}
-	}
-
-	if finder.calls == 0 || !attached {
-		t.Fatalf("finder calls=%d attached=%v", finder.calls, attached)
-	}
-}
-
-// TestCreate_CloudInitTemplate_WriteUnavailable409 - a template on a cluster
-// that does not publish is refused (409) before any VMID is allocated.
-//
-//nolint:paralleltest // serial: shared fake VM and database fixtures
-func TestCreate_CloudInitTemplate_WriteUnavailable409(t *testing.T) {
-	assertTemplateRefusedBeforeVMID(t, writeUnavailableSnippetFinder{}, vm.ErrCloudInitWriteUnavailable)
-}
-
-// TestCreate_WithoutCloudInitTemplate_DoesNotResolveSnippetStorage - the
-// resolution costs a cluster read and must not run on the plain ISO path.
-//
-//nolint:paralleltest // serial: shared fake VM and database fixtures
-func TestCreate_WithoutCloudInitTemplate_DoesNotResolveSnippetStorage(t *testing.T) {
-	fixture := newCreateFixture(t)
-	finder := &fixedSnippetFinder{storage: "snippet-vol"}
-
-	if _, err := vm.Create(context.Background(), aliceIdentity(), testClusterName, detailedRequest(), vm.CreateDeps{
-		Store: fixture.store, Creator: fixture.fake, Pusher: fixture.fake,
-		Writer: fixture.fake, FreeSpace: fixture.fake, Snippets: finder,
-		Audit: fixture.store, Log: slog.New(slog.DiscardHandler),
-	}); err != nil {
-		t.Fatalf("Create: %v", err)
-	}
-
-	if finder.calls != 0 {
-		t.Errorf("FindSnippetStorage calls = %d, want 0 without a cloud-init template", finder.calls)
-	}
-}
-
-// TestCreate_CloudInitTemplate_Unknown_RejectedBeforeVMID - an unknown
-// template id is ErrNotApproved with zero cluster calls.
-//
-//nolint:paralleltest // serial: shared fake VM and database fixtures
-func TestCreate_CloudInitTemplate_Unknown_RejectedBeforeVMID(t *testing.T) {
-	fixture := newCreateFixture(t)
-
-	cluster.ResetFake()
-
-	req := detailedRequest()
-	req.CloudInitTemplateID = "does-not-exist"
-
-	_, err := fixture.create(t, aliceIdentity(), req)
-	if !errors.Is(err, vm.ErrNotApproved) {
-		t.Fatalf("error = %v, want ErrNotApproved", err)
-	}
-
-	if calls := cluster.FakeCalls(); len(calls) != 0 {
-		t.Fatalf("rejected request reached the cluster: %+v", calls)
-	}
-}
-
-// TestCreate_CloudInitTemplate_Disabled_RejectedBeforeVMID - a disabled
-// template is ErrNotApproved before NextVMID.
-//
-//nolint:paralleltest // serial: shared fake VM and database fixtures
-func TestCreate_CloudInitTemplate_Disabled_RejectedBeforeVMID(t *testing.T) {
-	fixture := newCreateFixture(t)
-	tmplID := createTestTemplate(t, fixture.store)
-
-	if err := catalog.SetCloudInitTemplateEnabled(context.Background(), fixture.store, testClusterName, tmplID, false); err != nil {
-		t.Fatalf("disable template: %v", err)
-	}
-
-	req := detailedRequest()
-	req.CloudInitTemplateID = tmplID
-
-	_, err := fixture.create(t, aliceIdentity(), req)
-	if !errors.Is(err, vm.ErrNotApproved) {
-		t.Fatalf("error = %v, want ErrNotApproved", err)
-	}
-
-	assertNoVMCreated(t)
-}
-
-// TestCreate_CloudInitTemplate_NotPasted_RejectedBeforeVMID - an enabled
-// template whose file is on no node is refused (409) before any VMID.
-//
-//nolint:paralleltest // serial: shared fake VM and database fixtures
-func TestCreate_CloudInitTemplate_NotPasted_RejectedBeforeVMID(t *testing.T) {
-	fixture := newCreateFixture(t)
-
-	cluster.SetFakeSnippetVisibility(false)
-	t.Cleanup(func() { cluster.SetFakeSnippetVisibility(true) })
-
-	if _, err := catalog.CreateCloudInitTemplate(context.Background(), fixture.store, testClusterName, "Unpublished", testCloudInitContent); err != nil {
-		t.Fatalf("CreateCloudInitTemplate: %v", err)
-	}
-
-	req := detailedRequest()
-	req.CloudInitTemplateID = "unpublished"
-
-	_, err := fixture.create(t, aliceIdentity(), req)
-	if !errors.Is(err, vm.ErrCloudInitNotPublished) {
-		t.Fatalf("error = %v, want ErrCloudInitNotPublished", err)
-	}
-
-	assertNoVMCreated(t)
-}
-
-// TestCreate_CloudInitTemplate_NotOnNode_RejectedBeforeVMID - the regression
-// for "volume 'local:snippets/...' does not exist": a template published
-// while the VM's node did not get the file (offline, wrong directory) is
-// refused before any VMID, never attached.
-//
-//nolint:paralleltest // serial: shared fake VM and database fixtures
-func TestCreate_CloudInitTemplate_NotOnNode_RejectedBeforeVMID(t *testing.T) {
-	fixture := newCreateFixture(t)
-
-	cluster.SetFakeSnippetVisibility(false)
-	t.Cleanup(func() { cluster.SetFakeSnippetVisibility(true) })
-
-	tmplID := createTestTemplate(t, fixture.store)
-
-	req := detailedRequest()
-	req.CloudInitTemplateID = tmplID
-
-	_, err := fixture.create(t, aliceIdentity(), req)
-	if !errors.Is(err, vm.ErrCloudInitNotPublished) || !strings.Contains(err.Error(), cluster.FakeNode01) {
-		t.Fatalf("error = %v, want ErrCloudInitNotPublished naming the node", err)
-	}
-
-	assertNoVMCreated(t)
-}
-
-// TestCreate_CloudInitTemplate_DeletedAfterUse - deleting a template after
-// a VM used it leaves the VM's document row (and the shared file) alone.
-//
-//nolint:paralleltest // serial: shared fake VM and database fixtures
-func TestCreate_CloudInitTemplate_DeletedAfterUse(t *testing.T) {
-	fixture := newCreateFixture(t)
-	tmplID := createTestTemplate(t, fixture.store)
-	filename := publishedFilename(t, fixture.store, tmplID)
-
-	req := detailedRequest()
-	req.CloudInitTemplateID = tmplID
-
-	result, err := fixture.create(t, aliceIdentity(), req)
-	if err != nil {
-		t.Fatalf("Create: %v", err)
-	}
-
-	if err := catalog.DeleteCloudInitTemplate(context.Background(), fixture.store, testClusterName, tmplID); err != nil {
-		t.Fatalf("DeleteCloudInitTemplate: %v", err)
-	}
-
-	assertDocumentRow(t, fixture.store, result.VMID, tmplID, filename, aliceIdentity().Username)
-
-	if present, _ := fixture.fake.HasSnippet(context.Background(), cluster.FakeNode01, cluster.FakeSnippetStorage, filename); !present {
-		t.Error("template delete removed the published file the VM boots from")
 	}
 }
 
@@ -955,7 +568,6 @@ func TestCreate_Sockets_BeyondMaxSockets(t *testing.T) {
 	_, err = vm.Create(context.Background(), aliceIdentity(), req.Cluster, req, vm.CreateDeps{
 		Store:    fixture.store,
 		Creator:  fixture.fake,
-		Pusher:   fixture.fake,
 		Audit:    fixture.store,
 		Log:      slog.New(slog.DiscardHandler),
 		Services: []*policy.Policy{service},
@@ -1022,7 +634,6 @@ func TestCreate_Sockets_NodeCapacityCountsSocketsTimesCores(t *testing.T) {
 	_, err = vm.Create(context.Background(), aliceIdentity(), req.Cluster, req, vm.CreateDeps{
 		Store:    fixture.store,
 		Creator:  fixture.fake,
-		Pusher:   fixture.fake,
 		Audit:    fixture.store,
 		Log:      slog.New(slog.DiscardHandler),
 		Services: []*policy.Policy{service},
@@ -1113,7 +724,6 @@ func TestCreate_MultiNIC_BeyondMaxNetworkCards(t *testing.T) {
 	_, err = vm.Create(context.Background(), aliceIdentity(), req.Cluster, req, vm.CreateDeps{
 		Store:    fixture.store,
 		Creator:  fixture.fake,
-		Pusher:   fixture.fake,
 		Audit:    fixture.store,
 		Log:      slog.New(slog.DiscardHandler),
 		Services: []*policy.Policy{service},

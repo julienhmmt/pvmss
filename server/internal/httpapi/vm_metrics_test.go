@@ -45,7 +45,7 @@ func newVMMetricsHandler(t *testing.T) (*httpapi.VMMetrics, *httpapi.Auth) {
 	authHandler := newAuthHandler(t)
 	logger := slog.New(slog.NewTextHandler(testWriter{t}, nil))
 
-	return httpapi.NewVMMetrics(projection, authHandler, cluster.Fake{}, cluster.Fake{}, logger), authHandler
+	return httpapi.NewVMMetricsWithRegistry(projectionRegistry(projection), projection, authHandler, cluster.Fake{}, cluster.Fake{}, nil, logger), authHandler
 }
 
 func metricsRequest(path string, cookie *http.Cookie) *http.Request {

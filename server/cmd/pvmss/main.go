@@ -464,7 +464,6 @@ func buildRouter(deps routerDeps) (http.Handler, error) {
 	inventoryRegistry := deps.inventoryRegistry
 	clusterClient := deps.clusterClient
 	projection := deps.projection
-	refresher := deps.refresher
 	worker := deps.worker
 	sessions := deps.sessions
 	st := deps.st
@@ -472,12 +471,14 @@ func buildRouter(deps routerDeps) (http.Handler, error) {
 	logger := deps.logger
 	policyService := policy.New(st, projection, nil)
 	policyService.SetClusterProvider(clusterRegistry)
+	policyService.SetProjectionSource(inventoryRegistry)
 	freshness := inventoryFreshness{registry: inventoryRegistry, demoMode: cfg.ClusterSource == "fake"}
 	health := httpapi.NewHealth(st, logger, freshness, 2*cfg.InventoryRefreshInterval)
-	clusterNodes := httpapi.NewClusterNodes(projection, logger)
-	clusterRefresh := httpapi.NewClusterRefresh(refresher, logger)
 	authHandler := httpapi.NewAuthWithRegistry(clusterRegistry, st, sessions, cfg.AdminPasswordHash, logger)
 	authHandler.SetClusterFreshnessChecker(freshness, 2*cfg.InventoryRefreshInterval)
+	health.SetAuthHandler(authHandler)
+	clusterNodes := httpapi.NewClusterNodesWithRegistry(inventoryRegistry, authHandler, logger)
+	clusterRefresh := httpapi.NewClusterRefreshWithRegistry(inventoryRegistry, clusterRegistry, authHandler, logger)
 	vms := httpapi.NewVMsWithRegistry(inventoryRegistry, authHandler, cfg.MaxListPageSize, 0, logger, st, policyService)
 
 	clients, err := resolveClusterClientInterfaces(clusterClient)
@@ -502,7 +503,6 @@ func buildRouter(deps routerDeps) (http.Handler, error) {
 		st,
 		clusterRegistry,
 		clients.creator,
-		clients.writer,
 		logger,
 		policyService,
 	)
@@ -529,7 +529,6 @@ func buildRouter(deps routerDeps) (http.Handler, error) {
 	adminOps.SetInventorySource(inventoryRegistry, 2*cfg.InventoryRefreshInterval)
 	adminClusters := httpapi.NewAdminClusters(authHandler, st, clusterRegistry, inventoryRegistry, logger)
 	adminClusters.SetTrustedProxyHops(cfg.TrustedProxyHops)
-	adminBaseline := httpapi.NewAdminBaseline(authHandler, clusterRegistry, st, logger)
 	docsHandler := httpapi.NewDocsAPIHandler(authHandler, st, logger)
 	adminDocs := httpapi.NewAdminDocs(authHandler, st, docsHandler, logger)
 	adminDocs.SetTrustedProxyHops(cfg.TrustedProxyHops)
@@ -538,8 +537,7 @@ func buildRouter(deps routerDeps) (http.Handler, error) {
 	adminAccounts.SetTrustedProxyHops(cfg.TrustedProxyHops)
 
 	authHandler.SetTrustedProxyHops(cfg.TrustedProxyHops)
-	vm.SetResolveAuditor(st)
-	policy.SetQuotaAuditor(st)
+	policyService.SetQuotaAuditor(st)
 
 	return httpapi.NewRouter(httpapi.RouterConfig{
 		Health:           health,
@@ -568,7 +566,6 @@ func buildRouter(deps routerDeps) (http.Handler, error) {
 		Docs:             docsHandler,
 		AdminDocs:        adminDocs,
 		ProfileSSHKeys:   profileSSHKeys,
-		AdminBaseline:    adminBaseline,
 		AdminMigration:   adminMigration,
 		AdminAccounts:    adminAccounts,
 		TrustedProxyHops: cfg.TrustedProxyHops,

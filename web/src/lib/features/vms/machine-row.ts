@@ -16,8 +16,6 @@ export function rowHint(status: MachineDisplayStatus): RowHint | null {
 			return { text: m['vms.list.hint.starting'](), tone: 'muted' };
 		case 'stopping':
 			return { text: m['vms.list.hint.stopping'](), tone: 'muted' };
-		case 'stopped':
-			return { text: m['vms.list.hint.stopped'](), tone: 'muted' };
 		case 'failed':
 			return { text: m['vms.list.hint.failed'](), tone: 'error' };
 		case 'partial':

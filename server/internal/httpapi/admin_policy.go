@@ -22,11 +22,6 @@ type AdminPolicy struct {
 	trustedProxyHops int
 }
 
-// NewAdminPolicy creates the policy admin handler.
-func NewAdminPolicy(auth *Auth, service *policy.Policy, log *slog.Logger) *AdminPolicy {
-	return &AdminPolicy{auth: auth, service: service, log: log}
-}
-
 // NewAdminPolicyWithRegistry creates policy handlers with explicit cluster selection.
 func NewAdminPolicyWithRegistry(auth *Auth, service *policy.Policy, registry ClusterLister, log *slog.Logger) *AdminPolicy {
 	return &AdminPolicy{auth: auth, service: service, clusters: registry, log: log}

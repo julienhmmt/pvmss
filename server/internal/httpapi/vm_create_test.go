@@ -9,7 +9,6 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"path/filepath"
-	"pvmss/server/internal/catalog"
 	"pvmss/server/internal/cluster"
 	"pvmss/server/internal/config"
 	"pvmss/server/internal/httpapi"
@@ -94,26 +93,8 @@ func newVMCreateHandlerWithClient(t *testing.T, client cluster.Client) (*httpapi
 		st,
 		provider,
 		cluster.Fake{},
-		cluster.Fake{},
 		logger,
 	), authHandler, st
-}
-
-// noSnippetWriteClient is a cluster client that predates the snippet write
-// target: it only implements cluster.Client, so the catalog reports
-// cloudInitWriteEnabled=false.
-type noSnippetWriteClient struct {
-	cluster.Client
-}
-
-// snippetWriteUnavailableClient is a full Writer whose snippet write target
-// is unconfigured - FindSnippetStorage always reports unavailable.
-type snippetWriteUnavailableClient struct {
-	cluster.Fake
-}
-
-func (snippetWriteUnavailableClient) FindSnippetStorage(context.Context, string) (string, error) {
-	return "", cluster.ErrSnippetWriteUnavailable
 }
 
 func seedBridgeApprovals(t *testing.T, st *store.Store) {
@@ -400,7 +381,7 @@ func TestVMCreateCatalog_SelectsStorageClientByCluster(t *testing.T) {
 
 	_, authHandler, st := newVMCreateHandler(t)
 
-	cookie := loginCookie(t, authHandler, `{"username":"alice","password":"pvmss-alice"}`)
+	cookie := adminCookie(t, authHandler)
 
 	if err := st.SetStorageEnabled(
 		context.Background(),
@@ -426,7 +407,6 @@ func TestVMCreateCatalog_SelectsStorageClientByCluster(t *testing.T) {
 		authHandler,
 		st,
 		provider,
-		cluster.Fake{},
 		cluster.Fake{},
 		logger,
 	)
@@ -615,237 +595,8 @@ func TestVMCreate_DetailedOutOfRange(t *testing.T) {
 	}
 }
 
-//  - cloud-init template additive cases -
-
-// createCatalogTemplate inserts an enabled cloud-init template directly via the
-// catalog layer and returns its id, for vm-create handler tests.
-func createCatalogTemplate(t *testing.T, st *store.Store) string {
-	t.Helper()
-
-	tmpl, err := catalog.CreateCloudInitTemplate(context.Background(), st, auditTestCluster, "Web server", "#cloud-config\npackages:\n  - nginx\n")
-	if err != nil {
-		t.Fatalf("CreateCloudInitTemplate: %v", err)
-	}
-
-	cluster.ClearFakeCalls()
-
-	return tmpl.ID
-}
-
-// TestVMCreateCatalog_CloudInitTemplatesExposedWhenWriteEnabled - GET
-// .../catalog lists the approved cloud-init templates and reports
-// cloudInitWriteEnabled=true when the cluster client can write snippets.
-// The response must not carry the template content.
-//
-//nolint:paralleltest // serial: shared fake VM and database fixtures
-func TestVMCreateCatalog_CloudInitTemplatesExposedWhenWriteEnabled(t *testing.T) {
-	handler, authHandler, st := newVMCreateHandler(t)
-	cookie := loginCookie(t, authHandler, `{"username":"alice","password":"pvmss-alice"}`)
-	tmplID := createCatalogTemplate(t, st)
-
-	req := httptest.NewRequest(http.MethodGet, "/api/v1/vm-create/catalog", nil)
-	req.AddCookie(cookie)
-
-	rec := httptest.NewRecorder()
-	handler.ServeCatalog(rec, req)
-
-	if rec.Code != http.StatusOK {
-		t.Fatalf("status = %d: %s", rec.Code, rec.Body.String())
-	}
-
-	var body struct {
-		CloudInitWriteEnabled bool   `json:"cloudInitWriteEnabled"`
-		CloudInitBaselineID   string `json:"cloudInitBaselineId"`
-		CloudInitTemplates    []struct {
-			ID      string `json:"id"`
-			Label   string `json:"label"`
-			Content string `json:"content"`
-		} `json:"cloudInitTemplates"`
-	}
-	if err := json.Unmarshal(rec.Body.Bytes(), &body); err != nil {
-		t.Fatalf("decode catalog: %v", err)
-	}
-
-	if !body.CloudInitWriteEnabled {
-		t.Error("cloudInitWriteEnabled = false, want true (fake always writes)")
-	}
-
-	if body.CloudInitBaselineID != store.BaselineTemplateID {
-		t.Errorf("cloudInitBaselineId = %q, want %q", body.CloudInitBaselineID, store.BaselineTemplateID)
-	}
-
-	if len(body.CloudInitTemplates) != 1 || body.CloudInitTemplates[0].ID != tmplID {
-		t.Fatalf("cloudInitTemplates = %+v, want the one approved template %q", body.CloudInitTemplates, tmplID)
-	}
-
-	if body.CloudInitTemplates[0].Content != "" {
-		t.Error("catalog leaked template content - the response must only carry id/label")
-	}
-}
-
-// TestVMCreateCatalog_CloudInitTemplatesHiddenWithoutWriteTarget - a cluster
-// client that cannot write snippets (no SnippetWriteAvailable capability, or
-// capability reporting false) gets an empty template list and
-// cloudInitWriteEnabled=false (no write target, no picker).
-//
-//nolint:paralleltest // serial: shared fake VM and database fixtures
-func TestVMCreateCatalog_CloudInitTemplatesHiddenWithoutWriteTarget(t *testing.T) {
-	handler, authHandler, st := newVMCreateHandlerWithClient(t, noSnippetWriteClient{Client: cluster.Fake{}})
-	cookie := loginCookie(t, authHandler, `{"username":"alice","password":"pvmss-alice"}`)
-	createCatalogTemplate(t, st)
-
-	req := httptest.NewRequest(http.MethodGet, "/api/v1/vm-create/catalog", nil)
-	req.AddCookie(cookie)
-
-	rec := httptest.NewRecorder()
-	handler.ServeCatalog(rec, req)
-
-	if rec.Code != http.StatusOK {
-		t.Fatalf("status = %d: %s", rec.Code, rec.Body.String())
-	}
-
-	var body struct {
-		CloudInitWriteEnabled bool `json:"cloudInitWriteEnabled"`
-		CloudInitTemplates    []struct {
-			ID string `json:"id"`
-		} `json:"cloudInitTemplates"`
-	}
-	if err := json.Unmarshal(rec.Body.Bytes(), &body); err != nil {
-		t.Fatalf("decode catalog: %v", err)
-	}
-
-	if body.CloudInitWriteEnabled {
-		t.Error("cloudInitWriteEnabled = true for a client without the capability")
-	}
-
-	if len(body.CloudInitTemplates) != 0 {
-		t.Fatalf("cloudInitTemplates = %+v, want empty without a write target", body.CloudInitTemplates)
-	}
-}
-
-// TestVMCreate_WithCloudInitTemplate_Success - POST /api/v1/vms with a valid
-// template id returns 202 and the response includes cloudInitTemplateId.
-//
-//nolint:paralleltest // serial: shared fake VM and database fixtures
-func TestVMCreate_WithCloudInitTemplate_Success(t *testing.T) {
-	if httpapi.CloudInitPaused {
-		t.Skip("cloud-init is paused")
-	}
-
-	handler, authHandler, st := newVMCreateHandler(t)
-	cookie := loginCookie(t, authHandler, `{"username":"alice","password":"pvmss-alice"}`)
-	tmplID := createCatalogTemplate(t, st)
-
-	rec := postVMCreate(t, handler,
-		`{"cluster":"default","name":"web-20","profileId":"medium","cloudInitTemplateId":"`+tmplID+`"}`, cookie)
-	if rec.Code != http.StatusAccepted {
-		t.Fatalf("status = %d, want %d: %s", rec.Code, http.StatusAccepted, rec.Body.String())
-	}
-
-	var result struct {
-		VMID                int    `json:"vmid"`
-		CloudInitTemplateID string `json:"cloudInitTemplateId"`
-		CloudInitPushError  string `json:"cloudInitPushError"`
-	}
-	if err := json.Unmarshal(rec.Body.Bytes(), &result); err != nil {
-		t.Fatalf("decode 202: %v", err)
-	}
-
-	if result.CloudInitTemplateID != tmplID {
-		t.Errorf("cloudInitTemplateId = %q, want %q", result.CloudInitTemplateID, tmplID)
-	}
-
-	if result.CloudInitPushError != "" {
-		t.Errorf("cloudInitPushError = %q, want empty", result.CloudInitPushError)
-	}
-}
-
-// TestVMCreate_WithCloudInitTemplate_NotPublishedOnNode409 - a template
-// whose file the admin has not pasted on the node is refused with 409
-// cloudinit_not_published before any VMID is allocated.
-//
-//nolint:paralleltest // serial: shared fake VM and database fixtures
-func TestVMCreate_WithCloudInitTemplate_NotPublishedOnNode409(t *testing.T) {
-	if httpapi.CloudInitPaused {
-		t.Skip("cloud-init is paused")
-	}
-
-	handler, authHandler, st := newVMCreateHandler(t)
-	cookie := loginCookie(t, authHandler, `{"username":"alice","password":"pvmss-alice"}`)
-
-	cluster.SetFakeSnippetVisibility(false)
-	t.Cleanup(func() { cluster.SetFakeSnippetVisibility(true) })
-
-	tmplID := createCatalogTemplate(t, st)
-
-	rec := postVMCreate(t, handler,
-		`{"cluster":"default","name":"web-21","profileId":"medium","cloudInitTemplateId":"`+tmplID+`"}`, cookie)
-	if rec.Code != http.StatusConflict {
-		t.Fatalf("status = %d, want %d: %s", rec.Code, http.StatusConflict, rec.Body.String())
-	}
-
-	assertAPIError(t, rec.Body.Bytes(), "cloudinit_not_published")
-
-	for _, c := range cluster.FakeCalls() {
-		if c.Action == "create" {
-			t.Fatalf("a VM was created: %+v", c)
-		}
-	}
-}
-
-// TestVMCreate_WithCloudInitTemplate_WriteUnavailable409 - a cloud-init
-// document request on a cluster with no snippet write target is refused with 409
-// cloudinit_write_unavailable before any VMID is allocated.
-//
-//nolint:paralleltest // serial: shared fake VM and database fixtures
-func TestVMCreate_WithCloudInitTemplate_WriteUnavailable409(t *testing.T) {
-	if httpapi.CloudInitPaused {
-		t.Skip("cloud-init is paused")
-	}
-
-	handler, authHandler, st := newVMCreateHandlerWithClient(t, snippetWriteUnavailableClient{})
-	cookie := loginCookie(t, authHandler, `{"username":"alice","password":"pvmss-alice"}`)
-	tmplID := createCatalogTemplate(t, st)
-
-	rec := postVMCreate(t, handler,
-		`{"cluster":"default","name":"web-21b","profileId":"medium","cloudInitTemplateId":"`+tmplID+`"}`, cookie)
-	if rec.Code != http.StatusConflict {
-		t.Fatalf("status = %d, want %d: %s", rec.Code, http.StatusConflict, rec.Body.String())
-	}
-
-	assertAPIError(t, rec.Body.Bytes(), "cloudinit_write_unavailable")
-
-	if calls := cluster.FakeCalls(); len(calls) != 0 {
-		t.Fatalf("rejected request reached the cluster: %+v", calls)
-	}
-}
-
-// TestVMCreate_UnknownCloudInitTemplate_Returns400 - an unknown template id is
-// rejected with 400 not_approved before any VMID is allocated.
-//
-//nolint:paralleltest // serial: shared fake VM and database fixtures
-func TestVMCreate_UnknownCloudInitTemplate_Returns400(t *testing.T) {
-	if httpapi.CloudInitPaused {
-		t.Skip("cloud-init is paused")
-	}
-
-	handler, authHandler, _ := newVMCreateHandler(t)
-	cookie := loginCookie(t, authHandler, `{"username":"alice","password":"pvmss-alice"}`)
-
-	rec := postVMCreate(t, handler,
-		`{"cluster":"default","name":"web-22","profileId":"medium","cloudInitTemplateId":"does-not-exist"}`, cookie)
-	if rec.Code != http.StatusBadRequest {
-		t.Fatalf("status = %d, want %d: %s", rec.Code, http.StatusBadRequest, rec.Body.String())
-	}
-
-	assertAPIError(t, rec.Body.Bytes(), "not_approved")
-
-	if calls := cluster.FakeCalls(); len(calls) != 0 {
-		t.Fatalf("rejected request reached the cluster: %+v", calls)
-	}
-}
-
-// newTasksHandler builds the task-status handler with a real worker so the// ok-transition genuinely rebuilds the projection.
+// newTasksHandler builds the task-status handler with a real worker so the
+// ok-transition genuinely rebuilds the projection.
 func newTasksHandler(t *testing.T) (*httpapi.Tasks, *httpapi.Auth, *inventory.Projection) {
 	t.Helper()
 	t.Cleanup(cluster.ResetFake)
@@ -863,40 +614,4 @@ func newTasksHandler(t *testing.T) (*httpapi.Tasks, *httpapi.Auth, *inventory.Pr
 	provider := vmCreateClientProvider{clients: map[string]cluster.Client{auditTestCluster: cluster.Fake{}}}
 
 	return httpapi.NewTasksWithRegistry(authHandler, provider, cluster.Fake{}, worker, nil, logger), authHandler, projection
-}
-
-//  - cloudInitFileId is gone -
-
-// TestVMCreate_CloudInitFileID_Rejected - users no longer author cloud-init
-// files: a request still carrying cloudInitFileId is a 400 (unknown field).
-//
-//nolint:paralleltest // serial: shared fake VM and database fixtures
-func TestVMCreate_CloudInitFileID_Rejected(t *testing.T) {
-	handler, authHandler, _ := newVMCreateHandler(t)
-	cookie := loginCookie(t, authHandler, `{"username":"alice","password":"pvmss-alice"}`)
-
-	rec := postVMCreate(t, handler, `{"cluster":"default","name":"web-30","profileId":"medium","cloudInitFileId":"dev-box"}`, cookie)
-	if rec.Code != http.StatusBadRequest {
-		t.Fatalf("status = %d, want %d: %s", rec.Code, http.StatusBadRequest, rec.Body.String())
-	}
-}
-
-//nolint:paralleltest // serial: shared fake VM and database fixtures
-func TestVMCreate_CloudInitTemplate_RejectedWhilePaused(t *testing.T) {
-	if !httpapi.CloudInitPaused {
-		t.Skip("cloud-init is not paused")
-	}
-
-	handler, authHandler, _ := newVMCreateHandler(t)
-	cookie := loginCookie(t, authHandler, `{"username":"alice","password":"pvmss-alice"}`)
-
-	rec := postVMCreate(t, handler,
-		`{"cluster":"default","name":"web-23","profileId":"medium","cloudInitTemplateId":"any"}`, cookie)
-	if rec.Code != http.StatusBadRequest {
-		t.Fatalf("status = %d, want %d: %s", rec.Code, http.StatusBadRequest, rec.Body.String())
-	}
-
-	if calls := cluster.FakeCalls(); len(calls) != 0 {
-		t.Fatalf("rejected request reached the cluster: %+v", calls)
-	}
 }

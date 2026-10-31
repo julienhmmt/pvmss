@@ -76,22 +76,10 @@ type VMSpec struct {
 	ISO      *ISOSpec
 	// Image is the optional cloud image the VM's primary disk imports from
 	// (import-from). Mutually exclusive with ISO at the vm.Create layer.
-	Image            *ImageSpec
 	BIOS             string
 	Machine          string
 	TPM              bool
 	StartAfterCreate bool
-}
-
-// ImageSpec is an optional cloud image imported as the VM's primary disk at
-// creation (Proxmox import-from, PVE ≥ 7.2). Network config is applied
-// afterwards through Writer.SetCloudInitConfig, not at create time: Proxmox's
-// REST API cannot write a cloud-init snippet file (upload/download-url both
-// reject content=snippets - see Writer.HasSnippet), so ciuser/sshkeys/
-// ipconfig0 are the only reliable per-VM cloud-init delivery mechanism.
-type ImageSpec struct {
-	Storage string
-	File    string
 }
 
 // DiskSpec is the VM's single initial disk (multi-disk is).

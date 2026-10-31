@@ -113,8 +113,6 @@ func assertRecoveredBilingual(t *testing.T, st *store.Store) {
 		{"user-guide", "fr"}:          {"fr", "user"},
 		{"admin-guide", "en"}:         {"en", audienceAdmin},
 		{"admin-guide", "fr"}:         {"fr", audienceAdmin},
-		{"cloud-init-setup", "en"}:    {"en", audienceAdmin},
-		{"cloud-init-setup", "fr"}:    {"fr", audienceAdmin},
 		{"proxmox-permissions", "en"}: {"en", audienceAdmin},
 		{"proxmox-permissions", "fr"}: {"fr", audienceAdmin},
 	}
@@ -160,30 +158,4 @@ func assertBuiltInAdminBilingual(t *testing.T, st *store.Store) {
 // storeRow reads one row via the store (helper to avoid pulling catalog here).
 func storeRow(st *store.Store, id, lang string) (store.DocumentationPageRow, error) {
 	return st.GetDocumentationPage(context.Background(), id, lang)
-}
-
-// TestSeedDocumentationPages_CloudInitPagesDisabled checks that the cloud-init
-// guides are seeded disabled while cloud-init is paused, and the others enabled.
-//
-//nolint:paralleltest // owns a SQLite fixture
-func TestSeedDocumentationPages_CloudInitPagesDisabled(t *testing.T) {
-	ctx := context.Background()
-	st := openSeedStore(t)
-
-	if err := seed.SeedDocumentationPages(ctx, st); err != nil {
-		t.Fatalf("seed: %v", err)
-	}
-
-	for _, id := range []string{"cloud-init-howto", "cloud-init-setup", "getting-started"} {
-		for _, lang := range []string{"en", "fr"} {
-			row, err := storeRow(st, id, lang)
-			if err != nil {
-				t.Fatalf("page %q/%s missing: %v", id, lang, err)
-			}
-			wantEnabled := id == "getting-started"
-			if row.Enabled != wantEnabled {
-				t.Fatalf("page %q/%s enabled = %v, want %v", id, lang, row.Enabled, wantEnabled)
-			}
-		}
-	}
 }

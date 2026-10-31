@@ -272,54 +272,12 @@ func TestFake_GetCloudInitConfig_NotFound(t *testing.T) {
 	}
 }
 
-func TestFake_EnsureCloudInitDrive_NotFound(t *testing.T) {
-	t.Parallel()
-
-	fake := cluster.NewFake("test-ci-drive-notfound")
-	if err := fake.EnsureCloudInitDrive(context.Background(), cluster.FakeNode01, 99999); !errors.Is(err, cluster.ErrNotFound) {
-		t.Fatalf("EnsureCloudInitDrive(not found) error = %v, want ErrNotFound", err)
-	}
-}
-
-func TestFake_AttachCloudInitSnippet_NotFound(t *testing.T) {
-	t.Parallel()
-
-	fake := cluster.NewFake("test-ci-attach-notfound")
-	if err := fake.AttachCloudInitSnippet(context.Background(), cluster.FakeNode01, "local", "snippet.yaml", 99999); !errors.Is(err, cluster.ErrNotFound) {
-		t.Fatalf("AttachCloudInitSnippet(not found) error = %v, want ErrNotFound", err)
-	}
-}
-
 func TestFake_SetCloudInitPassword_NotFound(t *testing.T) {
 	t.Parallel()
 
 	fake := cluster.NewFake("test-ci-pw-notfound")
 	if err := fake.SetCloudInitPassword(context.Background(), cluster.FakeNode01, 99999, "debian", "newpass"); !errors.Is(err, cluster.ErrNotFound) {
 		t.Fatalf("SetCloudInitPassword(not found) error = %v, want ErrNotFound", err)
-	}
-}
-
-func TestFake_AddSSHKey_NotFound(t *testing.T) {
-	t.Parallel()
-
-	fake := cluster.NewFake("test-ssh-notfound")
-	if err := fake.AddSSHKey(context.Background(), cluster.FakeNode01, 99999, "root", "ssh-rsa AAA..."); !errors.Is(err, cluster.ErrNotFound) {
-		t.Fatalf("AddSSHKey(not found) error = %v, want ErrNotFound", err)
-	}
-}
-
-//nolint:paralleltest // serial: shared default fake state
-func TestFake_AddSSHKey_ForcedError(t *testing.T) {
-	cluster.ResetFake()
-	defer cluster.ResetFake()
-
-	forcedErr := errors.New("ssh injection failed")
-
-	cluster.SetFakeSSHKeyError(forcedErr)
-	defer cluster.SetFakeSSHKeyError(nil)
-
-	if err := (cluster.Fake{}).AddSSHKey(context.Background(), cluster.FakeNode01, 100, "root", "ssh-rsa AAA..."); !errors.Is(err, forcedErr) {
-		t.Fatalf("AddSSHKey(forced error) = %v, want %v", err, forcedErr)
 	}
 }
 
@@ -1243,15 +1201,6 @@ func TestFake_ListDatasets(t *testing.T) {
 	ctx := context.Background()
 	fake := cluster.NewFake("test-list-datasets")
 
-	images, err := fake.ListCloudImages(ctx)
-	if err != nil {
-		t.Fatalf("ListCloudImages: %v", err)
-	}
-
-	if len(images) == 0 {
-		t.Error("ListCloudImages returned no images")
-	}
-
 	templates, err := fake.ListTemplates(ctx)
 	if err != nil {
 		t.Fatalf("ListTemplates: %v", err)
@@ -1275,10 +1224,6 @@ func TestFake_ListDatasets(t *testing.T) {
 	}
 
 	offline := cluster.Fake{ClusterName: cluster.FakeClusterOffline}
-
-	if _, err := offline.ListCloudImages(ctx); !errors.Is(err, cluster.ErrUnreachable) {
-		t.Errorf("ListCloudImages(offline) = %v, want ErrUnreachable", err)
-	}
 
 	if _, err := offline.ListTemplates(ctx); !errors.Is(err, cluster.ErrUnreachable) {
 		t.Errorf("ListTemplates(offline) = %v, want ErrUnreachable", err)
@@ -1316,54 +1261,6 @@ func TestFake_StorageFreeSpace(t *testing.T) {
 }
 
 //nolint:paralleltest // serial: shared default fake state
-func TestFake_SnippetRoundTrip(t *testing.T) {
-	cluster.ResetFake()
-	defer cluster.ResetFake()
-
-	ctx := context.Background()
-	fake := cluster.Fake{}
-
-	if fake.SnippetStorageID() != cluster.FakeSnippetStorage {
-		t.Errorf("SnippetStorageID = %q, want %q", fake.SnippetStorageID(), cluster.FakeSnippetStorage)
-	}
-
-	if err := fake.AttachCloudInitSnippet(ctx, cluster.FakeNode01, cluster.FakeStorageLocal, "pvmss-100.yml", 100); err != nil {
-		t.Fatalf("AttachCloudInitSnippet: %v", err)
-	}
-
-	if err := fake.AttachCloudInitSnippet(ctx, cluster.FakeNode01, cluster.FakeStorageLocal, "pvmss-x.yml", 99999); !errors.Is(err, cluster.ErrNotFound) {
-		t.Errorf("AttachCloudInitSnippet(99999) = %v, want ErrNotFound", err)
-	}
-
-	results, err := fake.CheckSnippet(ctx, "pvmss-baseline-abc.yml")
-	if err != nil || len(results) < 2 {
-		t.Fatalf("CheckSnippet = %+v/%v", results, err)
-	}
-
-	for _, r := range results {
-		if !r.Present {
-			t.Errorf("node %s: pvmss file absent by default, want present (demo stack)", r.Node)
-		}
-	}
-
-	cluster.SetFakeSnippetPresent(cluster.FakeNode01, cluster.FakeSnippetStorage, "pvmss-baseline-abc.yml", false)
-
-	if present, _ := fake.HasSnippet(ctx, cluster.FakeNode01, cluster.FakeSnippetStorage, "pvmss-baseline-abc.yml"); present {
-		t.Error("explicit absence ignored")
-	}
-
-	if present, _ := fake.HasSnippet(ctx, cluster.FakeNode01, cluster.FakeSnippetStorage, "other.yml"); present {
-		t.Error("non-pvmss file present by default")
-	}
-
-	cluster.SetFakeSnippetVisibility(false)
-	defer cluster.SetFakeSnippetVisibility(true)
-
-	if present, _ := fake.HasSnippet(ctx, cluster.FakeNode02, cluster.FakeSnippetStorage, "pvmss-baseline-abc.yml"); present {
-		t.Error("visibility off: file still present")
-	}
-}
-
 //nolint:paralleltest // serial: shared default fake state
 func TestFake_SetCloudInitPassword_Countdown(t *testing.T) {
 	cluster.ResetFake()
@@ -1448,12 +1345,10 @@ func TestFake_KnobSetters(t *testing.T) {
 	cluster.ResetFake()
 	defer cluster.ResetFake()
 
-	cluster.SetFakeSnippetVisibility(false)
 	cluster.SetFakeTaskError("task failed")
 	cluster.SetFakeCreateError(cluster.ErrVMIDTaken, 1)
 
 	defer func() {
-		cluster.SetFakeSnippetVisibility(true)
 		cluster.SetFakeTaskError("")
 		cluster.SetFakeCreateError(nil, 0)
 	}()

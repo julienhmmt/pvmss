@@ -66,9 +66,6 @@ export const ADMIN_NAV_GROUPS: readonly AdminNavGroup[] = [
 		icon: 'shield',
 		items: [
 			{ href: resolve('/admin/profiles'), label: () => m['chrome.adminNav.profiles']() },
-			// Cloud-init is disabled for now: not reliable or viable yet, too complex to set up.
-			// { href: resolve('/admin/cloudinit-templates'), label: () => m['chrome.adminNav.cloudinit']() },
-			// { href: resolve('/admin/baseline'), label: () => m['chrome.adminNav.baseline']() },
 			{ href: resolve('/admin/tags'), label: () => m['chrome.adminNav.tags']() }
 		]
 	},

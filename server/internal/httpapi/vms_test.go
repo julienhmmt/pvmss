@@ -60,7 +60,7 @@ func newVMsHandler(t *testing.T) (*httpapi.VMs, *httpapi.Auth) {
 	authHandler := newAuthHandler(t)
 	logger := slog.New(slog.NewTextHandler(testWriter{t}, nil))
 
-	return httpapi.NewVMs(projection, authHandler, testMaxListPageSize, testDefaultQuota, logger), authHandler
+	return httpapi.NewVMsWithRegistry(projectionRegistry(projection), authHandler, testMaxListPageSize, testDefaultQuota, logger, nil), authHandler
 }
 
 func loginCookie(t *testing.T, authHandler *httpapi.Auth, body string) *http.Cookie {
@@ -196,7 +196,7 @@ func TestVMs_PoolFilterNarrowsAdminList(t *testing.T) {
 	projection := buildProjectionWithIndex(t, snap, time.Now())
 	authHandler := newAuthHandler(t)
 	logger := slog.New(slog.NewTextHandler(testWriter{t}, nil))
-	handler := httpapi.NewVMs(projection, authHandler, testMaxListPageSize, testDefaultQuota, logger)
+	handler := httpapi.NewVMsWithRegistry(projectionRegistry(projection), authHandler, testMaxListPageSize, testDefaultQuota, logger, nil)
 
 	response := serveJSON(authHandler.AdminLogin, "/api/v1/auth/admin-login", `{"password":"pvmss-local-admin"}`)
 	cookie := response.Result().Cookies()[0]

@@ -95,35 +95,6 @@ func (h *VMDetail) dispatchByMethod(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-// NewVMDetail creates the handler. The writer is the cluster.Writer (separate
-// from the read Client); the refresher rebuilds the Index
-// after a write. Bound to a single cluster; use
-// NewVMDetailWithRegistry for multi-cluster deployments.
-func NewVMDetail(projection *inventory.Projection, authHandler *Auth, writer cluster.Writer, st *store.Store, refresher vm.IndexRefresher, log *slog.Logger, services ...*policy.Policy) *VMDetail {
-	var policyService *policy.Policy
-	if len(services) > 0 {
-		policyService = services[0]
-	}
-
-	if policyService == nil && st != nil {
-		policyService = policy.New(st, projection, nil)
-	}
-
-	h := &VMDetail{projection: projection, resolver: singleClusterResolver{projection: projection}, auth: authHandler, writer: writer, store: st, refresher: refresher, policy: policyService, log: log}
-	// In single-cluster mode, the writer is typically the same client that
-	// implements VMStatusReader (Fake or Proxmox both do). Wire it so the
-	// /status endpoint works without the WithRegistry constructor.
-	if reader, ok := writer.(cluster.VMStatusReader); ok {
-		h.statusReader = reader
-	}
-
-	if reader, ok := writer.(cluster.GuestNetworkReader); ok {
-		h.guestNetReader = reader
-	}
-
-	return h
-}
-
 // VMDetailDeps groups the shared dependencies for constructing a VMDetail
 // handler. It collapses the seven positional parameters NewVMDetailWithRegistry
 // used to take (SonarQube go:S107).
@@ -152,18 +123,40 @@ type VMDetailDeps struct {
 // metrics-history work that surfaced the single-client wiring pattern in main.go's
 // initCluster).
 func NewVMDetailWithRegistry(deps VMDetailDeps, services ...*policy.Policy) *VMDetail {
-	handler := NewVMDetail(deps.Projection, deps.Auth, deps.Writer, deps.Store, deps.Refresher, deps.Log, services...)
-	if registry, ok := deps.Source.(*inventory.Registry); ok {
-		handler.resolver = registryResolver{registry: registry}
-		handler.refreshers = registryRefresherResolver{registry: registry}
+	var policyService *policy.Policy
+	if len(services) > 0 {
+		policyService = services[0]
 	}
 
-	handler.clients = deps.Clients
-	handler.statusReader = deps.StatusReader
-	handler.creator = deps.Creator
-	handler.guestNetReader = deps.GuestNetReader
+	if policyService == nil && deps.Store != nil {
+		policyService = policy.New(deps.Store, deps.Projection, nil)
+	}
 
-	return handler
+	registry := depsSourceRegistry(deps.Source)
+
+	h := &VMDetail{
+		projection: deps.Projection, resolver: registryResolver{registry: registry},
+		refreshers: registryRefresherResolver{registry: registry},
+		auth:       deps.Auth, writer: deps.Writer, store: deps.Store, refresher: deps.Refresher,
+		policy: policyService, clients: deps.Clients, statusReader: deps.StatusReader,
+		creator: deps.Creator, guestNetReader: deps.GuestNetReader, log: deps.Log,
+	}
+	// The writer is typically the same client that implements the status and
+	// guest-network reads (Fake and Proxmox both do); fall back to it when no
+	// dedicated reader is wired.
+	if h.statusReader == nil {
+		if reader, ok := deps.Writer.(cluster.VMStatusReader); ok {
+			h.statusReader = reader
+		}
+	}
+
+	if h.guestNetReader == nil {
+		if reader, ok := deps.Writer.(cluster.GuestNetworkReader); ok {
+			h.guestNetReader = reader
+		}
+	}
+
+	return h
 }
 
 // index resolves the current Index for clusterName, writing the appropriate
@@ -224,7 +217,7 @@ func (h *VMDetail) writeRefreshedEntity(w http.ResponseWriter, r *http.Request, 
 		return
 	}
 
-	entity, err := vm.Resolve(refreshed, identity, clusterName, vmid)
+	entity, err := vm.Resolve(refreshed, identity, clusterName, vmid, h.store)
 	if err != nil {
 		h.writeResolveError(w, err)
 		return
@@ -317,15 +310,6 @@ type vmDetailDTO struct {
 	// may still be empty while DHCP is pending). Empty when the VM is not
 	// running - the status field already explains it.
 	GuestAgent string `json:"guestAgent,omitempty"`
-	// BaselineState is the delivery state of the generated cloud-init
-	// baseline for image-mode VMs: "applied", "override", "not_delivered". Empty for non-image
-	// VMs.
-	BaselineState string `json:"baselineState,omitempty"`
-	// BaselineError is the reason when BaselineState is "not_delivered".
-	BaselineError string `json:"baselineError,omitempty"`
-	// BaselineErrorCode is the stable reason the UI translates:
-	// cloudinit_write_unavailable, no_document or delivery_failed.
-	BaselineErrorCode string `json:"baselineErrorCode,omitempty"`
 }
 
 type diskRequest struct {

@@ -117,7 +117,7 @@ func TestAdminPolicy_PutNoChangeSkipsWriteAndAudit(t *testing.T) {
 
 	index := inventory.BuildIndex(snapshot)
 	service := policy.New(st, inventory.NewProjectionFromIndex(&index), fake)
-	handler := httpapi.NewAdminPolicy(authHandler, service, slog.New(slog.DiscardHandler))
+	handler := httpapi.NewAdminPolicyWithRegistry(authHandler, service, singleClientProvider(cluster.Fake{}), slog.New(slog.DiscardHandler))
 	handler.SetStore(st)
 	mux := policyMux(handler, authHandler)
 	cookie := adminCookie(t, authHandler)
@@ -278,7 +278,7 @@ func newPolicyHandler(t *testing.T) (*httpapi.AdminPolicy, *httpapi.Auth) {
 	index := inventory.BuildIndex(snapshot)
 	service := policy.New(st, inventory.NewProjectionFromIndex(&index), fake)
 
-	return httpapi.NewAdminPolicy(authHandler, service, slog.New(slog.DiscardHandler)), authHandler
+	return httpapi.NewAdminPolicyWithRegistry(authHandler, service, singleClientProvider(cluster.Fake{}), slog.New(slog.DiscardHandler)), authHandler
 }
 
 func policyMux(handler *httpapi.AdminPolicy, authHandler *httpapi.Auth) *http.ServeMux {

@@ -25,7 +25,7 @@ func TestAdminPolicyRoutes_RequireAdminThroughProductionRouter(t *testing.T) {
 
 	index := inventory.BuildIndex(snapshot)
 	service := policy.New(st, inventory.NewProjectionFromIndex(&index), fake)
-	adminPolicy := httpapi.NewAdminPolicy(authHandler, service, slog.New(slog.DiscardHandler))
+	adminPolicy := httpapi.NewAdminPolicyWithRegistry(authHandler, service, singleClientProvider(fake), slog.New(slog.DiscardHandler))
 	noop := http.HandlerFunc(func(http.ResponseWriter, *http.Request) {})
 	mux := httpapi.NewRouter(httpapi.RouterConfig{
 		Health:         noop,

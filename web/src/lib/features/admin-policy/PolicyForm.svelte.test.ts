@@ -114,7 +114,7 @@ describe('PolicyForm autosave', () => {
 	});
 
 	it('autosaves the quota field through the same path', async () => {
-		const onSave = mountForm();
+		const onSave = mountForm(vi.fn(), false, { ...buildPolicy(), quota: { maxVmPerUser: 3 } });
 		setInputValue(getQuotaInput(), '5');
 		await tick();
 		vi.advanceTimersByTime(DEBOUNCE_MS);
@@ -171,6 +171,66 @@ describe('PolicyForm autosave', () => {
 	it('has no save button: autosave is the only save model', () => {
 		mountForm();
 		expect(document.querySelector('button[type="submit"]')).toBeNull();
+	});
+});
+
+describe('PolicyForm unlimited quota and GiB memory', () => {
+	beforeEach(() => {
+		vi.useFakeTimers();
+	});
+
+	afterEach(() => {
+		vi.useRealTimers();
+		document.body.innerHTML = '';
+	});
+
+	const quotaSwitch = (): HTMLButtonElement => {
+		const sw = document.querySelector<HTMLButtonElement>('button[role="switch"]');
+		if (!sw) throw new Error('no switch found');
+		return sw;
+	};
+
+	it('switching Unlimited on submits -1 and disables the number input', async () => {
+		const onSave = mountForm(vi.fn(), false, { ...buildPolicy(), quota: { maxVmPerUser: 5 } });
+		await tick();
+
+		expect(getQuotaInput().disabled).toBe(false);
+		quotaSwitch().click();
+		await tick();
+
+		expect(getQuotaInput().disabled).toBe(true);
+		vi.advanceTimersByTime(DEBOUNCE_MS);
+		expect(onSave).toHaveBeenCalledWith(expect.objectContaining({ quota: { maxVmPerUser: -1 } }));
+	});
+
+	it('switching Unlimited off restores the last positive value', async () => {
+		const onSave = mountForm(vi.fn(), false, { ...buildPolicy(), quota: { maxVmPerUser: 5 } });
+		await tick();
+
+		quotaSwitch().click();
+		await tick();
+		quotaSwitch().click();
+		await tick();
+
+		// Back to the original value - clean form, enabled input showing 5.
+		expect(getQuotaInput().disabled).toBe(false);
+		expect(getQuotaInput().value).toBe('5');
+		vi.advanceTimersByTime(DEBOUNCE_MS);
+		expect(onSave).not.toHaveBeenCalled();
+	});
+
+	it('displays memory in GiB and submits the value in MB', async () => {
+		const onSave = mountForm(vi.fn(), false, buildPolicy({ maxMemoryMB: 16384 }));
+		await tick();
+
+		const memoryInput = getNumberInputs()[2];
+		if (!memoryInput) throw new Error('no memory input found');
+		expect(memoryInput.value).toBe('16');
+
+		setInputValue(memoryInput, '2');
+		await tick();
+		vi.advanceTimersByTime(DEBOUNCE_MS);
+		expect(onSave.mock.calls.at(-1)?.[0]).toMatchObject({ gabarit: { maxMemoryMB: 2048 } });
 	});
 });
 

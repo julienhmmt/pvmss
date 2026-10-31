@@ -26,10 +26,12 @@ func TestClusterRefresh_Success(t *testing.T) {
 	worker := inventory.NewWorker(client, projection, time.Hour, slog.New(slog.NewJSONHandler(os.Stderr, nil)))
 	refresher := inventory.NewRefresher(worker, 5*time.Second)
 	logger := slog.New(slog.NewJSONHandler(os.Stdout, nil))
-	h := httpapi.NewClusterRefresh(refresher, logger)
+	auth := nodesTestAuth(t)
+	h := httpapi.NewClusterRefreshWithRegistry(refreshRegistryFor(projection, refresher), nil, auth, logger)
 
 	w := httptest.NewRecorder()
 	r := httptest.NewRequest(http.MethodPost, "/api/v1/cluster/refresh", nil)
+	r.AddCookie(aliceCookie(t, auth))
 	h.ServeHTTP(w, r)
 
 	if w.Code != http.StatusAccepted {
@@ -63,11 +65,13 @@ func TestClusterRefresh_TooSoon(t *testing.T) {
 	worker := inventory.NewWorker(client, projection, time.Hour, slog.New(slog.NewJSONHandler(os.Stderr, nil)))
 	refresher := inventory.NewRefresher(worker, 5*time.Second)
 	logger := slog.New(slog.NewJSONHandler(os.Stdout, nil))
-	h := httpapi.NewClusterRefresh(refresher, logger)
+	auth := nodesTestAuth(t)
+	h := httpapi.NewClusterRefreshWithRegistry(refreshRegistryFor(projection, refresher), nil, auth, logger)
 
 	// First refresh returns 202 (async).
 	w1 := httptest.NewRecorder()
 	r1 := httptest.NewRequest(http.MethodPost, "/api/v1/cluster/refresh", nil)
+	r1.AddCookie(aliceCookie(t, auth))
 	h.ServeHTTP(w1, r1)
 
 	if w1.Code != http.StatusAccepted {
@@ -81,6 +85,7 @@ func TestClusterRefresh_TooSoon(t *testing.T) {
 	// Second immediate refresh is refused.
 	w2 := httptest.NewRecorder()
 	r2 := httptest.NewRequest(http.MethodPost, "/api/v1/cluster/refresh", nil)
+	r2.AddCookie(aliceCookie(t, auth))
 	h.ServeHTTP(w2, r2)
 
 	if w2.Code != http.StatusTooManyRequests {
@@ -121,12 +126,15 @@ func TestClusterRefresh_TooSoonMakesZeroClientCalls(t *testing.T) {
 	worker := inventory.NewWorker(client, projection, time.Hour, slog.New(slog.NewJSONHandler(os.Stderr, nil)))
 	refresher := inventory.NewRefresher(worker, 5*time.Second)
 	logger := slog.New(slog.NewJSONHandler(os.Stdout, nil))
-	h := httpapi.NewClusterRefresh(refresher, logger)
+	auth := nodesTestAuth(t)
+	h := httpapi.NewClusterRefreshWithRegistry(refreshRegistryFor(projection, refresher), nil, auth, logger)
 
 	// First refresh (async - wait for it to complete).
 	w1 := httptest.NewRecorder()
 	r1 := httptest.NewRequest(http.MethodPost, "/api/v1/cluster/refresh", nil)
+	r1.AddCookie(aliceCookie(t, auth))
 	h.ServeHTTP(w1, r1)
+
 	waitForProjection(t, projection, 2*time.Second)
 
 	callsAfterFirst := client.calls
@@ -134,6 +142,7 @@ func TestClusterRefresh_TooSoonMakesZeroClientCalls(t *testing.T) {
 	// Second immediate refresh - should be refused with 0 additional calls.
 	w2 := httptest.NewRecorder()
 	r2 := httptest.NewRequest(http.MethodPost, "/api/v1/cluster/refresh", nil)
+	r2.AddCookie(aliceCookie(t, auth))
 	h.ServeHTTP(w2, r2)
 
 	if client.calls != callsAfterFirst {
@@ -155,10 +164,12 @@ func TestClusterRefresh_Unreachable(t *testing.T) {
 	time.Sleep(2 * time.Millisecond)
 
 	logger := slog.New(slog.NewJSONHandler(os.Stdout, nil))
-	h := httpapi.NewClusterRefresh(refresher, logger)
+	auth := nodesTestAuth(t)
+	h := httpapi.NewClusterRefreshWithRegistry(refreshRegistryFor(projection, refresher), nil, auth, logger)
 
 	w := httptest.NewRecorder()
 	r := httptest.NewRequest(http.MethodPost, "/api/v1/cluster/refresh", nil)
+	r.AddCookie(aliceCookie(t, auth))
 	h.ServeHTTP(w, r)
 
 	if w.Code != http.StatusAccepted {
@@ -202,10 +213,12 @@ func TestClusterRefresh_MethodNotAllowed(t *testing.T) {
 	worker := inventory.NewWorker(client, projection, time.Hour, slog.New(slog.NewJSONHandler(os.Stderr, nil)))
 	refresher := inventory.NewRefresher(worker, 5*time.Second)
 	logger := slog.New(slog.NewJSONHandler(os.Stdout, nil))
-	h := httpapi.NewClusterRefresh(refresher, logger)
+	auth := nodesTestAuth(t)
+	h := httpapi.NewClusterRefreshWithRegistry(refreshRegistryFor(projection, refresher), nil, auth, logger)
 
 	w := httptest.NewRecorder()
 	r := httptest.NewRequest(http.MethodGet, "/api/v1/cluster/refresh", nil)
+	r.AddCookie(aliceCookie(t, auth))
 	h.ServeHTTP(w, r)
 
 	if w.Code != http.StatusMethodNotAllowed {

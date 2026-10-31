@@ -22,8 +22,6 @@ const cluster: AdminCluster = {
 	proxmoxVersion: '9.2.21',
 	nodeCount: 1,
 	vmCount: 3,
-	snippetStorage: '',
-	cloudInitWriteEnabled: false
 };
 
 const node = (clusterKey: string, name: string) => ({

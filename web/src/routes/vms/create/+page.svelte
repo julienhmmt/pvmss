@@ -36,7 +36,7 @@
 		catalog?.quota !== undefined && catalog.quota.allowed >= 0 && catalog.quota.used >= catalog.quota.allowed
 	);
 	const noCatalog = $derived(
-		catalog !== null && catalog.profiles.length === 0 && catalog.templates.length === 0 && catalog.images.length === 0
+		catalog !== null && catalog.profiles.length === 0 && catalog.templates.length === 0
 	);
 
 	/** Enters a mode's wizard. */

@@ -61,17 +61,6 @@ func createFromTemplate(ctx context.Context, policyService *policy.Policy, deps 
 		return CreateResult{}, err
 	}
 
-	cloudDoc := plan.document
-
-	// Do not start in the clone task when cloud-init is
-	// requested. The VM is started after snippet attachment. Capture the
-	// original request so applyPostCloneConfig can start the VM after
-	// cloud-init is attached.
-	startAfterCreate := req.StartAfterCreate
-	if cloudDoc.present() {
-		req.StartAfterCreate = false
-	}
-
 	vmid, err := allocateVMID(ctx, deps)
 	if err != nil {
 		return CreateResult{}, allocateVMIDError(err)
@@ -93,22 +82,20 @@ func createFromTemplate(ctx context.Context, policyService *policy.Policy, deps 
 	// (best-effort) so it does not consume the user's quota.
 	if waitErr := waitCreateTask(ctx, deps.Creator, upid); waitErr != nil {
 		deps.Log.ErrorContext(ctx, "clone task wait failed", "component", "vm", "cluster", clusterName, "vmid", finalVMID, "error", waitErr)
-		result.CloudInitPushError = waitErr.Error()
-
 		rollbackFailedCreate(ctx, deps, actor, clusterName, finalVMID, tmpl.Node, "clone task failed")
 
 		if err := deps.Audit.RecordAction(ctx, actor.Username, clusterName, finalVMID, "vm_create"); err != nil {
 			deps.Log.ErrorContext(ctx, auditLogMsg, "component", "vm", "cluster", clusterName, "vmid", finalVMID, "error", err)
 		}
 
-		return result, nil
+		return CreateResult{}, fmt.Errorf("%w: clone task: %w", ErrClusterCreate, waitErr)
 	}
 
 	applyPostCloneConfig(ctx, postCloneConfig{
 		Deps: deps, Actor: actor, ClusterName: clusterName,
 		VMID: finalVMID, Node: tmpl.Node, Plan: plan, Template: tmpl,
-		CloudDocument: cloudDoc, StartAfterCreate: startAfterCreate,
-		Tags: buildTags(req), DiskKey: primaryDiskKey(tmpl.DiskBus),
+		StartAfterCreate: req.StartAfterCreate,
+		Tags:             buildTags(req), DiskKey: primaryDiskKey(tmpl.DiskBus),
 		HardwareOverride: hardwareOverride,
 	}, &result)
 
@@ -150,7 +137,6 @@ func refreshTemplateFromDiscovery(ctx context.Context, deps CreateDeps, clusterN
 	default:
 		tmpl.Node = live.Node
 		tmpl.Name = live.Name
-		tmpl.CloudInitCapable = live.CloudInitCapable
 		tmpl.DiskStorage = live.DiskStorage
 		tmpl.DiskSizeGB = live.DiskSizeGB
 		tmpl.DiskBus = live.DiskBus

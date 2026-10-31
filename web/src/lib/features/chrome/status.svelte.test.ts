@@ -43,6 +43,40 @@ describe('StatusState.severity', () => {
 		expect(state.severity).toBe('degraded');
 	});
 
+	it('is "degraded" for a scoped user only when myCluster is unhealthy', async () => {
+		const state = new StatusState(
+			vi.fn().mockResolvedValue(
+				makeResponse({
+					status: 'healthy',
+					checks: {
+						database: { status: 'healthy' },
+						clusters: { status: 'unhealthy', unreachable: 1, total: 3 },
+						myCluster: { status: 'unhealthy' }
+					}
+				})
+			)
+		);
+		await state.pollOnce();
+		expect(state.severity).toBe('degraded');
+	});
+
+	it('is "none" for a scoped user when another cluster is down but theirs is healthy', async () => {
+		const state = new StatusState(
+			vi.fn().mockResolvedValue(
+				makeResponse({
+					status: 'healthy',
+					checks: {
+						database: { status: 'healthy' },
+						clusters: { status: 'unhealthy', unreachable: 1, total: 3 },
+						myCluster: { status: 'healthy' }
+					}
+				})
+			)
+		);
+		await state.pollOnce();
+		expect(state.severity).toBe('none');
+	});
+
 	it('is "info" when demoMode is true and everything else is healthy', async () => {
 		const state = new StatusState(vi.fn().mockResolvedValue(makeResponse({ demoMode: true })));
 		await state.pollOnce();
@@ -115,17 +149,38 @@ describe('StatusState.poll', () => {
 describe('StatusState.clusterDownCounts', () => {
 	afterEach(() => vi.restoreAllMocks());
 
-	it('returns the parsed cluster counts when clusters check is unhealthy', async () => {
+	it('reads the structured cluster counts when clusters check is unhealthy', async () => {
 		const state = new StatusState(
 			vi.fn().mockResolvedValue(
 				makeResponse({
 					status: 'healthy',
-					checks: { database: { status: 'healthy' }, clusters: { status: 'unhealthy', detail: '1 of 1 clusters unreachable' } }
+					checks: {
+						database: { status: 'healthy' },
+						clusters: { status: 'unhealthy', detail: '1 of 1 clusters unreachable', unreachable: 1, total: 1 }
+					}
 				})
 			)
 		);
 		await state.pollOnce();
 		expect(state.clusterDownCounts).toEqual({ unreachable: 1, total: 1 });
+	});
+
+	it('maps a scoped user myCluster check to own-cluster counts', async () => {
+		const state = new StatusState(
+			vi.fn().mockResolvedValue(
+				makeResponse({
+					status: 'healthy',
+					checks: {
+						database: { status: 'healthy' },
+						clusters: { status: 'healthy' },
+						myCluster: { status: 'unhealthy' }
+					}
+				})
+			)
+		);
+		await state.pollOnce();
+		expect(state.clusterDownCounts).toEqual({ unreachable: 1, total: 1 });
+		expect(state.ownClusterDown).toBe(true);
 	});
 
 	it('returns null when clusters check is healthy', async () => {
@@ -143,7 +198,7 @@ describe('StatusState.allClustersDown', () => {
 			vi.fn().mockResolvedValue(
 				makeResponse({
 					status: 'healthy',
-					checks: { database: { status: 'healthy' }, clusters: { status: 'unhealthy', detail: '2 of 2 clusters unreachable' } }
+					checks: { database: { status: 'healthy' }, clusters: { status: 'unhealthy', unreachable: 2, total: 2 } }
 				})
 			)
 		);
@@ -156,12 +211,25 @@ describe('StatusState.allClustersDown', () => {
 			vi.fn().mockResolvedValue(
 				makeResponse({
 					status: 'healthy',
-					checks: { database: { status: 'healthy' }, clusters: { status: 'unhealthy', detail: '1 of 2 clusters unreachable' } }
+					checks: { database: { status: 'healthy' }, clusters: { status: 'unhealthy', unreachable: 1, total: 2 } }
 				})
 			)
 		);
 		await state.pollOnce();
 		expect(state.allClustersDown).toBe(false);
+	});
+
+	it('is true when the scoped user own cluster is down', async () => {
+		const state = new StatusState(
+			vi.fn().mockResolvedValue(
+				makeResponse({
+					status: 'healthy',
+					checks: { database: { status: 'healthy' }, clusters: { status: 'unhealthy', unreachable: 1, total: 3 }, myCluster: { status: 'unhealthy' } }
+				})
+			)
+		);
+		await state.pollOnce();
+		expect(state.allClustersDown).toBe(true);
 	});
 
 	it('is false when clusters check is healthy', async () => {

@@ -373,9 +373,10 @@ func TestDelete_ForgetsLegacyCloudInitRow(t *testing.T) {
 	st := bulkTestStore(t)
 
 	// Seed a snippet row for VM 101 (alice-owned) - the file delete target.
-	if err := st.PutCloudInitSnippet(context.Background(), testClusterName, 101,
-		cluster.FakeSnippetStorage, "pvmss-101.yml", "#cloud-config\n", "alice"); err != nil {
-		t.Fatalf("PutCloudInitSnippet: %v", err)
+	if _, err := st.DB().ExecContext(context.Background(),
+		`INSERT INTO vm_cloudinit_snippets (cluster, vmid, storage, filename, content, updated_at, updated_by) VALUES (?, ?, ?, ?, ?, ?, ?)`,
+		testClusterName, 101, "local", "pvmss-101.yml", "#cloud-config\n", "2026-01-01T00:00:00Z", "alice"); err != nil {
+		t.Fatalf("seed snippet row: %v", err)
 	}
 
 	if err := vm.Delete(context.Background(), vm.WriteDeps{

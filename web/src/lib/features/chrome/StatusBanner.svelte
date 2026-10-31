@@ -22,7 +22,7 @@
 			case 'info':
 				return m['banner.info.demo']();
 			case 'degraded':
-				return m['banner.degraded.clusters']();
+				return status.ownClusterDown ? m['banner.degraded.ownCluster']() : m['banner.degraded.clusters']();
 			case 'unhealthy':
 				return m['banner.unhealthy.service']();
 			case 'unknown':
@@ -41,7 +41,7 @@
 	>
 		<span class="inline-flex items-center gap-2">
 			{message()}
-			{#if status.clusterDownCounts}
+			{#if status.clusterDownCounts && !status.ownClusterDown}
 				<span class="font-medium">
 					{m['banner.degraded.clustersDetail'](status.clusterDownCounts)}
 				</span>

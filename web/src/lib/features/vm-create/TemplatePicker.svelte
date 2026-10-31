@@ -64,8 +64,7 @@
 
 	function templateLabel(tmpl: (typeof templates)[number]): string {
 		const name = tmpl.name !== '' ? tmpl.name : `VMID ${tmpl.vmid}`;
-		const cloudInit = tmpl.cloudInitCapable ? ` · ${m['admin.templates.cloudInit']()}` : '';
-		return `${name} · ${tmpl.diskSizeGB} GB${cloudInit}`;
+		return `${name} · ${tmpl.diskSizeGB} GB`;
 	}
 </script>
 

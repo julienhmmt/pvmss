@@ -32,7 +32,7 @@ func TestCreate_InFlightCreateCountsBeforeRefresh(t *testing.T) {
 		t.Fatalf("SetPolicy: %v", err)
 	}
 
-	deps := vm.CreateDeps{Store: fixture.store, Creator: fixture.fake, Pusher: fixture.fake, Audit: fixture.store, Log: slog.New(slog.DiscardHandler), Services: []*policy.Policy{service}}
+	deps := vm.CreateDeps{Store: fixture.store, Creator: fixture.fake, Audit: fixture.store, Log: slog.New(slog.DiscardHandler), Services: []*policy.Policy{service}}
 	create := func(name string) error {
 		req := detailedRequest()
 		req.Name = name
@@ -68,7 +68,7 @@ func TestCreate_RefusesBeforeFirstInventoryLoad(t *testing.T) {
 	req := detailedRequest()
 	req.Name = "too-early"
 
-	_, err := vm.Create(context.Background(), aliceIdentity(), req.Cluster, req, vm.CreateDeps{Store: fixture.store, Creator: fixture.fake, Pusher: fixture.fake, Audit: fixture.store, Log: slog.New(slog.DiscardHandler), Services: []*policy.Policy{service}})
+	_, err := vm.Create(context.Background(), aliceIdentity(), req.Cluster, req, vm.CreateDeps{Store: fixture.store, Creator: fixture.fake, Audit: fixture.store, Log: slog.New(slog.DiscardHandler), Services: []*policy.Policy{service}})
 	if !errors.Is(err, policy.ErrInventoryNotReady) {
 		t.Fatalf("Create before first load: err = %v, want ErrInventoryNotReady", err)
 	}

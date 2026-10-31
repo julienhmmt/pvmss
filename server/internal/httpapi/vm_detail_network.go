@@ -237,7 +237,7 @@ func (h *VMDetail) handleHardwareOptions(w http.ResponseWriter, r *http.Request)
 		return
 	}
 
-	entity, err := vm.Resolve(index, identity, clusterName, vmid)
+	entity, err := vm.Resolve(index, identity, clusterName, vmid, h.store)
 	if err != nil {
 		h.writeResolveError(w, err)
 		return

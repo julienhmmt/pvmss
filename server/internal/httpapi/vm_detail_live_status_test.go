@@ -33,8 +33,10 @@ func TestVMDetail_GetReportsLiveStatusOverProjection(t *testing.T) {
 	}
 
 	authHandler := newAuthHandler(t)
+	projection := buildProjectionWithIndex(t, snap, time.Now())
 	handler := httpapi.NewVMDetailWithRegistry(httpapi.VMDetailDeps{
-		Projection:   buildProjectionWithIndex(t, snap, time.Now()),
+		Source:       projectionRegistry(projection),
+		Projection:   projection,
 		Auth:         authHandler,
 		StatusReader: liveRunning{},
 		Log:          slog.New(slog.DiscardHandler),

@@ -69,8 +69,7 @@ type isoToggleResponse struct {
 }
 
 // ServeISOToggle handles POST /api/v1/admin/isos/toggle.
-//
-//nolint:dupl // intentionally parallel to ServeImageToggle (same shape, different resource)
+// ServeISOToggle handles POST /api/v1/admin/isos/toggle.
 func (h *AdminCatalog) ServeISOToggle(w http.ResponseWriter, r *http.Request) {
 	var req isoToggleRequest
 	if err := decodeJSON(w, r, &req); err != nil {
@@ -110,4 +109,32 @@ func (h *AdminCatalog) ServeISOToggle(w http.ResponseWriter, r *http.Request) {
 		fmt.Sprintf("iso %s on storage %s node %s cluster %s set enabled=%v", req.File, req.Storage, req.Node, clusterName, req.Enabled),
 		[]any{map[string]any{auditKeyCluster: clusterName, auditKeyNode: req.Node, auditKeyStorage: req.Storage, auditKeyFile: req.File, auditKeyEnabled: req.Enabled}})
 	writeAdminJSON(w, http.StatusOK, isoToggleResponse{Node: req.Node, Storage: req.Storage, File: req.File, Enabled: req.Enabled})
+}
+
+// ServeISODelete handles DELETE /api/v1/admin/isos/{cluster}/{node}/{file}.
+func (h *AdminCatalog) ServeISODelete(w http.ResponseWriter, r *http.Request) {
+	clusterName := r.PathValue("cluster")
+	node := r.PathValue("node")
+	storage := r.PathValue("storage")
+	file := r.PathValue("file")
+	if node == "" || storage == "" || file == "" {
+		writeAdminError(w, http.StatusBadRequest, "invalid_request", "node, storage, and file are required")
+		return
+	}
+
+	err := catalog.DeleteISO(r.Context(), h.store, clusterName, node, storage, file)
+	if errors.Is(err, catalog.ErrISONotFound) {
+		writeAdminError(w, http.StatusNotFound, "not_found", fmt.Sprintf("iso %q on storage %q node %q not found on cluster %q", file, storage, node, clusterName))
+		return
+	}
+
+	if err != nil {
+		writeAdminFailure(w, "admin delete iso failed", err)
+		return
+	}
+
+	h.recordAdminAction(r, "admin.isos.delete", "iso", file,
+		fmt.Sprintf("deleted iso approval %q on storage %s node %s cluster %s", file, storage, node, clusterName),
+		[]any{map[string]any{auditKeyCluster: clusterName, auditKeyNode: node, auditKeyStorage: storage, auditKeyFile: file}})
+	w.WriteHeader(http.StatusNoContent)
 }

@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { buildMetricsHistoryURL, buildMetricsStreamURL, fetchMetricsHistory, parseMetricsStreamMessage } from './metrics';
+import { buildMetricsHistoryURL, buildMetricsStreamURL, fetchMetricsHistory, formatMetricPercent, formatMetricRate, formatMetricSize, metricLast, metricPeak, parseMetricsStreamMessage } from './metrics';
 import { ApiRequestError } from '#lib/shared/api/client.js';
 
 function jsonResponse(status: number, body: unknown): Response {
@@ -120,5 +120,31 @@ describe('parseMetricsStreamMessage', () => {
 		});
 
 		expect(() => parseMetricsStreamMessage(data)).toThrow('timestamp');
+	});
+});
+
+describe('metricLast and metricPeak', () => {
+	it('reads the last and highest sample of a series', () => {
+		expect(metricLast([1, 3, 2])).toBe(2);
+		expect(metricPeak([1, 3, 2])).toBe(3);
+	});
+
+	it('is null on an empty series', () => {
+		expect(metricLast([])).toBeNull();
+		expect(metricPeak([])).toBeNull();
+	});
+});
+
+describe('metric tick formatters', () => {
+	it('formats percent, rate and size ticks', () => {
+		expect(formatMetricPercent(42.4)).toBe('42%');
+		expect(formatMetricRate(512 * 1024 ** 2)).toBe('512 MiB/s');
+		expect(formatMetricSize(16 * 1024 ** 3)).toBe('16 GiB');
+	});
+
+	it('formats a missing value as a dash', () => {
+		expect(formatMetricPercent(null)).toBe('-');
+		expect(formatMetricRate(null)).toBe('-');
+		expect(formatMetricSize(null)).toBe('-');
 	});
 });

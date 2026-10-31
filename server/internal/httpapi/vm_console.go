@@ -39,14 +39,6 @@ type VMConsole struct {
 	log        *slog.Logger
 }
 
-// NewVMConsole creates the handler. The relay is the cluster.ConsoleRelay
-// (Fake or Proxmox); the tickets store is the in-memory ConsoleTicketStore
-// from main.go; the store is the real audit store. Bound to a single
-// cluster; use NewVMConsoleWithRegistry for multi-cluster deployments.
-func NewVMConsole(projection *inventory.Projection, authHandler *Auth, relay cluster.ConsoleRelay, tickets *vm.ConsoleTicketStore, st *store.Store, log *slog.Logger) *VMConsole {
-	return &VMConsole{projection: projection, resolver: singleClusterResolver{projection: projection}, auth: authHandler, relay: relay, tickets: tickets, store: st, log: log}
-}
-
 // consoleEnv bundles this handler's shared collaborators for the shared
 // console ticket and websocket helpers.
 func (h *VMConsole) consoleEnv() consoleEnv {
@@ -83,14 +75,7 @@ type VMConsoleRegistryDeps struct {
 // issued against the default cluster's node/port, and the relay would
 // connect to the wrong Proxmox host entirely.
 func NewVMConsoleWithRegistry(deps VMConsoleRegistryDeps) *VMConsole {
-	handler := NewVMConsole(deps.Projection, deps.Auth, deps.Relay, deps.Tickets, deps.Store, deps.Log)
-	if registry, ok := deps.Source.(*inventory.Registry); ok {
-		handler.resolver = registryResolver{registry: registry}
-	}
-
-	handler.clients = deps.Clients
-
-	return handler
+	return &VMConsole{projection: deps.Projection, resolver: registryResolver{registry: depsSourceRegistry(deps.Source)}, auth: deps.Auth, relay: deps.Relay, clients: deps.Clients, tickets: deps.Tickets, store: deps.Store, log: deps.Log}
 }
 
 // ServeHTTP dispatches between the ticket endpoint and the WebSocket endpoint

@@ -8,14 +8,19 @@ import (
 	"time"
 )
 
-// RefreshedAt reports when the inventory projection last populated; the zero
-// Time means it never has.
-func (service *Policy) RefreshedAt() time.Time {
-	if service.projection == nil || service.projection.Load() == nil {
-		return time.Time{}
+// RefreshedAt reports when the cluster's inventory projection last populated;
+// the zero Time means it never has.
+func (service *Policy) RefreshedAt(clusterName string) (time.Time, error) {
+	index, err := service.indexFor(clusterName)
+	if err != nil {
+		return time.Time{}, err
 	}
 
-	return service.projection.Load().RefreshedAt
+	if index == nil {
+		return time.Time{}, nil
+	}
+
+	return index.RefreshedAt, nil
 }
 
 // NodeCapacities returns the live discovery set joined with configured capacité
@@ -69,8 +74,13 @@ func (service *Policy) discoveredNodes(ctx context.Context, clusterName string) 
 		return snapshot.Nodes, nil
 	}
 
-	if service.projection != nil && service.projection.Load() != nil {
-		return service.projection.Load().Nodes, nil
+	index, err := service.indexFor(clusterName)
+	if err != nil {
+		return nil, err
+	}
+
+	if index != nil {
+		return index.Nodes, nil
 	}
 
 	return nil, nil

@@ -21,11 +21,8 @@ function catalogWith(template: VmCreateCatalog['templates'][number]): VmCreateCa
 		],
 		bridges: [],
 		isos: [],
-		images: [],
 		profiles: [],
 		templates: [template],
-		cloudInitTemplates: [],
-		cloudInitWriteEnabled: false,
 		tags: []
 	};
 }
@@ -46,30 +43,18 @@ function hint(): string | null {
 }
 
 describe('StepDisk full-clone hint (issue 04)', () => {
-	it('shows the cloud-init hint even when the target storage matches', () => {
+	it('shows the storage-differs hint for a template on another storage', () => {
 		mountWith(
-			{ vmid: 9000, node: 'pve-node-02', name: 'debian-12-cloud', cloudInitCapable: true, diskSizeGB: 8, diskStorage: 'local-lvm' },
-			'local-lvm'
-		);
-		// The cloud-init variant mentions cloud-init in every locale; the
-		// storage-differs variant never does.
-		expect(hint()).toContain('cloud-init');
-		document.body.innerHTML = '';
-	});
-
-	it('shows the storage-differs hint for a non-cloud-init template on another storage', () => {
-		mountWith(
-			{ vmid: 9001, node: 'pve-node-02', name: 'alpine', cloudInitCapable: false, diskSizeGB: 2, diskStorage: 'local-lvm' },
+			{ vmid: 9001, node: 'pve-node-02', name: 'alpine', diskSizeGB: 2, diskStorage: 'local-lvm' },
 			'ceph-data'
 		);
 		expect(hint()).not.toBeNull();
-		expect(hint()).not.toContain('cloud-init');
 		document.body.innerHTML = '';
 	});
 
-	it('shows no hint for a non-cloud-init template on the same storage', () => {
+	it('shows no hint for a template on the same storage', () => {
 		mountWith(
-			{ vmid: 9001, node: 'pve-node-02', name: 'alpine', cloudInitCapable: false, diskSizeGB: 2, diskStorage: 'local-lvm' },
+			{ vmid: 9001, node: 'pve-node-02', name: 'alpine', diskSizeGB: 2, diskStorage: 'local-lvm' },
 			'local-lvm'
 		);
 		expect(hint()).toBeNull();

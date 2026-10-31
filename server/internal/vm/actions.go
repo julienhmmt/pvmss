@@ -333,7 +333,7 @@ func extractLockName(err error) (string, bool) {
 // the force-stop that preceded the destroy. The HTTP handler only sets Force
 // after the user has confirmed the force-stop in the UI.
 func Delete(ctx context.Context, deps WriteDeps) error {
-	entity, err := Resolve(deps.Index, deps.Actor, deps.ClusterName, deps.VMID)
+	entity, err := Resolve(deps.Index, deps.Actor, deps.ClusterName, deps.VMID, deps.Store)
 	if err != nil {
 		return err
 	}
@@ -418,7 +418,7 @@ func deleteWithRetry(ctx context.Context, deps WriteDeps, entity Entity) error {
 // ClearDescription removes a VM's description after the same ownership
 // check as Patch (which treats "" as "leave unchanged").
 func ClearDescription(ctx context.Context, deps WriteDeps) error {
-	entity, err := Resolve(deps.Index, deps.Actor, deps.ClusterName, deps.VMID)
+	entity, err := Resolve(deps.Index, deps.Actor, deps.ClusterName, deps.VMID, deps.Store)
 	if err != nil {
 		return err
 	}
@@ -457,7 +457,7 @@ func Patch(ctx context.Context, deps WriteDeps, name, description string) error 
 		return ErrDescriptionTooLong
 	}
 
-	entity, err := Resolve(deps.Index, deps.Actor, deps.ClusterName, deps.VMID)
+	entity, err := Resolve(deps.Index, deps.Actor, deps.ClusterName, deps.VMID, deps.Store)
 	if err != nil {
 		return err
 	}

@@ -137,7 +137,7 @@ func TestVMStatusBatch_ReturnsLiveStatusForMultipleVMs(t *testing.T) {
 	projection := buildProjectionWithIndex(t, snap, time.Now())
 	authHandler := newAuthHandler(t)
 
-	handler := httpapi.NewVMStatusBatchSingle(projection, authHandler, cluster.Fake{}, testLogger(t))
+	handler := httpapi.NewVMStatusBatch(httpapi.VMStatusBatchDeps{Source: projectionRegistry(projection), Auth: authHandler, StatusReader: cluster.Fake{}, Log: testLogger(t)})
 
 	cookie := aliceCookie(t, authHandler)
 
@@ -174,7 +174,7 @@ func TestVMStatusBatch_EmptyTargetsRejected(t *testing.T) {
 	t.Cleanup(cluster.ResetFake)
 
 	authHandler := newAuthHandler(t)
-	handler := httpapi.NewVMStatusBatchSingle(nil, authHandler, cluster.Fake{}, testLogger(t))
+	handler := httpapi.NewVMStatusBatch(httpapi.VMStatusBatchDeps{Source: emptyRegistry(), Auth: authHandler, StatusReader: cluster.Fake{}, Log: testLogger(t)})
 
 	cookie := aliceCookie(t, authHandler)
 
@@ -202,7 +202,7 @@ func TestVMStatusBatch_UnknownVMOmitted(t *testing.T) {
 	projection := buildProjectionWithIndex(t, snap, time.Now())
 	authHandler := newAuthHandler(t)
 
-	handler := httpapi.NewVMStatusBatchSingle(projection, authHandler, cluster.Fake{}, testLogger(t))
+	handler := httpapi.NewVMStatusBatch(httpapi.VMStatusBatchDeps{Source: projectionRegistry(projection), Auth: authHandler, StatusReader: cluster.Fake{}, Log: testLogger(t)})
 
 	cookie := aliceCookie(t, authHandler)
 
@@ -239,7 +239,7 @@ func TestVMStatusBatch_RequiresAuth(t *testing.T) {
 	t.Cleanup(cluster.ResetFake)
 
 	authHandler := newAuthHandler(t)
-	handler := httpapi.NewVMStatusBatchSingle(nil, authHandler, cluster.Fake{}, testLogger(t))
+	handler := httpapi.NewVMStatusBatch(httpapi.VMStatusBatchDeps{Source: emptyRegistry(), Auth: authHandler, StatusReader: cluster.Fake{}, Log: testLogger(t)})
 
 	req := httptest.NewRequest(http.MethodPost, "/api/v1/vms/status", strings.NewReader(`[{"cluster":"default","vmid":100}]`))
 	req.Header.Set("Content-Type", "application/json")

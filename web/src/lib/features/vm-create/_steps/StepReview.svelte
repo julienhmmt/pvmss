@@ -27,9 +27,7 @@
 
 		const source: Row = req.templateId !== undefined
 			? { label: m['vms.create.sourceTemplate'](), value: template?.name ?? String(req.templateId), mono: true }
-			: req.image !== undefined
-				? { label: m['vms.create.sourceImage'](), value: req.image.file, mono: true }
-				: { label: m['vms.create.sourceIso'](), value: req.iso?.file ?? m['vms.create.summary.none'](), mono: req.iso !== undefined };
+			: { label: m['vms.create.sourceIso'](), value: req.iso?.file ?? m['vms.create.summary.none'](), mono: req.iso !== undefined };
 		const node = req.node ?? (template ? m['vms.create.review.nodeFromTemplate']({ node: template.node }) : m['common.dash']());
 
 		// A profile overrides the explicit hardware fields server-side
@@ -46,12 +44,6 @@
 			{ label: m['vms.create.firmwareGroup'](), value: req.uefi === false ? m['vms.create.review.bios']() : req.tpm ? `${m['vms.create.uefi']()} + ${m['vms.create.tpm']()}` : m['vms.create.uefi']() },
 			{ label: m['vms.create.startAfterCreate'](), value: req.startAfterCreate ? m['common.yes']() : m['common.no']() }
 		];
-		if (req.image !== undefined) {
-			options.push(
-				{ label: m['vms.create.summary.login'](), value: req.image.cloudInit.user ?? m['common.dash'](), mono: true },
-				{ label: m['vms.create.summary.sshKey'](), value: m['vms.create.summary.sshKeyCount']({ count: req.image.cloudInit.sshKeys?.length ?? 0 }) }
-			);
-		}
 
 		return [
 			{
@@ -79,18 +71,6 @@
 			{ title: m['vms.create.review.sectionOptions'](), rows: options }
 		];
 	});
-
-	// The review shows the chosen document's label - the raw request JSON
-	// only carries the id.
-	// const cloudInitDocumentLabel = $derived(
-	// form.cloudInitTemplateId !== '' && form.isoFile === ''
-	// ? (form.catalog?.cloudInitTemplates.find((t) => t.id === form.cloudInitTemplateId)?.label ?? form.cloudInitTemplateId)
-	// : null
-	// );
-
-	// Image mode: the wizard footer blocks the submit until the image's disk
-	// floor and the mandatory cloud-init are satisfied (mirrored by store.submit).
-	const imageBlocker = $derived(form.imageModeBlocker());
 </script>
 
 <div class="grid gap-5">
@@ -101,11 +81,6 @@
 			<Switch label={m['vms.create.review.showJson']()} checked={showJson} onToggle={() => (showJson = !showJson)} />
 		</label>
 	</div>
-<!-- Cloud-init is disabled for now: not reliable or viable yet, too complex to set up.
-	<p class="text-sm text-muted-foreground">
-		{m['vms.create.reviewCloudinitDocument']()}: {cloudInitDocumentLabel ?? m['vms.create.cloudinitNone']()}
-	</p>
--->
 	{#if showJson}
 		<div class="grid gap-2">
 			<p class="text-xs text-muted-foreground">{m['vms.create.review.jsonHint']()}</p>
@@ -130,7 +105,4 @@
 	{/if}
 
 	{#if form.submitError}<Alert>{form.submitError}</Alert>{/if}
-	{#if imageBlocker !== null}
-		<p class="text-sm text-muted-foreground" data-testid="image-blocker">{imageBlocker}</p>
-	{/if}
 </div>

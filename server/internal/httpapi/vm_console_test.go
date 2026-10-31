@@ -41,7 +41,7 @@ func newVMConsoleHandler(t *testing.T) (*httpapi.VMConsole, *httpapi.Auth, *vm.C
 		func(snap cluster.Snapshot, auth *httpapi.Auth, tk *vm.ConsoleTicketStore, st *store.Store, logger *slog.Logger) http.Handler {
 			tickets = tk
 			projection := buildProjectionWithIndex(t, snap, time.Now())
-			handler = httpapi.NewVMConsole(projection, auth, cluster.Fake{}, tk, st, logger)
+			handler = httpapi.NewVMConsoleWithRegistry(httpapi.VMConsoleRegistryDeps{Source: projectionRegistry(projection), Projection: projection, Auth: auth, Relay: cluster.Fake{}, Tickets: tk, Store: st, Log: logger})
 
 			return handler
 		},
@@ -264,14 +264,19 @@ func TestVMConsole_WebSocket_ValidTokenUpgradesAndRelaysRFBHandshake(t *testing.
 // TestVMConsole_PostVNCTicket_ClusterUnavailableReturns502 - contracts: when
 // the cluster client's GetVNCTicket fails, the response is 502
 // console_unavailable, not 500.
-//
+func console502Handler(t *testing.T, snap cluster.Snapshot, authHandler *httpapi.Auth, tickets *vm.ConsoleTicketStore, st *store.Store, logger *slog.Logger) http.Handler {
+	t.Helper()
+
+	projection := buildProjectionWithIndex(t, snap, time.Now())
+
+	return httpapi.NewVMConsoleWithRegistry(httpapi.VMConsoleRegistryDeps{Source: projectionRegistry(projection), Projection: projection, Auth: authHandler, Relay: &failingConsoleRelay{}, Tickets: tickets, Store: st, Log: logger})
+}
+
 //nolint:paralleltest // serial: shared fake VM and database fixtures
 func TestVMConsole_PostVNCTicket_ClusterUnavailableReturns502(t *testing.T) {
 	handler, _, cookie := buildFailingRelayHandler(t, 50001, "vm-console-502.db",
 		func(snap cluster.Snapshot, authHandler *httpapi.Auth, tickets *vm.ConsoleTicketStore, st *store.Store, logger *slog.Logger) http.Handler {
-			projection := buildProjectionWithIndex(t, snap, time.Now())
-
-			return httpapi.NewVMConsole(projection, authHandler, &failingConsoleRelay{}, tickets, st, logger)
+			return console502Handler(t, snap, authHandler, tickets, st, logger)
 		},
 	)
 

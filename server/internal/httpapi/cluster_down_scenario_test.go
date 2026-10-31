@@ -140,12 +140,7 @@ func TestClusterDownScenario(t *testing.T) {
 	t.Logf("GET /health status=%d body=%s", healthResp.Code, healthResp.Body.String())
 
 	// --- POST /api/v1/cluster/refresh (SPA refresh button) ---
-	refresher, err := inventoryRegistry.Refresher("offline-demo")
-	if err != nil {
-		t.Fatalf("Refresher: %v", err)
-	}
-
-	clusterRefresh := httpapi.NewClusterRefresh(refresher, logger)
+	clusterRefresh := httpapi.NewClusterRefreshWithRegistry(inventoryRegistry, nil, newAuthHandler(t), logger)
 
 	refreshReq := httptest.NewRequest(http.MethodPost, "/api/v1/cluster/refresh", strings.NewReader(""))
 

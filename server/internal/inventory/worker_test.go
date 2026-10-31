@@ -57,10 +57,6 @@ func (c *callCountClient) ListISOs(_ context.Context) ([]cluster.ISOImage, error
 	return nil, cluster.ErrNotImplemented
 }
 
-func (c *callCountClient) ListCloudImages(_ context.Context) ([]cluster.CloudImage, error) {
-	return nil, cluster.ErrNotImplemented
-}
-
 func (c *callCountClient) ListTemplates(_ context.Context) ([]cluster.TemplateVM, error) {
 	return nil, cluster.ErrNotImplemented
 }
@@ -450,10 +446,6 @@ func (hungClient) ListBridges(_ context.Context) ([]cluster.Bridge, error) {
 }
 
 func (hungClient) ListISOs(_ context.Context) ([]cluster.ISOImage, error) {
-	return nil, cluster.ErrNotImplemented
-}
-
-func (hungClient) ListCloudImages(_ context.Context) ([]cluster.CloudImage, error) {
 	return nil, cluster.ErrNotImplemented
 }
 

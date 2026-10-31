@@ -1,3 +1,5 @@
+// Package cloudinit holds the retained cloud-init helpers: SSH-key
+// validation and slug derivation shared by profile/doc features.
 package cloudinit
 
 import (

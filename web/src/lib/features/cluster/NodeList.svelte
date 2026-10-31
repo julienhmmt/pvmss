@@ -57,6 +57,10 @@
 		unknown: () => m['common.unknown']()
 	};
 
+	// The cluster column only earns its place when the response actually
+	// spans clusters (admin union view) - on a single-cluster list it is noise.
+	let showCluster = $derived(new Set(nodes.map((node) => node.cluster)).size > 1);
+
 	let refreshButtonLabel = $derived(
 		refreshing ? m['nodes.refreshing']() : refreshDisabled ? m['nodes.refreshWait']() : m['nodes.refresh']()
 	);
@@ -100,6 +104,9 @@
 			<caption class="sr-only">{m['nodes.caption']()}</caption>
 			<thead>
 				<tr>
+					{#if showCluster}
+						<th scope="col" class="font-medium">{m['common.cluster']()}</th>
+					{/if}
 					<th scope="col" class="font-medium">{m['nodes.columnName']()}</th>
 					<th scope="col" class="font-medium">{m['nodes.columnStatus']()}</th>
 					<th scope="col" class="font-medium">{m['nodes.columnVms']()}</th>
@@ -109,8 +116,13 @@
 				</tr>
 			</thead>
 			<tbody>
-				{#each pager.rows as node (node.name)}
+				{#each pager.rows as node (`${node.cluster}/${node.name}`)}
 					<tr class="border-t border-border">
+						{#if showCluster}
+							<td class="text-muted-foreground" data-label={m['common.cluster']()} data-testid="node-cluster">
+								{node.cluster}
+							</td>
+						{/if}
 						<td class="font-mono font-medium" data-label={m['nodes.columnName']()}>{node.name}</td>
 						<td data-label={m['nodes.columnStatus']()}>
 							<StatusDot tone={statusTone[node.status]} label={statusLabel[node.status]?.() ?? node.status} />

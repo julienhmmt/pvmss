@@ -343,7 +343,7 @@ func TestAdminCatalogCoverage_NilClientReturns404(t *testing.T) {
 	authHandler := newAuthHandler(t)
 	st := newAdminStore(t)
 	logger := slog.New(slog.NewTextHandler(testWriter{t}, nil))
-	handler := httpapi.NewAdminCatalog(authHandler, st, nil, nil, logger)
+	handler := httpapi.NewAdminCatalogWithRegistry(authHandler, st, singleClientProvider(nil), nil, logger)
 	cookie := adminCookie(t, authHandler)
 
 	rec := adminGet(t, handler, authHandler, cookie, "/api/v1/admin/nodes?cluster=default")
@@ -357,7 +357,7 @@ func TestAdminCatalogCoverage_NilClientStorageToggleReturns404(t *testing.T) {
 	authHandler := newAuthHandler(t)
 	st := newAdminStore(t)
 	logger := slog.New(slog.NewTextHandler(testWriter{t}, nil))
-	handler := httpapi.NewAdminCatalog(authHandler, st, nil, nil, logger)
+	handler := httpapi.NewAdminCatalogWithRegistry(authHandler, st, singleClientProvider(nil), nil, logger)
 	cookie := adminCookie(t, authHandler)
 
 	rec := adminPost(t, handler, authHandler, cookie, "/api/v1/admin/storages/toggle",
@@ -372,7 +372,7 @@ func TestAdminCatalogCoverage_NilClientBridgeToggleReturns404(t *testing.T) {
 	authHandler := newAuthHandler(t)
 	st := newAdminStore(t)
 	logger := slog.New(slog.NewTextHandler(testWriter{t}, nil))
-	handler := httpapi.NewAdminCatalog(authHandler, st, nil, nil, logger)
+	handler := httpapi.NewAdminCatalogWithRegistry(authHandler, st, singleClientProvider(nil), nil, logger)
 	cookie := adminCookie(t, authHandler)
 
 	rec := adminPost(t, handler, authHandler, cookie, "/api/v1/admin/bridges/toggle",
@@ -387,7 +387,7 @@ func TestAdminCatalogCoverage_NilClientISOToggleReturns404(t *testing.T) {
 	authHandler := newAuthHandler(t)
 	st := newAdminStore(t)
 	logger := slog.New(slog.NewTextHandler(testWriter{t}, nil))
-	handler := httpapi.NewAdminCatalog(authHandler, st, nil, nil, logger)
+	handler := httpapi.NewAdminCatalogWithRegistry(authHandler, st, singleClientProvider(nil), nil, logger)
 	cookie := adminCookie(t, authHandler)
 
 	rec := adminPost(t, handler, authHandler, cookie, "/api/v1/admin/isos/toggle",

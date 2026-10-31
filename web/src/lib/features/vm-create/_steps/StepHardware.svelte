@@ -4,34 +4,10 @@
 	import Checkbox from '#lib/shared/ui/Checkbox.svelte';
 	import FormField from '#lib/shared/ui/FormField.svelte';
 	import TextField from '#lib/shared/ui/TextField.svelte';
-	import ProfilePicker from '../ProfilePicker.svelte';
-
-	interface Props {
-		showErrors?: boolean;
-	}
-
-	let { showErrors = false }: Props = $props();
 
 	// Hardware step: vCPU and memory. Client-side bounds are a convenience
 	// only - the server re-checks against the same ceiling (constitution VI).
 	const form = getVmCreateContext();
-
-	// Image source with profiles configured: a profile replaces manual
-	// sockets/CPU/memory entirely (the server ignores those fields once a
-	// profileId is set - FR-009), so pick one instead of typing values.
-	const showProfilePicker = $derived(form.sourceType === 'image' && form.hasProfiles());
-
-	function profileDescription(profile: { cpuCores: number; memoryMB: number; diskGB: number; bus: string }): string {
-		return `${profile.cpuCores} vCPU · ${profile.memoryMB} MB · ${profile.diskGB} GB · ${profile.bus}`;
-	}
-
-	const profileError = $derived(
-		showProfilePicker && showErrors
-			? form.profileId !== '' && form.catalog?.profiles.some((profile) => profile.id === form.profileId)
-				? null
-				: m['vms.create.errorProfileRequired']()
-			: null
-	);
 
 	const maxSockets = $derived(gabaritCeiling(form.catalog?.gabarit?.maxSockets, 4));
 	const maxCores = $derived(gabaritCeiling(form.catalog?.gabarit?.maxCores, 32));
@@ -81,21 +57,7 @@
 		</div>
 	{/if}
 
-	{#if showProfilePicker}
-		<ProfilePicker
-			legend={m['vms.create.profile']()}
-			bind:value={form.profileId}
-			profiles={(form.catalog?.profiles ?? []).map((profile) => ({
-				id: profile.id,
-				label: profile.label,
-				description: profileDescription(profile)
-			}))}
-		/>
-		{#if profileError}
-			<p role="alert" class="text-xs font-medium text-destructive">{profileError}</p>
-		{/if}
-	{:else}
-		{#if form.mode === 'detailed'}
+	{#if form.mode === 'detailed'}
 			<FormField
 				label={m['vms.create.sockets']()}
 				hint={m['vms.create.socketsLimitHint']({ min: 1, max: maxSockets })}
@@ -124,14 +86,13 @@
 				<TextField {id} {describedBy} {invalid} type="number" min={128} max={maxMemoryMB} step={128} bind:value={form.memoryMB} required />
 			{/snippet}
 		</FormField>
-	{/if}
 
 	{#if form.mode === 'detailed'}
 		<div class="grid gap-2 rounded-lg border border-border p-4">
 			<p class="text-sm font-medium text-foreground">{m['vms.create.firmwareGroup']()}</p>
 			<Checkbox
 				label={m['vms.create.uefi']()}
-				hint={form.sourceType === 'image' ? m['vms.create.uefiImageHint']() : m['vms.create.uefiHint']()}
+				hint={m['vms.create.uefiHint']()}
 				checked={form.uefi}
 				onToggle={(checked) => {
 					form.uefi = checked;

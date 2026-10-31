@@ -290,10 +290,6 @@ func TestCreate_TemplateClone_NoDiskSizeUsesTemplateSize(t *testing.T) {
 		t.Fatalf("no UPID returned")
 	}
 
-	if result.CloudInitPushError != "" {
-		t.Errorf("CloudInitPushError = %q, want empty", result.CloudInitPushError)
-	}
-
 	// The cloned VM must exist in the snapshot (task completed).
 	snap, err := fixture.fake.Snapshot(context.Background())
 	if err != nil {
@@ -367,95 +363,6 @@ func TestCreate_TemplateClone_SimpleModeMinimalRequest(t *testing.T) {
 	}
 }
 
-// TestCreate_TemplateClone_CloudInitAppliedAfterTask - when
-// a cloud-init template is requested alongside a Proxmox template clone, the
-// document content is written as the VM's own snippet (pvmss-<vmid>.yml,
-// ), verified, and attached after the clone task completes - the same
-// per-VM-copy contract as the ISO path.
-//
-//nolint:paralleltest // serial: shared fake VM and database fixtures
-func TestCreate_TemplateClone_CloudInitAppliedAfterTask(t *testing.T) {
-	fixture := newCreateFixture(t)
-	tmplID := createTestTemplate(t, fixture.store)
-
-	req := templateRequest(9000)
-	req.CloudInitTemplateID = tmplID
-
-	result, err := fixture.create(t, aliceIdentity(), req)
-	if err != nil {
-		t.Fatalf("Create: %v", err)
-	}
-
-	if result.CloudInitPushError != "" {
-		t.Errorf("result.CloudInitPushError = %q, want empty", result.CloudInitPushError)
-	}
-
-	// The clone must have completed before cloud-init was attached - the
-	// VM exists in the snapshot (materialized by the fake's onComplete
-	// callback on the third poll).
-	snap, err := fixture.fake.Snapshot(context.Background())
-	if err != nil {
-		t.Fatalf("Snapshot: %v", err)
-	}
-
-	idx := slices.IndexFunc(snap.VMs, func(v cluster.VM) bool { return v.VMID == result.VMID })
-	if idx < 0 {
-		t.Fatalf("cloned VM %d not in snapshot - cloud-init may have been attached before task completion", result.VMID)
-	}
-
-	wantFilename := publishedFilename(t, fixture.store, tmplID)
-	if got := attachedFilename(t, result.VMID); got != wantFilename {
-		t.Fatalf("attached %q, want the published %q", got, wantFilename)
-	}
-
-	assertDocumentRow(t, fixture.store, result.VMID, tmplID, wantFilename, aliceIdentity().Username)
-
-	if result.CloudInitTemplateID != tmplID {
-		t.Errorf("result.CloudInitTemplateID = %q, want %q", result.CloudInitTemplateID, tmplID)
-	}
-}
-
-// TestCreate_TemplateClone_StartAfterCreateWithCloudInit
-// when a cloud-init template is requested with StartAfterCreate, the VM is
-// not started in the clone task (StartAfterCreate is forced off for the
-// clone); the VM is started explicitly after cloud-init attachment.
-//
-//nolint:paralleltest // serial: shared fake VM and database fixtures
-func TestCreate_TemplateClone_StartAfterCreateWithCloudInit(t *testing.T) {
-	fixture := newCreateFixture(t)
-	tmplID := createTestTemplate(t, fixture.store)
-
-	req := templateRequest(9000)
-	req.CloudInitTemplateID = tmplID
-	req.StartAfterCreate = true
-
-	result, err := fixture.create(t, aliceIdentity(), req)
-	if err != nil {
-		t.Fatalf("Create: %v", err)
-	}
-
-	if result.CloudInitPushError != "" {
-		t.Errorf("CloudInitPushError = %q, want empty", result.CloudInitPushError)
-	}
-
-	// The VM should be in the snapshot and started (the explicit start
-	// after cloud-init attachment runs via Writer.Action).
-	snap, err := fixture.fake.Snapshot(context.Background())
-	if err != nil {
-		t.Fatalf("Snapshot: %v", err)
-	}
-
-	idx := slices.IndexFunc(snap.VMs, func(v cluster.VM) bool { return v.VMID == result.VMID })
-	if idx < 0 {
-		t.Fatalf("cloned VM %d not in snapshot", result.VMID)
-	}
-
-	// The fake's Action("start") transitions the VM to running.
-	if snap.VMs[idx].Status != cluster.VMRunning {
-		t.Errorf("VM status = %v, want VMRunning (started after cloud-init)", snap.VMs[idx].Status)
-	}
-}
-
 // TestCreate_TemplateClone_AuditRecorded - a successful clone is
 // recorded in the audit log.
 //
@@ -500,7 +407,7 @@ func TestCreate_TemplateClone_CatalogExposesTemplates(t *testing.T) {
 		t.Fatalf("expected 2 seeded templates, got %d", len(templates))
 	}
 
-	// VMID 9000 - cloud-init capable, 8 GB disk, on pve-node-02.
+	// VMID 9000 - 8 GB disk, on pve-node-02.
 	tmpl9000, err := catalog.FindTemplate(templates, 9000)
 	if err != nil {
 		t.Fatalf("FindTemplate(9000): %v", err)
@@ -510,22 +417,14 @@ func TestCreate_TemplateClone_CatalogExposesTemplates(t *testing.T) {
 		t.Errorf("template 9000 node = %q, want %q", tmpl9000.Node, cluster.FakeNode02)
 	}
 
-	if !tmpl9000.CloudInitCapable {
-		t.Errorf("template 9000 should be cloud-init capable")
-	}
-
 	if tmpl9000.DiskSizeGB != 8 {
 		t.Errorf("template 9000 disk size = %d, want 8", tmpl9000.DiskSizeGB)
 	}
 
-	// VMID 9001 - not cloud-init capable, 2 GB disk, on pve-node-02.
+	// VMID 9001 - 2 GB disk, on pve-node-02.
 	tmpl9001, err := catalog.FindTemplate(templates, 9001)
 	if err != nil {
 		t.Fatalf("FindTemplate(9001): %v", err)
-	}
-
-	if tmpl9001.CloudInitCapable {
-		t.Errorf("template 9001 should not be cloud-init capable")
 	}
 
 	if tmpl9001.DiskSizeGB != 2 {
@@ -590,7 +489,7 @@ type migratedTemplateClient struct {
 
 func (migratedTemplateClient) TemplateByVMID(_ context.Context, _ int) (cluster.TemplateVM, error) {
 	return cluster.TemplateVM{
-		VMID: 9000, Node: discoveryNode01, Name: "debian-12-cloud", CloudInitCapable: true,
+		VMID: 9000, Node: discoveryNode01, Name: "debian-12-cloud",
 		DiskStorage: "local-lvm", DiskSizeGB: 8, DiskBus: string(cluster.DiskBusSCSI),
 	}, nil
 }
@@ -619,10 +518,8 @@ func createWithTemplates(t *testing.T, fixture createFixture, templates interfac
 	return vm.Create(context.Background(), aliceIdentity(), req.Cluster, req, vm.CreateDeps{
 		Store:     fixture.store,
 		Creator:   fixture.fake,
-		Pusher:    fixture.fake,
 		Writer:    fixture.fake,
 		FreeSpace: fixture.fake,
-		Snippets:  fixture.fake,
 		Audit:     fixture.store,
 		Log:       log,
 		Templates: templates,
@@ -699,26 +596,5 @@ func TestCreate_TemplateClone_UnreadableFallsBackToStoredDisk(t *testing.T) {
 
 	if findCloneCall(result.VMID) == nil {
 		t.Error("clone call not recorded")
-	}
-}
-
-// TestCreate_ISO_RejectsCloudInitTemplate - cloud-init is off for ISO
-// installs, so an ISO request carrying a template id is refused before any
-// cluster call.
-//
-//nolint:paralleltest // serial: shared fake VM and database fixtures
-func TestCreate_ISO_RejectsCloudInitTemplate(t *testing.T) {
-	fixture := newCreateFixture(t)
-	req := detailedRequest()
-	req.ISO = &vm.ISORequest{Storage: cluster.FakeStorageLocal, File: testISOFile}
-	req.CloudInitTemplateID = "any"
-
-	_, err := fixture.create(t, aliceIdentity(), req)
-	if !errors.Is(err, vm.ErrInvalidSource) {
-		t.Fatalf("error = %v, want ErrInvalidSource", err)
-	}
-
-	if calls := cluster.FakeCalls(); len(calls) != 0 {
-		t.Fatalf("rejected request reached the cluster: %+v", calls)
 	}
 }

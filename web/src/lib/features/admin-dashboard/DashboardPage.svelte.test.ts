@@ -74,11 +74,11 @@ describe('DashboardPage VM summary', () => {
 		expect(goto).toHaveBeenCalledWith('/admin/nodes/default/miniquarium?from=dashboard');
 	});
 
-	it('leads with the create-user quick action and four reserved slots', () => {
+	it('leads with the create-user quick action and no placeholder slots', () => {
 		mount(DashboardPage, { target: document.body });
 
 		expect(document.querySelector('[data-testid="dashboard-create-user"]')?.getAttribute('href')).toBe('/admin/pools?create=1');
-		expect(document.querySelectorAll('[data-testid="dashboard-quick-action-slot"]')).toHaveLength(4);
+		expect(document.querySelectorAll('[data-testid="dashboard-quick-action-slot"]')).toHaveLength(0);
 	});
 
 	it('names recent changes in plain language', () => {

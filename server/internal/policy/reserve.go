@@ -22,10 +22,11 @@ var (
 const createReservationTTL = 15 * time.Minute
 
 type pendingCreate struct {
-	id    uint64
-	pool  string
-	name  string
-	until time.Time
+	id      uint64
+	cluster string
+	pool    string
+	name    string
+	until   time.Time
 }
 
 // ReserveCreate checks the pool quota and name uniqueness, counting creates
@@ -36,26 +37,39 @@ type pendingCreate struct {
 // shortcut: per-process state, valid for the single-replica deployment;
 // move to SQLite if replicas > 1 become supported.
 func (service *Policy) ReserveCreate(ctx context.Context, clusterName string, actor auth.Identity, name string) (func(), error) {
-	if service.projection != nil && service.projection.Load() == nil {
+	index, err := service.indexFor(clusterName)
+	if err != nil {
+		return nil, err
+	}
+
+	if service.inventoryExpected() && index == nil {
 		return nil, ErrInventoryNotReady
 	}
 
 	service.mu.Lock()
 	defer service.mu.Unlock()
 
-	inflight := service.inflightLocked(actor.Pool)
+	inflight, err := service.inflightLocked(clusterName, actor.Pool)
+	if err != nil {
+		return nil, err
+	}
 
 	if err := service.checkQuota(ctx, clusterName, actor, len(inflight)); err != nil {
 		return nil, err
 	}
 
-	if slices.Contains(inflight, name) || service.PoolHasName(actor.Pool, name) {
+	named, err := service.PoolHasName(clusterName, actor.Pool, name)
+	if err != nil {
+		return nil, err
+	}
+
+	if slices.Contains(inflight, name) || named {
 		return nil, ErrNameReserved
 	}
 
 	service.nextID++
 	id := service.nextID
-	service.pending = append(service.pending, pendingCreate{id: id, pool: actor.Pool, name: name, until: time.Now().Add(createReservationTTL)})
+	service.pending = append(service.pending, pendingCreate{id: id, cluster: clusterName, pool: actor.Pool, name: name, until: time.Now().Add(createReservationTTL)})
 
 	return func() {
 		service.mu.Lock()
@@ -65,21 +79,43 @@ func (service *Policy) ReserveCreate(ctx context.Context, clusterName string, ac
 	}, nil
 }
 
+// inventoryExpected reports whether any projection source is configured. A
+// deployment with neither is the degraded unit-test mode that tolerates an
+// unloaded inventory instead of refusing every create.
+func (service *Policy) inventoryExpected() bool {
+	return service.projections != nil || service.projection != nil
+}
+
 // inflightLocked drops expired reservations and those the projection already
-// shows, then returns the names still in flight for pool. Caller holds mu.
-func (service *Policy) inflightLocked(pool string) []string {
+// shows, then returns the names still in flight for clusterName's pool. Caller
+// holds mu.
+func (service *Policy) inflightLocked(clusterName, pool string) ([]string, error) {
 	now := time.Now()
-	service.pending = slices.DeleteFunc(service.pending, func(p pendingCreate) bool {
-		return now.After(p.until) || service.PoolHasName(p.pool, p.name)
-	})
+	kept := make([]pendingCreate, 0, len(service.pending))
+	names := make([]string, 0, len(service.pending))
 
-	var names []string
+	for _, pending := range service.pending {
+		if now.After(pending.until) {
+			continue
+		}
 
-	for _, p := range service.pending {
-		if p.pool == pool {
-			names = append(names, p.name)
+		named, err := service.PoolHasName(pending.cluster, pending.pool, pending.name)
+		if err != nil {
+			return nil, err
+		}
+
+		if named {
+			continue
+		}
+
+		kept = append(kept, pending)
+
+		if pending.cluster == clusterName && pending.pool == pool {
+			names = append(names, pending.name)
 		}
 	}
 
-	return names
+	service.pending = kept
+
+	return names, nil
 }

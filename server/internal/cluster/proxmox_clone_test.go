@@ -175,9 +175,7 @@ func TestProxmox_CloneVM_FullCloneSameStorage(t *testing.T) {
 // TestProxmox_ListTemplates verifies template discovery via
 // /cluster/resources?type=vm, filtering to template=1 rows and reading
 // disk config from /nodes/{node}/qemu/{vmid}/config. Disk config uses the
-// real Proxmox form "storage:volid,size=NG" (not "storage:size,format=…"),
-// and CloudInitCapable is detected by a cloud-init drive in the fixed ide3
-// slot (cloudInitDiskKey).
+// real Proxmox form "storage:volid,size=NG" (not "storage:size,format=…").
 func TestProxmox_ListTemplates(t *testing.T) {
 	t.Parallel()
 
@@ -194,8 +192,8 @@ func TestProxmox_ListTemplates(t *testing.T) {
 			]}`)
 		})
 
-		// debian-12-cloud: cloud-init capable (ide3 holds a cloudinit drive),
-		// scsi0 is the primary disk.
+		// debian-12-cloud: scsi0 is the primary disk; ide3 holds an
+		// unrelated cloud-init drive which must not be picked as the disk.
 		mux.HandleFunc("GET /api2/json/nodes/pve-node-02/qemu/9000/config", func(w http.ResponseWriter, _ *http.Request) {
 			writeJSONFixture(t, w, `{"data":{"scsi0":"local-lvm:vm-9000-disk-0,size=8G","ide3":"local-lvm:cloudinit"}}`)
 		})
@@ -219,24 +217,23 @@ func TestProxmox_ListTemplates(t *testing.T) {
 
 	assertTemplateEquals(t, templates[0], templateExpectation{
 		VMID: cloneTestVMID9000, Node: "pve-node-02", Name: "debian-12-cloud",
-		Storage: "local-lvm", SizeGB: 8, Bus: string(DiskBusSCSI), CloudInitCapable: true,
+		Storage: "local-lvm", SizeGB: 8, Bus: string(DiskBusSCSI),
 	})
 	assertTemplateEquals(t, templates[1], templateExpectation{
 		VMID: cloneTestVMID9001, Node: "pve-node-02", Name: "alpine-appliance",
-		Storage: FakeStorageLocal, SizeGB: 2, Bus: string(DiskBusVirtio), CloudInitCapable: false,
+		Storage: FakeStorageLocal, SizeGB: 2, Bus: string(DiskBusVirtio),
 	})
 }
 
 // templateExpectation groups the expected fields of a discovered template,
 // keeping assertTemplateEquals under the parameter-count ceiling.
 type templateExpectation struct {
-	VMID             int
-	Node             string
-	Name             string
-	Storage          string
-	SizeGB           int
-	Bus              string
-	CloudInitCapable bool
+	VMID    int
+	Node    string
+	Name    string
+	Storage string
+	SizeGB  int
+	Bus     string
 }
 
 // assertTemplateEquals checks the key fields of a discovered template.
@@ -249,10 +246,6 @@ func assertTemplateEquals(t *testing.T, tmpl TemplateVM, want templateExpectatio
 
 	if tmpl.DiskStorage != want.Storage || tmpl.DiskSizeGB != want.SizeGB || tmpl.DiskBus != want.Bus {
 		t.Errorf("template disk = %+v, want storage=%s size=%d bus=%s", tmpl, want.Storage, want.SizeGB, want.Bus)
-	}
-
-	if tmpl.CloudInitCapable != want.CloudInitCapable {
-		t.Errorf("template %d cloudInitCapable = %v, want %v", tmpl.VMID, tmpl.CloudInitCapable, want.CloudInitCapable)
 	}
 }
 
@@ -312,7 +305,7 @@ func TestProxmox_ListTemplates_DiskOptionsBeforeSize(t *testing.T) {
 
 	assertTemplateEquals(t, templates[0], templateExpectation{
 		VMID: 9100, Node: "pve-node-01", Name: "big-template",
-		Storage: "local-lvm", SizeGB: 64, Bus: string(DiskBusSCSI), CloudInitCapable: false,
+		Storage: "local-lvm", SizeGB: 64, Bus: string(DiskBusSCSI),
 	})
 }
 
@@ -426,7 +419,7 @@ func TestProxmox_TemplateByVMID(t *testing.T) {
 		t.Fatalf("TemplateByVMID: %v", err)
 	}
 
-	if tmpl.VMID != 9000 || tmpl.DiskStorage != "local-lvm" || tmpl.DiskSizeGB != 8 || !tmpl.CloudInitCapable {
+	if tmpl.VMID != 9000 || tmpl.DiskStorage != "local-lvm" || tmpl.DiskSizeGB != 8 {
 		t.Errorf("TemplateByVMID = %+v, want the hydrated debian-12-cloud row", tmpl)
 	}
 

@@ -76,6 +76,7 @@ func newActionTaskHandler(t *testing.T, creator taskCreator) (*httpapi.VMDetail,
 
 	worker := inventory.NewWorker(cluster.Fake{}, projection, time.Hour, logger)
 	handler := httpapi.NewVMDetailWithRegistry(httpapi.VMDetailDeps{
+		Source:       projectionRegistry(projection),
 		Projection:   projection,
 		Auth:         authHandler,
 		Writer:       taskWriter{upid: testActionUPID},

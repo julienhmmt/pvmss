@@ -37,19 +37,6 @@ type ISO struct {
 	File    string `json:"file"`
 }
 
-// Image is one approved cloud image on an approved storage on a node - a
-// bootable disk image (.qcow2/.raw/.vmdk) an admin placed on the
-// storage's import/ directory themselves (PVMSS never fetches images from
-// the internet). Approval is keyed by (node, storage, file) like ISO.
-// SizeBytes is the discovered image size; the create path rejects a disk
-// size below it.
-type Image struct {
-	Storage   string `json:"storage"`
-	Node      string `json:"node"`
-	File      string `json:"file"`
-	SizeBytes int64  `json:"sizeBytes"`
-}
-
 // Profile is a fixed VM hardware preset: when a creation request
 // references a profile, these values are authoritative - client-submitted
 // hardware fields that accompany a profile are ignored.
@@ -65,19 +52,17 @@ type Profile struct {
 
 // Template is one approved Proxmox template. The VMID is the
 // Proxmox VMID of the template VM; the node determines where the clone lands
-// (cross-node clone is forbidden). CloudInitCapable drives the
-// full/linked clone decision. DiskStorage and DiskSizeGB drive the resize
+// (cross-node clone is forbidden). DiskStorage and DiskSizeGB drive the resize
 // decision (enlarge after clone, reject reduction before VMID). DiskBus is
 // the Proxmox bus family of the template's primary disk (e.g. "scsi") - the
 // clone inherits it, and post-clone ResizeDisk must target the correct key.
 type Template struct {
-	VMID             int
-	Node             string
-	Name             string
-	CloudInitCapable bool
-	DiskStorage      string
-	DiskSizeGB       int
-	DiskBus          string
+	VMID        int
+	Node        string
+	Name        string
+	DiskStorage string
+	DiskSizeGB  int
+	DiskBus     string
 }
 
 // Resources is the approved-resource catalog for one cluster.
@@ -86,7 +71,6 @@ type Resources struct {
 	Storages []Storage
 	Bridges  []Bridge
 	ISOs     []ISO
-	Images   []Image
 	// Tags is the admin-curated tag name allowlist: users may only
 	// reference these tags on create and hardware updates.
 	Tags []string
@@ -142,31 +126,6 @@ func (r Resources) HasISO(storage, file, node string) bool {
 	return false
 }
 
-// HasCloudImage reports whether (storage, file) is an approved cloud image
-// on node. A shared-storage image has one row per node, so each node matches
-// independently.
-func (r Resources) HasCloudImage(storage, file, node string) bool {
-	for _, image := range r.Images {
-		if image.Storage == storage && image.File == file && image.Node == node {
-			return true
-		}
-	}
-
-	return false
-}
-
-// FindCloudImage returns the approved cloud image matching (storage, file, node),
-// or an error wrapping ErrNotApproved when absent.
-func (r Resources) FindCloudImage(storage, file, node string) (Image, error) {
-	for _, image := range r.Images {
-		if image.Storage == storage && image.File == file && image.Node == node {
-			return image, nil
-		}
-	}
-
-	return Image{}, fmt.Errorf("cloud image %q on storage %q is not approved for this cluster", file, storage)
-}
-
 // ApprovedResources reads the full approved-resource catalog for a cluster
 // from the store (fixture rows seeded by migration version 7).
 func ApprovedResources(ctx context.Context, st *store.Store, cluster string) (Resources, error) {
@@ -190,11 +149,6 @@ func ApprovedResources(ctx context.Context, st *store.Store, cluster string) (Re
 		return Resources{}, err
 	}
 
-	images, err := st.CatalogImages(ctx, cluster)
-	if err != nil {
-		return Resources{}, err
-	}
-
 	tagRows, err := st.CatalogTags(ctx, cluster)
 	if err != nil {
 		return Resources{}, err
@@ -205,7 +159,6 @@ func ApprovedResources(ctx context.Context, st *store.Store, cluster string) (Re
 		Storages: make([]Storage, 0, len(storages)),
 		Bridges:  make([]Bridge, 0, len(bridges)),
 		ISOs:     make([]ISO, 0, len(isos)),
-		Images:   make([]Image, 0, len(images)),
 		Tags:     make([]string, 0, len(tagRows)),
 	}
 	for _, node := range nodes {
@@ -224,10 +177,6 @@ func ApprovedResources(ctx context.Context, st *store.Store, cluster string) (Re
 		resources.ISOs = append(resources.ISOs, ISO{Storage: iso.Storage, Node: iso.Node, File: iso.File})
 	}
 
-	for _, image := range images {
-		resources.Images = append(resources.Images, Image{Storage: image.Storage, Node: image.Node, File: image.File, SizeBytes: image.SizeBytes})
-	}
-
 	for _, tag := range tagRows {
 		resources.Tags = append(resources.Tags, tag.Name)
 	}
@@ -236,8 +185,6 @@ func ApprovedResources(ctx context.Context, st *store.Store, cluster string) (Re
 }
 
 // Profiles reads the VM hardware profiles for a cluster.
-//
-//nolint:dupl // structurally similar to Templates by design (row→domain mapping)
 func Profiles(ctx context.Context, st *store.Store, cluster string) ([]Profile, error) {
 	rows, err := st.CatalogProfiles(ctx, cluster)
 	if err != nil {
@@ -273,8 +220,6 @@ func FindProfile(profiles []Profile, id string) (Profile, error) {
 }
 
 // Templates reads the approved Proxmox templates for a cluster.
-//
-//nolint:dupl // structurally similar to Profiles by design (row→domain mapping)
 func Templates(ctx context.Context, st *store.Store, cluster string) ([]Template, error) {
 	rows, err := st.CatalogTemplates(ctx, cluster)
 	if err != nil {
@@ -284,13 +229,12 @@ func Templates(ctx context.Context, st *store.Store, cluster string) ([]Template
 	templates := make([]Template, 0, len(rows))
 	for _, row := range rows {
 		templates = append(templates, Template{
-			VMID:             row.VMID,
-			Node:             row.Node,
-			Name:             row.Name,
-			CloudInitCapable: row.CloudInitCapable,
-			DiskStorage:      row.DiskStorage,
-			DiskSizeGB:       row.DiskSizeGB,
-			DiskBus:          row.DiskBus,
+			VMID:        row.VMID,
+			Node:        row.Node,
+			Name:        row.Name,
+			DiskStorage: row.DiskStorage,
+			DiskSizeGB:  row.DiskSizeGB,
+			DiskBus:     row.DiskBus,
 		})
 	}
 

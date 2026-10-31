@@ -26,17 +26,6 @@ func (fake Fake) ListISOs(_ context.Context) ([]ISOImage, error) {
 	return slices.Clone(fakeISOs), nil
 }
 
-// ListCloudImages implements Client. Returns the fake cloud-image dataset -
-// a superset of what the catalog seed approved (ubuntu-24.04 cloudimg on
-// local/node-01) so the admin demo has debian-12-generic-cloudimg to
-// discover and approve, rocky-9 as the unapproved target.
-func (fake Fake) ListCloudImages(_ context.Context) ([]CloudImage, error) {
-	if fake.unavailable() {
-		return nil, ErrUnreachable
-	}
-	return slices.Clone(fakeCloudImages), nil
-}
-
 // ListTemplates implements Client. Returns the fake template dataset - two
 // template VMs the admin demo can discover and approve.
 func (fake Fake) ListTemplates(_ context.Context) ([]TemplateVM, error) {

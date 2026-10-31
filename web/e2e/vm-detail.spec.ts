@@ -34,8 +34,10 @@ test.describe('T05 VM detail & actions (closes S01)', () => {
 		await expect(page.getByTestId('vm-status')).toContainText(/running/i);
 		// Raw node/pool metadata is hidden from regular pool users (PRODUCT.md, Ticket 10).
 		await expect(page.getByTestId('vm-meta')).toHaveCount(0);
-		// The subtitle discreetly names the cluster and node the VM runs on.
-		await expect(page.getByTestId('vm-placement')).toContainText('/ pve-node-01');
+		// The subtitle names the user's own cluster; the Proxmox node stays
+		// admin-only plumbing.
+		await expect(page.getByTestId('vm-placement')).toContainText('Demo Cluster Alpha');
+		await expect(page.getByTestId('vm-placement')).not.toContainText('pve-node-01');
 		await expect(page.getByTestId('vm-stat-cpu')).toContainText('2');
 		// Connection-first: the Connect tab is the default and shows the SSH
 		// command built from the address the guest agent reports.

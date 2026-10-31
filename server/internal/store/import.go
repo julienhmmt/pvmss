@@ -32,9 +32,7 @@ var importableTables = []string{
 	"catalog_tags",
 	"vm_limits",
 	"node_limits",
-	"catalog_images",
 	"catalog_templates",
-	"catalog_cloudinit_templates",
 	"documentation_pages",
 	"managed_pools",
 	"audit_config",
@@ -53,7 +51,6 @@ var excludedImportTables = map[string]string{
 	"clusters":               "holds Proxmox API token secrets; re-enter clusters by hand",
 	"vm_cloudinit_snippets":  "legacy per-VM runtime state",
 	"vm_cloudinit_documents": "per-VM runtime state",
-	"vm_baseline_state":      "per-VM runtime state",
 }
 
 // importTempPattern names staged upload copies next to the live database.

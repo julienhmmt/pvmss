@@ -139,34 +139,13 @@ func checkDiskReduction(diskGB int, tmpl catalog.Template) error {
 	return nil
 }
 
-// checkDiskAboveImage rejects a disk size smaller than the cloud image being
-// imported (image-mode: the import lands at the image's size and only grows afterwards, so a
-// smaller request is a reduction). The caller passes
-// the resolved disk size (from planCreate, which applies profile overrides)
-// and the resolved node, so a forged request cannot bypass this guard with a
-// profile whose DiskGB is smaller than the image. Returns the image's size in
-// whole GB (rounded up) so the caller can grow the imported disk afterwards.
-func checkDiskAboveImage(resources catalog.Resources, req CreateRequest, node string, diskGB int) (int, error) {
-	image, err := resources.FindCloudImage(req.Image.Storage, req.Image.File, node)
-	if err != nil {
-		return 0, notApprovedError(err)
-	}
-
-	minGB := int((image.SizeBytes + bytesPerGB - 1) / bytesPerGB)
-	if int64(diskGB)*bytesPerGB < image.SizeBytes {
-		return 0, fmt.Errorf("%w: requested %d GB, image %q is %d GB", ErrDiskBelowImage, diskGB, image.File, minGB)
-	}
-
-	return minGB, nil
-}
-
 // buildCloneSpec assembles the CloneSpec from the resolved template, plan,
 // request, and allocated VMID. Full clone when the template
 // is cloud-init capable (lvmthin cannot linked-clone an imported disk), or
 // when the target storage differs from the template's disk storage. Linked
 // otherwise.
 func buildCloneSpec(tmpl catalog.Template, plan createPlan, req CreateRequest, vmid int, pool string) cluster.CloneSpec {
-	full := tmpl.CloudInitCapable || (plan.storage != "" && plan.storage != tmpl.DiskStorage)
+	full := plan.storage != "" && plan.storage != tmpl.DiskStorage
 
 	spec := cluster.CloneSpec{
 		SourceVMID: tmpl.VMID,
@@ -193,10 +172,6 @@ func buildCreateSpec(actor auth.Identity, req CreateRequest, plan createPlan, vm
 	tags := append([]string(nil), req.Tags...)
 	if !slices.Contains(tags, "pvmss") {
 		tags = append(tags, "pvmss")
-	}
-
-	if req.Image != nil && !slices.Contains(tags, "pvmss-image") {
-		tags = append(tags, "pvmss-image")
 	}
 
 	// Stamp the admin-imposed isolation VLAN on every NIC.
@@ -241,10 +216,6 @@ func buildCreateSpec(actor auth.Identity, req CreateRequest, plan createPlan, vm
 		spec.ISO = &cluster.ISOSpec{Storage: req.ISO.Storage, File: req.ISO.File}
 	}
 
-	if req.Image != nil {
-		spec.Image = &cluster.ImageSpec{Storage: req.Image.Storage, File: req.Image.File}
-	}
-
 	return spec
 }
 
@@ -257,7 +228,6 @@ type postCloneConfig struct {
 	Node             string
 	Plan             createPlan
 	Template         catalog.Template
-	CloudDocument    publishedDocument
 	StartAfterCreate bool
 	Tags             []string
 	DiskKey          string
@@ -276,14 +246,9 @@ func applyPostCloneConfig(ctx context.Context, cfg postCloneConfig, result *Crea
 	applyCloneHardware(ctx, cfg, result)
 	applyCloneDiskResize(ctx, cfg, result)
 
-	// 3. Cloud-init document attach (same mechanism as the ISO path).
-	if cfg.CloudDocument.present() {
-		applyCloudInitDocument(ctx, cfg.Deps, cfg.Actor, documentTarget{Cluster: cfg.ClusterName, Node: cfg.Node, VMID: cfg.VMID}, cfg.CloudDocument, result)
-	}
-
 	// 4. Start the VM if requested (after cloud-init attachment so the first boot sees the
 	// snippet).
-	if cfg.StartAfterCreate && result.CloudInitPushError == "" && cfg.Deps.Writer != nil {
+	if cfg.StartAfterCreate && cfg.Deps.Writer != nil {
 		if err := cfg.Deps.Writer.Action(ctx, cfg.Node, cfg.VMID, "start"); err != nil {
 			cfg.Deps.Log.ErrorContext(ctx, "post-clone start failed", "component", "vm", "cluster", cfg.ClusterName, "vmid", cfg.VMID, "error", err)
 		}
@@ -295,7 +260,7 @@ func applyPostCloneConfig(ctx context.Context, cfg postCloneConfig, result *Crea
 // In simple template mode (no hardware override), SetTags is used so the
 // clone inherits the template's hardware unchanged - UpdateHardware would
 // shrink it to the plan's minimums (1 vCPU / 128 MB).
-func applyCloneHardware(ctx context.Context, cfg postCloneConfig, result *CreateResult) {
+func applyCloneHardware(ctx context.Context, cfg postCloneConfig, _ *CreateResult) {
 	if cfg.Deps.Writer == nil {
 		return
 	}
@@ -303,8 +268,6 @@ func applyCloneHardware(ctx context.Context, cfg postCloneConfig, result *Create
 	if cfg.HardwareOverride {
 		if err := cfg.Deps.Writer.UpdateHardware(ctx, cfg.Node, cfg.VMID, cfg.Plan.sockets, cfg.Plan.cpuCores, cfg.Plan.memoryMB, cfg.Tags); err != nil {
 			cfg.Deps.Log.ErrorContext(ctx, "post-clone hardware update failed", "component", "vm", "cluster", cfg.ClusterName, "vmid", cfg.VMID, "error", err)
-			result.CloudInitPushError = err.Error()
-
 			return
 		}
 
@@ -316,23 +279,18 @@ func applyCloneHardware(ctx context.Context, cfg postCloneConfig, result *Create
 	// Proxmox but Resolve() returns ErrNotFound.
 	if err := cfg.Deps.Writer.SetTags(ctx, cfg.Node, cfg.VMID, cfg.Tags); err != nil {
 		cfg.Deps.Log.ErrorContext(ctx, "post-clone set tags failed", "component", "vm", "cluster", cfg.ClusterName, "vmid", cfg.VMID, "error", err)
-		result.CloudInitPushError = err.Error()
 	}
 }
 
 // applyCloneDiskResize enlarges the clone's disk when the plan's size exceeds
 // the template's (Proxmox does not reduce disks).
-func applyCloneDiskResize(ctx context.Context, cfg postCloneConfig, result *CreateResult) {
+func applyCloneDiskResize(ctx context.Context, cfg postCloneConfig, _ *CreateResult) {
 	if cfg.Deps.Writer == nil || cfg.Plan.diskGB <= cfg.Template.DiskSizeGB || cfg.DiskKey == "" {
 		return
 	}
 
 	if err := cfg.Deps.Writer.ResizeDisk(ctx, cfg.Node, cfg.VMID, cfg.DiskKey, cfg.Plan.diskGB); err != nil {
 		cfg.Deps.Log.ErrorContext(ctx, "post-clone disk resize failed", "component", "vm", "cluster", cfg.ClusterName, "vmid", cfg.VMID, "error", err)
-
-		if result.CloudInitPushError == "" {
-			result.CloudInitPushError = err.Error()
-		}
 	}
 }
 

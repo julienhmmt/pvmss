@@ -8,10 +8,10 @@ beforeAll(() => setLocale('en', { reload: false }));
 describe('rowHint and rowAction', () => {
 	const statuses: MachineDisplayStatus[] = ['running', 'stopped', 'provisioning', 'starting', 'stopping', 'failed', 'partial'];
 
-	it('explains every state but running, with failed and partial as errors', () => {
+	it('explains every state but running and stopped, with failed and partial as errors', () => {
 		for (const status of statuses) {
 			const hint = rowHint(status);
-			if (status === 'running') {
+			if (status === 'running' || status === 'stopped') {
 				expect(hint).toBeNull();
 				continue;
 			}

@@ -77,7 +77,6 @@
 			<CatalogToolbar {store} kind="isos" />
 		{/snippet}
 		<CatalogFilesTable
-			kind="iso"
 			files={pager.rows}
 			toggling={store.toggling}
 			onToggle={(n, s, f, e) => void handleToggle(n, s, f, e)}

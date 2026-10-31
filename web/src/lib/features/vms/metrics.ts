@@ -1,5 +1,6 @@
 import { get } from '#lib/shared/api/client.js';
 import { apiPath } from '#lib/shared/api/paths.js';
+import { compactBytes } from './machine-row.js';
 
 /** The three timeframes GET .../metrics/history accepts. */
 export type MetricsRange = 'hour' | 'day' | 'week';
@@ -79,4 +80,29 @@ function string(value: unknown): string {
 	}
 
 	return value;
+}
+
+/** Latest value of a metric series, or null when the series is empty. */
+export function metricLast(values: number[]): number | null {
+	return values.length === 0 ? null : values[values.length - 1]!;
+}
+
+/** Peak value of a metric series, or null when the series is empty. */
+export function metricPeak(values: number[]): number | null {
+	return values.length === 0 ? null : Math.max(...values);
+}
+
+/** CPU tick label ("42%"), '-' when the series has no value. */
+export function formatMetricPercent(v: number | null): string {
+	return v == null ? '-' : `${Math.round(v)}%`;
+}
+
+/** Throughput tick label ("512 MiB/s"), '-' when the series has no value. */
+export function formatMetricRate(v: number | null): string {
+	return v == null ? '-' : `${compactBytes(v)}/s`;
+}
+
+/** Absolute byte tick label ("16 GiB"), '-' when the series has no value. */
+export function formatMetricSize(v: number | null): string {
+	return v == null ? '-' : compactBytes(v);
 }

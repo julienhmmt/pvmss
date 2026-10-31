@@ -29,7 +29,7 @@ func (h *VMDetail) handleGet(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	entity, err := vm.Resolve(index, identity, clusterName, vmid)
+	entity, err := vm.Resolve(index, identity, clusterName, vmid, h.store)
 	if err != nil {
 		h.writeResolveError(w, err)
 		return
@@ -67,7 +67,7 @@ func (h *VMDetail) handleStatus(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	entity, err := vm.Resolve(index, identity, clusterName, vmid)
+	entity, err := vm.Resolve(index, identity, clusterName, vmid, h.store)
 	if err != nil {
 		h.writeResolveError(w, err)
 		return
@@ -247,7 +247,7 @@ func (h *VMDetail) handlePatch(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	entity, err := vm.Resolve(refreshed, identity, clusterName, vmid)
+	entity, err := vm.Resolve(refreshed, identity, clusterName, vmid, h.store)
 	if err != nil {
 		// The write succeeded but the re-resolve failed (e.g. a race deleted
 		// the VM between the patch and the re-read). Return a generic success

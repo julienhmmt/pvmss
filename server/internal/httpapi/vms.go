@@ -20,7 +20,6 @@ import (
 // It reads the inventory projection, never the cluster
 // client, and enforces scope server-side via vm.List.
 type VMs struct {
-	projection   *inventory.Projection
 	source       inventory.Source
 	auth         *Auth
 	maxPageSize  int
@@ -28,18 +27,6 @@ type VMs struct {
 	policy       *policy.Policy
 	clusterStore *store.Store
 	log          *slog.Logger
-}
-
-// NewVMs creates the handler for the given inventory projection. maxPageSize
-// caps an accepted pageSize (rejected, not truncated); quota is the per-user
-// allowance reported to non-admin callers (-1 = unlimited).
-func NewVMs(projection *inventory.Projection, authHandler *Auth, maxPageSize, quota int, log *slog.Logger, services ...*policy.Policy) *VMs {
-	var policyService *policy.Policy
-	if len(services) > 0 {
-		policyService = services[0]
-	}
-
-	return &VMs{projection: projection, source: projection, auth: authHandler, maxPageSize: maxPageSize, quota: quota, policy: policyService, log: log}
 }
 
 // NewVMsWithRegistry creates the cross-cluster VM list handler. clusterStore

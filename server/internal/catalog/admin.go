@@ -72,15 +72,14 @@ type ISOApproval struct {
 // stored approval whose template Proxmox no longer reports - the
 // row stays visible so the admin can remove it.
 type TemplateApproval struct {
-	VMID             int
-	Node             string
-	Name             string
-	CloudInitCapable bool
-	DiskStorage      string
-	DiskSizeGB       int
-	DiskBus          string
-	Enabled          bool
-	Missing          bool
+	VMID        int
+	Node        string
+	Name        string
+	DiskStorage string
+	DiskSizeGB  int
+	DiskBus     string
+	Enabled     bool
+	Missing     bool
 	// DiskUnreadable is true when the template's config read failed: the row is shown greyed out
 	// and enabling is refused.
 	DiskUnreadable bool
@@ -407,8 +406,7 @@ func AdminListTemplates(ctx context.Context, st *store.Store, client cluster.Cli
 		}
 
 		approval := newTemplateApproval(cluster.TemplateVM{
-			VMID: row.VMID, Node: row.Node, Name: row.Name, CloudInitCapable: row.CloudInitCapable,
-			DiskStorage: row.DiskStorage, DiskSizeGB: row.DiskSizeGB, DiskBus: row.DiskBus,
+			VMID: row.VMID, Node: row.Node, Name: row.Name, DiskStorage: row.DiskStorage, DiskSizeGB: row.DiskSizeGB, DiskBus: row.DiskBus,
 		})
 		approval.Enabled = row.Enabled
 		approval.Missing = true

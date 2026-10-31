@@ -34,19 +34,6 @@ type CatalogISO struct {
 	File    string
 }
 
-// CatalogImage is one approved cloud image (catalog_images row). A cloud
-// image is a bootable disk image (.qcow2/.raw/.vmdk) an admin placed
-// on a Proxmox storage's import/ directory themselves; SizeBytes carries
-// the discovered image size so the create path can reject a disk size
-// below it.
-type CatalogImage struct {
-	Cluster   string
-	Node      string
-	Storage   string
-	File      string
-	SizeBytes int64
-}
-
 // CatalogProfile is one VM hardware profile (catalog_profiles row).
 type CatalogProfile struct {
 	Cluster  string
@@ -63,14 +50,13 @@ type CatalogProfile struct {
 // Proxmox VMID of the template VM; the node
 // determines where the clone lands (cross-node clone forbidden).
 type CatalogTemplate struct {
-	Cluster          string
-	Node             string
-	VMID             int
-	Name             string
-	CloudInitCapable bool
-	DiskStorage      string
-	DiskSizeGB       int
-	DiskBus          string
+	Cluster     string
+	Node        string
+	VMID        int
+	Name        string
+	DiskStorage string
+	DiskSizeGB  int
+	DiskBus     string
 }
 
 // queryCatalog runs a parameterised catalog query and collects the rows into a
@@ -150,20 +136,6 @@ func (s *Store) CatalogISOs(ctx context.Context, cluster string) ([]CatalogISO, 
 	)
 }
 
-// CatalogImages returns the approved cloud images for a cluster, one row per
-// node, ordered by node then file. An image on shared storage has N
-// rows so each node's locality can be validated independently.
-func (s *Store) CatalogImages(ctx context.Context, cluster string) ([]CatalogImage, error) {
-	return queryCatalog(ctx, s.db, "catalog images",
-		`SELECT cluster, node, storage, file, size_bytes FROM catalog_images WHERE cluster = ? AND enabled = 1 ORDER BY node, file`,
-		[]any{cluster},
-		func(rows *sql.Rows) (CatalogImage, error) {
-			var img CatalogImage
-			return img, rows.Scan(&img.Cluster, &img.Node, &img.Storage, &img.File, &img.SizeBytes)
-		},
-	)
-}
-
 // CatalogProfiles returns the VM profiles for a cluster, ordered by id.
 func (s *Store) CatalogProfiles(ctx context.Context, cluster string) ([]CatalogProfile, error) {
 	return queryCatalog(ctx, s.db, "catalog profiles",
@@ -181,18 +153,15 @@ func (s *Store) CatalogProfiles(ctx context.Context, cluster string) ([]CatalogP
 // admin curates which templates discovered via template=1 are offered.
 func (s *Store) CatalogTemplates(ctx context.Context, cluster string) ([]CatalogTemplate, error) {
 	return queryCatalog(ctx, s.db, "catalog templates",
-		`SELECT cluster, node, vmid, name, cloud_init_capable, disk_storage, disk_size_gb, disk_bus
+		`SELECT cluster, node, vmid, name, disk_storage, disk_size_gb, disk_bus
 		 FROM catalog_templates WHERE cluster = ? AND enabled = 1 ORDER BY vmid`,
 		[]any{cluster},
 		func(rows *sql.Rows) (CatalogTemplate, error) {
 			var t CatalogTemplate
 
-			var cloudInit int
-			if err := rows.Scan(&t.Cluster, &t.Node, &t.VMID, &t.Name, &cloudInit, &t.DiskStorage, &t.DiskSizeGB, &t.DiskBus); err != nil {
+			if err := rows.Scan(&t.Cluster, &t.Node, &t.VMID, &t.Name, &t.DiskStorage, &t.DiskSizeGB, &t.DiskBus); err != nil {
 				return t, err
 			}
-
-			t.CloudInitCapable = cloudInit == 1
 
 			return t, nil
 		},

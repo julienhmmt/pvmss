@@ -30,8 +30,8 @@ func tracedRouter(t *testing.T) (http.Handler, *tracetest.InMemoryExporter, *byt
 
 	logger := slog.New(telemetry.LogHandler(slog.NewJSONHandler(&buf, &slog.HandlerOptions{Level: slog.LevelDebug})))
 	health := httpapi.NewHealth(fakeHealthPinger{}, logger, nil, 60*time.Second)
-	vms := httpapi.NewVMs(inventory.NewProjection(), newAuthHandler(t), 100, -1, logger)
-	vmDetail := httpapi.NewVMDetail(inventory.NewProjection(), newAuthHandler(t), cluster.Fake{}, nil, nil, logger)
+	vms := httpapi.NewVMsWithRegistry(emptyRegistry(), newAuthHandler(t), 100, -1, logger, nil)
+	vmDetail := httpapi.NewVMDetailWithRegistry(httpapi.VMDetailDeps{Source: emptyRegistry(), Projection: inventory.NewProjection(), Auth: newAuthHandler(t), Writer: cluster.Fake{}, Store: nil, Refresher: nil, Log: logger})
 
 	router := httpapi.NewRouter(httpapi.RouterConfig{
 		Health: health, VMs: vms, VMDetail: vmDetail, Auth: newAuthHandler(t), Log: logger, TracerProvider: tp,

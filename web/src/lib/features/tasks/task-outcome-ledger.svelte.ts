@@ -7,9 +7,9 @@ import { SvelteMap } from 'svelte/reactivity';
  * task the moment it reaches a terminal state).
  *
  * Two outcomes are recorded:
- *   - `partial` - the create API returned `cloudInitPushError` (the VM
- *     exists but access config failed). Written by the create flow at
- *     submit time.
+ *   - `partial` - the create API reported the VM as only partly usable
+ *     (the VM exists but some post-create config failed). Written by the
+ *     create flow at submit time.
  *   - `failed` - a tracked `vm_create` task ended in `error` (the VM was
  *     not successfully allocated). Written by the shell from the tray's
  *     `onTaskError` signal.

@@ -362,6 +362,13 @@ func TestList_Quota(t *testing.T) {
 
 		assertQuota(t, result.Quota, &vm.Quota{Used: 3, Allowed: 10})
 	})
+	t.Run("untagged pool VM does not count toward quota", func(t *testing.T) {
+		bob := auth.Identity{Username: cluster.FakeUserBob, Pool: cluster.FakePoolBob}
+		// Bob's pool holds 103 (pvmss) and 104 (untagged): the meter must
+		// report what ReserveCreate enforces - managed VMs only.
+		result := listQuotaResult(t, vm.ListQuery{}, bob, 10)
+		assertQuota(t, result.Quota, &vm.Quota{Used: 1, Allowed: 10})
+	})
 	t.Run("unlimited quota represented as -1", func(t *testing.T) {
 		result := listQuotaResult(t, vm.ListQuery{}, alice, -1)
 		if result.Quota == nil || result.Quota.Allowed != -1 {

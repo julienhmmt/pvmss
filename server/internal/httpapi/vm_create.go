@@ -26,7 +26,6 @@ type VMCreate struct {
 	client           cluster.Client
 	clients          cluster.ClientProvider
 	creator          cluster.Creator
-	pusher           vm.CloudInitPusher
 	policy           *policy.Policy
 	log              *slog.Logger
 	trustedProxyHops int
@@ -113,7 +112,6 @@ func NewVMCreate(
 	st *store.Store,
 	client cluster.Client,
 	creator cluster.Creator,
-	pusher vm.CloudInitPusher,
 	log *slog.Logger,
 	services ...*policy.Policy,
 ) *VMCreate {
@@ -127,7 +125,6 @@ func NewVMCreate(
 		store:   st,
 		client:  client,
 		creator: creator,
-		pusher:  pusher,
 		policy:  policyService,
 		log:     log,
 	}
@@ -139,22 +136,15 @@ func NewVMCreateWithRegistry(
 	st *store.Store,
 	clients cluster.ClientProvider,
 	creator cluster.Creator,
-	pusher vm.CloudInitPusher,
 	log *slog.Logger,
 	services ...*policy.Policy,
 ) *VMCreate {
-	handler := NewVMCreate(
-		authHandler,
-		st,
-		nil,
-		creator,
-		pusher,
-		log,
-		services...,
-	)
-	handler.clients = clients
+	var policyService *policy.Policy
+	if len(services) > 0 {
+		policyService = services[0]
+	}
 
-	return handler
+	return &VMCreate{auth: authHandler, store: st, clients: clients, creator: creator, policy: policyService, log: log}
 }
 
 // SetTrustedProxyHops configures how many X-Forwarded-For hops to trust for
@@ -164,17 +154,11 @@ func (h *VMCreate) SetTrustedProxyHops(n int) {
 }
 
 type createResultDTO struct {
-	Cluster             string `json:"cluster"`
-	VMID                int    `json:"vmid"`
-	Name                string `json:"name"`
-	Node                string `json:"node"`
-	UPID                string `json:"upid"`
-	CloudInitTemplateID string `json:"cloudInitTemplateId,omitempty"`
-	CloudInitPushError  string `json:"cloudInitPushError,omitempty"`
-	// FromImage is true when the VM was created from a cloud image
-	// the create summary warns that SSH
-	// is the only access until a console password is set.
-	FromImage bool `json:"fromImage,omitempty"`
+	Cluster string `json:"cluster"`
+	VMID    int    `json:"vmid"`
+	Name    string `json:"name"`
+	Node    string `json:"node"`
+	UPID    string `json:"upid"`
 }
 
 type catalogStorageDTO struct {
@@ -197,15 +181,6 @@ type catalogISODTO struct {
 	File    string `json:"file"`
 }
 
-// catalogImageDTO is one approved cloud image (import-from source). SizeBytes
-// lets the UI enforce the minimum disk size (reductions are rejected).
-type catalogImageDTO struct {
-	Storage   string `json:"storage"`
-	Node      string `json:"node"`
-	File      string `json:"file"`
-	SizeBytes int64  `json:"sizeBytes"`
-}
-
 type catalogProfileDTO struct {
 	ID       string `json:"id"`
 	Label    string `json:"label"`
@@ -214,14 +189,6 @@ type catalogProfileDTO struct {
 	MemoryMB int    `json:"memoryMB"`
 	DiskGB   int    `json:"diskGB"`
 	Bus      string `json:"bus"`
-}
-
-type catalogCloudInitTemplateDTO struct {
-	ID    string `json:"id"`
-	Label string `json:"label"`
-	// Nodes lists the nodes whose snippet storage has the template's file:
-	// the wizard offers the template only on those nodes.
-	Nodes []string `json:"nodes"`
 }
 
 // catalogTemplateDTO is one approved Proxmox template. The
@@ -284,27 +251,17 @@ type catalogNodeCapacityDTO struct {
 }
 
 type catalogDTO struct {
-	Cluster            string                        `json:"cluster"`
-	Nodes              []string                      `json:"nodes"`
-	Storages           []catalogStorageDTO           `json:"storages"`
-	Bridges            []catalogBridgeDTO            `json:"bridges"`
-	ISOs               []catalogISODTO               `json:"isos"`
-	Images             []catalogImageDTO             `json:"images"`
-	Profiles           []catalogProfileDTO           `json:"profiles"`
-	Templates          []catalogTemplateDTO          `json:"templates"`
-	CloudInitTemplates []catalogCloudInitTemplateDTO `json:"cloudInitTemplates"`
-	// CloudInitWriteEnabled reports whether this cluster has a snippet write
-	// target configured (Infrastructure › Clusters): cloud-init documents can be
-	// written, so the wizard may offer the document picker.
-	CloudInitWriteEnabled bool `json:"cloudInitWriteEnabled"`
-	// CloudInitBaselineID is the document id of the standalone baseline
-	// (published for image VMs with no template). The web client compares a
-	// VM's document id against it instead of hardcoding the value.
-	CloudInitBaselineID string                   `json:"cloudInitBaselineId"`
-	Tags                []catalogTagDTO          `json:"tags"`
-	Gabarit             *catalogGabaritDTO       `json:"gabarit,omitempty"`
-	Quota               *catalogQuotaDTO         `json:"quota,omitempty"`
-	NodeCapacities      []catalogNodeCapacityDTO `json:"nodeCapacities,omitempty"`
+	Cluster        string                   `json:"cluster"`
+	Nodes          []string                 `json:"nodes"`
+	Storages       []catalogStorageDTO      `json:"storages"`
+	Bridges        []catalogBridgeDTO       `json:"bridges"`
+	ISOs           []catalogISODTO          `json:"isos"`
+	Profiles       []catalogProfileDTO      `json:"profiles"`
+	Templates      []catalogTemplateDTO     `json:"templates"`
+	Tags           []catalogTagDTO          `json:"tags"`
+	Gabarit        *catalogGabaritDTO       `json:"gabarit,omitempty"`
+	Quota          *catalogQuotaDTO         `json:"quota,omitempty"`
+	NodeCapacities []catalogNodeCapacityDTO `json:"nodeCapacities,omitempty"`
 }
 
 // ServeHTTP handles POST /api/v1/vms. Creation is asynchronous:
@@ -333,11 +290,6 @@ func (h *VMCreate) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if cloudInitPaused && req.CloudInitTemplateID != "" {
-		h.writeCreateError(w, http.StatusBadRequest, codeInvalidRequest, "cloud-init templates are paused")
-		return
-	}
-
 	clusterName, allowed := vm.TargetCluster(identity, req.Cluster)
 	if !allowed {
 		h.writeCreateError(w, http.StatusNotFound, "not_found", msgClusterNotFound)
@@ -354,14 +306,11 @@ func (h *VMCreate) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	result, err := vm.Create(ctx, identity, target.clusterName, req, vm.CreateDeps{
 		Store:     h.store,
 		Creator:   target.creator,
-		Pusher:    target.pusher,
 		Writer:    target.writer,
 		FreeSpace: target.freeSpace,
-		Snippets:  target.snippets,
 		Audit:     h.store,
 		Log:       h.log,
 		Services:  []*policy.Policy{h.policy},
-		Templates: target.templates,
 	})
 	if err != nil {
 		h.writeCreateFailure(w, err)
@@ -371,13 +320,10 @@ func (h *VMCreate) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	h.refreshAfterCreate(r.Context(), target.creator, target.clusterName, result.UPID)
 
 	h.writeCreateJSON(w, http.StatusAccepted, createResultDTO{
-		Cluster:             result.Cluster,
-		VMID:                result.VMID,
-		Name:                result.Name,
-		Node:                result.Node,
-		UPID:                result.UPID,
-		CloudInitTemplateID: result.CloudInitTemplateID,
-		CloudInitPushError:  result.CloudInitPushError,
-		FromImage:           result.FromImage,
+		Cluster: result.Cluster,
+		VMID:    result.VMID,
+		Name:    result.Name,
+		Node:    result.Node,
+		UPID:    result.UPID,
 	})
 }

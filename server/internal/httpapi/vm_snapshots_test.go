@@ -66,7 +66,7 @@ func newVMSnapshotsHandler(t *testing.T) (*httpapi.VMSnapshots, *httpapi.Auth) {
 	t.Cleanup(func() { _ = st.Close() })
 	logger := slog.New(slog.NewTextHandler(testWriter{t}, nil))
 
-	return httpapi.NewVMSnapshots(projection, authHandler, cluster.Fake{}, cluster.Fake{}, st, logger), authHandler
+	return httpapi.NewVMSnapshotsWithRegistry(httpapi.VMSnapshotsRegistryDeps{Source: projectionRegistry(projection), Projection: projection, Auth: authHandler, Reader: cluster.Fake{}, Writer: cluster.Fake{}, Store: st, Log: logger}), authHandler
 }
 
 func snapshotRequest(method, path, body string, cookie *http.Cookie) *http.Request {

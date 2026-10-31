@@ -90,36 +90,9 @@ func (h *VMDetail) writeEntity(w http.ResponseWriter, r *http.Request, entity vm
 		dto.UptimeSeconds = int64(entity.Uptime.Seconds())
 	}
 
-	h.fillBaselineState(r.Context(), entity, &dto)
-
 	h.fillGuestAgent(r.Context(), entity, &dto)
 
 	h.writeJSONStatus(w, http.StatusOK, dto)
-}
-
-// fillBaselineState carries the baseline delivery state for image-mode VMs so
-// the page can report it (best-effort - a store failure must not fail the
-// whole detail). A "not_delivered" value is a creation-time snapshot: a
-// document attached since (snippets enabled later) supersedes it.
-func (h *VMDetail) fillBaselineState(ctx context.Context, entity vm.Entity, dto *vmDetailDTO) {
-	if h.store == nil {
-		return
-	}
-
-	state, found, err := h.store.GetBaselineState(ctx, entity.Cluster, entity.VMID)
-	if err != nil || !found {
-		return
-	}
-
-	dto.BaselineState = state.State
-	dto.BaselineError = state.Error
-	dto.BaselineErrorCode = baselineErrorCode(state.State, state.Error)
-
-	if state.State == vm.BaselineStateNotDelivered {
-		if _, attached, err := h.store.GetVMCloudInitDocument(ctx, entity.Cluster, entity.VMID); err == nil && attached {
-			dto.BaselineState, dto.BaselineError, dto.BaselineErrorCode = "", "", ""
-		}
-	}
 }
 
 // fillGuestAgent probes the guest agent for a running VM's live IPs and
@@ -205,7 +178,7 @@ func (h *VMDetail) handleAudit(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if _, err := vm.Resolve(index, identity, clusterName, vmid); err != nil {
+	if _, err := vm.Resolve(index, identity, clusterName, vmid, h.store); err != nil {
 		h.writeResolveError(w, err)
 		return
 	}
@@ -339,20 +312,5 @@ func (h *VMDetail) writePatchError(w http.ResponseWriter, err error) {
 func (h *VMDetail) writeDetailError(w http.ResponseWriter, status int, code, message string) {
 	if err := writeClusterError(w, status, code, message); err != nil {
 		h.log.Warn("failed to write error response", "component", "httpapi", "code", code, "error", err)
-	}
-}
-
-// baselineErrorCode derives a stable code from the stored delivery error
-// (stored as text since the row predates codes).
-func baselineErrorCode(state, text string) string {
-	switch {
-	case state != vm.BaselineStateNotDelivered:
-		return ""
-	case strings.HasPrefix(text, vm.ErrCloudInitWriteUnavailable.Error()):
-		return "cloudinit_write_unavailable"
-	case text == "" || strings.Contains(text, "no published cloud-init document"):
-		return "no_document"
-	default:
-		return "delivery_failed"
 	}
 }

@@ -40,7 +40,6 @@ func reconcileTemplateApproval(
 	if stored.OverrideDiscovery {
 		approval.Node = stored.Node
 		approval.Name = stored.Name
-		approval.CloudInitCapable = stored.CloudInitCapable
 		approval.DiskStorage = stored.DiskStorage
 		approval.DiskSizeGB = stored.DiskSizeGB
 		approval.DiskBus = stored.DiskBus
@@ -50,8 +49,7 @@ func reconcileTemplateApproval(
 
 	if !tmpl.DiskUnreadable && templateDrift(stored, tmpl) {
 		values := store.TemplateValues{
-			Node: tmpl.Node, Name: tmpl.Name, CloudInitCapable: tmpl.CloudInitCapable,
-			DiskStorage: tmpl.DiskStorage, DiskSizeGB: tmpl.DiskSizeGB, DiskBus: tmpl.DiskBus,
+			Node: tmpl.Node, Name: tmpl.Name, DiskStorage: tmpl.DiskStorage, DiskSizeGB: tmpl.DiskSizeGB, DiskBus: tmpl.DiskBus,
 		}
 		if err := st.UpdateTemplate(ctx, clusterName, tmpl.VMID, values); err != nil {
 			return TemplateApproval{}, err
@@ -65,13 +63,12 @@ func reconcileTemplateApproval(
 // with Enabled left false - the caller sets it from the stored row.
 func newTemplateApproval(tmpl cluster.TemplateVM) TemplateApproval {
 	return TemplateApproval{
-		VMID:             tmpl.VMID,
-		Node:             tmpl.Node,
-		Name:             tmpl.Name,
-		CloudInitCapable: tmpl.CloudInitCapable,
-		DiskStorage:      tmpl.DiskStorage,
-		DiskSizeGB:       tmpl.DiskSizeGB,
-		DiskBus:          tmpl.DiskBus,
+		VMID:        tmpl.VMID,
+		Node:        tmpl.Node,
+		Name:        tmpl.Name,
+		DiskStorage: tmpl.DiskStorage,
+		DiskSizeGB:  tmpl.DiskSizeGB,
+		DiskBus:     tmpl.DiskBus,
 	}
 }
 
@@ -80,7 +77,6 @@ func newTemplateApproval(tmpl cluster.TemplateVM) TemplateApproval {
 // stale).
 func templateDrift(stored store.CatalogTemplateEnabled, tmpl cluster.TemplateVM) bool {
 	return stored.Node != tmpl.Node || stored.Name != tmpl.Name ||
-		stored.CloudInitCapable != tmpl.CloudInitCapable ||
 		stored.DiskStorage != tmpl.DiskStorage || stored.DiskSizeGB != tmpl.DiskSizeGB ||
 		stored.DiskBus != tmpl.DiskBus
 }
@@ -165,8 +161,7 @@ func SetTemplateEnabled(ctx context.Context, st *store.Store, client cluster.Cli
 	// complete, not just a stub with empty fields. The enabled state is the
 	// caller's (admin toggle), not hardcoded to 1.
 	values := store.TemplateValues{
-		Node: found.Node, Name: found.Name, CloudInitCapable: found.CloudInitCapable,
-		DiskStorage: found.DiskStorage, DiskSizeGB: found.DiskSizeGB, DiskBus: found.DiskBus,
+		Node: found.Node, Name: found.Name, DiskStorage: found.DiskStorage, DiskSizeGB: found.DiskSizeGB, DiskBus: found.DiskBus,
 	}
 
 	return st.InsertTemplate(ctx, clusterName, ref.VMID, values, enabled)

@@ -41,11 +41,8 @@ function baseCatalog(): VmCreateCatalog {
 		storages: [{ name: 'local-lvm', node: 'pve-node-01' }],
 		bridges: [{ name: 'vmbr0', node: 'pve-node-01' }],
 		isos: [],
-		images: [{ storage: 'ceph-images', node: 'pve-node-01', file: 'debian-12.qcow2', sizeBytes: 2 * 1024 * 1024 * 1024 }],
 		profiles: [{ id: 'small', label: 'Small', sockets: 1, cpuCores: 2, memoryMB: 2048, diskGB: 20, bus: 'scsi' }],
-		templates: [{ vmid: 9000, node: 'pve-node-01', name: 'debian-12-tpl', cloudInitCapable: true, diskSizeGB: 8, diskStorage: 'local-lvm' }],
-		cloudInitTemplates: [],
-		cloudInitWriteEnabled: false,
+		templates: [{ vmid: 9000, node: 'pve-node-01', name: 'debian-12-tpl', diskSizeGB: 8, diskStorage: 'local-lvm' }],
 		tags: []
 	};
 }
@@ -235,7 +232,7 @@ describe('Simple wizard dead ends (ticket 02)', () => {
 	}
 
 	it('names the only starting point instead of an empty choice', () => {
-		mountWith({ ...baseCatalog(), templates: [], images: [], isos: [] });
+		mountWith({ ...baseCatalog(), templates: [], isos: [] });
 
 		expect(document.querySelector('input[name="simple-source"]')).toBeNull();
 		expect(document.querySelector('[data-testid="vm-create-start-fixed"]')?.textContent).toContain(m['vms.create.source.profileTitle']());
@@ -245,7 +242,7 @@ describe('Simple wizard dead ends (ticket 02)', () => {
 
 	it('says why the submit is disabled when no size is chosen', async () => {
 		vi.stubGlobal('fetch', vi.fn());
-		mountWith({ ...baseCatalog(), templates: [], images: [], isos: [] });
+		mountWith({ ...baseCatalog(), templates: [], isos: [] });
 		storeInstance.name = 'web-valid';
 		flushSync();
 

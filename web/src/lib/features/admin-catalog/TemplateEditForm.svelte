@@ -2,7 +2,6 @@
 	import type { AdminTemplate, AdminTemplatePatch } from './admin-catalog.svelte';
 	import { m } from '#lib/paraglide/messages.js';
 	import Button from '#lib/shared/ui/Button.svelte';
-	import Checkbox from '#lib/shared/ui/Checkbox.svelte';
 	import FormField from '#lib/shared/ui/FormField.svelte';
 	import TextField from '#lib/shared/ui/TextField.svelte';
 
@@ -19,7 +18,6 @@
 	let values = $state<AdminTemplatePatch>({
 		node: template.node,
 		name: template.name,
-		cloudInitCapable: template.cloudInitCapable,
 		diskStorage: template.diskStorage,
 		diskSizeGB: template.diskSizeGB,
 		diskBus: template.diskBus
@@ -54,11 +52,6 @@
 			<TextField {id} {describedBy} {invalid} bind:value={values.diskBus} required />
 		{/snippet}
 	</FormField>
-	<Checkbox
-		label={m['admin.templates.fieldCloudInitCapable']()}
-		checked={values.cloudInitCapable}
-		onToggle={(checked) => (values.cloudInitCapable = checked)}
-	/>
 	<div class="flex justify-end gap-2 pt-2">
 		<Button variant="secondary" onclick={onClose}>{m['policy.cancel']()}</Button>
 		<Button type="submit" disabled={saving}>{saving ? m['policy.saving']() : m['common.save']()}</Button>

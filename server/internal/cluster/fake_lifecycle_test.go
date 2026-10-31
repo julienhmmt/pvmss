@@ -122,56 +122,6 @@ func TestFake_Authenticate(t *testing.T) {
 	}
 }
 
-func TestFake_CloudInitIO(t *testing.T) {
-	t.Parallel()
-
-	fake := cluster.NewFake("test-cloudinit-io")
-	ctx := context.Background()
-
-	snippet, err := fake.FindSnippetStorage(ctx, cluster.FakeNode01)
-	if err != nil {
-		t.Fatalf("FindSnippetStorage: %v", err)
-	}
-
-	if snippet == "" {
-		t.Error("FindSnippetStorage returned empty storage")
-	}
-
-	if _, err := fake.FindSnippetStorage(ctx, "ghost-node"); !errors.Is(err, cluster.ErrNotFound) {
-		t.Errorf("FindSnippetStorage (unknown node) = %v, want ErrNotFound", err)
-	}
-
-	cfg, err := fake.GetCloudInitConfig(ctx, cluster.FakeNode01, 100)
-	if err != nil {
-		t.Fatalf("GetCloudInitConfig: %v", err)
-	}
-
-	if cfg.IPMode != cluster.CloudInitIPModeDHCP {
-		t.Errorf("GetCloudInitConfig IPMode = %q, want DHCP", cfg.IPMode)
-	}
-
-	if err := fake.SetCloudInitConfig(ctx, cluster.FakeNode01, 100, cluster.CloudInitConfig{IPMode: cluster.CloudInitIPModeStatic}); err != nil {
-		t.Fatalf("SetCloudInitConfig: %v", err)
-	}
-
-	if err := fake.EnsureCloudInitDrive(ctx, cluster.FakeNode01, 100); err != nil {
-		t.Fatalf("EnsureCloudInitDrive: %v", err)
-	}
-
-	if _, err := fake.CheckSnippet(ctx, "pvmss-snippet.yaml"); err != nil {
-		t.Fatalf("CheckSnippet: %v", err)
-	}
-
-	ticket, err := fake.GetVNCTicket(ctx, cluster.FakeNode01, 100, "ticket")
-	if err != nil {
-		t.Fatalf("GetVNCTicket: %v", err)
-	}
-
-	if ticket.Ticket == "" {
-		t.Error("GetVNCTicket returned empty ticket")
-	}
-}
-
 func TestFake_HardwareNetwork(t *testing.T) {
 	t.Parallel()
 

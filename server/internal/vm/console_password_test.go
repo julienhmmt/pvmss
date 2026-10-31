@@ -62,8 +62,8 @@ func TestSetConsolePassword_GeneratesAndApplies(t *testing.T) {
 	}
 
 	password, err := vm.SetConsolePassword(context.Background(), vm.ConsolePasswordDeps{
-		Index: index, Actor: cloudAliceIdentity(), ClusterName: testClusterName, VMID: 101,
-		Reader: cluster.Fake{}, Writer: cluster.Fake{}, Audit: st, Refresher: testRefresher{},
+		Index: index, Actor: aliceIdentity(), ClusterName: testClusterName, VMID: 101,
+		Reader: cluster.Fake{}, Writer: cluster.Fake{}, Audit: st, Refresher: noopRefresher{},
 		StatusReader: cluster.Fake{},
 	})
 	if err != nil {
@@ -98,8 +98,8 @@ func TestSetConsolePassword_RefusesStoppedVM(t *testing.T) {
 
 	// VM 101 is stopped in the pristine dataset - do not start it.
 	_, err := vm.SetConsolePassword(context.Background(), vm.ConsolePasswordDeps{
-		Index: index, Actor: cloudAliceIdentity(), ClusterName: testClusterName, VMID: 101,
-		Reader: cluster.Fake{}, Writer: cluster.Fake{}, Audit: st, Refresher: testRefresher{},
+		Index: index, Actor: aliceIdentity(), ClusterName: testClusterName, VMID: 101,
+		Reader: cluster.Fake{}, Writer: cluster.Fake{}, Audit: st, Refresher: noopRefresher{},
 		StatusReader: cluster.Fake{},
 	})
 	if !errors.Is(err, vm.ErrVMNotRunning) {

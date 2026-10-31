@@ -6,6 +6,7 @@
 	import Button from '#lib/shared/ui/Button.svelte';
 	import Card from '#lib/shared/ui/Card.svelte';
 	import FormField from '#lib/shared/ui/FormField.svelte';
+	import Switch from '#lib/shared/ui/Switch.svelte';
 	import TextField from '#lib/shared/ui/TextField.svelte';
 
 	interface Props {
@@ -30,6 +31,33 @@
 	const original = $derived<FormState>({ gabarit: { ...policy.gabarit }, maxVmPerUser: policy.quota.maxVmPerUser });
 	// svelte-ignore state_referenced_locally
 	let form = $state<FormState>({ gabarit: { ...policy.gabarit }, maxVmPerUser: policy.quota.maxVmPerUser });
+
+	// -1 is the unlimited quota sentinel; the switch owns it so admins never
+	// type the sentinel by hand. lastQuota restores a sane value on toggle-off.
+	const quotaUnlimited = $derived(form.maxVmPerUser === -1);
+	let lastQuota = $state(3);
+
+	function toggleQuotaUnlimited(): void {
+		if (quotaUnlimited) {
+			form.maxVmPerUser = lastQuota;
+			return;
+		}
+		if (form.maxVmPerUser != null && form.maxVmPerUser > 0) {
+			lastQuota = form.maxVmPerUser;
+		}
+		form.maxVmPerUser = -1;
+	}
+
+	// The memory input displays GiB while the form keeps MB. An emptied input
+	// keeps the null the number binding relied on, so range validation still
+	// blocks the save; a non-integral MB value shows at two decimals.
+	function memoryGiB(): string | number {
+		return form.gabarit.maxMemoryMB == null ? '' : Math.round((form.gabarit.maxMemoryMB / 1024) * 100) / 100;
+	}
+
+	function setMemoryGiB(v: string | number): void {
+		form.gabarit.maxMemoryMB = (v === '' || v == null ? null : Math.round(Number(v) * 1024)) as number;
+	}
 
 	let isDirty = $derived(
 		form.maxVmPerUser !== original.maxVmPerUser ||
@@ -62,7 +90,7 @@
 	const fieldKeys = [
 		{ name: 'maxSockets', label: m['policy.maxSockets'](), min: 0, max: MAX_SOCKETS },
 		{ name: 'maxCores', label: m['policy.maxCores'](), min: 0, max: MAX_CORES },
-		{ name: 'maxMemoryMB', label: m['policy.maxMemory'](), min: 0, max: MAX_MEMORY_MB },
+		{ name: 'maxMemoryMB', label: m['policy.maxMemoryGiB'](), min: 0, max: MAX_MEMORY_MB },
 		{ name: 'maxDiskPerVmGb', label: m['policy.maxDisk'](), min: 0, max: MAX_DISK_GB },
 		{ name: 'maxNetworkCards', label: m['policy.maxNetworkCards'](), min: 0, max: MAX_NETWORK_CARDS },
 		{ name: 'maxSnapshots', label: m['policy.maxSnapshots'](), min: 0, max: MAX_SNAPSHOTS }
@@ -91,7 +119,7 @@
 	);
 	const maxMemoryError = $derived(
 		outOfRange(form.gabarit.maxMemoryMB, 0, MAX_MEMORY_MB)
-			? outOfRangeMessage(m['policy.maxMemory'](), 0, MAX_MEMORY_MB)
+			? outOfRangeMessage(m['policy.maxMemoryGiB'](), 0, MAX_MEMORY_MB / 1024)
 			: null
 	);
 	const maxDiskError = $derived(
@@ -247,10 +275,20 @@
 			<fieldset>
 				<legend class="mb-3 text-sm font-medium text-muted-foreground">{m['policy.memoryGroup']()}</legend>
 				<div class="grid gap-4 sm:grid-cols-2">
-					<FormField label={m['policy.maxMemory']()} required error={maxMemoryError ?? serverErrorForField('maxMemoryMB')}>
+					<FormField label={m['policy.maxMemoryGiB']()} required error={maxMemoryError ?? serverErrorForField('maxMemoryMB')}>
 						{#snippet children({ id, describedBy, invalid })}
-							<TextField {id} {describedBy} {invalid} type="number" min={0} max={MAX_MEMORY_MB} bind:value={form.gabarit.maxMemoryMB} required>
-								{#snippet trailing()}<span class="text-xs text-muted-foreground">{m['policy.unitMB']()}</span>{/snippet}
+							<TextField
+								{id}
+								{describedBy}
+								{invalid}
+								type="number"
+								min={0}
+								max={MAX_MEMORY_MB / 1024}
+								step={0.5}
+								bind:value={memoryGiB, setMemoryGiB}
+								required
+							>
+								{#snippet trailing()}<span class="text-xs text-muted-foreground">{m['policy.unitGiB']()}</span>{/snippet}
 							</TextField>
 						{/snippet}
 					</FormField>
@@ -317,13 +355,16 @@
 		<Card pad="lg">
 			<div class="mb-3 grid gap-1">
 				<h2 class="text-lg font-medium text-foreground">{m['policy.quota']()}</h2>
-				<p class="text-xs text-muted-foreground-subtle">{m['policy.unlimitedHint']()}</p>
 			</div>
 			<FormField label={m['policy.maxVmPerUser']()} required error={maxVmPerUserError ?? serverErrorForField('maxVmPerUser')}>
 				{#snippet children({ id, describedBy, invalid })}
-					<TextField {id} {describedBy} {invalid} type="number" min={-1} max={MAX_VM_PER_USER} bind:value={form.maxVmPerUser} required />
+					<TextField {id} {describedBy} {invalid} type="number" min={-1} max={MAX_VM_PER_USER} bind:value={form.maxVmPerUser} disabled={quotaUnlimited} required />
 				{/snippet}
 			</FormField>
+			<div class="mt-3 flex items-center gap-2">
+				<Switch label={m['policy.quotaUnlimited']()} checked={quotaUnlimited} onToggle={toggleQuotaUnlimited} />
+				<span class="text-sm text-foreground">{m['policy.quotaUnlimited']()}</span>
+			</div>
 		</Card>
 
 		{#if saveError && !serverErrorField}<Alert>{saveError}</Alert>{/if}

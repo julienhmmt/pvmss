@@ -147,34 +147,11 @@ func TestClusters_LastActiveGuard(t *testing.T) {
 	}
 }
 
-//nolint:paralleltest // migration fixtures are intentionally serial
-func TestSetClusterSnippetStorage_RoundTrip(t *testing.T) {
-	st := openClusterStore(t)
-	ctx := context.Background()
-	row := store.ClusterRow{Name: "snippet-cluster", URL: testUpdateClusterURL, TokenID: testClusterTokenID, TokenSecret: testClusterTokenSecret}
-	if err := st.CreateCluster(ctx, row); err != nil {
-		t.Fatalf("CreateCluster: %v", err)
-	}
-	for _, want := range []string{"shared", ""} {
-		if err := st.SetClusterSnippetStorage(ctx, row.Name, want); err != nil {
-			t.Fatalf("SetClusterSnippetStorage(%q): %v", want, err)
-		}
-		stored, err := st.GetCluster(ctx, row.Name)
-		if err != nil {
-			t.Fatalf("GetCluster: %v", err)
-		}
-		if stored.SnippetStorage != want {
-			t.Fatalf("snippet storage = %q, want %q", stored.SnippetStorage, want)
-		}
-	}
-	if err := st.SetClusterSnippetStorage(ctx, "no-such-cluster", "local"); !errors.Is(err, store.ErrInvalidClusterName) {
-		t.Fatalf("unknown name error = %v, want ErrInvalidClusterName", err)
-	}
-}
-
 // TestEnsureSeedClusters_SetsDisplayNames - the fake cluster seed now sets a
 // human-readable DisplayName for each demo cluster so the sidebar doesn't
 // show the raw internal name "default" on a fresh deployment.
+//
+
 func openProxmoxStore(t *testing.T, dbPath, url, tokenID, tokenSecret string) *store.Store {
 	t.Helper()
 

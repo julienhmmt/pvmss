@@ -110,7 +110,7 @@ func newVMDetailHandlerWithWriter(t *testing.T, writer cluster.Writer) (*httpapi
 
 	t.Cleanup(func() { _ = st.Close() })
 
-	handler := httpapi.NewVMDetail(projection, authHandler, writer, st, bulkNoopRefresher{}, logger)
+	handler := httpapi.NewVMDetailWithRegistry(httpapi.VMDetailDeps{Source: projectionRegistry(projection), Projection: projection, Auth: authHandler, Writer: writer, Store: st, Refresher: bulkNoopRefresher{}, Log: logger})
 
 	return handler, authHandler
 }
@@ -148,12 +148,21 @@ func TestVMDetail_Get_RegistryClusterNotFound(t *testing.T) {
 // TestVMDetail_Get_InventoryNotReady - a projection that was never populated
 // returns 503 inventory_not_ready rather than panicking.
 //
-//nolint:paralleltest // serial: shared fake authentication state
-func TestVMDetail_Get_InventoryNotReady(t *testing.T) {
+// detailNotReadyFixture builds a detail handler over an unpopulated
+// projection - shared by the GET and DELETE inventory_not_ready tests.
+func detailNotReadyFixture(t *testing.T) (*httpapi.VMDetail, *http.Cookie) {
+	t.Helper()
+
 	authHandler := newAuthHandler(t)
 	projection := inventory.NewProjection()
-	handler := httpapi.NewVMDetail(projection, authHandler, cluster.Fake{}, nil, bulkNoopRefresher{}, slog.Default())
-	cookie := aliceCookie(t, authHandler)
+	handler := httpapi.NewVMDetailWithRegistry(httpapi.VMDetailDeps{Source: projectionRegistry(projection), Projection: projection, Auth: authHandler, Writer: cluster.Fake{}, Store: nil, Refresher: bulkNoopRefresher{}, Log: slog.Default()})
+
+	return handler, aliceCookie(t, authHandler)
+}
+
+//nolint:paralleltest // serial: shared fake authentication state
+func TestVMDetail_Get_InventoryNotReady(t *testing.T) {
+	handler, cookie := detailNotReadyFixture(t)
 
 	rec, env := serveDetailError(handler, detailRequest(http.MethodGet, "/api/v1/vms/default/100", "", cookie))
 	if rec.Code != http.StatusServiceUnavailable {
@@ -232,10 +241,7 @@ func TestVMDetail_MethodNotAllowed(t *testing.T) {
 //
 //nolint:paralleltest // serial: shared fake authentication state
 func TestVMDetail_Delete_InventoryNotReady(t *testing.T) {
-	authHandler := newAuthHandler(t)
-	projection := inventory.NewProjection()
-	handler := httpapi.NewVMDetail(projection, authHandler, cluster.Fake{}, nil, bulkNoopRefresher{}, slog.Default())
-	cookie := aliceCookie(t, authHandler)
+	handler, cookie := detailNotReadyFixture(t)
 
 	rec, env := serveDetailError(handler, detailRequest(http.MethodDelete, "/api/v1/vms/default/100", "", cookie))
 	if rec.Code != http.StatusServiceUnavailable {

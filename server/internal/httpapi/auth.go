@@ -83,11 +83,6 @@ type Auth struct {
 	bootstrapFailures *windowLimiter
 }
 
-// NewAuth creates the legacy single-cluster authentication endpoint handlers.
-func NewAuth(clusterClient cluster.Client, sessions *auth.SessionManager, adminHash string, log *slog.Logger) *Auth {
-	return &Auth{cluster: clusterClient, sessions: sessions, adminHash: adminHash, log: log, bootstrapFailures: newBootstrapFailures()}
-}
-
 // NewAuthWithRegistry creates authentication handlers with runtime cluster choice.
 func NewAuthWithRegistry(registry cluster.ClientProvider, st *store.Store, sessions *auth.SessionManager, adminHash string, log *slog.Logger) *Auth {
 	return &Auth{clusters: registry, clusterStore: st, sessions: sessions, adminHash: adminHash, log: log, bootstrapFailures: newBootstrapFailures()}

@@ -71,7 +71,6 @@ func newVMCreateHandlerWithCreator(t *testing.T, creator cluster.Creator) (*http
 		st,
 		provider,
 		creator,
-		cluster.Fake{},
 		logger,
 	), authHandler
 }

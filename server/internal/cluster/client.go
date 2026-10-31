@@ -57,11 +57,6 @@ var (
 	// returns the smallest free ID at call time without reserving it, so two
 	// concurrent creations can collide; the caller retries with a fresh VMID.
 	ErrVMIDTaken = errors.New("vmid already taken")
-	// ErrSnippetWriteUnavailable reports a cluster where cloud-init
-	// documents are off: no snippet storage selected. Proxmox's REST API
-	// cannot write snippets at all (upload and download-url reject
-	// content=snippets), so the admin writes them by hand on the nodes.
-	ErrSnippetWriteUnavailable = errors.New("cloud-init documents are not enabled on this cluster (select the snippet storage in Infrastructure > Clusters)")
 )
 
 // Client is the single contract for reading cluster data. Every implementation
@@ -73,12 +68,6 @@ type Client interface {
 	ChangePassword(ctx context.Context, username, oldPassword, newPassword string) error
 	ListBridges(ctx context.Context) ([]Bridge, error)
 	ListISOs(ctx context.Context) ([]ISOImage, error)
-	// ListCloudImages enumerates the cloud images the cluster reports:
-	// .qcow2/.raw/.vmdk files on import-capable storages (Proxmox
-	// lists them under content=import with vtype 'import'). Only import-
-	// vtype volumes are accepted by import-from for non-root API tokens.
-	// Approval (catalog_images) is keyed by (Node, Storage, File) like ISOs.
-	ListCloudImages(ctx context.Context) ([]CloudImage, error)
 	ListTemplates(ctx context.Context) ([]TemplateVM, error)
 	// TemplateByVMID looks up one template: one /cluster/resources
 	// call plus one config read, instead of re-hydrating the whole list per
@@ -103,7 +92,6 @@ type Client interface {
 // CloudInitReader reads per-VM cloud-init state and server-side snippet targets.
 type CloudInitReader interface {
 	GetCloudInitConfig(ctx context.Context, node string, vmid int) (CloudInitConfig, error)
-	FindSnippetStorage(ctx context.Context, node string) (string, error)
 }
 
 // CloudInitIPMode identifies the network mode used by cloud-init.
@@ -132,18 +120,6 @@ type CloudInitConfig struct {
 	// probes the guest (pre-flight), and the config read is
 	// already in hand. Never exposed through the API DTO.
 	Agent bool
-}
-
-// CloudInitUpdate is a partial cloud-init update. Nil fields remain unchanged.
-type CloudInitUpdate struct {
-	User         *string
-	Password     *string
-	SSHKeys      *[]string
-	IPMode       *CloudInitIPMode
-	IPAddress    *string
-	Gateway      *string
-	DNSServer    *string
-	SearchDomain *string
 }
 
 // ActionTasker is an optional Writer capability: a power action that also
@@ -182,20 +158,6 @@ type Writer interface {
 	// existing VM so the PVMSS Text/serial console works for VMs created
 	// before serial0 was added at create time.
 	EnableSerial(ctx context.Context, node string, vmid int) error
-	EnsureCloudInitDrive(ctx context.Context, node string, vmid int) error
-	SetCloudInitConfig(ctx context.Context, node string, vmid int, config CloudInitConfig) error
-	// AttachCloudInitSnippet points the VM's config at an already
-	// published snippet file via the vendor-data slot. vendor= MERGES the
-	// snippet with the generated cloud-init user-data (ciuser/sshkeys/
-	// ipconfig0 still apply); the user= slot would REPLACE the generated
-	// user-data entirely and silently drop the structured config. An empty
-	// filename detaches the snippet (Proxmox stores none).
-	AttachCloudInitSnippet(ctx context.Context, node, storage, filename string, vmid int) error
-	// HasSnippet reports whether filename exists under storage's snippets/
-	// content on node, as listed by the Proxmox API. Every cicustom PVMSS
-	// sets is preceded by this check on the VM's node: a VM must never
-	// reference a file its node does not have (every start would fail).
-	HasSnippet(ctx context.Context, node, storage, filename string) (bool, error)
 	// SetCloudInitPassword applies the VM's cloud-init password post-boot via
 	// the QEMU guest agent, writing it only to /etc/shadow on the guest. It
 	// never uses the cipassword config key, whose crypt hash Proxmox stores on
@@ -483,19 +445,6 @@ type Bridge struct {
 // (catalog_isos) is keyed by (Node, Storage, File) so the same file on the same
 // storage name across multiple nodes can be toggled independently.
 type ISOImage struct {
-	Storage   string
-	Node      string
-	File      string
-	SizeBytes int64
-}
-
-// CloudImage is one cloud image discovered on a storage backend on a node -
-//
-// a .qcow2/.raw/.vmdk file under import content (Proxmox lists them
-//
-// there with vtype 'import'). Approval (catalog_images) is keyed by
-// (Node, Storage, File) like ISOs.
-type CloudImage struct {
 	Storage   string
 	Node      string
 	File      string

@@ -29,7 +29,6 @@
 			<TableHeader text={m['admin.templates.name']()} column="name" activeColumn={sortBy} {sortDir} {onSort} />
 			<TableHeader text={m['common.node']()} column="node" activeColumn={sortBy} {sortDir} {onSort} />
 			<TableHeader text={m['admin.templates.disk']()} column="disk" activeColumn={sortBy} {sortDir} {onSort} />
-			<TableHeader text={m['admin.templates.cloudInit']()} column="cloudInit" activeColumn={sortBy} {sortDir} {onSort} />
 			<TableHeader
 				text={m['admin.catalog.statusColumn']()}
 				tooltip={m['admin.catalog.tooltip.statusColumn']()}
@@ -75,11 +74,6 @@
 				<td class="font-mono" data-label={m['common.node']()}>{tmpl.node}</td>
 				<td data-label={m['admin.templates.disk']()}>
 					{tmpl.diskSizeGB} GB · {tmpl.diskStorage}
-				</td>
-				<td data-label={m['admin.templates.cloudInit']()}>
-					{#if tmpl.cloudInitCapable}
-						<Pill tone="off" dot={false} label={m['admin.templates.cloudInit']()} />
-					{/if}
 				</td>
 				<td data-label={m['admin.catalog.statusColumn']()}>
 					<ApprovalCell

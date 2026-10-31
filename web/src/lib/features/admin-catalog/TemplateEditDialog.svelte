@@ -16,7 +16,7 @@
 
 <Dialog {open} labelledBy="template-edit-title" {onClose}>
 	{#if template !== null}
-		{#key `${template.vmid}:${template.node}:${template.diskStorage}:${template.diskSizeGB}:${template.diskBus}:${template.cloudInitCapable}`}
+		{#key `${template.vmid}:${template.node}:${template.diskStorage}:${template.diskSizeGB}:${template.diskBus}`}
 			<TemplateEditForm {template} {saving} {onClose} {onSave} />
 		{/key}
 	{/if}

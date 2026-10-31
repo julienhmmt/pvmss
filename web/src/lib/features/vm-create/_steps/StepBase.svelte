@@ -6,9 +6,6 @@
 	import TextField from '#lib/shared/ui/TextField.svelte';
 	import Select from '#lib/shared/ui/Select.svelte';
 	import TemplatePicker from '../TemplatePicker.svelte';
-	import ImagePicker from '../ImagePicker.svelte';
-	import ImageCloudInitFields from '../ImageCloudInitFields.svelte';
-	// import CloudInitDocumentSelect from '../CloudInitDocumentSelect.svelte';
 
 	interface Props {
 		showErrors?: boolean;
@@ -55,36 +52,24 @@
 	// from the template server-side (D2b), so no node filtering here.
 	const templates = $derived(form.catalog?.templates ?? []);
 
-	// Cloud images available in the catalog (image mode). Like ISOs they are
-	// node-local; the picker groups them by node.
-	const images = $derived(form.catalog?.images ?? []);
-
 	// Never offer a source that leads to an empty required dropdown: without
 	// approved templates the template path is a dead end, so the selector
-	// omits it and any stale 'template' selection falls back to ISO. Same for
-	// cloud images.
+	// omits it and any stale 'template' selection falls back to ISO.
 	const hasTemplates = $derived(templates.length > 0);
-	const hasImages = $derived(images.length > 0);
 
 	const sourceOptions = $derived([
 		{ value: 'iso', label: m['vms.create.sourceIso']() },
-		...(hasTemplates ? [{ value: 'template', label: m['vms.create.sourceTemplate']() }] : []),
-		...(hasImages ? [{ value: 'image', label: m['vms.create.sourceImage']() }] : [])
+		...(hasTemplates ? [{ value: 'template', label: m['vms.create.sourceTemplate']() }] : [])
 	]);
 
 	$effect(() => {
 		if (!hasTemplates && form.sourceType === 'template') {
 			form.sourceType = 'iso';
 		}
-		if (!hasImages && form.sourceType === 'image') {
-			form.sourceType = 'iso';
-		}
 	});
 
-	// US2/issue-02 D2b: hide the node selector when a template is selected - 
-	// the clone stays on the template's node. Image mode keeps it: like an
-	// ISO, an image is node-local and the server restricts candidates to the
-	// nodes holding it.
+	// US2/issue-02 D2b: hide the node selector when a template is selected -
+	// the clone stays on the template's node.
 	const showNodeSelector = $derived(form.sourceType !== 'template');
 	const nodeError = $derived(
 		showNodeSelector && (showErrors || nodeTouched) && form.node === ''
@@ -94,11 +79,6 @@
 	const templateError = $derived(
 		form.sourceType === 'template' && showErrors && form.templateId === 0
 			? m['vms.create.errorTemplateRequired']()
-			: null
-	);
-	const imageError = $derived(
-		form.sourceType === 'image' && showErrors && form.imageFile === ''
-			? m['vms.create.errorImageRequired']()
 			: null
 	);
 
@@ -183,9 +163,6 @@
 
 	{#if form.sourceType === 'template'}
 		<TemplatePicker error={templateError} />
-	{:else if form.sourceType === 'image'}
-		<ImagePicker error={imageError} />
-		<ImageCloudInitFields {showErrors} />
 	{:else}
 		<FormField label={m['vms.create.iso']()} hint={m['common.optional']()}>
 			{#snippet children({ id, describedBy, invalid })}
@@ -200,8 +177,4 @@
 		</FormField>
 	{/if}
 
-	<!-- The document picker self-hides for the image source (image cloud-init
-	     is the native-fields block) and when the cluster has no write target. -->
-	<!-- Cloud-init is disabled for now: not reliable or viable yet, too complex to set up.
-	<CloudInitDocumentSelect /> -->
 </div>
