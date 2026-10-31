@@ -31,6 +31,8 @@ documented here so the next reader does not reopen them.
 - **e2e wants `CI=1` locally.** Specs share one fake cluster; `fullyParallel`
   makes VM-creating specs change the row counts `vm-list.spec.ts` expects.
   `CI=1 bunx playwright test` runs one worker, as CI does, and is green.
+  `bun run test:e2e` rebuilds `web/build` first: Playwright serves that
+  directory, and a stale build fails against a newer server.
 - **Template clones keep secondary volumes where the template has them.**
   A clone of a template whose extra disk (e.g. `efidisk0`) sits on a storage
   not approved in PVMSS keeps it there: the clone writes the volume on the
@@ -64,7 +66,7 @@ an admin disables or deletes them.
 | Two-column admin grids | only the dashboard uses `xl:grid-cols-2`; no other page clearly gains |
 | "Pool at quota" | means the per-user VM quota (one pool per user), not a CPU/RAM pool quota - none exists |
 | Browser OTel (traces, web-vitals) | errors now report via `POST /api/v1/client-errors`; a full browser SDK (bundle size, CORS, consent) is still undecided |
-| Legacy single projection in `policy` | `policy.New` still accepts one `*inventory.Projection` as the no-source fallback for unit tests; production wires `SetProjectionSource` so every projection read is per cluster. Plan 006 deletes the fallback |
+| Legacy single projection in `policy` | `policy.New` still takes one `*inventory.Projection`. `main.go` wires `SetProjectionSource`, so enforcement is per cluster; but the per-request fallbacks in `vm_detail.go`, `vm_snapshots.go`, `vm_cloudinit.go` (when no service is injected) and `admin_pools.go` (pool quota) still build a single-projection `policy.New`. Audit plan 006 removed the httpapi constructors, not these; remove the parameter once those callers take the shared service |
 | `docs/plans/`, `server/internal/recovery/` stale `backend/` refs | historical context only - fix when the surrounding area is touched, no dedicated pass |
 
 ## Resolved 2026-10-22 (full app review)
@@ -146,7 +148,6 @@ Superseded by the full cloud-init removal (2026-10-31).
   above; this is the same constraint, stated where it originated.
 - `vm_cloudinit_snippets` only serves the cleanup of legacy per-VM files
   (`pvmss-<vmid>.yml`) of VMs created before the change.
-- `vm_baseline_state` rows with state `override` are historical.
 
 ## Left behind by the Connect-tab readiness pass (2026-09-29)
 
