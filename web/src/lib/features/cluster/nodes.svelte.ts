@@ -6,6 +6,9 @@ export type NodeStatus = 'online' | 'offline' | 'unknown';
 
 export interface ClusterNode {
 	name: string;
+	/** Owning cluster - set on every row; the UI only shows it when the
+	 *  response spans more than one cluster (admin union view). */
+	cluster: string;
 	status: NodeStatus;
 	cpuCores: number;
 	cpuUsage: number;
@@ -42,13 +45,14 @@ export class NodesStore {
 	// step 6: "wait out the guard interval, click again - it works").
 	#reenableTimer: ReturnType<typeof setTimeout> | null = null;
 
-	async load(): Promise<void> {
+	async load(cluster = ''): Promise<void> {
 		this.loading = true;
 		this.error = null;
 		this.errorCode = null;
 		this.errorStatus = null;
 		try {
-			const response = await get<NodesResponse>('/api/v1/cluster/nodes');
+			const suffix = cluster === '' ? '' : `?cluster=${encodeURIComponent(cluster)}`;
+			const response = await get<NodesResponse>(`/api/v1/cluster/nodes${suffix}`);
 			this.nodes = response.nodes;
 			this.refreshedAt = response.refreshedAt;
 		} catch (err) {

@@ -19,6 +19,7 @@ describe('NodesStore', () => {
 		const nodes = [
 			{
 				name: 'pve-node-01',
+				cluster: 'default',
 				status: 'online',
 				cpuCores: 32,
 				cpuUsage: 0.42,
@@ -42,6 +43,19 @@ describe('NodesStore', () => {
 		expect(store.nodes).toEqual(nodes);
 		expect(store.nodes[0]!.vmCount).toBe(9);
 		expect(store.refreshedAt).toBe('2026-08-01T12:00:00Z');
+	});
+
+	it('sends the cluster query parameter when one is selected', async () => {
+		const fetchMock = vi.fn().mockResolvedValue(jsonResponse(200, { nodes: [], refreshedAt: '' }));
+		vi.stubGlobal('fetch', fetchMock);
+
+		const store = new NodesStore();
+		await store.load('secondary');
+
+		expect(fetchMock).toHaveBeenCalledWith(
+			'/api/v1/cluster/nodes?cluster=secondary',
+			expect.anything()
+		);
 	});
 
 	it('sets error on an ApiRequestError-shaped failure', async () => {

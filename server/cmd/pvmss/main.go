@@ -464,7 +464,6 @@ func buildRouter(deps routerDeps) (http.Handler, error) {
 	inventoryRegistry := deps.inventoryRegistry
 	clusterClient := deps.clusterClient
 	projection := deps.projection
-	refresher := deps.refresher
 	worker := deps.worker
 	sessions := deps.sessions
 	st := deps.st
@@ -475,10 +474,10 @@ func buildRouter(deps routerDeps) (http.Handler, error) {
 	policyService.SetProjectionSource(inventoryRegistry)
 	freshness := inventoryFreshness{registry: inventoryRegistry, demoMode: cfg.ClusterSource == "fake"}
 	health := httpapi.NewHealth(st, logger, freshness, 2*cfg.InventoryRefreshInterval)
-	clusterNodes := httpapi.NewClusterNodes(projection, logger)
-	clusterRefresh := httpapi.NewClusterRefresh(refresher, logger)
 	authHandler := httpapi.NewAuthWithRegistry(clusterRegistry, st, sessions, cfg.AdminPasswordHash, logger)
 	authHandler.SetClusterFreshnessChecker(freshness, 2*cfg.InventoryRefreshInterval)
+	clusterNodes := httpapi.NewClusterNodesWithRegistry(inventoryRegistry, authHandler, logger)
+	clusterRefresh := httpapi.NewClusterRefreshWithRegistry(inventoryRegistry, clusterRegistry, authHandler, logger)
 	vms := httpapi.NewVMsWithRegistry(inventoryRegistry, authHandler, cfg.MaxListPageSize, 0, logger, st, policyService)
 
 	clients, err := resolveClusterClientInterfaces(clusterClient)
