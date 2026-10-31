@@ -74,7 +74,7 @@ the tables and `docs/cloud-init.md`.
 | Two-column admin grids | only the dashboard uses `xl:grid-cols-2`; no other page clearly gains |
 | "Pool at quota" | means the per-user VM quota (one pool per user), not a CPU/RAM pool quota - none exists |
 | Browser OTel (traces, web-vitals) | errors now report via `POST /api/v1/client-errors`; a full browser SDK (bundle size, CORS, consent) is still undecided |
-| Node capacity uses the default cluster projection | `main.go` wires `policy.New(st, projection, nil)` with the default cluster's inventory projection only, and `policy/nodes.go` falls back to it when no live snapshot is wired, so node capacity usage on a non-default cluster reads the default cluster's nodes. Fix: pick the projection per cluster |
+| Legacy single projection in `policy` | `policy.New` still accepts one `*inventory.Projection` as the no-source fallback for unit tests; production wires `SetProjectionSource` so every projection read is per cluster. Plan 006 deletes the fallback |
 | `docs/plans/`, `server/internal/recovery/` stale `backend/` refs | historical context only - fix when the surrounding area is touched, no dedicated pass |
 
 ## Resolved 2026-10-22 (full app review)

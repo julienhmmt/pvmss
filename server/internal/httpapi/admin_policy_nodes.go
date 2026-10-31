@@ -73,7 +73,10 @@ func (handler *AdminPolicy) ServePolicyNodes(w http.ResponseWriter, r *http.Requ
 		response.Nodes = append(response.Nodes, nodePolicyResponseFromModel(capacity))
 	}
 
-	if refreshedAt := handler.service.RefreshedAt(); !refreshedAt.IsZero() {
+	if refreshedAt, err := handler.service.RefreshedAt(clusterName); err != nil {
+		handler.writeFailure(w, "read inventory refresh time", err)
+		return
+	} else if !refreshedAt.IsZero() {
 		response.RefreshedAt = refreshedAt.UTC().Format(time.RFC3339Nano)
 	}
 

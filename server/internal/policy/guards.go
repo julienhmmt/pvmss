@@ -103,13 +103,11 @@ func (service *Policy) CheckNodeCapacity(ctx context.Context, clusterName, node 
 		return fmt.Errorf("read node capacity: %w", err)
 	}
 
-	if delta.ExcludeVMID != 0 {
-		service.excludeVM(&capacity, delta.ExcludeVMID)
-	}
-
 	usedVMs := capacity.UsedVMs
 	if delta.ExcludeVMID == 0 {
 		usedVMs++
+	} else if err := service.excludeVM(&capacity, clusterName, delta.ExcludeVMID); err != nil {
+		return fmt.Errorf("read node capacity: %w", err)
 	}
 
 	usedVCPUs := capacity.UsedVCPUs + delta.Sockets*delta.Cores
@@ -140,14 +138,19 @@ func (service *Policy) CheckNodeCapacity(ctx context.Context, clusterName, node 
 	return &NodeCapacityExceededError{Node: node, Dimensions: dimensions, MaxVMs: capacity.MaxVMs, MaxVCPUs: capacity.MaxVCPUs, MaxRAMGB: capacity.MaxRAMGB, MaxDiskGB: capacity.MaxDiskGB}
 }
 
-func (service *Policy) excludeVM(capacity *Capacity, vmid int) {
-	if service.projection == nil || service.projection.Load() == nil {
-		return
+func (service *Policy) excludeVM(capacity *Capacity, clusterName string, vmid int) error {
+	index, err := service.indexFor(clusterName)
+	if err != nil {
+		return err
 	}
 
-	machine, ok := service.projection.Load().ByVMID[vmid]
+	if index == nil {
+		return nil
+	}
+
+	machine, ok := index.ByVMID[vmid]
 	if !ok {
-		return
+		return nil
 	}
 
 	if capacity.UsedVMs > 0 {
@@ -159,8 +162,10 @@ func (service *Policy) excludeVM(capacity *Capacity, vmid int) {
 		capacity.UsedVCPUs -= vcpus
 	}
 
-	capacity.UsedRAMGB = service.ramGBExcluding(machine.Node, vmid)
-	capacity.UsedDiskGB = service.diskGBExcluding(machine.Node, vmid)
+	capacity.UsedRAMGB = ramGBExcluding(index, machine.Node, vmid)
+	capacity.UsedDiskGB = diskGBExcluding(index, machine.Node, vmid)
+
+	return nil
 }
 
 // QuotaExceededError carries the values needed for a safe user-facing message.

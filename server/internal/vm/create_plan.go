@@ -156,7 +156,11 @@ func planCreate(ctx context.Context, policyService *policy.Policy, deps CreateDe
 // under gocyclo's ceiling.
 func resolvePlacement(ctx context.Context, req CreateRequest, policyService *policy.Policy, clusterName string, resources catalog.Resources, log *slog.Logger) (node, storage string, nics []nicPlan, err error) {
 	capacities := fetchNodeCapacities(ctx, policyService, clusterName, resources.Nodes)
-	storageFree := fetchStorageFreeBytes(policyService, resources.Storages)
+
+	storageFree, err := fetchStorageFreeBytes(policyService, clusterName, resources.Storages)
+	if err != nil {
+		return "", "", nil, fmt.Errorf("read storage free space: %w", err)
+	}
 
 	node, storage, nics, err = resolveResources(req, resources, capacities, storageFree)
 	if err != nil {
@@ -260,16 +264,21 @@ func fetchNodeCapacities(ctx context.Context, policyService *policy.Policy, clus
 }
 
 // fetchStorageFreeBytes reads the projected free bytes for each approved
-// storage from the policy service's in-memory projection. Storages not in the
+// storage from the cluster's in-memory projection. Storages not in the
 // projection get 0 (bestStorageOnNode treats 0 as a valid candidate).
-func fetchStorageFreeBytes(policyService *policy.Policy, storages []catalog.Storage) map[string]int64 {
+func fetchStorageFreeBytes(policyService *policy.Policy, clusterName string, storages []catalog.Storage) (map[string]int64, error) {
 	free := make(map[string]int64, len(storages))
 
 	for _, s := range storages {
-		free[s.Name] = policyService.StorageFreeBytes(s.Node, s.Name)
+		bytes, err := policyService.StorageFreeBytes(clusterName, s.Node, s.Name)
+		if err != nil {
+			return nil, err
+		}
+
+		free[s.Name] = bytes
 	}
 
-	return free
+	return free, nil
 }
 
 // logPlacement emits a placement log line naming each eligible candidate and

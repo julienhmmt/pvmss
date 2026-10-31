@@ -472,6 +472,7 @@ func buildRouter(deps routerDeps) (http.Handler, error) {
 	logger := deps.logger
 	policyService := policy.New(st, projection, nil)
 	policyService.SetClusterProvider(clusterRegistry)
+	policyService.SetProjectionSource(inventoryRegistry)
 	freshness := inventoryFreshness{registry: inventoryRegistry, demoMode: cfg.ClusterSource == "fake"}
 	health := httpapi.NewHealth(st, logger, freshness, 2*cfg.InventoryRefreshInterval)
 	clusterNodes := httpapi.NewClusterNodes(projection, logger)
