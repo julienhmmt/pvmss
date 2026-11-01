@@ -182,6 +182,7 @@ func TestExportPreview_ReportsImportableTables(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Open: %v", err)
 	}
+
 	t.Cleanup(func() { _ = st.Close() })
 
 	ctx := context.Background()
@@ -203,11 +204,13 @@ func TestExportPreview_ReportsImportableTables(t *testing.T) {
 	for _, entry := range preview {
 		byName[entry.Name] = entry.RowCount
 	}
+
 	for _, name := range want {
 		if _, ok := byName[name]; !ok {
 			t.Errorf("preview missing importable table %q", name)
 		}
 	}
+
 	if byName["catalog_nodes"] != 1 {
 		t.Errorf("catalog_nodes count = %d, want 1", byName["catalog_nodes"])
 	}

@@ -28,6 +28,7 @@ func TestDeleteVMCloudInitDocument(t *testing.T) {
 	if err := st.DB().QueryRowContext(ctx, `SELECT COUNT(*) FROM vm_cloudinit_documents WHERE cluster = ? AND vmid = ?`, testStoreCluster, 101).Scan(&count); err != nil {
 		t.Fatalf("count documents: %v", err)
 	}
+
 	if count != 0 {
 		t.Fatalf("documents left = %d, want 0", count)
 	}

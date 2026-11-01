@@ -376,6 +376,8 @@ func TestSessionManager_RevokeOthers(t *testing.T) {
 	}
 
 	t.Run("keeps the requesting session", func(t *testing.T) {
+		t.Parallel()
+
 		kept := httptest.NewRequest(http.MethodGet, "/", nil)
 		kept.AddCookie(current)
 
@@ -385,6 +387,8 @@ func TestSessionManager_RevokeOthers(t *testing.T) {
 	})
 
 	t.Run("revokes the user's other sessions", func(t *testing.T) {
+		t.Parallel()
+
 		revoked := httptest.NewRequest(http.MethodGet, "/", nil)
 		revoked.AddCookie(other)
 
@@ -394,6 +398,8 @@ func TestSessionManager_RevokeOthers(t *testing.T) {
 	})
 
 	t.Run("leaves other users and clusters alone", func(t *testing.T) {
+		t.Parallel()
+
 		for _, cookie := range []*http.Cookie{bobSession, elsewhere} {
 			check := httptest.NewRequest(http.MethodGet, "/", nil)
 			check.AddCookie(cookie)
@@ -495,7 +501,7 @@ func TestSessionManager_EnsureCSRFCookie_RejectsWithoutSession(t *testing.T) {
 	}
 
 	sessionCookie, _ := issueSession(t, manager, auth.Identity{Username: "alice@pve"})
-	expiredCookie := &http.Cookie{Name: sessionCookie.Name, Value: sessionCookie.Value}
+	expiredCookie := &http.Cookie{Name: sessionCookie.Name, Value: sessionCookie.Value, HttpOnly: true, Secure: true, SameSite: http.SameSiteStrictMode}
 
 	repository.expireAll()
 
@@ -509,6 +515,8 @@ func TestSessionManager_EnsureCSRFCookie_RejectsWithoutSession(t *testing.T) {
 
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
 			request := httptest.NewRequest(http.MethodGet, "/", nil)
 			if tc.cookie != nil {
 				request.AddCookie(tc.cookie)

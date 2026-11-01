@@ -99,6 +99,7 @@ func TestClusterDownScenario(t *testing.T) {
 		if userLoginResp.Code == http.StatusServiceUnavailable && userLoginErr.Code == "cluster_unavailable" {
 			break
 		}
+
 		if time.Now().After(deadline) {
 			t.Fatalf("user login should be rejected when cluster is down: status=%d code=%q", userLoginResp.Code, userLoginErr.Code)
 		}
@@ -117,7 +118,7 @@ func TestClusterDownScenario(t *testing.T) {
 	cookie := loginResp.Result().Cookies()[0]
 
 	// --- GET /api/v1/vms (SPA's first data call) ---
-	vms := httpapi.NewVMsWithRegistry(inventoryRegistry, authHandler, 100, 0, logger, st)
+	vms := httpapi.NewVMsWithRegistry(inventoryRegistry, authHandler, 100, 0, logger, st, nil)
 
 	vmReq := httptest.NewRequest(http.MethodGet, "/api/v1/vms", nil)
 

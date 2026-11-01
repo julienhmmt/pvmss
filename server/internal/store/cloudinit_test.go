@@ -9,7 +9,7 @@ import (
 // The cloud-init feature is removed but the table stays so the VM-delete path
 // can warn about files left on the nodes: rows must be readable and deletable.
 //
-//nolint:paralleltest // serial: shared database fixture
+//nolint:paralleltest,gocyclo // serial: shared database fixture; sequential insert -> read -> delete assertions
 func TestCloudInitSnippet_GetAndDelete(t *testing.T) {
 	st := openClusterStore(t)
 	ctx := context.Background()
@@ -29,10 +29,12 @@ func TestCloudInitSnippet_GetAndDelete(t *testing.T) {
 	if err != nil || !found {
 		t.Fatalf("GetCloudInitSnippet = (found=%v, err=%v), want found", found, err)
 	}
+
 	if snippet.Cluster != testStoreCluster || snippet.VMID != 101 || snippet.Content != "#cloud-config" ||
-		snippet.Storage != "local" || snippet.Filename != "ci-101.yaml" || snippet.UpdatedBy != "admin" {
+		snippet.Storage != "local" || snippet.Filename != "ci-101.yaml" || snippet.UpdatedBy != adminDocID {
 		t.Errorf("snippet = %+v, want the inserted row", snippet)
 	}
+
 	if !snippet.UpdatedAt.Equal(updated) {
 		t.Errorf("UpdatedAt = %v, want %v", snippet.UpdatedAt, updated)
 	}
@@ -40,6 +42,7 @@ func TestCloudInitSnippet_GetAndDelete(t *testing.T) {
 	if err := st.DeleteCloudInitSnippet(ctx, testStoreCluster, 101); err != nil {
 		t.Fatalf("DeleteCloudInitSnippet: %v", err)
 	}
+
 	if _, found, err := st.GetCloudInitSnippet(ctx, testStoreCluster, 101); err != nil || found {
 		t.Fatalf("GetCloudInitSnippet after delete = (found=%v, err=%v), want (false, nil)", found, err)
 	}

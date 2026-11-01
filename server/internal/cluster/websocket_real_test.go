@@ -55,7 +55,7 @@ func proxmoxVNCAuthServer(t *testing.T, secTypes []byte, challenge [16]byte, obs
 			return
 		}
 
-		offer := append([]byte{byte(len(secTypes))}, secTypes...)
+		offer := append([]byte{byte(len(secTypes))}, secTypes...) //nolint:gosec // the offer count is a test fixture of at most two types
 		if _, err := conn.Write(offer); err != nil {
 			return
 		}
@@ -97,41 +97,12 @@ func proxmoxVNCAuthServer(t *testing.T, secTypes []byte, challenge [16]byte, obs
 	}))
 }
 
-// TestProxmoxRelayConsole_VNCAuthHandshake exercises the real relay end to
-// end - exported RelayConsole through proxmoxRelayConsole,
-// completeProxmoxVNCAuth and the RFB helpers - against a fake Proxmox
-// endpoint that demands VNC Authentication. The relay must answer the DES
-// challenge with the ticket as password, present the browser a
-// security-type-None facade, and then pipe bytes both ways. The ticket never
-// reaches the browser.
-func TestProxmoxRelayConsole_VNCAuthHandshake(t *testing.T) {
-	t.Parallel()
+// driveBrowserFacade plays the browser side of the facade the relay presents:
+// the plain RFB handshake (banner, security-type-None offer, all-zero result)
+// then the first post-handshake frame in each direction.
+func driveBrowserFacade(t *testing.T, browser net.Conn) {
+	t.Helper()
 
-	observed := make(chan rfbHandshakeObserved, 1)
-	challenge := [16]byte{0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15}
-
-	srv := proxmoxVNCAuthServer(t, []byte{rfbSecTypeNone, rfbSecTypeVNCAuth}, challenge, observed)
-	t.Cleanup(srv.Close)
-
-	browser, relaySide := net.Pipe()
-	t.Cleanup(func() { _ = browser.Close() })
-
-	p := Proxmox{BaseURL: srv.URL, APITokenName: testTokenName, APITokenValue: testTokenVal}
-
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
-	defer cancel()
-
-	relayDone := make(chan error, 1)
-	go func() {
-		relayDone <- p.RelayConsole(ctx, "cluster-a", testVMID,
-			VNCProxyTicket{Ticket: testTicket, Port: 5900, Node: testNodeName}, relaySide)
-	}()
-
-	if err := browser.SetDeadline(time.Now().Add(5 * time.Second)); err != nil {
-		t.Fatalf("browser deadline: %v", err)
-	}
-
-	// Facade: the browser sees a plain security-type-None RFB handshake.
 	banner := make([]byte, len(rfbClientVersion))
 	if _, err := io.ReadFull(browser, banner); err != nil {
 		t.Fatalf("read banner: %v", err)
@@ -167,7 +138,6 @@ func TestProxmoxRelayConsole_VNCAuthHandshake(t *testing.T) {
 		t.Fatalf("security result = %v, want all-zero OK", result)
 	}
 
-	// The relay then pipes bytes both ways.
 	marker := make([]byte, len("proxmox-data"))
 	if _, err := io.ReadFull(browser, marker); err != nil {
 		t.Fatalf("read proxmox marker: %v", err)
@@ -180,13 +150,51 @@ func TestProxmoxRelayConsole_VNCAuthHandshake(t *testing.T) {
 	if _, err := browser.Write([]byte("browser-data")); err != nil {
 		t.Fatalf("write browser marker: %v", err)
 	}
+}
+
+// TestProxmoxRelayConsole_VNCAuthHandshake exercises the real relay end to
+// end - exported RelayConsole through proxmoxRelayConsole,
+// completeProxmoxVNCAuth and the RFB helpers - against a fake Proxmox
+// endpoint that demands VNC Authentication. The relay must answer the DES
+// challenge with the ticket as password, present the browser a
+// security-type-None facade, and then pipe bytes both ways. The ticket never
+// reaches the browser.
+func TestProxmoxRelayConsole_VNCAuthHandshake(t *testing.T) {
+	t.Parallel()
+
+	observed := make(chan rfbHandshakeObserved, 1)
+	challenge := [16]byte{0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15}
+
+	srv := proxmoxVNCAuthServer(t, []byte{rfbSecTypeNone, rfbSecTypeVNCAuth}, challenge, observed)
+	t.Cleanup(srv.Close)
+
+	browser, relaySide := net.Pipe()
+
+	t.Cleanup(func() { _ = browser.Close() })
+
+	p := Proxmox{BaseURL: srv.URL, APITokenName: testTokenName, APITokenValue: testTokenVal}
+
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+
+	relayDone := make(chan error, 1)
+	go func() {
+		relayDone <- p.RelayConsole(ctx, "cluster-a", testVMID,
+			VNCProxyTicket{Ticket: testTicket, Port: 5900, Node: testNodeName}, relaySide)
+	}()
+
+	if err := browser.SetDeadline(time.Now().Add(5 * time.Second)); err != nil {
+		t.Fatalf("browser deadline: %v", err)
+	}
+
+	driveBrowserFacade(t, browser)
 
 	// Server side: the DES answer must decrypt back to the challenge under a
 	// key derived from the ticket - proof the real handshake ran with the
 	// real password.
 	select {
 	case obs := <-observed:
-		block, err := des.NewCipher(vncDESKey(testTicket))
+		block, err := des.NewCipher(vncDESKey(testTicket)) //nolint:gosec // VNC auth is DES by protocol definition
 		if err != nil {
 			t.Fatalf("des cipher: %v", err)
 		}

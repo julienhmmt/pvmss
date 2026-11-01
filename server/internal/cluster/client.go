@@ -12,12 +12,12 @@ import (
 )
 
 const (
-	storagePluginCephFS    = "cephfs"
-	storagePluginDir       = "dir"
-	storagePluginLVM       = "lvm"
-	storagePluginLVMThin   = "lvmthin"
-	storagePluginPBS       = "pbs"
-	storageContentImages   = "images"
+	storagePluginCephFS  = "cephfs"
+	storagePluginDir     = "dir"
+	storagePluginLVM     = "lvm"
+	storagePluginLVMThin = "lvmthin"
+	storagePluginPBS     = "pbs"
+	storageContentImages = "images"
 )
 
 // Sentinel errors so callers can distinguish failure modes without string matching.
@@ -415,8 +415,6 @@ func IsVMCapableStorage(storage Storage) bool {
 
 	return false
 }
-
-
 
 // Bridge is a network bridge reported by a node. Approval (catalog_bridges) is
 // keyed by (cluster, node, name).

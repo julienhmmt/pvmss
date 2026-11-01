@@ -22,10 +22,10 @@ func TestStorageFreeBytes(t *testing.T) {
 	}
 	service := newPolicyServiceWithProjectionOnly(t, inventory.NewProjectionFromIndex(index))
 	cases := []struct {
-		name       string
-		node       string
-		storage    string
-		want       int64
+		name    string
+		node    string
+		storage string
+		want    int64
 	}{
 		{name: "known storage", node: "n1", storage: "local-lvm", want: 60},
 		{name: "full storage is zero not negative", node: "n1", storage: "shared-nfs", want: 0},
@@ -41,6 +41,7 @@ func TestStorageFreeBytes(t *testing.T) {
 			if err != nil {
 				t.Fatalf("StorageFreeBytes: %v", err)
 			}
+
 			if got != tc.want {
 				t.Errorf("StorageFreeBytes = %d, want %d", got, tc.want)
 			}

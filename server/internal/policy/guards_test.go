@@ -127,6 +127,7 @@ func (r *recordingAuditor) RecordAdminAction(_ context.Context, _, _, _, _, deta
 	r.calls++
 	r.detail = detail
 	r.lastIP = ip
+
 	return r.lastErr
 }
 
@@ -146,6 +147,7 @@ func TestCheckQuota_AuditCarriesClientIP(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Quota: %v", err)
 	}
+
 	if err := service.SetPolicy(ctx, "default", policy.Gabarit{}, quota.Used); err != nil {
 		t.Fatalf("SetPolicy: %v", err)
 	}
@@ -153,9 +155,11 @@ func TestCheckQuota_AuditCarriesClientIP(t *testing.T) {
 	if err := service.CheckQuota(policy.ContextWithAuditIP(ctx, "203.0.113.9"), "default", actor); !errors.Is(err, policy.ErrQuotaExceeded) {
 		t.Fatalf("CheckQuota = %v, want ErrQuotaExceeded", err)
 	}
+
 	if recorder.calls != 1 || recorder.lastIP != "203.0.113.9" {
 		t.Fatalf("auditor got calls=%d ip=%q, want one call with the context IP", recorder.calls, recorder.lastIP)
 	}
+
 	if recorder.detail == "" {
 		t.Error("audit detail is empty, want the quota summary JSON")
 	}
@@ -163,6 +167,7 @@ func TestCheckQuota_AuditCarriesClientIP(t *testing.T) {
 	if err := service.CheckQuota(ctx, "default", actor); !errors.Is(err, policy.ErrQuotaExceeded) {
 		t.Fatalf("second CheckQuota = %v, want ErrQuotaExceeded", err)
 	}
+
 	if recorder.lastIP != "" {
 		t.Fatalf("ip without context value = %q, want empty", recorder.lastIP)
 	}

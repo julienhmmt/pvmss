@@ -106,6 +106,7 @@ func TestVMLease_ExtendAndIdentity(t *testing.T) {
 	if err := st.ExtendVMLease(ctx, testStoreCluster, 777, time.Now()); !errors.Is(err, store.ErrLeaseNotFound) {
 		t.Fatalf("ExtendVMLease on missing row = %v, want ErrLeaseNotFound", err)
 	}
+
 	if err := st.SetLeaseIdentity(ctx, testStoreCluster, 777, "x"); !errors.Is(err, store.ErrLeaseNotFound) {
 		t.Fatalf("SetLeaseIdentity on missing row = %v, want ErrLeaseNotFound", err)
 	}
@@ -128,6 +129,7 @@ func TestVMLease_ExtendAndIdentity(t *testing.T) {
 	if err != nil {
 		t.Fatalf("GetVMLease: %v", err)
 	}
+
 	if !got.ExpiresAt.Equal(extended) {
 		t.Errorf("ExpiresAt = %v, want %v", got.ExpiresAt, extended)
 	}
@@ -136,6 +138,7 @@ func TestVMLease_ExtendAndIdentity(t *testing.T) {
 	if err := st.DB().QueryRowContext(ctx, `SELECT notified_at FROM vm_leases WHERE cluster = ? AND vmid = ?`, testStoreCluster, 777).Scan(&notified); err != nil {
 		t.Fatalf("read notified_at: %v", err)
 	}
+
 	if notified.Valid {
 		t.Errorf("notified_at = %v, want NULL after extension", notified.String)
 	}
@@ -143,10 +146,12 @@ func TestVMLease_ExtendAndIdentity(t *testing.T) {
 	if err := st.SetLeaseIdentity(ctx, testStoreCluster, 777, "qemu:777:abc"); err != nil {
 		t.Fatalf("SetLeaseIdentity: %v", err)
 	}
+
 	got, err = st.GetVMLease(ctx, testStoreCluster, 777)
 	if err != nil {
 		t.Fatalf("GetVMLease after bind: %v", err)
 	}
+
 	if got.Identity != "qemu:777:abc" {
 		t.Errorf("Identity = %q, want bound value", got.Identity)
 	}

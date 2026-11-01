@@ -958,9 +958,11 @@ func TestDisableStorageAllNodes(t *testing.T) {
 	if err != nil {
 		t.Fatalf("CatalogStoragesEnabled: %v", err)
 	}
+
 	if len(storages) != 2 {
 		t.Fatalf("storages = %+v, want both nodes still listed", storages)
 	}
+
 	for _, s := range storages {
 		if s.Enabled {
 			t.Errorf("storage %s/%s still enabled after DisableStorageAllNodes", s.Node, s.Name)
