@@ -24,6 +24,7 @@ interface AccountsResponse {
 /** Local account error codes the API returns (server/internal/httpapi/admin_accounts.go). */
 const ACCOUNT_ERROR_CODES: Partial<Record<string, () => string>> = {
 	owner_only: m['admin.accounts.errorOwnerOnly'],
+	protected_owner: m['admin.accounts.errorProtectedOwner'],
 	account_limit_reached: m['admin.accounts.errorLimitReached'],
 	username_taken: m['admin.accounts.errorUsernameTaken'],
 	invalid_username: m['admin.accounts.errorInvalidUsername'],

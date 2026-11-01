@@ -248,6 +248,105 @@ func TestSetupOwner_IsOwnerInPrincipal(t *testing.T) {
 	}
 }
 
+// setupOwnerAction calls a mutating accounts handler against the account row
+// identified by id, authenticated as cookie.
+func setupOwnerAction(t *testing.T, handler http.HandlerFunc, method string, id int64, body string, cookie *http.Cookie) *httptest.ResponseRecorder {
+	t.Helper()
+	var reader *strings.Reader
+	if body == "" {
+		reader = strings.NewReader("")
+	} else {
+		reader = strings.NewReader(body)
+	}
+	request := httptest.NewRequestWithContext(context.Background(), method, "/api/v1/admin/accounts/"+itoa(id), reader)
+	request.SetPathValue("id", itoa(id))
+	request.AddCookie(cookie)
+	response := httptest.NewRecorder()
+	handler(response, request)
+	return response
+}
+
+// TestAdminAccounts_SetupOwnerProtected - the setup account is the only owner
+// while no ADMIN_PASSWORD_HASH exists: deleting or disabling it would lock
+// account management out for good.
+//
+//nolint:paralleltest // serial: shared store fixture
+func TestAdminAccounts_SetupOwnerProtected(t *testing.T) {
+	st := newSetupStore(t)
+	authHandler, accounts := newSetupAuth(t, st, "")
+	cookie := setupAccountCookie(t, authHandler, st, "owner", "setup")
+	owner, err := st.LocalAccountByUsername(context.Background(), "owner")
+	if err != nil {
+		t.Fatalf("owner lookup: %v", err)
+	}
+	for name, tc := range map[string]struct {
+		handler http.HandlerFunc
+		method  string
+		body    string
+	}{
+		"delete":  {accounts.ServeDelete, http.MethodDelete, ""},
+		"disable": {accounts.ServeToggle, http.MethodPost, `{"disabled":true}`},
+	} {
+		response := setupOwnerAction(t, tc.handler, tc.method, owner.ID, tc.body, cookie)
+		if response.Code != http.StatusConflict {
+			t.Fatalf("%s: status = %d, want 409: %s", name, response.Code, response.Body.String())
+		}
+		var body map[string]string
+		_ = json.Unmarshal(response.Body.Bytes(), &body)
+		if body["code"] != "protected_owner" {
+			t.Fatalf("%s: code = %q, want protected_owner", name, body["code"])
+		}
+	}
+	if _, err := st.LocalAccountByUsername(context.Background(), "owner"); err != nil {
+		t.Fatalf("protected owner must still exist: %v", err)
+	}
+}
+
+// TestAdminAccounts_SetupOwnerMayDeleteOthers - the protection targets only
+// the setup row, not the owner's other account mutations.
+//
+//nolint:paralleltest // serial: shared store fixture
+func TestAdminAccounts_SetupOwnerMayDeleteOthers(t *testing.T) {
+	st := newSetupStore(t)
+	authHandler, accounts := newSetupAuth(t, st, "")
+	cookie := setupAccountCookie(t, authHandler, st, "owner", "setup")
+	second, err := st.CreateLocalAccount(context.Background(), store.LocalAccount{Username: "albert", PasswordHash: "$2a$10$hash", CreatedAt: time.Now(), UpdatedAt: time.Now(), CreatedBy: "owner"})
+	if err != nil {
+		t.Fatalf("CreateLocalAccount: %v", err)
+	}
+	response := setupOwnerAction(t, accounts.ServeDelete, http.MethodDelete, second, "", cookie)
+	if response.Code != http.StatusNoContent {
+		t.Fatalf("delete other account status = %d, want 204: %s", response.Code, response.Body.String())
+	}
+}
+
+// TestAdminAccounts_SetupOwnerUnprotectedWithBootstrap - once a bootstrap
+// owner exists the setup account is an ordinary local admin again.
+//
+//nolint:paralleltest // serial: shared store fixture
+func TestAdminAccounts_SetupOwnerUnprotectedWithBootstrap(t *testing.T) {
+	st := newSetupStore(t)
+	hash, err := bcrypt.GenerateFromPassword([]byte("env-admin"), bcrypt.MinCost)
+	if err != nil {
+		t.Fatalf("GenerateFromPassword: %v", err)
+	}
+	authHandler, accounts := newSetupAuth(t, st, string(hash))
+	setupAccountCookie(t, authHandler, st, "owner", "setup")
+	owner, err := st.LocalAccountByUsername(context.Background(), "owner")
+	if err != nil {
+		t.Fatalf("owner lookup: %v", err)
+	}
+	// The setup account is not owner here; the bootstrap cookie deletes it.
+	bootstrap := serveJSON(authHandler.AdminLogin, "/api/v1/auth/admin-login", `{"password":"env-admin"}`)
+	if bootstrap.Code != http.StatusOK {
+		t.Fatalf("bootstrap login status = %d", bootstrap.Code)
+	}
+	response := setupOwnerAction(t, accounts.ServeDelete, http.MethodDelete, owner.ID, "", bootstrap.Result().Cookies()[0])
+	if response.Code != http.StatusNoContent {
+		t.Fatalf("delete setup account with bootstrap status = %d, want 204: %s", response.Code, response.Body.String())
+	}
+}
+
 func TestSetupCreateAdmin_RejectsBadInput(t *testing.T) {
 	handler := httpapi.NewSetup(newSetupStore(t), false, slog.Default())
 	for name, body := range map[string]string{

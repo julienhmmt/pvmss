@@ -250,6 +250,11 @@ func (h *AdminAccounts) ServeToggle(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	if request.Disabled && h.protectedSetupOwner(account) {
+		writeAdminError(w, http.StatusConflict, "protected_owner", "the setup administrator cannot be disabled while it is the only owner - set ADMIN_PASSWORD_HASH first")
+		return
+	}
+
 	if err := h.store.SetLocalAccountDisabled(r.Context(), id, request.Disabled, time.Now()); err != nil {
 		h.writeAccountStoreFailure(w, "toggle local account failed", err)
 		return
@@ -289,6 +294,11 @@ func (h *AdminAccounts) ServeDelete(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	if h.protectedSetupOwner(account) {
+		writeAdminError(w, http.StatusConflict, "protected_owner", "the setup administrator cannot be deleted while it is the only owner - set ADMIN_PASSWORD_HASH first")
+		return
+	}
+
 	h.revokeSessions(r.Context(), account.Username)
 
 	if err := h.store.DeleteLocalAccount(r.Context(), id); err != nil {
@@ -321,6 +331,14 @@ func (h *AdminAccounts) requireOwner(w http.ResponseWriter, r *http.Request) (ac
 	}
 
 	return actorIdentity{Username: identity.Username}, true
+}
+
+// protectedSetupOwner reports whether the account is the first-run setup
+// administrator while no ADMIN_PASSWORD_HASH exists: it is then the only
+// owner, so deleting or disabling it would lock account management out for
+// good.
+func (h *AdminAccounts) protectedSetupOwner(account store.LocalAccount) bool {
+	return account.CreatedBy == setupAccountCreatedBy && !h.auth.HasBootstrapAdmin()
 }
 
 type actorIdentity struct {
