@@ -34,7 +34,7 @@ PVMSS_TAG ?= latest
         qualif \
         buildkit-start buildkit-stop buildkit-status \
         server-lint server-fmt server-vet server-test server-go-update \
-        server-deps-update server-update \
+        server-deps-update server-update server-reset \
         web-install web-deps-update web-lint web-lint-fix web-check web-test \
         lint \
         sonar sonar-up sonar-down sonar-coverage sonar-lint sonar-scan sonar-scan-server sonar-scan-web sonar-query
@@ -111,6 +111,15 @@ clean: ## Nettoie les artéfacts de build et arrête les conteneurs dev
 	-$(COMPOSE_DEV) down --remove-orphans
 	rm -f pvmss
 	@echo "$(GREEN)✓ Nettoyage terminé$(NC)"
+
+server-reset: ## Remet l'app à zéro : supprime la DB (volume dev + pvmss.db* locaux), rebuild et redémarre
+	@echo "$(BLUE)Arrêt des conteneurs dev...$(NC)"
+	-$(COMPOSE_DEV) --profile siem down
+	@echo "$(BLUE)Suppression de la base de données...$(NC)"
+	docker volume rm $$(docker volume ls -q -f name='pvmss_dev_data$$') 2>/dev/null || true
+	rm -f pvmss.db pvmss.db-shm pvmss.db-wal
+	@echo "$(GREEN)✓ Base de données remise à zéro$(NC)"
+	@$(MAKE) dev
 
 # =============================================================================
 # Commandes de test et qualification
