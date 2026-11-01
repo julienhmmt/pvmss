@@ -7,6 +7,7 @@
 	import DetailedWizard from '#lib/features/vm-create/DetailedWizard.svelte';
 	import ModeChooser from '#lib/features/vm-create/ModeChooser.svelte';
 	import ClusterSelector from '#lib/shared/ui/ClusterSelector.svelte';
+	import QuotaRequestPanel from '#lib/features/quota-requests/QuotaRequestPanel.svelte';
 	import PageHeader from '#lib/shared/ui/PageHeader.svelte';
 	import Card from '#lib/shared/ui/Card.svelte';
 	import EmptyState from '#lib/shared/ui/EmptyState.svelte';
@@ -87,6 +88,7 @@
 						<ButtonLink href={resolve('/vms')} variant="secondary">{m['vms.create.back']()}</ButtonLink>
 					{/snippet}
 				</EmptyState>
+				<QuotaRequestPanel currentQuota={catalog?.quota?.allowed ?? 0} />
 			</Card>
 		{:else if noCatalog}
 			<Card as="div" pad="none">
