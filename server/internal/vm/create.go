@@ -9,7 +9,6 @@ import (
 	"pvmss/server/internal/cluster"
 	"pvmss/server/internal/policy"
 	"pvmss/server/internal/store"
-	"time"
 )
 
 // Sentinel errors for the creation validation pipeline.
@@ -302,11 +301,7 @@ func Create(ctx context.Context, actor auth.Identity, clusterName string, req Cr
 
 	// The VM is already dispatched, so a lease write failure must not fail
 	// the create. It is logged so the VM is visibly unleased.
-	if err := StartLease(ctx, deps.Store, clusterName, result.VMID, gabarit.LeaseDays, actor.Pool, time.Now()); err != nil {
-		if deps.Log != nil {
-			deps.Log.ErrorContext(ctx, "vm lease not set on create", "component", "vm", "event", "lease_set_failed", "cluster", clusterName, "vmid", result.VMID, "error", err)
-		}
-	}
+	LeaseAfterDispatch(ctx, deps.Store, deps.Log, clusterName, result.VMID, gabarit.LeaseDays, actor.Pool)
 
 	return result, nil
 }

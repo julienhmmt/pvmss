@@ -40,6 +40,15 @@ type LeaseExtension struct {
 	IP      string
 }
 
+// LeaseAfterDispatch gives a VM that a create or a clone just dispatched its
+// lease. Create and clone both call it, so both follow the same policy. A
+// failure is logged, never returned: the VM is already dispatched.
+func LeaseAfterDispatch(ctx context.Context, st *store.Store, log *slog.Logger, clusterName string, vmid, leaseDays int, pool string) {
+	if err := StartLease(ctx, st, clusterName, vmid, leaseDays, pool, time.Now()); err != nil && log != nil {
+		log.ErrorContext(ctx, "vm lease not set after dispatch", "component", "vm", "event", "lease_set_failed", "cluster", clusterName, "vmid", vmid, "error", err)
+	}
+}
+
 // StartLease sets the lease of a freshly created VM, overwriting any row left
 // for the same VMID by a previous VM. days <= 0 means the cluster has no
 // leases: any stale row is removed so it cannot reach the new VM.

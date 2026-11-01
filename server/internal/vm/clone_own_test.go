@@ -8,9 +8,11 @@ import (
 	"pvmss/server/internal/cluster"
 	"pvmss/server/internal/inventory"
 	"pvmss/server/internal/policy"
+	"pvmss/server/internal/store"
 	"pvmss/server/internal/vm"
 	"strings"
 	"testing"
+	"time"
 )
 
 // cloneFixture builds the create fixture plus an index of the demo VMs and a
@@ -322,5 +324,50 @@ func TestCloneOwn_InvalidNameRejected(t *testing.T) {
 	_, err := vm.CloneOwn(context.Background(), aliceIdentity(), fixture.index, testClusterName, source.VMID, "Not A Hostname", fixture.deps())
 	if !errors.Is(err, vm.ErrInvalidName) {
 		t.Fatalf("invalid name: err = %v, want ErrInvalidName", err)
+	}
+}
+
+// A clone with leases on gets its own lease row under the actor's pool.
+//
+//nolint:paralleltest // serial: shared fake VM and database fixtures
+func TestCloneOwn_GetsOwnLeaseWhenPolicyOn(t *testing.T) {
+	fixture := newCloneFixture(t)
+	source := fixture.aliceSource(t)
+	enableLeases(t, fixture.store, 30)
+
+	result, err := vm.CloneOwn(context.Background(), aliceIdentity(), fixture.index, testClusterName, source.VMID, "lease-copy", fixture.deps())
+	if err != nil {
+		t.Fatalf("CloneOwn: %v", err)
+	}
+
+	lease, err := fixture.store.GetVMLease(context.Background(), testClusterName, result.VMID)
+	if err != nil {
+		t.Fatalf("clone has no lease: %v", err)
+	}
+
+	if lease.Pool != aliceIdentity().Pool {
+		t.Errorf("lease pool = %q, want %q", lease.Pool, aliceIdentity().Pool)
+	}
+
+	if d := time.Until(lease.ExpiresAt); d < 29*leaseDayDuration || d > 30*leaseDayDuration+time.Minute {
+		t.Errorf("clone lease expires in %v, want about 30 days", d)
+	}
+}
+
+// A clone with leases off gets no lease row.
+//
+//nolint:paralleltest // serial: shared fake VM and database fixtures
+func TestCloneOwn_NoLeaseWhenPolicyOff(t *testing.T) {
+	fixture := newCloneFixture(t)
+	source := fixture.aliceSource(t)
+	enableLeases(t, fixture.store, 0)
+
+	result, err := vm.CloneOwn(context.Background(), aliceIdentity(), fixture.index, testClusterName, source.VMID, "plain-copy", fixture.deps())
+	if err != nil {
+		t.Fatalf("CloneOwn: %v", err)
+	}
+
+	if _, err := fixture.store.GetVMLease(context.Background(), testClusterName, result.VMID); !errors.Is(err, store.ErrLeaseNotFound) {
+		t.Errorf("GetVMLease err = %v, want ErrLeaseNotFound", err)
 	}
 }
