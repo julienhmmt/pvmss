@@ -320,3 +320,53 @@ func TestNodeCapacity_UnknownNodeReturnsZeroUsage(t *testing.T) {
 		t.Fatalf("physical for unknown node = %+v, want all zero", capacity)
 	}
 }
+
+// RefreshedAt mirrors the projection's freshness: zero when no index has
+// loaded, the index's stamp once it has.
+func TestRefreshedAt(t *testing.T) {
+	t.Parallel()
+
+	service, projection := newPolicyService(t)
+
+	got, err := service.RefreshedAt("default")
+	if err != nil {
+		t.Fatalf("RefreshedAt: %v", err)
+	}
+
+	if want := projection.Load().RefreshedAt; !got.Equal(want) {
+		t.Fatalf("RefreshedAt = %v, want the projection's %v", got, want)
+	}
+
+	empty := newPolicyServiceNoClientNoProjection(t)
+
+	got, err = empty.RefreshedAt("default")
+	if err != nil {
+		t.Fatalf("RefreshedAt without projection: %v", err)
+	}
+
+	if !got.IsZero() {
+		t.Fatalf("RefreshedAt without projection = %v, want zero", got)
+	}
+}
+
+// When a per-cluster provider is wired it wins over the single boot-time
+// client: its errors must propagate, never fall back to another cluster's
+// numbers.
+func TestSetClusterProvider_ProviderErrorsPropagate(t *testing.T) {
+	t.Parallel()
+
+	service, _ := newPolicyService(t)
+	service.SetClusterProvider(failingProvider{})
+
+	if _, err := service.NodeCapacities(context.Background(), "ghost"); err == nil {
+		t.Fatal("NodeCapacities with a failing provider = nil, want the provider error")
+	}
+}
+
+type failingProvider struct{}
+
+func (failingProvider) Client(string) (cluster.Client, error) {
+	return nil, errors.New("no such cluster")
+}
+
+func (failingProvider) List() []string { return nil }

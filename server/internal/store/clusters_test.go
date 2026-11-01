@@ -6,10 +6,12 @@ import (
 	"database/sql"
 	"errors"
 	"path/filepath"
+	"pvmss/server/internal/auth"
 	"pvmss/server/internal/config"
 	"pvmss/server/internal/store"
 	"strings"
 	"testing"
+	"time"
 )
 
 const (
@@ -312,5 +314,235 @@ func TestCreateCluster_SeedsPolicyRow(t *testing.T) {
 	}
 	if preserved.MaxCores != 99 {
 		t.Errorf("reactivation reset MaxCores to %d, want preserved 99", preserved.MaxCores)
+	}
+}
+
+// The recovery CLI writes cluster rows whose token_secret_ciphertext comes
+// from the standalone EncryptClusterToken; a server opened under the same
+// session secret must read them back. This is the contract that makes CLI
+// recovery usable at all.
+//
+//nolint:paralleltest // serial: shared database fixture
+func TestEncryptClusterToken_ReadableByServer(t *testing.T) {
+	st := openClusterStore(t)
+	ctx := context.Background()
+
+	row := store.ClusterRow{Name: "cli-cluster", URL: "https://cli.invalid/api2/json", TokenID: testClusterTokenID, TokenSecret: "placeholder"}
+	if err := st.CreateCluster(ctx, row); err != nil {
+		t.Fatalf("CreateCluster: %v", err)
+	}
+
+	ciphertext, err := store.EncryptClusterToken("cli-written-secret", clusterTestSecret)
+	if err != nil {
+		t.Fatalf("EncryptClusterToken: %v", err)
+	}
+
+	if _, err := st.DB().ExecContext(ctx, `UPDATE clusters SET token_secret_ciphertext = ? WHERE name = ?`, ciphertext, row.Name); err != nil {
+		t.Fatalf("write cli ciphertext: %v", err)
+	}
+
+	got, err := st.GetCluster(ctx, row.Name)
+	if err != nil {
+		t.Fatalf("GetCluster: %v", err)
+	}
+	if got.TokenSecret != "cli-written-secret" {
+		t.Fatalf("TokenSecret = %q, want the CLI-written plaintext", got.TokenSecret)
+	}
+}
+
+// The encryption key is derived from the session secret: a store opened
+// under a different secret must fail to decrypt, proving the derivation is
+// actually bound to the secret and not a constant or a stored key.
+//
+//nolint:paralleltest // serial: shared database fixture
+func TestStore_TokenEncryption_WrongSecretCannotDecrypt(t *testing.T) {
+	st := openClusterStore(t)
+	ctx := context.Background()
+
+	row := store.ClusterRow{Name: "wrong-key-cluster", URL: "https://wk.invalid/api2/json", TokenID: testClusterTokenID, TokenSecret: "real-secret"}
+	if err := st.CreateCluster(ctx, row); err != nil {
+		t.Fatalf("CreateCluster: %v", err)
+	}
+
+	wrong, err := store.NewFromDBWithSecret(st.DB(), "a-different-session-secret-0123456789")
+	if err != nil {
+		t.Fatalf("NewFromDBWithSecret: %v", err)
+	}
+
+	if _, err := wrong.GetCluster(ctx, row.Name); err == nil {
+		t.Fatal("GetCluster under the wrong secret decrypted successfully")
+	}
+}
+
+// Misconfiguration must fail closed: a store with no encryption key refuses
+// to write or read secrets rather than persisting them in the clear.
+//
+//nolint:paralleltest // serial: shared database fixture
+func TestStore_NoEncryptionKeyFailsClosed(t *testing.T) {
+	db := openTestDB(t)
+	ctx := context.Background()
+
+	if err := store.RunMigrations(ctx, db, store.Migrations); err != nil {
+		t.Fatalf("RunMigrations: %v", err)
+	}
+
+	keyless := store.NewFromDB(db)
+
+	if _, err := store.NewFromDBWithSecret(db, "too-short"); err == nil {
+		t.Fatal("NewFromDBWithSecret accepted a secret shorter than 32 bytes")
+	}
+
+	row := store.ClusterRow{Name: "keyless-cluster", URL: "https://kl.invalid/api2/json", TokenID: testClusterTokenID, TokenSecret: "real-secret"}
+	if err := keyless.CreateCluster(ctx, row); err == nil {
+		t.Fatal("CreateCluster without an encryption key stored a secret")
+	}
+
+	keyed, err := store.NewFromDBWithSecret(db, clusterTestSecret)
+	if err != nil {
+		t.Fatalf("NewFromDBWithSecret: %v", err)
+	}
+	if err := keyed.CreateCluster(ctx, row); err != nil {
+		t.Fatalf("CreateCluster with key: %v", err)
+	}
+
+	if _, err := keyless.GetCluster(ctx, row.Name); err == nil {
+		t.Fatal("GetCluster without an encryption key decrypted a stored secret")
+	}
+}
+
+//nolint:paralleltest // serial: shared database fixture
+func TestStore_SetClusterTLS(t *testing.T) {
+	st := openClusterStore(t)
+	ctx := context.Background()
+
+	if err := st.SetClusterTLS(ctx, "no-such-cluster", store.ClusterTLS{}); !errors.Is(err, store.ErrInvalidClusterName) {
+		t.Fatalf("SetClusterTLS on missing cluster = %v, want ErrInvalidClusterName", err)
+	}
+
+	row := store.ClusterRow{Name: "tls-cluster", URL: "https://tls.invalid/api2/json", TokenID: testClusterTokenID, TokenSecret: "s"}
+	if err := st.CreateCluster(ctx, row); err != nil {
+		t.Fatalf("CreateCluster: %v", err)
+	}
+
+	material := store.ClusterTLS{
+		CAPEM:            "ca-pem",
+		NodeFingerprints: "aa:bb",
+		ClientCertPEM:    "cert-pem",
+		ClientKeyPEM:     "client-key-pem",
+	}
+	if err := st.SetClusterTLS(ctx, row.Name, material); err != nil {
+		t.Fatalf("SetClusterTLS: %v", err)
+	}
+
+	got, err := st.GetCluster(ctx, row.Name)
+	if err != nil {
+		t.Fatalf("GetCluster: %v", err)
+	}
+	if got.TLS != material {
+		t.Fatalf("TLS = %+v, want %+v", got.TLS, material)
+	}
+
+	var keyCipher []byte
+	if err := st.DB().QueryRowContext(ctx, `SELECT tls_client_key_ciphertext FROM clusters WHERE name = ?`, row.Name).Scan(&keyCipher); err != nil {
+		t.Fatalf("read key ciphertext: %v", err)
+	}
+	if len(keyCipher) == 0 || strings.Contains(string(keyCipher), material.ClientKeyPEM) {
+		t.Fatalf("client key stored empty or in plaintext: %x", keyCipher)
+	}
+
+	material.ClientKeyPEM = ""
+	if err := st.SetClusterTLS(ctx, row.Name, material); err != nil {
+		t.Fatalf("SetClusterTLS clear key: %v", err)
+	}
+	got, err = st.GetCluster(ctx, row.Name)
+	if err != nil {
+		t.Fatalf("GetCluster after clear: %v", err)
+	}
+	if got.TLS.ClientKeyPEM != "" {
+		t.Fatalf("ClientKeyPEM = %q, want cleared", got.TLS.ClientKeyPEM)
+	}
+}
+
+// Discovery fills an empty display name but never overwrites a chosen label:
+// a connection test must not stomp an admin-set name.
+//
+//nolint:paralleltest // serial: shared database fixture
+func TestStore_SetDiscoveredClusterDisplayName(t *testing.T) {
+	st := openClusterStore(t)
+	ctx := context.Background()
+
+	if err := st.SetDiscoveredClusterDisplayName(ctx, "no-such-cluster", "x"); err != nil {
+		t.Fatalf("missing cluster must be a silent no-op, got %v", err)
+	}
+
+	row := store.ClusterRow{Name: "disc-cluster", URL: "https://d.invalid/api2/json", TokenID: testClusterTokenID, TokenSecret: "s"}
+	if err := st.CreateCluster(ctx, row); err != nil {
+		t.Fatalf("CreateCluster: %v", err)
+	}
+
+	if err := st.SetDiscoveredClusterDisplayName(ctx, row.Name, "Discovered Name"); err != nil {
+		t.Fatalf("SetDiscoveredClusterDisplayName: %v", err)
+	}
+
+	got, err := st.GetCluster(ctx, row.Name)
+	if err != nil {
+		t.Fatalf("GetCluster: %v", err)
+	}
+	if got.DisplayName != "Discovered Name" {
+		t.Fatalf("DisplayName = %q, want discovered value", got.DisplayName)
+	}
+
+	if err := st.SetDiscoveredClusterDisplayName(ctx, row.Name, "Overwrite Attempt"); err != nil {
+		t.Fatalf("second discover: %v", err)
+	}
+
+	got, err = st.GetCluster(ctx, row.Name)
+	if err != nil {
+		t.Fatalf("GetCluster after overwrite attempt: %v", err)
+	}
+	if got.DisplayName != "Discovered Name" {
+		t.Fatalf("DisplayName = %q, want unchanged %q", got.DisplayName, "Discovered Name")
+	}
+}
+
+//nolint:paralleltest // migration fixtures are intentionally serial
+func TestClusters_SoftDeleteRevokesBoundSessions(t *testing.T) {
+	st := openClusterStore(t)
+	ctx := context.Background()
+	row := store.ClusterRow{Name: "session-cluster", URL: "https://session.invalid", TokenID: testClusterTokenID, TokenSecret: testClusterTokenSecret}
+	if err := st.CreateCluster(ctx, row); err != nil {
+		t.Fatalf("CreateCluster: %v", err)
+	}
+
+	// Sessions bound to the removed cluster can only fail - every request
+	// resolves the client through a registry that no longer has it - so they
+	// are revoked in the same transaction. Cluster-less local sessions stay.
+	bound := auth.SessionRecord{
+		Hash:      []byte("bound-session-hash"),
+		Identity:  auth.Identity{Username: "bob@pve", Cluster: row.Name},
+		ExpiresAt: time.Now().Add(time.Hour),
+		CreatedAt: time.Now(),
+	}
+	local := auth.SessionRecord{
+		Hash:      []byte("local-session-hash"),
+		Identity:  auth.Identity{Username: "local-admin", IsAdmin: true},
+		ExpiresAt: time.Now().Add(time.Hour),
+		CreatedAt: time.Now(),
+	}
+	for _, session := range []auth.SessionRecord{bound, local} {
+		if err := st.CreateSession(ctx, session); err != nil {
+			t.Fatalf("CreateSession: %v", err)
+		}
+	}
+
+	if err := st.SoftDeleteCluster(ctx, row.Name); err != nil {
+		t.Fatalf("SoftDeleteCluster: %v", err)
+	}
+
+	if _, err := st.FindSession(ctx, bound.Hash); err == nil {
+		t.Fatal("bound session should be revoked with its cluster")
+	}
+	if _, err := st.FindSession(ctx, local.Hash); err != nil {
+		t.Fatalf("cluster-less session must survive: %v", err)
 	}
 }

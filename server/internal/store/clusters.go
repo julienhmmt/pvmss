@@ -193,6 +193,13 @@ func (s *Store) SoftDeleteCluster(ctx context.Context, name string) error {
 		}
 		return sql.ErrNoRows
 	}
+	// Sessions bound to the removed cluster can only fail: every request
+	// resolves the client through a registry that no longer has it. Revoke
+	// them in the same transaction so the removal is atomic. Local and
+	// bootstrap sessions carry an empty cluster and are unaffected.
+	if _, err := tx.ExecContext(ctx, `DELETE FROM sessions WHERE cluster = ?`, name); err != nil {
+		return fmt.Errorf("revoke cluster sessions: %w", err)
+	}
 	if err := tx.Commit(); err != nil {
 		return fmt.Errorf("commit cluster removal: %w", err)
 	}
