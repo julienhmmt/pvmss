@@ -356,3 +356,57 @@ func TestAuth_AdminLogin_AllowedWhenClusterUnavailable(t *testing.T) {
 		t.Fatalf("status = %d, want %d", rec.Code, http.StatusOK)
 	}
 }
+
+//nolint:paralleltest // serial: shared fake auth and session fixtures
+func TestAuth_LoginPVE_PerAccountThrottle(t *testing.T) {
+	handler := newAuthHandler(t)
+	bad := `{"username":"alice","password":"wrong"}`
+
+	// maxPVELoginFailures wrong-password attempts answer plain 401s; the
+	// account itself is throttled from the next attempt, independently of
+	// the client IP doing the guessing.
+	for i := range 5 {
+		response := serveJSON(handler.Login, "/api/v1/auth/login", bad)
+		if response.Code != http.StatusUnauthorized {
+			t.Fatalf("failure %d status = %d, want 401", i+1, response.Code)
+		}
+	}
+
+	response := serveJSON(handler.Login, "/api/v1/auth/login", bad)
+	if response.Code != http.StatusTooManyRequests {
+		t.Fatalf("throttled status = %d, want 429", response.Code)
+	}
+
+	// Another account on the same cluster keeps its own budget.
+	response = serveJSON(handler.Login, "/api/v1/auth/login", `{"username":"bob","password":"wrong"}`)
+	if response.Code != http.StatusUnauthorized {
+		t.Fatalf("bob status = %d, want 401", response.Code)
+	}
+}
+
+//nolint:paralleltest // serial: shared fake auth and session fixtures
+func TestAuth_LoginPVE_SuccessClearsFailureWindow(t *testing.T) {
+	handler := newAuthHandler(t)
+	bad := `{"username":"alice","password":"wrong"}`
+
+	for i := range 4 {
+		response := serveJSON(handler.Login, "/api/v1/auth/login", bad)
+		if response.Code != http.StatusUnauthorized {
+			t.Fatalf("failure %d status = %d, want 401", i+1, response.Code)
+		}
+	}
+
+	response := serveJSON(handler.Login, "/api/v1/auth/login", `{"username":"alice","password":"pvmss-alice"}`)
+	if response.Code != http.StatusOK {
+		t.Fatalf("login status = %d, want 200", response.Code)
+	}
+
+	// Without the success reset the window would hold 4 + 5 failures and
+	// throttle before the last attempts; each must stay a plain 401.
+	for i := range 5 {
+		response := serveJSON(handler.Login, "/api/v1/auth/login", bad)
+		if response.Code != http.StatusUnauthorized {
+			t.Fatalf("post-reset failure %d status = %d, want 401", i+1, response.Code)
+		}
+	}
+}

@@ -114,6 +114,15 @@ func (l *windowLimiter) exhausted(key string, now time.Time) bool {
 	return count >= l.max
 }
 
+// reset clears key's hit history: a successful login wipes its failure
+// window so the next failure starts a fresh count.
+func (l *windowLimiter) reset(key string) {
+	l.mu.Lock()
+	defer l.mu.Unlock()
+
+	delete(l.hits, key)
+}
+
 // sweepIdle drops keys whose hits have all left the window, at most once per
 // window, and returns the time of the last sweep. Without it a key that never
 // returns would stay in the map for the life of the process. The caller holds
@@ -187,8 +196,9 @@ func (l *ipRateLimiter) middleware(next http.Handler) http.Handler {
 }
 
 // userRateLimiter is a per-user limiter for authenticated state-changing
-// endpoints. It is keyed by username, falling back to client IP when no
-// principal can be resolved.
+// endpoints. It is keyed by cluster+username - the same username on two
+// clusters is two distinct accounts and must not share one budget - falling
+// back to client IP when no principal can be resolved.
 type userRateLimiter struct{ *windowLimiter }
 
 func newUserRateLimiter(maxRequests int, window time.Duration, trustedProxyHops int, st *store.Store) *userRateLimiter {
@@ -205,7 +215,7 @@ func (l *userRateLimiter) middleware(authHandler *Auth, next http.Handler) http.
 
 		identity, err := authHandler.Principal(r)
 		if err == nil {
-			key = identity.Username
+			key = identity.Cluster + "|" + identity.Username
 			actor = identity.Username
 		}
 

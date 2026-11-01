@@ -6,8 +6,11 @@ import (
 	"log/slog"
 	"net/http"
 	"net/http/httptest"
+	"path/filepath"
 	"pvmss/server/internal/auth"
 	"pvmss/server/internal/cluster"
+	"pvmss/server/internal/config"
+	"pvmss/server/internal/store"
 	"strconv"
 	"testing"
 	"time"
@@ -222,4 +225,76 @@ func TestWindowLimiter_AuditsOneRejectionPerWindow(t *testing.T) {
 	if !l.shouldAudit("192.0.2.1", base.Add(2*time.Minute)) {
 		t.Fatal("rejection after the window should be audited again")
 	}
+}
+
+// TestUserRateLimiter_ClusterScopedBudget - the same username on two clusters
+// is two distinct accounts; a single username key would let one cluster's
+// writes starve a same-named user on another cluster.
+func TestUserRateLimiter_ClusterScopedBudget(t *testing.T) {
+	t.Parallel()
+
+	st, err := store.Open(config.Configuration{DBPath: filepath.Join(t.TempDir(), "sessions.db")})
+	if err != nil {
+		t.Fatalf("store.Open: %v", err)
+	}
+
+	t.Cleanup(func() { _ = st.Close() })
+
+	sessions, err := auth.NewSessionManager(st, "a-session-secret-with-at-least-thirty-two-bytes", false)
+	if err != nil {
+		t.Fatalf("NewSessionManager: %v", err)
+	}
+
+	authHandler := NewAuthWithRegistry(fakeSingleProvider{client: cluster.Fake{}}, nil, sessions, "", slog.New(slog.DiscardHandler))
+	handler := newUserRateLimiter(2, time.Minute, 0, nil).middleware(authHandler, okHandler())
+
+	clusterASession := sessionCookie(t, sessions, auth.Identity{Username: cluster.FakeUserBob, Cluster: "a"})
+	clusterBSession := sessionCookie(t, sessions, auth.Identity{Username: cluster.FakeUserBob, Cluster: "b"})
+
+	serve := func(cookie *http.Cookie) *httptest.ResponseRecorder {
+		req := httptest.NewRequestWithContext(context.Background(), http.MethodPost, "/", nil)
+		// Same client IP for both - only the principal key differs.
+		req.RemoteAddr = "192.0.2.9:1000"
+		req.AddCookie(cookie)
+
+		rec := httptest.NewRecorder()
+		handler.ServeHTTP(rec, req)
+
+		return rec
+	}
+
+	for i := range 2 {
+		if rec := serve(clusterASession); rec.Code != http.StatusNoContent {
+			t.Fatalf("cluster a request %d status = %d, want 204", i+1, rec.Code)
+		}
+	}
+
+	if rec := serve(clusterASession); rec.Code != http.StatusTooManyRequests {
+		t.Fatalf("cluster a request 3 status = %d, want 429", rec.Code)
+	}
+
+	if rec := serve(clusterBSession); rec.Code != http.StatusNoContent {
+		t.Fatalf("same username on cluster b status = %d, want its own budget (204)", rec.Code)
+	}
+}
+
+func sessionCookie(t *testing.T, sessions *auth.SessionManager, identity auth.Identity) *http.Cookie {
+	t.Helper()
+
+	rec := httptest.NewRecorder()
+	req := httptest.NewRequestWithContext(context.Background(), http.MethodGet, "/", nil)
+
+	if err := sessions.SetCookie(req.Context(), rec, identity); err != nil {
+		t.Fatalf("SetCookie: %v", err)
+	}
+
+	for _, cookie := range rec.Result().Cookies() {
+		if cookie.Name == auth.SessionCookieName {
+			return cookie
+		}
+	}
+
+	t.Fatal("SetCookie wrote no session cookie")
+
+	return nil
 }
