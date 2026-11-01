@@ -1,8 +1,8 @@
 package main
 
 import (
-	"errors"
 	"context"
+	"fmt"
 	"log/slog"
 	"net/http"
 	"pvmss/server/internal/auth"
@@ -183,49 +183,67 @@ type clusterClientInterfaces struct {
 	guestNetReader       cluster.GuestNetworkReader
 }
 
+// must asserts the cluster client implements capability interface T. Every
+// concrete client (Fake, Proxmox) satisfies all of them; a missing one is a
+// wiring error, not a runtime condition.
+func must[T any](client cluster.Client, name string) (T, error) {
+	capability, ok := client.(T)
+	if !ok {
+		var zero T
+		return zero, fmt.Errorf("cluster client does not implement %s", name)
+	}
+	return capability, nil
+}
+
 // resolveClusterClientInterfaces asserts that the cluster client implements
 // every capability interface the router needs. Both cluster.Client
 // implementations (Fake, Proxmox) satisfy all of them - reads and writes are
 // separated by interface, not by implementation.
 func resolveClusterClientInterfaces(clusterClient cluster.Client) (clusterClientInterfaces, error) {
 	var c clusterClientInterfaces
-	var ok bool
+	var err error
 
-	if c.writer, ok = clusterClient.(cluster.Writer); !ok {
-		return c, errors.New("cluster client does not implement Writer")
+	fields := []struct {
+		name string
+		set  func(v error) error
+	}{}
+	_ = fields
+
+	if c.writer, err = must[cluster.Writer](clusterClient, "Writer"); err != nil {
+		return c, err
 	}
-	if c.creator, ok = clusterClient.(cluster.Creator); !ok {
-		return c, errors.New("cluster client does not implement Creator")
+	if c.creator, err = must[cluster.Creator](clusterClient, "Creator"); err != nil {
+		return c, err
 	}
-	if c.cloudInitReader, ok = clusterClient.(cluster.CloudInitReader); !ok {
-		return c, errors.New("cluster client does not implement CloudInitReader")
+	if c.cloudInitReader, err = must[cluster.CloudInitReader](clusterClient, "CloudInitReader"); err != nil {
+		return c, err
 	}
-	if c.snapshotReader, ok = clusterClient.(cluster.SnapshotReader); !ok {
-		return c, errors.New("cluster client does not implement SnapshotReader")
+	if c.snapshotReader, err = must[cluster.SnapshotReader](clusterClient, "SnapshotReader"); err != nil {
+		return c, err
 	}
-	if c.snapshotWriter, ok = clusterClient.(cluster.SnapshotWriter); !ok {
-		return c, errors.New("cluster client does not implement SnapshotWriter")
+	if c.snapshotWriter, err = must[cluster.SnapshotWriter](clusterClient, "SnapshotWriter"); err != nil {
+		return c, err
 	}
-	if c.migrator, ok = clusterClient.(cluster.Migrator); !ok {
-		return c, errors.New("cluster client does not implement Migrator")
+	if c.migrator, err = must[cluster.Migrator](clusterClient, "Migrator"); err != nil {
+		return c, err
 	}
-	if c.consoleRelay, ok = clusterClient.(cluster.ConsoleRelay); !ok {
-		return c, errors.New("cluster client does not implement ConsoleRelay")
+	if c.consoleRelay, err = must[cluster.ConsoleRelay](clusterClient, "ConsoleRelay"); err != nil {
+		return c, err
 	}
-	if c.serialRelay, ok = clusterClient.(cluster.TerminalRelay); !ok {
-		return c, errors.New("cluster client does not implement TerminalRelay")
+	if c.serialRelay, err = must[cluster.TerminalRelay](clusterClient, "TerminalRelay"); err != nil {
+		return c, err
 	}
-	if c.metricsReader, ok = clusterClient.(cluster.MetricsHistoryReader); !ok {
-		return c, errors.New("cluster client does not implement MetricsHistoryReader")
+	if c.metricsReader, err = must[cluster.MetricsHistoryReader](clusterClient, "MetricsHistoryReader"); err != nil {
+		return c, err
 	}
-	if c.metricsCurrentReader, ok = clusterClient.(cluster.MetricsCurrentReader); !ok {
-		return c, errors.New("cluster client does not implement MetricsCurrentReader")
+	if c.metricsCurrentReader, err = must[cluster.MetricsCurrentReader](clusterClient, "MetricsCurrentReader"); err != nil {
+		return c, err
 	}
-	if c.statusReader, ok = clusterClient.(cluster.VMStatusReader); !ok {
-		return c, errors.New("cluster client does not implement VMStatusReader")
+	if c.statusReader, err = must[cluster.VMStatusReader](clusterClient, "VMStatusReader"); err != nil {
+		return c, err
 	}
-	if c.guestNetReader, ok = clusterClient.(cluster.GuestNetworkReader); !ok {
-		return c, errors.New("cluster client does not implement GuestNetworkReader")
+	if c.guestNetReader, err = must[cluster.GuestNetworkReader](clusterClient, "GuestNetworkReader"); err != nil {
+		return c, err
 	}
 
 	return c, nil
