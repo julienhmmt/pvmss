@@ -115,3 +115,55 @@ func TestCheckNodeCapacity_ExcludesVMAndRejectsAdditionalUsage(t *testing.T) {
 		t.Fatalf("additional capacity error = %v, want ErrNodeCapacityExceeded", err)
 	}
 }
+
+type recordingAuditor struct {
+	calls   int
+	detail  string
+	lastIP  string
+	lastErr error
+}
+
+func (r *recordingAuditor) RecordAdminAction(_ context.Context, _, _, _, _, detail, ip string) error {
+	r.calls++
+	r.detail = detail
+	r.lastIP = ip
+	return r.lastErr
+}
+
+// A quota denial is audit-logged with the client IP the HTTP layer put on the
+// context - losing it would make the audit row unattributable.
+func TestCheckQuota_AuditCarriesClientIP(t *testing.T) {
+	t.Parallel()
+	service, _ := newPolicyService(t)
+	ctx := context.Background()
+
+	recorder := &recordingAuditor{}
+	service.SetQuotaAuditor(recorder)
+
+	actor := auth.Identity{Username: testUserAlice, Pool: cluster.FakePoolAlice}
+
+	quota, err := service.Quota(ctx, "default", actor)
+	if err != nil {
+		t.Fatalf("Quota: %v", err)
+	}
+	if err := service.SetPolicy(ctx, "default", policy.Gabarit{}, quota.Used); err != nil {
+		t.Fatalf("SetPolicy: %v", err)
+	}
+
+	if err := service.CheckQuota(policy.ContextWithAuditIP(ctx, "203.0.113.9"), "default", actor); !errors.Is(err, policy.ErrQuotaExceeded) {
+		t.Fatalf("CheckQuota = %v, want ErrQuotaExceeded", err)
+	}
+	if recorder.calls != 1 || recorder.lastIP != "203.0.113.9" {
+		t.Fatalf("auditor got calls=%d ip=%q, want one call with the context IP", recorder.calls, recorder.lastIP)
+	}
+	if recorder.detail == "" {
+		t.Error("audit detail is empty, want the quota summary JSON")
+	}
+
+	if err := service.CheckQuota(ctx, "default", actor); !errors.Is(err, policy.ErrQuotaExceeded) {
+		t.Fatalf("second CheckQuota = %v, want ErrQuotaExceeded", err)
+	}
+	if recorder.lastIP != "" {
+		t.Fatalf("ip without context value = %q, want empty", recorder.lastIP)
+	}
+}
