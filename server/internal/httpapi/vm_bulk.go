@@ -2,6 +2,7 @@
 package httpapi
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"log/slog"
@@ -11,7 +12,18 @@ import (
 	"pvmss/server/internal/store"
 	"pvmss/server/internal/vm"
 	"strings"
+	"time"
 )
+
+// bulkActionBudget bounds the whole BulkAction loop: up to MaxBulkTargets
+// sequential actions, each of which may wait on a VM lock for up to
+// vm.MaxLockRetryWait, must stay under the response write deadline or the
+// client loses the per-target results while the actions keep running.
+const bulkActionBudget = 4 * time.Minute
+
+// bulkWriteDeadlineMargin covers JSON encoding and the response write after
+// the action budget is spent.
+const bulkWriteDeadlineMargin = 15 * time.Second
 
 // VMBulk serves POST /api/v1/vms/bulk-action. It authenticates the
 // actor through the same Auth.Principal path every other VM endpoint uses,
@@ -145,7 +157,16 @@ func (h *VMBulk) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	results := vm.BulkAction(r.Context(), vm.BulkDeps{
+	// Extend the write deadline just past the shared action budget, then
+	// bound the loop itself - targets the budget never reaches report
+	// ctx.DeadlineExceeded as their per-target error.
+	if rc := http.NewResponseController(w); rc != nil {
+		_ = rc.SetWriteDeadline(time.Now().Add(bulkActionBudget + bulkWriteDeadlineMargin))
+	}
+	actionCtx, cancel := context.WithTimeout(r.Context(), bulkActionBudget)
+	defer cancel()
+
+	results := vm.BulkAction(actionCtx, vm.BulkDeps{
 		Resolver:          h.resolver,
 		WriterResolver:    h.writerResolver,
 		RefresherResolver: h.refresherResolver,
