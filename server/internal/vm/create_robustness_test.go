@@ -6,6 +6,7 @@ import (
 	"log/slog"
 	"pvmss/server/internal/auth"
 	"pvmss/server/internal/cluster"
+	"pvmss/server/internal/store"
 	"pvmss/server/internal/inventory"
 	"pvmss/server/internal/policy"
 	"pvmss/server/internal/vm"
@@ -41,7 +42,26 @@ func policyWithProjection(t *testing.T, fixture createFixture) *policy.Policy {
 
 	index := inventory.BuildIndex(snapshot)
 
-	return policy.New(fixture.store, inventory.NewProjectionFromIndex(&index), fixture.fake)
+	return policyWithStaticProjection(fixture.store, inventory.NewProjectionFromIndex(&index), fixture.fake)
+}
+
+// staticProjectionSource answers every cluster name with the same
+// projection, matching the legacy policy.New projection fallback it
+// replaces: tests that only ever see one cluster don't need a registry.
+type staticProjectionSource struct{ projection *inventory.Projection }
+
+func (s staticProjectionSource) Projection(string) (*inventory.Projection, error) {
+	return s.projection, nil
+}
+
+// policyWithStaticProjection builds a policy service whose projection reads
+// all hit the one test projection regardless of cluster name.
+func policyWithStaticProjection(st *store.Store, projection *inventory.Projection, client policy.Snapshotter) *policy.Policy {
+	svc := policy.New(st, client)
+	if projection != nil {
+		svc.SetProjectionSource(staticProjectionSource{projection: projection})
+	}
+	return svc
 }
 
 //  - VMID collision retry -

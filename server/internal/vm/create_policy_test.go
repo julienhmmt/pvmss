@@ -84,7 +84,7 @@ func runPolicyCase(
 
 	index := inventory.BuildIndex(snapshot)
 
-	service := policy.New(fixture.store, inventory.NewProjectionFromIndex(&index), fixture.fake)
+	service := policyWithStaticProjection(fixture.store, inventory.NewProjectionFromIndex(&index), fixture.fake)
 	if err := prepare(service, context.Background()); err != nil {
 		t.Fatalf("prepare policy: %v", err)
 	}

@@ -15,7 +15,6 @@ import (
 	"pvmss/server/internal/config"
 	"pvmss/server/internal/httpapi"
 	"pvmss/server/internal/inventory"
-	"pvmss/server/internal/policy"
 	"pvmss/server/internal/store"
 	"strings"
 	"testing"
@@ -674,7 +673,7 @@ func TestAdminPolicyCoverage_PutClusterRequired_Returns400(t *testing.T) {
 	}
 
 	index := inventory.BuildIndex(snapshot)
-	service := policy.New(st, inventory.NewProjectionFromIndex(&index), fake)
+	service := policyWithStaticProjection(st, inventory.NewProjectionFromIndex(&index), fake)
 	lister := fakeClusterListerProvider{names: []string{auditTestCluster, crossSecondaryCluster}}
 	policyHandler := httpapi.NewAdminPolicyWithRegistry(authHandler, service, lister, slog.New(slog.DiscardHandler))
 
@@ -710,7 +709,7 @@ func TestAdminPolicyCoverage_GetClusterRequired_Returns400(t *testing.T) {
 	}
 
 	index := inventory.BuildIndex(snapshot)
-	service := policy.New(st, inventory.NewProjectionFromIndex(&index), fake)
+	service := policyWithStaticProjection(st, inventory.NewProjectionFromIndex(&index), fake)
 	lister := fakeClusterListerProvider{names: []string{auditTestCluster, crossSecondaryCluster}}
 	policyHandler := httpapi.NewAdminPolicyWithRegistry(authHandler, service, lister, slog.New(slog.DiscardHandler))
 

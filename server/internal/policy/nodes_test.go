@@ -28,12 +28,31 @@ func newPolicyServiceWithClient(t *testing.T, client cluster.Client) (*policy.Po
 		index := inventory.BuildIndex(snapshot)
 		projection := inventory.NewProjectionFromIndex(&index)
 
-		return policy.New(st, projection, client), projection
+		return policyWithStaticProjection(st, projection, client), projection
 	}
 
 	projection := inventory.NewProjection()
 
-	return policy.New(st, projection, client), projection
+	return policyWithStaticProjection(st, projection, client), projection
+}
+
+// staticProjectionSource answers every cluster name with the same
+// projection, matching the legacy policy.New projection fallback it
+// replaces: tests that only ever see one cluster don't need a registry.
+type staticProjectionSource struct{ projection *inventory.Projection }
+
+func (s staticProjectionSource) Projection(string) (*inventory.Projection, error) {
+	return s.projection, nil
+}
+
+// policyWithStaticProjection builds a policy service whose projection reads
+// all hit the one test projection regardless of cluster name.
+func policyWithStaticProjection(st *store.Store, projection *inventory.Projection, client policy.Snapshotter) *policy.Policy {
+	svc := policy.New(st, client)
+	if projection != nil {
+		svc.SetProjectionSource(staticProjectionSource{projection: projection})
+	}
+	return svc
 }
 
 func newPolicyServiceNoClientNoProjection(t *testing.T) *policy.Policy {
@@ -46,7 +65,7 @@ func newPolicyServiceNoClientNoProjection(t *testing.T) *policy.Policy {
 
 	t.Cleanup(func() { _ = st.Close() })
 
-	return policy.New(st, nil, nil)
+	return policy.New(st, nil)
 }
 
 func TestNodeCapacities_ReturnsAllDiscoveredNodesSorted(t *testing.T) {

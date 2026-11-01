@@ -40,7 +40,7 @@ func newQuotaFixture(t *testing.T) quotaFixture {
 	}
 
 	index := inventory.BuildIndex(snapshot)
-	service := policy.New(st, inventory.NewProjectionFromIndex(&index), fake)
+	service := policyWithStaticProjection(st, inventory.NewProjectionFromIndex(&index), fake)
 
 	if err := service.SetPolicy(context.Background(), "default", policy.Gabarit{}, 2); err != nil {
 		t.Fatalf("SetPolicy: %v", err)

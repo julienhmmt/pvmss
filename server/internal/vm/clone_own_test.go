@@ -35,7 +35,7 @@ func newCloneFixture(t *testing.T) cloneFixture {
 	}
 
 	index := inventory.BuildIndex(snapshot)
-	service := policy.New(fixture.store, inventory.NewProjectionFromIndex(&index), fixture.fake)
+	service := policyWithStaticProjection(fixture.store, inventory.NewProjectionFromIndex(&index), fixture.fake)
 
 	return cloneFixture{createFixture: fixture, index: &index, service: service}
 }

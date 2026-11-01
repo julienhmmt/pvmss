@@ -25,7 +25,7 @@ func TestCreate_InFlightCreateCountsBeforeRefresh(t *testing.T) {
 	}
 
 	index := inventory.BuildIndex(snapshot)
-	service := policy.New(fixture.store, inventory.NewProjectionFromIndex(&index), fixture.fake)
+	service := policyWithStaticProjection(fixture.store, inventory.NewProjectionFromIndex(&index), fixture.fake)
 	used := len(index.ByPool[aliceIdentity().Pool])
 
 	if err := service.SetPolicy(ctx, testClusterName, policy.DefaultGabarit(), used+2); err != nil {
@@ -63,7 +63,7 @@ func TestCreate_InFlightCreateCountsBeforeRefresh(t *testing.T) {
 //nolint:paralleltest // Uses the process-wide cluster.FakeCalls log.
 func TestCreate_RefusesBeforeFirstInventoryLoad(t *testing.T) {
 	fixture := newCreateFixture(t)
-	service := policy.New(fixture.store, inventory.NewProjection(), fixture.fake)
+	service := policyWithStaticProjection(fixture.store, inventory.NewProjection(), fixture.fake)
 
 	req := detailedRequest()
 	req.Name = "too-early"

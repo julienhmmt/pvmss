@@ -156,7 +156,7 @@ func run() int {
 	// The one policy service shared by the router and the background
 	// sweeps: projections are resolved per cluster through the inventory
 	// registry, so quota and name checks never read another cluster's VMs.
-	policyService := policy.New(st, defaultProjection, nil)
+	policyService := policy.New(st, nil)
 	policyService.SetClusterProvider(clusterRegistry)
 	policyService.SetProjectionSource(inventoryRegistry)
 	policyService.SetQuotaAuditor(st)

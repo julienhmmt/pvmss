@@ -12,7 +12,6 @@ import (
 	"pvmss/server/internal/cluster"
 	"pvmss/server/internal/httpapi"
 	"pvmss/server/internal/inventory"
-	"pvmss/server/internal/policy"
 	"pvmss/server/internal/vm"
 	"regexp"
 	"slices"
@@ -531,7 +530,7 @@ func newAuthzContractRouter(t *testing.T) (http.Handler, *httpapi.Auth) {
 	worker := inventory.NewWorker(cluster.Fake{}, projection, time.Hour, logger)
 	refresher := inventory.NewRefresher(worker, 5*time.Second)
 
-	policyService := policy.New(st, projection, nil)
+	policyService := policyWithStaticProjection(st, projection, nil)
 
 	health := httpapi.NewHealth(authzFakePinger{}, logger, nil, 60*time.Second)
 	clusterNodes := httpapi.NewClusterNodesWithRegistry(projectionRegistry(projection), newAuthHandler(t), logger)

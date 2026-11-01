@@ -11,7 +11,6 @@ import (
 	"pvmss/server/internal/config"
 	"pvmss/server/internal/httpapi"
 	"pvmss/server/internal/inventory"
-	"pvmss/server/internal/policy"
 	"pvmss/server/internal/store"
 	"pvmss/server/internal/testfixture"
 	"testing"
@@ -46,7 +45,7 @@ func newVMCreateHandlerWithPolicy(t *testing.T) (*httpapi.VMCreate, *httpapi.Aut
 	}
 
 	index := inventory.BuildIndex(snapshot)
-	service := policy.New(st, inventory.NewProjectionFromIndex(&index), cluster.Fake{})
+	service := policyWithStaticProjection(st, inventory.NewProjectionFromIndex(&index), cluster.Fake{})
 	provider := vmCreateClientProvider{clients: map[string]cluster.Client{auditTestCluster: cluster.Fake{}}}
 
 	return httpapi.NewVMCreateWithRegistry(authHandler, st, provider, cluster.Fake{}, slog.New(slog.DiscardHandler), service), authHandler

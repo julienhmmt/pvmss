@@ -10,7 +10,6 @@ import (
 	"pvmss/server/internal/cluster"
 	"pvmss/server/internal/httpapi"
 	"pvmss/server/internal/inventory"
-	"pvmss/server/internal/policy"
 	"strings"
 	"testing"
 )
@@ -116,7 +115,7 @@ func TestAdminPolicy_PutNoChangeSkipsWriteAndAudit(t *testing.T) {
 	}
 
 	index := inventory.BuildIndex(snapshot)
-	service := policy.New(st, inventory.NewProjectionFromIndex(&index), fake)
+	service := policyWithStaticProjection(st, inventory.NewProjectionFromIndex(&index), fake)
 	handler := httpapi.NewAdminPolicyWithRegistry(authHandler, service, singleClientProvider(cluster.Fake{}), slog.New(slog.DiscardHandler))
 	handler.SetStore(st)
 	mux := policyMux(handler, authHandler)
@@ -276,7 +275,7 @@ func newPolicyHandler(t *testing.T) (*httpapi.AdminPolicy, *httpapi.Auth) {
 	}
 
 	index := inventory.BuildIndex(snapshot)
-	service := policy.New(st, inventory.NewProjectionFromIndex(&index), fake)
+	service := policyWithStaticProjection(st, inventory.NewProjectionFromIndex(&index), fake)
 
 	return httpapi.NewAdminPolicyWithRegistry(authHandler, service, singleClientProvider(cluster.Fake{}), slog.New(slog.DiscardHandler)), authHandler
 }

@@ -27,7 +27,7 @@ func newPolicyServiceWithProjectionOnly(t *testing.T, projection *inventory.Proj
 
 	t.Cleanup(func() { _ = st.Close() })
 
-	return policy.New(st, projection, nil)
+	return policyWithStaticProjection(st, projection, nil)
 }
 
 // --- SetPolicy ---

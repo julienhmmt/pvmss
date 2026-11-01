@@ -16,7 +16,7 @@ func TestUpdateHardware_NodeCapacityExcludesResizedVM(t *testing.T) {
 
 	index := diskTestIndex(t, 105, cluster.VMStopped)
 	st := bulkTestStore(t)
-	service := policy.New(st, inventory.NewProjectionFromIndex(index), cluster.Fake{})
+	service := policyWithStaticProjection(st, inventory.NewProjectionFromIndex(index), cluster.Fake{})
 
 	capacity, err := service.NodeCapacity(context.Background(), testClusterName, cluster.FakeNode02)
 	if err != nil {

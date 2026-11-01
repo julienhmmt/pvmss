@@ -523,7 +523,7 @@ func createWithTemplates(t *testing.T, fixture createFixture, templates interfac
 		FreeSpace: fixture.fake,
 		Audit:     fixture.store,
 		Log:       log,
-		Policy:    policy.New(fixture.store, nil, nil),
+		Policy:    policy.New(fixture.store, nil),
 		Templates: templates,
 	})
 }

@@ -126,11 +126,8 @@ type CapacityDelta struct {
 // calculate current usage. The cluster client is only used for admin writes'
 // physical-node validation.
 type Policy struct {
-	store *store.Store
-	// projection is the legacy single-cluster projection. It is only read when
-	// no ProjectionSource is wired (unit tests, degraded deployments).
-	projection  *inventory.Projection
-	projections ProjectionSource // per-cluster projections; wins over projection when set
+	store       *store.Store
+	projections ProjectionSource // per-cluster projections resolved per request cluster
 	client      Snapshotter
 	clusters    cluster.ClientProvider // per-cluster node discovery; wins over client when set
 	auditor     adminActionRecorder    // quota-denial audit; nil skips recording
@@ -153,9 +150,11 @@ type Snapshotter interface {
 	Snapshot(ctx context.Context) (cluster.Snapshot, error)
 }
 
-// New creates a policy service backed by the store and inventory projection.
-func New(st *store.Store, projection *inventory.Projection, client Snapshotter) *Policy {
-	return &Policy{store: st, projection: projection, client: client}
+// New creates a policy service backed by the store. Projections come from a
+// ProjectionSource wired with SetProjectionSource; without one, every read
+// behaves as if the cluster's inventory has not refreshed yet.
+func New(st *store.Store, client Snapshotter) *Policy {
+	return &Policy{store: st, client: client}
 }
 
 // SetProjectionSource makes usage, quota, and name reads follow each request's
@@ -164,21 +163,21 @@ func (service *Policy) SetProjectionSource(source ProjectionSource) {
 	service.projections = source
 }
 
-// projectionFor returns the projection for clusterName, falling back to the
-// service projection when no source is wired (single-cluster tests). A source
-// error is never swallowed: serving another cluster's numbers is worse than
-// failing the request.
+// projectionFor returns the projection for clusterName. With no source wired
+// it reports nil (the "not yet refreshed" state indexFor maps downstream). A
+// source error is never swallowed: serving another cluster's numbers is
+// worse than failing the request.
 func (service *Policy) projectionFor(clusterName string) (*inventory.Projection, error) {
-	if service.projections != nil {
-		projection, err := service.projections.Projection(clusterName)
-		if err != nil {
-			return nil, fmt.Errorf("read %q inventory projection: %w", clusterName, err)
-		}
-
-		return projection, nil
+	if service.projections == nil {
+		return nil, nil
 	}
 
-	return service.projection, nil
+	projection, err := service.projections.Projection(clusterName)
+	if err != nil {
+		return nil, fmt.Errorf("read %q inventory projection: %w", clusterName, err)
+	}
+
+	return projection, nil
 }
 
 // indexFor resolves the cluster's loaded index. A nil index with a nil error

@@ -109,7 +109,7 @@ func (f createFixture) create(t *testing.T, actor auth.Identity, req vm.CreateRe
 		FreeSpace: f.fake,
 		Audit:     f.store,
 		Log:       log,
-		Policy:    policy.New(f.store, nil, nil),
+		Policy:    policy.New(f.store, nil),
 	})
 }
 
@@ -123,7 +123,7 @@ func bobIdentity() auth.Identity {
 
 // mustPolicyService builds a policy service over the fixture's store.
 func mustPolicyService(st *store.Store) *policy.Policy {
-	return policy.New(st, nil, nil)
+	return policy.New(st, nil)
 }
 
 // mustGabarit reads the cluster's gabarit, failing the test on error.
@@ -457,7 +457,7 @@ func TestCreate_AuditFailureDoesNotFailCreate(t *testing.T) {
 		Writer:  fixture.fake,
 		Audit:   failingAudit{},
 		Log:     log,
-		Policy:  policy.New(fixture.store, nil, nil),
+		Policy:  policy.New(fixture.store, nil),
 	})
 	if err != nil {
 		t.Fatalf("Create: %v, want nil (audit failure must not fail the request)", err)
@@ -551,7 +551,7 @@ func TestCreate_Sockets_BeyondMaxSockets(t *testing.T) {
 	}
 
 	index := inventory.BuildIndex(snapshot)
-	service := policy.New(fixture.store, inventory.NewProjectionFromIndex(&index), fixture.fake)
+	service := policyWithStaticProjection(fixture.store, inventory.NewProjectionFromIndex(&index), fixture.fake)
 
 	gabarit, err := service.Gabarit(context.Background(), testClusterName)
 	if err != nil {
@@ -609,7 +609,7 @@ func TestCreate_Sockets_NodeCapacityCountsSocketsTimesCores(t *testing.T) {
 	}
 
 	index := inventory.BuildIndex(snapshot)
-	service := policy.New(fixture.store, inventory.NewProjectionFromIndex(&index), fixture.fake)
+	service := policyWithStaticProjection(fixture.store, inventory.NewProjectionFromIndex(&index), fixture.fake)
 
 	capacity, err := service.NodeCapacity(context.Background(), testClusterName, cluster.FakeNode01)
 	if err != nil {
@@ -703,7 +703,7 @@ func TestCreate_MultiNIC_BeyondMaxNetworkCards(t *testing.T) {
 	}
 
 	index := inventory.BuildIndex(snapshot)
-	service := policy.New(fixture.store, inventory.NewProjectionFromIndex(&index), fixture.fake)
+	service := policyWithStaticProjection(fixture.store, inventory.NewProjectionFromIndex(&index), fixture.fake)
 
 	gabarit, err := service.Gabarit(context.Background(), testClusterName)
 	if err != nil {

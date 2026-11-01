@@ -127,7 +127,7 @@ func newPolicyService(t *testing.T) (*policy.Policy, *inventory.Projection) {
 	index := inventory.BuildIndex(snapshot)
 	projection := inventory.NewProjectionFromIndex(&index)
 
-	return policy.New(st, projection, fake), projection
+	return policyWithStaticProjection(st, projection, fake), projection
 }
 
 func TestPolicyReads_MissingRow_ReturnsDefaults(t *testing.T) {
