@@ -143,9 +143,11 @@ func NewRouter(cfg RouterConfig) http.Handler {
 	}
 
 	mux.Handle("GET /health", cfg.Health)
+
 	if cfg.ClusterNodes != nil {
 		mux.Handle("GET /api/v1/cluster/nodes", cfg.Auth.Require(cfg.ClusterNodes))
 	}
+
 	if cfg.ClusterRefresh != nil {
 		mux.Handle("POST /api/v1/cluster/refresh", protect(cfg.Auth.Require(cfg.ClusterRefresh), clusterTestLimiter))
 	}
@@ -300,11 +302,13 @@ func registerAuthRoutes(mux *http.ServeMux, cfg RouterConfig, protect protectFun
 	mux.Handle("POST /api/v1/auth/admin-login", authLimiter.middleware(http.HandlerFunc(cfg.Auth.AdminLogin)))
 	mux.HandleFunc("GET /api/v1/auth/me", cfg.Auth.Me)
 	mux.Handle("GET /api/v1/auth/clusters", clusterListLimiter.middleware(http.HandlerFunc(cfg.Auth.ServeClusters)))
+
 	if cfg.Setup != nil {
 		mux.Handle("GET /api/v1/setup", clusterListLimiter.middleware(http.HandlerFunc(cfg.Setup.ServeStatus)))
 		// Credential-issuing endpoint: shares the login brute-force budget.
 		mux.Handle("POST /api/v1/setup/admin", authLimiter.middleware(http.HandlerFunc(cfg.Setup.ServeCreateAdmin)))
 	}
+
 	mux.Handle("POST /api/v1/auth/logout", protect(http.HandlerFunc(cfg.Auth.Logout), authWriteLimiter))
 	mux.Handle("POST /api/v1/auth/password", protect(http.HandlerFunc(cfg.Auth.ChangePassword), authWriteLimiter))
 

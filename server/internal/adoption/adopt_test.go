@@ -14,13 +14,13 @@ func adoptFixture(t *testing.T) (context.Context, stubPoolLister, *inventory.Pro
 	t.Helper()
 	ctx := context.Background()
 	lister := stubPoolLister{pools: []cluster.Pool{
-		{Name: "pvmss-alice", Comment: "Alice's pool"},
-		{Name: "pvmss-bob"},
-		{Name: "team-x"},
+		{Name: alicePool, Comment: "Alice's pool"},
+		{Name: bobPool},
+		{Name: teamXPool},
 	}}
 	projection := projectionOf(
-		cluster.VM{VMID: 100, Name: "web-01", Node: "n1", Status: cluster.VMRunning, Pool: "pvmss-alice", Tags: []string{"pvmss", "web", "db"}},
-		cluster.VM{VMID: 101, Name: "web-02", Node: "n1", Status: cluster.VMStopped, Pool: "pvmss-alice", Tags: []string{"pvmss", "db"}},
+		cluster.VM{VMID: 100, Name: web01Name, Node: "n1", Status: cluster.VMRunning, Pool: alicePool, Tags: []string{pvmssTag, "web", "db"}},
+		cluster.VM{VMID: 101, Name: "web-02", Node: "n1", Status: cluster.VMStopped, Pool: alicePool, Tags: []string{pvmssTag, "db"}},
 	)
 	return ctx, lister, projection, newStore(t)
 }
@@ -32,12 +32,12 @@ func TestAdopt_RegistersSelectedPools(t *testing.T) {
 	ctx, lister, projection, st := adoptFixture(t)
 
 	result, err := adoption.Adopt(ctx, lister, projection, st, "default", adoption.Selection{
-		Pools: []string{"pvmss-alice", "team-x", "pvmss-ghost"},
+		Pools: []string{alicePool, teamXPool, "pvmss-ghost"},
 	})
 	if err != nil {
 		t.Fatalf("Adopt: %v", err)
 	}
-	if len(result.Pools) != 1 || result.Pools[0] != "pvmss-alice" {
+	if len(result.Pools) != 1 || result.Pools[0] != alicePool {
 		t.Fatalf("pools = %+v, want [pvmss-alice]", result.Pools)
 	}
 
@@ -45,10 +45,10 @@ func TestAdopt_RegistersSelectedPools(t *testing.T) {
 	if err != nil {
 		t.Fatalf("ManagedPoolNames: %v", err)
 	}
-	if _, ok := managed["pvmss-alice"]; !ok {
+	if _, ok := managed[alicePool]; !ok {
 		t.Fatal("pvmss-alice should be registered")
 	}
-	if _, ok := managed["team-x"]; ok {
+	if _, ok := managed[teamXPool]; ok {
 		t.Fatal("team-x must not be registered")
 	}
 }
@@ -90,7 +90,7 @@ func TestAdopt_CreatesSelectedTagsWithPaletteColors(t *testing.T) {
 // already-created tags reports them adopted again without error.
 func TestAdopt_Idempotent(t *testing.T) {
 	ctx, lister, projection, st := adoptFixture(t)
-	sel := adoption.Selection{Pools: []string{"pvmss-alice"}, Tags: []string{"db"}}
+	sel := adoption.Selection{Pools: []string{alicePool}, Tags: []string{"db"}}
 
 	if _, err := adoption.Adopt(ctx, lister, projection, st, "default", sel); err != nil {
 		t.Fatalf("first Adopt: %v", err)
@@ -99,18 +99,18 @@ func TestAdopt_Idempotent(t *testing.T) {
 	if err != nil {
 		t.Fatalf("ManagedPoolNames: %v", err)
 	}
-	if _, ok := managed["pvmss-bob"]; ok {
+	if _, ok := managed[bobPool]; ok {
 		t.Fatal("fixture needs pvmss-bob unmanaged for the second adopt")
 	}
 
 	result, err := adoption.Adopt(ctx, lister, projection, st, "default", adoption.Selection{
-		Pools: []string{"pvmss-alice", "pvmss-bob"},
+		Pools: []string{alicePool, bobPool},
 		Tags:  []string{"db"},
 	})
 	if err != nil {
 		t.Fatalf("second Adopt: %v", err)
 	}
-	if len(result.Pools) != 1 || result.Pools[0] != "pvmss-bob" {
+	if len(result.Pools) != 1 || result.Pools[0] != bobPool {
 		t.Fatalf("pools = %+v, want only pvmss-bob newly adopted", result.Pools)
 	}
 	if len(result.Tags) != 0 {

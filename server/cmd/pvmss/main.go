@@ -52,11 +52,6 @@ const (
 	// app info page, and the public /api/v1/public/version endpoint.
 	// It is a compile-time literal; no runtime discovery is performed.
 	appVersion = "0.4.0"
-
-	// errNoClustersConfigured is the error message shared by initCluster and
-	// initInventory when the registry has no clusters. Extracted as a
-	// constant to satisfy go:S1192 (the literal was duplicated 4×).
-	errNoClustersConfigured = "no clusters configured"
 )
 
 func main() {
@@ -85,14 +80,7 @@ func run() int {
 		logger.Warn("telemetry disabled: setup failed", "component", "main", "error", err)
 	}
 
-	defer func() {
-		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-		defer cancel()
-
-		if err := tel.Shutdown(ctx); err != nil {
-			logger.Warn("telemetry flush failed", "component", "main", "error", err)
-		}
-	}()
+	defer shutdownTelemetry(tel, logger)
 
 	st, err := openStore(cfg, logger)
 	if err != nil {
@@ -187,29 +175,9 @@ func run() int {
 		return 1
 	}
 
-	var handler http.Handler = router
+	handler := router
 	if clusterClient == nil {
-		// Setup mode: the first registered cluster triggers a one-time rebuild
-		// with the now-resolvable primary dependencies.
-		handler = &setupRouterSwap{
-			setup: router, registry: clusterRegistry, log: logger,
-			build: func() (http.Handler, error) {
-				primary := clusterRegistry.List()[0]
-				client, err := clusterRegistry.Client(primary)
-				if err != nil {
-					return nil, err
-				}
-				projection, worker, refresher, err := resolvePrimaryInventory(inventoryRegistry, primary)
-				if err != nil {
-					return nil, err
-				}
-				deps.clusterClient = client
-				deps.projection = projection
-				deps.worker = worker
-				deps.refresher = refresher
-				return buildRouter(deps)
-			},
-		}
+		handler = setupSwapHandler(router, deps)
 	}
 
 	// Discover cluster display names in the background so a down cluster
@@ -221,6 +189,17 @@ func run() int {
 	go discoverClusterDisplayNames(context.Background(), clusterRegistry, st, logger)
 
 	return serve(handler, cfg, logger)
+}
+
+// shutdownTelemetry flushes the provider with a bounded deadline so a slow
+// OTLP exporter cannot delay process exit.
+func shutdownTelemetry(tel telemetry.Result, logger *slog.Logger) {
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	if err := tel.Shutdown(ctx); err != nil {
+		logger.Warn("telemetry flush failed", "component", "main", "error", err)
+	}
 }
 
 // serve starts the HTTP server and blocks until it stops via error or signal.

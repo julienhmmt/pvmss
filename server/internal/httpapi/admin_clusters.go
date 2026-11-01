@@ -264,7 +264,7 @@ func (handler *AdminClusters) ServeProbe(w http.ResponseWriter, r *http.Request)
 	}
 	snapshot, err := client.Snapshot(r.Context())
 	if err != nil {
-		status := "unreachable"
+		status := outcomeUnreachable
 		if !errors.Is(err, cluster.ErrUnreachable) {
 			status = errorLabel
 		}
@@ -339,7 +339,7 @@ func (handler *AdminClusters) ServeTest(w http.ResponseWriter, r *http.Request) 
 // the test endpoint answers 200 either way since the probe result is the
 // payload.
 func (handler *AdminClusters) writeTestFailure(w http.ResponseWriter, r *http.Request, name string, err error, testedAt time.Time) {
-	status := "unreachable"
+	status := outcomeUnreachable
 	if !errors.Is(err, cluster.ErrUnreachable) {
 		status = errorLabel
 	}
@@ -470,7 +470,7 @@ func (handler *AdminClusters) clusterDTO(row store.ClusterRow) adminClusterDTO {
 	// but admin page still shows "ok"). The message is left empty - the
 	// frontend localizes a hint based on the "unreachable" status.
 	if !fresh && lastTestStatus != nil && *lastTestStatus == "ok" {
-		status := "unreachable"
+		status := outcomeUnreachable
 		lastTestStatus = &status
 		lastTestAt = nil
 		lastTestMessage = nil

@@ -197,6 +197,31 @@ func buildSetupRouter(deps routerDeps) http.Handler {
 	})
 }
 
+// setupSwapHandler wraps the setup-only router so the first registered
+// cluster triggers a one-time rebuild with the now-resolvable primary
+// dependencies.
+func setupSwapHandler(setup http.Handler, deps routerDeps) http.Handler {
+	return &setupRouterSwap{
+		setup: setup, registry: deps.clusterRegistry, log: deps.logger,
+		build: func() (http.Handler, error) {
+			primary := deps.clusterRegistry.List()[0]
+			client, err := deps.clusterRegistry.Client(primary)
+			if err != nil {
+				return nil, err
+			}
+			projection, worker, refresher, err := resolvePrimaryInventory(deps.inventoryRegistry, primary)
+			if err != nil {
+				return nil, err
+			}
+			deps.clusterClient = client
+			deps.projection = projection
+			deps.worker = worker
+			deps.refresher = refresher
+			return buildRouter(deps)
+		},
+	}
+}
+
 // setupRouterSwap serves the setup router until the first cluster lands in
 // the registry, then builds the full router once and delegates to it. It lets
 // the wizard's own POST /admin/clusters complete against the setup router
@@ -222,7 +247,7 @@ func (s *setupRouterSwap) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	s.once.Do(func() {
 		built, err := s.build()
 		if err != nil {
-			s.log.Error("full router build after setup failed", "component", "main", "error", err)
+			s.log.ErrorContext(r.Context(), "full router build after setup failed", "component", "main", "error", err)
 			return
 		}
 		s.full.Store(&built)

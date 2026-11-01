@@ -199,7 +199,7 @@ func TestAdminClusters_ProbeSuggestsClusterName(t *testing.T) {
 func TestAdminClusters_ProbeRejectsBadConnectionInput(t *testing.T) {
 	fixture := newAdminClusterFixture(t)
 	cookie := adminClusterCookie(t, fixture.auth)
-	for name, body := range map[string]string{
+	for name, body := range map[string]string{ //nolint:gosec // test-only fake Proxmox credentials
 		"missing credentials": `{"url":"https://pve-d.example.com:8006"}`,
 		"malformed url":       `{"url":"not a url","tokenId":"pvmss@pve!service","tokenSecret":"s"}`,
 	} {

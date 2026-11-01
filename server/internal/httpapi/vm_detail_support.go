@@ -120,7 +120,7 @@ func (h *VMDetail) fillGuestAgent(ctx context.Context, entity vm.Entity, dto *vm
 
 	guests, err := reader.GuestNetworkInterfaces(ctx, entity.Node, entity.VMID)
 	if err != nil {
-		dto.GuestAgent = "unreachable"
+		dto.GuestAgent = outcomeUnreachable
 		return
 	}
 

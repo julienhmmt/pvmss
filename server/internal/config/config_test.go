@@ -251,7 +251,7 @@ func TestLoad(t *testing.T) {
 		},
 		{
 			name: "cluster source proxmox with url but missing token",
-			env: map[string]string{ //nolint:gosec // test-only fake Proxmox credentials
+			env: map[string]string{
 				envPort:          "50001",
 				envDBPath:        testDBPath,
 				envLogLevel:      testLogLevel,

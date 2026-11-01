@@ -14,6 +14,14 @@ import (
 	"testing"
 )
 
+const (
+	alicePool = "pvmss-alice"
+	bobPool   = "pvmss-bob"
+	teamXPool = "team-x"
+	pvmssTag  = "pvmss"
+	web01Name = "web-01"
+)
+
 // stubPoolLister reports a fixed pool list - the cluster-side truth Scan
 // reads instead of cluster.Client in tests.
 type stubPoolLister struct {
@@ -54,20 +62,20 @@ func TestScan_NilProjection(t *testing.T) {
 func TestScan_OrphanPoolsWithMembers(t *testing.T) {
 	ctx := context.Background()
 	st := newStore(t)
-	if err := st.RegisterManagedPool(ctx, "default", "pvmss-bob"); err != nil {
+	if err := st.RegisterManagedPool(ctx, "default", bobPool); err != nil {
 		t.Fatalf("RegisterManagedPool: %v", err)
 	}
 
 	lister := stubPoolLister{pools: []cluster.Pool{
-		{Name: "pvmss-alice", Comment: "Alice's pool"},
-		{Name: "pvmss-bob"},
+		{Name: alicePool, Comment: "Alice's pool"},
+		{Name: bobPool},
 		{Name: "pvmss-empty"},
-		{Name: "team-x", Comment: "foreign"},
+		{Name: teamXPool, Comment: "foreign"},
 	}}
 	projection := projectionOf(
-		cluster.VM{VMID: 100, Name: "web-01", Node: "n1", Status: cluster.VMRunning, Pool: "pvmss-alice", Tags: []string{"pvmss"}},
-		cluster.VM{VMID: 101, Name: "web-02", Node: "n1", Status: cluster.VMStopped, Pool: "pvmss-alice", Tags: []string{"pvmss"}},
-		cluster.VM{VMID: 102, Name: "db-01", Node: "n2", Status: cluster.VMRunning, Pool: "pvmss-bob", Tags: []string{"pvmss"}},
+		cluster.VM{VMID: 100, Name: web01Name, Node: "n1", Status: cluster.VMRunning, Pool: alicePool, Tags: []string{pvmssTag}},
+		cluster.VM{VMID: 101, Name: "web-02", Node: "n1", Status: cluster.VMStopped, Pool: alicePool, Tags: []string{pvmssTag}},
+		cluster.VM{VMID: 102, Name: "db-01", Node: "n2", Status: cluster.VMRunning, Pool: bobPool, Tags: []string{pvmssTag}},
 	)
 
 	report, err := adoption.Scan(ctx, lister, projection, st, "default")
@@ -77,7 +85,7 @@ func TestScan_OrphanPoolsWithMembers(t *testing.T) {
 	if len(report.Pools) != 2 {
 		t.Fatalf("pools = %+v, want pvmss-alice and pvmss-empty", report.Pools)
 	}
-	if report.Pools[0].Name != "pvmss-alice" || report.Pools[0].Comment != "Alice's pool" {
+	if report.Pools[0].Name != alicePool || report.Pools[0].Comment != "Alice's pool" {
 		t.Fatalf("pool[0] = %+v", report.Pools[0])
 	}
 	if len(report.Pools[0].Members) != 2 || report.Pools[0].Members[0].VMID != 100 || report.Pools[0].Members[1].VMID != 101 {
@@ -93,12 +101,12 @@ func TestScan_OrphanPoolsWithMembers(t *testing.T) {
 func TestScan_LooseVMs(t *testing.T) {
 	ctx := context.Background()
 
-	lister := stubPoolLister{pools: []cluster.Pool{{Name: "pvmss-alice"}}}
+	lister := stubPoolLister{pools: []cluster.Pool{{Name: alicePool}}}
 	projection := projectionOf(
-		cluster.VM{VMID: 100, Name: "web-01", Node: "n1", Status: cluster.VMRunning, Pool: "pvmss-alice", Tags: []string{"pvmss"}},
-		cluster.VM{VMID: 110, Name: "solo-01", Node: "n2", Status: cluster.VMStopped, Tags: []string{"pvmss"}},
-		cluster.VM{VMID: 111, Name: "team-01", Node: "n2", Status: cluster.VMRunning, Pool: "team-x", Tags: []string{"pvmss"}},
-		cluster.VM{VMID: 112, Name: "plain-01", Node: "n2", Status: cluster.VMRunning, Pool: "team-x"},
+		cluster.VM{VMID: 100, Name: web01Name, Node: "n1", Status: cluster.VMRunning, Pool: alicePool, Tags: []string{pvmssTag}},
+		cluster.VM{VMID: 110, Name: "solo-01", Node: "n2", Status: cluster.VMStopped, Tags: []string{pvmssTag}},
+		cluster.VM{VMID: 111, Name: "team-01", Node: "n2", Status: cluster.VMRunning, Pool: teamXPool, Tags: []string{pvmssTag}},
+		cluster.VM{VMID: 112, Name: "plain-01", Node: "n2", Status: cluster.VMRunning, Pool: teamXPool},
 	)
 
 	report, err := adoption.Scan(ctx, lister, projection, newStore(t), "default")
@@ -108,7 +116,7 @@ func TestScan_LooseVMs(t *testing.T) {
 	if len(report.LooseVMs) != 2 || report.LooseVMs[0].VMID != 110 || report.LooseVMs[1].VMID != 111 {
 		t.Fatalf("looseVMs = %+v, want vmids 110,111", report.LooseVMs)
 	}
-	if report.LooseVMs[1].Pool != "team-x" {
+	if report.LooseVMs[1].Pool != teamXPool {
 		t.Fatalf("looseVM pool = %q, want team-x", report.LooseVMs[1].Pool)
 	}
 }
@@ -123,11 +131,11 @@ func TestScan_OrphanTags(t *testing.T) {
 		t.Fatalf("InsertTag: %v", err)
 	}
 
-	lister := stubPoolLister{pools: []cluster.Pool{{Name: "pvmss-alice"}}}
+	lister := stubPoolLister{pools: []cluster.Pool{{Name: alicePool}}}
 	projection := projectionOf(
-		cluster.VM{VMID: 100, Name: "web-01", Node: "n1", Status: cluster.VMRunning, Pool: "pvmss-alice", Tags: []string{"pvmss", "web", "db"}},
-		cluster.VM{VMID: 101, Name: "web-02", Node: "n1", Status: cluster.VMStopped, Pool: "pvmss-alice", Tags: []string{"pvmss", "db"}},
-		cluster.VM{VMID: 110, Name: "solo-01", Node: "n2", Status: cluster.VMStopped, Tags: []string{"pvmss", "db"}},
+		cluster.VM{VMID: 100, Name: web01Name, Node: "n1", Status: cluster.VMRunning, Pool: alicePool, Tags: []string{pvmssTag, "web", "db"}},
+		cluster.VM{VMID: 101, Name: "web-02", Node: "n1", Status: cluster.VMStopped, Pool: alicePool, Tags: []string{pvmssTag, "db"}},
+		cluster.VM{VMID: 110, Name: "solo-01", Node: "n2", Status: cluster.VMStopped, Tags: []string{pvmssTag, "db"}},
 	)
 
 	report, err := adoption.Scan(ctx, lister, projection, st, "default")

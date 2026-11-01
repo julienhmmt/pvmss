@@ -63,12 +63,15 @@ func (handler *Setup) ServeStatus(w http.ResponseWriter, r *http.Request) {
 		writeAdminError(w, http.StatusMethodNotAllowed, "method_not_allowed", msgMethodNotAllowed)
 		return
 	}
+
 	status, err := handler.status(r)
 	if err != nil {
 		SetErrorMsg(w, "read setup status failed", err)
 		writeAdminError(w, http.StatusInternalServerError, codeInternalError, msgInternalServerError)
+
 		return
 	}
+
 	writeAdminJSON(w, http.StatusOK, status)
 }
 
@@ -78,10 +81,12 @@ func (handler *Setup) needsAdmin(r *http.Request) (bool, error) {
 	if handler.hasBootstrap {
 		return false, nil
 	}
+
 	count, err := handler.store.CountLocalAccounts(r.Context())
 	if err != nil {
 		return false, err
 	}
+
 	return count == 0, nil
 }
 
@@ -95,52 +100,67 @@ func (handler *Setup) ServeCreateAdmin(w http.ResponseWriter, r *http.Request) {
 		writeAdminError(w, http.StatusMethodNotAllowed, "method_not_allowed", msgMethodNotAllowed)
 		return
 	}
+
 	handler.mu.Lock()
 	defer handler.mu.Unlock()
+
 	needsAdmin, err := handler.needsAdmin(r)
 	if err != nil {
 		SetErrorMsg(w, "read setup status failed", err)
 		writeAdminError(w, http.StatusInternalServerError, codeInternalError, msgInternalServerError)
+
 		return
 	}
+
 	if !needsAdmin {
 		writeAdminError(w, http.StatusForbidden, "setup_complete", "an administrator already exists")
 		return
 	}
+
 	var request setupAdminRequest
 	if err := decodeJSON(w, r, &request); err != nil {
 		writeAdminError(w, http.StatusBadRequest, "invalid_request", "invalid account request")
 		return
 	}
+
 	username, err := validateLocalUsername(request.Username)
 	if err != nil {
 		writeAdminError(w, http.StatusBadRequest, "invalid_username", err.Error())
 		return
 	}
+
 	if err := validatePassword(request.Password); err != nil {
 		writeAdminError(w, http.StatusBadRequest, "weak_password", err.Error())
 		return
 	}
+
 	hash, err := bcrypt.GenerateFromPassword([]byte(request.Password), bcrypt.DefaultCost)
 	if err != nil {
 		SetErrorMsg(w, "hash setup account password failed", err)
 		writeAdminError(w, http.StatusInternalServerError, codeInternalError, msgInternalServerError)
+
 		return
 	}
+
 	now := time.Now().UTC()
+
 	account := store.LocalAccount{Username: username, PasswordHash: string(hash), CreatedAt: now, UpdatedAt: now, CreatedBy: setupAccountCreatedBy}
 	if _, err := handler.store.CreateLocalAccount(r.Context(), account); err != nil {
 		if errors.Is(err, store.ErrDuplicate) {
 			writeAdminError(w, http.StatusConflict, "username_taken", "a local account with that username already exists")
 			return
 		}
+
 		SetErrorMsg(w, "create setup account failed", err)
 		writeAdminError(w, http.StatusInternalServerError, codeInternalError, msgInternalServerError)
+
 		return
 	}
+
 	if err := handler.store.RecordAdminAction(r.Context(), setupAccountCreatedBy, "setup.admin.create", "local_account", username, detailJSON("first administrator created through setup", nil), clientIP(r, 0)); err != nil {
 		logctx.FromOr(r.Context(), handler.log).WarnContext(r.Context(), "failed to record setup admin action", "component", "httpapi", "error", err)
 	}
+
 	writeAdminJSON(w, http.StatusCreated, toLocalAccountDTO(account))
 }
 
@@ -149,10 +169,13 @@ func (handler *Setup) status(r *http.Request) (setupStatusDTO, error) {
 	if err != nil {
 		return setupStatusDTO{}, err
 	}
+
 	needsAdmin, err := handler.needsAdmin(r)
 	if err != nil {
 		return setupStatusDTO{}, err
 	}
+
 	needsCluster := len(rows) == 0
+
 	return setupStatusDTO{Required: needsCluster, NeedsAdmin: needsAdmin, NeedsCluster: needsCluster}, nil
 }

@@ -23,6 +23,7 @@ func Adopt(ctx context.Context, lister PoolLister, projection *inventory.Project
 	for _, pool := range report.Pools {
 		orphanPools[pool.Name] = struct{}{}
 	}
+
 	suggestedColors := make(map[string]string, len(report.Tags))
 	for _, tag := range report.Tags {
 		suggestedColors[tag.Name] = tag.Color
@@ -34,9 +35,11 @@ func Adopt(ctx context.Context, lister PoolLister, projection *inventory.Project
 		if _, ok := orphanPools[name]; !ok {
 			continue
 		}
+
 		if err := st.RegisterManagedPool(ctx, clusterName, name); err != nil {
 			return Result{}, err
 		}
+
 		result.Pools = append(result.Pools, name)
 	}
 
@@ -45,9 +48,11 @@ func Adopt(ctx context.Context, lister PoolLister, projection *inventory.Project
 		if !ok {
 			continue
 		}
+
 		if _, err := catalog.CreateTag(ctx, st, clusterName, name, color); err != nil && !errors.Is(err, catalog.ErrDuplicateTag) {
 			return Result{}, err
 		}
+
 		result.Tags = append(result.Tags, AdoptedTag{Name: name, Color: color})
 	}
 

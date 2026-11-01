@@ -82,8 +82,8 @@ func attentionIndex() *inventory.Index {
 			{Name: "n2", Status: cluster.NodeOffline, CPUCores: 8, MemoryTotal: 64 * gib},
 		},
 		VMs: []cluster.VM{
-			{VMID: 100, Name: "a", Node: "n1", Pool: "pvmss-p1", Tags: []string{"pvmss"}, Status: cluster.VMRunning},
-			{VMID: 101, Name: "b", Node: "n1", Pool: "pvmss-p1", Tags: []string{"pvmss"}, Status: cluster.VMStopped},
+			{VMID: 100, Name: "a", Node: "n1", Pool: "pvmss-p1", Tags: []string{extraPvmssTag}, Status: cluster.VMRunning},
+			{VMID: 101, Name: "b", Node: "n1", Pool: "pvmss-p1", Tags: []string{extraPvmssTag}, Status: cluster.VMStopped},
 		},
 		Storages: []cluster.Storage{
 			{Name: dashSharedName, Node: "n1", PluginType: "rbd", Total: 100 * gib, Used: 96 * gib},

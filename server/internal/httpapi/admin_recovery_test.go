@@ -15,6 +15,11 @@ import (
 	"time"
 )
 
+const (
+	recoveryOldTag  = "oldtag"
+	recoveryOldPool = "pvmss-old"
+)
+
 type recoveryVMRefDTO struct {
 	VMID   int      `json:"vmid"`
 	Name   string   `json:"name"`
@@ -58,13 +63,13 @@ func newAdminRecoveryHandler(t *testing.T, cooldown ...time.Duration) (*httpapi.
 	t.Cleanup(cluster.ResetFake)
 	authHandler := newAuthHandler(t)
 	client := cluster.Fake{}
-	if err := client.CreatePool(context.Background(), "pvmss-old", "previous install"); err != nil {
+	if err := client.CreatePool(context.Background(), recoveryOldPool, "previous install"); err != nil {
 		t.Fatalf("CreatePool: %v", err)
 	}
 	index := inventory.BuildIndex(cluster.Snapshot{VMs: []cluster.VM{
-		{VMID: 900, Name: "web-old-01", Node: cluster.FakeNode01, Status: cluster.VMRunning, Pool: "pvmss-old", Tags: []string{"pvmss", "oldtag"}},
-		{VMID: 901, Name: "web-old-02", Node: cluster.FakeNode01, Status: cluster.VMStopped, Pool: "pvmss-old", Tags: []string{"pvmss"}},
-		{VMID: 902, Name: "solo-old", Node: cluster.FakeNode02, Status: cluster.VMStopped, Tags: []string{"pvmss", "oldtag"}},
+		{VMID: 900, Name: "web-old-01", Node: cluster.FakeNode01, Status: cluster.VMRunning, Pool: recoveryOldPool, Tags: []string{extraPvmssTag, recoveryOldTag}},
+		{VMID: 901, Name: "web-old-02", Node: cluster.FakeNode01, Status: cluster.VMStopped, Pool: recoveryOldPool, Tags: []string{extraPvmssTag}},
+		{VMID: 902, Name: "solo-old", Node: cluster.FakeNode02, Status: cluster.VMStopped, Tags: []string{extraPvmssTag, recoveryOldTag}},
 		{VMID: 903, Name: "foreign", Node: cluster.FakeNode02, Status: cluster.VMRunning, Pool: cluster.FakePoolShared},
 	}})
 	projection := inventory.NewProjectionFromIndex(&index)
@@ -93,9 +98,11 @@ func adminRecoveryRequest(t *testing.T, handler http.HandlerFunc, method, path s
 	return recorder
 }
 
-func TestAdminRecovery_ReportListsOrphans(t *testing.T) {
-	handler, authHandler, _, _ := newAdminRecoveryHandler(t)
-	rec := adminRecoveryRequest(t, handler.ServeReport, http.MethodGet, "/api/v1/admin/recovery?cluster=default", adminCookie(t, authHandler), "")
+// getRecoveryReport serves GET /admin/recovery on the default cluster and
+// decodes the report payload.
+func getRecoveryReport(t *testing.T, handler *httpapi.AdminRecovery, cookie *http.Cookie) recoveryReportDTO {
+	t.Helper()
+	rec := adminRecoveryRequest(t, handler.ServeReport, http.MethodGet, "/api/v1/admin/recovery?cluster=default", cookie, "")
 	if rec.Code != http.StatusOK {
 		t.Fatalf("status = %d: %s", rec.Code, rec.Body.String())
 	}
@@ -103,7 +110,13 @@ func TestAdminRecovery_ReportListsOrphans(t *testing.T) {
 	if err := json.Unmarshal(rec.Body.Bytes(), &report); err != nil {
 		t.Fatalf("decode: %v", err)
 	}
-	if len(report.Pools) != 1 || report.Pools[0].Name != "pvmss-old" || len(report.Pools[0].Members) != 2 {
+	return report
+}
+
+func TestAdminRecovery_ReportListsOrphans(t *testing.T) {
+	handler, authHandler, _, _ := newAdminRecoveryHandler(t)
+	report := getRecoveryReport(t, handler, adminCookie(t, authHandler))
+	if len(report.Pools) != 1 || report.Pools[0].Name != recoveryOldPool || len(report.Pools[0].Members) != 2 {
 		t.Fatalf("pools = %+v, want pvmss-old with 2 members", report.Pools)
 	}
 	if report.Pools[0].Members[0].Name != "web-old-01" {
@@ -112,7 +125,7 @@ func TestAdminRecovery_ReportListsOrphans(t *testing.T) {
 	if len(report.LooseVMs) != 1 || report.LooseVMs[0].VMID != 902 {
 		t.Fatalf("looseVMs = %+v, want only 902", report.LooseVMs)
 	}
-	if len(report.Tags) != 1 || report.Tags[0].Name != "oldtag" || report.Tags[0].VMCount != 2 || report.Tags[0].Color == "" {
+	if len(report.Tags) != 1 || report.Tags[0].Name != recoveryOldTag || report.Tags[0].VMCount != 2 || report.Tags[0].Color == "" {
 		t.Fatalf("tags = %+v, want oldtag x2 with suggested color", report.Tags)
 	}
 	if report.ScannedAt == "" {
@@ -141,7 +154,7 @@ func TestAdminRecovery_AdoptRegistersPoolsAndTags(t *testing.T) {
 	if err := json.Unmarshal(rec.Body.Bytes(), &result); err != nil {
 		t.Fatalf("decode: %v", err)
 	}
-	if len(result.Pools) != 1 || result.Pools[0] != "pvmss-old" || len(result.Tags) != 1 || result.Tags[0].Name != "oldtag" {
+	if len(result.Pools) != 1 || result.Pools[0] != recoveryOldPool || len(result.Tags) != 1 || result.Tags[0].Name != recoveryOldTag {
 		t.Fatalf("result = %+v", result)
 	}
 
@@ -167,7 +180,7 @@ func TestAdminRecovery_ReportCachedWithinCooldown(t *testing.T) {
 	if rec := adminRecoveryRequest(t, handler.ServeReport, http.MethodGet, "/api/v1/admin/recovery?cluster=default", cookie, ""); rec.Code != http.StatusOK {
 		t.Fatalf("first scan status = %d: %s", rec.Code, rec.Body.String())
 	}
-	if err := fakeClient.DeletePool(context.Background(), "pvmss-old"); err != nil {
+	if err := fakeClient.DeletePool(context.Background(), recoveryOldPool); err != nil {
 		t.Fatalf("DeletePool: %v", err)
 	}
 	rec := adminRecoveryRequest(t, handler.ServeReport, http.MethodGet, "/api/v1/admin/recovery?cluster=default", cookie, "")
@@ -175,7 +188,7 @@ func TestAdminRecovery_ReportCachedWithinCooldown(t *testing.T) {
 	if err := json.Unmarshal(rec.Body.Bytes(), &report); err != nil {
 		t.Fatalf("decode: %v", err)
 	}
-	if len(report.Pools) != 1 || report.Pools[0].Name != "pvmss-old" {
+	if len(report.Pools) != 1 || report.Pools[0].Name != recoveryOldPool {
 		t.Fatalf("cached report pools = %+v, want pvmss-old still served", report.Pools)
 	}
 }
@@ -187,7 +200,7 @@ func TestAdminRecovery_ScanForcesRefresh(t *testing.T) {
 	cookie := adminCookie(t, authHandler)
 
 	adminRecoveryRequest(t, handler.ServeReport, http.MethodGet, "/api/v1/admin/recovery?cluster=default", cookie, "")
-	if err := fakeClient.DeletePool(context.Background(), "pvmss-old"); err != nil {
+	if err := fakeClient.DeletePool(context.Background(), recoveryOldPool); err != nil {
 		t.Fatalf("DeletePool: %v", err)
 	}
 	rec := adminRecoveryRequest(t, handler.ServeScan, http.MethodPost, "/api/v1/admin/recovery/scan", cookie, `{"cluster":"default"}`)
@@ -258,7 +271,7 @@ func TestAdminRecovery_ExpiredCooldownRescans(t *testing.T) {
 	cookie := adminCookie(t, authHandler)
 
 	adminRecoveryRequest(t, handler.ServeReport, http.MethodGet, "/api/v1/admin/recovery?cluster=default", cookie, "")
-	if err := fakeClient.DeletePool(context.Background(), "pvmss-old"); err != nil {
+	if err := fakeClient.DeletePool(context.Background(), recoveryOldPool); err != nil {
 		t.Fatalf("DeletePool: %v", err)
 	}
 	rec := adminRecoveryRequest(t, handler.ServeReport, http.MethodGet, "/api/v1/admin/recovery?cluster=default", cookie, "")
