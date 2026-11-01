@@ -41,6 +41,59 @@ describe('VmSnapshotsStore', () => {
 		tray.destroy();
 	});
 
+	it('loads the automatic schedule with the snapshot list', async () => {
+		vi.stubGlobal('fetch', vi.fn().mockResolvedValue(jsonResponse(200, {
+			snapshots: [],
+			maxSnapshots: 5,
+			schedule: { frequency: 'daily', retain: 3, lastRunAt: '' }
+		})));
+		const store = new VmSnapshotsStore('default', 101, new TaskTrayStore());
+
+		await store.load();
+
+		expect(store.schedule).toEqual({ frequency: 'daily', retain: 3, lastRunAt: '' });
+	});
+
+	it('saves the schedule with PUT and keeps the stored result', async () => {
+		const fetchMock = vi.fn().mockResolvedValue(jsonResponse(200, { frequency: 'weekly', retain: 2, lastRunAt: '' }));
+		vi.stubGlobal('fetch', fetchMock);
+		const store = new VmSnapshotsStore('default', 101, new TaskTrayStore());
+
+		const saved = await store.saveSchedule('weekly', 2);
+
+		expect(saved).toBe(true);
+		expect(store.schedule?.frequency).toBe('weekly');
+		const call = fetchMock.mock.calls[0] as [string, RequestInit];
+		expect(call[0]).toBe('/api/v1/vms/default/101/snapshot-schedule');
+		expect(call[1].method).toBe('PUT');
+		expect(JSON.parse(call[1].body as string)).toEqual({ frequency: 'weekly', retain: 2 });
+	});
+
+	it('clears the schedule with DELETE', async () => {
+		const fetchMock = vi.fn().mockResolvedValue(new Response(null, { status: 204 }));
+		vi.stubGlobal('fetch', fetchMock);
+		const store = new VmSnapshotsStore('default', 101, new TaskTrayStore());
+		store.schedule = { frequency: 'daily', retain: 3, lastRunAt: '' };
+
+		const cleared = await store.clearSchedule();
+
+		expect(cleared).toBe(true);
+		expect(store.schedule).toBeNull();
+		expect((fetchMock.mock.calls[0] as [string, RequestInit])[1].method).toBe('DELETE');
+	});
+
+	it('reports a rejected schedule save without losing the stored one', async () => {
+		vi.stubGlobal('fetch', vi.fn().mockResolvedValue(jsonResponse(400, { code: 'retain_exceeds_max_snapshots', message: 'retain 9 must be below the limit of 5' })));
+		const store = new VmSnapshotsStore('default', 101, new TaskTrayStore());
+		store.schedule = { frequency: 'daily', retain: 3, lastRunAt: '' };
+
+		const saved = await store.saveSchedule('daily', 9);
+
+		expect(saved).toBe(false);
+		expect(store.scheduleError).toBe(m['error.retain_exceeds_max_snapshots']());
+		expect(store.schedule?.retain).toBe(3);
+	});
+
 	it('surfaces server validation errors without registering a task', async () => {
 		vi.stubGlobal('fetch', vi.fn().mockResolvedValue(jsonResponse(400, { code: 'max_snapshots_reached', message: 'maximum reached' })));
 		const tray = new TaskTrayStore();

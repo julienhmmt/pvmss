@@ -163,6 +163,17 @@ func run() int {
 	// at startup, then every 24h, like the audit prune.
 	go runLeaseSweep(inventoryCtx, st, clusterRegistry, inventoryRegistry, logger)
 
+	// Scheduled snapshots: a sweep every snapshotSweepInterval takes the due
+	// automatic snapshots and prunes them to each VM's retention.
+	go runSnapshotSweep(inventoryCtx, vm.SweepDependencies{
+		Store:   st,
+		Indexes: inventoryRegistry,
+		Clients: clusterRegistry,
+		Policy:  policy.New(st, defaultProjection, nil),
+		Log:     logger,
+		Now:     time.Now,
+	})
+
 	sessions, err := auth.NewSessionManager(st, cfg.SessionSecret, cfg.CookieSecure)
 	if err != nil {
 		logger.Error("failed to create session manager", "component", "main", "error", err)
@@ -726,6 +737,28 @@ func (f inventoryFreshness) DemoMode() bool {
 
 // auditPruneInterval is how often the daily prune tick fires.
 const auditPruneInterval = 24 * time.Hour
+
+// snapshotSweepInterval is how often the scheduled-snapshot sweep runs. A
+// schedule is due once its interval (daily or weekly) has elapsed since its
+// last run, so a 15-minute tick adds at most that much lateness.
+const snapshotSweepInterval = 15 * time.Minute
+
+// runSnapshotSweep runs vm.SweepSnapshots on a fixed tick until ctx ends. It
+// does not sweep at startup: inventory is still warming up, and the sweeper
+// would otherwise see an unfresh index on every schedule.
+func runSnapshotSweep(ctx context.Context, deps vm.SweepDependencies) {
+	ticker := time.NewTicker(snapshotSweepInterval)
+	defer ticker.Stop()
+
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case <-ticker.C:
+			vm.SweepSnapshots(ctx, deps)
+		}
+	}
+}
 
 // runAuditPrune deletes audit_log rows older than the configured retention,
 // once at startup then every auditPruneInterval. It logs the deleted count at

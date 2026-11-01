@@ -255,6 +255,9 @@ func registerVMRoutes(mux *http.ServeMux, cfg RouterConfig, protect protectFunc,
 		mux.Handle("DELETE /api/v1/vms/{cluster}/{vmid}/snapshots/{name}", protect(snapshots, vmWriteLimiter))
 		// One snapshot's stored config - the pre-rollback diff.
 		mux.Handle("GET /api/v1/vms/{cluster}/{vmid}/snapshots/{name}/config", snapshots)
+		// Automatic snapshot schedule: set (PUT) or remove (DELETE).
+		mux.Handle("PUT /api/v1/vms/{cluster}/{vmid}/snapshot-schedule", protect(snapshots, vmWriteLimiter))
+		mux.Handle("DELETE /api/v1/vms/{cluster}/{vmid}/snapshot-schedule", protect(snapshots, vmWriteLimiter))
 	}
 
 	if cfg.VMConsole != nil {

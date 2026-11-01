@@ -356,6 +356,7 @@ func Delete(ctx context.Context, deps WriteDeps) error {
 	// ponytail: hygiene only - a stale file cannot leak into a recycled
 	// VMID because creation overwrites on rename. Never fail the delete.
 	cleanupCloudInitDocument(ctx, deps)
+	cleanupSnapshotSchedule(ctx, deps)
 
 	// The VMID is free now: a lease left behind would bind to whatever VM
 	// reuses it.
@@ -491,6 +492,19 @@ func Patch(ctx context.Context, deps WriteDeps, name, description string) error 
 // PVMSS cannot delete (the Proxmox API cannot remove snippets) - it is
 // logged for the admin to rm by hand. Never returns an error: a cleanup
 // failure must not block the delete. Nil-safe on Store and Log.
+// cleanupSnapshotSchedule removes the VM's automatic snapshot schedule so a
+// recycled VMID cannot inherit it. Nil-safe; a failure is only logged, since
+// the sweeper's pool check still refuses a reused VMID.
+func cleanupSnapshotSchedule(ctx context.Context, deps WriteDeps) {
+	if deps.Store == nil {
+		return
+	}
+
+	if err := deps.Store.DeleteSnapshotSchedule(ctx, deps.ClusterName, deps.VMID); err != nil && deps.Log != nil {
+		deps.Log.WarnContext(ctx, "snapshot schedule not removed", "component", "vm", "cluster", deps.ClusterName, "vmid", deps.VMID, "error", err)
+	}
+}
+
 func cleanupCloudInitDocument(ctx context.Context, deps WriteDeps) {
 	if deps.Store == nil {
 		return
