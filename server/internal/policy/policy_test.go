@@ -13,7 +13,11 @@ import (
 	"testing"
 )
 
-const testUserAlice = "alice"
+const (
+	testUserAlice    = "alice"
+	testDimensionVMs = "vms"
+	testDimensionRAM = "ram"
+)
 
 func TestPolicyReads_SeededDefaults(t *testing.T) {
 	t.Parallel()
@@ -166,12 +170,12 @@ func TestNodeOverflow(t *testing.T) {
 		want    []string
 	}{
 		{name: "no caps never overflows", byNode: []cluster.VM{pvmssVM}, caps: store.NodePolicyRow{}, machine: pvmssVM, want: nil},
-		{name: "vm count only", byNode: []cluster.VM{pvmssVM}, caps: store.NodePolicyRow{MaxVMs: 1}, machine: pvmssVM, want: []string{"vms"}},
+		{name: "vm count only", byNode: []cluster.VM{pvmssVM}, caps: store.NodePolicyRow{MaxVMs: 1}, machine: pvmssVM, want: []string{testDimensionVMs}},
 		{name: "untagged usage is ignored", byNode: []cluster.VM{foreignVM}, caps: store.NodePolicyRow{MaxVMs: 2}, machine: pvmssVM, want: nil},
 		{name: "vcpu cap", byNode: []cluster.VM{pvmssVM}, caps: store.NodePolicyRow{MaxVCPUs: 3}, machine: pvmssVM, want: []string{"vcpus"}},
-		{name: "ram cap", byNode: []cluster.VM{pvmssVM}, caps: store.NodePolicyRow{MaxRAMGB: 1}, machine: pvmssVM, want: []string{"ram"}},
+		{name: "ram cap", byNode: []cluster.VM{pvmssVM}, caps: store.NodePolicyRow{MaxRAMGB: 1}, machine: pvmssVM, want: []string{testDimensionRAM}},
 		{name: "disk cap", byNode: []cluster.VM{pvmssVM}, caps: store.NodePolicyRow{MaxDiskGB: 3}, machine: pvmssVM, want: []string{"disk"}},
-		{name: "all dimensions at once", byNode: []cluster.VM{pvmssVM}, caps: store.NodePolicyRow{MaxVMs: 1, MaxVCPUs: 1, MaxRAMGB: 1, MaxDiskGB: 1}, machine: pvmssVM, want: []string{"vms", "vcpus", "ram", "disk"}},
+		{name: "all dimensions at once", byNode: []cluster.VM{pvmssVM}, caps: store.NodePolicyRow{MaxVMs: 1, MaxVCPUs: 1, MaxRAMGB: 1, MaxDiskGB: 1}, machine: pvmssVM, want: []string{testDimensionVMs, "vcpus", testDimensionRAM, "disk"}},
 		{name: "boundary is not overflow", byNode: []cluster.VM{pvmssVM}, caps: store.NodePolicyRow{MaxVMs: 2, MaxVCPUs: 4, MaxRAMGB: 2, MaxDiskGB: 4}, machine: pvmssVM, want: nil},
 	}
 

@@ -52,7 +52,7 @@ func TestQuotaRequest_DecideOnlyOnce(t *testing.T) {
 		t.Fatalf("PendingQuotaRequest: %v", err)
 	}
 
-	if err := st.DecideQuotaRequest(ctx, pending.ID, store.QuotaRequestApproved, "admin"); err != nil {
+	if err := st.DecideQuotaRequest(ctx, pending.ID, store.QuotaRequestApproved, adminDocID); err != nil {
 		t.Fatalf("DecideQuotaRequest: %v", err)
 	}
 
@@ -65,7 +65,7 @@ func TestQuotaRequest_DecideOnlyOnce(t *testing.T) {
 		t.Fatalf("QuotaRequestByID: %v", err)
 	}
 
-	if decided.Status != store.QuotaRequestApproved || decided.DecidedBy != "admin" || decided.DecidedAt == "" {
+	if decided.Status != store.QuotaRequestApproved || decided.DecidedBy != adminDocID || decided.DecidedAt == "" {
 		t.Fatalf("decided row = %+v", decided)
 	}
 

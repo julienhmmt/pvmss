@@ -339,6 +339,7 @@ func TestDeleteOtherSessionsByProvider(t *testing.T) {
 	if _, err := st.FindSession(ctx, victim.Hash); !errors.Is(err, sql.ErrNoRows) {
 		t.Error("victim session of same provider+username still resolves")
 	}
+
 	for _, s := range []auth.SessionRecord{keep, sameNamePVE, otherLocal} {
 		if _, err := st.FindSession(ctx, s.Hash); err != nil {
 			t.Errorf("session %q lost though out of scope: %v", s.Hash, err)

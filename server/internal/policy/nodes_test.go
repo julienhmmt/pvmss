@@ -332,15 +332,18 @@ func TestRefreshedAt(t *testing.T) {
 	if err != nil {
 		t.Fatalf("RefreshedAt: %v", err)
 	}
+
 	if want := projection.Load().RefreshedAt; !got.Equal(want) {
 		t.Fatalf("RefreshedAt = %v, want the projection's %v", got, want)
 	}
 
 	empty := newPolicyServiceNoClientNoProjection(t)
+
 	got, err = empty.RefreshedAt("default")
 	if err != nil {
 		t.Fatalf("RefreshedAt without projection: %v", err)
 	}
+
 	if !got.IsZero() {
 		t.Fatalf("RefreshedAt without projection = %v, want zero", got)
 	}
@@ -354,7 +357,6 @@ func TestSetClusterProvider_ProviderErrorsPropagate(t *testing.T) {
 
 	service, _ := newPolicyService(t)
 	service.SetClusterProvider(failingProvider{})
-
 
 	if _, err := service.NodeCapacities(context.Background(), "ghost"); err == nil {
 		t.Fatal("NodeCapacities with a failing provider = nil, want the provider error")

@@ -822,6 +822,7 @@ func TestRecordVMActionDetail_InsertsRowWithDetail(t *testing.T) {
 		cluster, action, targetType, targetID, gotDetail string
 		vmid                                             sql.NullInt64
 	)
+
 	err := st.DB().QueryRowContext(ctx,
 		`SELECT cluster, action, vmid, target_type, target_id, detail FROM audit_log ORDER BY id DESC LIMIT 1`,
 	).Scan(&cluster, &action, &vmid, &targetType, &targetID, &gotDetail)
@@ -832,9 +833,11 @@ func TestRecordVMActionDetail_InsertsRowWithDetail(t *testing.T) {
 	if cluster != testStoreCluster || action != "vm.start" || !vmid.Valid || vmid.Int64 != 101 {
 		t.Errorf("row = (cluster=%q, action=%q, vmid=%v), want default/vm.start/101", cluster, action, vmid)
 	}
+
 	if targetType != "vm" || targetID != "default:101" {
 		t.Errorf("target = %s:%s, want vm:default:101", targetType, targetID)
 	}
+
 	if gotDetail != detail {
 		t.Errorf("detail = %q, want %q", gotDetail, detail)
 	}

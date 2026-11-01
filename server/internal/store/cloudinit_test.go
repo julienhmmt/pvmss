@@ -2,6 +2,7 @@ package store_test
 
 import (
 	"context"
+	"pvmss/server/internal/store"
 	"testing"
 	"time"
 )
@@ -21,7 +22,7 @@ func TestCloudInitSnippet_GetAndDelete(t *testing.T) {
 	updated := time.Date(2026, 10, 30, 8, 0, 0, 0, time.UTC)
 	if _, err := st.DB().ExecContext(ctx,
 		`INSERT INTO vm_cloudinit_snippets (cluster, vmid, content, storage, filename, updated_at, updated_by) VALUES (?, ?, ?, ?, ?, ?, ?)`,
-		testStoreCluster, 101, "#cloud-config", "local", "ci-101.yaml", updated.Format(time.RFC3339Nano), "admin"); err != nil {
+		testStoreCluster, 101, "#cloud-config", "local", "ci-101.yaml", updated.Format(time.RFC3339Nano), adminDocID); err != nil {
 		t.Fatalf("insert snippet row: %v", err)
 	}
 
@@ -29,22 +30,33 @@ func TestCloudInitSnippet_GetAndDelete(t *testing.T) {
 	if err != nil || !found {
 		t.Fatalf("GetCloudInitSnippet = (found=%v, err=%v), want found", found, err)
 	}
-	if snippet.Cluster != testStoreCluster || snippet.VMID != 101 || snippet.Content != "#cloud-config" ||
-		snippet.Storage != "local" || snippet.Filename != "ci-101.yaml" || snippet.UpdatedBy != "admin" {
-		t.Errorf("snippet = %+v, want the inserted row", snippet)
-	}
-	if !snippet.UpdatedAt.Equal(updated) {
-		t.Errorf("UpdatedAt = %v, want %v", snippet.UpdatedAt, updated)
-	}
+
+	checkCloudInitSnippet(t, snippet, updated)
 
 	if err := st.DeleteCloudInitSnippet(ctx, testStoreCluster, 101); err != nil {
 		t.Fatalf("DeleteCloudInitSnippet: %v", err)
 	}
+
 	if _, found, err := st.GetCloudInitSnippet(ctx, testStoreCluster, 101); err != nil || found {
 		t.Fatalf("GetCloudInitSnippet after delete = (found=%v, err=%v), want (false, nil)", found, err)
 	}
 
 	if err := st.DeleteCloudInitSnippet(ctx, testStoreCluster, 101); err != nil {
 		t.Fatalf("deleting an absent snippet must not error: %v", err)
+	}
+}
+
+// checkCloudInitSnippet verifies the row round-trips every inserted column,
+// including the stored timestamp.
+func checkCloudInitSnippet(t *testing.T, snippet store.CloudInitSnippet, updated time.Time) {
+	t.Helper()
+
+	if snippet.Cluster != testStoreCluster || snippet.VMID != 101 || snippet.Content != "#cloud-config" ||
+		snippet.Storage != "local" || snippet.Filename != "ci-101.yaml" || snippet.UpdatedBy != adminDocID {
+		t.Errorf("snippet = %+v, want the inserted row", snippet)
+	}
+
+	if !snippet.UpdatedAt.Equal(updated) {
+		t.Errorf("UpdatedAt = %v, want %v", snippet.UpdatedAt, updated)
 	}
 }

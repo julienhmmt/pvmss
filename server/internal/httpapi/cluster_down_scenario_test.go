@@ -99,6 +99,7 @@ func TestClusterDownScenario(t *testing.T) {
 		if userLoginResp.Code == http.StatusServiceUnavailable && userLoginErr.Code == "cluster_unavailable" {
 			break
 		}
+
 		if time.Now().After(deadline) {
 			t.Fatalf("user login should be rejected when cluster is down: status=%d code=%q", userLoginResp.Code, userLoginErr.Code)
 		}
