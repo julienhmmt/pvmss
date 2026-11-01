@@ -6,10 +6,12 @@ import (
 	"database/sql"
 	"errors"
 	"path/filepath"
+	"pvmss/server/internal/auth"
 	"pvmss/server/internal/config"
 	"pvmss/server/internal/store"
 	"strings"
 	"testing"
+	"time"
 )
 
 const (
@@ -500,5 +502,47 @@ func TestStore_SetDiscoveredClusterDisplayName(t *testing.T) {
 	}
 	if got.DisplayName != "Discovered Name" {
 		t.Fatalf("DisplayName = %q, want unchanged %q", got.DisplayName, "Discovered Name")
+	}
+}
+
+//nolint:paralleltest // migration fixtures are intentionally serial
+func TestClusters_SoftDeleteRevokesBoundSessions(t *testing.T) {
+	st := openClusterStore(t)
+	ctx := context.Background()
+	row := store.ClusterRow{Name: "session-cluster", URL: "https://session.invalid", TokenID: testClusterTokenID, TokenSecret: testClusterTokenSecret}
+	if err := st.CreateCluster(ctx, row); err != nil {
+		t.Fatalf("CreateCluster: %v", err)
+	}
+
+	// Sessions bound to the removed cluster can only fail - every request
+	// resolves the client through a registry that no longer has it - so they
+	// are revoked in the same transaction. Cluster-less local sessions stay.
+	bound := auth.SessionRecord{
+		Hash:      []byte("bound-session-hash"),
+		Identity:  auth.Identity{Username: "bob@pve", Cluster: row.Name},
+		ExpiresAt: time.Now().Add(time.Hour),
+		CreatedAt: time.Now(),
+	}
+	local := auth.SessionRecord{
+		Hash:      []byte("local-session-hash"),
+		Identity:  auth.Identity{Username: "local-admin", IsAdmin: true},
+		ExpiresAt: time.Now().Add(time.Hour),
+		CreatedAt: time.Now(),
+	}
+	for _, session := range []auth.SessionRecord{bound, local} {
+		if err := st.CreateSession(ctx, session); err != nil {
+			t.Fatalf("CreateSession: %v", err)
+		}
+	}
+
+	if err := st.SoftDeleteCluster(ctx, row.Name); err != nil {
+		t.Fatalf("SoftDeleteCluster: %v", err)
+	}
+
+	if _, err := st.FindSession(ctx, bound.Hash); err == nil {
+		t.Fatal("bound session should be revoked with its cluster")
+	}
+	if _, err := st.FindSession(ctx, local.Hash); err != nil {
+		t.Fatalf("cluster-less session must survive: %v", err)
 	}
 }
