@@ -6,9 +6,9 @@ import (
 	"log/slog"
 	"pvmss/server/internal/auth"
 	"pvmss/server/internal/cluster"
-	"pvmss/server/internal/store"
 	"pvmss/server/internal/inventory"
 	"pvmss/server/internal/policy"
+	"pvmss/server/internal/store"
 	"pvmss/server/internal/vm"
 	"slices"
 	"testing"
@@ -61,6 +61,7 @@ func policyWithStaticProjection(st *store.Store, projection *inventory.Projectio
 	if projection != nil {
 		svc.SetProjectionSource(staticProjectionSource{projection: projection})
 	}
+
 	return svc
 }
 

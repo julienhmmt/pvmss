@@ -1,4 +1,3 @@
-//nolint:wsl_v5 // snapshot handlers keep validation and dispatch together
 package httpapi
 
 import (
@@ -94,8 +93,6 @@ type snapshotConfigDTO struct {
 }
 
 // ServeHTTP dispatches the four snapshot routes registered by NewRouter.
-//
-//nolint:wsl_v5 // snapshot request boundaries keep validation and dispatch adjacent
 func (h *VMSnapshots) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	switch {
 	case isScheduleRoute(r.URL.Path):
@@ -119,8 +116,6 @@ func (h *VMSnapshots) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 // handleConfig serves GET .../snapshots/{name}/config - one snapshot's stored
 // config for the pre-rollback diff. name="current" returns the
 // live config.
-//
-//nolint:wsl_v5 // snapshot request boundaries keep validation and dispatch adjacent
 func (h *VMSnapshots) handleConfig(w http.ResponseWriter, r *http.Request) {
 	identity, clusterName, vmid, ok := h.requestTarget(w, r)
 	if !ok {
@@ -151,7 +146,6 @@ func (h *VMSnapshots) handleConfig(w http.ResponseWriter, r *http.Request) {
 	h.writePayload(w, http.StatusOK, snapshotConfigDTO{Name: name, Config: config})
 }
 
-//nolint:wsl_v5 // snapshot request boundaries keep validation and dispatch adjacent
 func (h *VMSnapshots) handleList(w http.ResponseWriter, r *http.Request) {
 	identity, clusterName, vmid, ok := h.requestTarget(w, r)
 	if !ok {
@@ -182,7 +176,6 @@ func (h *VMSnapshots) handleList(w http.ResponseWriter, r *http.Request) {
 	h.writePayload(w, http.StatusOK, result)
 }
 
-//nolint:wsl_v5 // snapshot request boundaries keep validation and dispatch adjacent
 func (h *VMSnapshots) handleCreate(w http.ResponseWriter, r *http.Request) {
 	var request snapshotCreateRequest
 	if err := decodeJSON(w, r, &request); err != nil {
@@ -216,7 +209,6 @@ func (h *VMSnapshots) handleCreate(w http.ResponseWriter, r *http.Request) {
 
 type snapshotNamedAction func(context.Context, vm.SnapshotDependencies, string) (string, error)
 
-//nolint:wsl_v5 // snapshot request boundaries keep validation and dispatch adjacent
 func (h *VMSnapshots) handleNamedAction(w http.ResponseWriter, r *http.Request, action snapshotNamedAction) {
 	identity, clusterName, vmid, ok := h.requestTarget(w, r)
 	if !ok {
@@ -244,12 +236,10 @@ func (h *VMSnapshots) handleNamedAction(w http.ResponseWriter, r *http.Request, 
 	h.writePayload(w, http.StatusAccepted, snapshotTaskDTO{Cluster: clusterName, VMID: vmid, Name: name, UPID: upid})
 }
 
-//nolint:wsl_v5 // snapshot request boundaries keep validation and dispatch adjacent
 func (h *VMSnapshots) requestTarget(w http.ResponseWriter, r *http.Request) (auth.Identity, string, int, bool) {
 	return parseVMRequestTarget(h.auth, r, func(status int, code, message string) { h.writeError(w, status, code, message) })
 }
 
-//nolint:wsl_v5 // snapshot request boundaries keep validation and dispatch adjacent
 func (h *VMSnapshots) dependencies(w http.ResponseWriter, index *inventory.Index, actor auth.Identity, clusterName string, vmid int) (vm.SnapshotDependencies, bool) {
 	reader, err := resolveCapability(h.clients, h.reader, clusterName, "SnapshotReader")
 	if err != nil {
@@ -266,12 +256,10 @@ func (h *VMSnapshots) dependencies(w http.ResponseWriter, index *inventory.Index
 	return vm.SnapshotDependencies{Index: index, Actor: actor, ClusterName: clusterName, VMID: vmid, Reader: reader, Writer: writer, Policy: h.policy, Audit: h.store}, true
 }
 
-//nolint:wsl_v5 // snapshot request boundaries keep validation and dispatch adjacent
 func snapshotDTOFromModel(snapshot vm.Snapshot) snapshotDTO {
 	return snapshotDTO{Name: snapshot.Name, Description: snapshot.Description, CreatedAt: snapshot.CreatedAt.UTC().Format("2006-01-02T15:04:05.999999999Z07:00"), VMState: snapshot.VMState}
 }
 
-//nolint:wsl_v5 // snapshot request boundaries keep validation and dispatch adjacent
 func (h *VMSnapshots) writeSnapshotError(w http.ResponseWriter, err error) {
 	switch {
 	case errors.Is(err, vm.ErrForbidden):
@@ -323,7 +311,6 @@ func (h *VMSnapshots) writeSnapshotRejection(w http.ResponseWriter, err error) b
 	return false
 }
 
-//nolint:wsl_v5 // snapshot request boundaries keep validation and dispatch adjacent
 func (h *VMSnapshots) writePayload(w http.ResponseWriter, status int, value any) {
 	body, err := json.Marshal(value)
 	if err != nil {
@@ -336,7 +323,6 @@ func (h *VMSnapshots) writePayload(w http.ResponseWriter, status int, value any)
 	}
 }
 
-//nolint:wsl_v5 // snapshot request boundaries keep validation and dispatch adjacent
 func (h *VMSnapshots) writeError(w http.ResponseWriter, status int, code, message string) {
 	if err := writeClusterError(w, status, code, message); err != nil {
 		h.log.Warn("failed to write snapshot error", "component", "httpapi", "code", code, "error", err)

@@ -1,3 +1,4 @@
+//nolint:wsl_v5 // composition root keeps dependency wiring readable
 package main
 
 import (

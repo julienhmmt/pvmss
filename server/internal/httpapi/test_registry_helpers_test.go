@@ -25,6 +25,7 @@ func policyWithStaticProjection(st *store.Store, projection *inventory.Projectio
 	if projection != nil {
 		svc.SetProjectionSource(staticProjectionSource{projection: projection})
 	}
+
 	return svc
 }
 

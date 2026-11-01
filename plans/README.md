@@ -8,10 +8,10 @@ before starting, honor its STOP conditions, and update your row when done.
 
 | Plan | Title | Priority | Effort | Depends on | Status |
 |------|-------|----------|--------|------------|--------|
-| 001 | Delete verified dead code | P2 | S | — | TODO |
-| 002 | Shared policy service, drop single-projection fallbacks | P1 | M | 001 | TODO |
-| 003 | cmd/pvmss split + generic capability assertion | P2 | S–M | 002 | TODO |
-| 004 | Cover remaining internal/auth error paths | P3 | M | — | TODO |
+| 001 | Delete verified dead code | P2 | S | — | DONE (`e8bd321d`; MapCatalog/MapPolicy kept — tested recovery API, see below; SetFakeSSHKeyError/NewFromDBWithSecret kept — gained test callers mid-run) |
+| 002 | Shared policy service, drop single-projection fallbacks | P1 | M | 001 | DONE (`08d69d08` + `4ff8bddc`) |
+| 003 | cmd/pvmss split + generic capability assertion | P2 | S–M | 002 | DONE (`7576444e` + `a48d60c4`) |
+| 004 | Cover remaining internal/auth error paths | P3 | M | — | DONE (`7d4f35c6`; auth coverage 84.1% → 91.3%) |
 
 Status values: TODO | IN PROGRESS | DONE | BLOCKED (reason) | REJECTED (rationale)
 

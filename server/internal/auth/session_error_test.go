@@ -12,6 +12,10 @@ import (
 	"time"
 )
 
+const aliceName = "alice"
+
+var aliceIdentity = auth.Identity{Username: aliceName, Pool: "pvmss-alice"}
+
 var errRepository = errors.New("repository failure")
 
 // failingSessionRepository returns errRepository from every call, driving the
@@ -78,7 +82,7 @@ func TestNewSessionManager_SecretSize(t *testing.T) {
 func TestSessionManager_SetCookie_RepositoryFailure(t *testing.T) {
 	manager := newManager(t, failingSessionRepository{})
 
-	err := manager.SetCookie(context.Background(), httptest.NewRecorder(), auth.Identity{Username: "alice", Pool: "pvmss-alice"})
+	err := manager.SetCookie(context.Background(), httptest.NewRecorder(), aliceIdentity)
 	if err == nil || !strings.Contains(err.Error(), "create session") {
 		t.Fatalf("SetCookie error = %v, want wrapped create-session failure", err)
 	}
@@ -90,9 +94,10 @@ func TestSessionManager_Resolve_TouchFailureReturnsError(t *testing.T) {
 	manager := newManager(t, repository)
 
 	recorder := httptest.NewRecorder()
-	if err := manager.SetCookie(context.Background(), recorder, auth.Identity{Username: "alice", Pool: "pvmss-alice"}); err != nil {
+	if err := manager.SetCookie(context.Background(), recorder, aliceIdentity); err != nil {
 		t.Fatalf("SetCookie: %v", err)
 	}
+
 	cookie := recorder.Result().Cookies()[0]
 
 	// Shrink the expiry past the touch interval so Resolve must slide it.
@@ -126,7 +131,7 @@ func TestSessionManager_RevokeOthers_MissingCookie(t *testing.T) {
 
 	request := httptest.NewRequest(http.MethodGet, "/", nil)
 
-	err := manager.RevokeOthers(context.Background(), request, auth.Identity{Username: "alice", Pool: "pvmss-alice"})
+	err := manager.RevokeOthers(context.Background(), request, aliceIdentity)
 	if err == nil || !strings.Contains(err.Error(), "read session cookie") {
 		t.Fatalf("RevokeOthers error = %v, want read-cookie failure", err)
 	}
@@ -138,9 +143,10 @@ func TestSessionManager_RevokeOthers_RepositoryFailure(t *testing.T) {
 	manager := newManager(t, repository)
 
 	recorder := httptest.NewRecorder()
-	if err := manager.SetCookie(context.Background(), recorder, auth.Identity{Username: "alice", Pool: "pvmss-alice"}); err != nil {
+	if err := manager.SetCookie(context.Background(), recorder, aliceIdentity); err != nil {
 		t.Fatalf("SetCookie: %v", err)
 	}
+
 	cookie := recorder.Result().Cookies()[0]
 
 	failing := newManager(t, failingSessionRepository{})
@@ -148,7 +154,7 @@ func TestSessionManager_RevokeOthers_RepositoryFailure(t *testing.T) {
 	request := httptest.NewRequest(http.MethodPost, "/", nil)
 	request.AddCookie(cookie)
 
-	err := failing.RevokeOthers(context.Background(), request, auth.Identity{Username: "alice", Pool: "pvmss-alice"})
+	err := failing.RevokeOthers(context.Background(), request, aliceIdentity)
 	if err == nil || !strings.Contains(err.Error(), "revoke other sessions") {
 		t.Fatalf("RevokeOthers error = %v, want wrapped revoke failure", err)
 	}
@@ -208,6 +214,7 @@ func TestSessionManager_Logout_WithoutCookieClearsCookies(t *testing.T) {
 	if len(cookies) != 2 {
 		t.Fatalf("cleared cookies = %d, want 2 (session + csrf)", len(cookies))
 	}
+
 	for _, cookie := range cookies {
 		if cookie.MaxAge != -1 || cookie.Value != "" {
 			t.Fatalf("cookie %s not cleared: %+v", cookie.Name, cookie)
