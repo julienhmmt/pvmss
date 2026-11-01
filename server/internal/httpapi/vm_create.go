@@ -34,6 +34,8 @@ type VMCreate struct {
 	// the wizard navigates to the list - instead of depending on the task
 	// tray's poll landing after the list load.
 	refreshers ClusterRefresherResolver
+	// resolver serves the clone route's source lookup (SetInventorySource).
+	resolver vm.ClusterIndexResolver
 }
 
 // SetInventoryRefreshers wires the post-create inventory refresh.

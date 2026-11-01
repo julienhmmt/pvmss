@@ -206,6 +206,7 @@ func registerVMRoutes(mux *http.ServeMux, cfg RouterConfig, protect protectFunc,
 	if cfg.VMCreate != nil {
 		mux.Handle("POST /api/v1/vms", protect(cfg.VMCreate, vmWriteLimiter))
 		mux.Handle("GET /api/v1/vm-create/catalog", http.HandlerFunc(cfg.VMCreate.ServeCatalog))
+		mux.Handle("POST /api/v1/vms/{cluster}/{vmid}/clone", protect(http.HandlerFunc(cfg.VMCreate.ServeClone), vmWriteLimiter))
 	}
 
 	if cfg.Tasks != nil {

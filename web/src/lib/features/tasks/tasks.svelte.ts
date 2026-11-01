@@ -3,7 +3,7 @@ import { SvelteMap } from 'svelte/reactivity';
 import { get, post, ApiRequestError } from '#lib/shared/api/client.js';
 import { m } from '#lib/paraglide/messages.js';
 
-export type TaskKind = 'vm_create' | 'vm_snapshot_create' | 'vm_snapshot_rollback' | 'vm_snapshot_delete' | 'vm_migrate';
+export type TaskKind = 'vm_create' | 'vm_clone' | 'vm_snapshot_create' | 'vm_snapshot_rollback' | 'vm_snapshot_delete' | 'vm_migrate';
 
 export interface TrackedTask {
 	upid: string;
@@ -43,6 +43,7 @@ export const POLL_INTERVAL_MS = 1500;
  *  informational toast. A rollback is legitimately longer than a snapshot. */
 export const TASK_BUDGET_MS: Record<TaskKind, number> = {
 	vm_create: 600_000,
+	vm_clone: 1_800_000,
 	vm_snapshot_create: 300_000,
 	vm_snapshot_rollback: 600_000,
 	vm_snapshot_delete: 300_000,
@@ -237,6 +238,7 @@ async function refreshInventory(): Promise<void> {
 function taskToast(task: TrackedTask, status: TaskStatusResponse): TaskToast {
 	const labels: Record<TaskKind, { subject: () => string; success: () => string; failure: () => string }> = {
 		vm_create: { subject: () => m['task.subjectVm'](), success: () => m['task.successCreated'](), failure: () => m['task.failureCreationFailed']() },
+		vm_clone: { subject: () => m['task.subjectVm'](), success: () => m['task.successCreated'](), failure: () => m['task.failureCreationFailed']() },
 		vm_snapshot_create: { subject: () => m['task.subjectSnapshot'](), success: () => m['task.successCreated'](), failure: () => m['task.failureCreationFailed']() },
 		vm_snapshot_rollback: { subject: () => m['task.subjectVm'](), success: () => m['task.successRolledBack'](), failure: () => m['task.failureRollbackFailed']() },
 		vm_snapshot_delete: { subject: () => m['task.subjectSnapshot'](), success: () => m['task.successDeleted'](), failure: () => m['task.failureDeletionFailed']() },

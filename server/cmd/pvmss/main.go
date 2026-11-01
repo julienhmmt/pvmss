@@ -508,6 +508,7 @@ func buildRouter(deps routerDeps) (http.Handler, error) {
 	)
 	vmCreate.SetTrustedProxyHops(cfg.TrustedProxyHops)
 	vmCreate.SetInventoryRefreshers(httpapi.NewRegistryRefresherResolver(inventoryRegistry))
+	vmCreate.SetInventorySource(inventoryRegistry)
 	tasks := httpapi.NewTasksWithRegistry(authHandler, clusterRegistry, clients.creator, worker, httpapi.NewRegistryRefresherResolver(inventoryRegistry), logger)
 	snapshots := httpapi.NewVMSnapshotsWithRegistry(httpapi.VMSnapshotsRegistryDeps{Source: inventoryRegistry, Projection: projection, Auth: authHandler, Reader: clients.snapshotReader, Writer: clients.snapshotWriter, Clients: clusterRegistry, Store: st, Log: logger, Services: []*policy.Policy{policyService}})
 	adminMigration := httpapi.NewAdminMigrationWithRegistry(httpapi.AdminMigrationRegistryDeps{Source: inventoryRegistry, Projection: projection, Auth: authHandler, Migrator: clients.migrator, Status: clients.statusReader, Clients: clusterRegistry, Store: st, Log: logger})

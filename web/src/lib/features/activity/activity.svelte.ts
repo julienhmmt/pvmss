@@ -68,6 +68,7 @@ const ACTION_LABELS: Record<string, () => string> = {
 	cdrom_mount: () => m['activity.action.cdrom_mount'](),
 	cdrom_disconnect: () => m['activity.action.cdrom_disconnect'](),
 	cdrom_remove: () => m['activity.action.cdrom_remove'](),
+	vm_clone: () => m['activity.action.vm_clone'](),
 	vm_snapshot_create: () => m['activity.action.vm_snapshot_create'](),
 	vm_snapshot_rollback: () => m['activity.action.vm_snapshot_rollback'](),
 	vm_snapshot_delete: () => m['activity.action.vm_snapshot_delete'](),
