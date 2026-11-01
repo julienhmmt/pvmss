@@ -86,11 +86,7 @@ func (h *VMCreate) clientFor(clusterName string) (cluster.Client, error) {
 		return h.clients.Client(clusterName)
 	}
 
-	if h.client == nil {
-		return nil, cluster.ErrClusterNotFound
-	}
-
-	return h.client, nil
+	return nil, cluster.ErrClusterNotFound
 }
 
 func vmCapableStorage(storage catalog.Storage, available []cluster.Storage) (cluster.Storage, bool) {

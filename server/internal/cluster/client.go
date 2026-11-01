@@ -18,7 +18,6 @@ const (
 	storagePluginLVMThin   = "lvmthin"
 	storagePluginPBS       = "pbs"
 	storageContentImages   = "images"
-	storageContentSnippets = "snippets"
 )
 
 // Sentinel errors so callers can distinguish failure modes without string matching.
@@ -417,20 +416,7 @@ func IsVMCapableStorage(storage Storage) bool {
 	return false
 }
 
-// IsSnippetCapableStorage reports whether a storage advertises the snippets
-// content type - the prerequisite for PVMSS to write cloud-init vendor-data
-// files the VM can read back via cicustom. Unlike IsVMCapableStorage, PBS is
-// not excluded here because PBS does not advertise snippets anyway; the
-// content check alone is the correct gate.
-func IsSnippetCapableStorage(storage Storage) bool {
-	for capability := range strings.SplitSeq(storage.Content, ",") {
-		if capability == storageContentSnippets {
-			return true
-		}
-	}
 
-	return false
-}
 
 // Bridge is a network bridge reported by a node. Approval (catalog_bridges) is
 // keyed by (cluster, node, name).

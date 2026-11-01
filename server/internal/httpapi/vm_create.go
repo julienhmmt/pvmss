@@ -23,7 +23,6 @@ const createWriteDeadlineMargin = 2 * time.Minute
 type VMCreate struct {
 	auth             *Auth
 	store            *store.Store
-	client           cluster.Client
 	clients          cluster.ClientProvider
 	creator          cluster.Creator
 	policy           *policy.Policy
@@ -101,34 +100,6 @@ func (h *VMCreate) awaitCreateThenRefresh(ctx context.Context, creator cluster.C
 		if _, err := refresher.Refresh(ctx); err != nil {
 			h.log.WarnContext(ctx, "post-create inventory refresh failed", "component", "httpapi", "cluster", clusterName, "error", err)
 		}
-	}
-}
-
-// NewVMCreate creates the handler. The creator is the cluster client's
-// creation contract (allocation + async dispatch), separate from reads and
-// from existing-VM writes. The pusher is the same cluster
-// client's cloud-init push contract, reused by vm.Create's template-apply
-// step - never a second write mechanism.
-func NewVMCreate(
-	authHandler *Auth,
-	st *store.Store,
-	client cluster.Client,
-	creator cluster.Creator,
-	log *slog.Logger,
-	services ...*policy.Policy,
-) *VMCreate {
-	var policyService *policy.Policy
-	if len(services) > 0 {
-		policyService = services[0]
-	}
-
-	return &VMCreate{
-		auth:    authHandler,
-		store:   st,
-		client:  client,
-		creator: creator,
-		policy:  policyService,
-		log:     log,
 	}
 }
 
