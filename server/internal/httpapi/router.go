@@ -86,6 +86,7 @@ type RouterConfig struct {
 	AdminPolicy      *AdminPolicy
 	QuotaRequests    *QuotaRequests
 	AdminPools       *AdminPools
+	AdminRecovery    *AdminRecovery
 	AdminOps         *AdminOps
 	AdminClusters    *AdminClusters
 	AdminMigration   *AdminMigration

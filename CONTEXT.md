@@ -41,6 +41,21 @@ cluster. The first registered cluster swaps the full router in atomically;
 there is no restart.
 _Avoid_: first boot wizard, install mode
 
+**Adoption**:
+The recovery flow behind `/admin/recovery` for a fresh install (new database)
+pointing at a cluster an older PVMSS instance already managed. Proxmox still
+carries the evidence - `pvmss-*` pools, `pvmss`-tagged VMs, other VM tags -
+while the local `managed_pools` and `catalog_tags` rows are gone. The report
+lists _orphan pools_ (`pvmss-*`, absent from `managed_pools`), _loose VMs_
+(`pvmss`-tagged, outside any managed pool - informational only) and _orphan
+tags_ (on those VMs, absent from `catalog_tags`, with a suggested palette
+color since old colors died with the old DB). Adopting only writes local
+rows; VM tags on the cluster are never rewritten. The report is cached per
+cluster (5 min, pinned once nothing is adoptable) so the page does not scan
+Proxmox on every visit; `POST /api/v1/admin/recovery/scan` forces a rescan.
+_Avoid_: migration (the `server/internal/recovery` tool imports an old
+database file - adoption reads the live cluster instead), re-import
+
 **Realm**:
 The Proxmox authentication backend after the `@` in a username (`user@pve`,
 `root@pam`). PVMSS accepts an explicit picker value or a typed suffix for

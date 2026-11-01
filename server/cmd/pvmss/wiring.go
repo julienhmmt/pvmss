@@ -110,6 +110,8 @@ func buildRouter(deps routerDeps) (http.Handler, error) {
 	quotaRequests.SetTrustedProxyHops(cfg.TrustedProxyHops)
 	adminPools := httpapi.NewAdminPoolsWithRegistry(httpapi.AdminPoolsRegistryDeps{Auth: authHandler, Clients: clusterRegistry, Source: inventoryRegistry, Projection: projection, Writer: clients.writer, Audit: st, Refresher: worker, Store: st, Policy: policyService, Log: logger})
 	adminPools.SetTrustedProxyHops(cfg.TrustedProxyHops)
+	adminRecovery := httpapi.NewAdminRecovery(httpapi.AdminRecoveryDeps{Auth: authHandler, Clients: clusterRegistry, Source: inventoryRegistry, Projection: projection, Store: st, Log: logger})
+	adminRecovery.SetTrustedProxyHops(cfg.TrustedProxyHops)
 	adminOps := httpapi.NewAdminOps(authHandler, st, projection, appVersion, logger)
 	// The level at build time is the startup default (LOG_LEVEL); nothing has
 	// changed it yet. The runtime endpoint can move it and reset back to it.
@@ -151,6 +153,7 @@ func buildRouter(deps routerDeps) (http.Handler, error) {
 		AdminPolicy:      adminPolicy,
 		QuotaRequests:    quotaRequests,
 		AdminPools:       adminPools,
+		AdminRecovery:    adminRecovery,
 		AdminOps:         adminOps,
 		AdminClusters:    adminClusters,
 		Docs:             docsHandler,

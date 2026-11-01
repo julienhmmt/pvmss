@@ -83,6 +83,7 @@ export const ADMIN_NAV_GROUPS: readonly AdminNavGroup[] = [
 		items: [
 			{ href: resolve('/admin/appinfo'), label: () => m['chrome.adminNav.appInfo']() },
 			{ href: resolve('/admin/docs'), label: () => m['chrome.adminNav.documentation']() },
+			{ href: resolve('/admin/recovery'), label: () => m['chrome.adminNav.recovery']() },
 			{ href: resolve('/admin/settings'), label: () => m['chrome.adminNav.settings']() }
 		]
 	}

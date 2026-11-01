@@ -31,6 +31,12 @@ func registerAdminRoutes(mux *http.ServeMux, cfg RouterConfig, adminProtect admi
 		registerAdminPoolRoutes(mux, adminProtect, cfg.AdminPools)
 	}
 
+	if cfg.AdminRecovery != nil {
+		mux.Handle("GET /api/v1/admin/recovery", adminProtect(http.MethodGet, http.HandlerFunc(cfg.AdminRecovery.ServeReport)))
+		mux.Handle("POST /api/v1/admin/recovery", adminProtect(http.MethodPost, http.HandlerFunc(cfg.AdminRecovery.ServeAdopt)))
+		mux.Handle("POST /api/v1/admin/recovery/scan", adminProtect(http.MethodPost, http.HandlerFunc(cfg.AdminRecovery.ServeScan)))
+	}
+
 	if cfg.AdminOps != nil {
 		registerAdminOpsRoutes(mux, adminProtect, cfg.AdminOps)
 	}
