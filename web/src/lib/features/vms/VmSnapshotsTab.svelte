@@ -5,7 +5,7 @@
 	import CreateSnapshotDialog from './CreateSnapshotDialog.svelte';
 	import DeleteSnapshotDialog from './DeleteSnapshotDialog.svelte';
 	import RollbackSnapshotDialog from './RollbackSnapshotDialog.svelte';
-	import { VmSnapshotsStore, type VmSnapshot } from './snapshots.svelte';
+	import { AUTO_SNAPSHOT_PREFIX, VmSnapshotsStore, type SnapshotFrequency, type VmSnapshot } from './snapshots.svelte';
 	import { m } from '#lib/paraglide/messages.js';
 	import { formatDateTime } from '#lib/shared/format-date.js';
 	import Alert from '#lib/shared/ui/Alert.svelte';
@@ -44,6 +44,31 @@
 	function formatCreatedAt(value: string): string {
 		return formatDateTime(value);
 	}
+
+	// The form mirrors the stored schedule; a reload after a save resets it.
+	let scheduleFrequency = $state<SnapshotFrequency>('off');
+	let scheduleRetain = $state(3);
+	$effect(() => {
+		scheduleFrequency = snapshots.schedule?.frequency ?? 'off';
+		scheduleRetain = snapshots.schedule?.retain ?? 3;
+	});
+
+	const retainLimit = $derived(snapshots.maxSnapshots && snapshots.maxSnapshots > 0 ? snapshots.maxSnapshots - 1 : null);
+	const retainValid = $derived(scheduleRetain >= 1 && (retainLimit === null || scheduleRetain <= retainLimit));
+
+	async function saveSchedule(event: SubmitEvent): Promise<void> {
+		event.preventDefault();
+		if (scheduleFrequency === 'off') {
+			await snapshots.clearSchedule();
+			return;
+		}
+		if (!retainValid) return;
+		await snapshots.saveSchedule(scheduleFrequency, scheduleRetain);
+	}
+
+	function isAutoSnapshot(snapshot: VmSnapshot): boolean {
+		return snapshot.name.startsWith(AUTO_SNAPSHOT_PREFIX);
+	}
 </script>
 
 <Card pad="lg" aria-labelledby="snapshots-heading" data-testid="vm-snapshots">
@@ -60,6 +85,34 @@
 	{#if snapshots.maxSnapshots !== null && snapshots.maxSnapshots > 0 && snapshots.snapshots.length >= snapshots.maxSnapshots}
 		<p role="status" class="mt-3 text-sm text-muted-foreground" data-testid="snapshot-limit-message">{m['vms.snapshots.limitMessage']()}</p>
 	{/if}
+
+	<form class="mt-6 rounded-xl border border-border p-4" onsubmit={saveSchedule} data-testid="snapshot-schedule-form">
+		<h3 class="text-sm font-semibold">{m['vms.schedule.heading']()}</h3>
+		<p class="mt-1 text-xs text-muted-foreground">{m['vms.schedule.description']()}</p>
+		<div class="mt-3 flex flex-wrap items-end gap-4">
+			<fieldset class="flex flex-wrap gap-3 text-sm">
+				<label class="flex items-center gap-1.5"><input type="radio" name="snapshot-frequency" value="off" bind:group={scheduleFrequency} data-testid="schedule-off" />{m['vms.schedule.off']()}</label>
+				<label class="flex items-center gap-1.5"><input type="radio" name="snapshot-frequency" value="daily" bind:group={scheduleFrequency} data-testid="schedule-daily" />{m['vms.schedule.daily']()}</label>
+				<label class="flex items-center gap-1.5"><input type="radio" name="snapshot-frequency" value="weekly" bind:group={scheduleFrequency} data-testid="schedule-weekly" />{m['vms.schedule.weekly']()}</label>
+			</fieldset>
+			<label class="flex flex-col gap-1 text-sm">
+				<span>{m['vms.schedule.retainLabel']()}</span>
+				<input type="number" min="1" max={retainLimit ?? undefined} bind:value={scheduleRetain} disabled={scheduleFrequency === 'off'} class="w-24 rounded-md border border-border bg-background px-2 py-1" data-testid="schedule-retain" />
+			</label>
+			<Button type="submit" disabled={snapshots.scheduleSaving || (scheduleFrequency !== 'off' && !retainValid)} data-testid="schedule-save">
+				{snapshots.scheduleSaving ? m['vms.schedule.saving']() : m['vms.schedule.save']()}
+			</Button>
+		</div>
+		<p class="mt-2 text-xs text-muted-foreground">{m['vms.schedule.retainHint']()}</p>
+		{#if snapshots.schedule}
+			<p class="mt-2 text-xs text-muted-foreground" data-testid="schedule-last-run">
+				{snapshots.schedule.lastRunAt ? m['vms.schedule.lastRun']({ date: formatCreatedAt(snapshots.schedule.lastRunAt) }) : m['vms.schedule.neverRun']()}
+			</p>
+		{/if}
+		{#if snapshots.scheduleError}
+			<Alert class="mt-3" data-testid="schedule-error">{snapshots.scheduleError}</Alert>
+		{/if}
+	</form>
 
 	{#if snapshots.loading && snapshots.snapshots.length === 0}
 		<div role="status" aria-live="polite" class="mt-6">
@@ -86,6 +139,7 @@
 						<div class="flex flex-wrap items-center gap-2">
 							<strong class="text-sm">{snapshot.name}</strong>
 							{#if snapshot.vmstate}<Pill tone="accent" dot={false} label={m['vms.snapshots.ramState']()} />{/if}
+							{#if isAutoSnapshot(snapshot)}<Pill tone="accent" dot={false} label={m['vms.snapshots.autoBadge']()} data-testid="snapshot-auto-badge" />{/if}
 						</div>
 						<p class="mt-1 text-xs text-muted-foreground">{formatCreatedAt(snapshot.createdAt)}</p>
 						{#if snapshot.description}<p class="mt-2 text-sm">{snapshot.description}</p>{/if}

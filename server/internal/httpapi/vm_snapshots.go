@@ -76,6 +76,7 @@ type snapshotListDTO struct {
 	Snapshots    []snapshotDTO         `json:"snapshots"`
 	MaxSnapshots int                   `json:"maxSnapshots"`
 	Capability   snapshotCapabilityDTO `json:"capability"`
+	Schedule     *snapshotScheduleDTO  `json:"schedule"`
 }
 
 // snapshotCapabilityDTO mirrors vm.SnapshotCapability for the create dialog:
@@ -105,6 +106,8 @@ type snapshotConfigDTO struct {
 //nolint:wsl_v5 // snapshot request boundaries keep validation and dispatch adjacent
 func (h *VMSnapshots) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	switch {
+	case isScheduleRoute(r.URL.Path):
+		h.handleSchedule(w, r)
 	case strings.HasSuffix(r.URL.Path, "/config"):
 		h.handleConfig(w, r)
 	case strings.HasSuffix(r.URL.Path, "/rollback"):
@@ -179,7 +182,7 @@ func (h *VMSnapshots) handleList(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	result := snapshotListDTO{Snapshots: make([]snapshotDTO, 0, len(snapshots)), MaxSnapshots: maxSnapshots, Capability: snapshotCapabilityDTO{CanSnapshot: capability.CanSnapshot, CanVMState: capability.CanVMState, Warnings: capability.Warnings}}
+	result := snapshotListDTO{Snapshots: make([]snapshotDTO, 0, len(snapshots)), MaxSnapshots: maxSnapshots, Capability: snapshotCapabilityDTO{CanSnapshot: capability.CanSnapshot, CanVMState: capability.CanVMState, Warnings: capability.Warnings}, Schedule: h.scheduleListDTO(r, clusterName, vmid)}
 	for _, snapshot := range snapshots {
 		result.Snapshots = append(result.Snapshots, snapshotDTOFromModel(snapshot))
 	}

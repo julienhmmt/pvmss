@@ -352,6 +352,21 @@ CREATE TABLE vm_leases (
 ALTER TABLE vm_limits ADD COLUMN lease_days INTEGER NOT NULL DEFAULT 0;
 `
 
+// schemaV8 adds the per-VM scheduled snapshot policy. pool pins the schedule
+// to the VM it was set on; last_run_at is empty until the first automatic
+// snapshot.
+const schemaV8 = `
+CREATE TABLE vm_snapshot_schedules (
+	cluster     TEXT NOT NULL,
+	vmid        INTEGER NOT NULL,
+	frequency   TEXT NOT NULL,
+	retain      INTEGER NOT NULL,
+	pool        TEXT NOT NULL DEFAULT '',
+	last_run_at TEXT NOT NULL DEFAULT '',
+	PRIMARY KEY (cluster, vmid)
+);
+`
+
 // Migrations is the ordered list of schema migrations.
 // Versions must be consecutive integers starting at 1.
 var Migrations = []Migration{
@@ -362,4 +377,5 @@ var Migrations = []Migration{
 	{Version: 5, DDL: schemaV5},
 	{Version: 6, DDL: schemaV6},
 	{Version: 7, DDL: schemaV7},
+	{Version: 8, DDL: schemaV8},
 }

@@ -53,6 +53,7 @@ var excludedImportTables = map[string]string{
 	"vm_cloudinit_snippets":  "legacy per-VM runtime state",
 	"vm_cloudinit_documents": "per-VM runtime state",
 	"vm_leases":              "per-VM expiry runtime state; restored VMs come back without a lease",
+	"vm_snapshot_schedules":  "per-VM runtime state keyed by cluster VMID; last_run_at is sweeper state",
 }
 
 // importTempPattern names staged upload copies next to the live database.

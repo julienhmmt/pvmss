@@ -337,6 +337,9 @@ var resolveExemptRoutes = map[string]string{
 	"POST /api/v1/vms/{cluster}/{vmid}/snapshots/{name}/rollback": "delegates to vm.RollbackSnapshot which resolves",
 	"DELETE /api/v1/vms/{cluster}/{vmid}/snapshots/{name}":        "delegates to vm.DeleteSnapshot which resolves",
 	"GET /api/v1/vms/{cluster}/{vmid}/snapshots/{name}/config":    "delegates to vm.SnapshotConfig which resolves",
+	// snapshot schedule: handler delegates to vm.SetSnapshotSchedule / vm.ClearSnapshotSchedule, which resolve the VM.
+	"PUT /api/v1/vms/{cluster}/{vmid}/snapshot-schedule":    "delegates to vm.SetSnapshotSchedule which resolves",
+	"DELETE /api/v1/vms/{cluster}/{vmid}/snapshot-schedule": "delegates to vm.ClearSnapshotSchedule which resolves",
 }
 
 func handlerArgToSource(arg string) (string, bool) {
@@ -414,6 +417,7 @@ var vmRequestBodies = map[string]string{
 	"PUT /api/v1/vms/{cluster}/{vmid}/cloudinit/document":     `{"templateId":""}`,
 	"POST /api/v1/vms/{cluster}/{vmid}/cloudinit/ssh-keys":    `{"user":"root","key":"ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIDIhz2GK/XCuN1lGHKPmXGP"}`,
 	"POST /api/v1/vms/{cluster}/{vmid}/snapshots":             `{"name":"x"}`,
+	"PUT /api/v1/vms/{cluster}/{vmid}/snapshot-schedule":      `{"frequency":"daily","retain":2}`,
 }
 
 // idorNonForbiddenRoutes are per-VM routes where a request without the
