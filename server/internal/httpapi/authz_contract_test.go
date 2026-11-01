@@ -323,6 +323,8 @@ var resolveExemptRoutes = map[string]string{
 	"POST /api/v1/vms/{cluster}/{vmid}/cloudinit/ssh-keys": "delegates to vm.AddCloudInitSSHKey which resolves",
 	// console-password: handler delegates to vm.SetConsolePassword, which resolves the VM and enforces ownership.
 	"POST /api/v1/vms/{cluster}/{vmid}/console-password": "delegates to vm.SetConsolePassword which resolves",
+	// clone: handler delegates to vm.CloneOwn, which resolves the source via vm.Resolve before any write.
+	"POST /api/v1/vms/{cluster}/{vmid}/clone": "delegates to vm.CloneOwn which resolves the source",
 	// console: ticket endpoints call vm.GetConsoleTicket (Resolve -> GetVNCTicket -> Issue -> audit).
 	"POST /api/v1/vms/{cluster}/{vmid}/vnc-ticket":    "delegates to vm.GetConsoleTicket which resolves",
 	"POST /api/v1/vms/{cluster}/{vmid}/serial-ticket": "delegates to vm.GetConsoleTicket which resolves",
@@ -400,6 +402,7 @@ func runResolveContractCase(t *testing.T, r extractedRoute) {
 
 var vmRequestBodies = map[string]string{
 	"POST /api/v1/vms/{cluster}/{vmid}/actions":               `{"action":"stop"}`,
+	"POST /api/v1/vms/{cluster}/{vmid}/clone":                 `{"name":"copy"}`,
 	"PATCH /api/v1/vms/{cluster}/{vmid}":                      `{"name":"web-01","description":"x"}`,
 	"POST /api/v1/vms/{cluster}/{vmid}/disks":                 `{"bus":"scsi","storage":"local-lvm","sizeGb":10}`,
 	"PUT /api/v1/vms/{cluster}/{vmid}/disks/{diskKey}/resize": `{"sizeGb":20}`,
@@ -538,6 +541,7 @@ func newAuthzContractRouter(t *testing.T) (http.Handler, *httpapi.Auth) {
 	vmBulk := httpapi.NewVMBulkWithRegistry(httpapi.VMBulkRegistryDeps{Registry: projectionRegistry(projection), Projection: projection, Auth: authHandler, Writer: cluster.Fake{}, Store: st, Refresher: worker, Log: logger})
 	vmStatusBatch := httpapi.NewVMStatusBatch(httpapi.VMStatusBatchDeps{Source: projectionRegistry(projection), Auth: authHandler, StatusReader: cluster.Fake{}, Log: logger})
 	vmCreate := httpapi.NewVMCreateWithRegistry(authHandler, st, singleClientProvider(cluster.Fake{}), cluster.Fake{}, logger, policyService)
+	vmCreate.SetInventorySource(projectionRegistry(projection))
 	vmConsole := httpapi.NewVMConsoleWithRegistry(httpapi.VMConsoleRegistryDeps{Source: projectionRegistry(projection), Projection: projection, Auth: authHandler, Relay: consoleRelayStub{}, Tickets: vm.NewConsoleTicketStore(), Store: st, Log: logger})
 	vmSerial := httpapi.NewVMSerialConsoleWithRegistry(httpapi.VMSerialConsoleRegistryDeps{Source: projectionRegistry(projection), Projection: projection, Auth: authHandler, Relay: terminalRelayStub{}, Tickets: vm.NewConsoleTicketStore(), Store: st, Log: logger})
 	vmSnapshots := httpapi.NewVMSnapshotsWithRegistry(httpapi.VMSnapshotsRegistryDeps{Source: projectionRegistry(projection), Projection: projection, Auth: authHandler, Reader: cluster.Fake{}, Writer: cluster.Fake{}, Store: st, Log: logger})

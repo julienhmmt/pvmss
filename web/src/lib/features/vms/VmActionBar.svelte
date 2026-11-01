@@ -13,6 +13,7 @@
 	import TrashIcon from '#lib/shared/ui/icons/TrashIcon.svelte';
 	import type { Component } from 'svelte';
 	import Button from '#lib/shared/ui/Button.svelte';
+	import CloneVmDialog from './CloneVmDialog.svelte';
 
 	const store = getVmDetailContext();
 	const toast = getToastContext();
@@ -79,6 +80,8 @@
 
 	/** The forceful action awaiting confirmation, if any. */
 	let pending = $state<VmAction | null>(null);
+	/** Clone dialog visibility (Duplicate button). */
+	let cloneOpen = $state(false);
 	const confirmation = $derived(pending === null ? null : (CONFIRMATIONS[pending] ?? null));
 	const vmName = $derived(store.entity?.name ?? '');
 
@@ -145,6 +148,20 @@
 		{/if}
 	{/each}
 
+	{#if !compact && store.entity !== null}
+		<Button
+			size="sm"
+			variant="secondary"
+			disabled={store.actionInFlight}
+			onclick={() => (cloneOpen = true)}
+			data-testid="vm-action-clone"
+			title={m['vms.clone.button']()}
+			label={m['vms.clone.button']()}
+		>
+			{m['vms.clone.button']()}
+		</Button>
+	{/if}
+
 	{#if !hideDelete}
 		<Button
 			size="sm"
@@ -174,6 +191,10 @@
 		onConfirm={confirmPending}
 		onClose={() => (pending = null)}
 	/>
+{/if}
+
+{#if store.entity !== null && !compact}
+	<CloneVmDialog bind:open={cloneOpen} cluster={store.entity.cluster} vmid={store.entity.vmid} sourceName={store.entity.name} />
 {/if}
 
 {#if store.actionError}

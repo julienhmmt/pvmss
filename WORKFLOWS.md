@@ -141,11 +141,23 @@ carry the sign-in").
 | Snapshots               | create, rollback, delete                                                                                              | `GET`/`POST .../snapshots`, `POST .../snapshots/{name}/rollback`, `DELETE .../snapshots/{name}` |
 
 Dialogs: `DeleteVmDialog`, `CreateSnapshotDialog`, `RollbackSnapshotDialog`,
-`DeleteSnapshotDialog`, `SaveCloudInitDialog`. A destructive action without a
+`DeleteSnapshotDialog`, `SaveCloudInitDialog`, `CloneVmDialog`. A destructive action without a
 dialog is a bug.
 
 Rename validates as a hostname (lowercase, ≤63 chars, `hostnameRe` in
 `vm/actions.go`) because the name becomes a DNS label on the guest.
+
+### Duplicate a VM
+
+|                 |                                                                                                                                                                                                                                                                                  |
+| --------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Audience**    | end user                                                                                                                                                                                                                                                                         |
+| **Entry**       | "Duplicate" button in the VM detail header (`VmActionBar.svelte`)                                                                                                                                                                                                                |
+| **Route**       | `/vms/[cluster]/[vmid]` (dialog on the same page), then `/vms` once the task finishes                                                                                                                                                                                            |
+| **API**         | `POST /api/v1/vms/{cluster}/{vmid}/clone` `{name}` (202 with UPID), then `GET /api/v1/tasks/{upid}` polled by the task tray                                                                                                                                                      |
+| **Steps**       | 1. Click Duplicate. 2. The dialog suggests `<name>-copy` (editable, DNS-label rules). 3. Confirm. 4. The task tray tracks the clone like a creation; the copy appears in the list once the task is done. The copy keeps the source's hardware, disks, NICs, tags and pool.     |
+| **States**      | Button disabled while another action is in flight. Dialog shows the server message for a taken name (`name_taken`) or an unapproved bridge (names it). A failed clone surfaces as a task error toast. Cloning a running VM is allowed and is documented as crash-consistent. |
+| **Safety nets** | `vm.Resolve()` gates the source (pool scoping); quota and name uniqueness reuse the create reservation; node capacity is checked on the source node; full clone only (a linked clone would share the source disks); the clone stays on the source node; administrators cannot clone (no personal pool). |
 
 ### Open the console
 
