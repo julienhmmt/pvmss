@@ -17,6 +17,7 @@ import (
 // policy service, which is everything CloneOwn reads.
 type cloneFixture struct {
 	createFixture
+
 	index   *inventory.Index
 	service *policy.Policy
 }
@@ -32,7 +33,6 @@ func newCloneFixture(t *testing.T) cloneFixture {
 	}
 
 	index := inventory.BuildIndex(snapshot)
-
 	service := policy.New(fixture.store, inventory.NewProjectionFromIndex(&index), fixture.fake)
 
 	return cloneFixture{createFixture: fixture, index: &index, service: service}
@@ -40,25 +40,66 @@ func newCloneFixture(t *testing.T) cloneFixture {
 
 func (f cloneFixture) deps() vm.CreateDeps {
 	return vm.CreateDeps{
-		Store:    f.store,
-		Creator:  f.fake,
-		Writer:   f.fake,
-		Audit:    f.store,
-		Log:      slog.New(slog.DiscardHandler),
-		Services: []*policy.Policy{f.service},
+		Store:     f.store,
+		Creator:   f.fake,
+		Writer:    f.fake,
+		FreeSpace: f.fake,
+		Audit:     f.store,
+		Log:       slog.New(slog.DiscardHandler),
+		Services:  []*policy.Policy{f.service},
 	}
 }
 
-// aliceSource returns one of alice's VMs, the clone source.
+// aliceSource returns one of alice's VMs with a disk and a NIC, the clone source.
+// The demo seed gives disks and NICs to only a few VMs.
 func (f cloneFixture) aliceSource(t *testing.T) cluster.VM {
 	t.Helper()
 
-	vms := f.index.ByPool[cluster.FakePoolAlice]
-	if len(vms) == 0 {
-		t.Fatal("demo fixtures have no VM in alice's pool")
+	for _, candidate := range f.index.ByPool[cluster.FakePoolAlice] {
+		if len(candidate.Disks) > 0 && len(candidate.NetworkInterfaces) > 0 {
+			return candidate
+		}
 	}
 
-	return vms[0]
+	t.Fatal("demo fixtures have no alice VM with a disk and a NIC")
+
+	return cluster.VM{}
+}
+
+// cloneMutatedSource replaces the indexed source with a copy changed by mutate,
+// then clones it. Refusals are checked before dispatch, so FakeCalls stays empty.
+func (f cloneFixture) cloneMutatedSource(t *testing.T, mutate func(*cluster.VM), deps vm.CreateDeps) error {
+	t.Helper()
+
+	source := f.aliceSource(t)
+	mutate(&source)
+	f.index.ByVMID[source.VMID] = source
+
+	cluster.ClearFakeCalls()
+
+	_, err := vm.CloneOwn(context.Background(), aliceIdentity(), f.index, testClusterName, source.VMID, "gate-copy", deps)
+
+	if calls := cluster.FakeCalls(); len(calls) != 0 {
+		t.Errorf("refused clone still dispatched: %v", calls)
+	}
+
+	return err
+}
+
+// zeroFreeSpace reports every storage as empty.
+type zeroFreeSpace struct{}
+
+func (zeroFreeSpace) StorageFreeSpace(context.Context, string, string) (int64, error) {
+	return 0, nil
+}
+
+// failingTaskCreator reports every clone task as failed, the definite-failure path.
+type failingTaskCreator struct {
+	cluster.Fake
+}
+
+func (failingTaskCreator) TaskStatus(_ context.Context, upid string) (cluster.TaskStatus, error) {
+	return cluster.TaskStatus{UPID: upid, State: cluster.TaskError, ExitMessage: "clone exploded"}, nil
 }
 
 //nolint:paralleltest // serial: shared fake VM and database fixtures
@@ -145,8 +186,123 @@ func TestCloneOwn_UnapprovedBridgeRefused(t *testing.T) {
 	}
 }
 
-// The copy's name is subject to the same per-pool uniqueness as create.
+// Gate: the source node must be approved on the target cluster.
 //
+//nolint:paralleltest // serial: shared fake VM and database fixtures
+func TestCloneOwn_GateUnapprovedNode(t *testing.T) {
+	fixture := newCloneFixture(t)
+
+	err := fixture.cloneMutatedSource(t, func(v *cluster.VM) { v.Node = "ghost-node" }, fixture.deps())
+	if !errors.Is(err, vm.ErrNotApproved) {
+		t.Fatalf("unapproved node: err = %v, want ErrNotApproved", err)
+	}
+}
+
+// Gate: every disk's storage must be approved on the source node.
+//
+//nolint:paralleltest // serial: shared fake VM and database fixtures
+func TestCloneOwn_GateUnapprovedStorage(t *testing.T) {
+	fixture := newCloneFixture(t)
+
+	err := fixture.cloneMutatedSource(t, func(v *cluster.VM) {
+		disks := append([]cluster.Disk(nil), v.Disks...)
+		disks[0].Storage = "ghost-storage"
+		v.Disks = disks
+	}, fixture.deps())
+	if !errors.Is(err, vm.ErrNotApproved) || !strings.Contains(err.Error(), "ghost-storage") {
+		t.Fatalf("unapproved storage: err = %v, want ErrNotApproved naming storage", err)
+	}
+}
+
+// Gate: a NIC model outside the server's whitelist is refused.
+//
+//nolint:paralleltest // serial: shared fake VM and database fixtures
+func TestCloneOwn_GateNetworkModel(t *testing.T) {
+	fixture := newCloneFixture(t)
+
+	err := fixture.cloneMutatedSource(t, func(v *cluster.VM) {
+		nics := append([]cluster.NetworkInterface(nil), v.NetworkInterfaces...)
+		nics[0].Model = "bogus-nic"
+		v.NetworkInterfaces = nics
+	}, fixture.deps())
+	if !errors.Is(err, vm.ErrNotApproved) || !strings.Contains(err.Error(), "bogus-nic") {
+		t.Fatalf("unknown NIC model: err = %v, want ErrNotApproved naming the model", err)
+	}
+}
+
+// Gate: a NIC VLAN that differs from the cluster's isolation tag is refused.
+//
+//nolint:paralleltest // serial: shared fake VM and database fixtures
+func TestCloneOwn_GateIsolationVLAN(t *testing.T) {
+	fixture := newCloneFixture(t)
+
+	err := fixture.cloneMutatedSource(t, func(v *cluster.VM) {
+		nics := append([]cluster.NetworkInterface(nil), v.NetworkInterfaces...)
+		tag := 999
+		nics[0].VLAN = &tag
+		v.NetworkInterfaces = nics
+	}, fixture.deps())
+	if !errors.Is(err, vm.ErrNotApproved) || !strings.Contains(err.Error(), "999") {
+		t.Fatalf("foreign VLAN tag: err = %v, want ErrNotApproved naming the tag", err)
+	}
+}
+
+// Gate: the gabarit ceiling applies to the source's current hardware.
+//
+//nolint:paralleltest // serial: shared fake VM and database fixtures
+func TestCloneOwn_GateGabarit(t *testing.T) {
+	fixture := newCloneFixture(t)
+
+	gabarit := policy.DefaultGabarit()
+
+	gabarit.MaxDiskPerVMGB = 1
+	if err := fixture.service.SetPolicy(context.Background(), testClusterName, gabarit, 100); err != nil {
+		t.Fatalf("SetPolicy: %v", err)
+	}
+
+	err := fixture.cloneMutatedSource(t, func(*cluster.VM) {}, fixture.deps())
+	if !errors.Is(err, policy.ErrGabaritExceeded) {
+		t.Fatalf("gabarit disk ceiling: err = %v, want ErrGabaritExceeded", err)
+	}
+}
+
+// Gate: a target storage without room for the full copy is refused.
+//
+//nolint:paralleltest // serial: shared fake VM and database fixtures
+func TestCloneOwn_GateDiskSpace(t *testing.T) {
+	fixture := newCloneFixture(t)
+
+	deps := fixture.deps()
+	deps.FreeSpace = zeroFreeSpace{}
+
+	err := fixture.cloneMutatedSource(t, func(*cluster.VM) {}, deps)
+	if !errors.Is(err, vm.ErrInsufficientDiskSpace) {
+		t.Fatalf("no free space: err = %v, want ErrInsufficientDiskSpace", err)
+	}
+}
+
+// A failed clone task releases the name reservation, so the same name can be
+// tried again. Matches create: any wait error releases the reservation.
+//
+//nolint:paralleltest // serial: shared fake VM and database fixtures
+func TestCloneOwn_FailedTaskReleasesReservation(t *testing.T) {
+	fixture := newCloneFixture(t)
+	source := fixture.aliceSource(t)
+
+	deps := fixture.deps()
+	deps.Creator = failingTaskCreator{}
+
+	_, err := vm.CloneOwn(context.Background(), aliceIdentity(), fixture.index, testClusterName, source.VMID, "retry-me", deps)
+	if !errors.Is(err, vm.ErrClusterCreate) {
+		t.Fatalf("failed task: err = %v, want ErrClusterCreate", err)
+	}
+
+	_, err = vm.CloneOwn(context.Background(), aliceIdentity(), fixture.index, testClusterName, source.VMID, "retry-me", deps)
+	if errors.Is(err, vm.ErrNameTaken) {
+		t.Fatalf("name still reserved after failed task: %v", err)
+	}
+}
+
 //nolint:paralleltest // serial: shared fake VM and database fixtures
 func TestCloneOwn_NameTakenInPool(t *testing.T) {
 	fixture := newCloneFixture(t)

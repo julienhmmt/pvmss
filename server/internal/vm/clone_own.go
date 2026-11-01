@@ -3,19 +3,21 @@ package vm
 import (
 	"context"
 	"fmt"
+	"maps"
 	"pvmss/server/internal/auth"
 	"pvmss/server/internal/catalog"
 	"pvmss/server/internal/cluster"
 	"pvmss/server/internal/inventory"
 	"pvmss/server/internal/policy"
 	"pvmss/server/internal/store"
+	"slices"
 )
 
 // auditVMClone is the audit action recorded for a successful own-VM clone.
 const auditVMClone = "vm_clone"
 
 // bytesPerMiB and bytesPerGiB convert the inventory's byte counts into the
-// MB and GB units the node capacity check speaks.
+// MB and GB units the gabarit and capacity checks speak.
 const (
 	bytesPerMiB = 1 << 20
 	bytesPerGiB = 1 << 30
@@ -23,15 +25,10 @@ const (
 
 // CloneOwn duplicates a VM the actor owns as a full clone with a new name.
 // It rides the create path: the same name/quota reservation, VMID allocation,
-// retry and task wait. Everything else is refused up front:
-//
-//  1. administrators are refused (a clone lands in the actor's pool, and admins have none)
-//  2. the source must resolve for the actor (pool scoping, PVMSS scope)
-//  3. every NIC bridge must still be approved on the target cluster
-//  4. the source node must still have capacity for the copy
-//
-// The clone is always full and stays on the source node. Snapshots are not
-// copied (Proxmox clones the current state only).
+// retry and task wait. The source's config is held to the same rules a new
+// VM is (planCreate's catalog, gabarit, isolation VLAN and disk-space gates)
+// before a VMID is spent. Snapshots are not copied (Proxmox clones the
+// current state only).
 func CloneOwn(ctx context.Context, actor auth.Identity, index inventory.LookupSource, clusterName string, vmid int, name string, deps CreateDeps) (CreateResult, error) {
 	if actor.IsAdmin {
 		return CreateResult{}, ErrAdminCannotCreate
@@ -55,11 +52,23 @@ func CloneOwn(ctx context.Context, actor auth.Identity, index inventory.LookupSo
 
 	deps.VMIDMin, deps.VMIDMax = gabarit.VMIDMin, gabarit.VMIDMax
 
-	if err := checkCloneBridges(ctx, deps.Store, clusterName, source); err != nil {
+	if err := checkCloneCatalog(ctx, deps.Store, clusterName, source); err != nil {
+		return CreateResult{}, err
+	}
+
+	if err := checkCloneVLAN(gabarit.IsolationVLANTag, source); err != nil {
+		return CreateResult{}, err
+	}
+
+	if err := checkCloneGabarit(ctx, policyService, clusterName, source); err != nil {
 		return CreateResult{}, err
 	}
 
 	if err := checkCloneCapacity(ctx, policyService, clusterName, source); err != nil {
+		return CreateResult{}, err
+	}
+
+	if err := checkCloneDiskSpace(ctx, deps.FreeSpace, source.Node, source.Disks); err != nil {
 		return CreateResult{}, err
 	}
 
@@ -78,22 +87,92 @@ func CloneOwn(ctx context.Context, actor auth.Identity, index inventory.LookupSo
 	return result, nil
 }
 
-// checkCloneBridges refuses the clone when a NIC sits on a bridge the target
-// cluster no longer approves for the source node. The error names the bridge,
-// so an admin knows which approval to restore (same failure path as create).
-func checkCloneBridges(ctx context.Context, st *store.Store, clusterName string, source Entity) error {
+// checkCloneCatalog applies planCreate's catalog rules to the source: its node,
+// every disk storage, and each NIC's bridge and model. The primary storage goes
+// through validateCatalog; the rest of the disk storages are checked alike.
+func checkCloneCatalog(ctx context.Context, st *store.Store, clusterName string, source Entity) error {
 	resources, err := catalog.ApprovedResources(ctx, st, clusterName)
 	if err != nil {
 		return fmt.Errorf("read catalog: %w", err)
 	}
 
+	nics := make([]nicPlan, 0, len(source.NetworkInterfaces))
 	for _, nic := range source.NetworkInterfaces {
-		if nic.Bridge != "" && !resources.HasBridge(nic.Bridge, source.Node) {
-			return fmt.Errorf("%w: bridge %q is not approved on node %s", ErrNotApproved, nic.Bridge, source.Node)
+		nics = append(nics, nicPlan{bridge: nic.Bridge, model: nic.Model})
+	}
+
+	storages := diskStorages(source.Disks)
+	if len(storages) == 0 {
+		return fmt.Errorf("%w: source vm has no disk to copy", ErrInvalidRequest)
+	}
+
+	if err := validateCatalog(CreateRequest{}, resources, source.Node, storages[0], nics); err != nil {
+		return err
+	}
+
+	for _, storage := range storages[1:] {
+		if !resources.HasStorage(storage, source.Node) {
+			return fmt.Errorf("%w: storage %q on node %q", ErrNotApproved, storage, source.Node)
 		}
 	}
 
 	return nil
+}
+
+// checkCloneVLAN refuses a source whose NIC VLAN tags differ from the cluster's
+// isolation tag. planCreate stamps that tag on every NIC; a clone must not
+// carry any other tag onto the network.
+func checkCloneVLAN(isolationTag int, source Entity) error {
+	for _, nic := range source.NetworkInterfaces {
+		vlan := 0
+		if nic.VLAN != nil {
+			vlan = *nic.VLAN
+		}
+
+		if vlan != isolationTag {
+			return fmt.Errorf("%w: nic %d VLAN %d does not match the isolation tag %d", ErrNotApproved, nic.Index, vlan, isolationTag)
+		}
+	}
+
+	return nil
+}
+
+// checkCloneGabarit runs the gabarit ceiling on the source's current hardware,
+// the same ceiling planCreate applies to a requested VM.
+func checkCloneGabarit(ctx context.Context, policyService *policy.Policy, clusterName string, source Entity) error {
+	return policyService.CheckGabarit(ctx, clusterName, source.Sockets, source.Cores,
+		int(source.MemoryTotal/bytesPerMiB), int(source.DiskTotal/bytesPerGiB), len(source.NetworkInterfaces))
+}
+
+// checkCloneDiskSpace checks each target storage has room for the full copy of
+// the disks on it, reusing checkLiveDiskSpace (the same refusal as create).
+// Storages are visited in sorted order so the first refusal is deterministic.
+func checkCloneDiskSpace(ctx context.Context, freeSpace FreeSpaceChecker, node string, disks []cluster.Disk) error {
+	needed := make(map[string]int)
+	for _, disk := range disks {
+		needed[disk.Storage] += disk.SizeGB
+	}
+
+	for _, storage := range slices.Sorted(maps.Keys(needed)) {
+		if err := checkLiveDiskSpace(ctx, freeSpace, node, storage, needed[storage]); err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+// diskStorages returns the distinct storages of disks, in disk order.
+func diskStorages(disks []cluster.Disk) []string {
+	var storages []string
+
+	for _, disk := range disks {
+		if !slices.Contains(storages, disk.Storage) {
+			storages = append(storages, disk.Storage)
+		}
+	}
+
+	return storages
 }
 
 // checkCloneCapacity runs the node-capacity gate on the source node for the
@@ -107,9 +186,10 @@ func checkCloneCapacity(ctx context.Context, policyService *policy.Policy, clust
 	})
 }
 
-// dispatchClone allocates a VMID, dispatches the full clone, waits for the
-// task (the name reservation must outlive the dispatch), and rolls back a
-// failed clone the same way a failed create is rolled back.
+// dispatchClone allocates a VMID, dispatches the full clone, and waits for the
+// task. The wait and the rollback of a failed clone match the create path: any
+// wait error rolls the half-made VM back and the caller releases the name and
+// quota reservation. A cancelled wait is treated the same way (create does too).
 func dispatchClone(ctx context.Context, deps CreateDeps, clusterName string, actor auth.Identity, source Entity, name string) (CreateResult, error) {
 	newVMID, err := allocateVMID(ctx, deps)
 	if err != nil {

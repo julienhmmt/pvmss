@@ -24,12 +24,15 @@ func cloneSourceVMID(t *testing.T) int {
 
 	index := inventory.BuildIndex(snap)
 
-	vms := index.ByPool[cluster.FakePoolAlice]
-	if len(vms) == 0 {
-		t.Fatal("demo fixtures have no VM in alice's pool")
+	for _, candidate := range index.ByPool[cluster.FakePoolAlice] {
+		if len(candidate.Disks) > 0 && len(candidate.NetworkInterfaces) > 0 {
+			return candidate.VMID
+		}
 	}
 
-	return vms[0].VMID
+	t.Fatal("demo fixtures have no alice VM with a disk and a NIC")
+
+	return 0
 }
 
 // newCloneHandler is the create harness with the inventory wired, so the
