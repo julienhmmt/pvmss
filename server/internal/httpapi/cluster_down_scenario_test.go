@@ -51,9 +51,6 @@ func TestClusterDownScenario(t *testing.T) {
 
 	inventoryRegistry.Start(ctx)
 
-	// Give the worker one refresh cycle to fail (fake returns instantly).
-	time.Sleep(200 * time.Millisecond)
-
 	cfg := config.Configuration{
 		DBPath:        t.TempDir() + "/test.db",
 		SessionSecret: "a-session-secret-with-at-least-thirty-two-bytes",
@@ -83,20 +80,33 @@ func TestClusterDownScenario(t *testing.T) {
 	authHandler.SetClusterFreshnessChecker(freshness, 60*time.Second)
 
 	// --- POST /api/v1/auth/login (user login must be unavailable when the cluster is down) ---
-	userLoginResp := serveJSON(authHandler.Login, "/api/v1/auth/login", `{"username":"alice","password":"pvmss-alice"}`)
-
-	t.Logf("POST /api/v1/auth/login status=%d body=%s", userLoginResp.Code, userLoginResp.Body.String())
+	// Poll the real login path until the worker's first failed refresh has
+	// propagated; nothing else in the registry marks "attempted and failed".
+	var userLoginResp *httptest.ResponseRecorder
 
 	var userLoginErr struct {
 		Code    string `json:"code"`
 		Message string `json:"message"`
 	}
 
-	_ = json.Unmarshal(userLoginResp.Body.Bytes(), &userLoginErr)
+	deadline := time.Now().Add(3 * time.Second)
 
-	if userLoginResp.Code != http.StatusServiceUnavailable || userLoginErr.Code != "cluster_unavailable" {
-		t.Fatalf("user login should be rejected when cluster is down: status=%d code=%q", userLoginResp.Code, userLoginErr.Code)
+	for {
+		userLoginResp = serveJSON(authHandler.Login, "/api/v1/auth/login", `{"username":"alice","password":"pvmss-alice"}`)
+
+		_ = json.Unmarshal(userLoginResp.Body.Bytes(), &userLoginErr)
+
+		if userLoginResp.Code == http.StatusServiceUnavailable && userLoginErr.Code == "cluster_unavailable" {
+			break
+		}
+		if time.Now().After(deadline) {
+			t.Fatalf("user login should be rejected when cluster is down: status=%d code=%q", userLoginResp.Code, userLoginErr.Code)
+		}
+
+		time.Sleep(10 * time.Millisecond)
 	}
+
+	t.Logf("POST /api/v1/auth/login status=%d body=%s", userLoginResp.Code, userLoginResp.Body.String())
 
 	// --- POST /api/v1/auth/admin-login (local admin can still connect) ---
 	loginResp := serveJSON(authHandler.AdminLogin, "/api/v1/auth/admin-login", `{"password":"pvmss-local-admin"}`)
