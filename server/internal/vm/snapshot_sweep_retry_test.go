@@ -1,0 +1,104 @@
+//nolint:wsl_v5 // sweep retry tests keep fixture setup and assertions adjacent
+package vm_test
+
+import (
+	"pvmss/server/internal/cluster"
+	"pvmss/server/internal/store"
+	"pvmss/server/internal/vm"
+	"slices"
+	"testing"
+	"time"
+)
+
+// oldestAutoSnapshot is the first of the three scheduler snapshots from autoSnapshots.
+const oldestAutoSnapshot = "pvmss-auto-20261028-0300"
+
+// autoSnapshots returns three scheduler snapshots, oldest first.
+func autoSnapshots() []cluster.VMSnapshot {
+	return []cluster.VMSnapshot{
+		{Name: oldestAutoSnapshot, CreatedAt: sweepNow.Add(-4 * 24 * time.Hour)},
+		{Name: "pvmss-auto-20261029-0300", CreatedAt: sweepNow.Add(-3 * 24 * time.Hour)},
+		{Name: "pvmss-auto-20261030-0300", CreatedAt: sweepNow.Add(-2 * 24 * time.Hour)},
+	}
+}
+
+func countAuto(snapshots []cluster.VMSnapshot) int {
+	count := 0
+	for _, snapshot := range snapshots {
+		if vm.IsAutoSnapshot(snapshot.Name) {
+			count++
+		}
+	}
+
+	return count
+}
+
+func TestSweepPrunesNotDueSchedule(t *testing.T) {
+	t.Parallel()
+
+	// Not due (ran an hour ago) but over retain: pruning runs on every pass.
+	schedule := dueDaily(100)
+	schedule.Retain = 2
+	schedule.LastRunAt = sweepNow.Add(-1 * time.Hour)
+	_, client := runSweep(t, sweepCase{schedule: schedule, fresh: true, client: &sweepClient{snapshots: autoSnapshots()}})
+
+	if !slices.Equal(client.deleted, []string{oldestAutoSnapshot}) {
+		t.Fatalf("not-due schedule must still prune, deleted = %v", client.deleted)
+	}
+	if len(client.created) != 0 {
+		t.Fatalf("not-due schedule must not create, created = %v", client.created)
+	}
+}
+
+func TestSweepRetriesFailedPruneOnNextPass(t *testing.T) {
+	t.Parallel()
+
+	schedule := dueDaily(100)
+	schedule.Retain = 2
+	schedule.LastRunAt = sweepNow.Add(-1 * time.Hour)
+	st := &sweepStore{schedules: []store.SnapshotSchedule{schedule}}
+	client := &sweepClient{snapshots: autoSnapshots(), failDelete: map[string]bool{oldestAutoSnapshot: true}}
+	c := sweepCase{schedule: schedule, fresh: true}
+
+	sweepPass(st, client, c)
+	if countAuto(client.snapshots) != 3 {
+		t.Fatalf("failed delete task must leave the snapshot listed, have %d auto", countAuto(client.snapshots))
+	}
+
+	// The next 15-minute pass sees the snapshot still listed and retries.
+	client.failDelete = nil
+	sweepPass(st, client, c)
+	if countAuto(client.snapshots) != schedule.Retain {
+		t.Fatalf("retry must reach retain %d, have %d auto", schedule.Retain, countAuto(client.snapshots))
+	}
+}
+
+func TestSweepFinalCountEqualsRetainAfterCreate(t *testing.T) {
+	t.Parallel()
+
+	schedule := dueDaily(100)
+	schedule.Retain = 2
+	_, client := runSweep(t, sweepCase{schedule: schedule, fresh: true, client: &sweepClient{snapshots: autoSnapshots()}})
+
+	if countAuto(client.snapshots) != schedule.Retain {
+		t.Fatalf("final auto count = %d, want retain %d", countAuto(client.snapshots), schedule.Retain)
+	}
+	if !slices.ContainsFunc(client.snapshots, func(s cluster.VMSnapshot) bool { return s.Name == "pvmss-auto-20261101-0300" }) {
+		t.Fatalf("the new snapshot must be kept, list = %v", client.snapshots)
+	}
+}
+
+func TestSweepFailedCreateTaskKeepsRunAndStillPrunes(t *testing.T) {
+	t.Parallel()
+
+	schedule := dueDaily(100)
+	schedule.Retain = 2
+	st, client := runSweep(t, sweepCase{schedule: schedule, fresh: true, client: &sweepClient{snapshots: autoSnapshots(), createTaskFails: true}})
+
+	if len(st.marked) != 0 {
+		t.Fatal("a create task that fails must not advance last_run_at")
+	}
+	if !slices.Equal(client.deleted, []string{oldestAutoSnapshot}) {
+		t.Fatalf("prune must still run to retain, deleted = %v", client.deleted)
+	}
+}

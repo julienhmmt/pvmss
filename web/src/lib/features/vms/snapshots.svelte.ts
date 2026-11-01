@@ -1,4 +1,4 @@
-import { del, get, post, ApiRequestError } from '#lib/shared/api/client.js';
+import { del, get, post, put, ApiRequestError } from '#lib/shared/api/client.js';
 import { m } from '#lib/paraglide/messages.js';
 import { SvelteSet } from 'svelte/reactivity';
 import type { TaskKind, TaskTrayStore } from '#lib/features/tasks/tasks.svelte.js';
@@ -18,11 +18,26 @@ export interface VmSnapshotCapability {
 	warnings: string[];
 }
 
+/** Automatic snapshot policy. `off` is stored only when the user keeps one. */
+export type SnapshotFrequency = 'daily' | 'weekly' | 'off';
+
+export interface VmSnapshotSchedule {
+	frequency: SnapshotFrequency;
+	retain: number;
+	/** Empty until the first automatic snapshot has been taken. */
+	lastRunAt: string;
+}
+
+/** Name prefix the server gives scheduler-owned snapshots. */
+export const AUTO_SNAPSHOT_PREFIX = 'pvmss-auto-';
+
 interface SnapshotListResponse {
 	snapshots: VmSnapshot[];
 	maxSnapshots: number;
 	/** Absent on older servers - callers fall back to the `!running` rule. */
 	capability?: VmSnapshotCapability;
+	/** Null when the VM has no automatic schedule. */
+	schedule?: VmSnapshotSchedule | null;
 }
 
 interface SnapshotTaskResponse {
@@ -52,16 +67,21 @@ export class VmSnapshotsStore {
 	snapshots = $state.raw<readonly VmSnapshot[]>([]);
 	maxSnapshots = $state.raw<number | null>(null);
 	capability = $state.raw<VmSnapshotCapability | null>(null);
+	schedule = $state.raw<VmSnapshotSchedule | null>(null);
+	scheduleSaving = $state.raw(false);
+	scheduleError = $state.raw<string | null>(null);
 	loading = $state.raw(false);
 	inFlight = $state.raw(false);
 	error = $state.raw<string | null>(null);
 	readonly #basePath: string;
+	readonly #schedulePath: string;
 
 	constructor(cluster: string, vmid: number, tray: TaskTrayStore) {
 		this.cluster = cluster;
 		this.vmid = vmid;
 		this.#tray = tray;
 		this.#basePath = `/api/v1/vms/${encodeURIComponent(cluster)}/${vmid}/snapshots`;
+		this.#schedulePath = `/api/v1/vms/${encodeURIComponent(cluster)}/${vmid}/snapshot-schedule`;
 	}
 
 	async load(): Promise<void> {
@@ -72,6 +92,7 @@ export class VmSnapshotsStore {
 			this.snapshots = response.snapshots;
 			this.maxSnapshots = response.maxSnapshots;
 			this.capability = response.capability ?? null;
+			this.schedule = response.schedule ?? null;
 		} catch (error: unknown) {
 			this.error = errorMessage(error, () => m['vms.snapshots.errorLoad']());
 		} finally {
@@ -108,6 +129,35 @@ export class VmSnapshotsStore {
 			if (before !== after) entries.push({ key, before, after });
 		}
 		return entries.sort((a, b) => a.key.localeCompare(b.key));
+	}
+
+	/** Stores the automatic policy. Retain must be below the snapshot limit; the server re-checks it. */
+	async saveSchedule(frequency: Exclude<SnapshotFrequency, 'off'>, retain: number): Promise<boolean> {
+		return this.#scheduleWrite(async () => {
+			this.schedule = await put<VmSnapshotSchedule>(this.#schedulePath, { frequency, retain });
+		});
+	}
+
+	/** Removes the automatic policy. Snapshots already taken are kept. */
+	async clearSchedule(): Promise<boolean> {
+		return this.#scheduleWrite(async () => {
+			await del(this.#schedulePath);
+			this.schedule = null;
+		});
+	}
+
+	async #scheduleWrite(write: () => Promise<void>): Promise<boolean> {
+		this.scheduleSaving = true;
+		this.scheduleError = null;
+		try {
+			await write();
+			return true;
+		} catch (error: unknown) {
+			this.scheduleError = errorMessage(error, () => m['vms.schedule.errorSave']());
+			return false;
+		} finally {
+			this.scheduleSaving = false;
+		}
 	}
 
 	clearError(): void {

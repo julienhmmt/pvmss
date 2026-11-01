@@ -37,6 +37,8 @@ const ERROR_CODE_MAP: Record<string, () => string> = {
 	vm_not_stopped: () => m['error.vm_not_stopped'](),
 	not_approved: () => m['error.not_approved'](),
 	max_snapshots_reached: () => m['error.max_snapshots_reached'](),
+	retain_exceeds_max_snapshots: () => m['error.retain_exceeds_max_snapshots'](),
+	invalid_schedule: () => m['error.invalid_schedule'](),
 	snapshot_not_found: () => m['error.snapshot_not_found'](),
 	disk_not_found: () => m['error.disk_not_found'](),
 	guest_agent_unreachable: () => m['error.guest_agent_unreachable'](),
