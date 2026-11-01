@@ -40,6 +40,17 @@ export interface HealthResponse {
 /** Banner severity, from most to least urgent. First match wins (data-model.md). */
 export type Severity = 'none' | 'info' | 'degraded' | 'unhealthy' | 'unknown';
 
+/**
+ * The severity StatusBanner actually renders. Cluster reachability is
+ * admin-facing detail: for a visitor or a non-admin user "degraded" falls
+ * back to the demo-mode "info" (or nothing) - the login page hint and
+ * ClusterDownOverlay carry their outage UX instead.
+ */
+export function bannerSeverity({ severity, isAdmin, demoMode }: { severity: Severity; isAdmin: boolean; demoMode: boolean }): Severity {
+	if (severity !== 'degraded' || isAdmin) return severity;
+	return demoMode ? 'info' : 'none';
+}
+
 /** Polling cadence - roughly half of T03's 30s server refresh interval. */
 const POLL_INTERVAL_MS = 15_000;
 /** Consecutive failures double the wait (30s, 60s, ...) up to this cap. */

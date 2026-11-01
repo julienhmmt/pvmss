@@ -1,14 +1,21 @@
 <script lang="ts">
-	import { getStatusContext, type Severity } from './status.svelte';
+	import { bannerSeverity, getStatusContext, type Severity } from './status.svelte';
+	import { getSessionContext } from '#lib/features/auth/session.svelte.js';
 	import { m } from '#lib/paraglide/messages.js';
 
 	/**
 	 * StatusBanner - one component, three severities (info / degraded /
 	 * unhealthy), plus an "unknown" variant for poll failures. An aria-live
 	 * region announces severity changes (constitution XII). Renders nothing
-	 * when severity is "none" (SC-004 baseline).
+	 * when severity is "none" (SC-004 baseline). The "degraded" cluster
+	 * banner is admin-only (bannerSeverity); visitors and non-admin users
+	 * get the demo-mode "info" instead.
 	 */
 	const status = getStatusContext();
+	const session = getSessionContext();
+	const severity: Severity = $derived(
+		bannerSeverity({ severity: status.severity, isAdmin: session.isAdmin, demoMode: status.raw?.demoMode ?? false })
+	);
 
 	const SEVERITY_STYLES: Record<Exclude<Severity, 'none'>, string> = {
 		info: 'bg-info-soft text-info-soft-foreground border-info-soft-border',
@@ -18,7 +25,7 @@
 	};
 
 	function message(): string {
-		switch (status.severity) {
+		switch (severity) {
 			case 'info':
 				return m['banner.info.demo']();
 			case 'degraded':
@@ -33,11 +40,11 @@
 	}
 </script>
 
-{#if status.severity !== 'none'}
+{#if severity !== 'none'}
 	<div
 		role="status"
 		aria-live="polite"
-		class="border-b px-4 py-2 text-center text-sm {SEVERITY_STYLES[status.severity]}"
+		class="border-b px-4 py-2 text-center text-sm {SEVERITY_STYLES[severity]}"
 	>
 		<span class="inline-flex items-center gap-2">
 			{message()}
@@ -47,7 +54,7 @@
 				</span>
 			{/if}
 		</span>
-		{#if status.severity === 'degraded'}
+		{#if severity === 'degraded'}
 			<button
 				type="button"
 				class="ml-3 underline underline-offset-2 hover:no-underline pv-focus"

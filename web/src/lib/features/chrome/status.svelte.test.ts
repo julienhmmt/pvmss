@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { StatusState, type HealthResponse } from './status.svelte';
+import { bannerSeverity, StatusState, type HealthResponse, type Severity } from './status.svelte';
 
 // T022 (US3): StatusState - severity derivation table from data-model.md
 // (unknown > unhealthy > degraded > info > none, first match wins), raw
@@ -115,6 +115,24 @@ describe('StatusState.severity', () => {
 		await state.pollOnce();
 		expect(state.severity).toBe('degraded');
 	});
+});
+
+describe('bannerSeverity', () => {
+	// The "degraded" cluster banner is admin-only; every other severity is
+	// shown to everyone.
+	const cases: { name: string; severity: Severity; isAdmin: boolean; demoMode: boolean; want: Severity }[] = [
+		{ name: 'keeps "degraded" for an admin', severity: 'degraded', isAdmin: true, demoMode: false, want: 'degraded' },
+		{ name: 'drops "degraded" to "info" for a visitor in demo mode', severity: 'degraded', isAdmin: false, demoMode: true, want: 'info' },
+		{ name: 'drops "degraded" to "none" for a non-admin without demo mode', severity: 'degraded', isAdmin: false, demoMode: false, want: 'none' },
+		{ name: 'keeps "unhealthy" for a visitor (service down is public)', severity: 'unhealthy', isAdmin: false, demoMode: false, want: 'unhealthy' },
+		{ name: 'keeps "unknown" for a non-admin (poll failure is public)', severity: 'unknown', isAdmin: false, demoMode: false, want: 'unknown' },
+		{ name: 'keeps "info" for a non-admin', severity: 'info', isAdmin: false, demoMode: true, want: 'info' }
+	];
+	for (const { name, severity, isAdmin, demoMode, want } of cases) {
+		it(name, () => {
+			expect(bannerSeverity({ severity, isAdmin, demoMode })).toBe(want);
+		});
+	}
 });
 
 describe('StatusState.poll', () => {

@@ -123,9 +123,9 @@ test.describe('T19 chrome UI', () => {
 	test.describe('US3 - status banner', () => {
 		test('status banner is visible (demo mode or cluster degradation)', async ({ page }) => {
 			await page.goto('/');
-			// The fake cluster client has demoMode=true, but one cluster is
-			// unreachable, so the "degraded" banner (which outranks "info")
-			// is shown. Either way, a status banner must be visible.
+			// The fake cluster client has demoMode=true and one cluster
+			// unreachable. Cluster reachability is admin-only detail, so an
+			// anonymous visitor falls back to the demo-mode "info" banner.
 			await expect(page.locator('[role="status"]')).toBeVisible();
 		});
 	});
