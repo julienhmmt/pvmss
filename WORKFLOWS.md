@@ -212,6 +212,18 @@ once cloud-init was removed (the API and table remain).
 
 ---
 
+### Request a quota increase
+
+| Field | Content |
+| --- | --- |
+| **Audience** | end user |
+| **Entry** | "Request an increase" in the quota-reached block of `/vms/create` |
+| **Route** | `/vms/create` |
+| **API** | `GET /api/v1/quota-requests/mine` (on page load) → `POST /api/v1/quota-requests` (409 `quota_request_pending` with the open request's id when one is already open) |
+| **Steps** | 1. Open the create page while the pool allowance is used up. 2. Choose "Request an increase". 3. Enter the number of machines needed (above the current allowance) and a one-line reason. 4. Send. The button becomes a "Request pending" chip. 5. After an admin decides, the next visit shows "Approved" or "Declined"; a declined request can be filed again. |
+| **States** | Loading: nothing until the latest request is read. Pending: chip with the requested number. Approved or declined: one line with the outcome. Error: the dialog shows the server message and Send stays disabled until the form is valid. |
+| **Safety nets** | Cluster and pool come from the session, never from the request body. One open request per user and pool (database index). Reason required, 500 characters maximum. Requested number above the current allowance and at most 100000. Rate limited with the VM write limiter and CSRF protected. |
+
 ## 3. Cluster visibility
 
 ### Browse nodes
@@ -353,6 +365,18 @@ Six admin workflows deserve the full template because they are the risky ones.
 | **Steps** | 1. Paste the cluster CA certificate (Proxmox: `/etc/pve/pve-root-ca.pem`) into the CA field, or pin the node SHA-256 fingerprints (one per line or comma-separated, colons allowed). 2. Optionally add a client certificate and its key for mTLS. 3. Save; the dialog shows the subject and expiry of each stored certificate. 4. Run **Test**: `verified`, `skipped` (verification disabled) or `failed` with a reason (unknown CA, host name mismatch, expired, fingerprint mismatch). |
 | **States** | Stored certificates shown as summaries (no PEM echoed back); the Test result says "TLS certificate verified", "verification is disabled" or "verification failed" with the reason; the cluster detail page shows a TLS certificate row (Verified / Verification skipped). |
 | **Safety nets** | Each PEM field is capped at 64 KiB; a CA field holding anything but CERTIFICATE blocks (a private key, for example) is refused; the client certificate and key must be sent together and must match (400 `invalid_tls`, messages never echo key material). The client key is encrypted at rest and never returned (only `clientKeySet`). Changing the URL, skip-verify or any trust anchor without re-entering the token secret is refused (400 `token_secret_required`), so the stored token never reaches a different peer. Pinned fingerprints replace the chain and host name checks by design. |
+
+### Decide a quota request
+
+| Field | Content |
+| --- | --- |
+| **Audience** | admin |
+| **Entry** | "Quota requests waiting" row in the dashboard needs-attention block, or `/admin/quota-requests` |
+| **Route** | `/admin/quota-requests` |
+| **API** | `GET /api/v1/admin/quota-requests?status=pending` → `POST /api/v1/admin/quota-requests/{id}/approve` (optional `quota`) or `POST /api/v1/admin/quota-requests/{id}/deny` |
+| **Steps** | 1. Open the pending list: one row per request with requester, pool, current and requested allowance, and reason. 2. Optionally type a different allowance to grant. 3. Approve: the allowance is written to the cluster policy and the request is marked approved. Or deny: the policy is left unchanged. |
+| **States** | Empty: "No pending requests". A load error line. A decision another admin already made returns 409 and the list reloads. |
+| **Safety nets** | Admin-only routes behind the admin guard and CSRF. Approval writes the policy through the same validation as `/admin/policy` (400 `invalid_policy`). Each decision writes an audit row: `quota.request_approved` (policy old and new, requested number) or `quota.request_denied`. Known limit: the allowance is the cluster-wide per-pool cap (`maxVmPerUser`), so an approval raises it for every pool on that cluster. A per-pool cap is not modelled yet. |
 
 ### Set the VMID range
 

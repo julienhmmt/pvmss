@@ -84,6 +84,7 @@ type RouterConfig struct {
 	VMMetrics        *VMMetrics
 	AdminCatalog     *AdminCatalog
 	AdminPolicy      *AdminPolicy
+	QuotaRequests    *QuotaRequests
 	AdminPools       *AdminPools
 	AdminOps         *AdminOps
 	AdminClusters    *AdminClusters
@@ -142,6 +143,11 @@ func NewRouter(cfg RouterConfig) http.Handler {
 	mux.Handle("POST /api/v1/cluster/refresh", protect(cfg.Auth.Require(cfg.ClusterRefresh), clusterTestLimiter))
 
 	registerVMRoutes(mux, cfg, protect, vmWriteLimiter, vmStatusLimiter)
+
+	if cfg.QuotaRequests != nil {
+		registerQuotaRequestRoutes(mux, protect, vmWriteLimiter, cfg.QuotaRequests)
+	}
+
 	registerAuthRoutes(mux, cfg, protect, csrf, authWriteLimiter, hops)
 
 	// Public documentation - audience-filtered list and rendered

@@ -9,6 +9,7 @@ import (
 	"pvmss/server/internal/catalog"
 	"pvmss/server/internal/cluster"
 	"pvmss/server/internal/inventory"
+	"pvmss/server/internal/logctx"
 	"pvmss/server/internal/policy"
 	"pvmss/server/internal/pools"
 	"pvmss/server/internal/store"
@@ -146,6 +147,7 @@ func (h *AdminOps) ServeDashboard(w http.ResponseWriter, r *http.Request) {
 	var newest time.Time
 
 	labels := h.clusterLabels(r.Context())
+	dash.Alerts = append(dash.Alerts, h.quotaRequestAlerts(r.Context(), labels)...)
 
 	for _, name := range names {
 		idx := indexes[name]
@@ -450,6 +452,43 @@ func countVMStatus(counts *vmStatusCountsDTO, status cluster.VMStatus) {
 	default:
 		counts.Other++
 	}
+}
+
+// quotaRequestAlerts raises one warning per cluster that has quota requests
+// waiting for a decision, so the admin inbox is reachable from the dashboard.
+// Used carries the count. A read failure is logged and drops only this alert.
+func (h *AdminOps) quotaRequestAlerts(ctx context.Context, labels map[string]string) []dashboardAlertDTO {
+	if h.store == nil {
+		return nil
+	}
+
+	rows, err := h.store.ListQuotaRequests(ctx, store.QuotaRequestPending)
+	if err != nil {
+		logctx.FromOr(ctx, h.log).WarnContext(ctx, "failed to read pending quota requests", "component", "httpapi", "error", err)
+		return nil
+	}
+
+	counts := map[string]int{}
+
+	var order []string
+
+	for _, row := range rows {
+		if _, seen := counts[row.Cluster]; !seen {
+			order = append(order, row.Cluster)
+		}
+
+		counts[row.Cluster]++
+	}
+
+	alerts := make([]dashboardAlertDTO, 0, len(order))
+	for _, name := range order {
+		alerts = append(alerts, dashboardAlertDTO{
+			Kind: "quota_requests_pending", Severity: alertWarning, Cluster: cmp.Or(labels[name], name),
+			ClusterKey: name, Used: counts[name],
+		})
+	}
+
+	return alerts
 }
 
 func percentOf(used, total int64) int {
