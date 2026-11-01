@@ -59,6 +59,7 @@ func (h *VMDetail) dispatchBySuffix(w http.ResponseWriter, r *http.Request) bool
 		{"/retrofit-seabios", h.handleRetrofitSeaBIOS},
 		{"/audit", h.handleAudit},
 		{"/status", h.handleStatus},
+		{"/lease", h.handleLease},
 	}
 
 	for _, c := range cases {
@@ -303,6 +304,9 @@ type vmDetailDTO struct {
 	// shows a badge and the operator command to clear it. Empty when the VM
 	// is unlocked or the live read failed.
 	Lock string `json:"lock,omitempty"`
+	// ExpiresAt is the lease expiry (RFC3339 UTC). Empty when the VM has no
+	// lease: cluster leases off, or an administrator exempted it.
+	ExpiresAt string `json:"expiresAt,omitempty"`
 	// GuestAgent explains why networkInterfaces[].ipAddresses is populated or
 	// not, for a running VM: "disabled" (agent=0 in the VM config - known
 	// without probing), "unreachable" (enabled but the agent did not answer

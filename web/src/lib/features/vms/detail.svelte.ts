@@ -24,6 +24,8 @@ export interface VmDetailEntity {
 	uptimeSeconds?: number;
 	description?: string;
 	descriptionHtml?: string;
+	/** Lease expiry (RFC3339 UTC). Absent when the VM has no lease. */
+	expiresAt?: string;
 	/** Proxmox lock name (e.g. "snapshot-delete", "backup") from the live
 	 *  status - non-empty means the VM rejects most operations. */
 	lock?: string;
@@ -144,6 +146,8 @@ export class VmDetailStore {
 
 	/** True while a patch (rename/description) is in flight. */
 	patchInFlight = $state.raw(false);
+	leaseError = $state.raw<string | null>(null);
+	leaseInFlight = $state.raw(false);
 	patchError = $state.raw<string | null>(null);
 
 	hardwareOptions = $state.raw<HardwareOptions | null>(null);
@@ -533,6 +537,26 @@ export class VmDetailStore {
 			return false;
 		} finally {
 			this.patchInFlight = false;
+		}
+	}
+
+	/**
+	 * Extends the lease by `days` (the server clamps to the cluster's lease
+	 * length). Returns true on success so the page can refresh the expiry.
+	 */
+	async extendLease(days: number): Promise<boolean> {
+		if (this.leaseInFlight || this.entity === null) return false;
+		this.leaseError = null;
+		this.leaseInFlight = true;
+		try {
+			const result = await put<{ expiresAt: string }>(`${this.#basePath}/lease`, { days });
+			this.entity = { ...this.entity, expiresAt: result.expiresAt };
+			return true;
+		} catch (err) {
+			this.leaseError = errorMessage(err, () => m['vms.lease.errorExtend']());
+			return false;
+		} finally {
+			this.leaseInFlight = false;
 		}
 	}
 

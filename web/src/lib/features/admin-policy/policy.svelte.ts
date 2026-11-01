@@ -18,6 +18,7 @@ export interface Gabarit {
 	isolationVlanTag: number;
 	vmidMin: number;
 	vmidMax: number;
+	leaseDays: number;
 }
 
 export interface Quota {
@@ -40,6 +41,7 @@ export interface GabaritPatch {
 	isolationVlanTag?: number;
 	vmidMin?: number;
 	vmidMax?: number;
+	leaseDays?: number;
 }
 
 export interface AdminPolicyPatch {

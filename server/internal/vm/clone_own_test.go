@@ -130,7 +130,7 @@ func TestCloneOwn_FullCloneOnSourceNode(t *testing.T) {
 func TestCloneOwn_AdminRefused(t *testing.T) {
 	fixture := newCloneFixture(t)
 	source := fixture.aliceSource(t)
-	admin := auth.Identity{Username: "admin", IsAdmin: true}
+	admin := auth.Identity{Username: testAdminUser, IsAdmin: true}
 
 	_, err := vm.CloneOwn(context.Background(), admin, fixture.index, testClusterName, source.VMID, "copy", fixture.deps())
 	if !errors.Is(err, vm.ErrAdminCannotCreate) {

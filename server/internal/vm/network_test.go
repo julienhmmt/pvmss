@@ -205,7 +205,7 @@ func TestUpdateNetwork_UserCannotMoveVLANOrRate(t *testing.T) {
 	}{
 		{name: "user with isolation VLAN", actor: aliceIdentity(), isolation: isolationVLAN, wantVLAN: isolationVLAN, wantRate: new(int)},
 		{name: "user without isolation VLAN", actor: aliceIdentity(), wantVLAN: currentVLAN, wantRate: new(int)},
-		{name: "admin", actor: auth.Identity{Username: testAdminUser, IsAdmin: true}, isolation: isolationVLAN, wantVLAN: requestedVLAN},
+		{name: testAdminUser, actor: auth.Identity{Username: testAdminUser, IsAdmin: true}, isolation: isolationVLAN, wantVLAN: requestedVLAN},
 	}
 	for _, tc := range cases { //nolint:paralleltest // serial: shared fake cluster dataset
 		t.Run(tc.name, func(t *testing.T) {

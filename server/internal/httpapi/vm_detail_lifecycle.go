@@ -236,7 +236,7 @@ func (h *VMDetail) handlePatch(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if err := patchVM(r.Context(), vm.WriteDeps{Index: index, Actor: identity, ClusterName: clusterName, VMID: vmid, Writer: writer, Audit: h.store, Refresher: h.refresherFor(clusterName)}, req); err != nil {
+	if err := patchVM(r.Context(), vm.WriteDeps{Index: index, Actor: identity, ClusterName: clusterName, VMID: vmid, Writer: writer, Audit: h.store, Refresher: h.refresherFor(clusterName), Store: h.store, Log: h.log}, req); err != nil {
 		h.writePatchError(w, err)
 		return
 	}

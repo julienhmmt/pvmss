@@ -447,3 +447,35 @@ describe('VmDetailStore.refreshIfStale', () => {
 		expect(fetchMock).not.toHaveBeenCalled();
 	});
 });
+
+describe('VmDetailStore.extendLease', () => {
+	afterEach(() => {
+		vi.unstubAllGlobals();
+	});
+
+	it('PUTs the requested days and stores the new expiry', async () => {
+		const { fetchMock, calls } = stubFetchSequence([
+			{ status: 200, body: { expiresAt: '2030-01-31T00:00:00Z' } }
+		]);
+
+		const store = makeStore();
+		const ok = await store.extendLease(30);
+
+		expect(ok).toBe(true);
+		expect(calls[0]).toContain('/api/v1/vms/default/100/lease');
+		const init = fetchMock.mock.calls[0]?.[1] as RequestInit | undefined;
+		expect(init?.method).toBe('PUT');
+		expect(store.entity?.expiresAt).toBe('2030-01-31T00:00:00Z');
+	});
+
+	it('keeps the entity and reports the error when the extension is refused', async () => {
+		stubFetchSequence([{ status: 409, body: { error: { code: 'lease_disabled', message: 'off' } } }]);
+
+		const store = makeStore({ ...baseEntity, expiresAt: '2030-01-01T00:00:00Z' });
+		const ok = await store.extendLease(30);
+
+		expect(ok).toBe(false);
+		expect(store.leaseError).not.toBeNull();
+		expect(store.entity?.expiresAt).toBe('2030-01-01T00:00:00Z');
+	});
+});

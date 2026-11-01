@@ -233,5 +233,9 @@ func (fake Fake) SnapshotConfig(_ context.Context, node string, vmid int, name s
 		"cores":  strconv.Itoa(target.Cores),
 		"memory": strconv.FormatInt(target.MemoryTotal, 10),
 		"status": string(target.Status),
+		"meta":   "creation-time=" + FakeCreationTime + ",vmgenid=00000000-0000-0000-0000-000000000000",
 	}, nil
 }
+
+// FakeCreationTime is the creation identity every fake VM reports in its meta.
+const FakeCreationTime = "1700000000"

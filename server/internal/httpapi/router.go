@@ -226,6 +226,8 @@ func registerVMRoutes(mux *http.ServeMux, cfg RouterConfig, protect protectFunc,
 	mux.Handle("POST /api/v1/vms/{cluster}/{vmid}/actions", protect(cfg.VMDetail, vmWriteLimiter))
 	mux.Handle("DELETE /api/v1/vms/{cluster}/{vmid}", protect(cfg.VMDetail, vmWriteLimiter))
 	mux.Handle("PATCH /api/v1/vms/{cluster}/{vmid}", protect(cfg.VMDetail, vmWriteLimiter))
+	mux.Handle("PUT /api/v1/vms/{cluster}/{vmid}/lease", protect(cfg.VMDetail, vmWriteLimiter))
+	mux.Handle("DELETE /api/v1/vms/{cluster}/{vmid}/lease", protect(cfg.VMDetail, vmWriteLimiter))
 	mux.Handle("GET /api/v1/vms/{cluster}/{vmid}/hardware-options", cfg.VMDetail)
 	mux.Handle("GET /api/v1/vms/{cluster}/{vmid}/status", cfg.VMDetail)
 	mux.Handle("POST /api/v1/vms/{cluster}/{vmid}/disks", protect(cfg.VMDetail, vmWriteLimiter))

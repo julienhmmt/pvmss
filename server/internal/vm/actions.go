@@ -357,6 +357,10 @@ func Delete(ctx context.Context, deps WriteDeps) error {
 	// VMID because creation overwrites on rename. Never fail the delete.
 	cleanupCloudInitDocument(ctx, deps)
 
+	// The VMID is free now: a lease left behind would bind to whatever VM
+	// reuses it.
+	dropLeaseRow(ctx, deps.Store, deps.Log, deps.ClusterName, deps.VMID)
+
 	if err := deps.Audit.RecordAction(ctx, deps.Actor.Username, deps.ClusterName, deps.VMID, "delete"); err != nil {
 		return fmt.Errorf(auditWrapFmt, err)
 	}
@@ -442,6 +446,7 @@ func ClearDescription(ctx context.Context, deps WriteDeps) error {
 // The handler re-resolves from the refreshed projection to return the updated
 // Entity - Patch itself does not return it, keeping the domain layer free of
 // projection references.
+// Patch renames and/or updates the description of a VM through the Resolve gate.
 func Patch(ctx context.Context, deps WriteDeps, name, description string) error {
 	if name == "" && strings.TrimSpace(description) == "" {
 		return ErrEmptyPatch
