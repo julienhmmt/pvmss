@@ -52,6 +52,7 @@ var excludedImportTables = map[string]string{
 	"clusters":               "holds Proxmox API token secrets; re-enter clusters by hand",
 	"vm_cloudinit_snippets":  "legacy per-VM runtime state",
 	"vm_cloudinit_documents": "per-VM runtime state",
+	"vm_leases":              "per-VM expiry runtime state; restored VMs come back without a lease",
 }
 
 // importTempPattern names staged upload copies next to the live database.

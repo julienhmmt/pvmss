@@ -176,8 +176,15 @@ func validateGabarit(gabarit Gabarit) error {
 		return fmt.Errorf("%w: isolationVlanTag must be between 0 and 4094", ErrInvalidPolicy)
 	}
 
+	if gabarit.LeaseDays < 0 || gabarit.LeaseDays > maxLeaseDays {
+		return fmt.Errorf("%w: leaseDays must be between 0 and %d", ErrInvalidPolicy, maxLeaseDays)
+	}
+
 	return validateVMIDRange(gabarit.VMIDMin, gabarit.VMIDMax)
 }
+
+// maxLeaseDays bounds the lease length (0 = off): ten years.
+const maxLeaseDays = 3650
 
 // validateVMIDRange accepts 0/0 (off) or 100 <= min <= max <= 999999999.
 func validateVMIDRange(lo, hi int) error {

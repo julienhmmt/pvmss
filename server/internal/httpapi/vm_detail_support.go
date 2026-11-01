@@ -85,6 +85,7 @@ func (h *VMDetail) writeEntity(w http.ResponseWriter, r *http.Request, entity vm
 		Description:       entity.Description,
 		DescriptionHTML:   renderMarkdownToHTML(entity.Description),
 		Lock:              lock,
+		ExpiresAt:         h.leaseExpiry(r.Context(), entity.Cluster, entity.VMID),
 	}
 	if entity.Uptime > 0 {
 		dto.UptimeSeconds = int64(entity.Uptime.Seconds())

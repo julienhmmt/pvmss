@@ -295,9 +295,15 @@ func Create(ctx context.Context, actor auth.Identity, clusterName string, req Cr
 	result, err := createFromSource(ctx, policyService, deps, clusterName, actor, req)
 	if err != nil {
 		release()
+
+		return result, err
 	}
 
-	return result, err
+	// The VM is already dispatched, so a lease write failure must not fail
+	// the create. It is logged so the VM is visibly unleased.
+	LeaseAfterDispatch(ctx, deps.Store, deps.Log, clusterName, result.VMID, gabarit.LeaseDays, actor.Pool)
+
+	return result, nil
 }
 
 // reserveCreate validates the name, then checks quota and per-pool name

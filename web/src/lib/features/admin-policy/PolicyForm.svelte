@@ -69,7 +69,8 @@
 			form.gabarit.maxSnapshots !== original.gabarit.maxSnapshots ||
 			form.gabarit.isolationVlanTag !== original.gabarit.isolationVlanTag ||
 			form.gabarit.vmidMin !== original.gabarit.vmidMin ||
-			form.gabarit.vmidMax !== original.gabarit.vmidMax
+			form.gabarit.vmidMax !== original.gabarit.vmidMax ||
+			form.gabarit.leaseDays !== original.gabarit.leaseDays
 	);
 
 	// Notify the parent whenever the dirty state changes so it can guard
@@ -347,6 +348,15 @@
 						{/snippet}
 					</FormField>
 				</div>
+			</fieldset>
+			<fieldset class="mt-6">
+				<legend class="mb-3 text-sm font-medium text-muted-foreground">{m['policy.leaseGroup']()}</legend>
+				<p class="mb-3 text-xs text-muted-foreground-subtle">{m['policy.leaseHint']()}</p>
+				<FormField label={m['policy.leaseDays']()} error={serverErrorForField('leaseDays')}>
+					{#snippet children({ id, describedBy, invalid })}
+						<TextField {id} {describedBy} {invalid} type="number" min={0} max={3650} bind:value={form.gabarit.leaseDays} />
+					{/snippet}
+				</FormField>
 			</fieldset>
 		</div>
 	</Card>

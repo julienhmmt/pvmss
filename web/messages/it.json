@@ -2417,5 +2417,11 @@
 	"admin.quotaRequests.col.current": "Attuale",
 	"admin.quotaRequests.col.requested": "Richiesto",
 	"admin.quotaRequests.col.reason": "Motivo",
-	"admin.quotaRequests.col.actions": "Decisione"
+	"admin.quotaRequests.col.actions": "Decisione",
+	"policy.leaseGroup": "Scadenze",
+	"policy.leaseHint": "Giorni dopo i quali una VM non prolungata dal proprietario viene arrestata ed eliminata. 0 disattiva le scadenze. Vale per le VM create da ora e limita i prolungamenti.",
+	"policy.leaseDays": "Durata della scadenza (giorni)",
+	"vms.lease.expiresOn": "Scade il {date}",
+	"vms.lease.extend": "Prolunga la scadenza",
+	"vms.lease.errorExtend": "Impossibile prolungare la scadenza."
 }

@@ -159,6 +159,10 @@ func run() int {
 	// startup, then every 24h.
 	go runAuditPrune(inventoryCtx, st, logger)
 
+	// Daily lease sweep: stops and deletes VMs whose lease expired. Runs once
+	// at startup, then every 24h, like the audit prune.
+	go runLeaseSweep(inventoryCtx, st, clusterRegistry, inventoryRegistry, logger)
+
 	sessions, err := auth.NewSessionManager(st, cfg.SessionSecret, cfg.CookieSecure)
 	if err != nil {
 		logger.Error("failed to create session manager", "component", "main", "error", err)

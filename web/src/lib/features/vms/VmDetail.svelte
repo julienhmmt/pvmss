@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { formatDate } from '#lib/shared/format-date.js';
 	import { getVmDetailContext } from './detail.svelte';
 	import VmActionBar from './VmActionBar.svelte';
 	import DeleteVmDialog from './DeleteVmDialog.svelte';
@@ -348,6 +349,22 @@
 			</p>
 		{/if}
 	</header>
+
+	{#if store.entity.expiresAt}
+		{@const expiry = new Date(store.entity.expiresAt)}
+		{@const daysLeft = (expiry.getTime() - Date.now()) / 86_400_000}
+		<div class="mb-6 flex flex-wrap items-center gap-3 text-sm" data-testid="vm-lease">
+			<span class={daysLeft < 7 ? 'font-medium text-warning' : 'text-muted-foreground'}>
+				{m['vms.lease.expiresOn']({ date: formatDate(expiry) })}
+			</span>
+			<Button variant="secondary" size="sm" onclick={() => store.extendLease(30)} label={m['vms.lease.extend']()} disabled={store.leaseInFlight}>
+				{m['vms.lease.extend']()}
+			</Button>
+			{#if store.leaseError}
+				<p role="alert" class="text-sm text-destructive">{store.leaseError}</p>
+			{/if}
+		</div>
+	{/if}
 
 	<div class="mb-6 grid gap-3 empty:hidden">
 		<VmStateBanners
