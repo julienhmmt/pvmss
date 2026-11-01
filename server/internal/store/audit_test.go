@@ -804,3 +804,41 @@ func TestListAuditLog_CurrentIncarnation_ExternalCreateAfterDelete(t *testing.T)
 		t.Fatalf("got total=%d items=%+v, want only the post-delete start row", page.Total, page.Items)
 	}
 }
+
+// RecordVMActionDetail is the VM-scoped variant that carries the structured
+// JSON detail the audit UI renders; the row must keep the VM as target.
+//
+//nolint:paralleltest // serial: shared database fixture
+func TestRecordVMActionDetail_InsertsRowWithDetail(t *testing.T) {
+	st := newAuditStore(t)
+	ctx := context.Background()
+
+	detail := `{"summary":"vm=101 started","changes":[]}`
+	if err := st.RecordVMActionDetail(ctx, testAuditActor, testStoreCluster, 101, "vm.start", detail); err != nil {
+		t.Fatalf("RecordVMActionDetail: %v", err)
+	}
+
+	var (
+		cluster, action, targetType, targetID, gotDetail string
+		vmid                                             sql.NullInt64
+	)
+
+	err := st.DB().QueryRowContext(ctx,
+		`SELECT cluster, action, vmid, target_type, target_id, detail FROM audit_log ORDER BY id DESC LIMIT 1`,
+	).Scan(&cluster, &action, &vmid, &targetType, &targetID, &gotDetail)
+	if err != nil {
+		t.Fatalf("query audit row: %v", err)
+	}
+
+	if cluster != testStoreCluster || action != "vm.start" || !vmid.Valid || vmid.Int64 != 101 {
+		t.Errorf("row = (cluster=%q, action=%q, vmid=%v), want default/vm.start/101", cluster, action, vmid)
+	}
+
+	if targetType != "vm" || targetID != "default:101" {
+		t.Errorf("target = %s:%s, want vm:default:101", targetType, targetID)
+	}
+
+	if gotDetail != detail {
+		t.Errorf("detail = %q, want %q", gotDetail, detail)
+	}
+}

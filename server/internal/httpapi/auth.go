@@ -39,6 +39,13 @@ const (
 	// account itself is never locked: it stays reachable from other IPs.
 	maxBootstrapLoginFailures = 5
 	bootstrapFailureWindow    = 15 * time.Minute
+	// maxPVELoginFailures failed Proxmox logins for one account inside
+	// pveFailureWindow refuse that account's next attempts. Proxmox accounts
+	// have no server-side lockout of their own; without this a distributed
+	// attacker gets (distinct IPs x per-IP limit) guesses against one
+	// account. A success clears the window.
+	maxPVELoginFailures = 5
+	pveFailureWindow    = 15 * time.Minute
 )
 
 type loginRequest struct {
@@ -81,15 +88,21 @@ type Auth struct {
 	staleThreshold   time.Duration
 	// bootstrapFailures counts failed bootstrap logins per client IP.
 	bootstrapFailures *windowLimiter
+	// pveFailures counts failed Proxmox logins per cluster+username account.
+	pveFailures *windowLimiter
 }
 
 // NewAuthWithRegistry creates authentication handlers with runtime cluster choice.
 func NewAuthWithRegistry(registry cluster.ClientProvider, st *store.Store, sessions *auth.SessionManager, adminHash string, log *slog.Logger) *Auth {
-	return &Auth{clusters: registry, clusterStore: st, sessions: sessions, adminHash: adminHash, log: log, bootstrapFailures: newBootstrapFailures()}
+	return &Auth{clusters: registry, clusterStore: st, sessions: sessions, adminHash: adminHash, log: log, bootstrapFailures: newBootstrapFailures(), pveFailures: newPVEFailures()}
 }
 
 func newBootstrapFailures() *windowLimiter {
 	return newWindowLimiter(maxBootstrapLoginFailures, bootstrapFailureWindow, 0, nil)
+}
+
+func newPVEFailures() *windowLimiter {
+	return newWindowLimiter(maxPVELoginFailures, pveFailureWindow, 0, nil)
 }
 
 // SetTrustedProxyHops configures how many X-Forwarded-For hops are trusted
@@ -160,13 +173,27 @@ func (h *Auth) Login(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Per-account throttle: keyed on cluster+username, matching the
+	// userRateLimiter key, so the same name on two clusters stays two
+	// distinct budgets. Mirroring bootstrapLogin, a throttled request gets a
+	// 429 and a log line but no audit row.
+	pveKey := clusterName + "|" + username
+	if h.pveFailures.exhausted(pveKey, time.Now()) {
+		logctx.FromOr(r.Context(), h.log).WarnContext(r.Context(), "pve login throttled", "component", "httpapi", "event", "auth", "result", "throttled", "user", username)
+		writeAuthError(w, http.StatusTooManyRequests, "rate_limited", "too many requests, try again later")
+		return
+	}
+
 	result, err := authenticatePVE(r.Context(), client, username, request.Password)
 	if err != nil {
 		SetErrorMsg(w, "pve authentication failed", err)
+		h.pveFailures.allow(pveKey, time.Now())
 		h.recordLoginFailed(r.Context(), username, clientIP(r, h.trustedProxyHops))
 		writeAuthError(w, http.StatusUnauthorized, "invalid_credentials", msgInvalidCredentials)
 		return
 	}
+
+	h.pveFailures.reset(pveKey)
 
 	displayName := clusterName
 	if h.clusterStore != nil {

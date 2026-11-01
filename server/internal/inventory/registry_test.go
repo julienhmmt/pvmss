@@ -112,8 +112,18 @@ func TestRegistry_StartRefreshMutateRefreshCycle(t *testing.T) {
 	}
 
 	// Wait for at least one ticker-driven automatic refresh.
-	time.Sleep(80 * time.Millisecond)
-	autoRefreshed := projection.Load()
+	var autoRefreshed *inventory.Index
+	deadline := time.Now().Add(2 * time.Second)
+	for {
+		autoRefreshed = projection.Load()
+		if autoRefreshed != nil && autoRefreshed.RefreshedAt.After(initial.RefreshedAt) {
+			break
+		}
+		if time.Now().After(deadline) {
+			t.Fatal("no ticker-driven refresh within 2s")
+		}
+		time.Sleep(5 * time.Millisecond)
+	}
 	if autoRefreshed == nil {
 		t.Fatal("projection is nil after ticker interval")
 	}
@@ -142,18 +152,10 @@ func TestRegistry_StartRefreshMutateRefreshCycle(t *testing.T) {
 		t.Fatalf("deleted VM %d still in projection", firstVM.VMID)
 	}
 
-	// Cancel context - workers must stop without hanging.
+	// Cancel context - workers must stop without hanging. There is no stop
+	// hook to observe; the package's goleak guard is what fails if a worker
+	// keeps running after cancel.
 	cancel()
-	done := make(chan struct{})
-	go func() {
-		time.Sleep(100 * time.Millisecond)
-		close(done)
-	}()
-	select {
-	case <-done:
-	case <-time.After(3 * time.Second):
-		t.Fatal("workers did not stop within 3s of context cancellation")
-	}
 }
 
 // waitForProjection polls until the projection is non-nil or the deadline fires.

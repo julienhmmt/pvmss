@@ -542,3 +542,47 @@ func TestBulkAction_ClusterRejectionIsGeneric(t *testing.T) {
 		t.Errorf("message leaks raw Proxmox text: %q", results[0].Message)
 	}
 }
+
+// TestBulkAction_SharedDeadline_StopsLateTargets - the handler wraps
+// BulkAction in one shared deadline so a batch of locked VMs cannot outlive
+// the response write deadline. Targets the budget never reached must report
+// a readable per-target error, and the loop must stop waiting.
+//
+//nolint:paralleltest // serial: shared fake dataset + global var mutation
+func TestBulkAction_SharedDeadline_StopsLateTargets(t *testing.T) {
+	resolver := bulkTestResolver(t)
+
+	originalPoll := vm.LockRetryPollInterval
+	vm.LockRetryPollInterval = 10 * time.Millisecond
+
+	t.Cleanup(func() { vm.LockRetryPollInterval = originalPoll })
+
+	fake := actionsIndex(t)
+	// Always locked - without the shared deadline each target would wait
+	// MaxLockRetryWait (30s) on the lock retry.
+	writer := &lockErrorWriter{Fake: *fake, successAfter: 999}
+
+	ctx, cancel := context.WithTimeout(context.Background(), 60*time.Millisecond)
+	defer cancel()
+
+	results := vm.BulkAction(ctx, vm.BulkDeps{
+		Resolver:  resolver,
+		Actor:     aliceIdentity(),
+		Writer:    writer,
+		Audit:     noopAudit{},
+		Refresher: noopRefresher{},
+	}, []vm.BulkTarget{
+		{Cluster: testClusterName, VMID: 101},
+		{Cluster: testClusterName, VMID: 124},
+	}, "start")
+
+	for i, result := range results {
+		if result.Status != bulkStatusError {
+			t.Errorf("result[%d].Status = %q, want error", i, result.Status)
+		}
+
+		if !strings.Contains(result.Message, "ran out of time") {
+			t.Errorf("result[%d].Message = %q, want the shared-deadline wording", i, result.Message)
+		}
+	}
+}

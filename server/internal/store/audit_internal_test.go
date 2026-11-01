@@ -3,6 +3,7 @@ package store
 import (
 	"testing"
 	"time"
+	"unicode/utf8"
 )
 
 const (
@@ -69,5 +70,21 @@ func TestAuditTimestamp_SortsChronologically(t *testing.T) {
 		if earlier >= later {
 			t.Errorf("auditTimestamp(%v) = %q does not sort before %q", times[i-1], earlier, later)
 		}
+	}
+}
+
+// Truncate must cut at a rune boundary: actors and target IDs can carry
+// multi-byte UTF-8, and a byte cut would write invalid UTF-8 to the JSON log
+// mirror.
+func TestTruncate_RuneBoundary(t *testing.T) {
+	t.Parallel()
+
+	got := truncate("éàü-tail", 2)
+	if got != "éà" || !utf8.ValidString(got) {
+		t.Fatalf("truncate = %q, want the first 2 runes as valid UTF-8", got)
+	}
+
+	if got := truncate("short", 10); got != "short" {
+		t.Fatalf("truncate below limit = %q, want unchanged", got)
 	}
 }

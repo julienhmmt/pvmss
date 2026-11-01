@@ -13,7 +13,11 @@ import (
 	"testing"
 )
 
-const testUserAlice = "alice"
+const (
+	testUserAlice    = "alice"
+	testDimensionVMs = "vms"
+	testDimensionRAM = "ram"
+)
 
 func TestPolicyReads_SeededDefaults(t *testing.T) {
 	t.Parallel()
@@ -145,5 +149,45 @@ func TestPolicyReads_MissingRow_ReturnsDefaults(t *testing.T) {
 
 	if gabarit != policy.DefaultGabarit() {
 		t.Fatalf("gabarit = %+v, want %+v", gabarit, policy.DefaultGabarit())
+	}
+}
+
+// NodeOverflow is the pure node-cap predicate used by placement: it must
+// report exactly the dimensions the new VM would overflow, counting only
+// pvmss-tagged usage, and nothing when every cap is zero.
+func TestNodeOverflow(t *testing.T) {
+	t.Parallel()
+
+	gb := int64(1024 * 1024 * 1024)
+	pvmssVM := cluster.VM{Node: "n1", Sockets: 1, Cores: 2, MemoryTotal: gb, DiskTotal: 2 * gb, Tags: []string{"pvmss"}}
+	foreignVM := cluster.VM{Node: "n1", Sockets: 4, Cores: 8, MemoryTotal: 32 * gb, DiskTotal: 200 * gb}
+
+	cases := []struct {
+		name    string
+		byNode  []cluster.VM
+		caps    store.NodePolicyRow
+		machine cluster.VM
+		want    []string
+	}{
+		{name: "no caps never overflows", byNode: []cluster.VM{pvmssVM}, caps: store.NodePolicyRow{}, machine: pvmssVM, want: nil},
+		{name: "vm count only", byNode: []cluster.VM{pvmssVM}, caps: store.NodePolicyRow{MaxVMs: 1}, machine: pvmssVM, want: []string{testDimensionVMs}},
+		{name: "untagged usage is ignored", byNode: []cluster.VM{foreignVM}, caps: store.NodePolicyRow{MaxVMs: 2}, machine: pvmssVM, want: nil},
+		{name: "vcpu cap", byNode: []cluster.VM{pvmssVM}, caps: store.NodePolicyRow{MaxVCPUs: 3}, machine: pvmssVM, want: []string{"vcpus"}},
+		{name: "ram cap", byNode: []cluster.VM{pvmssVM}, caps: store.NodePolicyRow{MaxRAMGB: 1}, machine: pvmssVM, want: []string{testDimensionRAM}},
+		{name: "disk cap", byNode: []cluster.VM{pvmssVM}, caps: store.NodePolicyRow{MaxDiskGB: 3}, machine: pvmssVM, want: []string{"disk"}},
+		{name: "all dimensions at once", byNode: []cluster.VM{pvmssVM}, caps: store.NodePolicyRow{MaxVMs: 1, MaxVCPUs: 1, MaxRAMGB: 1, MaxDiskGB: 1}, machine: pvmssVM, want: []string{testDimensionVMs, "vcpus", testDimensionRAM, "disk"}},
+		{name: "boundary is not overflow", byNode: []cluster.VM{pvmssVM}, caps: store.NodePolicyRow{MaxVMs: 2, MaxVCPUs: 4, MaxRAMGB: 2, MaxDiskGB: 4}, machine: pvmssVM, want: nil},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
+			index := &inventory.Index{ByNode: map[string][]cluster.VM{"n1": tc.byNode}}
+
+			if got := policy.NodeOverflow(index, tc.caps, "n1", tc.machine); !slices.Equal(got, tc.want) {
+				t.Errorf("NodeOverflow = %v, want %v", got, tc.want)
+			}
+		})
 	}
 }

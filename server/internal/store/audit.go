@@ -165,12 +165,15 @@ func (s *Store) mirrorAudit(ctx context.Context, row auditRow) {
 	}
 }
 
+// truncate bounds v at a rune boundary so multi-byte usernames and target
+// IDs never produce invalid UTF-8 in the JSON log mirror.
 func truncate(v string, limit int) string {
-	if len(v) <= limit {
+	runes := []rune(v)
+	if len(runes) <= limit {
 		return v
 	}
 
-	return v[:limit]
+	return string(runes[:limit])
 }
 
 // deriveSeverity maps an action string to one of three severity levels based

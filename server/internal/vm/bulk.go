@@ -336,6 +336,10 @@ func settledResult(ctx context.Context, result BulkTargetResult, task pendingTas
 // Proxmox text (paths, internals) goes to the log, not to the user. The batch
 // answers 200, so the swallowed error is logged at Warn.
 func bulkErrorMessage(ctx context.Context, target BulkTarget, err error) string {
+	if errors.Is(err, context.DeadlineExceeded) {
+		return "the bulk action ran out of time before reaching this VM"
+	}
+
 	if !errors.Is(err, cluster.ErrClusterRejected) && !errors.Is(err, cluster.ErrUnreachable) &&
 		!errors.Is(err, cluster.ErrTLSVerify) {
 		return err.Error()

@@ -302,3 +302,47 @@ func TestLocalAccounts_DeleteAndRevokeSessions(t *testing.T) {
 		t.Errorf("deleted account still present: %v", err)
 	}
 }
+
+// The provider column is what keeps a PVE user and a same-named local admin
+// from wiping each other's sessions: a password change must only revoke the
+// caller's own provider+username rows.
+func TestDeleteOtherSessionsByProvider(t *testing.T) {
+	t.Parallel()
+
+	st := newLocalAccountStore(t)
+	ctx := context.Background()
+
+	newSession := func(hash string, provider auth.Provider, username string) auth.SessionRecord {
+		return auth.SessionRecord{
+			Hash:      []byte(hash),
+			Identity:  auth.Identity{Username: username, Provider: provider},
+			ExpiresAt: time.Now().Add(time.Hour),
+			CreatedAt: time.Now(),
+		}
+	}
+
+	keep := newSession("keep-hash", auth.ProviderLocal, "albert")
+	victim := newSession("victim-hash", auth.ProviderLocal, "albert")
+	sameNamePVE := newSession("pve-hash", auth.ProviderPVE, "albert")
+	otherLocal := newSession("bob-hash", auth.ProviderLocal, "bob")
+
+	for _, s := range []auth.SessionRecord{keep, victim, sameNamePVE, otherLocal} {
+		if err := st.CreateSession(ctx, s); err != nil {
+			t.Fatalf("CreateSession: %v", err)
+		}
+	}
+
+	if err := st.DeleteOtherSessionsByProvider(ctx, string(auth.ProviderLocal), "albert", keep.Hash); err != nil {
+		t.Fatalf("DeleteOtherSessionsByProvider: %v", err)
+	}
+
+	if _, err := st.FindSession(ctx, victim.Hash); !errors.Is(err, sql.ErrNoRows) {
+		t.Error("victim session of same provider+username still resolves")
+	}
+
+	for _, s := range []auth.SessionRecord{keep, sameNamePVE, otherLocal} {
+		if _, err := st.FindSession(ctx, s.Hash); err != nil {
+			t.Errorf("session %q lost though out of scope: %v", s.Hash, err)
+		}
+	}
+}
