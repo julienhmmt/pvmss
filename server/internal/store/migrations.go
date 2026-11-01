@@ -2,9 +2,9 @@
 package store
 
 // schemaV1 is the v0.4 baseline: the full schema in its final form. The
-// incremental chain accumulated during development (37 versions) was
-// collapsed before the first tagged release - no v0.4 database exists in
-// the field to upgrade. Databases created by pre-release builds carry
+// incremental chain accumulated during development (37 versions before the
+// first tag, 8 more after) was collapsed because no v0.4 database exists in
+// the field to upgrade. Databases created by development builds carry
 // schema_migrations versions that are absent from this list; RunMigrations
 // rejects them with a clear error instead of silently skipping the baseline.
 //
@@ -21,7 +21,10 @@ CREATE TABLE sessions (
 	created_at TEXT NOT NULL,
 	pool       TEXT NOT NULL DEFAULT '',
 	cluster    TEXT NOT NULL DEFAULT '',
-	csrf_token TEXT NOT NULL DEFAULT ''
+	csrf_token TEXT NOT NULL DEFAULT '',
+	-- Credential source ("pve", "pam", "local", "bootstrap"); lets account
+	-- administration revoke only the sessions one provider owns.
+	provider   TEXT NOT NULL DEFAULT ''
 );
 
 -- vmid is nullable: admin actions (cluster credentials, policy, catalog
@@ -40,6 +43,9 @@ CREATE TABLE audit_log (
 	severity    TEXT NOT NULL DEFAULT 'info'
 );
 
+-- tls_* columns carry the per-cluster TLS material for validating (and
+-- optionally authenticating to) the Proxmox API. The client private key is
+-- stored encrypted, like the token secret.
 CREATE TABLE clusters (
 	name                     TEXT PRIMARY KEY,
 	url                      TEXT NOT NULL,
@@ -53,7 +59,10 @@ CREATE TABLE clusters (
 	last_test_message        TEXT,
 	proxmox_version          TEXT,
 	display_name             TEXT,
-	snippet_storage          TEXT NOT NULL DEFAULT ''
+	tls_ca_pem               TEXT NOT NULL DEFAULT '',
+	tls_node_fingerprints    TEXT NOT NULL DEFAULT '',
+	tls_client_cert_pem      TEXT NOT NULL DEFAULT '',
+	tls_client_key_ciphertext BLOB
 );
 
 CREATE TABLE catalog_nodes (
@@ -88,29 +97,14 @@ CREATE TABLE catalog_isos (
 	PRIMARY KEY (cluster, node, storage, file)
 );
 
--- Approved cloud images: bootable disk images an admin placed on a Proxmox
--- storage's import/ directory - PVMSS never fetches images from the
--- internet. size_bytes lets the create path reject a disk size below the
--- image before a VMID is spent.
-CREATE TABLE catalog_images (
-	cluster    TEXT NOT NULL,
-	node       TEXT NOT NULL,
-	storage    TEXT NOT NULL,
-	file       TEXT NOT NULL,
-	size_bytes INTEGER NOT NULL DEFAULT 0,
-	enabled    BOOLEAN NOT NULL DEFAULT 1,
-	PRIMARY KEY (cluster, node, storage, file)
-);
-
 -- Approved Proxmox templates, keyed by (cluster, vmid) since VMIDs are
--- cluster-unique. cloud_init_capable drives the full/linked clone decision;
--- override_discovery pins the stored fields against discovery write-back.
+-- cluster-unique. override_discovery pins the stored fields against
+-- discovery write-back.
 CREATE TABLE catalog_templates (
 	cluster            TEXT NOT NULL,
 	node               TEXT NOT NULL,
 	vmid               INTEGER NOT NULL,
 	name               TEXT NOT NULL DEFAULT '',
-	cloud_init_capable BOOLEAN NOT NULL DEFAULT 0,
 	disk_storage       TEXT NOT NULL DEFAULT '',
 	disk_size_gb       INTEGER NOT NULL DEFAULT 0,
 	disk_bus           TEXT NOT NULL DEFAULT 'scsi',
@@ -140,17 +134,6 @@ CREATE TABLE catalog_tags (
 	PRIMARY KEY (cluster, name)
 );
 
-CREATE TABLE catalog_cloudinit_templates (
-	cluster    TEXT NOT NULL,
-	id         TEXT NOT NULL,
-	label      TEXT NOT NULL,
-	content    TEXT NOT NULL,
-	enabled    BOOLEAN NOT NULL DEFAULT 1,
-	created_at TEXT NOT NULL,
-	updated_at TEXT NOT NULL,
-	PRIMARY KEY (cluster, id)
-);
-
 CREATE TABLE documentation_pages (
 	id         TEXT NOT NULL,
 	lang       TEXT NOT NULL DEFAULT 'en',
@@ -177,6 +160,8 @@ CREATE TABLE managed_pools (
 	PRIMARY KEY (cluster, name)
 );
 
+-- vmid_min/vmid_max bound the optional per-cluster VMID range for new VMs
+-- (0/0 = off). lease_days is the per-cluster lease length (0 = leases off).
 CREATE TABLE vm_limits (
 	cluster            TEXT PRIMARY KEY,
 	max_sockets        INTEGER NOT NULL,
@@ -186,7 +171,10 @@ CREATE TABLE vm_limits (
 	max_network_cards  INTEGER NOT NULL,
 	max_snapshots      INTEGER NOT NULL,
 	max_vm_per_user    INTEGER NOT NULL,
-	isolation_vlan_tag INTEGER NOT NULL DEFAULT 0
+	isolation_vlan_tag INTEGER NOT NULL DEFAULT 0,
+	vmid_min           INTEGER NOT NULL DEFAULT 0,
+	vmid_max           INTEGER NOT NULL DEFAULT 0,
+	lease_days         INTEGER NOT NULL DEFAULT 0
 );
 
 CREATE TABLE node_limits (
@@ -204,18 +192,6 @@ CREATE TABLE audit_config (
 	retention_days INTEGER NOT NULL
 );
 INSERT INTO audit_config (id, retention_days) VALUES (1, 365);
-
--- Per-VM baseline delivery state for image-mode VMs. state is "applied",
--- "override", or "not_delivered"; error carries the reason when
--- state = 'not_delivered'.
-CREATE TABLE vm_baseline_state (
-	cluster   TEXT NOT NULL,
-	vmid      INTEGER NOT NULL,
-	state     TEXT NOT NULL,
-	error     TEXT NOT NULL DEFAULT '',
-	updated_at TEXT NOT NULL,
-	PRIMARY KEY (cluster, vmid)
-);
 
 -- Which admin-published cloud-init file a VM uses. Unlike the legacy
 -- vm_cloudinit_snippets rows, its file is never deleted with the VM.
@@ -252,20 +228,10 @@ CREATE TABLE profile_ssh_keys (
 	UNIQUE (cluster, username, label),
 	UNIQUE (cluster, username, public_key)
 );
-`
 
-// Migration is a single schema version and its forward-only DDL.
-type Migration struct {
-	Version int
-	DDL     string
-}
-
-// schemaV2 adds DB-backed PVMSS local administrator accounts and records the
-// credential source on sessions. The bootstrap administrator (env
-// ADMIN_PASSWORD_HASH) stays outside the table: it is the immutable owner.
-// Existing sessions predate providers and can only come from PVE logins, so
-// they are backfilled as "pve".
-const schemaV2 = `
+-- DB-backed PVMSS local administrator accounts. The bootstrap administrator
+-- (env ADMIN_PASSWORD_HASH) stays outside the table: it is the immutable
+-- owner.
 CREATE TABLE local_accounts (
 	id              INTEGER PRIMARY KEY AUTOINCREMENT,
 	username        TEXT NOT NULL COLLATE NOCASE UNIQUE,
@@ -279,44 +245,9 @@ CREATE TABLE local_accounts (
 	last_login_at   TEXT NOT NULL DEFAULT ''
 );
 
-ALTER TABLE sessions ADD COLUMN provider TEXT NOT NULL DEFAULT '';
-
-UPDATE sessions SET provider = 'pve' WHERE cluster != '';
-`
-
-// schemaV3 adds per-cluster TLS material for validating (and optionally
-// authenticating to) the Proxmox API. The client private key is stored
-// encrypted, like the token secret.
-const schemaV3 = `
-ALTER TABLE clusters ADD COLUMN tls_ca_pem TEXT NOT NULL DEFAULT '';
-ALTER TABLE clusters ADD COLUMN tls_node_fingerprints TEXT NOT NULL DEFAULT '';
-ALTER TABLE clusters ADD COLUMN tls_client_cert_pem TEXT NOT NULL DEFAULT '';
-ALTER TABLE clusters ADD COLUMN tls_client_key_ciphertext BLOB;
-`
-
-// schemaV4 adds the optional per-cluster VMID range for new VMs (0/0 = off).
-const schemaV4 = `
-ALTER TABLE vm_limits ADD COLUMN vmid_min INTEGER NOT NULL DEFAULT 0;
-ALTER TABLE vm_limits ADD COLUMN vmid_max INTEGER NOT NULL DEFAULT 0;
-`
-
-// schemaV5 drops the paused cloud-init and cloud-image schema: the admin
-// document/template tables, the image approval table, the per-VM baseline
-// state, and the two dead columns. vm_cloudinit_documents and
-// vm_cloudinit_snippets stay on purpose - the VM-delete cleanup still reads
-// them for rows a pre-removal deployment left behind.
-const schemaV5 = `
-DROP TABLE IF EXISTS catalog_images;
-DROP TABLE IF EXISTS catalog_cloudinit_templates;
-DROP TABLE IF EXISTS vm_baseline_state;
-ALTER TABLE clusters DROP COLUMN snippet_storage;
-ALTER TABLE catalog_templates DROP COLUMN cloud_init_capable;
-`
-
-// schemaV6 adds the in-app quota increase requests. One pending request per
-// (requester, cluster, pool) is enforced by a partial unique index, so a
-// second request while one is open is refused by the database itself.
-const schemaV6 = `
+-- In-app quota increase requests. One pending request per
+-- (requester, cluster, pool) is enforced by a partial unique index, so a
+-- second request while one is open is refused by the database itself.
 CREATE TABLE quota_requests (
 	id              INTEGER PRIMARY KEY AUTOINCREMENT,
 	requester       TEXT NOT NULL,
@@ -333,12 +264,10 @@ CREATE TABLE quota_requests (
 
 CREATE UNIQUE INDEX quota_requests_one_pending
 	ON quota_requests (requester, cluster, pool) WHERE status = 'pending';
-`
 
-// schemaV7 adds VM leases: an expiry per managed VM (absent row = no lease,
-// the admin-exempt state) and the per-cluster lease length on the policy row
-// (0 = leases off). Expiry is RFC3339 UTC so string comparison orders rows.
-const schemaV7 = `
+-- VM leases: an expiry per managed VM (absent row = no lease, the
+-- admin-exempt state). Expiry is RFC3339 UTC so string comparison orders
+-- rows.
 CREATE TABLE vm_leases (
 	cluster     TEXT NOT NULL,
 	vmid        INTEGER NOT NULL,
@@ -349,13 +278,8 @@ CREATE TABLE vm_leases (
 	PRIMARY KEY (cluster, vmid)
 );
 
-ALTER TABLE vm_limits ADD COLUMN lease_days INTEGER NOT NULL DEFAULT 0;
-`
-
-// schemaV8 adds the per-VM scheduled snapshot policy. pool pins the schedule
-// to the VM it was set on; last_run_at is empty until the first automatic
-// snapshot.
-const schemaV8 = `
+-- Per-VM scheduled snapshot policy. pool pins the schedule to the VM it was
+-- set on; last_run_at is empty until the first automatic snapshot.
 CREATE TABLE vm_snapshot_schedules (
 	cluster     TEXT NOT NULL,
 	vmid        INTEGER NOT NULL,
@@ -367,15 +291,14 @@ CREATE TABLE vm_snapshot_schedules (
 );
 `
 
+// Migration is a single schema version and its forward-only DDL.
+type Migration struct {
+	Version int
+	DDL     string
+}
+
 // Migrations is the ordered list of schema migrations.
 // Versions must be consecutive integers starting at 1.
 var Migrations = []Migration{
 	{Version: 1, DDL: schemaV1},
-	{Version: 2, DDL: schemaV2},
-	{Version: 3, DDL: schemaV3},
-	{Version: 4, DDL: schemaV4},
-	{Version: 5, DDL: schemaV5},
-	{Version: 6, DDL: schemaV6},
-	{Version: 7, DDL: schemaV7},
-	{Version: 8, DDL: schemaV8},
 }
