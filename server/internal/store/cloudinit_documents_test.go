@@ -16,7 +16,7 @@ func TestDeleteVMCloudInitDocument(t *testing.T) {
 
 	if _, err := st.DB().ExecContext(ctx,
 		`INSERT INTO vm_cloudinit_documents (cluster, vmid, template_id, filename, updated_at, updated_by) VALUES (?, ?, ?, ?, ?, ?)`,
-		testStoreCluster, 101, "debian-12", "ci-101.yaml", time.Now().UTC().Format(time.RFC3339Nano), "admin"); err != nil {
+		testStoreCluster, 101, "debian-12", "ci-101.yaml", time.Now().UTC().Format(time.RFC3339Nano), adminDocID); err != nil {
 		t.Fatalf("insert document row: %v", err)
 	}
 

@@ -501,7 +501,7 @@ func TestSessionManager_EnsureCSRFCookie_RejectsWithoutSession(t *testing.T) {
 	}
 
 	sessionCookie, _ := issueSession(t, manager, auth.Identity{Username: "alice@pve"})
-	expiredCookie := &http.Cookie{Name: sessionCookie.Name, Value: sessionCookie.Value, HttpOnly: true, Secure: true, SameSite: http.SameSiteStrictMode}
+	expiredCookie := &http.Cookie{Name: sessionCookie.Name, Value: sessionCookie.Value, Secure: true, HttpOnly: true, SameSite: http.SameSiteStrictMode}
 
 	repository.expireAll()
 

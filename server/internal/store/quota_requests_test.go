@@ -52,7 +52,7 @@ func TestQuotaRequest_DecideOnlyOnce(t *testing.T) {
 		t.Fatalf("PendingQuotaRequest: %v", err)
 	}
 
-	if err := st.DecideQuotaRequest(ctx, pending.ID, store.QuotaRequestApproved, "admin"); err != nil {
+	if err := st.DecideQuotaRequest(ctx, pending.ID, store.QuotaRequestApproved, adminDocID); err != nil {
 		t.Fatalf("DecideQuotaRequest: %v", err)
 	}
 
