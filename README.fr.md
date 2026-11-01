@@ -114,6 +114,15 @@ Les commandes `pveum` et les informations relatives aux rôles et aux privilège
 
 - La page d'admin intégrée `/docs/proxmox-permissions` (une fois PVMSS démarré et vous êtes connecté en tant qu'administrateur)
 
+### Connexion administrateur
+
+PVMSS accepte deux types d'administrateur, qui aboutissent tous deux à la même interface d'administration :
+
+- **Administrateur Proxmox** - connectez-vous sur `/login` avec un compte Proxmox dont l'ACL accorde `Permissions.Modify` sur `/` (le rôle intégré `PVEAdmin` ou `Administrator`, ou un rôle personnalisé portant ce privilège). Choisissez le realm `pve` (Proxmox VE) ou `pam` (Linux PAM) ; saisir explicitement `user@realm` l'emporte sur le sélecteur. Le drapeau admin est lu à la connexion et conservé pour la session (24 h maximum) : une permission accordée plus tard demande une nouvelle connexion. Les realms OIDC ne sont pas encore pris en charge.
+- **Administrateur local** - indépendant de Proxmox ; connexion depuis la même page avec l'interrupteur « Administrateur local ». `ADMIN_PASSWORD_HASH` initialise le compte d'amorçage (`admin`), seul propriétaire autorisé à créer d'autres comptes sous **Admin > Paramètres > Comptes**. Ces comptes en base sont plafonnés par `PVMSS_MAX_LOCAL_ADMINS`, leurs mots de passe font 8 caractères minimum (72 octets maximum, la limite bcrypt), et peuvent être réinitialisés, désactivés et supprimés ; chacune de ces actions révoque les sessions du compte. Cinq échecs de connexion consécutifs verrouillent un compte pendant 15 minutes.
+
+Si un administrateur local perd son mot de passe : les comptes en base sont réinitialisés par le propriétaire depuis **Admin > Paramètres > Comptes** (la réinitialisation lève aussi le verrou et révoque les sessions du compte). Le compte `admin` d'amorçage, lui, se change en remplaçant `ADMIN_PASSWORD_HASH` par un nouveau hash bcrypt puis en redémarrant. Si le propriétaire créé par le setup - le seul propriétaire tant qu'`ADMIN_PASSWORD_HASH` n'est pas défini, protégé contre la suppression et la désactivation - perd l'accès, définissez `ADMIN_PASSWORD_HASH` et redémarrez : `admin` redevient propriétaire et peut réinitialiser ou recréer le compte verrouillé.
+
 ### Créer un token API pour l'utilisateur root@pam
 
 Si vous souhaitez utiliser PVMSS en développement, vous **devez** créer un token API pour l'utilisateur `root@pam`. C'est la manière la plus simple de commencer, mais gardez à l'esprit que c'est la moins sécurisée.

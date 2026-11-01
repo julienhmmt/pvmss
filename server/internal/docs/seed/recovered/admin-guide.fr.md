@@ -87,6 +87,32 @@ Seul l'administrateur bootstrap peut gérer les comptes locaux ; tout autre admi
 
 Les administrateurs locaux en base changent leur propre mot de passe sur `/profile`, comme les utilisateurs Proxmox. Le compte bootstrap ne le peut pas : changez `ADMIN_PASSWORD_HASH` puis redémarrez.
 
+### Mot de passe administrateur perdu
+
+PVMSS n'a pas de flux « mot de passe oublié » en libre-service : la
+récupération passe toujours par un propriétaire existant ou par le
+déploiement lui-même.
+
+- **Un administrateur local en base** demande au propriétaire, qui
+  réinitialise le mot de passe depuis **Paramètres > Comptes**. La
+  réinitialisation lève aussi le verrou et révoque les sessions du compte :
+  l'utilisateur doit se reconnecter partout.
+- **Le compte bootstrap `admin`** n'a pas de réinitialisation intégrée :
+  générez un nouveau hash bcrypt
+  (`htpasswd -bnBC 10 "" "NouveauMotDePasse" | tr -d ':\n'`), placez-le dans
+  `ADMIN_PASSWORD_HASH` et redémarrez.
+- **Le compte créé par le setup de première exécution**, tant qu'aucun
+  `ADMIN_PASSWORD_HASH` n'existe, est le seul propriétaire : il ne peut être
+  ni désactivé ni supprimé dans ce rôle (`protected_owner`). Pour retrouver
+  l'accès, définissez `ADMIN_PASSWORD_HASH` et redémarrez : `admin` devient
+  le propriétaire et le compte setup perd ce rôle - réinitialisez ensuite
+  son mot de passe ou recréez-le depuis **Paramètres > Comptes**.
+
+En dernier recours, un opérateur ayant accès au fichier SQLite peut remplacer
+`password_hash` dans `local_accounts` par un hash bcrypt frais et vider
+`failed_attempts` et `locked_until`. Le mot de passe d'un administrateur
+Proxmox se récupère dans Proxmox, pas dans PVMSS.
+
 ## Clusters (multi-cluster)
 
 PVMSS peut se connecter à plusieurs environnements Proxmox simultanément. Chaque connexion est un **cluster** avec son URL, son token d'API et ses options.

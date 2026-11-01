@@ -85,6 +85,28 @@ Only the bootstrap administrator may manage local accounts; every other admin ge
 
 DB local administrators change their own password on `/profile`, like Proxmox users. The bootstrap account cannot: rotate `ADMIN_PASSWORD_HASH` and restart.
 
+### Lost administrator password
+
+There is no self-service "forgot password" flow: recovery always goes
+through an existing owner or through the deployment itself.
+
+- **A DB local administrator** asks the owner, who resets the password from
+  **Settings > Accounts**. The reset also lifts a lock and revokes the
+  account's sessions, so the user signs in again everywhere.
+- **The bootstrap `admin`** has no in-app reset: generate a fresh bcrypt
+  hash (`htpasswd -bnBC 10 "" "NewPassword" | tr -d ':\n'`), set it as
+  `ADMIN_PASSWORD_HASH` and restart.
+- **The account created by first-run setup**, while no `ADMIN_PASSWORD_HASH`
+  exists, is the only owner and cannot be disabled or deleted in that role
+  (`protected_owner`). To regain access, set `ADMIN_PASSWORD_HASH` and
+  restart: `admin` becomes the owner and the setup account loses the role -
+  then reset its password or recreate it from **Settings > Accounts**.
+
+As a last resort, an operator with access to the SQLite file can replace
+`password_hash` in `local_accounts` with a fresh bcrypt hash and clear
+`failed_attempts` and `locked_until`. A Proxmox administrator's password is
+recovered in Proxmox, not in PVMSS.
+
 ## Clusters (multi-cluster)
 
 PVMSS supports connecting to more than one Proxmox environment at the same time. Each connection is a **cluster** with its own URL, API token, and options.

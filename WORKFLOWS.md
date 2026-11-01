@@ -82,7 +82,7 @@ Rules for the fields:
 | **States**      | Skeleton on first load; empty state when no account exists yet; lock state shown with its expiry; translated inline errors per mutation (`account_limit_reached`, `username_taken`, `invalid_username`, `weak_password`, `not_found`, `owner_only`); success toast. |
 | **Safety nets** | Owner-only server guard (`owner_only` for every other admin); `PVMSS_MAX_LOCAL_ADMINS` caps creation; `admin` is reserved for the bootstrap account; passwords are 8+ characters and at most 72 bytes; reset, disable and delete revoke that account's sessions immediately; every mutation is audited (`admin.accounts.*`). |
 
-Password change on `/profile` (`ProfilePasswordSection`) goes through `POST /api/v1/auth/password`: Proxmox accounts rotate the cluster password, DB local accounts rotate the hash stored in PVMSS, and the bootstrap account is told to use `ADMIN_PASSWORD_HASH` and a restart.
+Password change on `/profile` (`ProfilePasswordSection`) goes through `POST /api/v1/auth/password`: Proxmox accounts rotate the cluster password, DB local accounts rotate the hash stored in PVMSS, and the bootstrap account is told to use `ADMIN_PASSWORD_HASH` and a restart. The setup-created account is protected from delete and disable while it is the only owner (`protected_owner`); if it loses access, setting `ADMIN_PASSWORD_HASH` and restarting transfers ownership to `admin`, which can then reset or recreate the account.
 
 ---
 

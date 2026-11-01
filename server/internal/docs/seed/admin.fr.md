@@ -86,4 +86,9 @@ ou `admin` (administrateurs uniquement).
 
 La page **Infos application** affiche la version, l'environnement et l'état
 des clusters. **Paramètres** regroupe le journal d'audit (avec rétention et
-aperçu de purge) et l'export / import en deux temps de la base de données.
+aperçu de purge), l'onglet **Comptes** réservé au propriétaire pour les
+administrateurs locaux, et l'export / import en deux temps de la base de
+données. Réinitialiser, désactiver ou supprimer un compte révoque ses
+sessions ; si le seul propriétaire perd l'accès, définissez
+`ADMIN_PASSWORD_HASH` et redémarrez pour redevenir propriétaire - détails
+dans le [Guide administrateur](/docs/admin-guide).

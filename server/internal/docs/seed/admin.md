@@ -78,5 +78,9 @@ or `admin` (admin-only).
 ## System
 
 The **App Info** page shows the running version, environment, and cluster
-status. **Settings** holds the audit log (with retention and prune preview)
-and the database export / two-phase import.
+status. **Settings** holds the audit log (with retention and prune preview),
+the owner-only **Accounts** tab for local administrators, and the database
+export / two-phase import. Resetting, disabling or deleting an account
+revokes its sessions; if the only owner loses access, set
+`ADMIN_PASSWORD_HASH` and restart to regain ownership - details in the
+[Administrator guide](/docs/admin-guide).

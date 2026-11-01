@@ -173,6 +173,8 @@ docker run -d \
 
 The application will be available at [http://localhost:50000](http://localhost:50000). Sign in with your Proxmox account, or click **Local administrator** on the login page to sign in with `admin` and the password matching `ADMIN_PASSWORD_HASH`.
 
+Lost a local administrator password? The owner resets DB accounts under **Admin > Settings > Accounts**; the bootstrap `admin` is rotated by setting a fresh `ADMIN_PASSWORD_HASH` and restarting - which is also the escape hatch when the setup-created owner locks itself out.
+
 ### View logs
 
 ```bash
