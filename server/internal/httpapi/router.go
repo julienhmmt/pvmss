@@ -93,7 +93,10 @@ type RouterConfig struct {
 	Docs             *DocsAPIHandler
 	AdminDocs        *AdminDocs
 	ProfileSSHKeys   *ProfileSSHKeys
-	Store            *store.Store
+	// Setup serves GET /api/v1/setup (and POST /api/v1/setup/admin). Optional;
+	// both self-guard on live state, so they stay mounted after setup.
+	Setup *Setup
+	Store *store.Store
 	// TrustedProxyHops is forwarded to the rate limiters so clientIP resolves
 	// the real user IP behind a Kubernetes ingress via X-Forwarded-For.
 	// Defaults to 0 (use RemoteAddr directly) when not set by the caller.
@@ -139,8 +142,12 @@ func NewRouter(cfg RouterConfig) http.Handler {
 	}
 
 	mux.Handle("GET /health", cfg.Health)
-	mux.Handle("GET /api/v1/cluster/nodes", cfg.Auth.Require(cfg.ClusterNodes))
-	mux.Handle("POST /api/v1/cluster/refresh", protect(cfg.Auth.Require(cfg.ClusterRefresh), clusterTestLimiter))
+	if cfg.ClusterNodes != nil {
+		mux.Handle("GET /api/v1/cluster/nodes", cfg.Auth.Require(cfg.ClusterNodes))
+	}
+	if cfg.ClusterRefresh != nil {
+		mux.Handle("POST /api/v1/cluster/refresh", protect(cfg.Auth.Require(cfg.ClusterRefresh), clusterTestLimiter))
+	}
 
 	registerVMRoutes(mux, cfg, protect, vmWriteLimiter, vmStatusLimiter)
 
@@ -193,7 +200,9 @@ func registerVMRoutes(mux *http.ServeMux, cfg RouterConfig, protect protectFunc,
 	// Not wrapped in auth.Require: the handler needs the resolved Identity
 	// itself (for scope enforcement) and calls h.auth.Principal(r) directly,
 	// returning 401 on its own - wrapping would just re-run the same check.
-	mux.Handle("GET /api/v1/vms", cfg.VMs)
+	if cfg.VMs != nil {
+		mux.Handle("GET /api/v1/vms", cfg.VMs)
+	}
 	// Bulk VM power actions - same Principal pattern as VM list/detail:
 	// the handler calls h.auth.Principal(r) directly and returns 401 on its
 	// own, so it is not wrapped in auth.Require. Registered before the
@@ -222,24 +231,26 @@ func registerVMRoutes(mux *http.ServeMux, cfg RouterConfig, protect protectFunc,
 	}
 	// VM detail + actions + delete + patch - all gated by vm.Resolve() inside
 	// the handler. Same reason as GET /vms: not wrapped in auth.Require.
-	mux.Handle("GET /api/v1/vms/{cluster}/{vmid}", cfg.VMDetail)
-	mux.Handle("POST /api/v1/vms/{cluster}/{vmid}/actions", protect(cfg.VMDetail, vmWriteLimiter))
-	mux.Handle("DELETE /api/v1/vms/{cluster}/{vmid}", protect(cfg.VMDetail, vmWriteLimiter))
-	mux.Handle("PATCH /api/v1/vms/{cluster}/{vmid}", protect(cfg.VMDetail, vmWriteLimiter))
-	mux.Handle("PUT /api/v1/vms/{cluster}/{vmid}/lease", protect(cfg.VMDetail, vmWriteLimiter))
-	mux.Handle("DELETE /api/v1/vms/{cluster}/{vmid}/lease", protect(cfg.VMDetail, vmWriteLimiter))
-	mux.Handle("GET /api/v1/vms/{cluster}/{vmid}/hardware-options", cfg.VMDetail)
-	mux.Handle("GET /api/v1/vms/{cluster}/{vmid}/status", cfg.VMDetail)
-	mux.Handle("POST /api/v1/vms/{cluster}/{vmid}/disks", protect(cfg.VMDetail, vmWriteLimiter))
-	mux.Handle("PUT /api/v1/vms/{cluster}/{vmid}/disks/{diskKey}/resize", protect(cfg.VMDetail, vmWriteLimiter))
-	mux.Handle("DELETE /api/v1/vms/{cluster}/{vmid}/disks/{diskKey}", protect(cfg.VMDetail, vmWriteLimiter))
-	mux.Handle("PATCH /api/v1/vms/{cluster}/{vmid}/cdrom", protect(cfg.VMDetail, vmWriteLimiter))
-	mux.Handle("POST /api/v1/vms/{cluster}/{vmid}/boot-cdrom", protect(cfg.VMDetail, vmWriteLimiter))
-	mux.Handle("PUT /api/v1/vms/{cluster}/{vmid}/network", protect(cfg.VMDetail, vmWriteLimiter))
-	mux.Handle("PUT /api/v1/vms/{cluster}/{vmid}/hardware", protect(cfg.VMDetail, vmWriteLimiter))
-	mux.Handle("POST /api/v1/vms/{cluster}/{vmid}/serial", protect(cfg.VMDetail, vmWriteLimiter))
-	mux.Handle("POST /api/v1/vms/{cluster}/{vmid}/retrofit-seabios", protect(cfg.VMDetail, vmWriteLimiter))
-	mux.Handle("GET /api/v1/vms/{cluster}/{vmid}/audit", cfg.VMDetail)
+	if cfg.VMDetail != nil {
+		mux.Handle("GET /api/v1/vms/{cluster}/{vmid}", cfg.VMDetail)
+		mux.Handle("POST /api/v1/vms/{cluster}/{vmid}/actions", protect(cfg.VMDetail, vmWriteLimiter))
+		mux.Handle("DELETE /api/v1/vms/{cluster}/{vmid}", protect(cfg.VMDetail, vmWriteLimiter))
+		mux.Handle("PATCH /api/v1/vms/{cluster}/{vmid}", protect(cfg.VMDetail, vmWriteLimiter))
+		mux.Handle("PUT /api/v1/vms/{cluster}/{vmid}/lease", protect(cfg.VMDetail, vmWriteLimiter))
+		mux.Handle("DELETE /api/v1/vms/{cluster}/{vmid}/lease", protect(cfg.VMDetail, vmWriteLimiter))
+		mux.Handle("GET /api/v1/vms/{cluster}/{vmid}/hardware-options", cfg.VMDetail)
+		mux.Handle("GET /api/v1/vms/{cluster}/{vmid}/status", cfg.VMDetail)
+		mux.Handle("POST /api/v1/vms/{cluster}/{vmid}/disks", protect(cfg.VMDetail, vmWriteLimiter))
+		mux.Handle("PUT /api/v1/vms/{cluster}/{vmid}/disks/{diskKey}/resize", protect(cfg.VMDetail, vmWriteLimiter))
+		mux.Handle("DELETE /api/v1/vms/{cluster}/{vmid}/disks/{diskKey}", protect(cfg.VMDetail, vmWriteLimiter))
+		mux.Handle("PATCH /api/v1/vms/{cluster}/{vmid}/cdrom", protect(cfg.VMDetail, vmWriteLimiter))
+		mux.Handle("POST /api/v1/vms/{cluster}/{vmid}/boot-cdrom", protect(cfg.VMDetail, vmWriteLimiter))
+		mux.Handle("PUT /api/v1/vms/{cluster}/{vmid}/network", protect(cfg.VMDetail, vmWriteLimiter))
+		mux.Handle("PUT /api/v1/vms/{cluster}/{vmid}/hardware", protect(cfg.VMDetail, vmWriteLimiter))
+		mux.Handle("POST /api/v1/vms/{cluster}/{vmid}/serial", protect(cfg.VMDetail, vmWriteLimiter))
+		mux.Handle("POST /api/v1/vms/{cluster}/{vmid}/retrofit-seabios", protect(cfg.VMDetail, vmWriteLimiter))
+		mux.Handle("GET /api/v1/vms/{cluster}/{vmid}/audit", cfg.VMDetail)
+	}
 
 	if cfg.VMCloudInit != nil {
 		// The read stays: the Connect tab shows the SSH user from it.
@@ -288,6 +299,11 @@ func registerAuthRoutes(mux *http.ServeMux, cfg RouterConfig, protect protectFun
 	mux.Handle("POST /api/v1/auth/admin-login", authLimiter.middleware(http.HandlerFunc(cfg.Auth.AdminLogin)))
 	mux.HandleFunc("GET /api/v1/auth/me", cfg.Auth.Me)
 	mux.Handle("GET /api/v1/auth/clusters", clusterListLimiter.middleware(http.HandlerFunc(cfg.Auth.ServeClusters)))
+	if cfg.Setup != nil {
+		mux.Handle("GET /api/v1/setup", clusterListLimiter.middleware(http.HandlerFunc(cfg.Setup.ServeStatus)))
+		// Credential-issuing endpoint: shares the login brute-force budget.
+		mux.Handle("POST /api/v1/setup/admin", authLimiter.middleware(http.HandlerFunc(cfg.Setup.ServeCreateAdmin)))
+	}
 	mux.Handle("POST /api/v1/auth/logout", protect(http.HandlerFunc(cfg.Auth.Logout), authWriteLimiter))
 	mux.Handle("POST /api/v1/auth/password", protect(http.HandlerFunc(cfg.Auth.ChangePassword), authWriteLimiter))
 

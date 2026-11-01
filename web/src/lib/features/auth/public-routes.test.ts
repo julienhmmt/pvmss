@@ -5,6 +5,7 @@ describe('isPublicPath', () => {
 	it('returns true for exact public paths', () => {
 		expect(isPublicPath('/')).toBe(true);
 		expect(isPublicPath('/login')).toBe(true);
+		expect(isPublicPath('/setup')).toBe(true);
 	});
 
 	it('returns true for /docs and its children', () => {

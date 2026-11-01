@@ -17,8 +17,9 @@ _Avoid_: superuser, root admin, PVE admin (ambiguous with the PVEAdmin role)
 **Local administrator**:
 A PVMSS administrator whose credentials live in `/data/pvmss.db`
 (`local_accounts`), independent of Proxmox. Holds the full admin surface, but
-may not manage other local administrators. Created, reset, disabled and
-deleted by the owner under Admin > Settings > Accounts.
+may not manage other local administrators - except the setup-created account,
+which carries the owner role while no bootstrap exists. Created, reset,
+disabled and deleted by the owner under Admin > Settings > Accounts.
 _Avoid_: local user, DB user, fallback admin
 
 **Bootstrap administrator (owner)**:
@@ -26,8 +27,19 @@ The env-seeded administrator (`ADMIN_PASSWORD_HASH`, username `admin`,
 `provider = bootstrap`). Its password is rotated by changing the variable and
 restarting, never from the UI, and it is the only identity allowed to manage
 local administrators (`owner_only`). It is not counted against
-`PVMSS_MAX_LOCAL_ADMINS` and cannot be locked.
+`PVMSS_MAX_LOCAL_ADMINS` and cannot be locked. When no `ADMIN_PASSWORD_HASH`
+exists, the first-run setup account (`created_by = 'setup'`, provider
+`local`) carries the owner role instead.
 _Avoid_: root, super admin, emergency admin
+
+**Setup mode**:
+The zero-cluster boot state a `proxmox` source instance enters when the
+`PROXMOX_*` credentials are all empty: the server runs a reduced router (SPA,
+health, auth, `GET /api/v1/setup`, `POST /api/v1/setup/admin`, cluster
+administration) and `/setup` walks the admin through the first account and
+cluster. The first registered cluster swaps the full router in atomically;
+there is no restart.
+_Avoid_: first boot wizard, install mode
 
 **Realm**:
 The Proxmox authentication backend after the `@` in a username (`user@pve`,
@@ -40,7 +52,8 @@ _Avoid_: domain, auth type
 Where a session's credentials came from: `pve` (a Proxmox cluster account),
 `local` (a DB local administrator) or `bootstrap` (the env-seeded owner).
 Stored on the session row and exposed to the SPA as `Principal.provider`;
-`IsOwner` is derived from it, never persisted.
+`IsOwner` is derived at resolution time, never persisted - bootstrap wins, or
+the `created_by = 'setup'` account while no `ADMIN_PASSWORD_HASH` exists.
 _Avoid_: login type, source
 
 **Projection**:
@@ -71,7 +84,7 @@ where post-task configuration is required (create → cloud-init attach, delete)
 _Avoid_: task id, job id
 
 **Cluster id**:
-The immutable logical name of a Proxmox connection (`clusters.name`), chosen at creation; `default` for the env-seeded cluster. It is the key in URLs, the API, audit history and per-cluster settings, and it cannot be renamed. Workaround: create a cluster with the wanted id.
+The immutable logical name of a Proxmox connection (`clusters.name`), chosen at creation and matching `^[a-z0-9-]+$`; `default` for the env-seeded cluster. In first-run setup the probe suggests an id derived from the discovered display name. It is the key in URLs, the API, audit history and per-cluster settings, and it cannot be renamed. Workaround: create a cluster with the wanted id.
 _Avoid_: cluster name, slug
 
 **Cluster display label**:

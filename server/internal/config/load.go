@@ -242,13 +242,13 @@ func loadClusterSettings(cfg *Configuration) error {
 	cfg.ProxmoxAPITokenName = strings.TrimSpace(os.Getenv("PROXMOX_API_TOKEN_NAME"))
 	cfg.ProxmoxAPITokenValue = strings.TrimSpace(os.Getenv("PROXMOX_API_TOKEN_VALUE"))
 
-	if cfg.ClusterSource == "proxmox" {
+	if cfg.ClusterSource == "proxmox" && (cfg.ProxmoxURL != "" || cfg.ProxmoxAPITokenName != "" || cfg.ProxmoxAPITokenValue != "") {
 		if cfg.ProxmoxURL == "" {
-			return errors.New("PROXMOX_URL is required when PVMSS_CLUSTER_SOURCE=proxmox")
+			return errors.New("PROXMOX_URL is required when PROXMOX_API_TOKEN_NAME or PROXMOX_API_TOKEN_VALUE is set")
 		}
 
 		if cfg.ProxmoxAPITokenName == "" || cfg.ProxmoxAPITokenValue == "" {
-			return errors.New("PROXMOX_API_TOKEN_NAME and PROXMOX_API_TOKEN_VALUE are required when PVMSS_CLUSTER_SOURCE=proxmox")
+			return errors.New("PROXMOX_API_TOKEN_NAME and PROXMOX_API_TOKEN_VALUE are required when PROXMOX_URL is set")
 		}
 	}
 

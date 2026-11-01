@@ -1,5 +1,5 @@
 /** Public paths that do not require an authenticated session. */
-const PUBLIC_PATHS: ReadonlySet<string> = new Set(['/', '/login']);
+const PUBLIC_PATHS: ReadonlySet<string> = new Set(['/', '/login', '/setup']);
 
 /** Public path prefixes (e.g. documentation, about). */
 const PUBLIC_PREFIXES: readonly string[] = ['/docs', '/about'];

@@ -111,6 +111,12 @@ func (h *Auth) SetTrustedProxyHops(n int) {
 	h.trustedProxyHops = n
 }
 
+// HasBootstrapAdmin reports whether ADMIN_PASSWORD_HASH is configured - the
+// env-seeded owner exists and remains the only account manager.
+func (h *Auth) HasBootstrapAdmin() bool {
+	return h.adminHash != ""
+}
+
 // SetClusterFreshnessChecker wires the cluster health source used to reject
 // user logins when the selected cluster is unreachable. Admin login is never
 // gated by this check.
@@ -330,8 +336,22 @@ func (h *Auth) rejectLocalLogin(w http.ResponseWriter, r *http.Request, username
 	writeAuthError(w, http.StatusUnauthorized, "invalid_credentials", msgInvalidCredentials)
 }
 
+// isOwner resolves the owner privilege carried by IsOwner: the bootstrap
+// provider always owns accounts; the setup-created local account owns them
+// only while no ADMIN_PASSWORD_HASH exists (same rule as requireOwner).
+func (h *Auth) isOwner(ctx context.Context, identity auth.Identity) bool {
+	if identity.Owner() {
+		return true
+	}
+	if identity.Provider != auth.ProviderLocal || h.adminHash != "" || h.clusterStore == nil {
+		return false
+	}
+	account, err := h.clusterStore.LocalAccountByUsername(ctx, identity.Username)
+	return err == nil && account.CreatedBy == setupAccountCreatedBy
+}
+
 func (h *Auth) startSession(w http.ResponseWriter, r *http.Request, identity auth.Identity) {
-	identity.IsOwner = identity.Owner()
+	identity.IsOwner = h.isOwner(r.Context(), identity)
 
 	if err := h.sessions.SetCookie(r.Context(), w, identity); err != nil {
 		SetErrorMsg(w, "failed to create session", err)
@@ -439,8 +459,9 @@ func (h *Auth) Principal(r *http.Request) (auth.Identity, error) {
 		// handlers that call it directly), so tagging here covers them all.
 		logctx.AddAttrs(r.Context(), slog.String("user", identity.Username))
 
-		// Derived, never persisted: only the bootstrap admin owns accounts.
-		identity.IsOwner = identity.Owner()
+		// Derived, never persisted: bootstrap admin, or the setup account
+		// while no ADMIN_PASSWORD_HASH exists.
+		identity.IsOwner = h.isOwner(r.Context(), identity)
 
 		return identity, nil
 	}

@@ -100,8 +100,11 @@ func initCluster(cfg config.Configuration, st *store.Store, logger *slog.Logger)
 	}
 	names := clusterRegistry.List()
 	if len(names) == 0 {
-		logger.Error(errNoClustersConfigured, "component", "main")
-		return nil, nil, errors.New(errNoClustersConfigured)
+		// Zero clusters is the first-run state when PVMSS_CLUSTER_SOURCE=proxmox
+		// carries no PROXMOX_* credentials: the server boots in setup mode and
+		// the wizard registers the first cluster over the API.
+		logger.Info("no clusters configured, starting in setup mode", "component", "main")
+		return clusterRegistry, nil, nil
 	}
 	clusterClient, err := clusterRegistry.Client(names[0])
 	if err != nil {
@@ -180,28 +183,36 @@ func initInventory(cfg config.Configuration, clusterRegistry *cluster.Registry, 
 
 	names := clusterRegistry.List()
 	if len(names) == 0 {
-		logger.Error(errNoClustersConfigured, "component", "main")
-		return nil, nil, nil, nil, errors.New(errNoClustersConfigured)
+		return inventoryRegistry, nil, nil, nil, nil
 	}
-	primary := names[0]
+	defaultProjection, defaultWorker, defaultRefresher, err := resolvePrimaryInventory(inventoryRegistry, names[0])
+	if err != nil {
+		logger.Error("primary inventory is unavailable", "component", "main", "cluster", names[0], "error", err)
+		return nil, nil, nil, nil, err
+	}
+
+	return inventoryRegistry, defaultProjection, defaultWorker, defaultRefresher, nil
+}
+
+// resolvePrimaryInventory resolves the projection, per-call worker, and
+// refresher of the registry's primary cluster. Shared by startup and the
+// setup-mode router swap, which performs the same resolution lazily once the
+// wizard has registered the first cluster.
+func resolvePrimaryInventory(inventoryRegistry *inventory.Registry, primary string) (*inventory.Projection, vm.IndexRefresher, *inventory.Refresher, error) {
 	defaultProjection, err := inventoryRegistry.Projection(primary)
 	if err != nil {
-		logger.Error("primary inventory projection is unavailable", "component", "main", "cluster", primary, "error", err)
-		return nil, nil, nil, nil, err
+		return nil, nil, nil, err
 	}
 	if _, err := inventoryRegistry.Worker(primary); err != nil {
-		logger.Error("primary inventory worker is unavailable", "component", "main", "cluster", primary, "error", err)
-		return nil, nil, nil, nil, err
+		return nil, nil, nil, err
 	}
 	// The worker is rebuilt on every admin cluster edit; resolve it per call.
 	defaultWorker := registryClusterRefresh{registry: inventoryRegistry, name: primary}
 	defaultRefresher, err := inventoryRegistry.Refresher(primary)
 	if err != nil {
-		logger.Error("primary inventory refresher is unavailable", "component", "main", "cluster", primary, "error", err)
-		return nil, nil, nil, nil, err
+		return nil, nil, nil, err
 	}
-
-	return inventoryRegistry, defaultProjection, defaultWorker, defaultRefresher, nil
+	return defaultProjection, defaultWorker, defaultRefresher, nil
 }
 
 // resolveWebBuildDir returns the absolute path to the static web build directory.

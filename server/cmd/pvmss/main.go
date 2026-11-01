@@ -180,10 +180,36 @@ func run() int {
 		return 1
 	}
 
-	router, err := buildRouter(routerDeps{cfg: cfg, clusterRegistry: clusterRegistry, inventoryRegistry: inventoryRegistry, clusterClient: clusterClient, projection: defaultProjection, refresher: defaultRefresher, worker: defaultWorker, sessions: sessions, st: st, policy: policyService, webDir: webDir, logger: logger, logLevel: logLevel})
+	deps := routerDeps{cfg: cfg, clusterRegistry: clusterRegistry, inventoryRegistry: inventoryRegistry, clusterClient: clusterClient, projection: defaultProjection, refresher: defaultRefresher, worker: defaultWorker, sessions: sessions, st: st, policy: policyService, webDir: webDir, logger: logger, logLevel: logLevel}
+	router, err := buildRouter(deps)
 	if err != nil {
 		logger.Error("failed to build router", "component", "main", "error", err)
 		return 1
+	}
+
+	var handler http.Handler = router
+	if clusterClient == nil {
+		// Setup mode: the first registered cluster triggers a one-time rebuild
+		// with the now-resolvable primary dependencies.
+		handler = &setupRouterSwap{
+			setup: router, registry: clusterRegistry, log: logger,
+			build: func() (http.Handler, error) {
+				primary := clusterRegistry.List()[0]
+				client, err := clusterRegistry.Client(primary)
+				if err != nil {
+					return nil, err
+				}
+				projection, worker, refresher, err := resolvePrimaryInventory(inventoryRegistry, primary)
+				if err != nil {
+					return nil, err
+				}
+				deps.clusterClient = client
+				deps.projection = projection
+				deps.worker = worker
+				deps.refresher = refresher
+				return buildRouter(deps)
+			},
+		}
 	}
 
 	// Discover cluster display names in the background so a down cluster
@@ -194,7 +220,7 @@ func run() int {
 	// sidebar picks it up on the next /me or page load.
 	go discoverClusterDisplayNames(context.Background(), clusterRegistry, st, logger)
 
-	return serve(router, cfg, logger)
+	return serve(handler, cfg, logger)
 }
 
 // serve starts the HTTP server and blocks until it stops via error or signal.

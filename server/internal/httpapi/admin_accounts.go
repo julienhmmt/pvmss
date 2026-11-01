@@ -312,7 +312,10 @@ func (h *AdminAccounts) requireOwner(w http.ResponseWriter, r *http.Request) (ac
 		return actorIdentity{}, false
 	}
 
-	if !identity.Owner() {
+	// Principal resolves IsOwner: bootstrap admin, or the setup account while
+	// no ADMIN_PASSWORD_HASH exists (configuring it later silently revokes
+	// the wizard account's ownership).
+	if !identity.IsOwner {
 		writeAdminError(w, http.StatusForbidden, "owner_only", msgOwnerOnly)
 		return actorIdentity{}, false
 	}

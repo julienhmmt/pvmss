@@ -190,9 +190,12 @@ Environment variables only, validated at startup by
 `PVMSS_CLUSTER_SOURCE` has no default because `fake` ships hardcoded demo
 credentials (`admin@pve` / `pvmss-admin`).
 
-**Required when `PVMSS_CLUSTER_SOURCE=proxmox`:** `PROXMOX_URL`,
-`PROXMOX_API_TOKEN_NAME`, `PROXMOX_API_TOKEN_VALUE`. They seed the `default`
-cluster on first boot only; afterwards the admin UI owns clusters.
+**Optional when `PVMSS_CLUSTER_SOURCE=proxmox`:** `PROXMOX_URL`,
+`PROXMOX_API_TOKEN_NAME`, `PROXMOX_API_TOKEN_VALUE` are all-or-nothing. All
+three set: they seed the `default` cluster on first boot only; afterwards the
+admin UI owns clusters. All three empty: the server boots with zero clusters
+and serves the first-run setup (`/setup`) until an administrator registers the
+first cluster there. A partial set still fails startup.
 
 **Optional:**
 
@@ -230,8 +233,10 @@ supported, OIDC is not. PVMSS local administrators are independent of any
 cluster. `ADMIN_PASSWORD_HASH` seeds the immutable bootstrap owner (`admin`,
 provider `bootstrap`); DB-backed accounts (`local_accounts`, capped by
 `PVMSS_MAX_LOCAL_ADMINS`) are created and managed by that owner under Admin >
-Settings > Accounts. They get the full admin surface but every account route
-answers `owner_only` to them. Local passwords are 8+ characters and at most 72
+Settings > Accounts. When no `ADMIN_PASSWORD_HASH` exists, the account created
+through `/setup` (`created_by = 'setup'`) is the owner instead. Local
+administrators get the full admin surface but every account route answers
+`owner_only` to them. Local passwords are 8+ characters and at most 72
 bytes (bcrypt); five consecutive failures lock an account for 15 minutes.
 The bootstrap admin is never locked: five failures from one client IP refuse
 that IP (429) for 15 minutes. Resetting, disabling or deleting an account revokes its sessions.

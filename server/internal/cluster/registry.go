@@ -119,6 +119,12 @@ func (registry *Registry) Update(_ context.Context, row store.ClusterRow) error 
 	return nil
 }
 
+// NewClient builds a client for row without registering it - a detached
+// connection used to probe credentials before a cluster is persisted.
+func (registry *Registry) NewClient(_ context.Context, row store.ClusterRow) (Client, error) {
+	return registry.factory(row)
+}
+
 // Remove drops one active client. Persistence owns the soft-delete transaction.
 func (registry *Registry) Remove(name string) {
 	registry.mu.Lock()

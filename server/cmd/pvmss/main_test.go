@@ -3,7 +3,9 @@ package main
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
+	"io"
 	"log/slog"
 	"net"
 	"net/http"
@@ -313,6 +315,149 @@ func TestRun(t *testing.T) {
 		t.Fatalf("send SIGTERM: %v", err)
 	}
 
+	select {
+	case code := <-done:
+		if code != 0 {
+			t.Fatalf("run() returned %d, want 0", code)
+		}
+	case <-time.After(5 * time.Second):
+		t.Fatalf("run() did not stop after signal")
+	}
+}
+
+// TestRun_SetupMode boots the server on an empty database with the proxmox
+// source and no PROXMOX_* credentials: it must listen instead of crash-looping,
+// answer the setup endpoints, and swap to the full router once the wizard's
+// first cluster lands.
+//
+//nolint:paralleltest // serial: binds a port and sends SIGTERM to self
+func TestRun_SetupMode(t *testing.T) {
+	ln, err := net.Listen("tcp", "127.0.0.1:0")
+	if err != nil {
+		t.Fatalf("find free port: %v", err)
+	}
+	port := ln.Addr().(*net.TCPAddr).Port
+	_ = ln.Close()
+
+	dir := t.TempDir()
+	webDir := filepath.Join(dir, "web")
+	if err := os.MkdirAll(webDir, 0o750); err != nil {
+		t.Fatalf("create web dir: %v", err)
+	}
+	if err := os.WriteFile(filepath.Join(webDir, "index.html"), []byte("<!doctype html><html></html>"), 0o600); err != nil {
+		t.Fatalf("write index.html: %v", err)
+	}
+
+	t.Setenv("PVMSS_PORT", strconv.Itoa(port))
+	t.Setenv("PVMSS_DB_PATH", filepath.Join(dir, "pvmss.db"))
+	t.Setenv("PVMSS_WEB_DIR", webDir)
+	t.Setenv("LOG_LEVEL", "info")
+	t.Setenv("LOG_FORMAT", "json")
+	t.Setenv("LOG_OUTPUT", "stdout")
+	t.Setenv("SESSION_SECRET", strings.Repeat("s", 32))
+	t.Setenv("PVMSS_CLUSTER_SOURCE", "proxmox")
+
+	done := make(chan int, 1)
+	go func() { done <- run() }()
+
+	base := "http://127.0.0.1:" + strconv.Itoa(port)
+	var setupBody string
+	for start := time.Now(); time.Since(start) < 3*time.Second; time.Sleep(50 * time.Millisecond) {
+		resp, err := http.Get(base + "/api/v1/setup")
+		if err != nil {
+			continue
+		}
+		body, _ := io.ReadAll(resp.Body)
+		_ = resp.Body.Close()
+		if resp.StatusCode == http.StatusOK {
+			setupBody = string(body)
+			break
+		}
+	}
+	if setupBody == "" {
+		t.Fatalf("setup endpoint never answered - server did not boot without clusters")
+	}
+	var status struct {
+		Required     bool `json:"required"`
+		NeedsAdmin   bool `json:"needsAdmin"`
+		NeedsCluster bool `json:"needsCluster"`
+	}
+	if err := json.Unmarshal([]byte(setupBody), &status); err != nil {
+		t.Fatalf("decode setup status: %v", err)
+	}
+	if !status.Required || !status.NeedsAdmin || !status.NeedsCluster {
+		t.Fatalf("fresh boot setup status = %+v, want all true", status)
+	}
+
+	create, err := http.Post(base+"/api/v1/setup/admin", "application/json", strings.NewReader(`{"username":"owner","password":"correct horse battery"}`))
+	if err != nil {
+		t.Fatalf("setup admin request: %v", err)
+	}
+	_ = create.Body.Close()
+	if create.StatusCode != http.StatusCreated {
+		t.Fatalf("setup admin status = %d, want 201", create.StatusCode)
+	}
+
+	login, err := http.Post(base+"/api/v1/auth/admin-login", "application/json", strings.NewReader(`{"username":"owner","password":"correct horse battery"}`))
+	if err != nil {
+		t.Fatalf("admin login request: %v", err)
+	}
+	loginBody, _ := io.ReadAll(login.Body)
+	_ = login.Body.Close()
+	if login.StatusCode != http.StatusOK {
+		t.Fatalf("admin login status = %d: %s", login.StatusCode, loginBody)
+	}
+	var sessionCookies, csrfToken string
+	for _, cookie := range login.Cookies() {
+		sessionCookies += cookie.Name + "=" + cookie.Value + "; "
+		if cookie.Name == "pvmss_csrf" {
+			csrfToken = cookie.Value
+		}
+	}
+	if csrfToken == "" {
+		t.Fatalf("login issued no pvmss_csrf cookie")
+	}
+
+	clusterReq, err := http.NewRequest(http.MethodPost, base+"/api/v1/admin/clusters", strings.NewReader(`{"name":"prod","url":"https://pve.invalid:8006","tokenId":"pvmss@pve!svc","tokenSecret":"x"}`))
+	if err != nil {
+		t.Fatalf("build cluster request: %v", err)
+	}
+	clusterReq.Header.Set("Content-Type", "application/json")
+	clusterReq.Header.Set("Cookie", sessionCookies)
+	clusterReq.Header.Set("X-CSRF-Token", csrfToken)
+	clusterResp, err := http.DefaultClient.Do(clusterReq)
+	if err != nil {
+		t.Fatalf("cluster create request: %v", err)
+	}
+	clusterBody, _ := io.ReadAll(clusterResp.Body)
+	_ = clusterResp.Body.Close()
+	if clusterResp.StatusCode != http.StatusCreated {
+		t.Fatalf("cluster create status = %d: %s", clusterResp.StatusCode, clusterBody)
+	}
+
+	// The full router only mounts /api/v1/admin/docs once a cluster exists;
+	// it is the observable signal that the setup router was swapped out.
+	var swapped bool
+	for start := time.Now(); time.Since(start) < 3*time.Second; time.Sleep(50 * time.Millisecond) {
+		docsReq, _ := http.NewRequest(http.MethodGet, base+"/api/v1/admin/docs", nil)
+		docsReq.Header.Set("Cookie", sessionCookies)
+		docsResp, err := http.DefaultClient.Do(docsReq)
+		if err != nil {
+			continue
+		}
+		_ = docsResp.Body.Close()
+		if docsResp.StatusCode == http.StatusOK {
+			swapped = true
+			break
+		}
+	}
+	if !swapped {
+		t.Fatalf("full router never came up after first cluster creation")
+	}
+
+	if err := syscall.Kill(syscall.Getpid(), syscall.SIGTERM); err != nil {
+		t.Fatalf("send SIGTERM: %v", err)
+	}
 	select {
 	case code := <-done:
 		if code != 0 {

@@ -10,6 +10,7 @@
 	import { setTaskOutcomeLedgerContext } from '#lib/features/tasks/task-outcome-ledger.svelte.js';
 	import { setPowerActionsContext } from '#lib/features/tasks/power-actions.svelte.js';
 	import { setSessionContext } from '#lib/features/auth/session.svelte.js';
+	import { setSetupContext } from '#lib/features/setup/setup.svelte.js';
 	import { isPublicPath, loginHref, safeNext } from '#lib/features/auth/public-routes.js';
 	import { GITHUB_URL } from '#lib/shared/links.js';
 	import AuthRequired from '#lib/features/auth/AuthRequired.svelte';
@@ -57,9 +58,10 @@
 	setPowerActionsContext();
 
 	const session = setSessionContext();
+	const setup = setSetupContext();
 	let routeChecked = $state(false);
 	onMount(async () => {
-		await session.load();
+		await Promise.all([session.load(), setup.load()]);
 		routeChecked = true;
 	});
 
@@ -194,6 +196,20 @@
 	const signedIn = $derived(session.principal !== null);
 	const hasRouteError = $derived(page.error !== null);
 	const isLoginPage = $derived(page.route.id === '/login');
+	const isSetupPage = $derived(page.route.id === '/setup');
+
+	// First-run guard: while the instance reports setup required, every page
+	// lands on the wizard; once nothing is needed the wizard hands visitors
+	// back to the app. An undecided status (null, fetch failed) never traps.
+	$effect(() => {
+		const status = setup.status;
+		if (status === null) return;
+		if (status.required && !isSetupPage) {
+			void goto(resolvePath('/setup'), { replaceState: true });
+		} else if (!status.required && !status.needsAdmin && isSetupPage) {
+			void goto(resolvePath('/'), { replaceState: true });
+		}
+	});
 
 	// A signed-in user never sees the sign-in form: /login sends them to a safe
 	// `next` or their home. This also completes a fresh sign-in.
@@ -216,7 +232,7 @@
 	});
 </script>
 
-{#if signedIn}
+{#if signedIn && !isSetupPage}
 	<div class="min-h-screen bg-background text-foreground">
 		<a
 			href="#main-content"

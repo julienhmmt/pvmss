@@ -170,6 +170,51 @@ func adminClusterRequest(t *testing.T, fixture adminClusterFixture, cookie *http
 	return response
 }
 
+//nolint:paralleltest // HTTP fixture shares fake cluster state
+func TestAdminClusters_ProbeSuggestsClusterName(t *testing.T) {
+	fixture := newAdminClusterFixture(t)
+	cookie := adminClusterCookie(t, fixture.auth)
+	response := adminClusterRequest(t, fixture, cookie, clusterRequestSpec{
+		Method:     fixture.handler.ServeProbe,
+		HTTPMethod: http.MethodPost,
+		Path:       adminClustersPath + "/probe",
+		Body:       `{"url":"https://pve-d.example.com:8006/api2/json","tokenId":"pvmss@pve!service","tokenSecret":"s"}`,
+	})
+	if response.Code != http.StatusOK {
+		t.Fatalf("probe status = %d, want 200: %s", response.Code, response.Body.String())
+	}
+	var result struct {
+		Status      string `json:"status"`
+		ClusterName string `json:"clusterName"`
+	}
+	if err := json.Unmarshal(response.Body.Bytes(), &result); err != nil {
+		t.Fatalf("decode probe: %v", err)
+	}
+	if result.Status != "ok" || result.ClusterName == "" {
+		t.Fatalf("probe = %+v, want status ok with a suggested clusterName", result)
+	}
+}
+
+//nolint:paralleltest // HTTP fixture shares fake cluster state
+func TestAdminClusters_ProbeRejectsBadConnectionInput(t *testing.T) {
+	fixture := newAdminClusterFixture(t)
+	cookie := adminClusterCookie(t, fixture.auth)
+	for name, body := range map[string]string{
+		"missing credentials": `{"url":"https://pve-d.example.com:8006"}`,
+		"malformed url":       `{"url":"not a url","tokenId":"pvmss@pve!service","tokenSecret":"s"}`,
+	} {
+		response := adminClusterRequest(t, fixture, cookie, clusterRequestSpec{
+			Method:     fixture.handler.ServeProbe,
+			HTTPMethod: http.MethodPost,
+			Path:       adminClustersPath + "/probe",
+			Body:       body,
+		})
+		if response.Code != http.StatusBadRequest {
+			t.Fatalf("%s: status = %d, want 400: %s", name, response.Code, response.Body.String())
+		}
+	}
+}
+
 // aliceClusterCookie logs in the fake non-admin demo user against the given
 // fixture's registry-backed Auth, choosing the default cluster explicitly
 // (login requires an explicit cluster choice once 2+ are configured).

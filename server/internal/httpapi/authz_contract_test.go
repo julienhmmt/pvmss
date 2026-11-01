@@ -249,6 +249,7 @@ func csrfExemptRoutes() map[string]string {
 	return map[string]string{
 		"POST /api/v1/auth/login":       "public unauthenticated login endpoint",
 		"POST /api/v1/auth/admin-login": "public unauthenticated admin-login endpoint",
+		"POST /api/v1/setup/admin":      "public unauthenticated first-admin creation; self-guards on live state",
 	}
 }
 

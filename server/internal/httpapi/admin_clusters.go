@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"log/slog"
 	"net/http"
+	"net/url"
 	"pvmss/server/internal/cluster"
 	"pvmss/server/internal/inventory"
 	"pvmss/server/internal/logctx"
@@ -21,6 +22,7 @@ type runtimeClusterRegistry interface {
 	Add(context.Context, store.ClusterRow) error
 	Update(context.Context, store.ClusterRow) error
 	Remove(string)
+	NewClient(context.Context, store.ClusterRow) (cluster.Client, error)
 }
 
 // AdminClusters exposes runtime cluster administration endpoints.
@@ -72,6 +74,19 @@ type updateClusterRequest struct {
 	TokenID               string      `json:"tokenId"`
 	TokenSecret           string      `json:"tokenSecret"`
 	TLS                   *tlsRequest `json:"tls"`
+}
+
+// probeClusterResponse mirrors testClusterResponse for a not-yet-saved
+// connection, plus the discovered name the wizard suggests back to the admin.
+type probeClusterResponse struct {
+	Status         string `json:"status"`
+	ClusterName    string `json:"clusterName,omitempty"`
+	Message        string `json:"message,omitempty"`
+	TLSStatus      string `json:"tlsStatus"`
+	ProxmoxVersion string `json:"proxmoxVersion,omitempty"`
+	NodeCount      int    `json:"nodeCount,omitempty"`
+	VMCount        int    `json:"vmCount,omitempty"`
+	TestedAt       string `json:"testedAt"`
 }
 
 type testClusterResponse struct {
@@ -219,6 +234,69 @@ func (handler *AdminClusters) secretKeptSafely(w http.ResponseWriter, current st
 		return false
 	}
 	return true
+}
+
+// ServeProbe handles POST /api/v1/admin/clusters/probe: validates connection
+// settings against a throwaway client and reports what the target cluster
+// calls itself, so the setup wizard can suggest a name. Nothing is persisted;
+// the probe result is the payload, so it answers 200 on a failed probe.
+func (handler *AdminClusters) ServeProbe(w http.ResponseWriter, r *http.Request) {
+	var request createClusterRequest
+	if err := decodeJSON(w, r, &request); err != nil {
+		writeAdminError(w, http.StatusBadRequest, "invalid_request", "invalid cluster request")
+		return
+	}
+	tlsMaterial, err := resolveTLS(store.ClusterTLS{}, request.TLS)
+	if err != nil {
+		writeAdminError(w, http.StatusBadRequest, "invalid_tls", err.Error())
+		return
+	}
+	row := store.ClusterRow{Name: "probe", URL: request.URL, TLSInsecureSkipVerify: request.TLSInsecureSkipVerify, TokenID: request.TokenID, TokenSecret: request.TokenSecret, TLS: tlsMaterial}
+	if err := validateProbeRow(row); err != nil {
+		writeAdminError(w, http.StatusBadRequest, "invalid_request", err.Error())
+		return
+	}
+	testedAt := time.Now().UTC()
+	client, err := handler.clients.NewClient(r.Context(), row)
+	if err != nil {
+		writeAdminError(w, http.StatusBadRequest, "invalid_request", shortClusterError(err))
+		return
+	}
+	snapshot, err := client.Snapshot(r.Context())
+	if err != nil {
+		status := "unreachable"
+		if !errors.Is(err, cluster.ErrUnreachable) {
+			status = errorLabel
+		}
+		tlsStatus := unknownValue
+		if errors.Is(err, cluster.ErrTLSVerify) {
+			tlsStatus = "failed"
+		}
+		writeAdminJSON(w, http.StatusOK, probeClusterResponse{Status: status, Message: shortClusterError(err), TLSStatus: tlsStatus, TestedAt: testedAt.Format(time.RFC3339Nano)})
+		return
+	}
+	displayName, err := client.DisplayName(r.Context())
+	if err != nil {
+		logctx.FromOr(r.Context(), handler.log).WarnContext(r.Context(), "probe display name discovery failed", "component", "httpapi", "error", err)
+	}
+	tlsStatus := "verified"
+	if row.TLSInsecureSkipVerify {
+		tlsStatus = "skipped"
+	}
+	writeAdminJSON(w, http.StatusOK, probeClusterResponse{Status: "ok", ClusterName: displayName, TLSStatus: tlsStatus, ProxmoxVersion: snapshot.ProxmoxVersion, NodeCount: len(snapshot.Nodes), VMCount: len(snapshot.VMs), TestedAt: testedAt.Format(time.RFC3339Nano)})
+}
+
+// validateProbeRow applies the checks a persisted cluster gets, minus the name
+// pattern: the probe row's name is a throwaway placeholder.
+func validateProbeRow(row store.ClusterRow) error {
+	parsed, err := url.ParseRequestURI(row.URL)
+	if err != nil || parsed.Scheme == "" || parsed.Host == "" {
+		return errors.New("cluster url is malformed")
+	}
+	if row.TokenID == "" || row.TokenSecret == "" {
+		return errors.New("cluster credentials are required")
+	}
+	return nil
 }
 
 // ServeTest handles POST /api/v1/admin/clusters/:name/test.

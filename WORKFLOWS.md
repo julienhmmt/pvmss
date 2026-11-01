@@ -34,6 +34,18 @@ Rules for the fields:
 
 ## 1. Authentication
 
+### First-run setup
+
+|                 |                                                                                                                                                                                       |
+| --------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Audience**    | admin                                                                                                                                                                                 |
+| **Entry**       | any page while `GET /api/v1/setup` reports `required` - the layout guard redirects to `/setup`                                                                                          |
+| **Route**       | `/setup`                                                                                                                                                                              |
+| **API**         | `GET /api/v1/setup` → `POST /api/v1/setup/admin` (when `needsAdmin`) → `POST /api/v1/auth/admin-login` → `POST /api/v1/admin/clusters/probe` → `POST /api/v1/admin/clusters`           |
+| **Steps**       | 1. Read the setup status: `needsAdmin` (no bootstrap hash and no local account) and `needsCluster` (no active cluster). 2. Create the first local administrator, or sign in instead when only a cluster is missing (empty username means the bootstrap `admin`). 3. Enter the Proxmox API URL, token id and secret, and test the connection - the probe reports the discovered cluster name, version, node and VM counts. 4. Pick the immutable cluster id (pre-filled from the discovered name, `[a-z0-9-]` only) and the display label. 5. Register the cluster; the status flips to configured, the guard lets the app through and the full router replaces the setup one. |
+| **States**      | Loading while the status is undecided (a failed fetch never strands the app); inline translated errors per step (`invalid_username`, `weak_password`, `username_taken`, `setup_complete`, `invalid_credentials`, `invalid_cluster_name`, `duplicate_cluster`); a failed probe shows the connection message while still allowing the cluster to be saved. |
+| **Safety nets** | `setup/admin` is open only while `needsAdmin` holds and answers `setup_complete` afterwards; it shares the per-IP sign-in rate limit (10/min); the status endpoint is bounded separately (120/min); the probe is session-admin only; the cluster id is validated on both ends (`^[a-z0-9-]+$`); the setup-created account is owner only when no `ADMIN_PASSWORD_HASH` exists (`created_by = 'setup'`); every mutation is audited (`setup.admin.create`, `admin.clusters.create`). |
+
 ### Sign in
 
 |                 |                                                                                                                                                                                                                                                                                                                                                                                                                   |

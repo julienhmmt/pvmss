@@ -14,6 +14,8 @@ import (
 	"pvmss/server/internal/policy"
 	"pvmss/server/internal/store"
 	"pvmss/server/internal/vm"
+	"sync"
+	"sync/atomic"
 	"time"
 )
 
@@ -38,8 +40,13 @@ type routerDeps struct {
 
 // buildRouter wires all HTTP handlers into the final router. It performs the
 // cluster.Writer/Creator type assertions (both Fake and Proxmox satisfy them)
-// and constructs the handler graph from the shared dependencies.
+// and constructs the handler graph from the shared dependencies. With no
+// cluster client - first run, zero clusters - it builds the reduced setup
+// router instead.
 func buildRouter(deps routerDeps) (http.Handler, error) {
+	if deps.clusterClient == nil {
+		return buildSetupRouter(deps), nil
+	}
 	cfg := deps.cfg
 	clusterRegistry := deps.clusterRegistry
 	inventoryRegistry := deps.inventoryRegistry
@@ -117,6 +124,7 @@ func buildRouter(deps routerDeps) (http.Handler, error) {
 	profileSSHKeys := httpapi.NewProfileSSHKeys(authHandler, st, logger)
 	adminAccounts := httpapi.NewAdminAccounts(authHandler, st, cfg.MaxLocalAdmins, logger)
 	adminAccounts.SetTrustedProxyHops(cfg.TrustedProxyHops)
+	setup := httpapi.NewSetup(st, cfg.AdminPasswordHash != "", logger)
 
 	authHandler.SetTrustedProxyHops(cfg.TrustedProxyHops)
 
@@ -150,9 +158,77 @@ func buildRouter(deps routerDeps) (http.Handler, error) {
 		ProfileSSHKeys:   profileSSHKeys,
 		AdminMigration:   adminMigration,
 		AdminAccounts:    adminAccounts,
+		Setup:            setup,
 		TrustedProxyHops: cfg.TrustedProxyHops,
 		RateLimitMax:     cfg.RateLimitMax,
 	}), nil
+}
+
+// buildSetupRouter wires the reduced first-run router: everything the setup
+// wizard needs (SPA, health, auth, cluster registration, setup endpoints) and
+// nothing that would dereference a cluster client. The registries are shared
+// with the full router, so POST /admin/clusters registers into the live
+// instance and the swapper promotes to the full router on the next request.
+func buildSetupRouter(deps routerDeps) http.Handler {
+	cfg := deps.cfg
+	st := deps.st
+	logger := deps.logger
+	freshness := inventoryFreshness{registry: deps.inventoryRegistry, demoMode: false}
+	health := httpapi.NewHealth(st, logger, freshness, 2*cfg.InventoryRefreshInterval)
+	authHandler := httpapi.NewAuthWithRegistry(deps.clusterRegistry, st, deps.sessions, cfg.AdminPasswordHash, logger)
+	authHandler.SetClusterFreshnessChecker(freshness, 2*cfg.InventoryRefreshInterval)
+	health.SetAuthHandler(authHandler)
+	authHandler.SetTrustedProxyHops(cfg.TrustedProxyHops)
+	adminClusters := httpapi.NewAdminClusters(authHandler, st, deps.clusterRegistry, deps.inventoryRegistry, logger)
+	adminClusters.SetTrustedProxyHops(cfg.TrustedProxyHops)
+	return httpapi.NewRouter(httpapi.RouterConfig{
+		Health:           health,
+		Auth:             authHandler,
+		AdminClusters:    adminClusters,
+		Setup:            httpapi.NewSetup(st, cfg.AdminPasswordHash != "", logger),
+		WebBuildDir:      deps.webDir,
+		Log:              logger,
+		Store:            st,
+		TrustedProxyHops: cfg.TrustedProxyHops,
+		RateLimitMax:     cfg.RateLimitMax,
+	})
+}
+
+// setupRouterSwap serves the setup router until the first cluster lands in
+// the registry, then builds the full router once and delegates to it. It lets
+// the wizard's own POST /admin/clusters complete against the setup router
+// while the very next request reaches the complete API.
+type setupRouterSwap struct {
+	setup    http.Handler
+	registry *cluster.Registry
+	log      *slog.Logger
+	build    func() (http.Handler, error)
+	once     sync.Once
+	full     atomic.Pointer[http.Handler]
+}
+
+func (s *setupRouterSwap) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	if full := s.full.Load(); full != nil {
+		(*full).ServeHTTP(w, r)
+		return
+	}
+	if len(s.registry.List()) == 0 {
+		s.setup.ServeHTTP(w, r)
+		return
+	}
+	s.once.Do(func() {
+		built, err := s.build()
+		if err != nil {
+			s.log.Error("full router build after setup failed", "component", "main", "error", err)
+			return
+		}
+		s.full.Store(&built)
+	})
+	if full := s.full.Load(); full != nil {
+		(*full).ServeHTTP(w, r)
+		return
+	}
+	s.setup.ServeHTTP(w, r)
 }
 
 // registryClusterRefresh refreshes one cluster through the inventory
