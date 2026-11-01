@@ -119,16 +119,16 @@ type ListResult struct {
 // in the whole request path. allowedQuota is the configured per-user
 // VM allowance reported in Quota (-1 = unlimited); the quota is attached
 // whenever the caller is not an admin, or an admin listing their own pool.
-func List(source inventory.Source, query ListQuery, identity auth.Identity, allowedQuota int, services ...*policy.Policy) (ListResult, error) {
-	return list(context.Background(), source, query, identity, allowedQuota, services...)
+func List(source inventory.Source, query ListQuery, identity auth.Identity, allowedQuota int, service *policy.Policy) (ListResult, error) {
+	return list(context.Background(), source, query, identity, allowedQuota, service)
 }
 
 // ListWithContext resolves a VM list while allowing policy reads to honor request cancellation.
-func ListWithContext(ctx context.Context, source inventory.Source, query ListQuery, identity auth.Identity, allowedQuota int, services ...*policy.Policy) (ListResult, error) {
-	return list(ctx, source, query, identity, allowedQuota, services...)
+func ListWithContext(ctx context.Context, source inventory.Source, query ListQuery, identity auth.Identity, allowedQuota int, service *policy.Policy) (ListResult, error) {
+	return list(ctx, source, query, identity, allowedQuota, service)
 }
 
-func list(ctx context.Context, source inventory.Source, query ListQuery, identity auth.Identity, allowedQuota int, services ...*policy.Policy) (ListResult, error) {
+func list(ctx context.Context, source inventory.Source, query ListQuery, identity auth.Identity, allowedQuota int, service *policy.Policy) (ListResult, error) {
 	query = withDefaults(query)
 	if !validSortBy(query.SortBy) {
 		return ListResult{}, fmt.Errorf("%w: %q", ErrInvalidSortBy, query.SortBy)
@@ -148,10 +148,10 @@ func list(ctx context.Context, source inventory.Source, query ListQuery, identit
 		AvailableNodes: facetedNodes,
 		AvailablePools: facetedPools,
 	}
-	if len(services) > 0 && services[0] != nil {
+	if service != nil {
 		quotaCluster, _ := TargetCluster(identity, query.Cluster)
 
-		quota, err := services[0].Quota(ctx, quotaCluster, identity)
+		quota, err := service.Quota(ctx, quotaCluster, identity)
 		if err != nil {
 			return ListResult{}, fmt.Errorf("read quota: %w", err)
 		}

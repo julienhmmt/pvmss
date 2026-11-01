@@ -4,8 +4,36 @@ import (
 	"pvmss/server/internal/cluster"
 	"pvmss/server/internal/httpapi"
 	"pvmss/server/internal/inventory"
+	"pvmss/server/internal/policy"
+	"pvmss/server/internal/store"
 	"testing"
 )
+
+// staticProjectionSource answers every cluster name with the same
+// projection, matching the legacy policy.New projection fallback it
+// replaces: tests that only ever see one cluster don't need a registry.
+type staticProjectionSource struct{ projection *inventory.Projection }
+
+func (s staticProjectionSource) Projection(string) (*inventory.Projection, error) {
+	return s.projection, nil
+}
+
+// policyWithStaticProjection builds a policy service whose projection reads
+// all hit the one test projection regardless of cluster name.
+func policyWithStaticProjection(st *store.Store, projection *inventory.Projection, client policy.Snapshotter) *policy.Policy {
+	svc := policy.New(st, client)
+	if projection != nil {
+		svc.SetProjectionSource(staticProjectionSource{projection: projection})
+	}
+
+	return svc
+}
+
+// testPolicyService builds the policy service the removed constructor
+// fallbacks used to synthesize from deps.Store + deps.Projection.
+func testPolicyService(st *store.Store, projection *inventory.Projection) *policy.Policy {
+	return policyWithStaticProjection(st, projection, nil)
+}
 
 // projectionRegistry wraps the test's live projection under the "default"
 // cluster name the requests use - the registry shares the same projection

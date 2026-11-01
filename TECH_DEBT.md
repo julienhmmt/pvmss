@@ -66,7 +66,7 @@ an admin disables or deletes them.
 | Two-column admin grids | only the dashboard uses `xl:grid-cols-2`; no other page clearly gains |
 | "Pool at quota" | means the per-user VM quota (one pool per user), not a CPU/RAM pool quota - none exists |
 | Browser OTel (traces, web-vitals) | errors now report via `POST /api/v1/client-errors`; a full browser SDK (bundle size, CORS, consent) is still undecided |
-| Legacy single projection in `policy` | `policy.New` still takes one `*inventory.Projection`. `main.go` wires `SetProjectionSource`, so enforcement is per cluster; but the per-request fallbacks in `vm_detail.go`, `vm_snapshots.go`, `vm_cloudinit.go` (when no service is injected) and `admin_pools.go` (pool quota) still build a single-projection `policy.New`. Audit plan 006 removed the httpapi constructors, not these; remove the parameter once those callers take the shared service |
+| ~~Legacy single projection in `policy`~~ | **Resolved** (`refactor/audit-2026-11-cleanup`): `policy.New` no longer takes a projection; every caller shares the one service wired with `SetProjectionSource`, and the variadic `services` parameters are required `*policy.Policy` fields |
 | `docs/plans/`, `server/internal/recovery/` stale `backend/` refs | historical context only - fix when the surrounding area is touched, no dedicated pass |
 
 ## Resolved 2026-10-22 (full app review)

@@ -350,7 +350,7 @@ func newAdminPoolsHandler(t *testing.T) (*httpapi.AdminPools, *httpapi.Auth) {
 	st := newAdminStore(t)
 	provider := vmCreateClientProvider{clients: map[string]cluster.Client{auditTestCluster: client}}
 	registry := inventory.NewRegistryFromIndexes(map[string]*inventory.Index{auditTestCluster: &index})
-	handler := httpapi.NewAdminPoolsWithRegistry(httpapi.AdminPoolsRegistryDeps{Auth: authHandler, Clients: provider, Source: registry, Projection: projection, Writer: client, Audit: st, Refresher: worker, Store: st, Log: slog.Default()})
+	handler := httpapi.NewAdminPoolsWithRegistry(httpapi.AdminPoolsRegistryDeps{Auth: authHandler, Clients: provider, Source: registry, Projection: projection, Writer: client, Audit: st, Refresher: worker, Store: st, Policy: testPolicyService(st, projection), Log: slog.Default()})
 	return handler, authHandler
 }
 

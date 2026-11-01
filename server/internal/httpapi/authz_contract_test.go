@@ -12,7 +12,6 @@ import (
 	"pvmss/server/internal/cluster"
 	"pvmss/server/internal/httpapi"
 	"pvmss/server/internal/inventory"
-	"pvmss/server/internal/policy"
 	"pvmss/server/internal/vm"
 	"regexp"
 	"slices"
@@ -531,31 +530,31 @@ func newAuthzContractRouter(t *testing.T) (http.Handler, *httpapi.Auth) {
 	worker := inventory.NewWorker(cluster.Fake{}, projection, time.Hour, logger)
 	refresher := inventory.NewRefresher(worker, 5*time.Second)
 
-	policyService := policy.New(st, projection, nil)
+	policyService := policyWithStaticProjection(st, projection, nil)
 
 	health := httpapi.NewHealth(authzFakePinger{}, logger, nil, 60*time.Second)
 	clusterNodes := httpapi.NewClusterNodesWithRegistry(projectionRegistry(projection), newAuthHandler(t), logger)
 	clusterRefresh := httpapi.NewClusterRefreshWithRegistry(refreshRegistryFor(projection, refresher), nil, newAuthHandler(t), logger)
-	vms := httpapi.NewVMsWithRegistry(projectionRegistry(projection), authHandler, 100, -1, logger, nil)
-	vmDetail := httpapi.NewVMDetailWithRegistry(httpapi.VMDetailDeps{Source: projectionRegistry(projection), Projection: projection, Auth: authHandler, Writer: cluster.Fake{}, Store: st, Refresher: worker, Log: logger})
+	vms := httpapi.NewVMsWithRegistry(projectionRegistry(projection), authHandler, 100, -1, logger, nil, nil)
+	vmDetail := httpapi.NewVMDetailWithRegistry(httpapi.VMDetailDeps{Source: projectionRegistry(projection), Projection: projection, Auth: authHandler, Writer: cluster.Fake{}, Store: st, Refresher: worker, Log: logger}, policyService)
 	vmCloudInit := httpapi.NewVMCloudInit(httpapi.VMCloudInitDeps{
 		Source: projectionRegistry(projection), Projection: projection, Auth: authHandler, Reader: cluster.Fake{}, Writer: cluster.Fake{},
 		Store: st, Refresher: worker, Log: logger,
-	})
+	}, policyService)
 	vmBulk := httpapi.NewVMBulkWithRegistry(httpapi.VMBulkRegistryDeps{Registry: projectionRegistry(projection), Projection: projection, Auth: authHandler, Writer: cluster.Fake{}, Store: st, Refresher: worker, Log: logger})
 	vmStatusBatch := httpapi.NewVMStatusBatch(httpapi.VMStatusBatchDeps{Source: projectionRegistry(projection), Auth: authHandler, StatusReader: cluster.Fake{}, Log: logger})
 	vmCreate := httpapi.NewVMCreateWithRegistry(authHandler, st, singleClientProvider(cluster.Fake{}), cluster.Fake{}, logger, policyService)
 	vmCreate.SetInventorySource(projectionRegistry(projection))
 	vmConsole := httpapi.NewVMConsoleWithRegistry(httpapi.VMConsoleRegistryDeps{Source: projectionRegistry(projection), Projection: projection, Auth: authHandler, Relay: consoleRelayStub{}, Tickets: vm.NewConsoleTicketStore(), Store: st, Log: logger})
 	vmSerial := httpapi.NewVMSerialConsoleWithRegistry(httpapi.VMSerialConsoleRegistryDeps{Source: projectionRegistry(projection), Projection: projection, Auth: authHandler, Relay: terminalRelayStub{}, Tickets: vm.NewConsoleTicketStore(), Store: st, Log: logger})
-	vmSnapshots := httpapi.NewVMSnapshotsWithRegistry(httpapi.VMSnapshotsRegistryDeps{Source: projectionRegistry(projection), Projection: projection, Auth: authHandler, Reader: cluster.Fake{}, Writer: cluster.Fake{}, Store: st, Log: logger})
+	vmSnapshots := httpapi.NewVMSnapshotsWithRegistry(httpapi.VMSnapshotsRegistryDeps{Source: projectionRegistry(projection), Projection: projection, Auth: authHandler, Reader: cluster.Fake{}, Writer: cluster.Fake{}, Store: st, Policy: policyService, Log: logger})
 	vmMetrics := httpapi.NewVMMetricsWithRegistry(projectionRegistry(projection), projection, authHandler, cluster.Fake{}, cluster.Fake{}, nil, logger)
 
 	adminCatalog := httpapi.NewAdminCatalogWithRegistry(authHandler, st, singleClientProvider(cluster.Fake{}), projection, logger)
 	adminPolicy := httpapi.NewAdminPolicyWithRegistry(authHandler, policyService, singleClientProvider(cluster.Fake{}), logger)
 	adminPools := httpapi.NewAdminPoolsWithRegistry(httpapi.AdminPoolsRegistryDeps{
 		Auth: authHandler, Clients: singleClientProvider(cluster.Fake{}), Source: projectionRegistry(projection), Projection: projection, Writer: cluster.Fake{},
-		Audit: st, Refresher: worker, Store: st, Log: logger,
+		Audit: st, Refresher: worker, Store: st, Policy: policyService, Log: logger,
 	})
 	adminOps := httpapi.NewAdminOps(authHandler, st, projection, "0.4.0-test", logger)
 	adminOps.SetLogLevel(new(slog.LevelVar), slog.LevelInfo)

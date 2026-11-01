@@ -27,7 +27,7 @@ func newPolicyServiceWithProjectionOnly(t *testing.T, projection *inventory.Proj
 
 	t.Cleanup(func() { _ = st.Close() })
 
-	return policy.New(st, projection, nil)
+	return policyWithStaticProjection(st, projection, nil)
 }
 
 // --- SetPolicy ---
@@ -351,7 +351,7 @@ func TestBelowCurrentUsageError_Error_VMsDimension(t *testing.T) {
 	t.Parallel()
 
 	err := &policy.BelowCurrentUsageError{
-		Node: "pve-node-02", Dimension: testDimensionVMs, Requested: 2, Used: 5,
+		Node: "pve-node-02", Dimension: dimVMs, Requested: 2, Used: 5,
 	}
 
 	msg := err.Error()
@@ -359,7 +359,7 @@ func TestBelowCurrentUsageError_Error_VMsDimension(t *testing.T) {
 		t.Fatal("Error() returned empty string")
 	}
 
-	if !strings.Contains(msg, testDimensionVMs) {
+	if !strings.Contains(msg, dimVMs) {
 		t.Errorf("Error() = %q, want it to contain 'vms'", msg)
 	}
 }
@@ -367,7 +367,7 @@ func TestBelowCurrentUsageError_Error_VMsDimension(t *testing.T) {
 func TestBelowCurrentUsageError_Unwrap(t *testing.T) {
 	t.Parallel()
 
-	err := &policy.BelowCurrentUsageError{Node: "n", Dimension: testDimensionVMs}
+	err := &policy.BelowCurrentUsageError{Node: "n", Dimension: dimVMs}
 	if !errors.Is(err, policy.ErrBelowCurrentUsage) {
 		t.Fatalf("errors.Is(ErrBelowCurrentUsage) = false, want true")
 	}
@@ -394,7 +394,7 @@ func TestAboveNodeCapacityError_Error_RAMDimension(t *testing.T) {
 	t.Parallel()
 
 	err := &policy.AboveNodeCapacityError{
-		Node: "pve-node-01", Dimension: testDimensionRAM, Requested: 128, Physical: 64,
+		Node: "pve-node-01", Dimension: dimRAM, Requested: 128, Physical: 64,
 	}
 
 	msg := err.Error()
@@ -410,7 +410,7 @@ func TestAboveNodeCapacityError_Error_RAMDimension(t *testing.T) {
 func TestAboveNodeCapacityError_Unwrap(t *testing.T) {
 	t.Parallel()
 
-	err := &policy.AboveNodeCapacityError{Node: "n", Dimension: testDimensionRAM}
+	err := &policy.AboveNodeCapacityError{Node: "n", Dimension: dimRAM}
 	if !errors.Is(err, policy.ErrAboveNodeCapacity) {
 		t.Fatalf("errors.Is(ErrAboveNodeCapacity) = false, want true")
 	}

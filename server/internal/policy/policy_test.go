@@ -13,11 +13,7 @@ import (
 	"testing"
 )
 
-const (
-	testUserAlice    = "alice"
-	testDimensionVMs = "vms"
-	testDimensionRAM = "ram"
-)
+const testUserAlice = "alice"
 
 func TestPolicyReads_SeededDefaults(t *testing.T) {
 	t.Parallel()
@@ -131,7 +127,7 @@ func newPolicyService(t *testing.T) (*policy.Policy, *inventory.Projection) {
 	index := inventory.BuildIndex(snapshot)
 	projection := inventory.NewProjectionFromIndex(&index)
 
-	return policy.New(st, projection, fake), projection
+	return policyWithStaticProjection(st, projection, fake), projection
 }
 
 func TestPolicyReads_MissingRow_ReturnsDefaults(t *testing.T) {
@@ -152,6 +148,13 @@ func TestPolicyReads_MissingRow_ReturnsDefaults(t *testing.T) {
 	}
 }
 
+const (
+	dimVMs   = "vms"
+	dimVCPUs = "vcpus"
+	dimRAM   = "ram"
+	dimDisk  = "disk"
+)
+
 // NodeOverflow is the pure node-cap predicate used by placement: it must
 // report exactly the dimensions the new VM would overflow, counting only
 // pvmss-tagged usage, and nothing when every cap is zero.
@@ -170,12 +173,12 @@ func TestNodeOverflow(t *testing.T) {
 		want    []string
 	}{
 		{name: "no caps never overflows", byNode: []cluster.VM{pvmssVM}, caps: store.NodePolicyRow{}, machine: pvmssVM, want: nil},
-		{name: "vm count only", byNode: []cluster.VM{pvmssVM}, caps: store.NodePolicyRow{MaxVMs: 1}, machine: pvmssVM, want: []string{testDimensionVMs}},
+		{name: "vm count only", byNode: []cluster.VM{pvmssVM}, caps: store.NodePolicyRow{MaxVMs: 1}, machine: pvmssVM, want: []string{dimVMs}},
 		{name: "untagged usage is ignored", byNode: []cluster.VM{foreignVM}, caps: store.NodePolicyRow{MaxVMs: 2}, machine: pvmssVM, want: nil},
-		{name: "vcpu cap", byNode: []cluster.VM{pvmssVM}, caps: store.NodePolicyRow{MaxVCPUs: 3}, machine: pvmssVM, want: []string{"vcpus"}},
-		{name: "ram cap", byNode: []cluster.VM{pvmssVM}, caps: store.NodePolicyRow{MaxRAMGB: 1}, machine: pvmssVM, want: []string{testDimensionRAM}},
-		{name: "disk cap", byNode: []cluster.VM{pvmssVM}, caps: store.NodePolicyRow{MaxDiskGB: 3}, machine: pvmssVM, want: []string{"disk"}},
-		{name: "all dimensions at once", byNode: []cluster.VM{pvmssVM}, caps: store.NodePolicyRow{MaxVMs: 1, MaxVCPUs: 1, MaxRAMGB: 1, MaxDiskGB: 1}, machine: pvmssVM, want: []string{testDimensionVMs, "vcpus", testDimensionRAM, "disk"}},
+		{name: "vcpu cap", byNode: []cluster.VM{pvmssVM}, caps: store.NodePolicyRow{MaxVCPUs: 3}, machine: pvmssVM, want: []string{dimVCPUs}},
+		{name: "ram cap", byNode: []cluster.VM{pvmssVM}, caps: store.NodePolicyRow{MaxRAMGB: 1}, machine: pvmssVM, want: []string{dimRAM}},
+		{name: "disk cap", byNode: []cluster.VM{pvmssVM}, caps: store.NodePolicyRow{MaxDiskGB: 3}, machine: pvmssVM, want: []string{dimDisk}},
+		{name: "all dimensions at once", byNode: []cluster.VM{pvmssVM}, caps: store.NodePolicyRow{MaxVMs: 1, MaxVCPUs: 1, MaxRAMGB: 1, MaxDiskGB: 1}, machine: pvmssVM, want: []string{dimVMs, dimVCPUs, dimRAM, dimDisk}},
 		{name: "boundary is not overflow", byNode: []cluster.VM{pvmssVM}, caps: store.NodePolicyRow{MaxVMs: 2, MaxVCPUs: 4, MaxRAMGB: 2, MaxDiskGB: 4}, machine: pvmssVM, want: nil},
 	}
 

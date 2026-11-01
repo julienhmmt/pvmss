@@ -79,11 +79,11 @@ func (service *Policy) ReserveCreate(ctx context.Context, clusterName string, ac
 	}, nil
 }
 
-// inventoryExpected reports whether any projection source is configured. A
-// deployment with neither is the degraded unit-test mode that tolerates an
+// inventoryExpected reports whether a projection source is configured. A
+// deployment without one is the degraded unit-test mode that tolerates an
 // unloaded inventory instead of refusing every create.
 func (service *Policy) inventoryExpected() bool {
-	return service.projections != nil || service.projection != nil
+	return service.projections != nil
 }
 
 // inflightLocked drops expired reservations and those the projection already

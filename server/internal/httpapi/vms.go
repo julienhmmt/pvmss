@@ -32,12 +32,8 @@ type VMs struct {
 // NewVMsWithRegistry creates the cross-cluster VM list handler. clusterStore
 // resolves each cluster's real Proxmox display name (discovered via the admin
 // "test connection" flow) for the response; nil skips display-name lookup.
-func NewVMsWithRegistry(registry inventory.Source, authHandler *Auth, maxPageSize, quota int, log *slog.Logger, clusterStore *store.Store, services ...*policy.Policy) *VMs {
-	var policyService *policy.Policy
-	if len(services) > 0 {
-		policyService = services[0]
-	}
-	return &VMs{source: registry, auth: authHandler, maxPageSize: maxPageSize, quota: quota, policy: policyService, clusterStore: clusterStore, log: log}
+func NewVMsWithRegistry(registry inventory.Source, authHandler *Auth, maxPageSize, quota int, log *slog.Logger, clusterStore *store.Store, service *policy.Policy) *VMs {
+	return &VMs{source: registry, auth: authHandler, maxPageSize: maxPageSize, quota: quota, policy: service, clusterStore: clusterStore, log: log}
 }
 
 type vmDTO struct {

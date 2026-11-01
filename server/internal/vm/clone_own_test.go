@@ -35,7 +35,7 @@ func newCloneFixture(t *testing.T) cloneFixture {
 	}
 
 	index := inventory.BuildIndex(snapshot)
-	service := policy.New(fixture.store, inventory.NewProjectionFromIndex(&index), fixture.fake)
+	service := policyWithStaticProjection(fixture.store, inventory.NewProjectionFromIndex(&index), fixture.fake)
 
 	return cloneFixture{createFixture: fixture, index: &index, service: service}
 }
@@ -48,7 +48,7 @@ func (f cloneFixture) deps() vm.CreateDeps {
 		FreeSpace: f.fake,
 		Audit:     f.store,
 		Log:       slog.New(slog.DiscardHandler),
-		Services:  []*policy.Policy{f.service},
+		Policy:    f.service,
 	}
 }
 

@@ -53,7 +53,7 @@ func TestMultiCluster_ProjectionPerCluster(t *testing.T) {
 	defaultIndex := inventory.BuildIndexForCluster("default", cluster.Snapshot{VMs: defaultVMs})
 	secondaryIndex := inventory.BuildIndexForCluster(secondary, cluster.Snapshot{VMs: poolVMs(5)})
 
-	service := policy.New(st, nil, nil)
+	service := policy.New(st, nil)
 	service.SetProjectionSource(inventory.NewRegistryFromIndexes(map[string]*inventory.Index{
 		"default": &defaultIndex,
 		secondary: &secondaryIndex,

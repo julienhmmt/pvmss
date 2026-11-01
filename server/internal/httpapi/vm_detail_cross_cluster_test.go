@@ -22,7 +22,7 @@ func TestVMDetail_CrossClusterVMIDReturnsDistinctEntities(t *testing.T) {
 	registry := inventory.NewRegistryFromIndexes(map[string]*inventory.Index{auditTestCluster: &defaultIndex, crossSecondaryCluster: &secondaryIndex})
 	projection := inventory.NewProjectionFromIndex(&defaultIndex)
 	authHandler := newAuthHandler(t)
-	handler := httpapi.NewVMDetailWithRegistry(httpapi.VMDetailDeps{Source: registry, Projection: projection, Auth: authHandler, Writer: cluster.Fake{}, Store: nil, Refresher: nil, Log: slog.Default()})
+	handler := httpapi.NewVMDetailWithRegistry(httpapi.VMDetailDeps{Source: registry, Projection: projection, Auth: authHandler, Writer: cluster.Fake{}, Store: nil, Refresher: nil, Log: slog.Default()}, nil)
 	cookie := adminCookie(t, authHandler)
 
 	get := func(name string) string {

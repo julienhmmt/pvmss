@@ -118,7 +118,7 @@ func TestClusterDownScenario(t *testing.T) {
 	cookie := loginResp.Result().Cookies()[0]
 
 	// --- GET /api/v1/vms (SPA's first data call) ---
-	vms := httpapi.NewVMsWithRegistry(inventoryRegistry, authHandler, 100, 0, logger, st)
+	vms := httpapi.NewVMsWithRegistry(inventoryRegistry, authHandler, 100, 0, logger, st, nil)
 
 	vmReq := httptest.NewRequest(http.MethodGet, "/api/v1/vms", nil)
 

@@ -8,7 +8,6 @@ import (
 	"pvmss/server/internal/cluster"
 	"pvmss/server/internal/httpapi"
 	"pvmss/server/internal/inventory"
-	"pvmss/server/internal/policy"
 	"testing"
 )
 
@@ -24,7 +23,7 @@ func TestAdminPolicyRoutes_RequireAdminThroughProductionRouter(t *testing.T) {
 	}
 
 	index := inventory.BuildIndex(snapshot)
-	service := policy.New(st, inventory.NewProjectionFromIndex(&index), fake)
+	service := policyWithStaticProjection(st, inventory.NewProjectionFromIndex(&index), fake)
 	adminPolicy := httpapi.NewAdminPolicyWithRegistry(authHandler, service, singleClientProvider(fake), slog.New(slog.DiscardHandler))
 	noop := http.HandlerFunc(func(http.ResponseWriter, *http.Request) {})
 	mux := httpapi.NewRouter(httpapi.RouterConfig{

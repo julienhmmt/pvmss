@@ -25,14 +25,14 @@ func TestCreate_InFlightCreateCountsBeforeRefresh(t *testing.T) {
 	}
 
 	index := inventory.BuildIndex(snapshot)
-	service := policy.New(fixture.store, inventory.NewProjectionFromIndex(&index), fixture.fake)
+	service := policyWithStaticProjection(fixture.store, inventory.NewProjectionFromIndex(&index), fixture.fake)
 	used := len(index.ByPool[aliceIdentity().Pool])
 
 	if err := service.SetPolicy(ctx, testClusterName, policy.DefaultGabarit(), used+2); err != nil {
 		t.Fatalf("SetPolicy: %v", err)
 	}
 
-	deps := vm.CreateDeps{Store: fixture.store, Creator: fixture.fake, Audit: fixture.store, Log: slog.New(slog.DiscardHandler), Services: []*policy.Policy{service}}
+	deps := vm.CreateDeps{Store: fixture.store, Creator: fixture.fake, Audit: fixture.store, Log: slog.New(slog.DiscardHandler), Policy: service}
 	create := func(name string) error {
 		req := detailedRequest()
 		req.Name = name
@@ -63,12 +63,12 @@ func TestCreate_InFlightCreateCountsBeforeRefresh(t *testing.T) {
 //nolint:paralleltest // Uses the process-wide cluster.FakeCalls log.
 func TestCreate_RefusesBeforeFirstInventoryLoad(t *testing.T) {
 	fixture := newCreateFixture(t)
-	service := policy.New(fixture.store, inventory.NewProjection(), fixture.fake)
+	service := policyWithStaticProjection(fixture.store, inventory.NewProjection(), fixture.fake)
 
 	req := detailedRequest()
 	req.Name = "too-early"
 
-	_, err := vm.Create(context.Background(), aliceIdentity(), req.Cluster, req, vm.CreateDeps{Store: fixture.store, Creator: fixture.fake, Audit: fixture.store, Log: slog.New(slog.DiscardHandler), Services: []*policy.Policy{service}})
+	_, err := vm.Create(context.Background(), aliceIdentity(), req.Cluster, req, vm.CreateDeps{Store: fixture.store, Creator: fixture.fake, Audit: fixture.store, Log: slog.New(slog.DiscardHandler), Policy: service})
 	if !errors.Is(err, policy.ErrInventoryNotReady) {
 		t.Fatalf("Create before first load: err = %v, want ErrInventoryNotReady", err)
 	}

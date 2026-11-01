@@ -72,7 +72,7 @@ func errorCode(t *testing.T, body []byte) string {
 //nolint:paralleltest // serial: shared fake authentication state
 func TestVMs_ListBeforeFirstRefreshIsUnavailable(t *testing.T) {
 	authHandler := newAuthHandler(t)
-	handler := httpapi.NewVMsWithRegistry(emptyRegistry(), authHandler, testMaxListPageSize, testDefaultQuota, slog.New(slog.DiscardHandler), nil)
+	handler := httpapi.NewVMsWithRegistry(emptyRegistry(), authHandler, testMaxListPageSize, testDefaultQuota, slog.New(slog.DiscardHandler), nil, nil)
 
 	req := httptest.NewRequestWithContext(context.Background(), http.MethodGet, "/api/v1/vms", nil)
 	req.AddCookie(aliceCookie(t, authHandler))

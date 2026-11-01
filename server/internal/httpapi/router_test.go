@@ -40,8 +40,8 @@ func TestRouter_SPAFallback(t *testing.T) {
 	projection := inventory.NewProjection()
 	clusterRefresh := httpapi.NewClusterRefreshWithRegistry(refreshRegistryFor(projection,
 		inventory.NewRefresher(inventory.NewWorker(&stubClusterClient{}, projection, time.Hour, logger), 5*time.Second)), nil, newAuthHandler(t), logger)
-	vms := httpapi.NewVMsWithRegistry(emptyRegistry(), newAuthHandler(t), 100, -1, logger, nil)
-	vmDetail := httpapi.NewVMDetailWithRegistry(httpapi.VMDetailDeps{Source: emptyRegistry(), Projection: inventory.NewProjection(), Auth: newAuthHandler(t), Writer: cluster.Fake{}, Store: nil, Refresher: nil, Log: logger})
+	vms := httpapi.NewVMsWithRegistry(emptyRegistry(), newAuthHandler(t), 100, -1, logger, nil, nil)
+	vmDetail := httpapi.NewVMDetailWithRegistry(httpapi.VMDetailDeps{Source: emptyRegistry(), Projection: inventory.NewProjection(), Auth: newAuthHandler(t), Writer: cluster.Fake{}, Store: nil, Refresher: nil, Log: logger}, nil)
 	mux := httpapi.NewRouter(httpapi.RouterConfig{
 		Health: health, ClusterNodes: clusterNodes, ClusterRefresh: clusterRefresh,
 		VMs: vms, VMDetail: vmDetail, Auth: newAuthHandler(t), WebBuildDir: dir, Log: logger,
@@ -95,8 +95,8 @@ func TestRouter_BootCDROMRouteRegistered(t *testing.T) {
 	health := httpapi.NewHealth(fakeHealthPinger{}, logger, nil, 60*time.Second)
 	clusterNodes := httpapi.NewClusterNodesWithRegistry(projectionRegistry(projection), newAuthHandler(t), logger)
 	clusterRefresh := httpapi.NewClusterRefreshWithRegistry(refreshRegistryFor(projection, inventory.NewRefresher(inventory.NewWorker(&stubClusterClient{}, projection, time.Hour, logger), 5*time.Second)), nil, newAuthHandler(t), logger)
-	vms := httpapi.NewVMsWithRegistry(projectionRegistry(projection), authHandler, 100, -1, logger, nil)
-	vmDetail := httpapi.NewVMDetailWithRegistry(httpapi.VMDetailDeps{Source: projectionRegistry(projection), Projection: projection, Auth: authHandler, Writer: cluster.Fake{}, Store: nil, Refresher: nil, Log: logger})
+	vms := httpapi.NewVMsWithRegistry(projectionRegistry(projection), authHandler, 100, -1, logger, nil, nil)
+	vmDetail := httpapi.NewVMDetailWithRegistry(httpapi.VMDetailDeps{Source: projectionRegistry(projection), Projection: projection, Auth: authHandler, Writer: cluster.Fake{}, Store: nil, Refresher: nil, Log: logger}, nil)
 	mux := httpapi.NewRouter(httpapi.RouterConfig{
 		Health: health, ClusterNodes: clusterNodes, ClusterRefresh: clusterRefresh,
 		VMs: vms, VMDetail: vmDetail, Auth: authHandler, Log: logger,
@@ -122,8 +122,8 @@ func newMinimalRouter(t *testing.T) http.Handler {
 	projection := inventory.NewProjection()
 	clusterRefresh := httpapi.NewClusterRefreshWithRegistry(refreshRegistryFor(projection,
 		inventory.NewRefresher(inventory.NewWorker(&stubClusterClient{}, projection, time.Hour, logger), 5*time.Second)), nil, newAuthHandler(t), logger)
-	vms := httpapi.NewVMsWithRegistry(emptyRegistry(), newAuthHandler(t), 100, -1, logger, nil)
-	vmDetail := httpapi.NewVMDetailWithRegistry(httpapi.VMDetailDeps{Source: emptyRegistry(), Projection: inventory.NewProjection(), Auth: newAuthHandler(t), Writer: cluster.Fake{}, Store: nil, Refresher: nil, Log: logger})
+	vms := httpapi.NewVMsWithRegistry(emptyRegistry(), newAuthHandler(t), 100, -1, logger, nil, nil)
+	vmDetail := httpapi.NewVMDetailWithRegistry(httpapi.VMDetailDeps{Source: emptyRegistry(), Projection: inventory.NewProjection(), Auth: newAuthHandler(t), Writer: cluster.Fake{}, Store: nil, Refresher: nil, Log: logger}, nil)
 
 	return httpapi.NewRouter(httpapi.RouterConfig{
 		Health: health, ClusterNodes: clusterNodes, ClusterRefresh: clusterRefresh,
@@ -169,8 +169,8 @@ func TestRouter_DocsRoutesRegistered(t *testing.T) {
 	health := httpapi.NewHealth(fakeHealthPinger{}, logger, nil, 60*time.Second)
 	clusterNodes := httpapi.NewClusterNodesWithRegistry(projectionRegistry(projection), newAuthHandler(t), logger)
 	clusterRefresh := httpapi.NewClusterRefreshWithRegistry(refreshRegistryFor(projection, inventory.NewRefresher(inventory.NewWorker(&stubClusterClient{}, projection, time.Hour, logger), 5*time.Second)), nil, newAuthHandler(t), logger)
-	vms := httpapi.NewVMsWithRegistry(projectionRegistry(projection), authHandler, 100, -1, logger, nil)
-	vmDetail := httpapi.NewVMDetailWithRegistry(httpapi.VMDetailDeps{Source: projectionRegistry(projection), Projection: projection, Auth: authHandler, Writer: cluster.Fake{}, Store: nil, Refresher: nil, Log: logger})
+	vms := httpapi.NewVMsWithRegistry(projectionRegistry(projection), authHandler, 100, -1, logger, nil, nil)
+	vmDetail := httpapi.NewVMDetailWithRegistry(httpapi.VMDetailDeps{Source: projectionRegistry(projection), Projection: projection, Auth: authHandler, Writer: cluster.Fake{}, Store: nil, Refresher: nil, Log: logger}, nil)
 	docs := httpapi.NewDocsAPIHandler(authHandler, st, logger)
 	adminDocs := httpapi.NewAdminDocs(authHandler, st, docs, logger)
 	mux := httpapi.NewRouter(httpapi.RouterConfig{

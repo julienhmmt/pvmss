@@ -123,23 +123,14 @@ type VMDetailDeps struct {
 // startup (closes the same class of bug fixed for a single default cluster - see the
 // metrics-history work that surfaced the single-client wiring pattern in main.go's
 // initCluster).
-func NewVMDetailWithRegistry(deps VMDetailDeps, services ...*policy.Policy) *VMDetail {
-	var policyService *policy.Policy
-	if len(services) > 0 {
-		policyService = services[0]
-	}
-
-	if policyService == nil && deps.Store != nil {
-		policyService = policy.New(deps.Store, deps.Projection, nil)
-	}
-
+func NewVMDetailWithRegistry(deps VMDetailDeps, service *policy.Policy) *VMDetail {
 	registry := depsSourceRegistry(deps.Source)
 
 	h := &VMDetail{
 		projection: deps.Projection, resolver: registryResolver{registry: registry},
 		refreshers: registryRefresherResolver{registry: registry},
 		auth:       deps.Auth, writer: deps.Writer, store: deps.Store, refresher: deps.Refresher,
-		policy: policyService, clients: deps.Clients, statusReader: deps.StatusReader,
+		policy: service, clients: deps.Clients, statusReader: deps.StatusReader,
 		creator: deps.Creator, guestNetReader: deps.GuestNetReader, log: deps.Log,
 	}
 	// The writer is typically the same client that implements the status and

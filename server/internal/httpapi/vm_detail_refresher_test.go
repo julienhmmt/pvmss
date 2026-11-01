@@ -83,7 +83,7 @@ func newTwoClusterRefresherFixture(t *testing.T) (*httpapi.VMDetail, *http.Cooki
 		Store:      st,
 		Refresher:  defaultWorker,
 		Log:        logger,
-	})
+	}, testPolicyService(st, defaultProjection))
 
 	cookie := adminCookie(t, authHandler)
 
@@ -185,7 +185,7 @@ func TestVMDetail_SingleClusterFallbackUsesBoundRefresher(t *testing.T) {
 	worker := inventory.NewWorker(cluster.Fake{}, projection, time.Hour, logger)
 
 	// No Source (no registry) - single-cluster mode, fallback refresher is the worker.
-	handler := httpapi.NewVMDetailWithRegistry(httpapi.VMDetailDeps{Source: projectionRegistry(projection), Projection: projection, Auth: authHandler, Writer: cluster.Fake{}, Store: st, Refresher: worker, Log: logger})
+	handler := httpapi.NewVMDetailWithRegistry(httpapi.VMDetailDeps{Source: projectionRegistry(projection), Projection: projection, Auth: authHandler, Writer: cluster.Fake{}, Store: st, Refresher: worker, Log: logger}, testPolicyService(st, projection))
 
 	cookie := aliceCookie(t, authHandler)
 

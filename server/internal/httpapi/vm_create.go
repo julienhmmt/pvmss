@@ -23,7 +23,6 @@ const createWriteDeadlineMargin = 2 * time.Minute
 type VMCreate struct {
 	auth             *Auth
 	store            *store.Store
-	client           cluster.Client
 	clients          cluster.ClientProvider
 	creator          cluster.Creator
 	policy           *policy.Policy
@@ -104,34 +103,6 @@ func (h *VMCreate) awaitCreateThenRefresh(ctx context.Context, creator cluster.C
 	}
 }
 
-// NewVMCreate creates the handler. The creator is the cluster client's
-// creation contract (allocation + async dispatch), separate from reads and
-// from existing-VM writes. The pusher is the same cluster
-// client's cloud-init push contract, reused by vm.Create's template-apply
-// step - never a second write mechanism.
-func NewVMCreate(
-	authHandler *Auth,
-	st *store.Store,
-	client cluster.Client,
-	creator cluster.Creator,
-	log *slog.Logger,
-	services ...*policy.Policy,
-) *VMCreate {
-	var policyService *policy.Policy
-	if len(services) > 0 {
-		policyService = services[0]
-	}
-
-	return &VMCreate{
-		auth:    authHandler,
-		store:   st,
-		client:  client,
-		creator: creator,
-		policy:  policyService,
-		log:     log,
-	}
-}
-
 // NewVMCreateWithRegistry creates a VM handler with cluster-aware catalog discovery.
 func NewVMCreateWithRegistry(
 	authHandler *Auth,
@@ -139,14 +110,9 @@ func NewVMCreateWithRegistry(
 	clients cluster.ClientProvider,
 	creator cluster.Creator,
 	log *slog.Logger,
-	services ...*policy.Policy,
+	service *policy.Policy,
 ) *VMCreate {
-	var policyService *policy.Policy
-	if len(services) > 0 {
-		policyService = services[0]
-	}
-
-	return &VMCreate{auth: authHandler, store: st, clients: clients, creator: creator, policy: policyService, log: log}
+	return &VMCreate{auth: authHandler, store: st, clients: clients, creator: creator, policy: service, log: log}
 }
 
 // SetTrustedProxyHops configures how many X-Forwarded-For hops to trust for
@@ -312,7 +278,7 @@ func (h *VMCreate) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		FreeSpace: target.freeSpace,
 		Audit:     h.store,
 		Log:       h.log,
-		Services:  []*policy.Policy{h.policy},
+		Policy:    h.policy,
 	})
 	if err != nil {
 		h.writeCreateFailure(w, err)
