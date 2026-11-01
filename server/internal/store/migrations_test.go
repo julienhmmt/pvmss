@@ -305,6 +305,9 @@ var baselineTables = []string{
 	"vm_cloudinit_documents",
 	"vm_cloudinit_snippets",
 	"profile_ssh_keys",
+	"quota_requests",
+	"vm_leases",
+	"vm_snapshot_schedules",
 }
 
 //nolint:paralleltest // serial: shared database fixture
