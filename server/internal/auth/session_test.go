@@ -319,3 +319,232 @@ func TestSessionManager_CookiesLastTheAbsoluteLifetime(t *testing.T) {
 		}
 	}
 }
+
+func cookieByName(cookies []*http.Cookie, name string) *http.Cookie {
+	for _, cookie := range cookies {
+		if cookie.Name == name {
+			return cookie
+		}
+	}
+
+	return nil
+}
+
+// issueSession logs identity in and returns the session cookie plus the CSRF
+// cookie that SetCookie wrote.
+func issueSession(t *testing.T, manager *auth.SessionManager, identity auth.Identity) (*http.Cookie, *http.Cookie) {
+	t.Helper()
+
+	recorder := httptest.NewRecorder()
+	if err := manager.SetCookie(context.Background(), recorder, identity); err != nil {
+		t.Fatalf("SetCookie: %v", err)
+	}
+
+	sessionCookie := cookieByName(recorder.Result().Cookies(), auth.SessionCookieName)
+	csrfCookie := cookieByName(recorder.Result().Cookies(), auth.CSRFCookieName)
+
+	if sessionCookie == nil || csrfCookie == nil {
+		t.Fatalf("SetCookie wrote %v, want session+csrf cookies", recorder.Result().Cookies())
+	}
+
+	return sessionCookie, csrfCookie
+}
+
+// After a password change the user keeps only the session that made the
+// change: every other session for the same cluster+username must die, while
+// other usernames and other clusters are untouched.
+func TestSessionManager_RevokeOthers(t *testing.T) {
+	t.Parallel()
+
+	manager, err := auth.NewSessionManager(newSessionRepository(), "a-session-secret-with-at-least-thirty-two-bytes", false)
+	if err != nil {
+		t.Fatalf("NewSessionManager: %v", err)
+	}
+
+	alice := auth.Identity{Username: "alice@pve", Cluster: "default"}
+
+	current, _ := issueSession(t, manager, alice)
+	other, _ := issueSession(t, manager, alice)
+	bobSession, _ := issueSession(t, manager, auth.Identity{Username: "bob@pve", Cluster: "default"})
+	elsewhere, _ := issueSession(t, manager, auth.Identity{Username: "alice@pve", Cluster: "remote"})
+
+	request := httptest.NewRequest(http.MethodPost, "/", nil)
+	request.AddCookie(current)
+
+	if err := manager.RevokeOthers(context.Background(), request, alice); err != nil {
+		t.Fatalf("RevokeOthers: %v", err)
+	}
+
+	t.Run("keeps the requesting session", func(t *testing.T) {
+		kept := httptest.NewRequest(http.MethodGet, "/", nil)
+		kept.AddCookie(current)
+
+		if _, err := manager.Resolve(context.Background(), kept); err != nil {
+			t.Fatal("the session that requested revocation was revoked")
+		}
+	})
+
+	t.Run("revokes the user's other sessions", func(t *testing.T) {
+		revoked := httptest.NewRequest(http.MethodGet, "/", nil)
+		revoked.AddCookie(other)
+
+		if _, err := manager.Resolve(context.Background(), revoked); err == nil {
+			t.Fatal("a second session of the same user still resolves")
+		}
+	})
+
+	t.Run("leaves other users and clusters alone", func(t *testing.T) {
+		for _, cookie := range []*http.Cookie{bobSession, elsewhere} {
+			check := httptest.NewRequest(http.MethodGet, "/", nil)
+			check.AddCookie(cookie)
+
+			if _, err := manager.Resolve(context.Background(), check); err != nil {
+				t.Fatalf("session %q was revoked but is out of scope", cookie.Value[:8])
+			}
+		}
+	})
+}
+
+// A request without a session cookie cannot name the session to keep, so the
+// call fails instead of deleting blindly.
+func TestSessionManager_RevokeOthers_NoCookie(t *testing.T) {
+	t.Parallel()
+
+	manager, err := auth.NewSessionManager(newSessionRepository(), "a-session-secret-with-at-least-thirty-two-bytes", false)
+	if err != nil {
+		t.Fatalf("NewSessionManager: %v", err)
+	}
+
+	request := httptest.NewRequest(http.MethodPost, "/", nil)
+	if err := manager.RevokeOthers(context.Background(), request, auth.Identity{Username: "alice@pve"}); err == nil {
+		t.Fatal("RevokeOthers without a session cookie = nil, want error")
+	}
+}
+
+// A browser that lost only its CSRF cookie (cleared site data, expired tab)
+// gets it re-issued from the persisted session state instead of being forced
+// to log in again.
+func TestSessionManager_EnsureCSRFCookie_ReissuesFromSession(t *testing.T) {
+	t.Parallel()
+
+	manager, err := auth.NewSessionManager(newSessionRepository(), "a-session-secret-with-at-least-thirty-two-bytes", false)
+	if err != nil {
+		t.Fatalf("NewSessionManager: %v", err)
+	}
+
+	sessionCookie, csrfCookie := issueSession(t, manager, auth.Identity{Username: "alice@pve"})
+
+	recorder := httptest.NewRecorder()
+	request := httptest.NewRequest(http.MethodGet, "/", nil)
+	request.AddCookie(sessionCookie)
+
+	if err := manager.EnsureCSRFCookie(context.Background(), recorder, request); err != nil {
+		t.Fatalf("EnsureCSRFCookie: %v", err)
+	}
+
+	reissued := cookieByName(recorder.Result().Cookies(), auth.CSRFCookieName)
+	if reissued == nil {
+		t.Fatal("no CSRF cookie re-issued for a valid session")
+	}
+
+	if reissued.Value != csrfCookie.Value {
+		t.Fatalf("reissued token = %q, want the persisted %q", reissued.Value, csrfCookie.Value)
+	}
+
+	if floor := time.Now().Add(auth.MaxSessionAge - time.Minute); reissued.Expires.Before(floor) {
+		t.Fatalf("reissued cookie expires %v, want about %v", reissued.Expires, auth.MaxSessionAge)
+	}
+}
+
+// With the CSRF cookie still present there is nothing to repair: the handler
+// must not touch the response.
+func TestSessionManager_EnsureCSRFCookie_NoopWhenPresent(t *testing.T) {
+	t.Parallel()
+
+	manager, err := auth.NewSessionManager(newSessionRepository(), "a-session-secret-with-at-least-thirty-two-bytes", false)
+	if err != nil {
+		t.Fatalf("NewSessionManager: %v", err)
+	}
+
+	sessionCookie, csrfCookie := issueSession(t, manager, auth.Identity{Username: "alice@pve"})
+
+	recorder := httptest.NewRecorder()
+	request := httptest.NewRequest(http.MethodGet, "/", nil)
+	request.AddCookie(sessionCookie)
+	request.AddCookie(csrfCookie)
+
+	if err := manager.EnsureCSRFCookie(context.Background(), recorder, request); err != nil {
+		t.Fatalf("EnsureCSRFCookie: %v", err)
+	}
+
+	if cookies := recorder.Result().Cookies(); len(cookies) != 0 {
+		t.Fatalf("wrote %d cookies with CSRF already present, want 0", len(cookies))
+	}
+}
+
+// Without a valid session there is no persisted token to re-issue: both the
+// missing-cookie and the expired-session cases reject as unauthenticated.
+func TestSessionManager_EnsureCSRFCookie_RejectsWithoutSession(t *testing.T) {
+	t.Parallel()
+
+	repository := newSessionRepository()
+
+	manager, err := auth.NewSessionManager(repository, "a-session-secret-with-at-least-thirty-two-bytes", false)
+	if err != nil {
+		t.Fatalf("NewSessionManager: %v", err)
+	}
+
+	sessionCookie, _ := issueSession(t, manager, auth.Identity{Username: "alice@pve"})
+	expiredCookie := &http.Cookie{Name: sessionCookie.Name, Value: sessionCookie.Value}
+
+	repository.expireAll()
+
+	cases := []struct {
+		name   string
+		cookie *http.Cookie
+	}{
+		{name: "no session cookie", cookie: nil},
+		{name: "expired session", cookie: expiredCookie},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			request := httptest.NewRequest(http.MethodGet, "/", nil)
+			if tc.cookie != nil {
+				request.AddCookie(tc.cookie)
+			}
+
+			err := manager.EnsureCSRFCookie(context.Background(), httptest.NewRecorder(), request)
+			if !errors.Is(err, auth.ErrUnauthenticated) {
+				t.Fatalf("EnsureCSRFCookie = %v, want ErrUnauthenticated", err)
+			}
+		})
+	}
+}
+
+// Only the bootstrap provider owns local-account management; every other
+// provider, including DB-backed admins, must answer false.
+func TestIdentity_Owner(t *testing.T) {
+	t.Parallel()
+
+	cases := []struct {
+		name     string
+		provider auth.Provider
+		want     bool
+	}{
+		{name: "bootstrap is owner", provider: auth.ProviderBootstrap, want: true},
+		{name: "pve is not owner", provider: auth.ProviderPVE, want: false},
+		{name: "local admin is not owner", provider: auth.ProviderLocal, want: false},
+		{name: "empty provider is not owner", provider: "", want: false},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
+			if got := (auth.Identity{Provider: tc.provider}).Owner(); got != tc.want {
+				t.Errorf("Owner() = %t, want %t", got, tc.want)
+			}
+		})
+	}
+}
