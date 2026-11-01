@@ -169,3 +169,46 @@ func TestExportDatabase_SnapshotIsConsistent(t *testing.T) {
 func writeFile(path string, data []byte) error {
 	return os.WriteFile(path, data, 0o600)
 }
+
+// ExportPreview is what the admin sees before downloading a snapshot: one
+// row per importable table with its live count.
+//
+//nolint:paralleltest // serial: shared database fixture
+func TestExportPreview_ReportsImportableTables(t *testing.T) {
+	st, err := store.Open(config.Configuration{
+		DBPath:        filepath.Join(t.TempDir(), "preview.db"),
+		SessionSecret: clusterTestSecret,
+	})
+	if err != nil {
+		t.Fatalf("Open: %v", err)
+	}
+	t.Cleanup(func() { _ = st.Close() })
+
+	ctx := context.Background()
+	if err := st.SetNodeEnabled(ctx, testStoreCluster, "node-1", true); err != nil {
+		t.Fatalf("SetNodeEnabled: %v", err)
+	}
+
+	preview, err := st.ExportPreview(ctx)
+	if err != nil {
+		t.Fatalf("ExportPreview: %v", err)
+	}
+
+	want := store.ImportableTables()
+	if len(preview) != len(want) {
+		t.Fatalf("tables = %d, want %d (the whole importable set)", len(preview), len(want))
+	}
+
+	byName := make(map[string]int, len(preview))
+	for _, entry := range preview {
+		byName[entry.Name] = entry.RowCount
+	}
+	for _, name := range want {
+		if _, ok := byName[name]; !ok {
+			t.Errorf("preview missing importable table %q", name)
+		}
+	}
+	if byName["catalog_nodes"] != 1 {
+		t.Errorf("catalog_nodes count = %d, want 1", byName["catalog_nodes"])
+	}
+}

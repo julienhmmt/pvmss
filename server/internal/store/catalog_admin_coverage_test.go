@@ -934,3 +934,36 @@ func TestCatalogEnabledFilters_ProfilesAndTemplates(t *testing.T) {
 		t.Fatalf("CatalogTemplates = %+v, %v", templates, err)
 	}
 }
+
+// DisableStorageAllNodes revokes an approval cluster-wide, including nodes
+// that have since left the snapshot - a per-node disable would silently keep
+// approvals the admin believes are gone.
+//
+//nolint:paralleltest // migration fixtures are intentionally serial
+func TestDisableStorageAllNodes(t *testing.T) {
+	st := openClusterStore(t)
+	ctx := context.Background()
+
+	for _, node := range []string{catalogTestNodeAlpha, catalogTestNodeZeta} {
+		if err := st.SetStorageEnabled(ctx, catalogTestCluster, catalogTestStorageName, node, true); err != nil {
+			t.Fatalf("SetStorageEnabled(%s): %v", node, err)
+		}
+	}
+
+	if err := st.DisableStorageAllNodes(ctx, catalogTestCluster, catalogTestStorageName); err != nil {
+		t.Fatalf("DisableStorageAllNodes: %v", err)
+	}
+
+	storages, err := st.CatalogStoragesEnabled(ctx, catalogTestCluster)
+	if err != nil {
+		t.Fatalf("CatalogStoragesEnabled: %v", err)
+	}
+	if len(storages) != 2 {
+		t.Fatalf("storages = %+v, want both nodes still listed", storages)
+	}
+	for _, s := range storages {
+		if s.Enabled {
+			t.Errorf("storage %s/%s still enabled after DisableStorageAllNodes", s.Node, s.Name)
+		}
+	}
+}
