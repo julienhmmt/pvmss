@@ -519,6 +519,8 @@ func buildRouter(deps routerDeps) (http.Handler, error) {
 	adminPolicy := httpapi.NewAdminPolicyWithRegistry(authHandler, policyService, clusterRegistry, logger)
 	adminPolicy.SetStore(st)
 	adminPolicy.SetTrustedProxyHops(cfg.TrustedProxyHops)
+	quotaRequests := httpapi.NewQuotaRequests(authHandler, policyService, st, logger)
+	quotaRequests.SetTrustedProxyHops(cfg.TrustedProxyHops)
 	adminPools := httpapi.NewAdminPoolsWithRegistry(httpapi.AdminPoolsRegistryDeps{Auth: authHandler, Clients: clusterRegistry, Source: inventoryRegistry, Projection: projection, Writer: clients.writer, Audit: st, Refresher: worker, Store: st, Log: logger})
 	adminPools.SetTrustedProxyHops(cfg.TrustedProxyHops)
 	adminOps := httpapi.NewAdminOps(authHandler, st, projection, appVersion, logger)
@@ -560,6 +562,7 @@ func buildRouter(deps routerDeps) (http.Handler, error) {
 		VMMetrics:        vmMetrics,
 		AdminCatalog:     adminCatalog,
 		AdminPolicy:      adminPolicy,
+		QuotaRequests:    quotaRequests,
 		AdminPools:       adminPools,
 		AdminOps:         adminOps,
 		AdminClusters:    adminClusters,

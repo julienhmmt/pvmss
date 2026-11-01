@@ -48,6 +48,7 @@ var excludedImportTables = map[string]string{
 	"sessions":               "login sessions",
 	"local_accounts":         "local administrator credentials; re-create them in the UI",
 	"audit_log":              "history, not configuration",
+	"quota_requests":         "per-user request history, not configuration",
 	"clusters":               "holds Proxmox API token secrets; re-enter clusters by hand",
 	"vm_cloudinit_snippets":  "legacy per-VM runtime state",
 	"vm_cloudinit_documents": "per-VM runtime state",

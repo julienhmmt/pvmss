@@ -23,6 +23,10 @@ func registerAdminRoutes(mux *http.ServeMux, cfg RouterConfig, adminProtect admi
 		registerAdminPolicyRoutes(mux, adminProtect, cfg.AdminPolicy)
 	}
 
+	if cfg.QuotaRequests != nil {
+		registerAdminQuotaRequestRoutes(mux, adminProtect, cfg.QuotaRequests)
+	}
+
 	if cfg.AdminPools != nil {
 		registerAdminPoolRoutes(mux, adminProtect, cfg.AdminPools)
 	}

@@ -313,6 +313,28 @@ ALTER TABLE clusters DROP COLUMN snippet_storage;
 ALTER TABLE catalog_templates DROP COLUMN cloud_init_capable;
 `
 
+// schemaV6 adds the in-app quota increase requests. One pending request per
+// (requester, cluster, pool) is enforced by a partial unique index, so a
+// second request while one is open is refused by the database itself.
+const schemaV6 = `
+CREATE TABLE quota_requests (
+	id              INTEGER PRIMARY KEY AUTOINCREMENT,
+	requester       TEXT NOT NULL,
+	cluster         TEXT NOT NULL,
+	pool            TEXT NOT NULL,
+	current_quota   INTEGER NOT NULL,
+	requested_quota INTEGER NOT NULL,
+	reason          TEXT NOT NULL,
+	status          TEXT NOT NULL,
+	decided_by      TEXT,
+	decided_at      TEXT,
+	created_at      TEXT NOT NULL
+);
+
+CREATE UNIQUE INDEX quota_requests_one_pending
+	ON quota_requests (requester, cluster, pool) WHERE status = 'pending';
+`
+
 // Migrations is the ordered list of schema migrations.
 // Versions must be consecutive integers starting at 1.
 var Migrations = []Migration{
@@ -321,4 +343,5 @@ var Migrations = []Migration{
 	{Version: 3, DDL: schemaV3},
 	{Version: 4, DDL: schemaV4},
 	{Version: 5, DDL: schemaV5},
+	{Version: 6, DDL: schemaV6},
 }

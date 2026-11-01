@@ -10,7 +10,8 @@ export interface DashboardAlert {
 		| 'node_cpu'
 		| 'node_memory'
 		| 'storage_full'
-		| 'pool_at_quota';
+		| 'pool_at_quota'
+		| 'quota_requests_pending';
 	severity: 'critical' | 'warning' | 'info';
 	cluster: string;
 	clusterKey?: string;
@@ -47,6 +48,8 @@ export function alertHref(alert: DashboardAlert): string {
 			return withQuery(resolve('/admin/storages'), { cluster: clusterKey, search: alert.subject ?? '' });
 		case 'pool_at_quota':
 			return withQuery(resolve('/admin/policy'), { cluster: clusterKey });
+		case 'quota_requests_pending':
+			return resolve('/admin/quota-requests');
 	}
 }
 
@@ -72,6 +75,8 @@ export function alertMessage(alert: DashboardAlert): string {
 				used: alert.used ?? 0,
 				limit: alert.limit ?? 0
 			});
+		case 'quota_requests_pending':
+			return m['admin.dashboard.alert.quotaRequestsPending']({ count: alert.used ?? 0 });
 	}
 }
 

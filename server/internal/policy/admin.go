@@ -21,6 +21,10 @@ const (
 	maxVMPerUserLimit    = 100000
 )
 
+// MaxVMPerUserLimit is the largest per-pool VM allowance an administrator can
+// set; a quota request above it is refused up front.
+const MaxVMPerUserLimit = maxVMPerUserLimit
+
 // Update is the outcome of UpdatePolicy: the policy state before and
 // after the mutation. Changed is false when the mutation produced no
 // difference - nothing was written and nothing is worth auditing.
