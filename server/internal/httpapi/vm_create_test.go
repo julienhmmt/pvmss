@@ -94,6 +94,7 @@ func newVMCreateHandlerWithClient(t *testing.T, client cluster.Client) (*httpapi
 		provider,
 		cluster.Fake{},
 		logger,
+		testPolicyService(st, nil),
 	), authHandler, st
 }
 
@@ -409,6 +410,7 @@ func TestVMCreateCatalog_SelectsStorageClientByCluster(t *testing.T) {
 		provider,
 		cluster.Fake{},
 		logger,
+		testPolicyService(st, nil),
 	)
 
 	req := httptest.NewRequest(http.MethodGet, "/api/v1/vm-create/catalog?cluster="+crossSecondaryCluster, nil)

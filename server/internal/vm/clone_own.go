@@ -43,7 +43,7 @@ func CloneOwn(ctx context.Context, actor auth.Identity, index inventory.LookupSo
 		return CreateResult{}, err
 	}
 
-	policyService := selectPolicyService(deps.Store, deps.Services)
+	policyService := deps.Policy
 
 	gabarit, err := policyService.Gabarit(ctx, clusterName)
 	if err != nil {

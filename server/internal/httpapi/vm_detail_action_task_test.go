@@ -85,7 +85,7 @@ func newActionTaskHandler(t *testing.T, creator taskCreator) (*httpapi.VMDetail,
 		StatusReader: cluster.Fake{},
 		Creator:      creator,
 		Log:          logger,
-	})
+	}, testPolicyService(st, projection))
 
 	return handler, authHandler
 }

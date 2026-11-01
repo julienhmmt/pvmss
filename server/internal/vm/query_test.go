@@ -70,7 +70,7 @@ func TestList_ScopeEnforcement(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			result, err := vm.List(testIndex(), vm.ListQuery{Scope: tt.scope}, tt.identity, -1)
+			result, err := vm.List(testIndex(), vm.ListQuery{Scope: tt.scope}, tt.identity, -1, nil)
 			if err != nil {
 				t.Fatalf("List: %v", err)
 			}
@@ -101,7 +101,7 @@ func TestList_SearchClassification(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			result, err := vm.List(testIndex(), vm.ListQuery{Search: tt.search}, alice, -1)
+			result, err := vm.List(testIndex(), vm.ListQuery{Search: tt.search}, alice, -1, nil)
 			if err != nil {
 				t.Fatalf("List: %v", err)
 			}
@@ -123,7 +123,7 @@ func TestList_SearchClassification(t *testing.T) {
 //nolint:paralleltest // serial: shared in-memory fixture state
 func TestList_SearchNeverCrossesScope(t *testing.T) {
 	// "cache-01" is bob's VM; alice's search must not surface it.
-	result, err := vm.List(testIndex(), vm.ListQuery{Search: "cache"}, alice, -1)
+	result, err := vm.List(testIndex(), vm.ListQuery{Search: "cache"}, alice, -1, nil)
 	if err != nil {
 		t.Fatalf("List: %v", err)
 	}
@@ -152,7 +152,7 @@ func TestList_Filters(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			result, err := vm.List(testIndex(), tt.query, alice, -1)
+			result, err := vm.List(testIndex(), tt.query, alice, -1, nil)
 			if err != nil {
 				t.Fatalf("List: %v", err)
 			}
@@ -171,7 +171,7 @@ func TestList_Filters(t *testing.T) {
 func TestList_NodeFacetIgnoresNodeFilter(t *testing.T) {
 	// The facet is computed before the node filter so the dropdown does not
 	// shrink to hide its own selection.
-	result, err := vm.List(testIndex(), vm.ListQuery{Node: cluster.FakeNode02}, alice, -1)
+	result, err := vm.List(testIndex(), vm.ListQuery{Node: cluster.FakeNode02}, alice, -1, nil)
 	if err != nil {
 		t.Fatalf("List: %v", err)
 	}
@@ -197,7 +197,7 @@ func TestList_PoolFilterAndFacet(t *testing.T) {
 	})
 
 	// Admin scope=all narrowed to one pool - only pvmss-tagged VMs of that pool.
-	result, err := vm.List(&index, vm.ListQuery{Scope: vm.ScopeAll, Pool: pvmssBob}, admin, -1)
+	result, err := vm.List(&index, vm.ListQuery{Scope: vm.ScopeAll, Pool: pvmssBob}, admin, -1, nil)
 	if err != nil {
 		t.Fatalf("List: %v", err)
 	}
@@ -221,7 +221,7 @@ func TestList_PoolFilterAndFacet(t *testing.T) {
 func TestList_PoolFilterNeverCrossesScope(t *testing.T) {
 	// A non-admin asking for another pool's VMs still sees only their own -
 	// scope is re-derived from the identity, never from the query.
-	result, err := vm.List(testIndex(), vm.ListQuery{Pool: cluster.FakePoolBob}, alice, -1)
+	result, err := vm.List(testIndex(), vm.ListQuery{Pool: cluster.FakePoolBob}, alice, -1, nil)
 	if err != nil {
 		t.Fatalf("List: %v", err)
 	}
@@ -250,7 +250,7 @@ func TestList_Sort(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			result, err := vm.List(testIndex(), vm.ListQuery{SortBy: tt.sortBy, SortDir: tt.sortDir}, alice, -1)
+			result, err := vm.List(testIndex(), vm.ListQuery{SortBy: tt.sortBy, SortDir: tt.sortDir}, alice, -1, nil)
 			if err != nil {
 				t.Fatalf("List: %v", err)
 			}
@@ -264,7 +264,7 @@ func TestList_Sort(t *testing.T) {
 
 //nolint:paralleltest // serial: shared in-memory fixture state
 func TestList_InvalidSortByRejected(t *testing.T) {
-	_, err := vm.List(testIndex(), vm.ListQuery{SortBy: "unknownColumn"}, alice, -1)
+	_, err := vm.List(testIndex(), vm.ListQuery{SortBy: "unknownColumn"}, alice, -1, nil)
 	if !errors.Is(err, vm.ErrInvalidSortBy) {
 		t.Fatalf("err = %v, want ErrInvalidSortBy", err)
 	}
@@ -288,7 +288,7 @@ func TestList_Pagination(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			result, err := vm.List(testIndex(), vm.ListQuery{Page: tt.page, PageSize: tt.pageSize}, alice, -1)
+			result, err := vm.List(testIndex(), vm.ListQuery{Page: tt.page, PageSize: tt.pageSize}, alice, -1, nil)
 			if err != nil {
 				t.Fatalf("List: %v", err)
 			}
@@ -313,7 +313,7 @@ func TestList_EmptyReasons(t *testing.T) {
 	t.Run("no VMs owned", func(t *testing.T) {
 		carol := auth.Identity{Username: "carol@pve", Pool: "pool-carol"}
 
-		result, err := vm.List(testIndex(), vm.ListQuery{}, carol, -1)
+		result, err := vm.List(testIndex(), vm.ListQuery{}, carol, -1, nil)
 		if err != nil {
 			t.Fatalf("List: %v", err)
 		}
@@ -327,7 +327,7 @@ func TestList_EmptyReasons(t *testing.T) {
 		}
 	})
 	t.Run("search matches nothing", func(t *testing.T) {
-		result, err := vm.List(testIndex(), vm.ListQuery{Search: "does-not-exist"}, alice, -1)
+		result, err := vm.List(testIndex(), vm.ListQuery{Search: "does-not-exist"}, alice, -1, nil)
 		if err != nil {
 			t.Fatalf("List: %v", err)
 		}
@@ -337,7 +337,7 @@ func TestList_EmptyReasons(t *testing.T) {
 		}
 	})
 	t.Run("non-empty result has no empty reason", func(t *testing.T) {
-		result, err := vm.List(testIndex(), vm.ListQuery{}, alice, -1)
+		result, err := vm.List(testIndex(), vm.ListQuery{}, alice, -1, nil)
 		if err != nil {
 			t.Fatalf("List: %v", err)
 		}
@@ -395,7 +395,7 @@ func TestList_Quota(t *testing.T) {
 func listQuotaResult(t *testing.T, q vm.ListQuery, actor auth.Identity, allowed int) vm.ListResult {
 	t.Helper()
 
-	result, err := vm.List(testIndex(), q, actor, allowed)
+	result, err := vm.List(testIndex(), q, actor, allowed, nil)
 	if err != nil {
 		t.Fatalf("List: %v", err)
 	}

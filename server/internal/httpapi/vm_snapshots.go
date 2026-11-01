@@ -41,22 +41,14 @@ type VMSnapshotsRegistryDeps struct {
 	Clients    cluster.ClientProvider
 	Store      *store.Store
 	Log        *slog.Logger
-	Services   []*policy.Policy
+	Policy     *policy.Policy
 }
 
 // NewVMSnapshotsWithRegistry creates the snapshot handler with per-request
 // index and cluster.SnapshotReader/Writer resolution, keyed on the request's
 // own :cluster path value.
 func NewVMSnapshotsWithRegistry(deps VMSnapshotsRegistryDeps) *VMSnapshots {
-	var policyService *policy.Policy
-	if len(deps.Services) > 0 {
-		policyService = deps.Services[0]
-	}
-	if policyService == nil && deps.Store != nil {
-		policyService = policy.New(deps.Store, deps.Projection, nil)
-	}
-
-	return &VMSnapshots{projection: deps.Projection, resolver: registryResolver{registry: depsSourceRegistry(deps.Source)}, auth: deps.Auth, reader: deps.Reader, writer: deps.Writer, store: deps.Store, clients: deps.Clients, policy: policyService, log: deps.Log}
+	return &VMSnapshots{projection: deps.Projection, resolver: registryResolver{registry: depsSourceRegistry(deps.Source)}, auth: deps.Auth, reader: deps.Reader, writer: deps.Writer, store: deps.Store, clients: deps.Clients, policy: deps.Policy, log: deps.Log}
 }
 
 type snapshotCreateRequest struct {

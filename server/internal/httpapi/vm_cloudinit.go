@@ -52,21 +52,12 @@ type VMCloudInitDeps struct {
 }
 
 // NewVMCloudInit creates the dedicated cloud-init handler.
-func NewVMCloudInit(deps VMCloudInitDeps, services ...*policy.Policy) *VMCloudInit {
-	var policyService *policy.Policy
-	if len(services) > 0 {
-		policyService = services[0]
-	}
-
-	if policyService == nil && deps.Store != nil {
-		policyService = policy.New(deps.Store, deps.Projection, nil)
-	}
-
+func NewVMCloudInit(deps VMCloudInitDeps, service *policy.Policy) *VMCloudInit {
 	registry := depsSourceRegistry(deps.Source)
 	resolver := vm.ClusterIndexResolver(registryResolver{registry: registry})
 	refreshers := registryRefresherResolver{registry: registry}
 
-	return &VMCloudInit{projection: deps.Projection, resolver: resolver, auth: deps.Auth, reader: deps.Reader, writer: deps.Writer, statusReader: deps.StatusReader, clients: deps.Clients, store: deps.Store, refresher: deps.Refresher, refreshers: refreshers, policy: policyService, log: deps.Log}
+	return &VMCloudInit{projection: deps.Projection, resolver: resolver, auth: deps.Auth, reader: deps.Reader, writer: deps.Writer, statusReader: deps.StatusReader, clients: deps.Clients, store: deps.Store, refresher: deps.Refresher, refreshers: refreshers, policy: service, log: deps.Log}
 }
 
 // statusReaderFor resolves the cluster.VMStatusReader for clusterName, falling

@@ -34,7 +34,7 @@ func TestList_CrossClusterPoolMerge(t *testing.T) {
 		testClusterName: &defaultIndex, crossClusterSecondaryKey: &secondaryIndex, "third": &thirdIndex,
 	})
 
-	result, err := vm.List(registry, vm.ListQuery{}, auth.Identity{Username: "alice", Pool: crossClusterPoolAlice}, -1)
+	result, err := vm.List(registry, vm.ListQuery{}, auth.Identity{Username: "alice", Pool: crossClusterPoolAlice}, -1, nil)
 	if err != nil {
 		t.Fatalf("List: %v", err)
 	}
@@ -45,7 +45,7 @@ func TestList_CrossClusterPoolMerge(t *testing.T) {
 		t.Fatalf("cluster labels = %+v, want distinct labels", result.Items)
 	}
 
-	filtered, err := vm.List(registry, vm.ListQuery{Cluster: crossClusterSecondaryKey}, auth.Identity{Username: "alice", Pool: crossClusterPoolAlice}, -1)
+	filtered, err := vm.List(registry, vm.ListQuery{Cluster: crossClusterSecondaryKey}, auth.Identity{Username: "alice", Pool: crossClusterPoolAlice}, -1, nil)
 	if err != nil {
 		t.Fatalf("List(cluster): %v", err)
 	}
@@ -80,7 +80,7 @@ func TestList_AdminScopeAllSpansEveryCluster(t *testing.T) {
 	// not accidentally routed through the same pool-membership merge mine
 	// scope uses.
 	admin := auth.Identity{Username: "root", Pool: "no-such-pool", IsAdmin: true}
-	result, err := vm.List(registry, vm.ListQuery{Scope: vm.ScopeAll}, admin, -1)
+	result, err := vm.List(registry, vm.ListQuery{Scope: vm.ScopeAll}, admin, -1, nil)
 	if err != nil {
 		t.Fatalf("List(scope=all): %v", err)
 	}
@@ -120,7 +120,7 @@ func TestList_NonAdminPinnedToSignInCluster(t *testing.T) {
 	})
 	alice := auth.Identity{Username: "alice@pve", Pool: crossClusterPoolAlice, Cluster: testClusterName}
 
-	result, err := vm.List(registry, vm.ListQuery{}, alice, -1)
+	result, err := vm.List(registry, vm.ListQuery{}, alice, -1, nil)
 	if err != nil {
 		t.Fatalf("List: %v", err)
 	}
@@ -128,7 +128,7 @@ func TestList_NonAdminPinnedToSignInCluster(t *testing.T) {
 		t.Fatalf("names = %v, want only the sign-in cluster's VM", got)
 	}
 
-	other, err := vm.List(registry, vm.ListQuery{Cluster: crossClusterSecondaryKey}, alice, -1)
+	other, err := vm.List(registry, vm.ListQuery{Cluster: crossClusterSecondaryKey}, alice, -1, nil)
 	if err != nil {
 		t.Fatalf("List(other cluster): %v", err)
 	}

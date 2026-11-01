@@ -25,7 +25,7 @@ func createWithServices(t *testing.T, fixture createFixture, actor auth.Identity
 		FreeSpace: fixture.fake,
 		Audit:     fixture.store,
 		Log:       slog.New(slog.DiscardHandler),
-		Services:  []*policy.Policy{service},
+		Policy:    service,
 	})
 }
 

@@ -104,11 +104,11 @@ func runPolicyCase(
 	}
 
 	_, err = vm.Create(context.Background(), aliceIdentity(), req.Cluster, req, vm.CreateDeps{
-		Store:    fixture.store,
-		Creator:  fixture.fake,
-		Audit:    fixture.store,
-		Log:      slog.New(slog.DiscardHandler),
-		Services: []*policy.Policy{service},
+		Store:   fixture.store,
+		Creator: fixture.fake,
+		Audit:   fixture.store,
+		Log:     slog.New(slog.DiscardHandler),
+		Policy:  service,
 	})
 	if !errors.Is(err, wantErr) {
 		t.Fatalf("Create error = %v, want %v", err, wantErr)

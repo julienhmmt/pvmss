@@ -110,7 +110,7 @@ func newVMDetailHandlerWithWriter(t *testing.T, writer cluster.Writer) (*httpapi
 
 	t.Cleanup(func() { _ = st.Close() })
 
-	handler := httpapi.NewVMDetailWithRegistry(httpapi.VMDetailDeps{Source: projectionRegistry(projection), Projection: projection, Auth: authHandler, Writer: writer, Store: st, Refresher: bulkNoopRefresher{}, Log: logger})
+	handler := httpapi.NewVMDetailWithRegistry(httpapi.VMDetailDeps{Source: projectionRegistry(projection), Projection: projection, Auth: authHandler, Writer: writer, Store: st, Refresher: bulkNoopRefresher{}, Log: logger}, testPolicyService(st, projection))
 
 	return handler, authHandler
 }
@@ -132,7 +132,7 @@ func TestVMDetail_Get_RegistryClusterNotFound(t *testing.T) {
 	registry := inventory.NewRegistryFromIndexes(map[string]*inventory.Index{crossSecondaryCluster: &secondaryIdx})
 	projection := inventory.NewProjectionFromIndex(&secondaryIdx)
 	authHandler := newAuthHandler(t)
-	handler := httpapi.NewVMDetailWithRegistry(httpapi.VMDetailDeps{Source: registry, Projection: projection, Auth: authHandler, Writer: cluster.Fake{}, Store: nil, Refresher: nil, Log: slog.Default()})
+	handler := httpapi.NewVMDetailWithRegistry(httpapi.VMDetailDeps{Source: registry, Projection: projection, Auth: authHandler, Writer: cluster.Fake{}, Store: nil, Refresher: nil, Log: slog.Default()}, nil)
 	cookie := aliceCookie(t, authHandler)
 
 	rec, env := serveDetailError(handler, detailRequest(http.MethodGet, "/api/v1/vms/default/101", "", cookie))
@@ -155,7 +155,7 @@ func detailNotReadyFixture(t *testing.T) (*httpapi.VMDetail, *http.Cookie) {
 
 	authHandler := newAuthHandler(t)
 	projection := inventory.NewProjection()
-	handler := httpapi.NewVMDetailWithRegistry(httpapi.VMDetailDeps{Source: projectionRegistry(projection), Projection: projection, Auth: authHandler, Writer: cluster.Fake{}, Store: nil, Refresher: bulkNoopRefresher{}, Log: slog.Default()})
+	handler := httpapi.NewVMDetailWithRegistry(httpapi.VMDetailDeps{Source: projectionRegistry(projection), Projection: projection, Auth: authHandler, Writer: cluster.Fake{}, Store: nil, Refresher: bulkNoopRefresher{}, Log: slog.Default()}, nil)
 
 	return handler, aliceCookie(t, authHandler)
 }

@@ -6,6 +6,7 @@ import (
 	"log/slog"
 	"pvmss/server/internal/catalog"
 	"pvmss/server/internal/cluster"
+	"pvmss/server/internal/policy"
 	"pvmss/server/internal/store"
 	"pvmss/server/internal/vm"
 	"slices"
@@ -522,6 +523,7 @@ func createWithTemplates(t *testing.T, fixture createFixture, templates interfac
 		FreeSpace: fixture.fake,
 		Audit:     fixture.store,
 		Log:       log,
+		Policy:    policy.New(fixture.store, nil, nil),
 		Templates: templates,
 	})
 }

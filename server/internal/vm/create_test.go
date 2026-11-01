@@ -109,6 +109,7 @@ func (f createFixture) create(t *testing.T, actor auth.Identity, req vm.CreateRe
 		FreeSpace: f.fake,
 		Audit:     f.store,
 		Log:       log,
+		Policy:    policy.New(f.store, nil, nil),
 	})
 }
 
@@ -456,6 +457,7 @@ func TestCreate_AuditFailureDoesNotFailCreate(t *testing.T) {
 		Writer:  fixture.fake,
 		Audit:   failingAudit{},
 		Log:     log,
+		Policy:  policy.New(fixture.store, nil, nil),
 	})
 	if err != nil {
 		t.Fatalf("Create: %v, want nil (audit failure must not fail the request)", err)
@@ -566,11 +568,11 @@ func TestCreate_Sockets_BeyondMaxSockets(t *testing.T) {
 	req.Name = "sockets-over"
 
 	_, err = vm.Create(context.Background(), aliceIdentity(), req.Cluster, req, vm.CreateDeps{
-		Store:    fixture.store,
-		Creator:  fixture.fake,
-		Audit:    fixture.store,
-		Log:      slog.New(slog.DiscardHandler),
-		Services: []*policy.Policy{service},
+		Store:   fixture.store,
+		Creator: fixture.fake,
+		Audit:   fixture.store,
+		Log:     slog.New(slog.DiscardHandler),
+		Policy:  service,
 	})
 	if !errors.Is(err, policy.ErrGabaritExceeded) {
 		t.Fatalf("error = %v, want ErrGabaritExceeded", err)
@@ -632,11 +634,11 @@ func TestCreate_Sockets_NodeCapacityCountsSocketsTimesCores(t *testing.T) {
 	req.Name = "sockets-capacity"
 
 	_, err = vm.Create(context.Background(), aliceIdentity(), req.Cluster, req, vm.CreateDeps{
-		Store:    fixture.store,
-		Creator:  fixture.fake,
-		Audit:    fixture.store,
-		Log:      slog.New(slog.DiscardHandler),
-		Services: []*policy.Policy{service},
+		Store:   fixture.store,
+		Creator: fixture.fake,
+		Audit:   fixture.store,
+		Log:     slog.New(slog.DiscardHandler),
+		Policy:  service,
 	})
 	if !errors.Is(err, policy.ErrNodeCapacityExceeded) {
 		t.Fatalf("error = %v, want ErrNodeCapacityExceeded (8 vCPU > headroom of 4)", err)
@@ -722,11 +724,11 @@ func TestCreate_MultiNIC_BeyondMaxNetworkCards(t *testing.T) {
 	}
 
 	_, err = vm.Create(context.Background(), aliceIdentity(), req.Cluster, req, vm.CreateDeps{
-		Store:    fixture.store,
-		Creator:  fixture.fake,
-		Audit:    fixture.store,
-		Log:      slog.New(slog.DiscardHandler),
-		Services: []*policy.Policy{service},
+		Store:   fixture.store,
+		Creator: fixture.fake,
+		Audit:   fixture.store,
+		Log:     slog.New(slog.DiscardHandler),
+		Policy:  service,
 	})
 	if !errors.Is(err, policy.ErrGabaritExceeded) {
 		t.Fatalf("error = %v, want ErrGabaritExceeded", err)

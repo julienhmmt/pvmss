@@ -110,14 +110,9 @@ func NewVMCreateWithRegistry(
 	clients cluster.ClientProvider,
 	creator cluster.Creator,
 	log *slog.Logger,
-	services ...*policy.Policy,
+	service *policy.Policy,
 ) *VMCreate {
-	var policyService *policy.Policy
-	if len(services) > 0 {
-		policyService = services[0]
-	}
-
-	return &VMCreate{auth: authHandler, store: st, clients: clients, creator: creator, policy: policyService, log: log}
+	return &VMCreate{auth: authHandler, store: st, clients: clients, creator: creator, policy: service, log: log}
 }
 
 // SetTrustedProxyHops configures how many X-Forwarded-For hops to trust for
@@ -283,7 +278,7 @@ func (h *VMCreate) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		FreeSpace: target.freeSpace,
 		Audit:     h.store,
 		Log:       h.log,
-		Services:  []*policy.Policy{h.policy},
+		Policy:    h.policy,
 	})
 	if err != nil {
 		h.writeCreateFailure(w, err)

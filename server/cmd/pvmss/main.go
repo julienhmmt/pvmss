@@ -153,6 +153,14 @@ func run() int {
 
 	inventoryRegistry.Start(inventoryCtx)
 
+	// The one policy service shared by the router and the background
+	// sweeps: projections are resolved per cluster through the inventory
+	// registry, so quota and name checks never read another cluster's VMs.
+	policyService := policy.New(st, defaultProjection, nil)
+	policyService.SetClusterProvider(clusterRegistry)
+	policyService.SetProjectionSource(inventoryRegistry)
+	policyService.SetQuotaAuditor(st)
+
 	// Daily audit prune tick: deletes audit_log rows older than
 	// the configured retention. Runs in its own goroutine so it does not
 	// couple to the inventory worker's refresh cycle. A prune runs once at
@@ -169,7 +177,7 @@ func run() int {
 		Store:   st,
 		Indexes: inventoryRegistry,
 		Clients: clusterRegistry,
-		Policy:  policy.New(st, defaultProjection, nil),
+		Policy:  policyService,
 		Log:     logger,
 		Now:     time.Now,
 	})
@@ -180,7 +188,7 @@ func run() int {
 		return 1
 	}
 
-	router, err := buildRouter(routerDeps{cfg: cfg, clusterRegistry: clusterRegistry, inventoryRegistry: inventoryRegistry, clusterClient: clusterClient, projection: defaultProjection, refresher: defaultRefresher, worker: defaultWorker, sessions: sessions, st: st, webDir: webDir, logger: logger, logLevel: logLevel})
+	router, err := buildRouter(routerDeps{cfg: cfg, clusterRegistry: clusterRegistry, inventoryRegistry: inventoryRegistry, clusterClient: clusterClient, projection: defaultProjection, refresher: defaultRefresher, worker: defaultWorker, sessions: sessions, st: st, policy: policyService, webDir: webDir, logger: logger, logLevel: logLevel})
 	if err != nil {
 		logger.Error("failed to build router", "component", "main", "error", err)
 		return 1
@@ -465,6 +473,7 @@ type routerDeps struct {
 	worker            vm.IndexRefresher
 	sessions          *auth.SessionManager
 	st                *store.Store
+	policy            *policy.Policy
 	webDir            string
 	logger            *slog.Logger
 	logLevel          *slog.LevelVar
@@ -484,9 +493,7 @@ func buildRouter(deps routerDeps) (http.Handler, error) {
 	st := deps.st
 	webDir := deps.webDir
 	logger := deps.logger
-	policyService := policy.New(st, projection, nil)
-	policyService.SetClusterProvider(clusterRegistry)
-	policyService.SetProjectionSource(inventoryRegistry)
+	policyService := deps.policy
 	freshness := inventoryFreshness{registry: inventoryRegistry, demoMode: cfg.ClusterSource == "fake"}
 	health := httpapi.NewHealth(st, logger, freshness, 2*cfg.InventoryRefreshInterval)
 	authHandler := httpapi.NewAuthWithRegistry(clusterRegistry, st, sessions, cfg.AdminPasswordHash, logger)
@@ -525,7 +532,7 @@ func buildRouter(deps routerDeps) (http.Handler, error) {
 	vmCreate.SetInventoryRefreshers(httpapi.NewRegistryRefresherResolver(inventoryRegistry))
 	vmCreate.SetInventorySource(inventoryRegistry)
 	tasks := httpapi.NewTasksWithRegistry(authHandler, clusterRegistry, clients.creator, worker, httpapi.NewRegistryRefresherResolver(inventoryRegistry), logger)
-	snapshots := httpapi.NewVMSnapshotsWithRegistry(httpapi.VMSnapshotsRegistryDeps{Source: inventoryRegistry, Projection: projection, Auth: authHandler, Reader: clients.snapshotReader, Writer: clients.snapshotWriter, Clients: clusterRegistry, Store: st, Log: logger, Services: []*policy.Policy{policyService}})
+	snapshots := httpapi.NewVMSnapshotsWithRegistry(httpapi.VMSnapshotsRegistryDeps{Source: inventoryRegistry, Projection: projection, Auth: authHandler, Reader: clients.snapshotReader, Writer: clients.snapshotWriter, Clients: clusterRegistry, Store: st, Log: logger, Policy: policyService})
 	adminMigration := httpapi.NewAdminMigrationWithRegistry(httpapi.AdminMigrationRegistryDeps{Source: inventoryRegistry, Projection: projection, Auth: authHandler, Migrator: clients.migrator, Status: clients.statusReader, Clients: clusterRegistry, Store: st, Log: logger})
 	vmConsole := httpapi.NewVMConsoleWithRegistry(httpapi.VMConsoleRegistryDeps{Source: inventoryRegistry, Projection: projection, Auth: authHandler, Relay: clients.consoleRelay, Clients: clusterRegistry, Tickets: consoleTickets, Store: st, Log: logger})
 	vmSerialConsole := httpapi.NewVMSerialConsoleWithRegistry(httpapi.VMSerialConsoleRegistryDeps{Source: inventoryRegistry, Projection: projection, Auth: authHandler, Relay: clients.serialRelay, Clients: clusterRegistry, Tickets: consoleTickets, Store: st, Log: logger})
@@ -537,7 +544,7 @@ func buildRouter(deps routerDeps) (http.Handler, error) {
 	adminPolicy.SetTrustedProxyHops(cfg.TrustedProxyHops)
 	quotaRequests := httpapi.NewQuotaRequests(authHandler, policyService, st, logger)
 	quotaRequests.SetTrustedProxyHops(cfg.TrustedProxyHops)
-	adminPools := httpapi.NewAdminPoolsWithRegistry(httpapi.AdminPoolsRegistryDeps{Auth: authHandler, Clients: clusterRegistry, Source: inventoryRegistry, Projection: projection, Writer: clients.writer, Audit: st, Refresher: worker, Store: st, Log: logger})
+	adminPools := httpapi.NewAdminPoolsWithRegistry(httpapi.AdminPoolsRegistryDeps{Auth: authHandler, Clients: clusterRegistry, Source: inventoryRegistry, Projection: projection, Writer: clients.writer, Audit: st, Refresher: worker, Store: st, Policy: policyService, Log: logger})
 	adminPools.SetTrustedProxyHops(cfg.TrustedProxyHops)
 	adminOps := httpapi.NewAdminOps(authHandler, st, projection, appVersion, logger)
 	// The level at build time is the startup default (LOG_LEVEL); nothing has
@@ -555,7 +562,6 @@ func buildRouter(deps routerDeps) (http.Handler, error) {
 	adminAccounts.SetTrustedProxyHops(cfg.TrustedProxyHops)
 
 	authHandler.SetTrustedProxyHops(cfg.TrustedProxyHops)
-	policyService.SetQuotaAuditor(st)
 
 	return httpapi.NewRouter(httpapi.RouterConfig{
 		Health:           health,

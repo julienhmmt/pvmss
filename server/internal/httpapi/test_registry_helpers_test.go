@@ -4,8 +4,16 @@ import (
 	"pvmss/server/internal/cluster"
 	"pvmss/server/internal/httpapi"
 	"pvmss/server/internal/inventory"
+	"pvmss/server/internal/policy"
+	"pvmss/server/internal/store"
 	"testing"
 )
+
+// testPolicyService builds the policy service the removed constructor
+// fallbacks used to synthesize from deps.Store + deps.Projection.
+func testPolicyService(st *store.Store, projection *inventory.Projection) *policy.Policy {
+	return policy.New(st, projection, nil)
+}
 
 // projectionRegistry wraps the test's live projection under the "default"
 // cluster name the requests use - the registry shares the same projection

@@ -31,6 +31,7 @@ type AdminPools struct {
 	audit            vm.AuditRecorder
 	refresher        vm.IndexRefresher
 	store            *store.Store
+	policy           *policy.Policy
 	log              *slog.Logger
 	trustedProxyHops int
 }
@@ -47,6 +48,7 @@ type AdminPoolsRegistryDeps struct {
 	Audit      vm.AuditRecorder
 	Refresher  vm.IndexRefresher
 	Store      *store.Store
+	Policy     *policy.Policy
 	Log        *slog.Logger
 }
 
@@ -56,7 +58,7 @@ type AdminPoolsRegistryDeps struct {
 // non-default cluster would silently operate against the default cluster's
 // Proxmox API instead.
 func NewAdminPoolsWithRegistry(deps AdminPoolsRegistryDeps) *AdminPools {
-	return &AdminPools{auth: deps.Auth, clients: deps.Clients, source: deps.Source, projection: deps.Projection, writer: deps.Writer, audit: deps.Audit, refresher: deps.Refresher, store: deps.Store, log: deps.Log}
+	return &AdminPools{auth: deps.Auth, clients: deps.Clients, source: deps.Source, projection: deps.Projection, writer: deps.Writer, audit: deps.Audit, refresher: deps.Refresher, store: deps.Store, policy: deps.Policy, log: deps.Log}
 }
 
 // clientFor resolves the cluster.Client for clusterName, falling back to the
@@ -187,7 +189,7 @@ func (h *AdminPools) ServeDetail(w http.ResponseWriter, r *http.Request) {
 		writeAdminError(w, http.StatusBadGateway, "cluster_unreachable", "failed to load pool")
 		return
 	}
-	quota, err := policy.New(h.store, projection, nil).Quota(r.Context(), clusterName, auth.Identity{Pool: name})
+	quota, err := h.policy.Quota(r.Context(), clusterName, auth.Identity{Pool: name})
 	if err != nil {
 		logctx.FromOr(r.Context(), h.log).WarnContext(r.Context(), "admin pool quota failed", "component", "httpapi", "pool", name, "error", err)
 		quota = policy.Quota{Used: len(detail.Members)}

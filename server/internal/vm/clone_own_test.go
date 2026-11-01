@@ -48,7 +48,7 @@ func (f cloneFixture) deps() vm.CreateDeps {
 		FreeSpace: f.fake,
 		Audit:     f.store,
 		Log:       slog.New(slog.DiscardHandler),
-		Services:  []*policy.Policy{f.service},
+		Policy:    f.service,
 	}
 }
 

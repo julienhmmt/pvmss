@@ -72,6 +72,7 @@ func newVMCreateHandlerWithCreator(t *testing.T, creator cluster.Creator) (*http
 		provider,
 		creator,
 		logger,
+		testPolicyService(st, nil),
 	), authHandler
 }
 

@@ -212,7 +212,7 @@ type CreateDeps struct {
 	FreeSpace FreeSpaceChecker
 	Audit     AuditRecorder
 	Log       *slog.Logger
-	Services  []*policy.Policy
+	Policy    *policy.Policy
 	// VMIDMin and VMIDMax bound the ids given to new VMs (both 0 = Proxmox's
 	// next free id). Create fills them from the cluster policy.
 	VMIDMin, VMIDMax int
@@ -252,7 +252,7 @@ type TemplateReader interface {
 // log-don't-fail rule the task-status handler already applies to a failed
 // post-completion invalidation (tasks.go).
 func Create(ctx context.Context, actor auth.Identity, clusterName string, req CreateRequest, deps CreateDeps) (CreateResult, error) {
-	policyService := selectPolicyService(deps.Store, deps.Services)
+	policyService := deps.Policy
 
 	gabarit, err := policyService.Gabarit(ctx, clusterName)
 	if err != nil {

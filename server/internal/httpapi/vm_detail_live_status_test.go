@@ -40,7 +40,7 @@ func TestVMDetail_GetReportsLiveStatusOverProjection(t *testing.T) {
 		Auth:         authHandler,
 		StatusReader: liveRunning{},
 		Log:          slog.New(slog.DiscardHandler),
-	})
+	}, nil)
 
 	rec := httptest.NewRecorder()
 	handler.ServeHTTP(rec, detailRequest(http.MethodGet, "/api/v1/vms/default/101", "", aliceCookie(t, authHandler)))

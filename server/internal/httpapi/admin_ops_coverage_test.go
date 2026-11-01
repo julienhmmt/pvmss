@@ -561,6 +561,7 @@ func newAdminPoolsRegistryHandler(t *testing.T) (*httpapi.AdminPools, *httpapi.A
 		Audit:      st,
 		Refresher:  worker,
 		Store:      st,
+		Policy:     testPolicyService(st, projection),
 		Log:        logger,
 	})
 

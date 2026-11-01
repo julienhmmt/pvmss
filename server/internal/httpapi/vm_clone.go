@@ -71,7 +71,7 @@ func (h *VMCreate) ServeClone(w http.ResponseWriter, r *http.Request) {
 		FreeSpace: target.freeSpace,
 		Audit:     h.store,
 		Log:       h.log,
-		Services:  []*policy.Policy{h.policy},
+		Policy:    h.policy,
 	})
 	if err != nil {
 		h.writeCloneFailure(w, err)
