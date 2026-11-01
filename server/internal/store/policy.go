@@ -20,6 +20,7 @@ type PolicyRow struct {
 	IsolationVLANTag int
 	VMIDMin          int
 	VMIDMax          int
+	LeaseDays        int
 }
 
 // NodePolicyRow is the persisted per-node capacité row.
@@ -38,11 +39,11 @@ func (s *Store) PolicyRow(ctx context.Context, cluster string) (PolicyRow, error
 
 	err := s.db.QueryRowContext(ctx, `
 		SELECT cluster, max_sockets, max_cores, max_memory_mb, max_disk_per_vm_gb,
-		       max_network_cards, max_snapshots, max_vm_per_user, isolation_vlan_tag, vmid_min, vmid_max
+		       max_network_cards, max_snapshots, max_vm_per_user, isolation_vlan_tag, vmid_min, vmid_max, lease_days
 		FROM vm_limits WHERE cluster = ?`, cluster).Scan(
 		&row.Cluster, &row.MaxSockets, &row.MaxCores, &row.MaxMemoryMB,
 		&row.MaxDiskPerVMGB, &row.MaxNetworkCards, &row.MaxSnapshots,
-		&row.MaxVMPerUser, &row.IsolationVLANTag, &row.VMIDMin, &row.VMIDMax,
+		&row.MaxVMPerUser, &row.IsolationVLANTag, &row.VMIDMin, &row.VMIDMax, &row.LeaseDays,
 	)
 	if errors.Is(err, sql.ErrNoRows) {
 		return PolicyRow{}, fmt.Errorf("policy row for cluster %q: %w", cluster, sql.ErrNoRows)
@@ -68,12 +69,12 @@ func (s *Store) ReplacePolicyRow(ctx context.Context, expected *PolicyRow, next 
 		res, err := s.db.ExecContext(ctx, `
 			INSERT INTO vm_limits (
 				cluster, max_sockets, max_cores, max_memory_mb, max_disk_per_vm_gb,
-				max_network_cards, max_snapshots, max_vm_per_user, isolation_vlan_tag, vmid_min, vmid_max
-			) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+				max_network_cards, max_snapshots, max_vm_per_user, isolation_vlan_tag, vmid_min, vmid_max, lease_days
+			) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 			ON CONFLICT(cluster) DO NOTHING`,
 			next.Cluster, next.MaxSockets, next.MaxCores, next.MaxMemoryMB,
 			next.MaxDiskPerVMGB, next.MaxNetworkCards, next.MaxSnapshots,
-			next.MaxVMPerUser, next.IsolationVLANTag, next.VMIDMin, next.VMIDMax,
+			next.MaxVMPerUser, next.IsolationVLANTag, next.VMIDMin, next.VMIDMax, next.LeaseDays,
 		)
 		if err != nil {
 			return fmt.Errorf("insert policy row: %w", err)
@@ -89,15 +90,15 @@ func (s *Store) ReplacePolicyRow(ctx context.Context, expected *PolicyRow, next 
 	res, err := s.db.ExecContext(ctx, `
 		UPDATE vm_limits SET
 			max_sockets = ?, max_cores = ?, max_memory_mb = ?, max_disk_per_vm_gb = ?,
-			max_network_cards = ?, max_snapshots = ?, max_vm_per_user = ?, isolation_vlan_tag = ?, vmid_min = ?, vmid_max = ?
+			max_network_cards = ?, max_snapshots = ?, max_vm_per_user = ?, isolation_vlan_tag = ?, vmid_min = ?, vmid_max = ?, lease_days = ?
 		WHERE cluster = ? AND max_sockets = ? AND max_cores = ? AND max_memory_mb = ?
 		  AND max_disk_per_vm_gb = ? AND max_network_cards = ? AND max_snapshots = ?
-		  AND max_vm_per_user = ? AND isolation_vlan_tag = ? AND vmid_min = ? AND vmid_max = ?`,
+		  AND max_vm_per_user = ? AND isolation_vlan_tag = ? AND vmid_min = ? AND vmid_max = ? AND lease_days = ?`,
 		next.MaxSockets, next.MaxCores, next.MaxMemoryMB, next.MaxDiskPerVMGB,
-		next.MaxNetworkCards, next.MaxSnapshots, next.MaxVMPerUser, next.IsolationVLANTag, next.VMIDMin, next.VMIDMax,
+		next.MaxNetworkCards, next.MaxSnapshots, next.MaxVMPerUser, next.IsolationVLANTag, next.VMIDMin, next.VMIDMax, next.LeaseDays,
 		expected.Cluster, expected.MaxSockets, expected.MaxCores, expected.MaxMemoryMB,
 		expected.MaxDiskPerVMGB, expected.MaxNetworkCards, expected.MaxSnapshots,
-		expected.MaxVMPerUser, expected.IsolationVLANTag, expected.VMIDMin, expected.VMIDMax,
+		expected.MaxVMPerUser, expected.IsolationVLANTag, expected.VMIDMin, expected.VMIDMax, expected.LeaseDays,
 	)
 	if err != nil {
 		return fmt.Errorf("replace policy row: %w", err)
@@ -115,8 +116,8 @@ func (s *Store) UpsertPolicyRow(ctx context.Context, row PolicyRow) error {
 	_, err := s.db.ExecContext(ctx, `
 		INSERT INTO vm_limits (
 			cluster, max_sockets, max_cores, max_memory_mb, max_disk_per_vm_gb,
-			max_network_cards, max_snapshots, max_vm_per_user, isolation_vlan_tag, vmid_min, vmid_max
-		) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+			max_network_cards, max_snapshots, max_vm_per_user, isolation_vlan_tag, vmid_min, vmid_max, lease_days
+		) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 		ON CONFLICT(cluster) DO UPDATE SET
 			max_sockets = excluded.max_sockets,
 			max_cores = excluded.max_cores,
@@ -127,10 +128,11 @@ func (s *Store) UpsertPolicyRow(ctx context.Context, row PolicyRow) error {
 			max_vm_per_user = excluded.max_vm_per_user,
 			isolation_vlan_tag = excluded.isolation_vlan_tag,
 			vmid_min = excluded.vmid_min,
-			vmid_max = excluded.vmid_max`,
+			vmid_max = excluded.vmid_max,
+			lease_days = excluded.lease_days`,
 		row.Cluster, row.MaxSockets, row.MaxCores, row.MaxMemoryMB,
 		row.MaxDiskPerVMGB, row.MaxNetworkCards, row.MaxSnapshots,
-		row.MaxVMPerUser, row.IsolationVLANTag, row.VMIDMin, row.VMIDMax,
+		row.MaxVMPerUser, row.IsolationVLANTag, row.VMIDMin, row.VMIDMax, row.LeaseDays,
 	)
 	if err != nil {
 		return fmt.Errorf("upsert policy row: %w", err)

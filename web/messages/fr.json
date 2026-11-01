@@ -2417,5 +2417,11 @@
 	"admin.quotaRequests.col.current": "Actuel",
 	"admin.quotaRequests.col.requested": "Demandé",
 	"admin.quotaRequests.col.reason": "Motif",
-	"admin.quotaRequests.col.actions": "Décision"
+	"admin.quotaRequests.col.actions": "Décision",
+	"policy.leaseGroup": "Baux",
+	"policy.leaseHint": "Nombre de jours avant qu'une VM non prolongée par son propriétaire soit arrêtée puis supprimée. 0 désactive les baux. S'applique aux VM créées à partir de maintenant et plafonne les prolongations.",
+	"policy.leaseDays": "Durée du bail (jours)",
+	"vms.lease.expiresOn": "Expire le {date}",
+	"vms.lease.extend": "Prolonger le bail",
+	"vms.lease.errorExtend": "Impossible de prolonger le bail."
 }

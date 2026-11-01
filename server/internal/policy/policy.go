@@ -69,6 +69,9 @@ type Gabarit struct {
 	// VMIDMin/VMIDMax bound the ids of new VMs; both 0 = Proxmox's next free id.
 	VMIDMin int
 	VMIDMax int
+	// LeaseDays is the lease length given to new VMs and the cap on owner
+	// extensions; 0 = no lease (VMs never expire).
+	LeaseDays int
 }
 
 // Quota is the actor's pool VM count and the pool allowance.
@@ -241,6 +244,7 @@ func gabaritFromRow(row store.PolicyRow) Gabarit {
 		IsolationVLANTag: row.IsolationVLANTag,
 		VMIDMin:          row.VMIDMin,
 		VMIDMax:          row.VMIDMax,
+		LeaseDays:        row.LeaseDays,
 	}
 }
 
@@ -289,6 +293,7 @@ func policyRowFrom(clusterName string, settings Settings) store.PolicyRow {
 		IsolationVLANTag: settings.Gabarit.IsolationVLANTag,
 		VMIDMin:          settings.Gabarit.VMIDMin,
 		VMIDMax:          settings.Gabarit.VMIDMax,
+		LeaseDays:        settings.Gabarit.LeaseDays,
 	}
 }
 

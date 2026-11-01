@@ -2417,5 +2417,11 @@
 	"admin.quotaRequests.col.current": "Aktuell",
 	"admin.quotaRequests.col.requested": "Angefragt",
 	"admin.quotaRequests.col.reason": "Begründung",
-	"admin.quotaRequests.col.actions": "Entscheidung"
+	"admin.quotaRequests.col.actions": "Entscheidung",
+	"policy.leaseGroup": "Laufzeiten",
+	"policy.leaseHint": "Tage, nach denen eine VM, die der Eigentümer nicht verlängert, gestoppt und gelöscht wird. 0 deaktiviert Laufzeiten. Gilt für ab jetzt erstellte VMs und begrenzt Verlängerungen.",
+	"policy.leaseDays": "Laufzeit (Tage)",
+	"vms.lease.expiresOn": "Läuft ab am {date}",
+	"vms.lease.extend": "Laufzeit verlängern",
+	"vms.lease.errorExtend": "Die Laufzeit konnte nicht verlängert werden."
 }

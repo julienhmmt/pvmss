@@ -159,6 +159,18 @@ Rename validates as a hostname (lowercase, ≤63 chars, `hostnameRe` in
 | **States**      | Button disabled while another action is in flight. Dialog shows the server message for a taken name (`name_taken`) or an unapproved bridge (names it). A failed clone surfaces as a task error toast. Cloning a running VM is allowed and is documented as crash-consistent. |
 | **Safety nets** | `vm.Resolve()` gates the source (pool scoping); quota and name uniqueness reuse the create reservation; node capacity is checked on the source node; full clone only (a linked clone would share the source disks); the clone stays on the source node; administrators cannot clone (no personal pool). |
 
+### Extend a VM lease
+
+| Field | Content |
+| --- | --- |
+| **Audience** | end user (owner), admin |
+| **Entry** | The "Expires on {date}" line under the VM header (`/vms/[cluster]/[vmid]`), shown only for a leased VM |
+| **Route** | `/vms/[cluster]/[vmid]` |
+| **API** | `GET /api/v1/vms/{cluster}/{vmid}` (`expiresAt`) → `PUT /api/v1/vms/{cluster}/{vmid}/lease` with `{"days": 30}` |
+| **Steps** | 1. Open the VM. 2. If the expiry is under 7 days the date is highlighted. 3. Click "Extend lease": the expiry becomes now + 30 days, capped at the cluster's lease length. 4. The new date replaces the old one. |
+| **States** | The date turns to the warning colour inside 7 days. A refused extension shows an inline alert and keeps the old date. No lease line at all means the VM does not expire. |
+| **Safety nets** | `vm.Resolve()` gates the extension (owner or admin only). Refused with 409 `lease_disabled` when the cluster's lease length is 0, 404 `lease_not_found` when the VM has no lease. Each extension writes a `vm.lease_extended` audit row. Extensions are unbounded in count; the audit trail is the control. |
+
 ### Open the console
 
 |                 |                                                                                                                                                                                                                                                                                                                                                              |
@@ -401,6 +413,18 @@ Six admin workflows deserve the full template because they are the risky ones.
 | **Steps** | 1. Pick the cluster on the Policy page. 2. Enter the first and last ID. Both 0 means Proxmox's next free ID; otherwise use 100 <= first <= last <= 999999999 (for example 9000 and 9999). 3. Save. 4. New VMs take the lowest ID in the range that no VM or container on the cluster uses, whoever created it. |
 | **States** | Inline range error under the first ID field when the range is invalid (same rule as the server); a hint explains the 0/0 default; a server error is shown on the field it names. |
 | **Safety nets** | The range is validated on both sides (400 `invalid_policy` from the server). Existing VMs are never renumbered; the range only chooses ids for new VMs. Each changed bound writes an audit row (`gabarit.vmidMin`, `gabarit.vmidMax`). A full range refuses the create with 409 before the Proxmox create call. |
+
+### Set the lease length
+
+| Field | Content |
+| --- | --- |
+| **Audience** | admin |
+| **Entry** | Administration -> Policy (`/admin/policy`), "Leases" section |
+| **Route** | `/admin/policy` |
+| **API** | `GET /api/v1/admin/policy` → `PUT /api/v1/admin/policy` (gabarit `leaseDays`) |
+| **Steps** | 1. Pick the cluster. 2. Enter the lease length in days (0 turns leases off, max 3650). 3. Save. 4. VMs created from now on get an expiry of that many days. Owners can extend up to that length at a time. |
+| **States** | A server error is shown on the field it names. Changing the value marks the form dirty. |
+| **Safety nets** | Validated on the server (400 `invalid_policy`). Each change writes an audit row (`gabarit.leaseDays`). Only VMs created while the length is above 0 get a lease: VMs created earlier have no lease and never expire. A lease is never added to an existing VM (no endpoint does it). The sweeper runs once at startup and then daily. |
 
 ### Reorder documentation pages
 

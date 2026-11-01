@@ -79,6 +79,7 @@ func (h *VMCreate) ServeClone(w http.ResponseWriter, r *http.Request) {
 	}
 
 	h.refreshAfterCreate(r.Context(), target.creator, target.clusterName, result.UPID)
+	h.bindLeaseAfterCreate(r.Context(), target, result)
 
 	h.writeCreateJSON(w, http.StatusAccepted, createResultDTO{
 		Cluster: result.Cluster,

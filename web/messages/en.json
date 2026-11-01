@@ -2417,5 +2417,11 @@
 	"admin.quotaRequests.col.current": "Current",
 	"admin.quotaRequests.col.requested": "Requested",
 	"admin.quotaRequests.col.reason": "Reason",
-	"admin.quotaRequests.col.actions": "Decision"
+	"admin.quotaRequests.col.actions": "Decision",
+	"policy.leaseGroup": "Leases",
+	"policy.leaseHint": "Days before a VM that is not extended by its owner is stopped and deleted. 0 turns leases off. Applies to VMs created from now on and caps owner extensions.",
+	"policy.leaseDays": "Lease length (days)",
+	"vms.lease.expiresOn": "Expires on {date}",
+	"vms.lease.extend": "Extend lease",
+	"vms.lease.errorExtend": "Could not extend the lease."
 }

@@ -54,6 +54,7 @@ type policyGabaritDTO struct {
 	IsolationVLANTag int `json:"isolationVlanTag"`
 	VMIDMin          int `json:"vmidMin"`
 	VMIDMax          int `json:"vmidMax"`
+	LeaseDays        int `json:"leaseDays"`
 }
 
 type policyQuotaDTO struct {
@@ -76,6 +77,7 @@ type policyGabaritPatch struct {
 	IsolationVLANTag *int `json:"isolationVlanTag"`
 	VMIDMin          *int `json:"vmidMin"`
 	VMIDMax          *int `json:"vmidMax"`
+	LeaseDays        *int `json:"leaseDays"`
 }
 
 type policyQuotaPatch struct {
@@ -181,6 +183,9 @@ func policyChangeDiff(before, after policy.Settings) []any {
 	if before.Gabarit.VMIDMin != after.Gabarit.VMIDMin {
 		changes = append(changes, map[string]any{auditKeyField: "gabarit.vmidMin", auditKeyOld: before.Gabarit.VMIDMin, auditKeyNew: after.Gabarit.VMIDMin})
 	}
+	if before.Gabarit.LeaseDays != after.Gabarit.LeaseDays {
+		changes = append(changes, map[string]any{auditKeyField: "gabarit.leaseDays", auditKeyOld: before.Gabarit.LeaseDays, auditKeyNew: after.Gabarit.LeaseDays})
+	}
 	if before.Gabarit.VMIDMax != after.Gabarit.VMIDMax {
 		changes = append(changes, map[string]any{auditKeyField: "gabarit.vmidMax", auditKeyOld: before.Gabarit.VMIDMax, auditKeyNew: after.Gabarit.VMIDMax})
 	}
@@ -197,12 +202,16 @@ func (handler *AdminPolicy) readPolicy(ctx context.Context, clusterName string) 
 }
 
 func policyGabaritDTOFromModel(gabarit policy.Gabarit) policyGabaritDTO {
-	return policyGabaritDTO{MaxSockets: gabarit.MaxSockets, MaxCores: gabarit.MaxCores, MaxMemoryMB: gabarit.MaxMemoryMB, MaxDiskPerVMGB: gabarit.MaxDiskPerVMGB, MaxNetworkCards: gabarit.MaxNetworkCards, MaxSnapshots: gabarit.MaxSnapshots, IsolationVLANTag: gabarit.IsolationVLANTag, VMIDMin: gabarit.VMIDMin, VMIDMax: gabarit.VMIDMax}
+	return policyGabaritDTO{MaxSockets: gabarit.MaxSockets, MaxCores: gabarit.MaxCores, MaxMemoryMB: gabarit.MaxMemoryMB, MaxDiskPerVMGB: gabarit.MaxDiskPerVMGB, MaxNetworkCards: gabarit.MaxNetworkCards, MaxSnapshots: gabarit.MaxSnapshots, IsolationVLANTag: gabarit.IsolationVLANTag, VMIDMin: gabarit.VMIDMin, VMIDMax: gabarit.VMIDMax, LeaseDays: gabarit.LeaseDays}
 }
 
 func applyGabaritPatch(gabarit *policy.Gabarit, patch *policyGabaritPatch) {
 	if patch == nil {
 		return
+	}
+
+	if patch.LeaseDays != nil {
+		gabarit.LeaseDays = *patch.LeaseDays
 	}
 
 	if patch.MaxSockets != nil {

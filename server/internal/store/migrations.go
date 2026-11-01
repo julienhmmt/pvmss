@@ -335,6 +335,23 @@ CREATE UNIQUE INDEX quota_requests_one_pending
 	ON quota_requests (requester, cluster, pool) WHERE status = 'pending';
 `
 
+// schemaV7 adds VM leases: an expiry per managed VM (absent row = no lease,
+// the admin-exempt state) and the per-cluster lease length on the policy row
+// (0 = leases off). Expiry is RFC3339 UTC so string comparison orders rows.
+const schemaV7 = `
+CREATE TABLE vm_leases (
+	cluster     TEXT NOT NULL,
+	vmid        INTEGER NOT NULL,
+	expires_at  TEXT NOT NULL,
+	notified_at TEXT,
+	pool        TEXT NOT NULL DEFAULT '',
+	identity    TEXT NOT NULL DEFAULT '',
+	PRIMARY KEY (cluster, vmid)
+);
+
+ALTER TABLE vm_limits ADD COLUMN lease_days INTEGER NOT NULL DEFAULT 0;
+`
+
 // Migrations is the ordered list of schema migrations.
 // Versions must be consecutive integers starting at 1.
 var Migrations = []Migration{
@@ -344,4 +361,5 @@ var Migrations = []Migration{
 	{Version: 4, DDL: schemaV4},
 	{Version: 5, DDL: schemaV5},
 	{Version: 6, DDL: schemaV6},
+	{Version: 7, DDL: schemaV7},
 }

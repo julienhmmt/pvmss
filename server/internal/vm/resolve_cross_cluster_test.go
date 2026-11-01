@@ -22,7 +22,7 @@ func TestResolveCrossCluster(t *testing.T) {
 		testClusterName: defaultIndex,
 		"secondary":     secondaryIndex,
 	})
-	actor := auth.Identity{Username: "admin", IsAdmin: true}
+	actor := auth.Identity{Username: testAdminUser, IsAdmin: true}
 
 	defaultEntity, err := vm.Resolve(registry, actor, testClusterName, 101)
 	if err != nil {

@@ -84,6 +84,9 @@ func CloneOwn(ctx context.Context, actor auth.Identity, index inventory.LookupSo
 		return CreateResult{}, err
 	}
 
+	// A clone is a new VM: it gets its own lease clock, not the source's.
+	LeaseAfterDispatch(ctx, deps.Store, deps.Log, clusterName, result.VMID, gabarit.LeaseDays, actor.Pool)
+
 	return result, nil
 }
 
