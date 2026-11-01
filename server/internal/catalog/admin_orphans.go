@@ -2,6 +2,7 @@ package catalog
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"pvmss/server/internal/cluster"
 	"pvmss/server/internal/store"
@@ -64,6 +65,10 @@ func sweepOrphans[Key comparable, A any](
 	clusterName string,
 	s orphanSweep[Key, A],
 ) error {
+	if s.discovered == nil {
+		return errors.New("sweepOrphans: discovered map must not be nil")
+	}
+
 	for _, row := range s.rows {
 		if s.discovered[row.key] {
 			continue

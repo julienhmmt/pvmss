@@ -65,7 +65,7 @@ func NewRegistry(provider cluster.ClientProvider, interval time.Duration, log *s
 // NewRegistryFromIndexes builds a registry around pre-populated projections,
 // useful for pure domain and handler tests that do not need refresh goroutines.
 func NewRegistryFromIndexes(indexes map[string]*Index) *Registry {
-	registry := &Registry{entries: make(map[string]*registryEntry, len(indexes)), interval: time.Hour, log: slog.Default()}
+	registry := &Registry{entries: make(map[string]*registryEntry, len(indexes)), handles: make(map[string]*registryEntry), interval: time.Hour, log: slog.Default()}
 	for name, index := range indexes {
 		registry.entries[name] = &registryEntry{projection: NewProjectionFromIndex(index)}
 	}
@@ -90,7 +90,7 @@ func (registry *Registry) SetRefresherForTest(name string, refresher *Refresher)
 // single-cluster resolver had. Used by handler tests that keep a projection
 // they refresh mid-test.
 func NewRegistryFromProjections(projections map[string]*Projection) *Registry {
-	registry := &Registry{entries: make(map[string]*registryEntry, len(projections)), interval: time.Hour, log: slog.Default()}
+	registry := &Registry{entries: make(map[string]*registryEntry, len(projections)), handles: make(map[string]*registryEntry), interval: time.Hour, log: slog.Default()}
 	for name, projection := range projections {
 		registry.entries[name] = &registryEntry{projection: projection}
 	}
