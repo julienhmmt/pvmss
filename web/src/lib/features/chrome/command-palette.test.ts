@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it } from 'vitest';
+import { m } from '#lib/paraglide/messages.js';
 import { filterItems, matches, navigationItems, readRecent, rememberRecent, type PaletteItem } from './command-palette';
 
 const item = (label: string, href = `/${label}`): PaletteItem => ({ id: href, group: 'goto', label, href });
@@ -24,7 +25,14 @@ describe('navigationItems', () => {
 	it('never offers admin pages to a pool user', () => {
 		const hrefs = navigationItems(false).map((entry) => entry.href);
 		expect(hrefs).toContain('/vms');
+		expect(hrefs).toContain('/nodes');
 		expect(hrefs.some((href) => href.startsWith('/admin'))).toBe(false);
+	});
+
+	it('offers quota requests to an admin under the policy group', () => {
+		const entry = navigationItems(true).find((item) => item.href === '/admin/quota-requests');
+		expect(entry?.group).toBe('admin');
+		expect(entry?.hint).toBe(m['chrome.adminNav.policy']());
 	});
 
 	it('gives an admin the dashboard and every admin page, grouped as admin', () => {
