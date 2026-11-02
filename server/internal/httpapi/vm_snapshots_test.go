@@ -69,9 +69,32 @@ func newVMSnapshotsHandler(t *testing.T) (*httpapi.VMSnapshots, *httpapi.Auth) {
 	return httpapi.NewVMSnapshotsWithRegistry(httpapi.VMSnapshotsRegistryDeps{Source: projectionRegistry(projection), Projection: projection, Auth: authHandler, Reader: cluster.Fake{}, Writer: cluster.Fake{}, Store: st, Policy: testPolicyService(st, projection), Log: logger}), authHandler
 }
 
+// snapshotRoutePatterns mirrors the snapshot routes registered in router.go.
+var snapshotRoutePatterns = []string{
+	"GET /api/v1/vms/{cluster}/{vmid}/snapshots",
+	"POST /api/v1/vms/{cluster}/{vmid}/snapshots",
+	"POST /api/v1/vms/{cluster}/{vmid}/snapshots/{name}/rollback",
+	"DELETE /api/v1/vms/{cluster}/{vmid}/snapshots/{name}",
+	"GET /api/v1/vms/{cluster}/{vmid}/snapshots/{name}/config",
+	"PUT /api/v1/vms/{cluster}/{vmid}/snapshot-schedule",
+	"DELETE /api/v1/vms/{cluster}/{vmid}/snapshot-schedule",
+}
+
+// snapshotRouteMux resolves requests to the same patterns the real mux uses,
+// so handler.ServeHTTP sees the r.Pattern it gets in production.
+var snapshotRouteMux = func() *http.ServeMux {
+	mux := http.NewServeMux()
+	for _, pattern := range snapshotRoutePatterns {
+		mux.Handle(pattern, http.NotFoundHandler())
+	}
+
+	return mux
+}()
+
 func snapshotRequest(method, path, body string, cookie *http.Cookie) *http.Request {
 	request := httptest.NewRequest(method, path, strings.NewReader(body))
 	request.Header.Set("Content-Type", "application/json")
+	_, request.Pattern = snapshotRouteMux.Handler(request)
 
 	if cookie != nil {
 		request.AddCookie(cookie)

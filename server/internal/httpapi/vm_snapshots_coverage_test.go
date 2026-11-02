@@ -344,6 +344,57 @@ func TestVMSnapshotsCoverage_Create_ThenRollback_Success(t *testing.T) {
 	}
 }
 
+// TestVMSnapshotsCoverage_DeleteCollidingNameDeletesSnapshot guards against
+// path-suffix dispatch: a snapshot named like a sibling route must still be
+// deleted by DELETE .../snapshots/{name}, not rolled back, read or cleared.
+//
+//nolint:paralleltest // serial: shared fake and SQLite fixtures
+func TestVMSnapshotsCoverage_DeleteCollidingNameDeletesSnapshot(t *testing.T) {
+	for _, name := range []string{"rollback", "config", "snapshot-schedule"} {
+		t.Run(name, func(t *testing.T) {
+			handler, authHandler := newVMSnapshotsHandler(t)
+			cookie := aliceCookie(t, authHandler)
+
+			// The API refuses these names now, so seed the snapshot as a
+			// Proxmox-UI-created one would appear: straight into the fake.
+			upid, err := (cluster.Fake{}).CreateSnapshot(context.Background(), cluster.FakeNode01, 101, name, "", false)
+			if err != nil {
+				t.Fatalf("seed snapshot %q: %v", name, err)
+			}
+
+			completeSnapshotTask(t, upid)
+
+			deleteRec := httptest.NewRecorder()
+			handler.ServeHTTP(deleteRec, snapshotNameRequest(http.MethodDelete, "/api/v1/vms/default/101/snapshots/"+name, name, "", cookie))
+
+			if deleteRec.Code != http.StatusAccepted {
+				t.Fatalf("delete status = %d, want %d: %s", deleteRec.Code, http.StatusAccepted, deleteRec.Body.String())
+			}
+
+			var task snapshotTaskResponse
+			if err := json.Unmarshal(deleteRec.Body.Bytes(), &task); err != nil {
+				t.Fatalf("decode task: %v", err)
+			}
+
+			completeSnapshotTask(t, task.UPID)
+
+			listRec := httptest.NewRecorder()
+			handler.ServeHTTP(listRec, snapshotRequest(http.MethodGet, "/api/v1/vms/default/101/snapshots", "", cookie))
+
+			var list snapshotListResponse
+			if err := json.Unmarshal(listRec.Body.Bytes(), &list); err != nil {
+				t.Fatalf("decode list: %v", err)
+			}
+
+			for _, s := range list.Snapshots {
+				if s.Name == name {
+					t.Fatalf("snapshot %q still listed after delete", name)
+				}
+			}
+		})
+	}
+}
+
 //nolint:paralleltest // serial: shared fake and SQLite fixtures
 func TestVMSnapshotsCoverage_List_AfterCreateShowsSnapshot(t *testing.T) {
 	handler, authHandler := newVMSnapshotsHandler(t)
@@ -385,6 +436,7 @@ func TestVMSnapshotsCoverage_Create_InvalidVMPath(t *testing.T) {
 	req.SetPathValue("cluster", "default")
 	req.SetPathValue("vmid", "0")
 	req.AddCookie(cookie)
+	_, req.Pattern = snapshotRouteMux.Handler(req)
 
 	rec := httptest.NewRecorder()
 	handler.ServeHTTP(rec, req)
