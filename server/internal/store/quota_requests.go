@@ -111,11 +111,51 @@ func (s *Store) ListQuotaRequests(ctx context.Context, status string) ([]QuotaRe
 // It returns sql.ErrNoRows when the request is missing or already decided, so
 // a second admin deciding the same request cannot overwrite the first.
 func (s *Store) DecideQuotaRequest(ctx context.Context, id int64, status, decidedBy string) error {
-	return execUpdateOne(ctx, s.db,
-		`UPDATE quota_requests SET status = ?, decided_by = ?, decided_at = ?
-		 WHERE id = ? AND status = ?`,
-		[]any{status, decidedBy, time.Now().UTC().Format(time.RFC3339), id, QuotaRequestPending},
+	return execUpdateOne(ctx, s.db, quotaDecideSQL,
+		quotaDecideArgs(id, status, decidedBy),
 	)
+}
+
+const quotaDecideSQL = `UPDATE quota_requests SET status = ?, decided_by = ?, decided_at = ?
+	WHERE id = ? AND status = ?`
+
+func quotaDecideArgs(id int64, status, decidedBy string) []any {
+	return []any{status, decidedBy, time.Now().UTC().Format(time.RFC3339), id, QuotaRequestPending}
+}
+
+// DecideQuotaRequestWithPolicy decides a pending request and applies the policy
+// row CAS in one transaction. A lost decision race or a changed policy row rolls
+// back both writes, so the request and the cap can never disagree.
+func (s *Store) DecideQuotaRequestWithPolicy(ctx context.Context, id int64, status, decidedBy string, expected *PolicyRow, next PolicyRow) error {
+	tx, err := s.db.BeginTx(ctx, nil)
+	if err != nil {
+		return fmt.Errorf("begin quota decision transaction: %w", err)
+	}
+	defer func() { _ = tx.Rollback() }()
+
+	result, err := tx.ExecContext(ctx, quotaDecideSQL, quotaDecideArgs(id, status, decidedBy)...)
+	if err != nil {
+		return fmt.Errorf("exec quota decision: %w", err)
+	}
+
+	affected, err := result.RowsAffected()
+	if err != nil {
+		return fmt.Errorf("count decided rows: %w", err)
+	}
+
+	if affected == 0 {
+		return sql.ErrNoRows
+	}
+
+	if err := replacePolicyRow(ctx, tx, expected, next); err != nil {
+		return err
+	}
+
+	if err := tx.Commit(); err != nil {
+		return fmt.Errorf("commit quota decision: %w", err)
+	}
+
+	return nil
 }
 
 func (s *Store) scanQuotaRequest(row *sql.Row) (QuotaRequest, error) {
