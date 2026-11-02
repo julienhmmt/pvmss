@@ -71,6 +71,17 @@ func (s *Store) FindSession(ctx context.Context, hash []byte) (auth.SessionRecor
 
 	session.CSRFToken = csrfToken
 
+	// A dead local account means a dead session, even if the revoke that
+	// accompanied the account change failed.
+	if session.Identity.Provider == auth.ProviderLocal {
+		var disabled bool
+
+		err := s.db.QueryRowContext(ctx, `SELECT disabled FROM local_accounts WHERE username = ?`, session.Identity.Username).Scan(&disabled)
+		if err != nil || disabled {
+			return auth.SessionRecord{}, sql.ErrNoRows
+		}
+	}
+
 	return session, nil
 }
 

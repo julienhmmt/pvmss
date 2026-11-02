@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"errors"
 	"pvmss/server/internal/auth"
+	"pvmss/server/internal/store"
 	"testing"
 	"time"
 )
@@ -167,6 +168,100 @@ func TestCreateSession_PurgesExpiredSessions(t *testing.T) {
 			t.Errorf("FindSession(%s) = %v, want the live session kept", hash, err)
 		}
 	}
+}
+
+// A local session is only as alive as its account row: disabling or deleting
+// the administrator must kill the session even when the revoke failed.
+//
+//nolint:paralleltest // serial: shared database fixture
+func TestFindSession_LocalAccountGate(t *testing.T) {
+	st := openClusterStore(t)
+	ctx := context.Background()
+	now := time.Now().UTC().Truncate(time.Second)
+
+	seed := func(t *testing.T, username string) int64 {
+		t.Helper()
+
+		id, err := st.CreateLocalAccount(ctx, store.LocalAccount{
+			Username: username, PasswordHash: "$2a$10$abcdefghijklmnopqrstuv",
+			CreatedAt: now, UpdatedAt: now, CreatedBy: "setup",
+		})
+		if err != nil {
+			t.Fatalf("CreateLocalAccount %s: %v", username, err)
+		}
+
+		return id
+	}
+
+	localSession := func(hash, username string) auth.SessionRecord {
+		session := sampleSessionRecord([]byte(hash), username)
+		session.Identity.Provider = auth.ProviderLocal
+		session.Identity.Cluster = ""
+
+		return session
+	}
+
+	t.Run("enabled local account resolves", func(t *testing.T) {
+		seed(t, "enabled-admin")
+
+		session := localSession("session-local-enabled", "enabled-admin")
+		if err := st.CreateSession(ctx, session); err != nil {
+			t.Fatalf("CreateSession: %v", err)
+		}
+
+		if _, err := st.FindSession(ctx, session.Hash); err != nil {
+			t.Fatalf("FindSession = %v, want resolved", err)
+		}
+	})
+
+	t.Run("disabled local account is rejected", func(t *testing.T) {
+		id := seed(t, "disabled-admin")
+
+		session := localSession("session-local-disabled", "disabled-admin")
+		if err := st.CreateSession(ctx, session); err != nil {
+			t.Fatalf("CreateSession: %v", err)
+		}
+
+		if err := st.SetLocalAccountDisabled(ctx, id, true, now); err != nil {
+			t.Fatalf("SetLocalAccountDisabled: %v", err)
+		}
+
+		if _, err := st.FindSession(ctx, session.Hash); !errors.Is(err, sql.ErrNoRows) {
+			t.Fatalf("FindSession disabled err = %v, want sql.ErrNoRows", err)
+		}
+	})
+
+	t.Run("deleted local account is rejected", func(t *testing.T) {
+		id := seed(t, "deleted-admin")
+
+		session := localSession("session-local-deleted", "deleted-admin")
+		if err := st.CreateSession(ctx, session); err != nil {
+			t.Fatalf("CreateSession: %v", err)
+		}
+
+		if err := st.DeleteLocalAccount(ctx, id); err != nil {
+			t.Fatalf("DeleteLocalAccount: %v", err)
+		}
+
+		if _, err := st.FindSession(ctx, session.Hash); !errors.Is(err, sql.ErrNoRows) {
+			t.Fatalf("FindSession deleted err = %v, want sql.ErrNoRows", err)
+		}
+	})
+
+	t.Run("pve and bootstrap sessions skip the account lookup", func(t *testing.T) {
+		for _, provider := range []auth.Provider{auth.ProviderPVE, auth.ProviderBootstrap} {
+			session := sampleSessionRecord([]byte("session-"+string(provider)), "no-row-"+string(provider))
+			session.Identity.Provider = provider
+
+			if err := st.CreateSession(ctx, session); err != nil {
+				t.Fatalf("CreateSession %s: %v", provider, err)
+			}
+
+			if _, err := st.FindSession(ctx, session.Hash); err != nil {
+				t.Errorf("FindSession %s = %v, want resolved", provider, err)
+			}
+		}
+	})
 }
 
 func bytesEqual(a, b []byte) bool {
