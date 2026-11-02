@@ -44,6 +44,9 @@ func TestValidateSnapshotName(t *testing.T) {
 		{name: "invalid characters", input: "before upgrade", wantErr: true},
 		{name: "too long", input: "12345678901234567890123456789012345678901", wantErr: true},
 		{name: "reserved current", input: "current", wantErr: true},
+		{name: "reserved rollback", input: "rollback", wantErr: true},
+		{name: "reserved config", input: "config", wantErr: true},
+		{name: "reserved snapshot-schedule", input: "snapshot-schedule", wantErr: true},
 	}
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
