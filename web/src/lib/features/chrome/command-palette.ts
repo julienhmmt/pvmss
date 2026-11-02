@@ -1,11 +1,12 @@
 import { resolve } from '$app/paths';
 import { m } from '#lib/paraglide/messages.js';
 import { ADMIN_NAV_GROUPS } from './admin-nav-items.svelte';
+import type { DocSummary } from '#lib/features/docs/docs.svelte.js';
 
 /** One destination in the command palette (ticket 06: navigation only). */
 export interface PaletteItem {
 	id: string;
-	group: 'recent' | 'goto' | 'admin' | 'machines';
+	group: 'recent' | 'goto' | 'admin' | 'machines' | 'docs';
 	label: string;
 	/** Secondary line: node and cluster for a machine, section for a page. */
 	hint?: string;
@@ -65,6 +66,13 @@ export function filterItems(items: readonly PaletteItem[], query: string): Palet
 	if (q === '') return [...items];
 	const hits = items.filter((item) => matches(item.label, q));
 	return [...hits.filter((item) => normalize(item.label).startsWith(q)), ...hits.filter((item) => !normalize(item.label).startsWith(q))];
+}
+
+/** Help articles in the current locale, as palette items (titles are matched; the index is fetched lazily). */
+export function docItems(pages: readonly DocSummary[], isAdmin: boolean, lang: 'en' | 'fr'): PaletteItem[] {
+	return pages
+		.filter((page) => page.lang === lang && (page.audience !== 'admin' || isAdmin))
+		.map((page): PaletteItem => ({ id: `doc:${page.id}:${page.lang}`, group: 'docs', label: page.title, href: `${resolve('/docs/[id]', { id: page.id })}?lang=${page.lang}` }));
 }
 
 /** The last destinations `user` opened from the palette, newest first. */

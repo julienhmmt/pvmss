@@ -2437,6 +2437,7 @@
 	"palette.groupGoto": "Go to",
 	"palette.groupAdmin": "Administration",
 	"palette.groupMachines": "Machines",
+	"palette.groupDocs": "Help articles",
 	"palette.results": [
 		{
 			"declarations": [

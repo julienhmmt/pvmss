@@ -13,14 +13,36 @@
 	import { get } from '#lib/shared/api/client.js';
 	import type { VmListResult } from '#lib/features/vms/list.svelte.js';
 	import { getSessionContext } from '#lib/features/auth/session.svelte.js';
+	import { docLocale, getLocaleContext } from '#lib/features/chrome/locale.svelte.js';
+	import type { DocSummary } from '#lib/features/docs/docs.svelte.js';
 	import { getChromeContext } from './chrome.svelte';
-	import { filterItems, navigationItems, readRecent, rememberRecent, type PaletteItem } from './command-palette';
+	import { docItems, filterItems, navigationItems, readRecent, rememberRecent, type PaletteItem } from './command-palette';
 
 	const MACHINE_LIMIT = 8;
 	const MACHINE_DEBOUNCE_MS = 150;
+	const DOC_LIMIT = 5;
 
 	const chrome = getChromeContext();
 	const session = getSessionContext();
+	const locale = getLocaleContext();
+
+	// Help articles: the index is fetched once, on the first opening. A failure
+	// only means no article items, so the palette keeps working.
+	let docPages = $state.raw<DocSummary[]>([]);
+	let docsRequested = false;
+	$effect(() => {
+		if (!chrome.paletteOpen || docsRequested) return;
+		docsRequested = true;
+		void loadDocs();
+	});
+
+	async function loadDocs(): Promise<void> {
+		try {
+			docPages = await get<DocSummary[]>('/api/v1/docs');
+		} catch {
+			docsRequested = false;
+		}
+	}
 
 	let query = $state('');
 	let activeIndex = $state(0);
@@ -34,13 +56,16 @@
 		recent: () => m['palette.groupRecent'](),
 		goto: () => m['palette.groupGoto'](),
 		admin: () => m['palette.groupAdmin'](),
+		docs: () => m['palette.groupDocs'](),
 		machines: () => m['palette.groupMachines']()
 	};
 
 	const pages = $derived(filterItems(navigationItems(session.isAdmin), query));
-	const results = $derived([...(query.trim() === '' ? recent : []), ...pages, ...machines]);
+	// Articles only match a typed query: the empty palette stays recent + pages.
+	const docs = $derived(query.trim() === '' ? [] : filterItems(docItems(docPages, session.isAdmin, docLocale(locale.current)), query).slice(0, DOC_LIMIT));
+	const results = $derived([...(query.trim() === '' ? recent : []), ...pages, ...docs, ...machines]);
 	const groups = $derived(
-		(['recent', 'goto', 'admin', 'machines'] as const)
+		(['recent', 'goto', 'admin', 'docs', 'machines'] as const)
 			.map((group) => ({ group, items: results.filter((item) => item.group === group) }))
 			.filter((entry) => entry.items.length > 0)
 	);
