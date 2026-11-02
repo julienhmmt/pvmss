@@ -1,8 +1,9 @@
 <script lang="ts">
-	import type { PoolDetail, PoolMemberVM } from './pool-detail.svelte';
+	import type { PoolDetail, PoolMemberVM, ResetPoolCredentials } from './pool-detail.svelte';
 	import { resolve } from '$app/paths';
 	import { formatBytes } from '#lib/shared/format-bytes.js';
 	import DeletePoolConfirm from './DeletePoolConfirm.svelte';
+	import ResetPoolPasswordDialog from './ResetPoolPasswordDialog.svelte';
 	import PoolQuotaOverride from './PoolQuotaOverride.svelte';
 	import type { QuotaOverride } from '#lib/features/quota-overrides/quota-overrides.js';
 	import Alert from '#lib/shared/ui/Alert.svelte';
@@ -38,6 +39,8 @@
 		onUpdateComment: (comment: string) => Promise<void>;
 		onDelete: () => Promise<boolean>;
 		onDeleted: (userDeleted: boolean) => void;
+		resetting: boolean;
+		onResetPassword: (password: string) => Promise<ResetPoolCredentials>;
 	}
 
 	let {
@@ -57,7 +60,9 @@
 		onRefresh,
 		onUpdateComment,
 		onDelete,
-		onDeleted
+		onDeleted,
+		resetting,
+		onResetPassword
 	}: Props = $props();
 
 	let editingComment = $state(false);
@@ -79,6 +84,7 @@
 	}
 
 	let showDelete = $state(false);
+	let showReset = $state(false);
 
 	const vmsPager = createPagination('pool-vms', () => detail?.vms ?? []);
 	const activityPager = createPagination('pool-activity', () => detail?.activity ?? []);
@@ -199,6 +205,19 @@
 					<div>
 						<dt class="text-xs text-muted-foreground">{m['admin.pools.username']()}</dt>
 						<dd class="mt-1 break-all font-mono">{detail.username}</dd>
+						{#if detail.managed}
+							<dd class="mt-2">
+								<Button
+									size="sm"
+									variant="secondary"
+									label={m['admin.poolDetail.resetLabel']({ username: detail.username })}
+									onclick={() => (showReset = true)}
+									data-testid="pool-reset-open"
+								>
+									{m['admin.poolDetail.resetPassword']()}
+								</Button>
+							</dd>
+						{/if}
 					</div>
 					<div>
 						<dt class="text-xs text-muted-foreground">{m['admin.pools.poolName']()}</dt>
@@ -370,5 +389,15 @@
 		error={deleteError}
 		onClose={() => (showDelete = false)}
 		onConfirm={confirmDelete}
+	/>
+{/if}
+
+{#if showReset && detail}
+	<ResetPoolPasswordDialog
+		open={true}
+		username={detail.username}
+		saving={resetting}
+		onClose={() => (showReset = false)}
+		onReset={onResetPassword}
 	/>
 {/if}

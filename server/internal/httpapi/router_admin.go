@@ -63,8 +63,6 @@ func registerAdminRoutes(mux *http.ServeMux, cfg RouterConfig, adminProtect admi
 // registerAdminAccountRoutes wires the owner-only management of DB-backed
 // local administrators. The admin guard runs first; each handler then checks
 // that the caller is the bootstrap owner.
-//
-//nolint:dupl // registration blocks for distinct handlers stay symmetric on purpose
 func registerAdminAccountRoutes(mux *http.ServeMux, adminProtect adminRouteProtect, h *AdminAccounts) {
 	mux.Handle("GET /api/v1/admin/accounts", adminProtect(http.MethodGet, http.HandlerFunc(h.ServeList)))
 	mux.Handle("POST /api/v1/admin/accounts", adminProtect(http.MethodPost, http.HandlerFunc(h.ServeCreate)))
@@ -123,7 +121,7 @@ func registerAdminQuotaOverrideRoutes(mux *http.ServeMux, adminProtect adminRout
 }
 
 // registerAdminPoolRoutes wires the admin pool endpoints (create, list,
-// detail, comment update, cascade delete). Admin-only.
+// detail, comment update, password reset, cascade delete). Admin-only.
 //
 //nolint:dupl // registration blocks for distinct handlers stay symmetric on purpose
 func registerAdminPoolRoutes(mux *http.ServeMux, adminProtect adminRouteProtect, h *AdminPools) {
@@ -131,6 +129,7 @@ func registerAdminPoolRoutes(mux *http.ServeMux, adminProtect adminRouteProtect,
 	mux.Handle("GET /api/v1/admin/pools/{name}", adminProtect(http.MethodGet, http.HandlerFunc(h.ServeDetail)))
 	mux.Handle("POST /api/v1/admin/pools", adminProtect(http.MethodPost, http.HandlerFunc(h.ServeCreate)))
 	mux.Handle("PATCH /api/v1/admin/pools/{name}", adminProtect(http.MethodPatch, http.HandlerFunc(h.ServeUpdate)))
+	mux.Handle("PUT /api/v1/admin/pools/{name}/password", adminProtect(http.MethodPut, http.HandlerFunc(h.ServeResetPassword)))
 	mux.Handle("DELETE /api/v1/admin/pools/{name}", adminProtect(http.MethodDelete, http.HandlerFunc(h.ServeDelete)))
 }
 
@@ -159,7 +158,7 @@ func registerAdminOpsRoutes(mux *http.ServeMux, adminProtect adminRouteProtect, 
 // registerAdminClusterRoutes wires the admin cluster management endpoints
 // (list, create, update, test, delete). Admin-only.
 //
-
+//nolint:dupl // registration blocks for distinct handlers stay symmetric on purpose
 func registerAdminClusterRoutes(mux *http.ServeMux, adminProtect adminRouteProtect, h *AdminClusters) {
 	mux.Handle("GET /api/v1/admin/clusters", adminProtect(http.MethodGet, http.HandlerFunc(h.ServeList)))
 	mux.Handle("POST /api/v1/admin/clusters", adminProtect(http.MethodPost, http.HandlerFunc(h.ServeCreate)))

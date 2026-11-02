@@ -99,9 +99,9 @@ func (p Proxmox) EnsurePoolUser(ctx context.Context, pool, password string) (str
 	}
 
 	_, err = rest.do(ctx, http.MethodPost, "/access/users", url.Values{
-		"userid":   {username},
-		"password": {password},
-		"comment":  {"PVMSS self-service user for pool " + pool},
+		"userid":            {username},
+		proxmoxFormPassword: {password},
+		"comment":           {"PVMSS self-service user for pool " + pool},
 	})
 	if err != nil {
 		return "", err
@@ -203,6 +203,20 @@ func (p Proxmox) DeletePool(ctx context.Context, poolID string) error {
 	_, _ = rest.do(ctx, http.MethodPut, "/access/acl", url.Values{"path": {"/pool/" + poolID}, actionDelete: {"1"}})
 
 	return nil
+}
+
+// SetUserPassword implements Client: PUT /access/password under the service
+// credential. The same endpoint backs self-service changes (ChangePassword);
+// here the caller's Realm.AllocateUser privilege on the user's realm is what
+// lets it rotate someone else's secret. Note PUT /access/users/{userid}
+// silently ignores a password field - this endpoint is the only working path.
+func (p Proxmox) SetUserPassword(ctx context.Context, username, password string) error {
+	_, err := p.rest().do(ctx, http.MethodPut, "/access/password", url.Values{
+		"userid":            {username},
+		proxmoxFormPassword: {password},
+	})
+
+	return err
 }
 
 // DeleteUser implements Client. Best-effort by contract (pools/delete.go's

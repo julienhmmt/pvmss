@@ -81,6 +81,10 @@ type Client interface {
 	DeletePool(ctx context.Context, poolID string) error
 	// UpdatePoolComment replaces a pool's comment. ErrNotFound on an unknown pool.
 	UpdatePoolComment(ctx context.Context, poolID, comment string) error
+	// SetUserPassword rotates a PVE user's password with the service
+	// credential, no old secret required - unlike ChangePassword, which
+	// re-authenticates as the user for self-service changes.
+	SetUserPassword(ctx context.Context, username, password string) error
 	DeleteUser(ctx context.Context, username string) error
 	// StorageFreeSpace returns the available bytes on a storage backend on a
 	// node. Used by the create path's live disk-space

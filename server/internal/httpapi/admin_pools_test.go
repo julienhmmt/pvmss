@@ -10,6 +10,7 @@ import (
 	"pvmss/server/internal/cluster"
 	"pvmss/server/internal/httpapi"
 	"pvmss/server/internal/inventory"
+	"pvmss/server/internal/store"
 	"slices"
 	"strings"
 	"testing"
@@ -232,6 +233,7 @@ type adminPoolDetail struct {
 type adminPoolActivityEntry struct {
 	Actor  string `json:"actor"`
 	Action string `json:"action"`
+	Detail string `json:"detail"`
 }
 
 // TestAdminPools_DetailManagedPool verifies the detail endpoint aggregates
@@ -316,6 +318,223 @@ func TestAdminPools_DetailNotFound(t *testing.T) {
 	}
 }
 
+// TestAdminPools_ResetPasswordRotatesPoolUser verifies the managed pool user's
+// password can be rotated to a server-generated or an admin-supplied secret,
+// and that the new password authenticates against the cluster.
+//
+//nolint:paralleltest // serial: shared fake fixtures
+func TestAdminPools_ResetPasswordRotatesPoolUser(t *testing.T) {
+	handler, authHandler := newAdminPoolsHandler(t)
+	cookie := adminCookie(t, authHandler)
+
+	if rec := adminPoolsRequest(t, handler.ServeCreate, http.MethodPost, "/api/v1/admin/pools", cookie, `{"name":"team-r"}`); rec.Code != http.StatusCreated {
+		t.Fatalf("create status = %d: %s", rec.Code, rec.Body.String())
+	}
+
+	rec := adminPoolsRequest(t, handler.ServeResetPassword, http.MethodPut, "/api/v1/admin/pools/pvmss-team-r/password?cluster=default", cookie, `{}`)
+	if rec.Code != http.StatusOK {
+		t.Fatalf("reset status = %d: %s", rec.Code, rec.Body.String())
+	}
+	var rotated struct {
+		Username string `json:"username"`
+		Password string `json:"password"`
+	}
+	if err := json.Unmarshal(rec.Body.Bytes(), &rotated); err != nil {
+		t.Fatalf("decode reset: %v", err)
+	}
+	if rotated.Username != "pvmss-team-r@pve" || len(rotated.Password) < 8 {
+		t.Fatalf("rotated = %+v, want pvmss-team-r@pve with a generated password", rotated)
+	}
+	if _, err := (cluster.Fake{}).Authenticate(context.Background(), rotated.Username, rotated.Password); err != nil {
+		t.Fatalf("generated password does not authenticate: %v", err)
+	}
+
+	rec = adminPoolsRequest(t, handler.ServeResetPassword, http.MethodPut, "/api/v1/admin/pools/pvmss-team-r/password?cluster=default", cookie, `{"password":"supplied-secret-1"}`)
+	if rec.Code != http.StatusOK {
+		t.Fatalf("manual reset status = %d: %s", rec.Code, rec.Body.String())
+	}
+	if _, err := (cluster.Fake{}).Authenticate(context.Background(), rotated.Username, "supplied-secret-1"); err != nil {
+		t.Fatalf("supplied password does not authenticate: %v", err)
+	}
+	if _, err := (cluster.Fake{}).Authenticate(context.Background(), rotated.Username, rotated.Password); err == nil {
+		t.Fatal("previous password still authenticates after rotation")
+	}
+}
+
+// TestAdminPools_ResetPasswordEmptyBody verifies a bodyless PUT generates a
+// password, matching the "absent means generate" contract.
+//
+//nolint:paralleltest // serial: shared fake fixtures
+func TestAdminPools_ResetPasswordEmptyBody(t *testing.T) {
+	handler, authHandler := newAdminPoolsHandler(t)
+	cookie := adminCookie(t, authHandler)
+
+	if rec := adminPoolsRequest(t, handler.ServeCreate, http.MethodPost, "/api/v1/admin/pools", cookie, `{"name":"team-b"}`); rec.Code != http.StatusCreated {
+		t.Fatalf("create status = %d: %s", rec.Code, rec.Body.String())
+	}
+
+	rec := adminPoolsRequest(t, handler.ServeResetPassword, http.MethodPut, "/api/v1/admin/pools/pvmss-team-b/password?cluster=default", cookie, "")
+	if rec.Code != http.StatusOK {
+		t.Fatalf("reset status = %d: %s", rec.Code, rec.Body.String())
+	}
+	var rotated struct {
+		Password string `json:"password"`
+	}
+	if err := json.Unmarshal(rec.Body.Bytes(), &rotated); err != nil {
+		t.Fatalf("decode reset: %v", err)
+	}
+	if len(rotated.Password) < 8 {
+		t.Fatalf("empty body should generate a password, got %q", rotated.Password)
+	}
+}
+
+// TestAdminPools_ResetPasswordInternalError verifies a local store fault is
+// reported as internal_error, not as an upstream reset_failed.
+//
+//nolint:paralleltest // serial: shared fake fixtures
+func TestAdminPools_ResetPasswordInternalError(t *testing.T) {
+	handler, authHandler, st := newAdminPoolsHandlerWithStore(t)
+	cookie := adminCookie(t, authHandler)
+
+	if rec := adminPoolsRequest(t, handler.ServeCreate, http.MethodPost, "/api/v1/admin/pools", cookie, `{"name":"team-e"}`); rec.Code != http.StatusCreated {
+		t.Fatalf("create status = %d: %s", rec.Code, rec.Body.String())
+	}
+	if err := st.Close(); err != nil {
+		t.Fatalf("close store: %v", err)
+	}
+
+	rec := adminPoolsRequest(t, handler.ServeResetPassword, http.MethodPut, "/api/v1/admin/pools/pvmss-team-e/password?cluster=default", cookie, `{}`)
+	if rec.Code != http.StatusInternalServerError {
+		t.Fatalf("status = %d, want 500: %s", rec.Code, rec.Body.String())
+	}
+	var body map[string]any
+	if err := json.Unmarshal(rec.Body.Bytes(), &body); err != nil {
+		t.Fatalf("decode: %v", err)
+	}
+	if got, _ := body["code"].(string); got != "internal_error" {
+		t.Fatalf("code = %q, want internal_error", got)
+	}
+}
+
+// TestAdminPools_ResetPasswordGuards verifies the gate cases: non-admin,
+// unmanaged pool, unknown pool, weak supplied password, malformed body.
+//
+//nolint:paralleltest // serial: shared fake fixtures
+func TestAdminPools_ResetPasswordGuards(t *testing.T) {
+	handler, authHandler := newAdminPoolsHandler(t)
+	admin := adminCookie(t, authHandler)
+
+	if rec := adminPoolsRequest(t, handler.ServeCreate, http.MethodPost, "/api/v1/admin/pools", admin, `{"name":"team-g"}`); rec.Code != http.StatusCreated {
+		t.Fatalf("create status = %d: %s", rec.Code, rec.Body.String())
+	}
+
+	alice := loginCookie(t, authHandler, `{"username":"alice","password":"pvmss-alice"}`)
+	if rec := adminPoolsRequest(t, handler.ServeResetPassword, http.MethodPut, "/api/v1/admin/pools/pvmss-team-g/password?cluster=default", alice, `{}`); rec.Code != http.StatusForbidden {
+		t.Fatalf("non-admin status = %d, want 403", rec.Code)
+	}
+
+	for _, tc := range []struct {
+		name string
+		path string
+		body string
+		want int
+		code string
+	}{
+		{name: "unmanaged pool", path: "/api/v1/admin/pools/" + cluster.FakePoolAlice + "/password?cluster=default", body: `{}`, want: http.StatusConflict, code: "not_managed"},
+		{name: "unknown pool", path: "/api/v1/admin/pools/pool-nope/password?cluster=default", body: `{}`, want: http.StatusNotFound, code: "not_found"},
+		{name: "weak supplied password", path: "/api/v1/admin/pools/pvmss-team-g/password?cluster=default", body: `{"password":"short"}`, want: http.StatusBadRequest, code: "weak_password"},
+		{name: "broken JSON body", path: "/api/v1/admin/pools/pvmss-team-g/password?cluster=default", body: `{"password":`, want: http.StatusBadRequest, code: "invalid_request"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			rec := adminPoolsRequest(t, handler.ServeResetPassword, http.MethodPut, tc.path, admin, tc.body)
+			if rec.Code != tc.want {
+				t.Fatalf("status = %d, want %d: %s", rec.Code, tc.want, rec.Body.String())
+			}
+			var body map[string]any
+			if err := json.Unmarshal(rec.Body.Bytes(), &body); err != nil {
+				t.Fatalf("decode: %v", err)
+			}
+			if got, _ := body["code"].(string); got != tc.code {
+				t.Fatalf("code = %q, want %q", got, tc.code)
+			}
+		})
+	}
+}
+
+// TestAdminPools_ResetPasswordRecreatesMissingUser verifies reset repairs
+// drift: a pool user deleted directly in Proxmox is recreated and can sign in
+// with the new password.
+//
+//nolint:paralleltest // serial: shared fake fixtures
+func TestAdminPools_ResetPasswordRecreatesMissingUser(t *testing.T) {
+	handler, authHandler := newAdminPoolsHandler(t)
+	cookie := adminCookie(t, authHandler)
+
+	if rec := adminPoolsRequest(t, handler.ServeCreate, http.MethodPost, "/api/v1/admin/pools", cookie, `{"name":"team-m"}`); rec.Code != http.StatusCreated {
+		t.Fatalf("create status = %d: %s", rec.Code, rec.Body.String())
+	}
+	if err := (cluster.Fake{}).DeleteUser(context.Background(), "pvmss-team-m@pve"); err != nil {
+		t.Fatalf("DeleteUser: %v", err)
+	}
+	aclCalls := func() int {
+		count := 0
+		for _, call := range cluster.FakeCalls() {
+			if call.Action == "set_acl" && call.Name == "pvmss-team-m@pve" {
+				count++
+			}
+		}
+		return count
+	}
+	before := aclCalls()
+
+	rec := adminPoolsRequest(t, handler.ServeResetPassword, http.MethodPut, "/api/v1/admin/pools/pvmss-team-m/password?cluster=default", cookie, `{"password":"repaired-secret-1"}`)
+	if rec.Code != http.StatusOK {
+		t.Fatalf("reset status = %d: %s", rec.Code, rec.Body.String())
+	}
+	if _, err := (cluster.Fake{}).Authenticate(context.Background(), "pvmss-team-m@pve", "repaired-secret-1"); err != nil {
+		t.Fatalf("recreated user does not authenticate: %v", err)
+	}
+	if got := aclCalls(); got != before+1 {
+		t.Fatalf("set_acl calls = %d, want %d - reset must re-grant the pool ACL", got, before+1)
+	}
+}
+
+// TestAdminPools_ResetPasswordAuditOmitsPassword verifies the admin audit row
+// records the rotation without carrying the new password.
+//
+//nolint:paralleltest // serial: shared fake fixtures
+func TestAdminPools_ResetPasswordAuditOmitsPassword(t *testing.T) {
+	handler, authHandler := newAdminPoolsHandler(t)
+	cookie := adminCookie(t, authHandler)
+
+	if rec := adminPoolsRequest(t, handler.ServeCreate, http.MethodPost, "/api/v1/admin/pools", cookie, `{"name":"team-a"}`); rec.Code != http.StatusCreated {
+		t.Fatalf("create status = %d: %s", rec.Code, rec.Body.String())
+	}
+	rec := adminPoolsRequest(t, handler.ServeResetPassword, http.MethodPut, "/api/v1/admin/pools/pvmss-team-a/password?cluster=default", cookie, `{"password":"audit-secret-1"}`)
+	if rec.Code != http.StatusOK {
+		t.Fatalf("reset status = %d: %s", rec.Code, rec.Body.String())
+	}
+
+	detail := adminPoolsRequest(t, handler.ServeDetail, http.MethodGet, "/api/v1/admin/pools/pvmss-team-a?cluster=default", cookie, "")
+	if detail.Code != http.StatusOK {
+		t.Fatalf("detail status = %d: %s", detail.Code, detail.Body.String())
+	}
+	var payload adminPoolDetail
+	if err := json.Unmarshal(detail.Body.Bytes(), &payload); err != nil {
+		t.Fatalf("decode detail: %v", err)
+	}
+	for _, entry := range payload.Activity {
+		if entry.Action != "admin.pools.password_reset" {
+			continue
+		}
+		if strings.Contains(entry.Detail, "audit-secret-1") {
+			t.Fatalf("audit detail leaks the password: %s", entry.Detail)
+		}
+		return
+	}
+	t.Fatalf("activity lacks a password_reset entry: %+v", payload.Activity)
+}
+
 // listAdminPools issues a GET to the admin pools list endpoint and decodes the
 // response. Extracted from TestAdminPools_ListExposesManagedFlag to keep its
 // cyclomatic complexity under the gocyclo threshold.
@@ -337,6 +556,14 @@ func listAdminPools(t *testing.T, handler *httpapi.AdminPools, cookie *http.Cook
 
 func newAdminPoolsHandler(t *testing.T) (*httpapi.AdminPools, *httpapi.Auth) {
 	t.Helper()
+	handler, authHandler, _ := newAdminPoolsHandlerWithStore(t)
+	return handler, authHandler
+}
+
+// newAdminPoolsHandlerWithStore additionally returns the handler's store so a
+// test can break it (close) and exercise the internal_error mapping.
+func newAdminPoolsHandlerWithStore(t *testing.T) (*httpapi.AdminPools, *httpapi.Auth, *store.Store) {
+	t.Helper()
 	t.Cleanup(cluster.ResetFake)
 	authHandler := newAuthHandler(t)
 	client := cluster.Fake{}
@@ -351,7 +578,7 @@ func newAdminPoolsHandler(t *testing.T) (*httpapi.AdminPools, *httpapi.Auth) {
 	provider := vmCreateClientProvider{clients: map[string]cluster.Client{auditTestCluster: client}}
 	registry := inventory.NewRegistryFromIndexes(map[string]*inventory.Index{auditTestCluster: &index})
 	handler := httpapi.NewAdminPoolsWithRegistry(httpapi.AdminPoolsRegistryDeps{Auth: authHandler, Clients: provider, Source: registry, Projection: projection, Writer: client, Audit: st, Refresher: worker, Store: st, Policy: testPolicyService(st, projection), Log: slog.Default()})
-	return handler, authHandler
+	return handler, authHandler, st
 }
 
 func adminPoolsRequest(t *testing.T, handler http.HandlerFunc, method, path string, cookie *http.Cookie, body string) *httptest.ResponseRecorder {
@@ -361,12 +588,16 @@ func adminPoolsRequest(t *testing.T, handler http.HandlerFunc, method, path stri
 		request.Header.Set("Content-Type", "application/json")
 	}
 	parts := strings.Split(strings.Trim(path, "/"), "/")
-	if len(parts) >= 2 && parts[len(parts)-2] == "pools" {
-		last := parts[len(parts)-1]
-		if idx := strings.IndexByte(last, '?'); idx >= 0 {
-			last = last[:idx]
+	for index, part := range parts {
+		if part != "pools" || index+1 >= len(parts) {
+			continue
 		}
-		request.SetPathValue("name", last)
+		name := parts[index+1]
+		if idx := strings.IndexByte(name, '?'); idx >= 0 {
+			name = name[:idx]
+		}
+		request.SetPathValue("name", name)
+		break
 	}
 	if cookie != nil {
 		request.AddCookie(cookie)

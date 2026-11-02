@@ -26,6 +26,8 @@ function buildProps(detail: PoolDetail | null, overrides: Record<string, unknown
 			onRefresh: noop,
 			onDelete: () => Promise.resolve(true),
 			onDeleted: noop,
+			resetting: false,
+			onResetPassword: () => Promise.resolve({ username: 'pvmss-alice@pve', password: 'gen-1' }),
 			...overrides
 		}
 	};
@@ -139,6 +141,37 @@ describe('PoolDetailPage', () => {
 
 		expect(onDelete).toHaveBeenCalled();
 		expect(onDeleted).toHaveBeenCalledWith(false);
+		document.body.innerHTML = '';
+	});
+
+	it('offers password reset only for managed pools', () => {
+		mount(PoolDetailPage, buildProps(detail()));
+		expect(document.querySelector('[data-testid="pool-reset-open"]')).not.toBeNull();
+		document.body.innerHTML = '';
+
+		const unmanaged = detail({ managed: false });
+		delete unmanaged.createdAt;
+		mount(PoolDetailPage, buildProps(unmanaged));
+		expect(document.querySelector('[data-testid="pool-reset-open"]')).toBeNull();
+		document.body.innerHTML = '';
+	});
+
+	it('opens the reset dialog and forwards the generated-mode reset', async () => {
+		const onResetPassword = vi.fn(() =>
+			Promise.resolve({ username: 'pvmss-alice@pve', password: 'gen-1' })
+		);
+		mount(PoolDetailPage, buildProps(detail(), { onResetPassword }));
+
+		document.querySelector<HTMLButtonElement>('[data-testid="pool-reset-open"]')?.click();
+		await tick();
+
+		const submit = document.querySelector<HTMLElement>('[data-testid="pool-reset-submit"]');
+		expect(submit).not.toBeNull();
+		submit?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+		await new Promise((resolve) => setTimeout(resolve, 0));
+		await tick();
+
+		expect(onResetPassword).toHaveBeenCalledWith('');
 		document.body.innerHTML = '';
 	});
 });

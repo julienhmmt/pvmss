@@ -116,7 +116,7 @@ func parseIPConfig(raw string, result *CloudInitConfig) {
 func (p Proxmox) SetCloudInitPassword(ctx context.Context, node string, vmid int, user, password string) error {
 	form := url.Values{}
 	form.Set("username", user)
-	form.Set("password", password)
+	form.Set(proxmoxFormPassword, password)
 
 	_, err := p.rest().do(ctx, http.MethodPut, fmt.Sprintf("/nodes/%s/qemu/%d/agent/set-user-password", url.PathEscape(node), vmid), form)
 	if err != nil {

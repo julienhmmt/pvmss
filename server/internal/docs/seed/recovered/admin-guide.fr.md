@@ -24,8 +24,11 @@ sous `/admin`.
 
 ## Tableau de bord
 
-`/admin` résume le cluster : état et charge des nœuds, nombre de VM par état,
-version en cours et heure du dernier rafraîchissement d'inventaire.
+`/admin` résume le cluster : un bloc « nécessite attention » (cluster
+injoignable, nœud hors ligne, CPU/RAM élevés, stockage presque plein, pools
+à leur quota, demandes de quota en attente), l'état et la charge des nœuds,
+le nombre de VM par état, la version en cours et l'heure du dernier
+rafraîchissement d'inventaire.
 
 ## Informations de l'application (App Info)
 
@@ -66,7 +69,7 @@ Optionnelles :
 - `PVMSS_WEB_DIR` - emplacement de la SPA compilée (par défaut relatif à l'exécutable).
 - `ADMIN_PASSWORD_HASH` - si défini, doit être un hash bcrypt (`$2…`) ; initialise l'administrateur bootstrap de PVMSS, le seul compte autorisé à gérer les autres administrateurs locaux. Son mot de passe se change en modifiant cette valeur puis en redémarrant.
 - `PVMSS_COOKIE_SECURE` - `true` par défaut ; `false` uniquement derrière du HTTP en clair pour un essai local.
-- `PVMSS_TRUSTED_PROXY_HOPS` - nombre de reverse proxies devant PVMSS, pour déduire l'IP client (limitation de débit, audit) - défaut `1`.
+- `PVMSS_TRUSTED_PROXY_HOPS` - nombre de reverse proxies devant PVMSS, pour déduire l'IP client (limitation de débit, audit) - défaut `0` (le chart Helm met `1`).
 - `PVMSS_INVENTORY_REFRESH_INTERVAL` - période de rafraîchissement d'inventaire (défaut `30s`).
 - `PVMSS_INVENTORY_MANUAL_REFRESH_MIN_INTERVAL` - délai minimal entre deux rafraîchissements manuels (défaut `5s`).
 - `PVMSS_INVENTORY_REFRESH_TIMEOUT` - délai maximal d'un rafraîchissement (défaut `15s`).
@@ -159,15 +162,17 @@ Le **tag VLAN d'isolation** de la politique applique un VLAN à chaque NIC cré�
 - un pool Proxmox dédié à cet utilisateur,
 - une ACL liant l'utilisateur au rôle partagé `PVMSSUser` sur ce pool.
 
-Vous saisissez un nom court (1 à 32 caractères alphanumériques minuscules avec tirets internes) ; PVMSS le préfixe en `pvmss-`, donc le pool Proxmox est `pvmss-<nom>` et l'utilisateur `pvmss-<nom>@pve`. Le mot de passe de connexion est généré, affiché une seule fois dans la réponse de création, et jamais stocké - communiquez-le à l'utilisateur de façon sécurisée. Les utilisateurs ne voient que les VM de leur propre pool. Supprimer un pool supprime aussi l'utilisateur et l'ACL Proxmox ; les pools non créés par PVMSS sont refusés.
+Vous saisissez un nom court (1 à 32 caractères alphanumériques minuscules avec tirets internes) ; PVMSS le préfixe en `pvmss-`, donc le pool Proxmox est `pvmss-<nom>` et l'utilisateur `pvmss-<nom>@pve`. Le mot de passe de connexion est généré, affiché une seule fois dans la réponse de création, et jamais stocké - communiquez-le à l'utilisateur de façon sécurisée. Un mot de passe perdu ou compromis se remplace depuis la page de détail de l'utilisateur (`/admin/pools/<nom>`) : généré par défaut ou saisi à la main, affiché une seule fois, et il recrée l'utilisateur Proxmox et son ACL s'ils ont été supprimés hors de PVMSS. Les utilisateurs ne voient que les VM de leur propre pool. Supprimer un pool supprime aussi l'utilisateur et l'ACL Proxmox ; les pools non créés par PVMSS sont refusés.
 
 ## Politique (limites)
 
 `/admin/policy` est par cluster et comporte deux parties :
 
 - **Gabarit** - le plafond d'une VM : sockets, cœurs, mémoire, disque par VM, cartes réseau, snapshots, et tag VLAN d'isolation.
-- **Quota** - nombre maximal de VM par utilisateur.
+- **Quota** - nombre maximal de VM par pool par défaut. Une **surcharge par pool** donne à un pool sa propre limite sans toucher le plafond du cluster : définissez-la ou retirez-la sur la page de détail du pool (`/admin/pools/<nom>`), et relisez toutes les surcharges listées sur cette page.
 - **Plage de VMID** - premier et dernier VMID optionnels pour les nouvelles VM de ce cluster (0 et 0 = prochain identifiant libre de Proxmox). Le plus petit identifiant libre de la plage est utilisé, en évitant ceux déjà pris sur le cluster.
+
+Un utilisateur arrivé à son quota peut déposer une **demande d'augmentation** depuis la page de création. Les demandes en attente mènent les alertes du tableau de bord et le compteur de la barre latérale, et se décident sur `/admin/quota-requests` : en approuver une écrit une surcharge pour le pool du demandeur (éventuellement avec un nombre différent de celui demandé) ; refuser ne change rien. Supprimer un pool géré supprime sa surcharge.
 
 `/admin/policy/nodes` plafonne ce que PVMSS peut allouer au total sur un nœud (VM, vCPU, RAM, disque) et montre l'usage courant face à la capacité physique. Tout est appliqué côté serveur avant tout appel à Proxmox : une demande au-delà d'une limite est refusée tôt avec un message clair.
 
@@ -175,7 +180,7 @@ Vous saisissez un nom court (1 à 32 caractères alphanumériques minuscules ave
 
 Au-delà des réglages de la politique, l'application elle-même impose :
 
-- **Limitation de débit** - 10 requêtes/minute par IP sur les endpoints d'authentification ; 30 écritures/minute par utilisateur sur les routes VM ; 120 lectures de statut/minute par utilisateur ; 60 écritures/minute par utilisateur sur les routes admin ; 10 tests de cluster/minute.
+- **Limitation de débit** - 10 requêtes/minute par IP sur les endpoints d'authentification ; 30 écritures/minute par utilisateur sur les routes VM ; 120 lectures de statut/minute par utilisateur ; 300 lectures de tâches/minute par utilisateur ; 60 écritures/minute par utilisateur sur les routes admin ; 10 tests de cluster/minute. `PVMSS_RATE_LIMIT_MAX` relève tous les plafonds intégrés.
 - **Actions groupées** - 100 VM maximum par requête.
 - **Nom de VM** - un nom d'hôte en minuscules, 63 caractères maximum, unique dans le pool du propriétaire ; **description** - 512 caractères maximum.
 - **Nom de snapshot** - une lettre puis lettres, chiffres, tirets ou underscores, 2 à 40 caractères ; `current` est réservé.
@@ -184,11 +189,11 @@ Au-delà des réglages de la politique, l'application elle-même impose :
 
 ## Les templates de VM portent les accès
 
-PVMSS n'ajoute ni clé SSH ni mot de passe aux VM qu'il crée : cloud-init
-(clés par VM, templates cloud-init administrateur, images cloud) est en pause
-tant qu'il n'est pas fiable. Un clone garde exactement ce que porte son
-template Proxmox : préparez donc chaque template approuvé avec les accès dont
-les utilisateurs auront besoin :
+PVMSS n'ajoute ni clé SSH ni mot de passe aux VM qu'il crée : l'écriture
+cloud-init (clés par VM, templates cloud-init administrateur, images cloud) a
+été supprimée. Un clone garde exactement ce que porte son template Proxmox :
+préparez donc chaque template approuvé avec les accès dont les utilisateurs
+auront besoin :
 
 1. Construisez le template dans Proxmox (par exemple depuis une image cloud :
    importez le disque, ajoutez un lecteur Cloud-Init).
@@ -196,7 +201,7 @@ les utilisateurs auront besoin :
    clé SSH publique ou un mot de passe - ou intégrez un compte directement
    dans l'image.
 3. Installez et activez `qemu-guest-agent`, pour que les VM signalent leur
-   adresse et que l'onglet **Connexion** affiche la commande SSH.
+   adresse et que l'onglet **Informations générales** affiche la commande SSH.
 4. Convertissez-le (`qm template <vmid>`) et approuvez-le dans **Templates de
    VM**.
 
@@ -231,10 +236,10 @@ Les pages intégrées sont insérées une seule fois, si elles manquent, et jama
 
 ## Limitations connues
 
-- PVMSS cible les clusters Proxmox VE 8.x/9.x (et les nœuds autonomes).
+- PVMSS cible les clusters Proxmox VE 9.x et plus récents (et les nœuds autonomes) ; PVE 8 et antérieurs ne sont pas pris en charge à cause des changements de rôles et permissions de PVE 9.
 - Les comptes Proxmox ne peuvent se connecter que via les realms `pve` et `pam` ; la connexion aux realms OIDC n'est pas encore prise en charge. Utilisez en attendant un administrateur local ou un compte `pve`/`pam`.
 - Les comptes sont provisionnés via `/admin/pools` côté Proxmox.
 - Les administrateurs peuvent migrer une VM à la fois depuis **Infrastructure > Nœuds**. La HA, la migration entre clusters et l'orchestration des sauvegardes se font directement dans Proxmox.
-- Les administrateurs créent des VM via la même interface self-service que les utilisateurs, ou directement dans Proxmox.
+- Les administrateurs ne peuvent pas créer de VM via le portail (ils n'ont pas de pool) ; ils les créent directement dans Proxmox.
 - Sauvegardes et conteneurs LXC sont gérés dans Proxmox, pas dans PVMSS.
-- Les tokens API personnels sont désactivés dans cette version : leurs routes ne sont pas enregistrées, la page des tokens ne peut ni créer ni lister de jetons.
+- Les tokens API personnels ont été supprimés : les routes et la section du profil n'existent plus.

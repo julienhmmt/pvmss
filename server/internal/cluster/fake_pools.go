@@ -138,6 +138,29 @@ func (fake Fake) UpdatePoolComment(_ context.Context, poolID, comment string) er
 	return nil
 }
 
+// SetUserPassword rotates an existing identity's password. ErrNotFound when
+// the user does not exist, mirroring the real API's rejection.
+func (fake Fake) SetUserPassword(_ context.Context, username, password string) error {
+	state := fake.stateOrDefault()
+	if fake.unavailable() {
+		return ErrUnreachable
+	}
+	state.vmMu.Lock()
+	defer state.vmMu.Unlock()
+
+	state.identMu.Lock()
+	defer state.identMu.Unlock()
+	identity, exists := state.identities[username]
+	if !exists {
+		return ErrNotFound
+	}
+	identity.password = password
+	state.identities[username] = identity
+	state.record(FakeCall{Action: "set_user_password", Name: username})
+
+	return nil
+}
+
 // DeleteUser removes a PVE identity. Tests can force a best-effort failure.
 func (fake Fake) DeleteUser(_ context.Context, username string) error {
 	state := fake.stateOrDefault()

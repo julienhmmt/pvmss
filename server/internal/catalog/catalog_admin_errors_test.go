@@ -75,6 +75,10 @@ func (errDiscoveryClient) UpdatePoolComment(_ context.Context, _, _ string) erro
 	return cluster.ErrNotImplemented
 }
 
+func (errDiscoveryClient) SetUserPassword(_ context.Context, _, _ string) error {
+	return cluster.ErrNotImplemented
+}
+
 func (errDiscoveryClient) DeleteUser(_ context.Context, _ string) error {
 	return cluster.ErrNotImplemented
 }

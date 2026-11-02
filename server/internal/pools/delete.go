@@ -54,14 +54,8 @@ func Delete(ctx context.Context, deps CascadeDeps, name string) (DeleteResult, e
 	if err := ensurePoolExists(ctx, client, name); err != nil {
 		return DeleteResult{}, err
 	}
-	if deps.Managed != nil && deps.ClusterName != "" {
-		managed, err := deps.Managed.IsPoolManaged(ctx, deps.ClusterName, name)
-		if err != nil {
-			return DeleteResult{}, err
-		}
-		if !managed {
-			return DeleteResult{}, ErrNotManaged
-		}
+	if err := requireManaged(ctx, deps.Managed, deps.ClusterName, name); err != nil {
+		return DeleteResult{}, err
 	}
 	index := projection.Load()
 	if index == nil {
@@ -84,6 +78,22 @@ func Delete(ctx context.Context, deps CascadeDeps, name string) (DeleteResult, e
 	}
 	userDeleted := deletePoolUser(ctx, client, name)
 	return DeleteResult{Status: "deleted", UserDeleted: userDeleted}, nil
+}
+
+// requireManaged refuses the operation when the pool is not recorded as
+// PVMSS-managed. A nil registry or empty cluster name skips the check.
+func requireManaged(ctx context.Context, registry *store.Store, clusterName, name string) error {
+	if registry == nil || clusterName == "" {
+		return nil
+	}
+	managed, err := registry.IsPoolManaged(ctx, clusterName, name)
+	if err != nil {
+		return err
+	}
+	if !managed {
+		return ErrNotManaged
+	}
+	return nil
 }
 
 func ensurePoolExists(ctx context.Context, client cluster.Client, name string) error {

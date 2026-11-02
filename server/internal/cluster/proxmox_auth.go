@@ -9,6 +9,9 @@ import (
 	"strings"
 )
 
+// proxmoxFormPassword is the PVE form field carrying a user password.
+const proxmoxFormPassword = "password"
+
 // Authenticate implements Client by exchanging username/password for a PVE
 // ticket (proving the credentials are correct - ErrNotFound on a rejection,
 // matching the fake's contract), then using that ticket, as that user, to
@@ -49,7 +52,7 @@ func (p Proxmox) Authenticate(ctx context.Context, username, password string) (I
 // (it IS the credential check), and a rejected login is a 401 that must map
 // to ErrNotFound (wrong credentials), not the generic wrapped-error path.
 func proxmoxTicketAuth(ctx context.Context, rest proxmoxRESTClient, username, password string) (ticket, csrf string, err error) {
-	form := url.Values{"username": {username}, "password": {password}}
+	form := url.Values{"username": {username}, proxmoxFormPassword: {password}}
 
 	req, err := http.NewRequestWithContext(ctx, http.MethodPost, rest.base+"/access/ticket", strings.NewReader(form.Encode()))
 	if err != nil {
@@ -153,8 +156,8 @@ func (p Proxmox) ChangePassword(ctx context.Context, username, oldPassword, newP
 	userRest := rest.withTicket(ticket, csrf)
 
 	_, err = userRest.do(ctx, http.MethodPut, "/access/password", url.Values{
-		"userid":   {username},
-		"password": {newPassword},
+		"userid":            {username},
+		proxmoxFormPassword: {newPassword},
 	})
 
 	return err

@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { PoolDetail } from './pool-detail.svelte';
 
-const api = vi.hoisted(() => ({ get: vi.fn() }));
+const api = vi.hoisted(() => ({ get: vi.fn(), put: vi.fn() }));
 const quota = vi.hoisted(() => ({
 	fetchQuotaOverrides: vi.fn(),
 	setQuotaOverride: vi.fn(),
@@ -10,7 +10,8 @@ const quota = vi.hoisted(() => ({
 
 vi.mock('#lib/shared/api/client.js', async (importOriginal) => ({
 	...(await importOriginal<typeof import('#lib/shared/api/client.js')>()),
-	get: api.get
+	get: api.get,
+	put: api.put
 }));
 vi.mock('#lib/features/quota-overrides/quota-overrides.js', () => quota);
 
@@ -83,5 +84,52 @@ describe('PoolDetailStore quota override', () => {
 
 		expect(quota.removeQuotaOverride).toHaveBeenCalledWith('pve', 'lab');
 		expect(api.get).toHaveBeenCalledTimes(2);
+	});
+});
+
+describe('PoolDetailStore resetPassword', () => {
+	afterEach(() => {
+		vi.clearAllMocks();
+	});
+
+	it('asks the server to generate when no password is supplied', async () => {
+		api.get.mockResolvedValue(detail);
+		quota.fetchQuotaOverrides.mockResolvedValue([]);
+		api.put.mockResolvedValue({ username: 'lab@pve', password: 'generated-1' });
+		const store = new PoolDetailStore();
+		await store.load('lab', 'pve');
+
+		const credentials = await store.resetPassword('');
+
+		expect(api.put).toHaveBeenCalledWith('/api/v1/admin/pools/lab/password?cluster=pve', { password: '' });
+		expect(credentials).toEqual({ username: 'lab@pve', password: 'generated-1' });
+		expect(store.resetError).toBeNull();
+	});
+
+	it('sends the admin-supplied password verbatim', async () => {
+		api.get.mockResolvedValue(detail);
+		quota.fetchQuotaOverrides.mockResolvedValue([]);
+		api.put.mockResolvedValue({ username: 'lab@pve', password: 'custom-1' });
+		const store = new PoolDetailStore();
+		await store.load('lab', 'pve');
+
+		await store.resetPassword('custom-1');
+
+		expect(api.put).toHaveBeenCalledWith('/api/v1/admin/pools/lab/password?cluster=pve', { password: 'custom-1' });
+	});
+
+	it('surfaces the API failure and rethrows so the dialog stays open', async () => {
+		api.get.mockResolvedValue(detail);
+		quota.fetchQuotaOverrides.mockResolvedValue([]);
+		const { ApiRequestError } = await import('#lib/shared/api/client.js');
+		const failure = new ApiRequestError(502, 'reset_failed', 'pool password reset failed');
+		api.put.mockRejectedValue(failure);
+		const store = new PoolDetailStore();
+		await store.load('lab', 'pve');
+
+		await expect(store.resetPassword('')).rejects.toThrow(failure);
+
+		expect(store.resetError).toBe(failure.message);
+		expect(store.resetting).toBe(false);
 	});
 });

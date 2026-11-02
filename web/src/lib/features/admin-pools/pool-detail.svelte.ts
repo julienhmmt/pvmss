@@ -1,4 +1,4 @@
-import { del, get, patch, ApiRequestError } from '#lib/shared/api/client.js';
+import { del, get, patch, put, ApiRequestError } from '#lib/shared/api/client.js';
 import { fetchClusterOptions } from '#lib/shared/clusters.js';
 import { getContext, setContext } from 'svelte';
 import { m } from '#lib/paraglide/messages.js';
@@ -55,6 +55,14 @@ interface DeletePoolResponse {
 	userDeleted: boolean;
 }
 
+/** ResetPoolCredentials is the one-time payload returned by the password
+ *  reset: the new secret is never stored server-side and only lives in the
+ *  response body. */
+export interface ResetPoolCredentials {
+	username: string;
+	password: string;
+}
+
 const ADMIN_POOL_DETAIL_CONTEXT_KEY = Symbol('admin-pool-detail');
 
 /** Manages the admin pool detail view: one pool's identity, managed marker,
@@ -72,6 +80,8 @@ export class PoolDetailStore {
 	override = $state.raw<QuotaOverride | null>(null);
 	overrideSaving = $state.raw(false);
 	overrideError = $state.raw<string | null>(null);
+	resetting = $state.raw(false);
+	resetError = $state.raw<string | null>(null);
 	cluster = $state('');
 
 	/** Loads the named pool. The cluster comes from the list page's
@@ -161,6 +171,26 @@ export class PoolDetailStore {
 			throw err;
 		} finally {
 			this.savingComment = false;
+		}
+	}
+
+	/** Rotates the pool user's sign-in password. An empty password asks the
+	 *  server to generate one; the resolved credential is shown once. Throws
+	 *  so the dialog can keep the form open on failure. */
+	async resetPassword(password: string = ''): Promise<ResetPoolCredentials> {
+		if (!this.detail) throw new Error('pool detail not loaded');
+		this.resetting = true;
+		this.resetError = null;
+		try {
+			return await put<ResetPoolCredentials>(
+				`/api/v1/admin/pools/${encodeURIComponent(this.detail.name)}/password?cluster=${encodeURIComponent(this.cluster)}`,
+				{ password }
+			);
+		} catch (err) {
+			this.resetError = err instanceof ApiRequestError ? err.message : m['admin.poolDetail.resetError']();
+			throw err;
+		} finally {
+			this.resetting = false;
 		}
 	}
 

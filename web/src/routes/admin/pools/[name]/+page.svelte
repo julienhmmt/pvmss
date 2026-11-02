@@ -34,4 +34,6 @@
 	onDelete={() => store.remove()}
 	onDeleted={(userDeleted) =>
 		void goto(userDeleted ? resolve('/admin/pools') : `${resolve('/admin/pools')}?userDeleteFailed=${encodeURIComponent(poolName)}`)}
+	resetting={store.resetting}
+	onResetPassword={(password) => store.resetPassword(password)}
 />

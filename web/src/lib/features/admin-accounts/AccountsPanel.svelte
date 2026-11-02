@@ -15,13 +15,12 @@
 	import TextField from '#lib/shared/ui/TextField.svelte';
 	import { getToastContext } from '#lib/shared/ui/toast.svelte.js';
 	import { formatDateTime } from '#lib/shared/format-date.js';
+	import { newPasswordError } from '#lib/shared/new-password.js';
 	import { m } from '#lib/paraglide/messages.js';
 
 	const store = getAdminAccountsContext();
 	const toast = getToastContext();
 
-	const PASSWORD_MIN_LENGTH = 8;
-	const PASSWORD_MAX_BYTES = 72;
 	const USERNAME_MIN_LENGTH = 3;
 	const USERNAME_MAX_LENGTH = 32;
 	const USERNAME_PATTERN = /^[a-z0-9](?:[a-z0-9._-]*[a-z0-9])?$/;
@@ -54,17 +53,8 @@
 		return null;
 	});
 
-	const createPasswordError = $derived.by(() => passwordError(createPassword, createConfirm));
-	const resetPasswordError = $derived.by(() => passwordError(resetPassword, resetConfirm));
-
-	function passwordError(password: string, confirmation: string): string | null {
-		if (password.length < PASSWORD_MIN_LENGTH) return m['admin.accounts.errorPasswordTooShort']();
-		if (new TextEncoder().encode(password).length > PASSWORD_MAX_BYTES) {
-			return m['admin.accounts.errorPasswordTooLong']();
-		}
-		if (password !== confirmation) return m['admin.accounts.errorPasswordMismatch']();
-		return null;
-	}
+	const createPasswordError = $derived.by(() => newPasswordError(createPassword, createConfirm));
+	const resetPasswordError = $derived.by(() => newPasswordError(resetPassword, resetConfirm));
 
 	function isLocked(account: LocalAccount): boolean {
 		return account.lockedUntil !== undefined && new Date(account.lockedUntil).getTime() > Date.now();

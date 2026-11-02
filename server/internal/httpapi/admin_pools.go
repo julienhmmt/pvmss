@@ -5,6 +5,7 @@ import (
 	"cmp"
 	"errors"
 	"fmt"
+	"io"
 	"log/slog"
 	"maps"
 	"net/http"
@@ -330,6 +331,77 @@ func (h *AdminPools) ServeUpdate(w http.ResponseWriter, r *http.Request) {
 	writeAdminJSON(w, http.StatusOK, updatePoolRequest{Comment: comment})
 }
 
+// ServeResetPassword handles PUT /api/v1/admin/pools/{name}/password: rotates
+// the managed pool user's sign-in credential. An empty request password means
+// the server generates one; either way the new secret is returned once and
+// never stored. The call also repairs drift - a pool user deleted directly in
+// Proxmox is recreated with its ACL re-granted.
+func (h *AdminPools) ServeResetPassword(w http.ResponseWriter, r *http.Request) {
+	actor, ok := h.adminActor(w, r)
+	if !ok {
+		return
+	}
+	name := r.PathValue("name")
+	if name == "" {
+		writeAdminError(w, http.StatusBadRequest, "invalid_pool_name", msgInvalidPoolName)
+		return
+	}
+	var request resetPoolPasswordRequest
+	if err := decodeJSON(w, r, &request); err != nil && !errors.Is(err, io.EOF) {
+		writeAdminError(w, http.StatusBadRequest, "invalid_request", msgInvalidRequestBody)
+		return
+	}
+	if request.Password != "" {
+		if err := validatePassword(request.Password); err != nil {
+			writeAdminError(w, http.StatusBadRequest, "weak_password", err.Error())
+			return
+		}
+	}
+	clusterName, err := h.resolveClusterName(r)
+	if err != nil {
+		writeAdminError(w, http.StatusNotFound, "cluster_not_found", msgClusterNotFound)
+		return
+	}
+	client, err := h.clientFor(clusterName)
+	if err != nil {
+		writeAdminError(w, http.StatusNotFound, "cluster_not_found", msgClusterNotFound)
+		return
+	}
+	creds, err := pools.ResetManagedPassword(r.Context(), actor, client, h.store, clusterName, name, request.Password)
+	if err != nil {
+		h.writeResetPasswordError(w, name, err)
+		return
+	}
+	h.recordAdminAction(r, "admin.pools.password_reset", "pool", name,
+		fmt.Sprintf("reset sign-in password of pool %s on cluster %s", name, clusterName),
+		[]any{map[string]any{auditKeyCluster: clusterName, auditKeyName: name, "username": creds.Username}})
+	writeAdminJSON(w, http.StatusOK, resetPoolPasswordResponse{Username: creds.Username, Password: creds.Password})
+}
+
+// writeResetPasswordError maps the reset domain errors onto the shared admin
+// error vocabulary.
+func (h *AdminPools) writeResetPasswordError(w http.ResponseWriter, name string, err error) {
+	switch {
+	case errors.Is(err, pools.ErrForbidden):
+		writeAdminError(w, http.StatusForbidden, "forbidden", msgAdminOnly)
+	case errors.Is(err, pools.ErrNotFound):
+		writeAdminError(w, http.StatusNotFound, "not_found", fmt.Sprintf(msgPoolNotFound, name))
+	case errors.Is(err, pools.ErrNotManaged):
+		writeAdminError(w, http.StatusConflict, "not_managed", fmt.Sprintf("pool %q is not managed by PVMSS", name))
+	default:
+		// Cluster-side failures arrive wrapped as ProvisionError and map to a
+		// bad gateway; anything else (store read, password generation) is a
+		// local fault and stays an internal error.
+		if provisioningErr, ok := errors.AsType[*pools.ProvisionError](err); ok {
+			SetErrorMsg(w, "admin pool password reset step "+provisioningErr.Step+" failed", provisioningErr.Err)
+			writeAdminError(w, http.StatusBadGateway, "reset_failed", "pool password reset failed")
+			return
+		}
+		SetErrorMsg(w, "admin pool password reset failed for "+name, err)
+		writeAdminError(w, http.StatusInternalServerError, "internal_error", msgInternalServerError)
+	}
+}
+
 // ServeDelete handles DELETE /api/v1/admin/pools/{name}.
 func (h *AdminPools) ServeDelete(w http.ResponseWriter, r *http.Request) {
 	actor, ok := h.adminActor(w, r)
@@ -405,6 +477,19 @@ const maxPoolCommentLength = 255
 
 type updatePoolRequest struct {
 	Comment string `json:"comment"`
+}
+
+// resetPoolPasswordRequest carries the optional admin-supplied password; an
+// empty value asks the server to generate one.
+type resetPoolPasswordRequest struct {
+	Password string `json:"password"`
+}
+
+// resetPoolPasswordResponse is the one-time credential payload: the rotated
+// password is returned in the response body only, never persisted.
+type resetPoolPasswordResponse struct {
+	Username string `json:"username"`
+	Password string `json:"password"`
 }
 
 type createPoolResponse struct {

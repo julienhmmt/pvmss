@@ -246,3 +246,32 @@ func TestProxmox_DeleteUser(t *testing.T) {
 		t.Errorf("path = %q", gotPath)
 	}
 }
+
+func TestProxmox_SetUserPassword_PutsUserIDAndPassword(t *testing.T) {
+	t.Parallel()
+
+	var gotUserID, gotPassword string
+
+	srv := newProxmoxTestServer(t, func(mux *http.ServeMux) {
+		mux.HandleFunc("PUT /api2/json/access/password", func(w http.ResponseWriter, r *http.Request) {
+			if err := r.ParseForm(); err != nil {
+				t.Fatalf("parse form: %v", err)
+			}
+
+			gotUserID = r.FormValue("userid")
+			gotPassword = r.FormValue("password")
+
+			writeJSONFixture(t, w, `{"data":null}`)
+		})
+	})
+
+	p := Proxmox{BaseURL: srv.URL, APITokenName: testTokenName, APITokenValue: testTokenVal}
+
+	if err := p.SetUserPassword(context.Background(), "pvmss-team@pve", "new-secret"); err != nil {
+		t.Fatalf("SetUserPassword: %v", err)
+	}
+
+	if gotUserID != "pvmss-team@pve" || gotPassword != "new-secret" {
+		t.Fatalf("form userid/password = %q/%q", gotUserID, gotPassword)
+	}
+}
