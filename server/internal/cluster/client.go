@@ -83,7 +83,8 @@ type Client interface {
 	UpdatePoolComment(ctx context.Context, poolID, comment string) error
 	// SetUserPassword rotates a PVE user's password with the service
 	// credential, no old secret required - unlike ChangePassword, which
-	// re-authenticates as the user for self-service changes.
+	// re-authenticates as the user for self-service changes. On Proxmox it
+	// recreates the user, dropping its ACLs: callers must re-grant them.
 	SetUserPassword(ctx context.Context, username, password string) error
 	DeleteUser(ctx context.Context, username string) error
 	// StorageFreeSpace returns the available bytes on a storage backend on a

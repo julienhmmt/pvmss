@@ -247,17 +247,25 @@ func TestProxmox_DeleteUser(t *testing.T) {
 	}
 }
 
-func TestProxmox_SetUserPassword_PutsUserIDAndPassword(t *testing.T) {
+func TestProxmox_SetUserPassword_RecreatesUserWithPassword(t *testing.T) {
 	t.Parallel()
+
+	var calls []string
 
 	var gotUserID, gotPassword string
 
 	srv := newProxmoxTestServer(t, func(mux *http.ServeMux) {
-		mux.HandleFunc("PUT /api2/json/access/password", func(w http.ResponseWriter, r *http.Request) {
+		mux.HandleFunc("DELETE /api2/json/access/users/{id}", func(w http.ResponseWriter, r *http.Request) {
+			calls = append(calls, "delete:"+r.PathValue("id"))
+
+			writeJSONFixture(t, w, `{"data":null}`)
+		})
+		mux.HandleFunc("POST /api2/json/access/users", func(w http.ResponseWriter, r *http.Request) {
 			if err := r.ParseForm(); err != nil {
 				t.Fatalf("parse form: %v", err)
 			}
 
+			calls = append(calls, "create")
 			gotUserID = r.FormValue("userid")
 			gotPassword = r.FormValue("password")
 
@@ -269,6 +277,10 @@ func TestProxmox_SetUserPassword_PutsUserIDAndPassword(t *testing.T) {
 
 	if err := p.SetUserPassword(context.Background(), "pvmss-team@pve", "new-secret"); err != nil {
 		t.Fatalf("SetUserPassword: %v", err)
+	}
+
+	if len(calls) != 2 || calls[0] != "delete:pvmss-team@pve" || calls[1] != "create" {
+		t.Fatalf("calls = %v, want delete then create", calls)
 	}
 
 	if gotUserID != "pvmss-team@pve" || gotPassword != "new-secret" {

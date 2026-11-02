@@ -38,8 +38,8 @@ func ResetManagedPassword(ctx context.Context, actor auth.Identity, client clust
 		return GeneratedCredentials{}, &ProvisionError{Step: "user", Err: err}
 	}
 	// EnsurePoolUser only creates: an existing user still carries the old
-	// password, so the set must always run. On a just-created user it repeats
-	// the same secret - idempotent and simpler than a created/exists flag.
+	// password, so the set must always run. On Proxmox the set recreates the
+	// user, which drops its ACL - the SetPoolACL below re-grants it.
 	if err := client.SetUserPassword(ctx, username, password); err != nil {
 		return GeneratedCredentials{}, &ProvisionError{Step: "password", Err: err}
 	}

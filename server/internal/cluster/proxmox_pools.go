@@ -205,15 +205,22 @@ func (p Proxmox) DeletePool(ctx context.Context, poolID string) error {
 	return nil
 }
 
-// SetUserPassword implements Client: PUT /access/password under the service
-// credential. The same endpoint backs self-service changes (ChangePassword);
-// here the caller's Realm.AllocateUser privilege on the user's realm is what
-// lets it rotate someone else's secret. Note PUT /access/users/{userid}
-// silently ignores a password field - this endpoint is the only working path.
+// SetUserPassword implements Client by recreating the user: PVE refuses
+// PUT /access/password to API tokens ("need proper ticket") and
+// PUT /access/users/{userid} silently ignores a password field, while
+// POST /access/users accepts one. Deleting the user drops its ACL entries,
+// so callers must re-grant them afterwards (pools.ResetManagedPassword does).
 func (p Proxmox) SetUserPassword(ctx context.Context, username, password string) error {
-	_, err := p.rest().do(ctx, http.MethodPut, "/access/password", url.Values{
+	rest := p.rest()
+
+	if _, err := rest.do(ctx, http.MethodDelete, "/access/users/"+url.PathEscape(username), nil); err != nil {
+		return err
+	}
+
+	_, err := rest.do(ctx, http.MethodPost, "/access/users", url.Values{
 		"userid":            {username},
 		proxmoxFormPassword: {password},
+		"comment":           {"PVMSS self-service user for pool " + strings.TrimSuffix(username, "@pve")},
 	})
 
 	return err
