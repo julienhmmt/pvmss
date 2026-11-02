@@ -83,10 +83,6 @@ func TestVMCloudInitErrorMapper(t *testing.T) {
 		{"cloudinit", h.writeDomainError, policy.ErrUnavailable, http.StatusServiceUnavailable, "policy_unavailable"},
 		{"cloudinit", h.writeDomainError, vm.ErrForbidden, http.StatusForbidden, "forbidden"},
 		{"cloudinit", h.writeDomainError, vm.ErrNotFound, http.StatusNotFound, "not_found"},
-		{"cloudinit", h.writeDomainError, vm.ErrNoCloudInitUser, http.StatusBadRequest, "no_cloudinit_user"},
-		{"cloudinit", h.writeDomainError, vm.ErrGuestAgentDisabled, http.StatusConflict, "guest_agent_disabled"},
-		{"cloudinit", h.writeDomainError, vm.ErrVMNotRunning, http.StatusConflict, "vm_not_running"},
-		{"cloudinit", h.writeDomainError, vm.ErrGuestAgentUnreachable, http.StatusGatewayTimeout, "guest_agent_unreachable"},
 		{"cloudinit", h.writeDomainError, cluster.ErrUnreachable, http.StatusBadGateway, "cluster_error"},
 		{"cloudinit", h.writeDomainError, unknown, http.StatusInternalServerError, "internal_error"},
 	})

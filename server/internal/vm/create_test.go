@@ -36,8 +36,6 @@ const (
 
 	// testStorageLocal is the fake-local storage name the fixtures share.
 	testStorageLocal = "local"
-	// testActionSetCloudInitPassword is the fake's agent password-apply action.
-	testActionSetCloudInitPassword = "set_cloudinit_password"
 	// testActionCreate is the fake's VM-create action name.
 	testActionCreate = "create"
 	// testBIOSOVMF is the Proxmox bios value selecting UEFI firmware.

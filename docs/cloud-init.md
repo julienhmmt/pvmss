@@ -14,6 +14,9 @@ Deleted end to end:
   `catalog_images` table, `import-from` create path, `ImageSpec`)
 - the cluster snippet-storage setting (`clusters.snippet_storage` column,
   `GET /api/v1/admin/snippet-storages`) and every snippet check/presence API
+- the console-password action (removed 2026-11-02: `POST …/console-password`,
+  the console toolbar button and dialog). PVMSS no longer sets a `ciuser`, so
+  it only worked on VMs created before the removal
 - the admin cluster form's cloud-init fields and the `cloudInitCapable`
   template flag
 
@@ -21,8 +24,7 @@ Kept on purpose:
 
 - `GET /api/v1/vms/{cluster}/{vmid}/cloudinit` - the VM Connect tab reads
   the SSH user from the live cloud-init config.
-- `POST /api/v1/vms/{cluster}/{vmid}/console-password` and its guest-agent
-  helpers (`SetCloudInitPassword`, `PingGuestAgent`, `GetCloudInitConfig`).
+- `GetCloudInitConfig`, the domain read behind that route.
 - The `cloudinit` package's slug helper.
 - The `profile_ssh_keys` table: the profile SSH-key surface was deleted in
   the follow-up removal (`GET/POST/DELETE /api/v1/profile/ssh-keys`, its

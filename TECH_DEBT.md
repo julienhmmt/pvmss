@@ -50,7 +50,7 @@ The paused cloud-init feature is deleted end to end (web + server + schema
 V5): admin cloud-init templates, the generated baseline, per-VM cloud-init
 writes, cloud-image creation and the cluster snippet-storage setting are
 gone; recoverable from git history. Kept on purpose: `GET …/cloudinit` (the
-VM page reads the SSH user), the console-password guest-agent flow, and the
+VM page reads the SSH user) and the
 `vm_cloudinit_snippets`/`vm_cloudinit_documents` tables so the VM-delete
 cleanup still warns about files a pre-removal deployment left on the nodes
 (remove them by hand; new `pvmss-*.yml` files are never created). Databases

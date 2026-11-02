@@ -95,21 +95,3 @@ export function buildSerialWebSocketURL(cluster: string, vmid: number, token: st
 	const path = apiPath(`/api/v1/vms/${encodeURIComponent(cluster)}/${vmid}/serial/websocket`);
 	return `${protocol}//${host}${path}?token=${encodeURIComponent(token)}`;
 }
-
-/** Response from POST /api/v1/vms/:cluster/:vmid/console-password. */
-export interface ConsolePasswordResponse {
-	password: string;
-}
-
-/**
- * Asks the backend for a one-time console password for the VM's cloud-init
- * user, generated through the guest agent. The password is returned once and
- * never persisted, logged, or audited server-side.
- *
- * Throws ApiRequestError on non-2xx (guest-agent refusals arrive as domain codes).
- */
-export async function fetchConsolePassword(cluster: string, vmid: number): Promise<string> {
-	const path = apiPath(`/api/v1/vms/${encodeURIComponent(cluster)}/${vmid}/console-password`);
-	const response = await post<ConsolePasswordResponse>(path, {});
-	return response.password;
-}
