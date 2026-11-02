@@ -12,7 +12,7 @@ Two audiences share one portal:
 
 **End users** - developers and team members who need VMs without Proxmox access. They log in with their Proxmox credentials, pick a profile, and get a running machine. Their context: they want a VM fast, they don't want to understand Proxmox, and they want to manage their own machines (start, stop, snapshot, console) without filing tickets. Primary task: create and manage my VMs.
 
-**Admins** - infrastructure operators who configure the portal itself. They approve nodes, storages, bridges, ISOs, and VM templates from the Proxmox cluster. They set quotas, gabarit limits, and per-node capacity. They manage cloud-init templates and the per-cluster cloud-init snippet storage, hardware profiles, tags, pools, documentation, the audit log, and multi-cluster connections. Their context: they know Proxmox, they want control without logging into Proxmox for every change, and they need to enforce policy. Primary task: keep the catalog and policy in sync with the cluster.
+**Admins** - infrastructure operators who configure the portal itself. They approve nodes, storages, bridges, ISOs, and VM templates from the Proxmox cluster. They set quotas, gabarit limits, and per-node capacity. They manage hardware profiles, tags, pools, documentation, the audit log, and multi-cluster connections. Their context: they know Proxmox, they want control without logging into Proxmox for every change, and they need to enforce policy. Primary task: keep the catalog and policy in sync with the cluster.
 
 ## Product Purpose
 
@@ -32,20 +32,20 @@ PVMSS is self-hosted by a single organization for its own teams - one operator, 
 
 - **Deployment**: Docker image (distroless, non-root) or Kubernetes via the Helm chart; configuration is environment variables only, validated at startup.
 - **Clusters**: one or more Proxmox clusters behind a single portal, selectable per user; `PVMSS_CLUSTER_SOURCE` chooses the live `proxmox` source or the `fake` demo source.
-- **Admin rituals**: approving catalog items (nodes, storages, bridges, ISOs, templates; cloud images are temporarily disabled), setting quotas and gabarit limits, curating hardware profiles, authoring cloud-init templates, and running the copy-paste snippet publish command on chosen nodes (PVMSS never writes on the nodes itself).
+- **Admin rituals**: approving catalog items (nodes, storages, bridges, ISOs, templates), setting quotas and gabarit limits, curating hardware profiles, and deciding user quota requests.
 - **User rituals**: sign in with Proxmox credentials, create from a starting point, connect over SSH or the in-browser console, manage power and snapshots.
 - **Locale**: bilingual English + French across every screen and state.
 
 ## Capabilities and Constraints
 
-**Capabilities** - VM lifecycle for end users: create (ISO, Proxmox template clone, or cloud-image import - temporarily disabled, not reliable yet), list and search (on the sign-in cluster), live status, bulk power actions, snapshot, in-browser console, activity and audit history. Admin: cluster connections, approved catalog, hardware profiles, quotas and per-node capacity, pools, tags, cloud-init templates, documentation, audit log.
+**Capabilities** - VM lifecycle for end users: create (ISO or Proxmox template clone), list and search (on the sign-in cluster), live status, bulk power actions, snapshot, in-browser console, activity and audit history. Admin: cluster connections, approved catalog, hardware profiles, quotas and per-node capacity, pools, tags, documentation, audit log.
 
 **Constraints**:
 
 - Users never get direct Proxmox access; ownership is enforced server-side, not by list filtering.
-- PVMSS never writes on the nodes. The Proxmox API cannot write snippets, so cloud-init files are published by an admin running a copy-paste command; presence is read live per node and never stored.
+- PVMSS never writes on the nodes.
 - The server is deliberately dependency-light: stdlib routing, SQLite for persistence, no CGO.
-- Only PVMSS administrators author cloud-init YAML; end users cannot. Cloud-init is paused since 2026-10-20 (not reliable or viable yet, too complex to set up).
+- Cloud-init was removed on 2026-10-31 and is not a current capability (see `docs/cloud-init.md`).
 
 **Terminology** is defined in `CONTEXT.md` (projection, live status, UPID, lock); feature status lives in `docs/FEATURES.md`, workflows in `WORKFLOWS.md`.
 

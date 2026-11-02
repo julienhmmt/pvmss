@@ -149,7 +149,7 @@
 									describedBy={describedBy}
 									bind:value={form.localUsername}
 									autocomplete="username"
-									placeholder="admin"
+									placeholder={m['login.usernamePlaceholder']()}
 								>
 									{#snippet leading()}
 										<UserIcon />
