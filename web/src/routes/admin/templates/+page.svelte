@@ -94,6 +94,7 @@
 	loading={store.loading}
 	error={store.error}
 	toggleError={store.toggleError}
+	onRetry={() => void store.loadTemplates()}
 	columns={6}
 	totalCount={store.templates.length}
 	filteredCount={store.filteredTemplates.length}

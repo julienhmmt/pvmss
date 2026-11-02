@@ -68,6 +68,7 @@
 	loading={store.loading}
 	error={store.error}
 	toggleError={store.toggleError}
+	onRetry={() => void store.loadAll()}
 	columns={5}
 	totalCount={store.isos.length}
 	filteredCount={store.filteredIsos.length}
