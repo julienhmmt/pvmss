@@ -112,44 +112,35 @@ Reading a whole package is a last resort. Do not reintroduce a code index
 ### Server (`server/`)
 
 Go REST API over the Proxmox API + SQLite. Module `pvmss/server`, Go 1.27.
-Routing is stdlib `net/http`, logging stdlib `log/slog`. Direct deps:
-`coder/websocket` (VNC proxy), `golang.org/x/crypto` (bcrypt),
-`gopkg.in/yaml.v3`, `modernc.org/sqlite` (CGO-free), OpenTelemetry (otel, sdk,
-OTLP/HTTP exporters, `otelhttp`, `runtime`, Prometheus exporter) and
-`prometheus/client_golang`. Do not add another logging or metrics library.
+Stdlib `net/http` + `log/slog`; deps in `server/go.mod`. Do not add another
+logging or metrics library.
 
 Binaries under `server/cmd/`: `pvmss` (the HTTP server), `pvmss-recover`
 (recovery CLI), `pvmss-checklist` (checklist CLI).
 
 Packages under `server/internal/`:
 
-| Package      | Role                                                          |
-| ------------ | ------------------------------------------------------------- |
-| `httpapi/`   | HTTP handlers + routing for `/api/v1/*`, SPA serving, VNC WS  |
-| `vm/`        | VM domain logic - resolve, query, actions, cross-cluster      |
-| `cluster/`   | Cluster clients (`proxmox` and `fake` sources), multi-cluster |
-| `store/`     | SQLite persistence                                            |
-| `inventory/` | Background inventory refresh + cache                          |
+| Package      | Role                                                            |
+| ------------ | --------------------------------------------------------------- |
+| `httpapi/`   | HTTP handlers + routing for `/api/v1/*`, SPA serving, VNC WS    |
+| `vm/`        | VM domain logic - resolve, query, actions, cross-cluster        |
+| `cluster/`   | Cluster clients (`proxmox` and `fake` sources), multi-cluster   |
+| `store/`     | SQLite persistence                                              |
+| `inventory/` | Background inventory refresh + cache                            |
 | `catalog/`   | Approved nodes/ISOs/storages/bridges, templates, profiles, tags |
-| `policy/`    | Limits, quotas, authorization policy                          |
-| `pools/`     | Proxmox pool handling                                         |
-| `recovery/`  | Recovery runs and fixtures                                    |
-| `checklist/` | Operational checklist walkthroughs                            |
-| `auth/`      | Sessions, password hashing, admin auth                        |
+| `policy/`    | Limits, quotas, authorization policy                            |
+| `pools/`     | Proxmox pool handling                                           |
+| `recovery/`  | Recovery runs and fixtures                                      |
+| `checklist/` | Operational checklist walkthroughs                              |
+| `auth/`      | Sessions, password hashing, admin auth                          |
 | `cloudinit/` | SSH-key validation + slug helpers                               |
-| `config/`    | Env-based configuration, validation, slog logger, redaction   |
-| `telemetry/` | OTel tracing and metrics, Prometheus `/metrics`               |
-| `logctx/`    | Request-scoped log attributes (requestId, user, span IDs)     |
+| `config/`    | Env-based configuration, validation, slog logger, redaction     |
+| `telemetry/` | OTel tracing and metrics, Prometheus `/metrics`                 |
+| `logctx/`    | Request-scoped log attributes (requestId, user, span IDs)       |
 
-#### Cloud-init removed (2026-10-31)
-
-The paused cloud-init feature is deleted: admin templates, the baseline,
-per-VM cloud-init writes, cloud-image creation and the snippet-storage
-cluster setting are gone (recoverable from git history). What stays on
-purpose: the read-only `GET …/cloudinit` (the VM page shows the SSH user),
-the console-password guest-agent flow, and the `vm_cloudinit_*` tables so
-the VM-delete path can still warn about files a pre-removal deployment left
-on the nodes.
+Cloud-init authoring was removed 2026-10-31. Kept on purpose: read-only
+`GET …/cloudinit`, the console-password guest-agent flow, and the
+`vm_cloudinit_*` tables (VM delete still warns about leftover files).
 
 ### Web (`web/`)
 
@@ -172,78 +163,12 @@ built with bun and served by the Go binary (catch-all to `index.html`).
 
 ## Configuration
 
-Environment variables only, validated at startup by
-`server/internal/config/load.go` (fails fast).
-
-**Required:**
-
-| Variable               | Notes                                                       |
-| ---------------------- | ----------------------------------------------------------- |
-| `PVMSS_PORT`           | Integer 1-65535                                             |
-| `PVMSS_DB_PATH`        | SQLite file path (image default `/data/pvmss.db`)           |
-| `SESSION_SECRET`       | 32+ bytes                                                   |
-| `LOG_LEVEL`            | `debug` \| `info` \| `warn` \| `error` - **lowercase only** |
-| `LOG_FORMAT`           | `json` \| `console`                                         |
-| `LOG_OUTPUT`           | `stdout` \| `stderr` \| a file path                         |
-| `PVMSS_CLUSTER_SOURCE` | `fake` \| `proxmox` - no default on purpose                 |
-
-`PVMSS_CLUSTER_SOURCE` has no default because `fake` ships hardcoded demo
-credentials (`admin@pve` / `pvmss-admin`).
-
-**Optional when `PVMSS_CLUSTER_SOURCE=proxmox`:** `PROXMOX_URL`,
-`PROXMOX_API_TOKEN_NAME`, `PROXMOX_API_TOKEN_VALUE` are all-or-nothing. All
-three set: they seed the `default` cluster on first boot only; afterwards the
-admin UI owns clusters. All three empty: the server boots with zero clusters
-and serves the first-run setup (`/setup`) until an administrator registers the
-first cluster there. A partial set still fails startup.
-
-**Optional:**
-
-| Variable                                      | Default                                                         |
-| --------------------------------------------- | --------------------------------------------------------------- |
-| `PVMSS_HOST`                                  | `127.0.0.1` (image sets `0.0.0.0`)                              |
-| `PVMSS_WEB_DIR`                               | relative to the executable                                      |
-| `ADMIN_PASSWORD_HASH`                         | empty; if set, must be `$2...`                                  |
-| `PVMSS_COOKIE_SECURE`                         | `true`                                                          |
-| `PVMSS_INVENTORY_REFRESH_INTERVAL`            | `30s`                                                           |
-| `PVMSS_INVENTORY_MANUAL_REFRESH_MIN_INTERVAL` | `5s`                                                            |
-| `PVMSS_INVENTORY_REFRESH_TIMEOUT`             | `15s`                                                           |
-| `PVMSS_MAX_LIST_PAGE_SIZE`                    | `100`                                                           |
-| `PVMSS_MAX_LOCAL_ADMINS`                      | `5` (range 1-50; excludes the bootstrap admin)                  |
-| `PVMSS_DB_RESET_ON_INCOMPATIBLE`              | `false` (dev compose: `true`; old DB is renamed, never deleted) |
-| `PVMSS_TRUSTED_PROXY_HOPS`                    | `0`                                                             |
-| `PVMSS_RATE_LIMIT_MAX`                        | `0` (built-in ceilings; positive raises them, used by e2e)      |
-| `PVMSS_METRICS_PORT`                          | empty (off); a port != `PVMSS_PORT` enables `GET /metrics`      |
-| `PVMSS_TLS_CERT_FILE` / `PVMSS_TLS_KEY_FILE`  | empty (plain HTTP); both set = HTTPS listener                   |
-| `PVMSS_TLS_CLIENT_CA_FILE`                    | empty; set = mutual TLS (advised, `docs/tls.md`)                |
-| `PVMSS_TLS_CLIENT_AUTH`                       | `require` (or `optional`); needs the client CA                  |
-| `PVMSS_SYSLOG_ADDR`                           | `host:port` of the SIEM receiver (RFC 5425 TLS). Empty: off.   |
-| `PVMSS_SYSLOG_TLS_CA_FILE`                    | PEM CA for the receiver certificate; empty uses system roots.   |
-| `PVMSS_SYSLOG_TLS_CERT_FILE`                  | Client cert for mutual TLS; needs `PVMSS_SYSLOG_TLS_KEY_FILE`.  |
-| `PVMSS_SYSLOG_TLS_KEY_FILE`                   | Client key for mutual TLS; needs `PVMSS_SYSLOG_TLS_CERT_FILE`.  |
-
-Tracing/OTLP use the standard `OTEL_*` variables read by the SDK (see
-`docs/observability.md`). `LOG_LEVEL` is only the startup level; admins can
-change it at runtime (Admin > Settings).
-
-**Administrator sign-in.** There are two paths. A Proxmox user is an
-administrator when their ACL grants `Permissions.Modify` on `/` (the
-`PVEAdmin` or `Administrator` role); only the `pve` and `pam` realms are
-supported, OIDC is not. PVMSS local administrators are independent of any
-cluster. `ADMIN_PASSWORD_HASH` seeds the immutable bootstrap owner (`admin`,
-provider `bootstrap`); DB-backed accounts (`local_accounts`, capped by
-`PVMSS_MAX_LOCAL_ADMINS`) are created and managed by that owner under Admin >
-Settings > Accounts. When no `ADMIN_PASSWORD_HASH` exists, the account created
-through `/setup` (`created_by = 'setup'`) is the owner instead. Local
-administrators get the full admin surface but every account route answers
-`owner_only` to them. Local passwords are 8+ characters and at most 72
-bytes (bcrypt); five consecutive failures lock an account for 15 minutes.
-The bootstrap admin is never locked: five failures from one client IP refuse
-that IP (429) for 15 minutes. Resetting, disabling or deleting an account revokes its sessions.
-
-No longer read (startup warns for the SSH ones): `PVMSS_OFFLINE`, `PVMSS_ENV`,
-`JWT_SECRET`, `PROXMOX_VERIFY_SSL`, `LOG_FILE_PATH`, `PVMSS_SSH_KEY_FILE`,
-`PVMSS_SSH_USER`, `PVMSS_SSH_PORT`.
+Env vars only, validated by `server/internal/config/load.go` (fails fast). Full
+reference, admin sign-in paths and retired variables: `docs/configuration.md`.
+Gotchas: `LOG_LEVEL` is lowercase only; `PVMSS_CLUSTER_SOURCE` (`fake` |
+`proxmox`) has no default on purpose (`fake` ships demo credentials); the three
+`PROXMOX_*` vars are all-or-nothing and only seed the first cluster (none set =
+`/setup` flow).
 
 ## Logging and observability
 
@@ -280,13 +205,6 @@ Binding for all server code. Operator detail lives in `docs/observability.md`.
 
 The syslog sink (`server/internal/config/syslog*.go`) reuses the records above,
 so it must not add fields: a new attribute reaches stdout and the SIEM together.
-
-## CI
-
-`.github/workflows/`: `v0.4.yml` (server build + race tests, web
-check/lint/build/vitest, Playwright; pushes to `main`/`v0.4`, PRs to `main`),
-`lint.yml` (Super-Linter + golangci-lint, every push), `codeql.yml`. Go version
-from `server/go.mod`, bun pinned to `1.3.13`.
 
 ## Testing Notes
 
