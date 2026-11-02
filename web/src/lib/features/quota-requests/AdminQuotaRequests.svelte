@@ -9,6 +9,7 @@
 	import Button from '#lib/shared/ui/Button.svelte';
 	import ConfirmDialog from '#lib/shared/ui/ConfirmDialog.svelte';
 	import EmptyState from '#lib/shared/ui/EmptyState.svelte';
+	import TableCard from '#lib/shared/ui/TableCard.svelte';
 	import { ApiRequestError } from '#lib/shared/api/client.js';
 	import { m } from '#lib/paraglide/messages.js';
 	import {
@@ -98,31 +99,32 @@
 	{#if actionError}
 		<p role="alert" class="mb-3 text-sm text-destructive">{actionError}</p>
 	{/if}
-	<div class="overflow-x-auto rounded-md border border-border bg-card">
-		<table class="w-full text-left text-sm" data-testid="quota-requests-table">
-			<thead class="bg-muted/50 text-xs uppercase tracking-wide text-muted-foreground">
+	<TableCard>
+		<table class="pv-table pv-responsive-table" data-testid="quota-requests-table">
+			<caption class="sr-only">{m['admin.quotaRequests.title']()}</caption>
+			<thead>
 				<tr>
-					<th class="px-4 py-3 font-medium">{m['admin.quotaRequests.col.requester']()}</th>
-					<th class="px-4 py-3 font-medium">{m['admin.quotaRequests.col.pool']()}</th>
-					<th class="px-4 py-3 font-medium">{m['admin.quotaRequests.col.current']()}</th>
-					<th class="px-4 py-3 font-medium">{m['admin.quotaRequests.col.requested']()}</th>
-					<th class="px-4 py-3 font-medium">{m['admin.quotaRequests.col.reason']()}</th>
-					<th class="px-4 py-3 font-medium">{m['admin.quotaRequests.col.actions']()}</th>
+					<th>{m['admin.quotaRequests.col.requester']()}</th>
+					<th>{m['admin.quotaRequests.col.pool']()}</th>
+					<th>{m['admin.quotaRequests.col.current']()}</th>
+					<th>{m['admin.quotaRequests.col.requested']()}</th>
+					<th>{m['admin.quotaRequests.col.reason']()}</th>
+					<th>{m['admin.quotaRequests.col.actions']()}</th>
 				</tr>
 			</thead>
-			<tbody class="divide-y divide-border">
+			<tbody>
 				{#each requests as request (request.id)}
 					<tr data-testid="quota-request-row">
-						<td class="px-4 py-3 font-medium text-foreground">{request.requester}</td>
-						<td class="px-4 py-3">{request.pool} <span class="text-muted-foreground">({request.cluster})</span></td>
-						<td class="px-4 py-3">{quotaLabel(request.currentQuota)}</td>
-						<td class="px-4 py-3">{quotaLabel(request.requestedQuota)}</td>
-						<td class="max-w-xs break-words px-4 py-3 whitespace-pre-line">{request.reason}</td>
-						<td class="px-4 py-3">
+						<td class="font-medium text-foreground" data-label={m['admin.quotaRequests.col.requester']()}>{request.requester}</td>
+						<td data-label={m['admin.quotaRequests.col.pool']()}>{request.pool} <span class="text-muted-foreground">({request.cluster})</span></td>
+						<td data-label={m['admin.quotaRequests.col.current']()}>{quotaLabel(request.currentQuota)}</td>
+						<td data-label={m['admin.quotaRequests.col.requested']()}>{quotaLabel(request.requestedQuota)}</td>
+						<td class="max-w-xs break-words whitespace-pre-line" data-label={m['admin.quotaRequests.col.reason']()}>{request.reason}</td>
+						<td data-label={m['admin.quotaRequests.col.actions']()} data-nolabel="true">
 							<div class="flex min-w-[14rem] flex-col gap-2">
 								<input
 									type="number"
-									class="h-9 rounded-md border border-input bg-background px-2 text-sm"
+									class="pv-input h-9"
 									aria-label={m['admin.quotaRequests.allowanceLabel']()}
 									placeholder={String(request.requestedQuota)}
 									bind:value={overrides[request.id]}
@@ -141,7 +143,7 @@
 				{/each}
 			</tbody>
 		</table>
-	</div>
+	</TableCard>
 {/if}
 
 {#if pendingDecision}

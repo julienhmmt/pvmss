@@ -82,7 +82,7 @@
 			<p class="text-sm text-muted-foreground">
 				{m['admin.db.previewDescription']()}
 			</p>
-			<table class="pv-table">
+			<table class="pv-table pv-responsive-table">
 				<thead>
 					<tr>
 						<th class="py-1.5 font-medium">{m['admin.db.table']()}</th>
@@ -92,8 +92,8 @@
 				<tbody>
 					{#each pager.rows as table (table.name)}
 						<tr class="border-t border-border">
-							<td class="py-1.5 font-mono">{table.name}</td>
-							<td class="py-1.5">{table.rowCount}</td>
+							<td class="py-1.5 font-mono" data-label={m['admin.db.table']()}>{table.name}</td>
+							<td class="py-1.5" data-label={m['admin.db.rows']()}>{table.rowCount}</td>
 						</tr>
 					{/each}
 				</tbody>

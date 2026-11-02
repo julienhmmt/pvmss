@@ -19,6 +19,7 @@
 	import StatCard from '#lib/shared/ui/StatCard.svelte';
 	import TextField from '#lib/shared/ui/TextField.svelte';
 	import { m } from '#lib/paraglide/messages.js';
+	import { machineStatusView, type MachineStatusTone } from '#lib/features/vms/display-status.js';
 	import { formatDateTime } from '#lib/shared/format-date.js';
 
 	interface Props {
@@ -105,15 +106,16 @@
 	});
 
 	function statusLabel(status: string): string {
-		if (status === 'running') return m['machine.status.running']();
-		if (status === 'stopped') return m['machine.status.stopped']();
-		if (status === 'paused') return m['admin.dashboard.vmPaused']();
+		if (status === 'running' || status === 'stopped' || status === 'paused') {
+			return machineStatusView(status).label();
+		}
 		return status;
 	}
 
-	function statusTone(status: string): 'ok' | 'off' | 'warn' {
-		if (status === 'running') return 'ok';
-		if (status === 'stopped') return 'off';
+	function statusTone(status: string): MachineStatusTone {
+		if (status === 'running' || status === 'stopped' || status === 'paused') {
+			return machineStatusView(status).tone;
+		}
 		return 'warn';
 	}
 
@@ -294,7 +296,7 @@
 				<EmptyState title={m['admin.poolDetail.vmsEmpty']()} />
 			{:else}
 				<div class="overflow-x-auto">
-					<table class="pv-table w-full min-w-[720px]">
+					<table class="pv-table pv-responsive-table w-full">
 						<caption class="sr-only">{m['admin.poolDetail.vmsTitle']()}</caption>
 						<thead>
 							<tr>
@@ -312,20 +314,20 @@
 						<tbody>
 							{#each vmsPager.rows as vm (vm.vmid)}
 								<tr class="transition-colors hover:bg-muted/40">
-									<td class="font-mono tabular-nums">{vm.vmid}</td>
-									<td>
+									<td class="font-mono tabular-nums" data-label={m['admin.nodeDetails.vmid']()}>{vm.vmid}</td>
+									<td data-label={m['admin.nodeDetails.name']()}>
 										<a
 											href={resolve('/vms/[cluster]/[vmid]', vmHref(vm))}
 											class="font-medium text-primary hover:underline"
 										>{vm.name || m['admin.nodeDetails.notReported']()}</a>
 									</td>
-									<td>{vm.node}</td>
-									<td><Pill tone={statusTone(vm.status)} label={statusLabel(vm.status)} /></td>
-									<td class="font-mono tabular-nums">{uptimeLabel(vm.uptimeSeconds)}</td>
-									<td class="text-right font-mono tabular-nums">{vm.cpuCores}</td>
-									<td class="text-right font-mono tabular-nums">{formatBytes(vm.memoryBytes)}</td>
-									<td class="text-right font-mono tabular-nums">{formatBytes(vm.diskBytes)}</td>
-									<td class="font-mono text-xs">{vm.ipAddresses.length > 0 ? vm.ipAddresses.join(', ') : '-'}</td>
+									<td data-label={m['common.node']()}>{vm.node}</td>
+									<td data-label={m['admin.nodeDetails.status']()}><Pill tone={statusTone(vm.status)} label={statusLabel(vm.status)} /></td>
+									<td class="font-mono tabular-nums" data-label={m['admin.nodeDetails.uptimeLabel']()}>{uptimeLabel(vm.uptimeSeconds)}</td>
+									<td class="text-right font-mono tabular-nums" data-label={m['admin.nodeDetails.vcpu']()}>{vm.cpuCores}</td>
+									<td class="text-right font-mono tabular-nums" data-label={m['admin.nodeDetails.memory']()}>{formatBytes(vm.memoryBytes)}</td>
+									<td class="text-right font-mono tabular-nums" data-label={m['admin.nodeDetails.disk']()}>{formatBytes(vm.diskBytes)}</td>
+									<td class="font-mono text-xs" data-label={m['admin.poolDetail.ipAddresses']()}>{vm.ipAddresses.length > 0 ? vm.ipAddresses.join(', ') : '-'}</td>
 								</tr>
 							{/each}
 						</tbody>
@@ -340,7 +342,7 @@
 				<p class="px-5 py-4 text-sm text-muted-foreground">{m['admin.poolDetail.activityEmpty']()}</p>
 			{:else}
 				<div class="overflow-x-auto">
-					<table class="pv-table w-full min-w-[560px]">
+					<table class="pv-table pv-responsive-table w-full">
 						<caption class="sr-only">{m['admin.poolDetail.activityTitle']()}</caption>
 						<thead>
 							<tr>
@@ -354,11 +356,11 @@
 						<tbody>
 							{#each activityPager.rows as entry (entry.id)}
 								<tr>
-									<td class="whitespace-nowrap font-mono text-xs tabular-nums">{formatDateTime(entry.timestamp, 'short')}</td>
-									<td class="font-mono text-xs">{entry.actor}</td>
-									<td><code class="text-xs">{entry.action}</code></td>
-									<td class="font-mono tabular-nums">{entry.vmid ?? '-'}</td>
-									{#if hasActivityDetail}<td class="max-w-72 truncate text-xs text-muted-foreground" title={activitySummary(entry)}>{activitySummary(entry) || '-'}</td>{/if}
+									<td class="whitespace-nowrap font-mono text-xs tabular-nums" data-label={m['admin.audit.time']()}>{formatDateTime(entry.timestamp, 'short')}</td>
+									<td class="font-mono text-xs" data-label={m['admin.audit.actor']()}>{entry.actor}</td>
+									<td data-label={m['admin.audit.action']()}><code class="text-xs">{entry.action}</code></td>
+									<td class="font-mono tabular-nums" data-label={m['admin.audit.columnVm']()}>{entry.vmid ?? '-'}</td>
+									{#if hasActivityDetail}<td class="max-w-72 truncate text-xs text-muted-foreground" title={activitySummary(entry)} data-label={m['admin.audit.detail']()}>{activitySummary(entry) || '-'}</td>{/if}
 								</tr>
 							{/each}
 						</tbody>
