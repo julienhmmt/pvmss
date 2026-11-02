@@ -1595,6 +1595,7 @@
 	"chrome.adminNav.policy": "Richtlinie",
 	"chrome.adminNav.limits": "Limits",
 	"chrome.adminNav.nodeCapacity": "Knotenkapazität",
+	"chrome.adminNav.quotaRequests": "Quota-Anfragen",
 	"chrome.adminNav.system": "System",
 	"chrome.adminNav.appInfo": "App-Info",
 	"chrome.adminNav.recovery": "Wiederherstellung",
@@ -1887,6 +1888,7 @@
 	"chrome.sidebar.workspaceLabel": "Persönlicher Arbeitsbereich",
 	"chrome.sidebar.navMyMachines": "Meine Maschinen",
 	"chrome.sidebar.navActivity": "Aktivität",
+	"chrome.sidebar.navNodes": "Knoten",
 	"chrome.sidebar.navHelp": "Hilfe & Anleitungen",
 	"chrome.sidebar.machinesCount": [
 		{

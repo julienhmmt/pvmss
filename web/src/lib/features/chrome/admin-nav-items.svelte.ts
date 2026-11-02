@@ -74,7 +74,8 @@ export const ADMIN_NAV_GROUPS: readonly AdminNavGroup[] = [
 		icon: 'policy',
 		items: [
 			{ href: resolve('/admin/policy'), label: () => m['chrome.adminNav.limits']() },
-			{ href: resolve('/admin/policy/nodes'), label: () => m['chrome.adminNav.nodeCapacity']() }
+			{ href: resolve('/admin/policy/nodes'), label: () => m['chrome.adminNav.nodeCapacity']() },
+			{ href: resolve('/admin/quota-requests'), label: () => m['chrome.adminNav.quotaRequests']() }
 		]
 	},
 	{

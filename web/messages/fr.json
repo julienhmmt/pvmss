@@ -1595,6 +1595,7 @@
 	"chrome.adminNav.policy": "Politique",
 	"chrome.adminNav.limits": "Limites",
 	"chrome.adminNav.nodeCapacity": "Capacité des nœuds",
+	"chrome.adminNav.quotaRequests": "Demandes de quota",
 	"chrome.adminNav.system": "Système",
 	"chrome.adminNav.appInfo": "Infos application",
 	"chrome.adminNav.recovery": "Récupération",
@@ -1887,6 +1888,7 @@
 	"chrome.sidebar.workspaceLabel": "Espace personnel",
 	"chrome.sidebar.navMyMachines": "Mes machines",
 	"chrome.sidebar.navActivity": "Activité",
+	"chrome.sidebar.navNodes": "Nœuds",
 	"chrome.sidebar.navHelp": "Aide et guides",
 	"chrome.sidebar.machinesCount": [
 		{
