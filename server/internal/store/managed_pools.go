@@ -48,6 +48,14 @@ func (s *Store) UnregisterManagedPool(ctx context.Context, cluster, name string)
 		return fmt.Errorf("exec pool quota override delete: %w", err)
 	}
 
+	// Pending requests die with the pool: approving one later would write an
+	// override that a future pool of the same name would inherit.
+	if _, err := tx.ExecContext(ctx, `UPDATE quota_requests SET status = ?, decided_by = ?, decided_at = ?
+		WHERE cluster = ? AND pool = ? AND status = ?`,
+		QuotaRequestDenied, "system", time.Now().UTC().Format(time.RFC3339), cluster, name, QuotaRequestPending); err != nil {
+		return fmt.Errorf("exec pending quota request deny: %w", err)
+	}
+
 	if err := tx.Commit(); err != nil {
 		return fmt.Errorf("commit unregister managed pool: %w", err)
 	}

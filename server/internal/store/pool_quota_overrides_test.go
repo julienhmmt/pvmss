@@ -194,11 +194,19 @@ func TestUnregisterManagedPool_RemovesOverride(t *testing.T) {
 		t.Fatalf("UpsertPoolQuotaOverride: %v", err)
 	}
 
+	if err := st.CreateQuotaRequest(ctx, sampleQuotaRequest("gone")); err != nil {
+		t.Fatalf("CreateQuotaRequest: %v", err)
+	}
+
 	if err := st.UnregisterManagedPool(ctx, testStoreCluster, "pvmss-gone"); err != nil {
 		t.Fatalf("UnregisterManagedPool: %v", err)
 	}
 
 	if _, err := st.PoolQuotaOverride(ctx, testStoreCluster, "pvmss-gone"); !errors.Is(err, sql.ErrNoRows) {
 		t.Fatalf("override survived pool unregister, err = %v", err)
+	}
+
+	if _, err := st.PendingQuotaRequest(ctx, "gone", testStoreCluster, "pvmss-gone"); !errors.Is(err, sql.ErrNoRows) {
+		t.Fatalf("pending quota request survived pool unregister, err = %v", err)
 	}
 }
