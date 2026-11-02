@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it } from 'vitest';
-import { filterItems, matches, navigationItems, readRecent, rememberRecent, type PaletteItem } from './command-palette';
+import { docItems, filterItems, matches, navigationItems, readRecent, rememberRecent, type PaletteItem } from './command-palette';
+import type { DocSummary } from '#lib/features/docs/docs.svelte.js';
 
 const item = (label: string, href = `/${label}`): PaletteItem => ({ id: href, group: 'goto', label, href });
 
@@ -17,6 +18,33 @@ describe('filterItems', () => {
 	it('keeps matches, prefix hits first', () => {
 		const result = filterItems([item('Search'), item('Activity'), item('Settings')], 'se');
 		expect(result.map((entry) => entry.label)).toEqual(['Search', 'Settings']);
+	});
+});
+
+const doc = (id: string, title: string, lang = 'en', audience: DocSummary['audience'] = 'user'): DocSummary => ({
+	id,
+	lang,
+	title,
+	category: 'guides',
+	audience
+});
+
+describe('docItems', () => {
+	const pages = [doc('leases', 'Leases and expiry'), doc('quotas', 'Quota basics'), doc('fr-only', 'Guide', 'fr'), doc('admin-ops', 'Ops runbook', 'en', 'admin')];
+
+	it('maps current-locale user articles to docs-group items with the article href', () => {
+		const items = docItems(pages, false, 'en');
+		expect(items.map((entry) => entry.href)).toEqual(['/docs/leases?lang=en', '/docs/quotas?lang=en']);
+		expect(items.every((entry) => entry.group === 'docs')).toBe(true);
+		expect(items[0]).toMatchObject({ label: 'Leases and expiry' });
+	});
+
+	it('offers admin-audience articles only to an admin', () => {
+		expect(docItems(pages, true, 'en').map((entry) => entry.label)).toContain('Ops runbook');
+	});
+
+	it('returns nothing when the index is empty', () => {
+		expect(docItems([], true, 'fr')).toEqual([]);
 	});
 });
 
