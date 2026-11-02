@@ -193,7 +193,8 @@ Rename validates as a hostname (lowercase, ≤63 chars, `hostnameRe` in
 | **Steps**       | 1. Choose Daily or Weekly (Off removes the schedule). 2. Set how many snapshots to keep. 3. Save. Every 15 minutes the sweeper takes a snapshot once the interval has passed since the last one, even when the machine is stopped. Automatic snapshots are named `pvmss-auto-YYYYMMDD-HHMM` and show an `auto` badge; beyond the number kept, the oldest automatic snapshots are deleted. |
 | **States**      | The form mirrors the stored policy. Below it: "No automatic snapshot taken yet" or "Last run <date>". A save error is shown under the form. A machine locked by another task is skipped and retried on the next pass; an unreachable cluster is skipped with a warning.                                                                                                              |
 | **Safety nets** | Keep must stay below the machine's snapshot limit (rejected on save, and the sweeper refuses to create when manual snapshots fill the cap). Manual snapshots are never pruned. Off keeps the snapshots already taken. A machine deleted outside PVMSS has its schedule removed by the sweeper.                                                                                      |
->
+
+
 ### Open the console
 
 |                 |                                                                                                                                                                                                                                                                                                                                                              |
@@ -351,7 +352,7 @@ Six admin workflows deserve the full template because they are the risky ones.
 
 ### Approve or disable a node
 
-|| | |
+| | |
 | --- | --- |
 | **Audience** | admin |
 | **Entry** | Sidebar → Administration → Infrastructure → Nodes |

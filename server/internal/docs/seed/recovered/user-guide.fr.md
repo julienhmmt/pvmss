@@ -161,6 +161,6 @@ applique côté serveur avant tout appel à Proxmox.
 ## Astuces
 
 - Changez votre mot de passe depuis la page **Profil**.
-- Utilisez la page de recherche pour des actions rapides sans ouvrir le détail.
+- Utilisez la page de recherche pour retrouver une machine rapidement, sans faire défiler la liste.
 - Mettez en favori des listes filtrées et des pages de détail de VM.
 - L'application suit la langue de votre navigateur (français ou anglais).

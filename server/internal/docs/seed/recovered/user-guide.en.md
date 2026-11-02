@@ -155,6 +155,6 @@ server-side before any Proxmox call is made.
 ## Tips and tricks
 
 - Change your password from the **Profile** page.
-- Use the search page for fast start/stop actions without opening details.
+- Use the search page to find a machine fast, across filters, without scrolling the list.
 - Bookmark filtered VM lists and specific VM detail pages.
 - The application follows your browser language preference (English or French).

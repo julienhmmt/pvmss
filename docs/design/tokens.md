@@ -59,6 +59,25 @@ the two mute steps distinct.
 | Line 2                           | `--border-subtle`                      | `oklch(100% 0 0deg / 6%)`  | fainter hairline                          |
 | Secondary / muted / accent fills | `--secondary` / `--muted` / `--accent` | `oklch(25% 0.006 56deg)`   | shared dark surface                       |
 
+### Shipped divergences (updated 2026-11-02)
+
+`app.css` deliberately departs from the mockup values above; the tables are the
+Layer B spec, this list is what actually ships. Current truth: `web/src/app.css`
+and `DESIGN.md`.
+
+- `--primary` (light): `oklch(56% 0.16 51deg)`, deepened from `oklch(66% 0.185
+  44deg)` so white labels and accent text clear AA. A separate
+  `--primary-solid` (same value) carries label-bearing fills; in dark mode
+  `--primary` lifts to `oklch(72% 0.17 44deg)` while `--primary-solid` stays.
+- `--muted-foreground-subtle`: `#766f6a` light / `oklch(62% 0.012 56deg)` dark
+  (see §5).
+- Dark `--foreground`: `oklch(90% 0.004 95deg)` (was 96%).
+- Dark `--muted-foreground`: `oklch(65% 0.01 56deg)` (was 72%).
+- Dark `--border`: `oklch(100% 0 0deg / 0.08)` (spec wrote 10%).
+- Radii: `--radius` `0.375rem` cards (was `0.75rem`), `--radius-control`
+  `0.25rem` on every interactive control (new, the two-radius rule),
+  `--radius-sm` `0.25rem`, `--radius-xl` `0.5rem`.
+
 ## 3. Mockup → `app.css` variable map
 
 | Mockup class                      | Role                    | Implementation                                                                                                   |
@@ -67,7 +86,7 @@ the two mute steps distinct.
 | `.pill` + `.p-ok` `.p-off` `.p-w` | Status chip             | `Pill.svelte` (ok/off/warn via success/warning/muted soft; text name + dot)                                      |
 | `.mt`                             | Quota/usage meter       | `Meter.svelte` (`role="meter"` when bounded; no fake 0–100 for unlimited)                                        |
 | `.nvi` `[data-on="1"]`            | Sidebar nav item        | `Sidebar.svelte` row; active = `--sidebar-accent` fill + `--or-700` text + `aria-current="page"`                 |
-| `.opt` `[data-on="1"]`            | Selectable profile card | `OptionCard.svelte` (native radio, visually restyled)                                                            |
+| `.opt` `[data-on="1"]`            | Selectable profile card | `RadioCard.svelte` (native radio, visually restyled)                                                             |
 | `.b` + variants                   | Button                  | retune existing `Button.svelte` (≈10 px radius, `font-weight:600`, primary/secondary/ghost/sm; keep destructive) |
 | `.inp` `.lbl` `.hint`             | Form field              | retune existing input styling via tokens (no new class)                                                          |
 | `.tb`                             | Table                   | retune existing table styling via tokens (no vertical rules, `--border-subtle` row tops)                         |
@@ -75,9 +94,14 @@ the two mute steps distinct.
 
 ## 4. Chrome geometry (desktop)
 
-- Sidebar column: **236 px**, sticky.
+- Sidebar column: **236 px**, sticky (248 px above 1500 px, 204 px below
+  1180 px in production).
 - Header: sticky, translucent.
-- Main: **28 px padding** (`p-7`), `max-width: 1180px`, **left-aligned** (not centred).
+- Main: the mockup used **28 px padding** (`p-7`), `max-width: 1180px`,
+  **left-aligned**. Production diverged: the content column is capped at
+  `--container-collection` (100 rem) **centred** with 44 px padding, and
+  form/reading screens use `--container-reading` (60 rem) - see `DESIGN.md`
+  §Layout, which is now authoritative.
 - Viewport **< 900 px**: sidebar becomes a drawer; the geometry above does not
   apply as min-widths. `ChromeState.sidebarOpen` is forced false when the
   viewport crosses 900 px upward so desktop cannot get stuck "closed".
@@ -85,17 +109,18 @@ the two mute steps distinct.
 ## 5. Contrast checks
 
 `--muted-foreground-subtle` is the third text step, used for tertiary captions
-on `--card`. Checked against WCAG AA (4.5:1 for body text):
+on `--card`. The mockup values failed WCAG AA for body text and the token is
+mostly used for text (labels, char counters, footer text), so the shipped
+values were lifted - the tables above record the mockup spec, not what ships:
 
-- **Light**: `#8d8681` on `#ffffff` → ratio ≈ 3.5:1. This is below AA for body
-  text but **above AA for large text / UI components (3:1)**. The token is
-  reserved for ≥ 18 px / ≥ 14 px bold captions and non-essential metadata,
-  never body copy. Acceptable; no change.
-- **Dark**: `oklch(60% 0.012 56deg)` on `oklch(21% 0.006 56deg)` → ratio ≈ 3.6:1.
-  Same usage rule as light. Acceptable; no change.
+- **Light**: shipped `#766f6a` (was `#8d8681`, ≈ 3.5:1 on `--card`) → 4.57:1 on
+  `--background`, 4.94:1 on `--card`. Clears AA for body text while staying a
+  visible step below `--muted-foreground` (6.46:1).
+- **Dark**: shipped `oklch(62% 0.012 56deg)` (was 60%, ≈ 3.6:1) → 5.20:1 on
+  `--background`, 4.81:1 on `--card`, still below `--muted-foreground`'s 65%.
 
-If a future surface needs `--muted-foreground-subtle` for body text, lift it to
-`--muted-foreground` (`--ink-2`) instead - do not weaken the step.
+If a future surface needs `--muted-foreground-subtle` to read lighter, lift it
+to `--muted-foreground` (`--ink-2`) instead - do not weaken the step.
 
 ## 6. Unported-surface walk (T025)
 

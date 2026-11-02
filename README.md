@@ -190,37 +190,37 @@ migration notes: [docs/cloud-init.md](docs/cloud-init.md).
 
 You can rely on `.env` + `env_file` or inline `environment:` entries, but **not both**. The needed variables are listed below:
 
-| Variable                                      | Description                                                                                                  | Required                 | Default                |
-| --------------------------------------------- | ------------------------------------------------------------------------------------------------------------ | ------------------------ | ---------------------- |
-| `PVMSS_PORT`                                  | TCP port the HTTP server listens on (1–65535)                                                                | ✅                       | -                      |
-| `PVMSS_DB_PATH`                               | Path to the SQLite database file (must be on a persistent volume)                                            | ✅                       | -                      |
-| `SESSION_SECRET`                              | 32+ byte secret to encrypt sessions/cookies                                                                  | ✅                       | -                      |
-| `PVMSS_CLUSTER_SOURCE`                        | `proxmox` for a real cluster, `fake` for demo data (no default, on purpose)                                  | ✅                       | -                      |
-| `LOG_LEVEL`                                   | `debug`, `info`, `warn`, `error` - lowercase only                                                            | ✅                       | -                      |
-| `LOG_FORMAT`                                  | `console` (human readable) or `json` (machine/SIEM)                                                          | ✅                       | -                      |
-| `LOG_OUTPUT`                                  | `stdout`, `stderr`, or a writable file path                                                                  | ✅                       | -                      |
-| `PVMSS_SYSLOG_ADDR`                           | `host:port` of a SIEM syslog receiver (RFC 5425 over TLS, usually 6514). Empty disables the sink | ❌                       | empty                  |
-| `PVMSS_SYSLOG_TLS_CA_FILE`                    | PEM CA that signed the receiver's certificate; empty uses the system roots. Verification stays on | ❌                       | system roots           |
-| `PVMSS_SYSLOG_TLS_CERT_FILE` / `PVMSS_SYSLOG_TLS_KEY_FILE` | Client certificate and key for mutual TLS (set both); see [docs/observability.md](docs/observability.md) | ❌                       | empty                  |
-| `PROXMOX_URL`                                 | Full API URL (`https://host:8006/api2/json`)                                                                 | when source is `proxmox` | -                      |
-| `PROXMOX_API_TOKEN_NAME`                      | Proxmox token name (`user@pve!token`)                                                                        | when source is `proxmox` | -                      |
-| `PROXMOX_API_TOKEN_VALUE`                     | Token secret that matches the name above                                                                     | when source is `proxmox` | -                      |
-| `ADMIN_PASSWORD_HASH`                         | Bcrypt hash for the bootstrap admin (`admin`); only this account manages local admins; empty disables it     | ❌                       | -                      |
-| `PVMSS_HOST`                                  | Address to bind (`0.0.0.0` for all interfaces)                                                               | ❌                       | `127.0.0.1`            |
-| `PVMSS_WEB_DIR`                               | Directory holding the built SPA                                                                              | ❌                       | relative to the binary |
-| `PVMSS_COOKIE_SECURE`                         | `Secure` flag on auth cookies (keep `true` in production)                                                    | ❌                       | `true`                 |
-| `PVMSS_INVENTORY_REFRESH_INTERVAL`            | Background inventory refresh period                                                                          | ❌                       | `30s`                  |
-| `PVMSS_INVENTORY_MANUAL_REFRESH_MIN_INTERVAL` | Minimum delay between user-triggered refreshes                                                               | ❌                       | `5s`                   |
-| `PVMSS_INVENTORY_REFRESH_TIMEOUT`             | Timeout for a single inventory refresh                                                                       | ❌                       | `15s`                  |
-| `PVMSS_MAX_LIST_PAGE_SIZE`                    | Upper bound on list endpoint page size                                                                       | ❌                       | `100`                  |
-| `PVMSS_MAX_LOCAL_ADMINS`                      | Maximum DB local admins (1-50; excludes the bootstrap admin)                                                 | ❌                       | `5`                    |
-| `PVMSS_TRUSTED_PROXY_HOPS`                    | Trusted proxy count for client IP / rate limits (Helm sets `1`)                                              | ❌                       | `0`                    |
-| `PVMSS_RATE_LIMIT_MAX`                        | Raises every built-in rate-limit ceiling (per-IP auth, per-user writes); `0` keeps the defaults              | ❌                       | `0`                    |
-| `PVMSS_METRICS_PORT`                          | Port of the `GET /metrics` listener on `PVMSS_HOST` (1-65535, different from `PVMSS_PORT`); empty disables it | ❌                       | empty                  |
-| `PVMSS_TLS_CERT_FILE` / `PVMSS_TLS_KEY_FILE`   | Serve HTTPS with this PEM certificate and key (set both); see [docs/tls.md](docs/tls.md)                    | ❌                       | empty (plain HTTP)     |
-| `PVMSS_TLS_CLIENT_CA_FILE`                    | PEM CA bundle for client certificates: turns on mutual TLS (**recommended**)                                  | ❌                       | empty                  |
-| `PVMSS_TLS_CLIENT_AUTH`                       | `require` or `optional` client certificate (needs `PVMSS_TLS_CLIENT_CA_FILE`)                                 | ❌                       | `require`              |
-| `TZ`                                          | Container timezone                                                                                           | ❌                       | `UTC`                  |
+| Variable                                                   | Description                                                                                                   | Required                 | Default                |
+| ---------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------- | ------------------------ | ---------------------- |
+| `PVMSS_PORT`                                               | TCP port the HTTP server listens on (1–65535)                                                                 | ✅                       | -                      |
+| `PVMSS_DB_PATH`                                            | Path to the SQLite database file (must be on a persistent volume)                                             | ✅                       | -                      |
+| `SESSION_SECRET`                                           | 32+ byte secret to encrypt sessions/cookies                                                                   | ✅                       | -                      |
+| `PVMSS_CLUSTER_SOURCE`                                     | `proxmox` for a real cluster, `fake` for demo data (no default, on purpose)                                   | ✅                       | -                      |
+| `LOG_LEVEL`                                                | `debug`, `info`, `warn`, `error` - lowercase only                                                             | ✅                       | -                      |
+| `LOG_FORMAT`                                               | `console` (human readable) or `json` (machine/SIEM)                                                           | ✅                       | -                      |
+| `LOG_OUTPUT`                                               | `stdout`, `stderr`, or a writable file path                                                                   | ✅                       | -                      |
+| `PVMSS_SYSLOG_ADDR`                                        | `host:port` of a SIEM syslog receiver (RFC 5425 over TLS, usually 6514). Empty disables the sink              | ❌                       | empty                  |
+| `PVMSS_SYSLOG_TLS_CA_FILE`                                 | PEM CA that signed the receiver's certificate; empty uses the system roots. Verification stays on             | ❌                       | system roots           |
+| `PVMSS_SYSLOG_TLS_CERT_FILE` / `PVMSS_SYSLOG_TLS_KEY_FILE` | Client certificate and key for mutual TLS (set both); see [docs/observability.md](docs/observability.md)      | ❌                       | empty                  |
+| `PROXMOX_URL`                                              | Full API URL (`https://host:8006/api2/json`)                                                                  | when source is `proxmox` | -                      |
+| `PROXMOX_API_TOKEN_NAME`                                   | Proxmox token name (`user@pve!token`)                                                                         | when source is `proxmox` | -                      |
+| `PROXMOX_API_TOKEN_VALUE`                                  | Token secret that matches the name above                                                                      | when source is `proxmox` | -                      |
+| `ADMIN_PASSWORD_HASH`                                      | Bcrypt hash for the bootstrap admin (`admin`); only this account manages local admins; empty disables it      | ❌                       | -                      |
+| `PVMSS_HOST`                                               | Address to bind (`0.0.0.0` for all interfaces)                                                                | ❌                       | `127.0.0.1`            |
+| `PVMSS_WEB_DIR`                                            | Directory holding the built SPA                                                                               | ❌                       | relative to the binary |
+| `PVMSS_COOKIE_SECURE`                                      | `Secure` flag on auth cookies (keep `true` in production)                                                     | ❌                       | `true`                 |
+| `PVMSS_INVENTORY_REFRESH_INTERVAL`                         | Background inventory refresh period                                                                           | ❌                       | `30s`                  |
+| `PVMSS_INVENTORY_MANUAL_REFRESH_MIN_INTERVAL`              | Minimum delay between user-triggered refreshes                                                                | ❌                       | `5s`                   |
+| `PVMSS_INVENTORY_REFRESH_TIMEOUT`                          | Timeout for a single inventory refresh                                                                        | ❌                       | `15s`                  |
+| `PVMSS_MAX_LIST_PAGE_SIZE`                                 | Upper bound on list endpoint page size                                                                        | ❌                       | `100`                  |
+| `PVMSS_MAX_LOCAL_ADMINS`                                   | Maximum DB local admins (1-50; excludes the bootstrap admin)                                                  | ❌                       | `5`                    |
+| `PVMSS_TRUSTED_PROXY_HOPS`                                 | Trusted proxy count for client IP / rate limits (Helm sets `1`)                                               | ❌                       | `0`                    |
+| `PVMSS_RATE_LIMIT_MAX`                                     | Raises every built-in rate-limit ceiling (per-IP auth, per-user writes); `0` keeps the defaults               | ❌                       | `0`                    |
+| `PVMSS_METRICS_PORT`                                       | Port of the `GET /metrics` listener on `PVMSS_HOST` (1-65535, different from `PVMSS_PORT`); empty disables it | ❌                       | empty                  |
+| `PVMSS_TLS_CERT_FILE` / `PVMSS_TLS_KEY_FILE`               | Serve HTTPS with this PEM certificate and key (set both); see [docs/tls.md](docs/tls.md)                      | ❌                       | empty (plain HTTP)     |
+| `PVMSS_TLS_CLIENT_CA_FILE`                                 | PEM CA bundle for client certificates: turns on mutual TLS (**recommended**)                                  | ❌                       | empty                  |
+| `PVMSS_TLS_CLIENT_AUTH`                                    | `require` or `optional` client certificate (needs `PVMSS_TLS_CLIENT_CA_FILE`)                                 | ❌                       | `require`              |
+| `TZ`                                                       | Container timezone                                                                                            | ❌                       | `UTC`                  |
 
 The Docker image presets `PVMSS_DB_PATH=/data/pvmss.db`, `PVMSS_HOST=0.0.0.0`
 and `PVMSS_WEB_DIR=/app/web/build`, so those three can be left unset in a
@@ -401,12 +401,12 @@ When the console stays black or the browser reports `ERR_HTTP2_REFUSED_STREAM`/`
 
 **Testing proxies locally.** `make up` starts `pvmss-dev` behind five reverse proxies (configs in [`dev/proxies/`](dev/proxies/)). PVMSS itself is not published, so every request goes through a proxy:
 
-| Port                     | Proxy               | Case covered                                                                    |
-| ------------------------ | ------------------- | ------------------------------------------------------------------------------- |
-| `https://localhost:50000` | HAProxy             | HTTP/2 (WebSocket over extended CONNECT), `Host` rewritten to `pvmss.internal`, no `X-Forwarded-Host` |
-| `https://localhost:50001` | nginx               | Classic `Upgrade`/`Connection` recipe, WebSocket over HTTP/1.1                  |
-| `https://localhost:50002` | Caddy               | Defaults only                                                                   |
-| `https://localhost:50003` | Traefik             | File provider                                                                   |
+| Port                            | Proxy               | Case covered                                                                                                                            |
+| ------------------------------- | ------------------- | --------------------------------------------------------------------------------------------------------------------------------------- |
+| `https://localhost:50000`       | HAProxy             | HTTP/2 (WebSocket over extended CONNECT), `Host` rewritten to `pvmss.internal`, no `X-Forwarded-Host`                                   |
+| `https://localhost:50001`       | nginx               | Classic `Upgrade`/`Connection` recipe, WebSocket over HTTP/1.1                                                                          |
+| `https://localhost:50002`       | Caddy               | Defaults only                                                                                                                           |
+| `https://localhost:50003`       | Traefik             | File provider                                                                                                                           |
 | `https://pvmss.localhost:50004` | Nginx Proxy Manager | Admin UI on `http://localhost:50081`, proxy host created by `dev/proxies/npm-setup.sh` (NPM keeps `localhost` for its own default site) |
 
 The stack runs **mutual TLS on both hops**. `dev/proxies/gen-cert.sh` writes a dev PKI to `dev/proxies/certs/` (gitignored): `pvmss-dev` only accepts the proxies' client certificate, and every proxy only accepts browsers holding `client.p12`. Import `client.p12` (password `pvmss`) and trust `ca.crt` in your keychain or browser once; without the client certificate the proxies refuse the connection. Each port is its own origin, so sign in on each one separately. To start over with a new PKI, delete `dev/proxies/certs/` and run `make up`. See [docs/tls.md](docs/tls.md) to enable TLS/mTLS in your own deployment.
@@ -439,6 +439,7 @@ There is no migration from v0.3 to v0.4. v0.4 is a rewrite (Go API + SvelteKit) 
 
 ## Limitations
 
+- Only Proxmox VE 9.x and newer are supported; PVE 8 and earlier are not (role and permission changes in PVE 9).
 - Security hardening is ongoing; no formal penetration test yet.
 - No HA-managed VMs, no cross-cluster migration, SDN and firewall rules stay in Proxmox.
 - Proxmox OIDC realms cannot sign in to PVMSS: only the `pve` and `pam` realms are supported (future work). Local PVMSS administrators remain available.

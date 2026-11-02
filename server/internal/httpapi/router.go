@@ -212,7 +212,7 @@ func registerVMRoutes(mux *http.ServeMux, cfg RouterConfig, protect protectFunc,
 	if cfg.VMBulk != nil {
 		mux.Handle("POST /api/v1/vms/bulk-action", protect(cfg.VMBulk, vmWriteLimiter))
 	}
-	// Batch live-status read (ADR 0001). Registered before the
+	// Batch live-status read (live reads, never the projection). Registered before the
 	// {cluster}/{vmid} pattern so the literal "status" segment wins, same
 	// reason as bulk-action above. Wrapped in protect for CSRF (it takes a
 	// POST body) with a read-oriented rate limit.

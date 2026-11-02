@@ -61,13 +61,13 @@ an admin disables or deletes them.
 
 | Item | Note |
 | --- | --- |
-| ADR practice | `docs/adr/` holds 0001-0003; new decisions with real alternatives take the next number |
+| ADR practice | `docs/adr/` was removed 2026-10-15 (`a4c5b553`); ADRs 0001-0003 live in git history - recreate the directory on the next real decision |
 | `vm_cloudinit_snippets` | kept for the cleanup of legacy per-VM `pvmss-<vmid>.yml` files only |
 | Two-column admin grids | only the dashboard uses `xl:grid-cols-2`; no other page clearly gains |
 | "Pool at quota" | means the per-user VM quota (one pool per user), not a CPU/RAM pool quota - none exists |
 | Browser OTel (traces, web-vitals) | errors now report via `POST /api/v1/client-errors`; a full browser SDK (bundle size, CORS, consent) is still undecided |
 | ~~Legacy single projection in `policy`~~ | **Resolved** (`refactor/audit-2026-11-cleanup`): `policy.New` no longer takes a projection; every caller shares the one service wired with `SetProjectionSource`, and the variadic `services` parameters are required `*policy.Policy` fields |
-| `docs/plans/`, `server/internal/recovery/` stale `backend/` refs | historical context only - fix when the surrounding area is touched, no dedicated pass |
+| `server/internal/recovery/` stale `backend/` refs | historical context only - fix when the surrounding area is touched, no dedicated pass (`docs/plans/` is gone) |
 
 ## Resolved 2026-10-22 (full app review)
 
@@ -179,8 +179,6 @@ The cluster id (`clusters.name`, e.g. `default`) cannot be renamed; only the dis
 ```bash
 grep -n '^go ' server/go.mod; grep -n 'golang:' Dockerfile
 sed -n '/^require (/,/^)/p' server/go.mod | head -8
-ls docs/adr
-grep -n "ADR 0001" server/internal/httpapi/router.go
 ```
 
 ## Related

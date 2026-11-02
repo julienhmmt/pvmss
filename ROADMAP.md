@@ -7,7 +7,7 @@ section to check it against a later HEAD.
 
 Current state at time of writing: `v0.3.0` was the last tagged release
 (shipped on the original stack); the `v0.4` rewrite is now the only codebase
-on `main` but still untagged - at `HEAD e484b578` (2026-11-02), `main` carries
+on `main` but still untagged - at `HEAD a314e752` (2026-11-02), `main` carries
 the Go API + SvelteKit stack end to end.
 
 ## History
@@ -50,9 +50,8 @@ the old stack before the cutover.
 
 Commit `a7a26f7a` ("cutover v0.4 -> main (T16) - delete legacy
 backend/frontend"), 2026-08-12, removed `backend/` and `frontend/` on the
-`v0.4` branch. From this point on, `server/` + `web/` is the only codebase on
-`v0.4`; `origin/main` does not contain this commit yet and still ships the
-legacy tree.
+`v0.4` branch. From this point on, `server/` + `web/` is the only codebase;
+`main` has since been updated and now carries this tree end to end.
 
 ### Post-cutover hardening (2026-08-12 to 2026-09-27): 472 commits
 

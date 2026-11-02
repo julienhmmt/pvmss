@@ -22,7 +22,7 @@ for context only).
 | `server/`         | Go REST API - module `pvmss/server`, own `go.mod`                        |
 | `web/`            | SvelteKit SPA - app `pvmss-web`, own `package.json` (bun)                |
 | `helm/`           | Helm chart                                                               |
-| `docs/`           | `FEATURES.md`, `cloud-init.md`, `observability.md`, `tls.md`, `design/`, `agents/` |
+| `docs/`           | `FEATURES.md`, `configuration.md`, `observability.md`, `tls.md`, `cloud-init.md`, `constitution.md`, `design/`, `agents/` |
 | `specs/`          | Feature specifications (speckit); gitignored but real work               |
 | `sonar-projects/` | Per-project SonarScanner `.properties` files                             |
 | `tools/`          | Helper scripts (`pq`, sonar, superlint)                                  |
@@ -130,13 +130,16 @@ Packages under `server/internal/`:
 | `catalog/`   | Approved nodes/ISOs/storages/bridges, templates, profiles, tags |
 | `policy/`    | Limits, quotas, authorization policy                            |
 | `pools/`     | Proxmox pool handling                                           |
-| `recovery/`  | Recovery runs and fixtures                                      |
+| `recovery/`  | `pvmss-recover` runs and v0.3 import fixtures                   |
+| `adoption/`  | `/admin/recovery` assistant: scan + adopt leftover pools/tags   |
 | `checklist/` | Operational checklist walkthroughs                              |
 | `auth/`      | Sessions, password hashing, admin auth                          |
+| `docs/`      | `docs/seed/` - embedded in-app doc pages seeded at startup      |
 | `cloudinit/` | Slug helpers (the SSH-key surface was deleted)                  |
 | `config/`    | Env-based configuration, validation, slog logger, redaction     |
 | `telemetry/` | OTel tracing and metrics, Prometheus `/metrics`                 |
 | `logctx/`    | Request-scoped log attributes (requestId, user, span IDs)       |
+| `testfixture/` | Shared hermetic test fixtures (demo catalog, checklist data)  |
 
 Cloud-init authoring was removed 2026-10-31. Kept on purpose: read-only
 `GET …/cloudinit` and the
@@ -147,7 +150,7 @@ Cloud-init authoring was removed 2026-10-31. Kept on purpose: read-only
 SvelteKit SPA: Svelte 5 runes, TypeScript, Tailwind CSS v4, `adapter-static`,
 built with bun and served by the Go binary (catch-all to `index.html`).
 
-- `src/routes/` - pages: `vms/`, `nodes/`, `activity/`, `search/`, `docs/`, `about/`, `admin/`, `profile/`, `login/`
+- `src/routes/` - pages: `vms/`, `nodes/`, `activity/`, `search/`, `docs/`, `about/`, `admin/`, `profile/`, `login/`, `setup/`
 - `src/lib/features/` - feature modules (stores + components per domain)
 - `src/lib/shared/` - API client and utilities; `shared/ui/` - in-house UI components (no shadcn/bits-ui)
 - `messages/` (`en.json`, `fr.json`) + `project.inlang/` - i18n via Paraglide; `src/lib/paraglide/` is generated
