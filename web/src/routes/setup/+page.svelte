@@ -211,7 +211,7 @@
 					<form class="grid gap-4" onsubmit={(event) => { event.preventDefault(); void submitSignin(); }}>
 						<FormField label={m['login.localUsername']()} hint={m['setup.signin.usernameHint']()}>
 							{#snippet children({ id, describedBy })}
-								<TextField {id} describedBy={describedBy} bind:value={signinUsername} autocomplete="username" placeholder="admin">
+								<TextField {id} describedBy={describedBy} bind:value={signinUsername} autocomplete="username" placeholder={m['setup.signin.usernamePlaceholder']()}>
 									{#snippet leading()}<UserIcon />{/snippet}
 								</TextField>
 							{/snippet}
