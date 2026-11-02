@@ -1,7 +1,7 @@
 <script lang="ts">
 	/**
-	 * Button - the shared button primitive, in the same hand-rolled style as
-	 * Switch/Dialog/Tabs (no bits-ui in this codebase). Gives every admin
+	 * Button - the shared button primitive, in the kit style - bits-ui now backs the hard
+	 * floating primitives (Tooltip, Menu); simple ones stay hand-rolled. Gives every admin
 	 * button one vocabulary and a real focus-visible ring (product register:
 	 * every interactive control needs default/hover/focus/disabled states).
 	 *

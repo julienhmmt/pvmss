@@ -13,6 +13,7 @@
 	import TrashIcon from '#lib/shared/ui/icons/TrashIcon.svelte';
 	import type { Component } from 'svelte';
 	import Button from '#lib/shared/ui/Button.svelte';
+	import Menu from '#lib/shared/ui/Menu.svelte';
 	import CloneVmDialog from './CloneVmDialog.svelte';
 
 	const store = getVmDetailContext();
@@ -129,55 +130,102 @@
 	}
 </script>
 
-<div class="flex flex-wrap items-center gap-2" data-testid="vm-action-bar">
-	{#each ACTIONS as action (action.kind)}
-		{@const applicable = isApplicable(action)}
-		{#if !compact || applicable}
-		<Button
-			size="sm"
-			variant={applicable ? BUTTON_VARIANT[action.variant] : 'secondary'}
-			disabled={store.actionInFlight || !applicable}
-			onclick={() => requestAction(action.kind)}
-			data-testid="vm-action-{action.kind}"
-			title={action.label()}
-			label={action.label()}
-		>
-			<action.icon class="h-4 w-4" />
-			{#if !compact}{action.label()}{/if}
-		</Button>
+{#if compact}
+	<!-- Space-constrained bar: the first applicable action keeps a visible
+	     icon button, the rest (and Delete) fold into the overflow menu. -->
+	{@const applicableActions = ACTIONS.filter(isApplicable)}
+	<!-- The visible slot belongs to the state-appropriate primary action;
+	     array order only decides when none applies. -->
+	{@const lead = applicableActions.find((action) => action.variant === 'primary') ?? applicableActions[0]}
+	{@const rest = applicableActions.filter((action) => action !== lead)}
+	<div class="flex flex-wrap items-center gap-2" data-testid="vm-action-bar">
+		{#if lead}
+			<Button
+				size="sm"
+				variant={BUTTON_VARIANT[lead.variant]}
+				disabled={store.actionInFlight}
+				onclick={() => requestAction(lead.kind)}
+				data-testid="vm-action-{lead.kind}"
+				title={lead.label()}
+				label={lead.label()}
+			>
+				<lead.icon class="h-4 w-4" />
+			</Button>
 		{/if}
-	{/each}
+		{#if rest.length > 0 || !hideDelete}
+			<Menu
+				label={m['vms.action.more']()}
+				testId="vm-action-menu"
+				items={[
+					...rest.map((action) => ({
+						label: action.label(),
+						icon: action.icon,
+						destructive: action.variant === 'danger',
+						disabled: store.actionInFlight,
+						onclick: () => requestAction(action.kind),
+						testId: `vm-menu-${action.kind}`
+					})),
+					...(hideDelete ? [] : [{
+						label: m['vms.action.delete'](),
+						icon: TrashIcon,
+						destructive: true,
+						disabled: store.deleteInFlight,
+						onclick: onDelete,
+						testId: 'vm-menu-delete'
+					}])
+				]}
+			/>
+		{/if}
+	</div>
+{:else}
+	<div class="flex flex-wrap items-center gap-2" data-testid="vm-action-bar">
+		{#each ACTIONS as action (action.kind)}
+			{@const applicable = isApplicable(action)}
+			<Button
+				size="sm"
+				variant={applicable ? BUTTON_VARIANT[action.variant] : 'secondary'}
+				disabled={store.actionInFlight || !applicable}
+				onclick={() => requestAction(action.kind)}
+				data-testid="vm-action-{action.kind}"
+				title={action.label()}
+				label={action.label()}
+			>
+				<action.icon class="h-4 w-4" />
+				{action.label()}
+			</Button>
+		{/each}
 
-	{#if !compact && store.entity !== null}
-		<Button
-			size="sm"
-			variant="secondary"
-			disabled={store.actionInFlight}
-			onclick={() => (cloneOpen = true)}
-			data-testid="vm-action-clone"
-			title={m['vms.clone.button']()}
-			label={m['vms.clone.button']()}
-		>
-			{m['vms.clone.button']()}
-		</Button>
-	{/if}
+		{#if store.entity !== null}
+			<Button
+				size="sm"
+				variant="secondary"
+				disabled={store.actionInFlight}
+				onclick={() => (cloneOpen = true)}
+				data-testid="vm-action-clone"
+				title={m['vms.clone.button']()}
+				label={m['vms.clone.button']()}
+			>
+				{m['vms.clone.button']()}
+			</Button>
+		{/if}
 
-	{#if !hideDelete}
-		<Button
-			size="sm"
-			variant="destructive"
-			class="ml-auto"
-			disabled={store.deleteInFlight}
-			onclick={onDelete}
-			data-testid="vm-action-delete"
-			title={m['vms.action.delete']()}
-			label={m['vms.action.delete']()}
-		>
-			<TrashIcon class="h-4 w-4" />
-			{m['vms.action.delete']()}
-		</Button>
-	{/if}
-</div>
+		{#if !hideDelete}
+			<Button
+				size="sm"
+				variant="destructive"
+				class="ml-auto"
+				disabled={store.deleteInFlight}
+				onclick={onDelete}
+				data-testid="vm-action-delete"
+				title={m['vms.action.delete']()}
+				label={m['vms.action.delete']()}
+			>
+				<TrashIcon class="h-4 w-4" />
+				{m['vms.action.delete']()}
+			</Button>
+		{/if}
+	</div>
+{/if}
 
 {#if confirmation}
 	<ConfirmDialog

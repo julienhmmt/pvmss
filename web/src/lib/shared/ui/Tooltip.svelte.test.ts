@@ -1,66 +1,89 @@
 import { describe, it, expect, afterEach, vi } from 'vitest';
-import { mount, tick } from 'svelte';
+import { mount, tick, unmount, type Component } from 'svelte';
 import Tooltip from './Tooltip.svelte';
 
-const tooltip = (): HTMLElement => document.body.querySelector<HTMLElement>('[role="tooltip"]')!;
-const trigger = (): HTMLElement => document.body.querySelector<HTMLElement>('[aria-describedby]')!;
+const tooltip = (): HTMLElement | null => document.body.querySelector<HTMLElement>('[role="tooltip"]');
+const trigger = (): HTMLElement => document.body.querySelector<HTMLElement>('[data-tooltip-trigger]')!;
 
-async function hoverAt(left: number, width: number, bubbleWidth: number): Promise<void> {
-	vi.spyOn(trigger(), 'getBoundingClientRect').mockReturnValue({ left, width, top: 100, bottom: 120 } as DOMRect);
-	vi.spyOn(tooltip(), 'offsetWidth', 'get').mockReturnValue(bubbleWidth);
-	trigger().dispatchEvent(new MouseEvent('mouseenter'));
-	await vi.advanceTimersByTimeAsync(200);
+async function showOnHover(): Promise<void> {
+	// The first tick lets bits-ui's effects register the trigger; dispatching
+	// before they run is a no-op.
+	await tick();
+	trigger().dispatchEvent(new Event('pointerenter'));
+	await vi.advanceTimersByTimeAsync(250);
 	await tick();
 }
 
 describe('Tooltip', () => {
-	afterEach(() => {
+	let mounted: Record<string, unknown> | undefined;
+
+	function mountTooltip(props: { text: string; position?: 'top' | 'bottom' }): void {
+		mounted = mount(Tooltip as unknown as Component, { target: document.body, props });
+	}
+
+	afterEach(async () => {
+		if (mounted) await unmount(mounted);
+		mounted = undefined;
 		vi.useRealTimers();
-		vi.restoreAllMocks();
 		document.body.innerHTML = '';
 	});
 
-	it('points aria-describedby at a node that exists while hidden', () => {
-		mount(Tooltip, { target: document.body, props: { text: 'Helpful hint' } });
+	it('renders a focusable trigger carrying the children', () => {
+		mountTooltip({ text: 'Hint' });
 
-		const target = document.getElementById(trigger().getAttribute('aria-describedby')!);
-		expect(target).toBe(tooltip());
-		expect(tooltip().hidden).toBe(true);
-		expect(tooltip().textContent?.trim()).toBe('Helpful hint');
-	});
-
-	it('makes the trigger reachable by keyboard and shows on focus', async () => {
-		vi.useFakeTimers();
-		mount(Tooltip, { target: document.body, props: { text: 'Hint' } });
-
+		expect(trigger()).not.toBeNull();
 		expect(trigger().tabIndex).toBe(0);
-		trigger().dispatchEvent(new FocusEvent('focusin', { bubbles: true }));
-		await vi.advanceTimersByTimeAsync(200);
-		expect(tooltip().hidden).toBe(false);
 	});
 
-	it('clamps the bubble inside the left edge of the viewport', async () => {
+	it('shows the bubble with its text after the hover delay', async () => {
 		vi.useFakeTimers();
-		mount(Tooltip, { target: document.body, props: { text: 'Hint' } });
+		mountTooltip({ text: 'Helpful hint' });
 
-		await hoverAt(0, 10, 100);
-		// Center 5 would overflow; 8px margin + half the bubble (50).
-		expect(tooltip().style.left).toBe('58px');
+		expect(tooltip()).toBeNull();
+		await showOnHover();
+
+		expect(tooltip()).not.toBeNull();
+		expect(tooltip()!.textContent?.trim()).toBe('Helpful hint');
 	});
 
-	it('clamps the bubble inside the right edge of the viewport', async () => {
+	it('shows on keyboard focus too', async () => {
 		vi.useFakeTimers();
-		mount(Tooltip, { target: document.body, props: { text: 'Hint' } });
+		mountTooltip({ text: 'Hint' });
 
-		await hoverAt(window.innerWidth - 10, 10, 100);
-		expect(tooltip().style.left).toBe(`${window.innerWidth - 58}px`);
+		await tick();
+		trigger().dispatchEvent(new FocusEvent('focus'));
+		await vi.advanceTimersByTimeAsync(250);
+		await tick();
+
+		expect(tooltip()).not.toBeNull();
 	});
 
-	it('keeps the bubble centered on the trigger when it fits', async () => {
+	it('describes the trigger with the bubble while open', async () => {
 		vi.useFakeTimers();
-		mount(Tooltip, { target: document.body, props: { text: 'Hint' } });
+		mountTooltip({ text: 'Hint' });
 
-		await hoverAt(400, 20, 100);
-		expect(tooltip().style.left).toBe('410px');
+		await showOnHover();
+
+		const describedBy = trigger().getAttribute('aria-describedby');
+		expect(describedBy).not.toBeNull();
+		expect(document.getElementById(describedBy!)).toBe(tooltip());
 	});
+
+	it('hides when the pointer leaves', async () => {
+		vi.useFakeTimers();
+		mountTooltip({ text: 'Hint' });
+
+		await showOnHover();
+		expect(tooltip()).not.toBeNull();
+
+		trigger().dispatchEvent(new Event('pointerleave'));
+		await vi.advanceTimersByTimeAsync(450);
+		await tick();
+
+		expect(tooltip()).toBeNull();
+	});
+
+	// Escape dismissal and near-top-edge flip are asserted in e2e (real
+	// layout and real keyboard): happy-dom cannot exercise bits-ui's escape
+	// layer or floating-ui collision detection.
 });
