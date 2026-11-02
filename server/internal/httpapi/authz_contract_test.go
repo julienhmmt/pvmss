@@ -563,7 +563,6 @@ func newAuthzContractRouter(t *testing.T) (http.Handler, *httpapi.Auth) {
 	adminClusters := httpapi.NewAdminClusters(authHandler, st, nil, nil, logger)
 	docs := httpapi.NewDocsAPIHandler(authHandler, st, logger)
 	adminDocs := httpapi.NewAdminDocs(authHandler, st, docs, logger)
-	profileSSHKeys := httpapi.NewProfileSSHKeys(authHandler, st, logger)
 	adminMigration := httpapi.NewAdminMigrationWithRegistry(httpapi.AdminMigrationRegistryDeps{Source: projectionRegistry(projection), Projection: projection, Auth: authHandler, Migrator: cluster.Fake{}, Status: cluster.Fake{}, Store: st, Log: logger})
 	adminAccounts := httpapi.NewAdminAccounts(authHandler, st, 5, logger)
 	adminRecovery := httpapi.NewAdminRecovery(httpapi.AdminRecoveryDeps{Auth: authHandler, Clients: singleClientProvider(cluster.Fake{}), Source: projectionRegistry(projection), Projection: projection, Store: st, Log: logger})
@@ -592,7 +591,6 @@ func newAuthzContractRouter(t *testing.T) (http.Handler, *httpapi.Auth) {
 		AdminMigration:   adminMigration,
 		AdminAccounts:    adminAccounts,
 		AdminRecovery:    adminRecovery,
-		ProfileSSHKeys:   profileSSHKeys,
 		Log:              logger,
 		Store:            st,
 		TrustedProxyHops: 0,

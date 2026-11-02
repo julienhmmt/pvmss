@@ -297,6 +297,10 @@ type Migration struct {
 	DDL     string
 }
 
+// The profile_ssh_keys table in schemaV1 is kept with no reader or writer: the
+// profile SSH-key surface was removed, and migrations are forward-only with no
+// drop precedent, so the table stays. Do not drop it in place.
+
 // Migrations is the ordered list of schema migrations.
 // Versions must be consecutive integers starting at 1.
 var Migrations = []Migration{
