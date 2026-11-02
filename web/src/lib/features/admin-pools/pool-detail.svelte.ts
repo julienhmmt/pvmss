@@ -2,6 +2,12 @@ import { del, get, patch, ApiRequestError } from '#lib/shared/api/client.js';
 import { fetchClusterOptions } from '#lib/shared/clusters.js';
 import { getContext, setContext } from 'svelte';
 import { m } from '#lib/paraglide/messages.js';
+import {
+	fetchQuotaOverrides,
+	removeQuotaOverride,
+	setQuotaOverride,
+	type QuotaOverride
+} from '#lib/features/quota-overrides/quota-overrides.js';
 
 /** PoolMemberVM is one member VM row on the pool detail page. */
 export interface PoolMemberVM {
@@ -62,6 +68,10 @@ export class PoolDetailStore {
 	deleteError = $state.raw<string | null>(null);
 	savingComment = $state.raw(false);
 	commentError = $state.raw<string | null>(null);
+	/** The pool's per-pool cap, or null when it uses the global quota. */
+	override = $state.raw<QuotaOverride | null>(null);
+	overrideSaving = $state.raw(false);
+	overrideError = $state.raw<string | null>(null);
 	cluster = $state('');
 
 	/** Loads the named pool. The cluster comes from the list page's
@@ -81,6 +91,51 @@ export class PoolDetailStore {
 			this.error = err instanceof ApiRequestError ? err.message : m['admin.poolDetail.loadError']();
 		} finally {
 			this.loading = false;
+		}
+		if (this.detail) await this.loadOverride(this.detail.name, cluster);
+	}
+
+	/** Reads the pool's override; a failure is shown on its own so the page still renders. */
+	private async loadOverride(name: string, cluster: string): Promise<void> {
+		try {
+			const overrides = await fetchQuotaOverrides(cluster);
+			this.override = overrides.find((item) => item.pool === name) ?? null;
+			this.overrideError = null;
+		} catch (err) {
+			this.override = null;
+			this.overrideError = err instanceof ApiRequestError ? err.message : m['admin.poolQuota.loadError']();
+		}
+	}
+
+	/** Sets the pool's cap; throws so the caller can keep the input open. */
+	async saveOverride(maxVms: number): Promise<void> {
+		if (!this.detail) return;
+		this.overrideSaving = true;
+		this.overrideError = null;
+		try {
+			await setQuotaOverride(this.cluster, this.detail.name, maxVms);
+			await this.refresh();
+		} catch (err) {
+			this.overrideError = err instanceof ApiRequestError ? err.message : m['admin.poolQuota.saveError']();
+			throw err;
+		} finally {
+			this.overrideSaving = false;
+		}
+	}
+
+	/** Removes the pool's cap so it falls back to the global quota. */
+	async removeOverride(): Promise<void> {
+		if (!this.detail) return;
+		this.overrideSaving = true;
+		this.overrideError = null;
+		try {
+			await removeQuotaOverride(this.cluster, this.detail.name);
+			await this.refresh();
+		} catch (err) {
+			this.overrideError = err instanceof ApiRequestError ? err.message : m['admin.poolQuota.removeError']();
+			throw err;
+		} finally {
+			this.overrideSaving = false;
 		}
 	}
 

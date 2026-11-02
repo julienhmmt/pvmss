@@ -8,6 +8,8 @@
 	import Button from '#lib/shared/ui/Button.svelte';
 	import EmptyState from '#lib/shared/ui/EmptyState.svelte';
 	import ConfirmDialog from '#lib/shared/ui/ConfirmDialog.svelte';
+	import QuotaOverridesList from './QuotaOverridesList.svelte';
+	import type { QuotaOverride } from '#lib/features/quota-overrides/quota-overrides.js';
 
 	interface Props {
 		policy: AdminPolicy | null;
@@ -18,6 +20,8 @@
 		saveError: string | null;
 		clusterOptions: ClusterOption[];
 		cluster: string;
+		overrides: QuotaOverride[];
+		overridesError: string | null;
 		onClusterChange: (value: string) => void;
 		onLoad: () => void;
 		onRetry: () => void;
@@ -33,6 +37,8 @@
 		saveError,
 		clusterOptions,
 		cluster,
+		overrides,
+		overridesError,
 		onClusterChange,
 		onLoad,
 		onRetry,
@@ -108,7 +114,11 @@
 			{saveError}
 			{onSave}
 			onDirtyChange={handleDirtyChange}
-		/>
+		>
+			{#snippet quotaOverrides()}
+				<QuotaOverridesList {overrides} error={overridesError} />
+			{/snippet}
+		</PolicyForm>
 	{/if}
 </section>
 

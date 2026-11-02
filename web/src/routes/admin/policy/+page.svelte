@@ -28,6 +28,8 @@
 	saveError={store.saveError}
 	clusterOptions={store.clusterOptions}
 	cluster={store.cluster}
+	overrides={store.overrides}
+	overridesError={store.overridesError}
 	onClusterChange={(v) => store.setCluster(v)}
 	onLoad={() => void store.load()}
 	onRetry={() => void store.retryConnection()}

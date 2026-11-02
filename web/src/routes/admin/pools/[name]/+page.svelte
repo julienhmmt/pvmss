@@ -25,6 +25,11 @@
 	onRefresh={() => void store.refresh()}
 	savingComment={store.savingComment}
 	commentError={store.commentError}
+	override={store.override}
+	overrideSaving={store.overrideSaving}
+	overrideError={store.overrideError}
+	onSaveOverride={(maxVms) => store.saveOverride(maxVms)}
+	onRemoveOverride={() => store.removeOverride()}
 	onUpdateComment={(comment) => store.updateComment(comment)}
 	onDelete={() => store.remove()}
 	onDeleted={(userDeleted) =>

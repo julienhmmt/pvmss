@@ -100,6 +100,7 @@ func fillPath(path string) string {
 		"{vmid}":    "100",
 		"{diskKey}": "scsi0",
 		"{name}":    "x",
+		"{pool}":    "x",
 		"{id}":      "1",
 		"{node}":    "pve-node-01",
 		"{lang}":    "en",
@@ -566,6 +567,7 @@ func newAuthzContractRouter(t *testing.T) (http.Handler, *httpapi.Auth) {
 	adminMigration := httpapi.NewAdminMigrationWithRegistry(httpapi.AdminMigrationRegistryDeps{Source: projectionRegistry(projection), Projection: projection, Auth: authHandler, Migrator: cluster.Fake{}, Status: cluster.Fake{}, Store: st, Log: logger})
 	adminAccounts := httpapi.NewAdminAccounts(authHandler, st, 5, logger)
 	adminRecovery := httpapi.NewAdminRecovery(httpapi.AdminRecoveryDeps{Auth: authHandler, Clients: singleClientProvider(cluster.Fake{}), Source: projectionRegistry(projection), Projection: projection, Store: st, Log: logger})
+	quotaRequests := httpapi.NewQuotaRequests(authHandler, policyService, st, logger)
 
 	mux := httpapi.NewRouter(httpapi.RouterConfig{
 		Health:           health,
@@ -591,6 +593,7 @@ func newAuthzContractRouter(t *testing.T) (http.Handler, *httpapi.Auth) {
 		AdminMigration:   adminMigration,
 		AdminAccounts:    adminAccounts,
 		AdminRecovery:    adminRecovery,
+		QuotaRequests:    quotaRequests,
 		Log:              logger,
 		Store:            st,
 		TrustedProxyHops: 0,

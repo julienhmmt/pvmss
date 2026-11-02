@@ -390,8 +390,16 @@ func (h *AdminOps) poolQuotaAlerts(ctx context.Context, clusterName, label strin
 		return nil
 	}
 
-	if row.MaxVMPerUser <= 0 {
+	overrides, err := h.store.ListPoolQuotaOverrides(ctx, clusterName)
+	if err != nil {
+		h.log.WarnContext(ctx, "dashboard pool quota override read failed", "component", "httpapi", "cluster", clusterName, "error", err)
+
 		return nil
+	}
+
+	overrideByPool := make(map[string]int, len(overrides))
+	for _, override := range overrides {
+		overrideByPool[override.Pool] = override.MaxVMs
 	}
 
 	var alerts []dashboardAlertDTO
@@ -401,10 +409,19 @@ func (h *AdminOps) poolQuotaAlerts(ctx context.Context, clusterName, label strin
 			continue
 		}
 
-		if used := policy.ManagedPoolVMCount(idx, pool); used >= row.MaxVMPerUser {
+		limit := row.MaxVMPerUser
+		if override, ok := overrideByPool[pool]; ok {
+			limit = override
+		}
+
+		if limit <= 0 {
+			continue
+		}
+
+		if used := policy.ManagedPoolVMCount(idx, pool); used >= limit {
 			alerts = append(alerts, dashboardAlertDTO{
 				Kind: "pool_at_quota", Severity: alertWarning, Cluster: label, ClusterKey: clusterName, Subject: pool,
-				Percent: percentOf(int64(used), int64(row.MaxVMPerUser)), Used: used, Limit: row.MaxVMPerUser,
+				Percent: percentOf(int64(used), int64(limit)), Used: used, Limit: limit,
 			})
 		}
 	}
@@ -501,11 +518,21 @@ func percentOf(used, total int64) int {
 
 func compareAlerts(a, b dashboardAlertDTO) int {
 	return cmp.Or(
+		// Pending quota requests wait on the admin alone: they lead the list.
+		cmp.Compare(kindRank(a.Kind), kindRank(b.Kind)),
 		cmp.Compare(severityRank(a.Severity), severityRank(b.Severity)),
 		strings.Compare(a.Kind, b.Kind),
 		strings.Compare(a.Cluster, b.Cluster),
 		strings.Compare(a.Subject, b.Subject),
 	)
+}
+
+func kindRank(kind string) int {
+	if kind == "quota_requests_pending" {
+		return 0
+	}
+
+	return 1
 }
 
 func severityRank(severity string) int {

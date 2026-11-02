@@ -22,6 +22,7 @@
 	import { getTaskTrayContext } from '#lib/features/tasks/tasks.svelte.js';
 	import { getPowerActionsContext } from '#lib/features/tasks/power-actions.svelte.js';
 	import { get } from '#lib/shared/api/client.js';
+	import { fetchAdminQuotaRequests } from '#lib/features/quota-requests/quota-requests.js';
 	import type { VmListItem, VmListResult } from '#lib/features/vms/list.svelte.js';
 	import { goto } from '$app/navigation';
 	import { m } from '#lib/paraglide/messages.js';
@@ -55,6 +56,22 @@
 	// the chip there so it does not keep counting the deleted machine.
 	afterNavigate(({ from, to }) => {
 		if (from !== null && to?.url.pathname === '/vms') void loadMachineCount();
+	});
+
+	// Admin "Quota requests" chip: requests waiting for a decision. Refreshed
+	// on every navigation so approving or denying one updates it.
+	const quotaRequestsHref = resolve('/admin/quota-requests');
+	let pendingQuotaCount = $state.raw(0);
+	async function loadPendingQuotaCount(): Promise<void> {
+		if (!session.isAdmin) return;
+		try {
+			pendingQuotaCount = (await fetchAdminQuotaRequests('pending')).length;
+		} catch {
+			pendingQuotaCount = 0;
+		}
+	}
+	afterNavigate(() => {
+		void loadPendingQuotaCount();
 	});
 
 	// "Activity" count chip: operations in flight right now - creations and
@@ -339,12 +356,21 @@
 										<a
 											href={item.href}
 											aria-current={active ? 'page' : undefined}
-											class="flex items-center rounded-lg px-2.5 py-1.5 text-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring {active
+											class="flex items-center gap-2 rounded-lg px-2.5 py-1.5 text-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring {active
 												? 'bg-sidebar-accent font-medium text-sidebar-accent-foreground'
 												: 'text-muted-foreground hover:bg-sidebar-accent/50 hover:text-foreground'}"
 											onclick={closeDrawer}
 										>
-											{item.label()}
+											<span class="flex-1">{item.label()}</span>
+											{#if item.href === quotaRequestsHref && pendingQuotaCount > 0}
+												<span
+													class="min-w-5 rounded-full bg-primary-solid px-1.5 text-center font-mono text-2xs tabular-nums text-primary-foreground"
+													aria-label={m['admin.dashboard.alert.quotaRequestsPending']({ count: pendingQuotaCount })}
+													data-testid="sidebar-quota-count"
+												>
+													{pendingQuotaCount}
+												</span>
+											{/if}
 										</a>
 									</li>
 								{/each}

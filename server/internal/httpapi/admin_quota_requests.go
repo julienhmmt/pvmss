@@ -76,7 +76,7 @@ func (handler *QuotaRequests) ServeApprove(w http.ResponseWriter, r *http.Reques
 
 	actor := handler.actorName(r)
 
-	update, err := handler.service.ApproveQuota(r.Context(), row.Cluster, target, id, actor)
+	update, err := handler.service.ApproveQuota(r.Context(), row.Cluster, row.Pool, target, id, actor)
 	if errors.Is(err, sql.ErrNoRows) {
 		handler.writeDecidedConflict(w, r, id, err)
 		return
@@ -90,7 +90,7 @@ func (handler *QuotaRequests) ServeApprove(w http.ResponseWriter, r *http.Reques
 	summary := "approved quota request " + strconv.FormatInt(id, 10) + " for " + row.Requester +
 		" on pool " + row.Pool + " (" + row.Cluster + ")"
 	handler.recordAudit(r, actor, "quota.request_approved", id, summary, []any{
-		map[string]any{auditKeyField: "quota.maxVmPerUser", auditKeyOld: update.Before.Allowed, auditKeyNew: update.After.Allowed},
+		map[string]any{auditKeyField: "quota.poolMaxVmPerUser", auditKeyOld: update.Before.Allowed, auditKeyNew: update.After.Allowed},
 		map[string]any{auditKeyField: "quota.requested", auditKeyOld: row.CurrentQuota, auditKeyNew: row.RequestedQuota},
 	})
 

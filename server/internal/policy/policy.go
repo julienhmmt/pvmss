@@ -301,13 +301,13 @@ func policyRowFrom(clusterName string, settings Settings) store.PolicyRow {
 // whole pool: accounts sharing one share its budget. Administrators have no
 // pool and therefore always receive the unlimited allowance.
 func (service *Policy) Quota(ctx context.Context, clusterName string, actor auth.Identity) (Quota, error) {
-	row, err := service.policyRowOrDefault(ctx, clusterName)
-	if err != nil {
-		return Quota{}, err
-	}
-
 	if actor.IsAdmin {
 		return Quota{Allowed: defaultMaxVMPerUser}, nil
+	}
+
+	allowed, _, err := service.poolAllowance(ctx, clusterName, actor.Pool)
+	if err != nil {
+		return Quota{}, err
 	}
 
 	index, err := service.indexFor(clusterName)
@@ -315,7 +315,7 @@ func (service *Policy) Quota(ctx context.Context, clusterName string, actor auth
 		return Quota{}, err
 	}
 
-	return Quota{Used: ManagedPoolVMCount(index, actor.Pool), Allowed: row.MaxVMPerUser}, nil
+	return Quota{Used: ManagedPoolVMCount(index, actor.Pool), Allowed: allowed}, nil
 }
 
 // NodeCapacity reads one node's configured capacité and live usage. Only VMs
