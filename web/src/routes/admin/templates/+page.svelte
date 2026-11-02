@@ -7,6 +7,7 @@
 	} from '#lib/features/admin-catalog/admin-catalog.svelte.js';
 	import CatalogListStates from '#lib/features/admin-catalog/CatalogListStates.svelte';
 	import CatalogToolbar from '#lib/features/admin-catalog/CatalogToolbar.svelte';
+	import RemoveApprovalDialog from '#lib/features/admin-catalog/RemoveApprovalDialog.svelte';
 	import TemplateEditDialog from '#lib/features/admin-catalog/TemplateEditDialog.svelte';
 	import TemplatesTable from '#lib/features/admin-catalog/TemplatesTable.svelte';
 	import ClusterSelector from '#lib/shared/ui/ClusterSelector.svelte';
@@ -23,6 +24,13 @@
 	const pager = createPagination('templates', () => store.filteredTemplates);
 
 	let editing = $state<AdminTemplate | null>(null);
+	let removeTarget = $state<number | null>(null);
+
+	function confirmRemove(): void {
+		const vmid = removeTarget;
+		removeTarget = null;
+		if (vmid !== null) void handleRemove(vmid);
+	}
 
 	onMount(() => {
 		void store.loadTemplates();
@@ -106,7 +114,7 @@
 			templates={pager.rows}
 			toggling={store.toggling}
 			onToggle={(vmid, e) => void handleToggle(vmid, e)}
-			onRemove={(vmid) => void handleRemove(vmid)}
+			onRemove={(vmid) => (removeTarget = vmid)}
 			onEdit={(template) => (editing = template)}
 			sortBy={store.templateSortBy}
 			sortDir={store.templateSortDir}
@@ -117,6 +125,13 @@
 		{/snippet}
 	</TableCard>
 </CatalogListStates>
+
+<RemoveApprovalDialog
+	open={removeTarget !== null}
+	name={removeTarget === null ? '' : String(removeTarget)}
+	onConfirm={confirmRemove}
+	onClose={() => (removeTarget = null)}
+/>
 
 <TemplateEditDialog
 	template={editing}

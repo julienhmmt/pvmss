@@ -3,6 +3,7 @@
 	import { setAdminCatalogContext, type AdminNode } from '#lib/features/admin-catalog/admin-catalog.svelte.js';
 	import CatalogListStates from '#lib/features/admin-catalog/CatalogListStates.svelte';
 	import CatalogToolbar from '#lib/features/admin-catalog/CatalogToolbar.svelte';
+	import RemoveApprovalDialog from '#lib/features/admin-catalog/RemoveApprovalDialog.svelte';
 	import NodesTable from '#lib/features/admin-catalog/NodesTable.svelte';
 	import ClusterSelector from '#lib/shared/ui/ClusterSelector.svelte';
 	import ConfirmDialog from '#lib/shared/ui/ConfirmDialog.svelte';
@@ -70,6 +71,13 @@
 			toast.error(m['admin.catalog.removeNodeError']());
 		}
 	}
+	let removeTarget = $state<string | null>(null);
+
+	function confirmRemove(): void {
+		const name = removeTarget;
+		removeTarget = null;
+		if (name) void handleRemove(name);
+	}
 </script>
 
 <svelte:head>
@@ -114,7 +122,7 @@
 			sortBy={store.nodeSortBy}
 			sortDir={store.nodeSortDir}
 			onToggle={(name, e) => handleToggle(name, e)}
-			onRemove={(name) => void handleRemove(name)}
+			onRemove={(name) => (removeTarget = name)}
 			onSort={(column) => store.setNodeSort(column)}
 		/>
 		{#snippet footer()}
@@ -122,6 +130,13 @@
 		{/snippet}
 	</TableCard>
 </CatalogListStates>
+
+<RemoveApprovalDialog
+	open={removeTarget !== null}
+	name={removeTarget ?? ''}
+	onConfirm={confirmRemove}
+	onClose={() => (removeTarget = null)}
+/>
 
 <ConfirmDialog
 	open={disableDialogOpen}
