@@ -1,6 +1,6 @@
 import { afterEach, beforeAll, describe, expect, it, vi } from 'vitest';
 import { setLocale } from '#lib/paraglide/runtime.js';
-import { ActivityStore, activityMessage, auditTarget, isKnownAction, mergeActivity } from './activity.svelte';
+import { ActivityStore, MAX_MACHINES, activityMessage, auditTarget, isKnownAction, mergeActivity } from './activity.svelte';
 
 beforeAll(() => setLocale('en', { reload: false }));
 afterEach(() => vi.unstubAllGlobals());
@@ -69,5 +69,32 @@ describe('ActivityStore', () => {
 		await store.load();
 		expect(store.error).toBeNull();
 		expect(store.entries?.map((row) => row.machineName)).toEqual(['web-01']);
+	});
+});
+
+describe('ActivityStore partial coverage', () => {
+	function stubFetch(total: number) {
+		const list = { items: [{ cluster: 'default', vmid: 100, name: 'web-01' }], total, page: 1, pageSize: 20, availableNodes: [] };
+		vi.stubGlobal(
+			'fetch',
+			vi.fn((url: string) => {
+				const body = url.includes('/audit') ? { items: [] } : list;
+				return Promise.resolve(new Response(JSON.stringify(body), { status: 200, headers: { 'content-type': 'application/json' } }));
+			})
+		);
+	}
+
+	it('flags coverage when the account has more machines than the read bound', async () => {
+		stubFetch(MAX_MACHINES + 1);
+		const store = new ActivityStore();
+		await store.load();
+		expect(store.partialCoverage).toBe(true);
+	});
+
+	it('does not flag coverage when every machine was read', async () => {
+		stubFetch(MAX_MACHINES);
+		const store = new ActivityStore();
+		await store.load();
+		expect(store.partialCoverage).toBe(false);
 	});
 });

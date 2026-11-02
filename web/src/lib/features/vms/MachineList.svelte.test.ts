@@ -21,6 +21,12 @@ vi.mock('#lib/features/tasks/tasks.svelte.js', () => ({
 	getTaskTrayContext: vi.fn(() => tray)
 }));
 
+// The first-visit empty state reads the signed-in principal's role.
+const session = vi.hoisted(() => ({ isAdmin: false }));
+vi.mock('#lib/features/auth/session.svelte.js', () => ({
+	getSessionContext: vi.fn(() => session)
+}));
+
 const vmItem: VmListItem = {
 	cluster: 'default',
 	clusterDisplayName: 'Default',
@@ -141,6 +147,22 @@ describe('MachineList first visit', () => {
 		vi.mocked(getVmListContext).mockReturnValue(emptyOwnedStore());
 		mount(MachineList, { target: document.body });
 		expect(document.querySelector('[data-testid="vm-empty-owned"]')).not.toBeNull();
+	});
+
+	it('keeps the create invite for a non-admin on first visit', () => {
+		session.isAdmin = false;
+		vi.mocked(getVmListContext).mockReturnValue(emptyOwnedStore());
+		mount(MachineList, { target: document.body });
+		expect(document.querySelector('[data-testid="vm-empty-create"]')).not.toBeNull();
+	});
+
+	it('drops the create invite for an admin, who is sent to Admin > All machines instead', () => {
+		session.isAdmin = true;
+		vi.mocked(getVmListContext).mockReturnValue(emptyOwnedStore());
+		mount(MachineList, { target: document.body });
+		expect(document.querySelector('[data-testid="vm-empty-owned"]')).not.toBeNull();
+		expect(document.querySelector('[data-testid="vm-empty-create"]')).toBeNull();
+		session.isAdmin = false;
 	});
 
 	it('shows the machine being prepared instead of the first-create invite', () => {
