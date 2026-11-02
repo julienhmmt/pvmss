@@ -45,56 +45,97 @@ func proxmoxVNCAuthServer(t *testing.T, secTypes []byte, challenge [16]byte, obs
 		conn := websocket.NetConn(r.Context(), ws, websocket.MessageBinary)
 		defer func() { _ = conn.Close() }()
 
-		// RFB server speaks first: banner, then the client's version reply.
-		if _, err := conn.Write([]byte(rfbClientVersion)); err != nil {
-			return
-		}
-
-		banner := make([]byte, len(rfbClientVersion))
-		if _, err := io.ReadFull(conn, banner); err != nil {
-			return
-		}
-
-		offer := append([]byte{byte(len(secTypes))}, secTypes...) //nolint:gosec // RFB security-type count is a protocol byte
-		if _, err := conn.Write(offer); err != nil {
-			return
-		}
-
-		var chosen [1]byte
-		if _, err := io.ReadFull(conn, chosen[:]); err != nil {
+		chosen, err := proxmoxRFBHandshake(conn, secTypes)
+		if err != nil {
 			return
 		}
 
 		obs := rfbHandshakeObserved{challenge: challenge}
 
-		if chosen[0] == rfbSecTypeVNCAuth {
-			if _, err := conn.Write(challenge[:]); err != nil {
-				return
-			}
-
-			if _, err := io.ReadFull(conn, obs.response[:]); err != nil {
-				return
-			}
-		}
-
-		if _, err := conn.Write([]byte{0, 0, 0, 0}); err != nil {
+		if err := vncAuthExchange(conn, chosen, challenge, &obs); err != nil {
 			return
 		}
 
-		if _, err := conn.Write([]byte("proxmox-data")); err != nil {
+		if err := pushMarkerFrame(conn); err != nil {
 			return
 		}
 
-		buf := make([]byte, 32)
-
-		n, err := conn.Read(buf)
-		if err != nil {
+		if err := recordBrowserFrame(conn, &obs); err != nil {
 			return
 		}
 
-		obs.browser = string(buf[:n])
 		observed <- obs
 	}))
+}
+
+// proxmoxRFBHandshake plays the server side of the RFB version and
+// security-type negotiation: it sends the banner, reads the client's
+// version reply, offers secTypes, and returns the type the client picked.
+func proxmoxRFBHandshake(conn net.Conn, secTypes []byte) (byte, error) {
+	// RFB server speaks first: banner, then the client's version reply.
+	if _, err := conn.Write([]byte(rfbClientVersion)); err != nil {
+		return 0, err
+	}
+
+	banner := make([]byte, len(rfbClientVersion))
+	if _, err := io.ReadFull(conn, banner); err != nil {
+		return 0, err
+	}
+
+	offer := append([]byte{byte(len(secTypes))}, secTypes...) //nolint:gosec // RFB security-type count is a protocol byte
+	if _, err := conn.Write(offer); err != nil {
+		return 0, err
+	}
+
+	var chosen [1]byte
+	if _, err := io.ReadFull(conn, chosen[:]); err != nil {
+		return 0, err
+	}
+
+	return chosen[0], nil
+}
+
+// vncAuthExchange runs the security sub-negotiation and result. When the
+// client picked VNC Authentication it sends challenge and records the DES
+// answer in obs.response; either way it closes the handshake with the
+// all-zero SecurityResult.
+func vncAuthExchange(conn net.Conn, chosen byte, challenge [16]byte, obs *rfbHandshakeObserved) error {
+	if chosen == rfbSecTypeVNCAuth {
+		if _, err := conn.Write(challenge[:]); err != nil {
+			return err
+		}
+
+		if _, err := io.ReadFull(conn, obs.response[:]); err != nil {
+			return err
+		}
+	}
+
+	_, err := conn.Write([]byte{0, 0, 0, 0})
+
+	return err
+}
+
+// pushMarkerFrame sends the single post-handshake frame the test relays on
+// to the browser peer.
+func pushMarkerFrame(conn net.Conn) error {
+	_, err := conn.Write([]byte("proxmox-data"))
+
+	return err
+}
+
+// recordBrowserFrame reads the first frame the relay forwarded from the
+// browser peer into obs.browser.
+func recordBrowserFrame(conn net.Conn, obs *rfbHandshakeObserved) error {
+	buf := make([]byte, 32)
+
+	n, err := conn.Read(buf)
+	if err != nil {
+		return err
+	}
+
+	obs.browser = string(buf[:n])
+
+	return nil
 }
 
 // TestProxmoxRelayConsole_VNCAuthHandshake exercises the real relay end to

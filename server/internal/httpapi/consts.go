@@ -25,6 +25,7 @@ const (
 	msgInvalidVMPath         = "invalid VM path"
 	msgInventoryNotReady     = "inventory has not been populated yet"
 	msgInvalidRequestBody    = "invalid request body"
+	msgInvalidClusterRequest = "invalid cluster request"
 	msgHardwareCatalogFailed = "read hardware catalog failed"
 	msgNotYourVM             = "not your VM"
 	msgVMNotFound            = "VM not found"

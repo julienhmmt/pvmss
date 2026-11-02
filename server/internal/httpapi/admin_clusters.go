@@ -123,7 +123,7 @@ func (handler *AdminClusters) ServeList(w http.ResponseWriter, r *http.Request) 
 func (handler *AdminClusters) ServeCreate(w http.ResponseWriter, r *http.Request) {
 	var request createClusterRequest
 	if err := decodeJSON(w, r, &request); err != nil {
-		writeAdminError(w, http.StatusBadRequest, "invalid_request", "invalid cluster request")
+		writeAdminError(w, http.StatusBadRequest, "invalid_request", msgInvalidClusterRequest)
 		return
 	}
 	tlsMaterial, err := resolveTLS(store.ClusterTLS{}, request.TLS)
@@ -161,7 +161,7 @@ func (handler *AdminClusters) ServeCreate(w http.ResponseWriter, r *http.Request
 func (handler *AdminClusters) ServeUpdate(w http.ResponseWriter, r *http.Request) {
 	var request updateClusterRequest
 	if err := decodeJSON(w, r, &request); err != nil {
-		writeAdminError(w, http.StatusBadRequest, "invalid_request", "invalid cluster request")
+		writeAdminError(w, http.StatusBadRequest, "invalid_request", msgInvalidClusterRequest)
 		return
 	}
 	name := r.PathValue("name")
@@ -243,7 +243,7 @@ func (handler *AdminClusters) secretKeptSafely(w http.ResponseWriter, current st
 func (handler *AdminClusters) ServeProbe(w http.ResponseWriter, r *http.Request) {
 	var request createClusterRequest
 	if err := decodeJSON(w, r, &request); err != nil {
-		writeAdminError(w, http.StatusBadRequest, "invalid_request", "invalid cluster request")
+		writeAdminError(w, http.StatusBadRequest, "invalid_request", msgInvalidClusterRequest)
 		return
 	}
 	tlsMaterial, err := resolveTLS(store.ClusterTLS{}, request.TLS)

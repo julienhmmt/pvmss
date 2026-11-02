@@ -21,6 +21,9 @@ const unlimitedQuota = -1
 // maxQuotaReasonRunes bounds the free-text reason on a quota request.
 const maxQuotaReasonRunes = 500
 
+// opReadQuotaRequest labels the pending-request read for failure logging.
+const opReadQuotaRequest = "read quota request"
+
 // QuotaRequests serves the in-app quota increase flow. Users file requests on
 // their own pool (this file); administrators decide them
 // (admin_quota_requests.go). Both sides share this struct.
@@ -91,7 +94,7 @@ func (handler *QuotaRequests) ServeMine(w http.ResponseWriter, r *http.Request) 
 	}
 
 	if err != nil {
-		handler.writeFailure(w, "read quota request", err)
+		handler.writeFailure(w, opReadQuotaRequest, err)
 		return
 	}
 
@@ -152,7 +155,7 @@ func (handler *QuotaRequests) ServeCreate(w http.ResponseWriter, r *http.Request
 
 	row, err := handler.store.PendingQuotaRequest(r.Context(), identity.Username, identity.Cluster, identity.Pool)
 	if err != nil {
-		handler.writeFailure(w, "read quota request", err)
+		handler.writeFailure(w, opReadQuotaRequest, err)
 		return
 	}
 
@@ -180,7 +183,7 @@ func (handler *QuotaRequests) requesterPool(w http.ResponseWriter, r *http.Reque
 func (handler *QuotaRequests) writePending(w http.ResponseWriter, r *http.Request, identity auth.Identity) {
 	row, err := handler.store.PendingQuotaRequest(r.Context(), identity.Username, identity.Cluster, identity.Pool)
 	if err != nil {
-		handler.writeFailure(w, "read quota request", err)
+		handler.writeFailure(w, opReadQuotaRequest, err)
 		return
 	}
 

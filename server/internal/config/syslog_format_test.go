@@ -9,18 +9,42 @@ import (
 
 var syslogTestTime = time.Date(2026, 10, 30, 10, 0, 0, 123456000, time.UTC)
 
+type syslogFormatCase struct {
+	name   string
+	level  slog.Level
+	attrs  []syslogKV
+	msg    string
+	want   string // exact line, when set
+	prefix string // checked with HasPrefix, when set
+	has    []string
+}
+
+func assertSyslogRecord(t *testing.T, tc syslogFormatCase, got string) {
+	t.Helper()
+
+	if strings.ContainsAny(got, "\n\r") {
+		t.Fatalf("line contains a raw newline: %q", got)
+	}
+
+	if tc.want != "" && got != tc.want {
+		t.Fatalf("line = %q, want %q", got, tc.want)
+	}
+
+	if tc.prefix != "" && !strings.HasPrefix(got, tc.prefix) {
+		t.Fatalf("line = %q, want prefix %q", got, tc.prefix)
+	}
+
+	for _, sub := range tc.has {
+		if !strings.Contains(got, sub) {
+			t.Fatalf("line = %q, want it to contain %q", got, sub)
+		}
+	}
+}
+
 func TestFormatSyslogRecord_Table(t *testing.T) {
 	t.Parallel()
 
-	cases := []struct {
-		name   string
-		level  slog.Level
-		attrs  []syslogKV
-		msg    string
-		want   string // exact line, when set
-		prefix string // checked with HasPrefix, when set
-		has    []string
-	}{
+	cases := []syslogFormatCase{
 		{name: "debug PRI", level: slog.LevelDebug, prefix: "<135>1 "},
 		{name: "info PRI", level: slog.LevelInfo, prefix: "<134>1 "},
 		{name: "warn PRI", level: slog.LevelWarn, prefix: "<132>1 "},
@@ -78,23 +102,7 @@ func TestFormatSyslogRecord_Table(t *testing.T) {
 				Attrs: c.attrs, Message: c.msg,
 			})
 
-			if strings.ContainsAny(line, "\n\r") {
-				t.Fatalf("line contains a raw newline: %q", line)
-			}
-
-			if c.want != "" && line != c.want {
-				t.Fatalf("line = %q, want %q", line, c.want)
-			}
-
-			if c.prefix != "" && !strings.HasPrefix(line, c.prefix) {
-				t.Fatalf("line = %q, want prefix %q", line, c.prefix)
-			}
-
-			for _, sub := range c.has {
-				if !strings.Contains(line, sub) {
-					t.Fatalf("line = %q, want it to contain %q", line, sub)
-				}
-			}
+			assertSyslogRecord(t, c, line)
 		})
 	}
 }

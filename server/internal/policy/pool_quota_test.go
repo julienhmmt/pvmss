@@ -26,31 +26,36 @@ func TestQuota_PoolOverrideReplacesGlobalAllowance(t *testing.T) {
 	for _, testCase := range cases {
 		t.Run(testCase.name, func(t *testing.T) {
 			t.Parallel()
-
-			service, _ := newPolicyService(t)
-			ctx := context.Background()
-			actor := auth.Identity{Username: testUserAlice, Pool: cluster.FakePoolAlice}
-
-			if err := service.SetPolicy(ctx, "default", policy.Gabarit{}, 10); err != nil {
-				t.Fatalf("SetPolicy: %v", err)
-			}
-
-			if testCase.override != nil {
-				if err := service.SetPoolQuotaOverride(ctx, "default", cluster.FakePoolAlice, *testCase.override, "admin"); err != nil {
-					t.Fatalf("SetPoolQuotaOverride: %v", err)
-				}
-			}
-
-			quota, err := service.Quota(ctx, "default", actor)
-			if err != nil || quota.Allowed != testCase.want {
-				t.Fatalf("Quota.Allowed = %d, err %v; want %d", quota.Allowed, err, testCase.want)
-			}
-
-			settings, err := service.Settings(ctx, "default")
-			if err != nil || settings.Allowed != 10 {
-				t.Fatalf("global Settings.Allowed = %d, err %v; want untouched 10", settings.Allowed, err)
-			}
+			assertQuotaWithOverride(t, testCase.override, testCase.want)
 		})
+	}
+}
+
+func assertQuotaWithOverride(t *testing.T, override *int, want int) {
+	t.Helper()
+
+	service, _ := newPolicyService(t)
+	ctx := context.Background()
+	actor := auth.Identity{Username: testUserAlice, Pool: cluster.FakePoolAlice}
+
+	if err := service.SetPolicy(ctx, "default", policy.Gabarit{}, 10); err != nil {
+		t.Fatalf("SetPolicy: %v", err)
+	}
+
+	if override != nil {
+		if err := service.SetPoolQuotaOverride(ctx, "default", cluster.FakePoolAlice, *override, "admin"); err != nil {
+			t.Fatalf("SetPoolQuotaOverride: %v", err)
+		}
+	}
+
+	quota, err := service.Quota(ctx, "default", actor)
+	if err != nil || quota.Allowed != want {
+		t.Fatalf("Quota.Allowed = %d, err %v; want %d", quota.Allowed, err, want)
+	}
+
+	settings, err := service.Settings(ctx, "default")
+	if err != nil || settings.Allowed != 10 {
+		t.Fatalf("global Settings.Allowed = %d, err %v; want untouched 10", settings.Allowed, err)
 	}
 }
 

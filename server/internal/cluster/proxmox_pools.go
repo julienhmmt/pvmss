@@ -13,6 +13,10 @@ import (
 // list, create and comment-update calls below (delete appends the pool id).
 const proxmoxPoolsPath = "/pools"
 
+// proxmoxUsersPath is the /access/users collection endpoint, shared by the
+// pool-user ensure and password-reset calls below.
+const proxmoxUsersPath = "/access/users"
+
 // ListPools implements Client.
 func (p Proxmox) ListPools(ctx context.Context) ([]Pool, error) {
 	return proxmoxListPools(ctx, p.rest())
@@ -80,7 +84,7 @@ func (p Proxmox) EnsurePoolUser(ctx context.Context, pool, password string) (str
 	rest := p.rest()
 	username := pool + "@pve"
 
-	raw, err := rest.do(ctx, http.MethodGet, "/access/users", nil)
+	raw, err := rest.do(ctx, http.MethodGet, proxmoxUsersPath, nil)
 	if err != nil {
 		return "", err
 	}
@@ -98,7 +102,7 @@ func (p Proxmox) EnsurePoolUser(ctx context.Context, pool, password string) (str
 		}
 	}
 
-	_, err = rest.do(ctx, http.MethodPost, "/access/users", url.Values{
+	_, err = rest.do(ctx, http.MethodPost, proxmoxUsersPath, url.Values{
 		"userid":            {username},
 		proxmoxFormPassword: {password},
 		"comment":           {"PVMSS self-service user for pool " + pool},
@@ -217,7 +221,7 @@ func (p Proxmox) SetUserPassword(ctx context.Context, username, password string)
 		return err
 	}
 
-	_, err := rest.do(ctx, http.MethodPost, "/access/users", url.Values{
+	_, err := rest.do(ctx, http.MethodPost, proxmoxUsersPath, url.Values{
 		"userid":            {username},
 		proxmoxFormPassword: {password},
 		"comment":           {"PVMSS self-service user for pool " + strings.TrimSuffix(username, "@pve")},

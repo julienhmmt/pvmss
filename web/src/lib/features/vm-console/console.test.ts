@@ -1,6 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { buildConsolePopoutURL, buildConsoleWebSocketURL, consoleTicketErrorMessage, fetchConsoleTicket, openConsolePopout, fetchSerialTicket, buildSerialWebSocketURL } from './console';
-import { ConsoleStore } from './console.svelte';
 import { ApiRequestError } from '#lib/shared/api/client.js';
 import { m } from '#lib/paraglide/messages.js';
 

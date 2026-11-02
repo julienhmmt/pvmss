@@ -84,7 +84,7 @@ function string(value: unknown): string {
 
 /** Latest value of a metric series, or null when the series is empty. */
 export function metricLast(values: number[]): number | null {
-	return values.length === 0 ? null : values[values.length - 1]!;
+	return values.at(-1) ?? null;
 }
 
 /** Peak value of a metric series, or null when the series is empty. */

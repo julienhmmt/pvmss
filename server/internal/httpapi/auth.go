@@ -128,33 +128,9 @@ func (h *Auth) SetClusterFreshnessChecker(freshness ClusterFreshnessChecker, sta
 // Login authenticates a PVE cluster account. The local administrator has its
 // own endpoint (AdminLogin) - a wrong password means something different for
 // each, so neither is a branch inside the other.
-//
-//nolint:gocyclo // each rejection maps to a distinct client-visible code
 func (h *Auth) Login(w http.ResponseWriter, r *http.Request) {
-	if r.Method != http.MethodPost {
-		writeAuthError(w, http.StatusMethodNotAllowed, "method_not_allowed", msgMethodNotAllowed)
-		return
-	}
-
-	var request loginRequest
-	if err := decodeJSON(w, r, &request); err != nil {
-		writeAuthError(w, http.StatusBadRequest, "invalid_request", "invalid login request")
-		return
-	}
-
-	request.Username = strings.TrimSpace(request.Username)
-	if request.Username == "" || request.Password == "" {
-		writeAuthError(w, http.StatusBadRequest, "invalid_request", "username and password are required")
-		return
-	}
-
-	username, err := normalizePVEUsername(request.Username, request.Realm)
-	if errors.Is(err, errRealmUnsupported) {
-		writeAuthError(w, http.StatusBadRequest, "realm_unsupported", msgRealmUnsupported)
-		return
-	}
-	if err != nil {
-		writeAuthError(w, http.StatusBadRequest, "invalid_request", "username and realm disagree")
+	request, username, ok := parseLoginRequest(w, r)
+	if !ok {
 		return
 	}
 
@@ -208,6 +184,40 @@ func (h *Auth) Login(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 	h.startSession(w, r, auth.Identity{Username: result.Username, DisplayName: userDisplayName(username), Pool: result.Pool, IsAdmin: result.IsAdmin, Cluster: clusterName, ClusterDisplayName: displayName, Provider: auth.ProviderPVE})
+}
+
+// parseLoginRequest decodes the login body and resolves the normalized PVE
+// username. It writes the error response and returns false when the request
+// must stop before authentication.
+func parseLoginRequest(w http.ResponseWriter, r *http.Request) (loginRequest, string, bool) {
+	if r.Method != http.MethodPost {
+		writeAuthError(w, http.StatusMethodNotAllowed, "method_not_allowed", msgMethodNotAllowed)
+		return loginRequest{}, "", false
+	}
+
+	var request loginRequest
+	if err := decodeJSON(w, r, &request); err != nil {
+		writeAuthError(w, http.StatusBadRequest, "invalid_request", "invalid login request")
+		return loginRequest{}, "", false
+	}
+
+	request.Username = strings.TrimSpace(request.Username)
+	if request.Username == "" || request.Password == "" {
+		writeAuthError(w, http.StatusBadRequest, "invalid_request", "username and password are required")
+		return loginRequest{}, "", false
+	}
+
+	username, err := normalizePVEUsername(request.Username, request.Realm)
+	if errors.Is(err, errRealmUnsupported) {
+		writeAuthError(w, http.StatusBadRequest, "realm_unsupported", msgRealmUnsupported)
+		return loginRequest{}, "", false
+	}
+	if err != nil {
+		writeAuthError(w, http.StatusBadRequest, "invalid_request", "username and realm disagree")
+		return loginRequest{}, "", false
+	}
+
+	return request, username, true
 }
 
 // AdminLogin authenticates a local administrator, independent of any cluster.

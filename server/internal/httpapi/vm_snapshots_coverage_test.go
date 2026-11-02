@@ -53,6 +53,45 @@ func createSnapshotAndWait(t *testing.T, handler *httpapi.VMSnapshots, cookie *h
 	completeSnapshotTask(t, task.UPID)
 }
 
+// deleteNamedSnapshot issues DELETE .../snapshots/{name} and returns the
+// delete task's UPID so the caller can complete the async operation.
+func deleteNamedSnapshot(t *testing.T, handler *httpapi.VMSnapshots, name string, cookie *http.Cookie) string {
+	t.Helper()
+
+	rec := httptest.NewRecorder()
+	handler.ServeHTTP(rec, snapshotNameRequest(http.MethodDelete, "/api/v1/vms/default/101/snapshots/"+name, name, "", cookie))
+
+	if rec.Code != http.StatusAccepted {
+		t.Fatalf("delete status = %d, want %d: %s", rec.Code, http.StatusAccepted, rec.Body.String())
+	}
+
+	var task snapshotTaskResponse
+	if err := json.Unmarshal(rec.Body.Bytes(), &task); err != nil {
+		t.Fatalf("decode task: %v", err)
+	}
+
+	return task.UPID
+}
+
+// assertSnapshotNotListed fails when name still appears in ListSnapshots.
+func assertSnapshotNotListed(t *testing.T, handler *httpapi.VMSnapshots, name string, cookie *http.Cookie) {
+	t.Helper()
+
+	rec := httptest.NewRecorder()
+	handler.ServeHTTP(rec, snapshotRequest(http.MethodGet, "/api/v1/vms/default/101/snapshots", "", cookie))
+
+	var list snapshotListResponse
+	if err := json.Unmarshal(rec.Body.Bytes(), &list); err != nil {
+		t.Fatalf("decode list: %v", err)
+	}
+
+	for _, s := range list.Snapshots {
+		if s.Name == name {
+			t.Fatalf("snapshot %q still listed after delete", name)
+		}
+	}
+}
+
 //nolint:paralleltest // serial: shared fake and SQLite fixtures
 func TestVMSnapshotsCoverage_List_Unauthenticated(t *testing.T) {
 	handler, _ := newVMSnapshotsHandler(t)
@@ -364,33 +403,9 @@ func TestVMSnapshotsCoverage_DeleteCollidingNameDeletesSnapshot(t *testing.T) {
 
 			completeSnapshotTask(t, upid)
 
-			deleteRec := httptest.NewRecorder()
-			handler.ServeHTTP(deleteRec, snapshotNameRequest(http.MethodDelete, "/api/v1/vms/default/101/snapshots/"+name, name, "", cookie))
+			completeSnapshotTask(t, deleteNamedSnapshot(t, handler, name, cookie))
 
-			if deleteRec.Code != http.StatusAccepted {
-				t.Fatalf("delete status = %d, want %d: %s", deleteRec.Code, http.StatusAccepted, deleteRec.Body.String())
-			}
-
-			var task snapshotTaskResponse
-			if err := json.Unmarshal(deleteRec.Body.Bytes(), &task); err != nil {
-				t.Fatalf("decode task: %v", err)
-			}
-
-			completeSnapshotTask(t, task.UPID)
-
-			listRec := httptest.NewRecorder()
-			handler.ServeHTTP(listRec, snapshotRequest(http.MethodGet, "/api/v1/vms/default/101/snapshots", "", cookie))
-
-			var list snapshotListResponse
-			if err := json.Unmarshal(listRec.Body.Bytes(), &list); err != nil {
-				t.Fatalf("decode list: %v", err)
-			}
-
-			for _, s := range list.Snapshots {
-				if s.Name == name {
-					t.Fatalf("snapshot %q still listed after delete", name)
-				}
-			}
+			assertSnapshotNotListed(t, handler, name, cookie)
 		})
 	}
 }

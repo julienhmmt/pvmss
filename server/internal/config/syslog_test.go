@@ -177,6 +177,7 @@ func newSyslogLogger(t *testing.T, rcv *syslogReceiver, caPath, level string) (*
 	return logger, lv, out
 }
 
+//nolint:paralleltest // serial: subtests set process env via t.Setenv
 func TestLoad_SyslogSettings(t *testing.T) {
 	cert, caPath := syslogTestCert(t)
 	dir := t.TempDir()
@@ -193,9 +194,7 @@ func TestLoad_SyslogSettings(t *testing.T) {
 
 	_ = cert
 
-	cases := []struct {
-		name, addr, ca, cert, key, wantErr string
-	}{
+	cases := []syslogSettingsCase{
 		{name: "off"},
 		{name: "valid host port", addr: syslogTestAddr},
 		{name: "host alone rejected", addr: "siem.example.com", wantErr: "host:port"},
@@ -210,22 +209,11 @@ func TestLoad_SyslogSettings(t *testing.T) {
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
 			setMetricsBaseEnv(t)
-			t.Setenv("PVMSS_SYSLOG_ADDR", c.addr)
-			t.Setenv("PVMSS_SYSLOG_TLS_CA_FILE", c.ca)
-			t.Setenv("PVMSS_SYSLOG_TLS_CERT_FILE", c.cert)
-			t.Setenv("PVMSS_SYSLOG_TLS_KEY_FILE", c.key)
+			setSyslogEnv(t, c)
 
 			cfg, err := config.Load()
-			if c.wantErr != "" {
-				if err == nil || !strings.Contains(err.Error(), c.wantErr) {
-					t.Fatalf("err = %v, want %q", err, c.wantErr)
-				}
-
+			if !assertLoadError(t, c, err) {
 				return
-			}
-
-			if err != nil {
-				t.Fatalf("Load: %v", err)
 			}
 
 			if cfg.SyslogAddr != c.addr {
@@ -233,6 +221,38 @@ func TestLoad_SyslogSettings(t *testing.T) {
 			}
 		})
 	}
+}
+
+type syslogSettingsCase struct {
+	name, addr, ca, cert, key, wantErr string
+}
+
+func setSyslogEnv(t *testing.T, tc syslogSettingsCase) {
+	t.Helper()
+
+	t.Setenv("PVMSS_SYSLOG_ADDR", tc.addr)
+	t.Setenv("PVMSS_SYSLOG_TLS_CA_FILE", tc.ca)
+	t.Setenv("PVMSS_SYSLOG_TLS_CERT_FILE", tc.cert)
+	t.Setenv("PVMSS_SYSLOG_TLS_KEY_FILE", tc.key)
+}
+
+// assertLoadError reports whether cfg assertions should run.
+func assertLoadError(t *testing.T, tc syslogSettingsCase, err error) bool {
+	t.Helper()
+
+	if tc.wantErr != "" {
+		if err == nil || !strings.Contains(err.Error(), tc.wantErr) {
+			t.Fatalf("err = %v, want %q", err, tc.wantErr)
+		}
+
+		return false
+	}
+
+	if err != nil {
+		t.Fatalf("Load: %v", err)
+	}
+
+	return true
 }
 
 func TestSyslogHost_HostOnly(t *testing.T) {

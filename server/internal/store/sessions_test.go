@@ -201,67 +201,85 @@ func TestFindSession_LocalAccountGate(t *testing.T) {
 		return session
 	}
 
-	t.Run("enabled local account resolves", func(t *testing.T) {
-		seed(t, "enabled-admin")
+	providerSession := func(provider auth.Provider) auth.SessionRecord {
+		session := sampleSessionRecord([]byte("session-"+string(provider)), "no-row-"+string(provider))
+		session.Identity.Provider = provider
 
-		session := localSession("session-local-enabled", "enabled-admin")
-		if err := st.CreateSession(ctx, session); err != nil {
-			t.Fatalf("CreateSession: %v", err)
-		}
+		return session
+	}
 
-		if _, err := st.FindSession(ctx, session.Hash); err != nil {
-			t.Fatalf("FindSession = %v, want resolved", err)
-		}
-	})
-
-	t.Run("disabled local account is rejected", func(t *testing.T) {
-		id := seed(t, "disabled-admin")
-
-		session := localSession("session-local-disabled", "disabled-admin")
-		if err := st.CreateSession(ctx, session); err != nil {
-			t.Fatalf("CreateSession: %v", err)
-		}
+	disable := func(t *testing.T, id int64) {
+		t.Helper()
 
 		if err := st.SetLocalAccountDisabled(ctx, id, true, now); err != nil {
 			t.Fatalf("SetLocalAccountDisabled: %v", err)
 		}
+	}
 
-		if _, err := st.FindSession(ctx, session.Hash); !errors.Is(err, sql.ErrNoRows) {
-			t.Fatalf("FindSession disabled err = %v, want sql.ErrNoRows", err)
-		}
-	})
-
-	t.Run("deleted local account is rejected", func(t *testing.T) {
-		id := seed(t, "deleted-admin")
-
-		session := localSession("session-local-deleted", "deleted-admin")
-		if err := st.CreateSession(ctx, session); err != nil {
-			t.Fatalf("CreateSession: %v", err)
-		}
+	drop := func(t *testing.T, id int64) {
+		t.Helper()
 
 		if err := st.DeleteLocalAccount(ctx, id); err != nil {
 			t.Fatalf("DeleteLocalAccount: %v", err)
 		}
+	}
 
-		if _, err := st.FindSession(ctx, session.Hash); !errors.Is(err, sql.ErrNoRows) {
-			t.Fatalf("FindSession deleted err = %v, want sql.ErrNoRows", err)
-		}
-	})
+	tests := []struct {
+		name    string
+		session auth.SessionRecord
+		arrange func(t *testing.T)
+		wantErr error
+	}{
+		{
+			name:    "enabled local account resolves",
+			session: localSession("session-local-enabled", "enabled-admin"),
+			arrange: func(t *testing.T) { t.Helper(); seed(t, "enabled-admin") },
+		},
+		{
+			name:    "disabled local account is rejected",
+			session: localSession("session-local-disabled", "disabled-admin"),
+			arrange: func(t *testing.T) { t.Helper(); disable(t, seed(t, "disabled-admin")) },
+			wantErr: sql.ErrNoRows,
+		},
+		{
+			name:    "deleted local account is rejected",
+			session: localSession("session-local-deleted", "deleted-admin"),
+			arrange: func(t *testing.T) { t.Helper(); drop(t, seed(t, "deleted-admin")) },
+			wantErr: sql.ErrNoRows,
+		},
+		{
+			name:    "pve session skips the account lookup",
+			session: providerSession(auth.ProviderPVE),
+		},
+		{
+			name:    "bootstrap session skips the account lookup",
+			session: providerSession(auth.ProviderBootstrap),
+		},
+	}
 
-	t.Run("pve and bootstrap sessions skip the account lookup", func(t *testing.T) {
-		for _, provider := range []auth.Provider{auth.ProviderPVE, auth.ProviderBootstrap} {
-			session := sampleSessionRecord([]byte("session-"+string(provider)), "no-row-"+string(provider))
-			session.Identity.Provider = provider
-
-			if err := st.CreateSession(ctx, session); err != nil {
-				t.Fatalf("CreateSession %s: %v", provider, err)
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			if tc.arrange != nil {
+				tc.arrange(t)
 			}
 
-			if _, err := st.FindSession(ctx, session.Hash); err != nil {
-				t.Errorf("FindSession %s = %v, want resolved", provider, err)
+			if err := findCreatedSession(ctx, t, st, tc.session); !errors.Is(err, tc.wantErr) {
+				t.Fatalf("FindSession err = %v, want %v", err, tc.wantErr)
 			}
-		}
-	})
+		})
+	}
+}
+
+func findCreatedSession(ctx context.Context, t *testing.T, st *store.Store, session auth.SessionRecord) error {
+	t.Helper()
+
+	if err := st.CreateSession(ctx, session); err != nil {
+		t.Fatalf("CreateSession: %v", err)
+	}
+
+	_, err := st.FindSession(ctx, session.Hash)
+
+	return err
 }
 
 func bytesEqual(a, b []byte) bool {

@@ -72,25 +72,9 @@ func TestRegistry_UnknownCluster(t *testing.T) {
 // → manual refresh via Registry.Refresher → projection reflects the mutation.
 // It proves the wiring path end-to-end, not just each component in isolation.
 //
-//nolint:paralleltest,gocyclo // registry tests share fake fixture; integration test has per-phase assertions
+//nolint:paralleltest // registry tests share fake client fixture state
 func TestRegistry_StartRefreshMutateRefreshCycle(t *testing.T) {
-	clusterRegistry, err := cluster.NewRegistry("fake", []store.ClusterRow{
-		{Name: inventoryTestCluster, URL: "https://default.invalid", TokenID: "id", TokenSecret: registryTestSecret},
-	})
-	if err != nil {
-		t.Fatalf("NewRegistry: %v", err)
-	}
-	fakeClient, err := clusterRegistry.Client(inventoryTestCluster)
-	if err != nil {
-		t.Fatalf("Client(default): %v", err)
-	}
-	writer, ok := fakeClient.(cluster.Writer)
-	if !ok {
-		t.Fatal("fake client does not implement Writer")
-	}
-
-	registry := inventory.NewRegistry(clusterRegistry, 50*time.Millisecond, slog.Default())
-	registry.SetManualRefreshMinInterval(1 * time.Millisecond)
+	registry, writer := newRegistryWithWriter(t)
 
 	projection, err := registry.Projection(inventoryTestCluster)
 	if err != nil {
@@ -112,37 +96,11 @@ func TestRegistry_StartRefreshMutateRefreshCycle(t *testing.T) {
 	}
 
 	// Wait for at least one ticker-driven automatic refresh.
-	var autoRefreshed *inventory.Index
-	deadline := time.Now().Add(2 * time.Second)
-	for {
-		autoRefreshed = projection.Load()
-		if autoRefreshed != nil && autoRefreshed.RefreshedAt.After(initial.RefreshedAt) {
-			break
-		}
-		if time.Now().After(deadline) {
-			t.Fatal("no ticker-driven refresh within 2s")
-		}
-		time.Sleep(5 * time.Millisecond)
-	}
-	if autoRefreshed == nil {
-		t.Fatal("projection is nil after ticker interval")
-	}
-	if autoRefreshed.RefreshedAt.Before(initial.RefreshedAt) {
-		t.Fatalf("auto-refresh RefreshedAt %v is before initial %v", autoRefreshed.RefreshedAt, initial.RefreshedAt)
-	}
+	waitForAutoRefresh(t, projection, initial.RefreshedAt)
 
 	// Mutate the fake cluster (delete a VM), then manual refresh.
 	firstVM := firstVMFromIndex(t, initial)
-	if err := writer.Delete(context.Background(), firstVM.Node, firstVM.VMID); err != nil {
-		t.Fatalf("delete VM: %v", err)
-	}
-	refresher, err := registry.Refresher(inventoryTestCluster)
-	if err != nil {
-		t.Fatalf("Refresher: %v", err)
-	}
-	if _, err := refresher.Refresh(context.Background()); err != nil {
-		t.Fatalf("manual refresh after mutation: %v", err)
-	}
+	mutateAndManualRefresh(t, registry, writer, firstVM)
 
 	afterMutation := projection.Load()
 	if len(afterMutation.ByVMID) != 24 {
@@ -156,6 +114,57 @@ func TestRegistry_StartRefreshMutateRefreshCycle(t *testing.T) {
 	// hook to observe; the package's goleak guard is what fails if a worker
 	// keeps running after cancel.
 	cancel()
+}
+
+// newRegistryWithWriter wires a single-cluster fake inventory registry like
+// main.go does and returns the fake's Writer for cluster mutations.
+func newRegistryWithWriter(t *testing.T) (*inventory.Registry, cluster.Writer) {
+	t.Helper()
+	clusterRegistry := newTestClusterRegistry(t, inventoryTestCluster)
+	fakeClient, err := clusterRegistry.Client(inventoryTestCluster)
+	if err != nil {
+		t.Fatalf("Client(default): %v", err)
+	}
+	writer, ok := fakeClient.(cluster.Writer)
+	if !ok {
+		t.Fatal("fake client does not implement Writer")
+	}
+	registry := inventory.NewRegistry(clusterRegistry, 50*time.Millisecond, slog.Default())
+	registry.SetManualRefreshMinInterval(1 * time.Millisecond)
+	return registry, writer
+}
+
+// waitForAutoRefresh polls until the projection holds an index newer than
+// since, proving the ticker fired at least once.
+func waitForAutoRefresh(t *testing.T, projection *inventory.Projection, since time.Time) {
+	t.Helper()
+	deadline := time.Now().Add(2 * time.Second)
+	for {
+		index := projection.Load()
+		if index != nil && index.RefreshedAt.After(since) {
+			return
+		}
+		if time.Now().After(deadline) {
+			t.Fatal("no ticker-driven refresh within 2s")
+		}
+		time.Sleep(5 * time.Millisecond)
+	}
+}
+
+// mutateAndManualRefresh deletes the VM on the fake cluster then triggers a
+// manual refresh so the projection picks the mutation up.
+func mutateAndManualRefresh(t *testing.T, registry *inventory.Registry, writer cluster.Writer, vm cluster.VM) {
+	t.Helper()
+	if err := writer.Delete(context.Background(), vm.Node, vm.VMID); err != nil {
+		t.Fatalf("delete VM: %v", err)
+	}
+	refresher, err := registry.Refresher(inventoryTestCluster)
+	if err != nil {
+		t.Fatalf("Refresher: %v", err)
+	}
+	if _, err := refresher.Refresh(context.Background()); err != nil {
+		t.Fatalf("manual refresh after mutation: %v", err)
+	}
 }
 
 // waitForProjection polls until the projection is non-nil or the deadline fires.
