@@ -3,7 +3,28 @@
 Things that are lingering, half-finished, or drifted - each with where to
 look and what deciding it would take. Not a backlog of new features.
 
-## Accepted limitations (decided 2026-10-04)
+## Reopened and funded (decided 2026-11-02)
+
+Former limitations promoted to tracked work - specs and tickets in `.scratch/`:
+
+- **OIDC realm sign-in** - full spec + tickets already written:
+  `.scratch/oidc-login/` (GitHub #159). Browser-redirect flow through the
+  Proxmox OIDC realm; Proxmox stays the identity source.
+- **`ostype` selector at create** - `.scratch/ostype-selector/`. Windows
+  demand exists; the create form gets an OS field instead of hardcoding `l26`.
+- **Cluster id rename** - `.scratch/cluster-rename/`. One transaction rewrites
+  every `cluster` column including `audit_log` (audit history follows the new
+  id). See "Cluster id rename" below for the surface.
+- **OTLP log export** - `.scratch/otlp-logs/`. A collector now exists;
+  research ticket first (filelog scrape and the syslog sink are zero-code
+  routes) - `otelslog` is the last resort.
+- **Browser OTel (web-vitals, trace propagation)** - `.scratch/browser-otel/`.
+- **`vm_cloudinit_*` tables** - `.scratch/cloudinit-table-drop/`. Verified:
+  `GET …/cloudinit` reads live Proxmox config, the tables only feed the
+  VM-delete legacy-file warning.
+- **"Pool at quota" wording** - `.scratch/reword-pool-quota/`.
+
+## Accepted limitations (decided 2026-10-04, amended 2026-11-02)
 
 These were debt entries until the project lead ruled on them. They are
 documented here so the next reader does not reopen them.
@@ -14,20 +35,11 @@ documented here so the next reader does not reopen them.
   session ends - at most `auth.MaxSessionAge` (24h; the idle TTL is 8h). Accepted: re-checking
   live would need the API token to read `/access/permissions?userid=` (extra
   role) on a timer, and 8h is short enough.
-- **No Proxmox OIDC realm sign-in.** The realm picker and the API accept `pve`
-  and `pam` only; anything else answers `realm_unsupported`. Supporting OIDC
-  means a different Proxmox flow (the browser is redirected to the identity
-  provider, so PVMSS cannot collect a password) plus a callback route.
-  Future work; PVMSS local administrators cover the "no password in Proxmox"
-  case meanwhile. See `normalizePVEUsername` in
-  `server/internal/httpapi/auth.go`.
-- **Logs stay on stdout as JSON.** `traceId`/`spanId` correlate them with
-  traces. No OTLP log export - it would need an `otelslog` bridge and a log-
-  routing decision nobody asked for.
-- **No sshd probe for the SSH card.** PVMSS does not probe port 22 (a
-  guest-reported address makes the probe an SSRF vector, and the server may
-  not share the VM's network). The honest alternative is guest-agent
-  `guest-exec`, Linux-only and intrusive.
+- **The SSH card shows agent-reported info only - no probe.** (Amended
+  2026-11-02.) Neither a TCP probe (a guest-reported address makes it an
+  SSRF vector) nor guest-agent `guest-exec` (Linux-only, intrusive, exec
+  perms). The card already shows the agent-reported address and user
+  honestly without claiming liveness - that is the final design.
 - **e2e wants `CI=1` locally.** Specs share one fake cluster; `fullyParallel`
   makes VM-creating specs change the row counts `vm-list.spec.ts` expects.
   `CI=1 bunx playwright test` runs one worker, as CI does, and is green.
@@ -39,10 +51,6 @@ documented here so the next reader does not reopen them.
   template's storage, PVMSS only places the boot disk on approved storage.
   Accepted (decided 2026-10-12): operators keep templates on approved
   storage. Revisit if a real template breaks it (`vm/create_template.go`).
-- **`ostype` is `l26` at create.** The create form has no OS selector -
-  Windows guests are expected to come from Proxmox directly. The Connect
-  tab reads `ostype` from the detail DTO and shows an RDP card for `w*`
-  types, so hand-created Windows VMs are covered.
 
 ## Cloud-init removed (2026-10-31)
 
@@ -50,10 +58,11 @@ The paused cloud-init feature is deleted end to end (web + server + schema
 V5): admin cloud-init templates, the generated baseline, per-VM cloud-init
 writes, cloud-image creation and the cluster snippet-storage setting are
 gone; recoverable from git history. Kept on purpose: `GET …/cloudinit` (the
-VM page reads the SSH user) and the
-`vm_cloudinit_snippets`/`vm_cloudinit_documents` tables so the VM-delete
-cleanup still warns about files a pre-removal deployment left on the nodes
-(remove them by hand; new `pvmss-*.yml` files are never created). Databases
+VM page reads the SSH user, from live Proxmox config). The
+`vm_cloudinit_snippets`/`vm_cloudinit_documents` tables were kept so the
+VM-delete cleanup could warn about files a pre-removal deployment left on
+the nodes; that warning is now scheduled for removal too
+(`.scratch/cloudinit-table-drop/`, decided 2026-11-02). Databases
 seeded before keep the `cloud-init-howto`/`cloud-init-setup` doc pages until
 an admin disables or deletes them.
 
@@ -61,13 +70,11 @@ an admin disables or deletes them.
 
 | Item | Note |
 | --- | --- |
-| ADR practice | `docs/adr/` was removed 2026-10-15 (`a4c5b553`); ADRs 0001-0003 live in git history - recreate the directory on the next real decision |
-| `vm_cloudinit_snippets` | kept for the cleanup of legacy per-VM `pvmss-<vmid>.yml` files only |
-| Two-column admin grids | only the dashboard uses `xl:grid-cols-2`; no other page clearly gains |
-| "Pool at quota" | means the per-user VM quota (one pool per user), not a CPU/RAM pool quota - none exists |
-| Browser OTel (traces, web-vitals) | errors now report via `POST /api/v1/client-errors`; a full browser SDK (bundle size, CORS, consent) is still undecided |
+| ADR practice | `docs/adr/` was removed 2026-10-15 (`a4c5b553`); ADRs 0001-0003 live in git history - the cluster rename spec (`.scratch/cluster-rename/`) is the next real decision and recreates the directory |
 | ~~Legacy single projection in `policy`~~ | **Resolved** (`refactor/audit-2026-11-cleanup`): `policy.New` no longer takes a projection; every caller shares the one service wired with `SetProjectionSource`, and the variadic `services` parameters are required `*policy.Policy` fields |
-| `server/internal/recovery/` stale `backend/` refs | historical context only - fix when the surrounding area is touched, no dedicated pass (`docs/plans/` is gone) |
+
+Smalls moved to `.scratch/housekeeping/` (2026-11-02): two-column admin
+grids, `recovery/` stale `backend/` refs.
 
 ## Resolved 2026-10-22 (full app review)
 
@@ -144,24 +151,27 @@ Docs had drifted from the code they describe:
 
 Superseded by the full cloud-init removal (2026-10-31).
 
-- **No garbage collection of published files** - see "Accepted limitations"
-  above; this is the same constraint, stated where it originated.
-- `vm_cloudinit_snippets` only serves the cleanup of legacy per-VM files
-  (`pvmss-<vmid>.yml`) of VMs created before the change.
+- **No garbage collection of published files** - superseded by the cloudinit
+  table drop (`.scratch/cloudinit-table-drop/`, 2026-11-02); legacy
+  `pvmss-<vmid>.yml` files are removed by hand.
+- `vm_cloudinit_snippets` - drop scheduled, see "Cloud-init removed" above.
 
 ## Left behind by the Connect-tab readiness pass (2026-09-29)
 
 Resolved 2026-10-04 except:
 
-- **No sshd check** - see "Accepted limitations" above.
-- **`ostype` hardcoded to `l26` at create** - see "Accepted limitations";
-  the Connect-tab half of the entry is done (RDP card, boot order).
+- **No sshd check** - final ruling 2026-11-02: info only, no probe; see
+  "Accepted limitations".
+- **`ostype` hardcoded to `l26` at create** - reopened 2026-11-02; selector
+  funded (`.scratch/ostype-selector/`). The Connect-tab half of the entry
+  is done (RDP card, boot order).
 
 ## Left behind by the observability pass (2026-09-29)
 
-- **No OTLP log export** - see "Accepted limitations" above.
+- **No OTLP log export** - reopened 2026-11-02 (a collector now exists);
+  investigation at `.scratch/otlp-logs/`.
 - **Web-client telemetry** - errors now report via `client-errors`
-  (`c94a8dca`); a full browser OTel SDK is still undecided (see table).
+  (`c94a8dca`); browser OTel funded 2026-11-02 (`.scratch/browser-otel/`).
 - **Lint verified.** `sloglint` was checked on 2026-10-01 with the pinned
   `go tool golangci-lint` (`make server-lint`: 0 issues). A globally installed
   `golangci-lint` built with an older Go refuses the module; use `make server-lint`.
@@ -170,9 +180,9 @@ Resolved 2026-10-04 except:
   the fixed vocabulary in `AGENTS.md` permits domain extras, so this is a
   note, not debt.
 
-## Cluster id rename not supported (2026-10-14)
+## Cluster id rename (2026-10-14, funded 2026-11-02)
 
-The cluster id (`clusters.name`, e.g. `default`) cannot be renamed; only the display label is editable (edit form and `displayName`). The id is a plain `cluster TEXT` key in about 20 tables with no foreign keys, used as the `:cluster` route param, as the client and inventory registry key, and as the persisted active-cluster selection. Deciding it means one transaction that rewrites every `cluster` column (catalog, policy, pools, VM and audit tables), re-keying the in-memory registries, and a decision on whether audit history keeps the old id. Workaround: create a cluster with the wanted id and remove the old one.
+The cluster id (`clusters.name`, e.g. `default`) cannot be renamed today; only the display label is editable (edit form and `displayName`). The id is a plain `cluster TEXT` key in about 20 tables with no foreign keys, used as the `:cluster` route param, as the client and inventory registry key, and as the persisted active-cluster selection. Decided 2026-11-02: fund it - one transaction rewrites every `cluster` column (catalog, policy, pools, VM and audit tables, `audit_log` included so history follows the new id), and the in-memory registries are re-keyed. Spec and tickets: `.scratch/cluster-rename/`. Workaround until it ships: create a cluster with the wanted id and remove the old one.
 
 ## How to re-check any of this
 
