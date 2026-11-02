@@ -291,6 +291,19 @@ CREATE TABLE vm_snapshot_schedules (
 );
 `
 
+// schemaV2 adds per-pool VM allowances. A row replaces the cluster-wide
+// vm_limits.max_vm_per_user for its pool; absent row = the cluster default.
+const schemaV2 = `
+CREATE TABLE pool_quota_overrides (
+	cluster    TEXT NOT NULL,
+	pool       TEXT NOT NULL,
+	max_vms    INTEGER NOT NULL,
+	updated_by TEXT NOT NULL,
+	updated_at TEXT NOT NULL,
+	PRIMARY KEY (cluster, pool)
+);
+`
+
 // Migration is a single schema version and its forward-only DDL.
 type Migration struct {
 	Version int
@@ -305,4 +318,5 @@ type Migration struct {
 // Versions must be consecutive integers starting at 1.
 var Migrations = []Migration{
 	{Version: 1, DDL: schemaV1},
+	{Version: 2, DDL: schemaV2},
 }

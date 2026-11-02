@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { onDestroy } from 'svelte';
+	import { onDestroy, type Snippet } from 'svelte';
 	import type { AdminPolicy, AdminPolicyPatch, Gabarit } from './policy.svelte';
 	import { m } from '#lib/paraglide/messages.js';
 	import Alert from '#lib/shared/ui/Alert.svelte';
@@ -16,6 +16,8 @@
 		onSave: (patch: AdminPolicyPatch) => void;
 		/** Called whenever the dirty state changes. */
 		onDirtyChange?: (dirty: boolean) => void;
+		/** Rendered under the global quota, e.g. the per-pool overrides list. */
+		quotaOverrides?: Snippet;
 	}
 
 	interface FormState {
@@ -23,7 +25,7 @@
 		maxVmPerUser: number;
 	}
 
-	let { policy, saving, saveError, onSave, onDirtyChange }: Props = $props();
+	let { policy, saving, saveError, onSave, onDirtyChange, quotaOverrides }: Props = $props();
 
 	// `original` is the last server snapshot. It follows the `policy` prop, so
 	// a successful save resets dirty state without wiping edits typed while the
@@ -375,6 +377,7 @@
 				<Switch label={m['policy.quotaUnlimited']()} checked={quotaUnlimited} onToggle={toggleQuotaUnlimited} />
 				<span class="text-sm text-foreground">{m['policy.quotaUnlimited']()}</span>
 			</div>
+			{@render quotaOverrides?.()}
 		</Card>
 
 		{#if saveError && !serverErrorField}<Alert>{saveError}</Alert>{/if}

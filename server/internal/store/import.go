@@ -35,6 +35,7 @@ var importableTables = []string{
 	"catalog_templates",
 	"documentation_pages",
 	"managed_pools",
+	"pool_quota_overrides",
 	"audit_config",
 	"profile_ssh_keys",
 }

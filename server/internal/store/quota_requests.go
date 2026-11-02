@@ -123,10 +123,11 @@ func quotaDecideArgs(id int64, status, decidedBy string) []any {
 	return []any{status, decidedBy, time.Now().UTC().Format(time.RFC3339), id, QuotaRequestPending}
 }
 
-// DecideQuotaRequestWithPolicy decides a pending request and applies the policy
-// row CAS in one transaction. A lost decision race or a changed policy row rolls
-// back both writes, so the request and the cap can never disagree.
-func (s *Store) DecideQuotaRequestWithPolicy(ctx context.Context, id int64, status, decidedBy string, expected *PolicyRow, next PolicyRow) error {
+// DecideQuotaRequestWithPolicy decides a pending request and upserts the pool's
+// quota override in one transaction. A lost decision race or a changed override
+// rolls back both writes, so the request and the allowance can never disagree.
+// expected is the override the write must still find (nil = none may exist).
+func (s *Store) DecideQuotaRequestWithPolicy(ctx context.Context, id int64, status, decidedBy string, expected *PoolQuotaOverride, next PoolQuotaOverride) error {
 	tx, err := s.db.BeginTx(ctx, nil)
 	if err != nil {
 		return fmt.Errorf("begin quota decision transaction: %w", err)
@@ -147,7 +148,7 @@ func (s *Store) DecideQuotaRequestWithPolicy(ctx context.Context, id int64, stat
 		return sql.ErrNoRows
 	}
 
-	if err := replacePolicyRow(ctx, tx, expected, next); err != nil {
+	if err := replacePoolQuotaOverride(ctx, tx, expected, next); err != nil {
 		return err
 	}
 

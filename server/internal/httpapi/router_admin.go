@@ -25,6 +25,7 @@ func registerAdminRoutes(mux *http.ServeMux, cfg RouterConfig, adminProtect admi
 
 	if cfg.QuotaRequests != nil {
 		registerAdminQuotaRequestRoutes(mux, adminProtect, cfg.QuotaRequests)
+		registerAdminQuotaOverrideRoutes(mux, adminProtect, cfg.QuotaRequests)
 	}
 
 	if cfg.AdminPools != nil {
@@ -111,6 +112,14 @@ func registerAdminPolicyRoutes(mux *http.ServeMux, adminProtect adminRouteProtec
 	mux.Handle("PUT /api/v1/admin/policy", adminProtect(http.MethodPut, http.HandlerFunc(h.ServePolicyUpdate)))
 	mux.Handle("GET /api/v1/admin/policy/nodes", adminProtect(http.MethodGet, http.HandlerFunc(h.ServePolicyNodes)))
 	mux.Handle("PUT /api/v1/admin/policy/nodes/{node}", adminProtect(http.MethodPut, http.HandlerFunc(h.ServePolicyNodeUpdate)))
+}
+
+// registerAdminQuotaOverrideRoutes wires the per-pool quota override endpoints
+// (list, set, remove). Admin-only.
+func registerAdminQuotaOverrideRoutes(mux *http.ServeMux, adminProtect adminRouteProtect, h *QuotaRequests) {
+	mux.Handle("GET /api/v1/admin/quota-overrides", adminProtect(http.MethodGet, http.HandlerFunc(h.ServeOverrideList)))
+	mux.Handle("PUT /api/v1/admin/quota-overrides/{cluster}/{pool}", adminProtect(http.MethodPut, http.HandlerFunc(h.ServeOverrideUpsert)))
+	mux.Handle("DELETE /api/v1/admin/quota-overrides/{cluster}/{pool}", adminProtect(http.MethodDelete, http.HandlerFunc(h.ServeOverrideDelete)))
 }
 
 // registerAdminPoolRoutes wires the admin pool endpoints (create, list,

@@ -32,12 +32,12 @@ export async function fetchAdminQuotaRequests(status: 'pending' | 'approved' | '
 	return response.requests;
 }
 
-/** Approves a request. quota overrides the requested number when given. */
+/** Approves a request as a per-pool override for the requester's pool only. quota overrides the requested number when given. */
 export function approveQuotaRequest(id: number, quota?: number): Promise<QuotaRequest> {
 	return post<QuotaRequest>(`/api/v1/admin/quota-requests/${id}/approve`, quota === undefined ? {} : { quota });
 }
 
-/** Denies a request; the policy is left unchanged. */
+/** Denies a request; no override is created and other pools are unchanged. */
 export function denyQuotaRequest(id: number): Promise<QuotaRequest> {
 	return post<QuotaRequest>(`/api/v1/admin/quota-requests/${id}/deny`);
 }

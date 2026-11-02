@@ -3,6 +3,8 @@
 	import { resolve } from '$app/paths';
 	import { formatBytes } from '#lib/shared/format-bytes.js';
 	import DeletePoolConfirm from './DeletePoolConfirm.svelte';
+	import PoolQuotaOverride from './PoolQuotaOverride.svelte';
+	import type { QuotaOverride } from '#lib/features/quota-overrides/quota-overrides.js';
 	import Alert from '#lib/shared/ui/Alert.svelte';
 	import Button from '#lib/shared/ui/Button.svelte';
 	import Card from '#lib/shared/ui/Card.svelte';
@@ -27,6 +29,11 @@
 		deleteError: string | null;
 		savingComment: boolean;
 		commentError: string | null;
+		override: QuotaOverride | null;
+		overrideSaving: boolean;
+		overrideError: string | null;
+		onSaveOverride: (maxVms: number) => Promise<void>;
+		onRemoveOverride: () => Promise<void>;
 		onRefresh: () => void;
 		onUpdateComment: (comment: string) => Promise<void>;
 		onDelete: () => Promise<boolean>;
@@ -42,6 +49,11 @@
 		deleteError,
 		savingComment,
 		commentError,
+		override,
+		overrideSaving,
+		overrideError,
+		onSaveOverride,
+		onRemoveOverride,
 		onRefresh,
 		onUpdateComment,
 		onDelete,
@@ -249,6 +261,14 @@
 				</div>
 			</div>
 		</Card>
+
+		<PoolQuotaOverride
+			{override}
+			saving={overrideSaving}
+			error={overrideError}
+			onSave={onSaveOverride}
+			onRemove={onRemoveOverride}
+		/>
 
 		<Card pad="none" title={m['admin.poolDetail.vmsTitle']()} titleId="pool-vms-section">
 			{#if detail.vms.length === 0}

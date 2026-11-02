@@ -57,6 +57,9 @@ func newQuotaFixture(t *testing.T) quotaFixture {
 	mux.Handle("GET /api/v1/admin/quota-requests", guard(http.HandlerFunc(handler.ServeAdminList)))
 	mux.Handle("POST /api/v1/admin/quota-requests/{id}/approve", guard(http.HandlerFunc(handler.ServeApprove)))
 	mux.Handle("POST /api/v1/admin/quota-requests/{id}/deny", guard(http.HandlerFunc(handler.ServeDeny)))
+	mux.Handle("GET /api/v1/admin/quota-overrides", guard(http.HandlerFunc(handler.ServeOverrideList)))
+	mux.Handle("PUT /api/v1/admin/quota-overrides/{cluster}/{pool}", guard(http.HandlerFunc(handler.ServeOverrideUpsert)))
+	mux.Handle("DELETE /api/v1/admin/quota-overrides/{cluster}/{pool}", guard(http.HandlerFunc(handler.ServeOverrideDelete)))
 
 	return quotaFixture{handler: handler, service: service, auth: authHandler, store: st, mux: mux}
 }
@@ -177,10 +180,7 @@ func TestQuotaRequest_AdminListApproveWithOverrideAndAudit(t *testing.T) {
 		t.Fatalf("approve = %d %v", recorder.Code, approved)
 	}
 
-	settings, err := fixture.service.Settings(context.Background(), "default")
-	if err != nil || settings.Allowed != 6 {
-		t.Fatalf("policy allowed = %d, err %v; want 6 (admin override)", settings.Allowed, err)
-	}
+	requireApprovedOverride(t, fixture, 6)
 
 	recorder, _ = fixture.do(t, http.MethodPost, "/api/v1/admin/quota-requests/"+formatID(id)+"/approve", `{}`, admin)
 	if recorder.Code != http.StatusConflict {
@@ -315,4 +315,20 @@ func requestCount(t *testing.T, body map[string]any) int {
 	}
 
 	return len(rows)
+}
+
+// requireApprovedOverride checks the approved pool override took effect while
+// the cluster-wide quota stayed at its seeded value of 2.
+func requireApprovedOverride(t *testing.T, fixture quotaFixture, want int) {
+	t.Helper()
+
+	allowed, err := fixture.service.PoolAllowance(context.Background(), "default", cluster.FakePoolAlice)
+	if err != nil || allowed != want {
+		t.Fatalf("pool allowance = %d, err %v; want %d (pool override)", allowed, err, want)
+	}
+
+	settings, err := fixture.service.Settings(context.Background(), "default")
+	if err != nil || settings.Allowed != 2 {
+		t.Fatalf("global allowed = %d, err %v; want unchanged 2", settings.Allowed, err)
+	}
 }

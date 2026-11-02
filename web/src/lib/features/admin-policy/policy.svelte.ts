@@ -7,6 +7,7 @@ import {
 } from '#lib/shared/clusters.js';
 import { getContext, setContext } from 'svelte';
 import { m } from '#lib/paraglide/messages.js';
+import { fetchQuotaOverrides, type QuotaOverride } from '#lib/features/quota-overrides/quota-overrides.js';
 
 export interface Gabarit {
 	maxSockets: number;
@@ -60,6 +61,9 @@ export class AdminPolicyStore {
 	saved = $state.raw(false);
 	clusterOptions = $state.raw<ClusterOption[]>([]);
 	cluster = $state('');
+	/** Per-pool caps on the selected cluster; they sit beside the global quota. */
+	overrides = $state.raw<QuotaOverride[]>([]);
+	overridesError = $state.raw<string | null>(null);
 
 	/** Resolves the real cluster name (matches admin-catalog's pattern) so
 	 *  requests never send the literal "default" against a deployment whose
@@ -94,6 +98,22 @@ export class AdminPolicyStore {
 			this.error = error instanceof ApiRequestError ? error.message : m['policy.loadError']();
 		} finally {
 			this.loading = false;
+		}
+		if (this.error === null) await this.loadOverrides();
+	}
+
+	/** Reads the cluster's overrides; a failure is shown beside the policy, not instead of it. */
+	async loadOverrides(): Promise<void> {
+		if (this.cluster === '') {
+			this.overrides = [];
+			return;
+		}
+		try {
+			this.overrides = await fetchQuotaOverrides(this.cluster);
+			this.overridesError = null;
+		} catch (error: unknown) {
+			this.overrides = [];
+			this.overridesError = error instanceof ApiRequestError ? error.message : m['policy.overrides.loadError']();
 		}
 	}
 

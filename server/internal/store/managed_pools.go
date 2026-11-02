@@ -2,6 +2,7 @@ package store
 
 import (
 	"context"
+	"database/sql"
 	"fmt"
 	"time"
 )
@@ -23,14 +24,43 @@ func (s *Store) RegisterManagedPool(ctx context.Context, cluster, name string) e
 	)
 }
 
-// UnregisterManagedPool removes the managed marker. Returns sql.ErrNoRows if
-// the pool was not managed - guards against a delete between the managed check
-// and this DELETE.
+// UnregisterManagedPool removes the managed marker and the pool's quota
+// override in one transaction. Returns sql.ErrNoRows if the pool was not
+// managed - guards against a delete between the managed check and this DELETE.
 func (s *Store) UnregisterManagedPool(ctx context.Context, cluster, name string) error {
-	return execUpdateOne(ctx, s.db,
-		`DELETE FROM managed_pools WHERE cluster = ? AND name = ?`,
-		[]any{cluster, name},
-	)
+	tx, err := s.db.BeginTx(ctx, nil)
+	if err != nil {
+		return fmt.Errorf("begin unregister managed pool: %w", err)
+	}
+
+	defer func() { _ = tx.Rollback() }()
+
+	result, err := tx.ExecContext(ctx, `DELETE FROM managed_pools WHERE cluster = ? AND name = ?`, cluster, name)
+	if err != nil {
+		return fmt.Errorf("exec managed pool delete: %w", err)
+	}
+
+	if n, _ := result.RowsAffected(); n == 0 {
+		return sql.ErrNoRows
+	}
+
+	if _, err := tx.ExecContext(ctx, `DELETE FROM pool_quota_overrides WHERE cluster = ? AND pool = ?`, cluster, name); err != nil {
+		return fmt.Errorf("exec pool quota override delete: %w", err)
+	}
+
+	// Pending requests die with the pool: approving one later would write an
+	// override that a future pool of the same name would inherit.
+	if _, err := tx.ExecContext(ctx, `UPDATE quota_requests SET status = ?, decided_by = ?, decided_at = ?
+		WHERE cluster = ? AND pool = ? AND status = ?`,
+		QuotaRequestDenied, "system", time.Now().UTC().Format(time.RFC3339), cluster, name, QuotaRequestPending); err != nil {
+		return fmt.Errorf("exec pending quota request deny: %w", err)
+	}
+
+	if err := tx.Commit(); err != nil {
+		return fmt.Errorf("commit unregister managed pool: %w", err)
+	}
+
+	return nil
 }
 
 // IsPoolManaged reports whether PVMSS recorded the named pool on the cluster.

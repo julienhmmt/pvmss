@@ -1,8 +1,9 @@
 <script lang="ts">
 	/**
-	 * The admin inbox of pending quota requests. Approve writes the cap (the
-	 * admin may edit the number first); deny leaves the policy untouched. A
-	 * decision that lost a race to another admin (409) reloads the list.
+	 * The admin inbox of pending quota requests. Approve sets a per-pool override
+	 * for the requester's pool only (the admin may edit the number first); the
+	 * global quota and other pools are untouched. Deny changes nothing. A decision
+	 * that lost a race to another admin (409) reloads the list.
 	 */
 	import { onMount } from 'svelte';
 	import Button from '#lib/shared/ui/Button.svelte';

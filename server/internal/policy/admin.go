@@ -77,14 +77,15 @@ func (service *Policy) attemptPolicyUpdate(ctx context.Context, clusterName stri
 	return Update{Before: staged.before, After: staged.after, Changed: true}, nil
 }
 
-// ApproveQuota sets the cluster's per-pool allowance to target and marks the
-// quota request approved in one transaction: the policy CAS and the status CAS
-// commit together or not at all. It retries policy conflicts like UpdatePolicy.
-// sql.ErrNoRows means the request was already decided; ErrConcurrentUpdate
-// means the policy kept changing.
-func (service *Policy) ApproveQuota(ctx context.Context, clusterName string, target int, requestID int64, decidedBy string) (Update, error) {
+// ApproveQuota sets the pool's allowance override to target and marks the quota
+// request approved in one transaction: the override CAS and the status CAS
+// commit together or not at all. The cluster-wide quota is never touched. It
+// retries override conflicts like UpdatePolicy. Before/After carry the pool's
+// effective allowance. sql.ErrNoRows means the request was already decided;
+// ErrConcurrentUpdate means the override kept changing.
+func (service *Policy) ApproveQuota(ctx context.Context, clusterName, pool string, target int, requestID int64, decidedBy string) (Update, error) {
 	for range maxPolicyUpdateAttempts {
-		update, err := service.attemptApproveQuota(ctx, clusterName, target, requestID, decidedBy)
+		update, err := service.attemptApproveQuota(ctx, clusterName, pool, target, requestID, decidedBy)
 		if errors.Is(err, store.ErrPolicyConflict) {
 			continue
 		}
@@ -95,23 +96,24 @@ func (service *Policy) ApproveQuota(ctx context.Context, clusterName string, tar
 	return Update{}, ErrConcurrentUpdate
 }
 
-func (service *Policy) attemptApproveQuota(ctx context.Context, clusterName string, target int, requestID int64, decidedBy string) (Update, error) {
-	staged, err := service.stagePolicy(ctx, clusterName, func(current Settings) Settings {
-		current.Allowed = target
+func (service *Policy) attemptApproveQuota(ctx context.Context, clusterName, pool string, target int, requestID int64, decidedBy string) (Update, error) {
+	if err := validatePoolAllowance(target); err != nil {
+		return Update{}, err
+	}
 
-		return current
-	})
+	before, expected, err := service.poolAllowance(ctx, clusterName, pool)
 	if err != nil {
 		return Update{}, err
 	}
 
-	err = service.store.DecideQuotaRequestWithPolicy(ctx, requestID, store.QuotaRequestApproved, decidedBy,
-		staged.expected(), policyRowFrom(clusterName, staged.after))
+	next := store.PoolQuotaOverride{Cluster: clusterName, Pool: pool, MaxVMs: target, UpdatedBy: decidedBy}
+
+	err = service.store.DecideQuotaRequestWithPolicy(ctx, requestID, store.QuotaRequestApproved, decidedBy, expected, next)
 	if err != nil {
 		return Update{}, err
 	}
 
-	return Update{Before: staged.before, After: staged.after, Changed: staged.before != staged.after}, nil
+	return Update{Before: Settings{Allowed: before}, After: Settings{Allowed: target}, Changed: before != target}, nil
 }
 
 // stagedPolicy is one read-mutate-validate step of a policy update, waiting for
@@ -169,11 +171,7 @@ func validateSettings(settings Settings) error {
 		return err
 	}
 
-	if settings.Allowed < -1 || settings.Allowed > maxVMPerUserLimit {
-		return fmt.Errorf("%w: maxVmPerUser must be between -1 and %d", ErrInvalidPolicy, maxVMPerUserLimit)
-	}
-
-	return nil
+	return validatePoolAllowance(settings.Allowed)
 }
 
 // SetNodeCapacity validates current usage and physical CPU/RAM before replacing
