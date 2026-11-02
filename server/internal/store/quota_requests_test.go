@@ -81,6 +81,121 @@ func TestQuotaRequest_DecideOnlyOnce(t *testing.T) {
 }
 
 //nolint:paralleltest // serial: shared database fixture
+func TestQuotaRequest_DecideWithPolicyCommitsBothWrites(t *testing.T) {
+	st := openClusterStore(t)
+	ctx := context.Background()
+
+	if err := st.CreateQuotaRequest(ctx, sampleQuotaRequest("frank")); err != nil {
+		t.Fatalf("CreateQuotaRequest: %v", err)
+	}
+
+	pending, err := st.PendingQuotaRequest(ctx, "frank", "default", "pvmss-frank")
+	if err != nil {
+		t.Fatalf("PendingQuotaRequest: %v", err)
+	}
+
+	current, err := st.PolicyRow(ctx, "default")
+	if err != nil {
+		t.Fatalf("PolicyRow: %v", err)
+	}
+
+	next := current
+	next.MaxVMPerUser = 7
+
+	if err := st.DecideQuotaRequestWithPolicy(ctx, pending.ID, store.QuotaRequestApproved, adminDocID, &current, next); err != nil {
+		t.Fatalf("DecideQuotaRequestWithPolicy: %v", err)
+	}
+
+	decided, err := st.QuotaRequestByID(ctx, pending.ID)
+	if err != nil || decided.Status != store.QuotaRequestApproved {
+		t.Fatalf("request = %+v, err %v; want approved", decided, err)
+	}
+
+	stored, err := st.PolicyRow(ctx, "default")
+	if err != nil || stored.MaxVMPerUser != 7 {
+		t.Fatalf("policy MaxVMPerUser = %d, err %v; want 7", stored.MaxVMPerUser, err)
+	}
+}
+
+//nolint:paralleltest // serial: shared database fixture
+func TestQuotaRequest_DecideWithPolicyRollsBackOnPolicyConflict(t *testing.T) {
+	st := openClusterStore(t)
+	ctx := context.Background()
+
+	if err := st.CreateQuotaRequest(ctx, sampleQuotaRequest("grace")); err != nil {
+		t.Fatalf("CreateQuotaRequest: %v", err)
+	}
+
+	pending, err := st.PendingQuotaRequest(ctx, "grace", "default", "pvmss-grace")
+	if err != nil {
+		t.Fatalf("PendingQuotaRequest: %v", err)
+	}
+
+	current, err := st.PolicyRow(ctx, "default")
+	if err != nil {
+		t.Fatalf("PolicyRow: %v", err)
+	}
+
+	stale := current
+	stale.MaxVMPerUser = current.MaxVMPerUser + 100
+
+	next := current
+	next.MaxVMPerUser = 7
+
+	err = st.DecideQuotaRequestWithPolicy(ctx, pending.ID, store.QuotaRequestApproved, adminDocID, &stale, next)
+	if !errors.Is(err, store.ErrPolicyConflict) {
+		t.Fatalf("error = %v, want ErrPolicyConflict", err)
+	}
+
+	still, err := st.QuotaRequestByID(ctx, pending.ID)
+	if err != nil || still.Status != store.QuotaRequestPending {
+		t.Fatalf("request = %+v, err %v; want still pending after rollback", still, err)
+	}
+
+	stored, err := st.PolicyRow(ctx, "default")
+	if err != nil || stored.MaxVMPerUser != current.MaxVMPerUser {
+		t.Fatalf("policy MaxVMPerUser = %d, err %v; want untouched %d", stored.MaxVMPerUser, err, current.MaxVMPerUser)
+	}
+}
+
+//nolint:paralleltest // serial: shared database fixture
+func TestQuotaRequest_DecideWithPolicyLosesRaceWithoutPolicyWrite(t *testing.T) {
+	st := openClusterStore(t)
+	ctx := context.Background()
+
+	if err := st.CreateQuotaRequest(ctx, sampleQuotaRequest("heidi")); err != nil {
+		t.Fatalf("CreateQuotaRequest: %v", err)
+	}
+
+	pending, err := st.PendingQuotaRequest(ctx, "heidi", "default", "pvmss-heidi")
+	if err != nil {
+		t.Fatalf("PendingQuotaRequest: %v", err)
+	}
+
+	if err := st.DecideQuotaRequest(ctx, pending.ID, store.QuotaRequestDenied, "other"); err != nil {
+		t.Fatalf("DecideQuotaRequest: %v", err)
+	}
+
+	current, err := st.PolicyRow(ctx, "default")
+	if err != nil {
+		t.Fatalf("PolicyRow: %v", err)
+	}
+
+	next := current
+	next.MaxVMPerUser = 7
+
+	err = st.DecideQuotaRequestWithPolicy(ctx, pending.ID, store.QuotaRequestApproved, adminDocID, &current, next)
+	if !errors.Is(err, sql.ErrNoRows) {
+		t.Fatalf("error = %v, want sql.ErrNoRows", err)
+	}
+
+	stored, err := st.PolicyRow(ctx, "default")
+	if err != nil || stored.MaxVMPerUser != current.MaxVMPerUser {
+		t.Fatalf("policy MaxVMPerUser = %d, err %v; want untouched %d", stored.MaxVMPerUser, err, current.MaxVMPerUser)
+	}
+}
+
+//nolint:paralleltest // serial: shared database fixture
 func TestQuotaRequest_ListByStatusAndMissing(t *testing.T) {
 	st := openClusterStore(t)
 	ctx := context.Background()

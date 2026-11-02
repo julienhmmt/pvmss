@@ -231,6 +231,47 @@ func TestQuotaRequest_DenyLeavesPolicyUnchanged(t *testing.T) {
 	}
 }
 
+func TestQuotaRequest_ApproveAfterDenyLeavesPolicyUnchanged(t *testing.T) {
+	t.Parallel()
+
+	fixture := newQuotaFixture(t)
+	user := aliceCookie(t, fixture.auth)
+	admin := adminCookie(t, fixture.auth)
+
+	_, created := fixture.do(t, http.MethodPost, "/api/v1/quota-requests", `{"requestedQuota":10,"reason":"lab"}`, user)
+	path := "/api/v1/admin/quota-requests/" + formatID(requestID(t, created))
+
+	if recorder, _ := fixture.do(t, http.MethodPost, path+"/deny", "", admin); recorder.Code != http.StatusOK {
+		t.Fatalf("deny = %d", recorder.Code)
+	}
+
+	recorder, body := fixture.do(t, http.MethodPost, path+"/approve", `{"quota":9}`, admin)
+	if recorder.Code != http.StatusConflict || body["code"] != "quota_request_decided" {
+		t.Fatalf("approve after deny = %d %v, want 409 quota_request_decided", recorder.Code, body)
+	}
+
+	settings, err := fixture.service.Settings(context.Background(), "default")
+	if err != nil || settings.Allowed != 2 {
+		t.Fatalf("policy allowed = %d, err %v; want unchanged 2", settings.Allowed, err)
+	}
+}
+
+func TestQuotaRequest_ApproveAtCurrentQuotaMarksDecided(t *testing.T) {
+	t.Parallel()
+
+	fixture := newQuotaFixture(t)
+	user := aliceCookie(t, fixture.auth)
+	admin := adminCookie(t, fixture.auth)
+
+	_, created := fixture.do(t, http.MethodPost, "/api/v1/quota-requests", `{"requestedQuota":10,"reason":"lab"}`, user)
+	path := "/api/v1/admin/quota-requests/" + formatID(requestID(t, created))
+
+	recorder, approved := fixture.do(t, http.MethodPost, path+"/approve", `{"quota":2}`, admin)
+	if recorder.Code != http.StatusOK || approved["status"] != "approved" {
+		t.Fatalf("no-change approve = %d %v, want 200 approved", recorder.Code, approved)
+	}
+}
+
 func TestQuotaRequest_AdminRoutesRequireAdmin(t *testing.T) {
 	t.Parallel()
 

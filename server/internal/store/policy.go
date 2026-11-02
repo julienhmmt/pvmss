@@ -65,8 +65,18 @@ var ErrPolicyConflict = errors.New("policy row changed concurrently")
 // insert guarded by ON CONFLICT DO NOTHING. Either guard failing returns
 // ErrPolicyConflict so callers can retry the read-modify-write cycle.
 func (s *Store) ReplacePolicyRow(ctx context.Context, expected *PolicyRow, next PolicyRow) error {
+	return replacePolicyRow(ctx, s.db, expected, next)
+}
+
+// execer is the subset of *sql.DB and *sql.Tx used by the policy CAS write, so
+// the same guard runs standalone or inside a caller's transaction.
+type execer interface {
+	ExecContext(ctx context.Context, query string, args ...any) (sql.Result, error)
+}
+
+func replacePolicyRow(ctx context.Context, db execer, expected *PolicyRow, next PolicyRow) error {
 	if expected == nil {
-		res, err := s.db.ExecContext(ctx, `
+		res, err := db.ExecContext(ctx, `
 			INSERT INTO vm_limits (
 				cluster, max_sockets, max_cores, max_memory_mb, max_disk_per_vm_gb,
 				max_network_cards, max_snapshots, max_vm_per_user, isolation_vlan_tag, vmid_min, vmid_max, lease_days
@@ -87,7 +97,7 @@ func (s *Store) ReplacePolicyRow(ctx context.Context, expected *PolicyRow, next 
 		return nil
 	}
 
-	res, err := s.db.ExecContext(ctx, `
+	res, err := db.ExecContext(ctx, `
 		UPDATE vm_limits SET
 			max_sockets = ?, max_cores = ?, max_memory_mb = ?, max_disk_per_vm_gb = ?,
 			max_network_cards = ?, max_snapshots = ?, max_vm_per_user = ?, isolation_vlan_tag = ?, vmid_min = ?, vmid_max = ?, lease_days = ?
