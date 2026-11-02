@@ -13,7 +13,9 @@ Proxmox VE, without using the Proxmox interface directly.
 
 ## Home
 
-After you sign in you land on **My VMs**. Your quota usage is shown in the sidebar. Every long operation (create, delete,
+After you sign in you land on **My VMs**. Your quota usage is shown as the
+allowance meter under the machine list; the sidebar counts your machines and
+running tasks. Every long operation (create, delete,
 snapshot…) appears in the task tray at the top so you can navigate away while
 it runs.
 
@@ -28,7 +30,7 @@ what is needed; **Detailed** mode exposes every option. Configure:
 - **Profile (optional)**: if your administrator published hardware profiles, pick one to fill CPU, memory, and disk automatically.
 - **Resources**: sockets, cores, memory, and disk size. Values are clamped by the cluster policy and your per-user quota.
 - **Storage**: a storage approved by your administrator; the wizard checks free space live.
-- **Network**: one or more network cards, each with a bridge and a card model (VirtIO, E1000, RTL8139, VMXNet3). The Proxmox firewall is always enabled; your administrator may impose an isolation VLAN.
+- **Network**: one or more network cards, each with a bridge and a card model (VirtIO, E1000, RTL8139). The Proxmox firewall is always enabled; your administrator may impose an isolation VLAN.
 - **Firmware**: UEFI (default on) with an empty EFI key store - Secure Boot is never enabled, because most Linux ISOs are unsigned and would not boot with it. TPM 2.0 for guests that require it.
 - **Startup**: choose whether the VM starts automatically after creation.
 - **Tags**: pick from the administrator-curated list.
@@ -47,8 +49,9 @@ PVMSS does not add an SSH key or a password to your VM.
 - **ISO install** - install the system from the browser console and create
   your own account during the installation.
 
-Once the VM runs and its guest agent reports an address, the **Connect** tab
-shows the SSH command. The browser console works in every case.
+Once the VM runs and its guest agent reports an address, the **General
+information** tab shows the SSH command. The browser console works in every
+case.
 
 ## Finding a virtual machine
 
@@ -64,9 +67,12 @@ exist on different clusters without conflict.
 
 ## Managing a virtual machine
 
-The VM details page has three tabs: **Connect** (power actions and console), **Configuration** (with the sub-sections below: Summary, Disks, Network, Hardware, Snapshots), and **Activity**.
+The VM details page has three tabs: **General information** (SSH command,
+console, metrics, allocated resources), **Configuration** (with the
+sub-sections below: Summary, Disks, Network, Hardware, Snapshots), and
+**Activity**. The header carries the status pill and one power action.
 
-### Connect
+### General information and Summary
 
 - **Start**, **Shutdown** (graceful, guest agent / ACPI), **Reboot**, **Force stop** (hard power off), **Reset**, **Pause**, **Resume**.
 - **Console** - open the graphical console.
@@ -121,7 +127,7 @@ Proxmox is needed.
 Your administrator controls most limits per cluster; PVMSS enforces them
 server-side before any Proxmox call is made.
 
-- **Quota** - maximum number of VMs per user.
+- **Quota** - maximum number of VMs for your pool (a cluster default, possibly overridden for your pool by the administrator).
 - **Gabarit** - per-VM ceilings on sockets, cores, memory, disk size, network cards, and snapshots.
 - **VM name** - a lowercase hostname, at most 63 characters, unique in your pool.
 - **Description** - at most 512 characters.
@@ -139,7 +145,6 @@ server-side before any Proxmox call is made.
 - Only KVM/QEMU VMs are supported; LXC containers are not.
 - Backups are handled in Proxmox, not in PVMSS. Only administrators can migrate a VM.
 - Advanced networking (firewall rules, SDN) is configured in Proxmox.
-- Password change is available through the API only for now.
 
 ## Security and privacy
 
@@ -149,6 +154,7 @@ server-side before any Proxmox call is made.
 
 ## Tips and tricks
 
+- Change your password from the **Profile** page.
 - Use the search page for fast start/stop actions without opening details.
 - Bookmark filtered VM lists and specific VM detail pages.
 - The application follows your browser language preference (English or French).

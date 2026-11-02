@@ -133,7 +133,7 @@ Packages under `server/internal/`:
 | `recovery/`  | Recovery runs and fixtures                                      |
 | `checklist/` | Operational checklist walkthroughs                              |
 | `auth/`      | Sessions, password hashing, admin auth                          |
-| `cloudinit/` | SSH-key validation + slug helpers                               |
+| `cloudinit/` | Slug helpers (the SSH-key surface was deleted)                  |
 | `config/`    | Env-based configuration, validation, slog logger, redaction     |
 | `telemetry/` | OTel tracing and metrics, Prometheus `/metrics`                 |
 | `logctx/`    | Request-scoped log attributes (requestId, user, span IDs)       |

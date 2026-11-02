@@ -12,8 +12,8 @@ pick another cluster.
 
 ## Finding your VMs
 
-Once signed in, you land on the **My VMs** page (the sidebar shows your quota
-and any task still running). It lists every virtual machine your pool owns
+Once signed in, you land on the **My VMs** page (the sidebar shows the
+machine and activity counts; the allowance meter sits under the VM list). It lists every virtual machine your pool owns
 on the cluster you signed in to. Use the search box to filter by name,
 VMID, or tag. To see another cluster, sign in to it.
 Filters are kept in the URL, so a filtered view can be bookmarked.
@@ -33,8 +33,8 @@ PVMSS does not add an SSH key or a password to your VM:
 
 - **Template** - the system comes with the sign-in your team built into the
   template (an SSH key or a password). Ask your administrator if you do not
-  have it. The VM's **Connect** tab shows the SSH command once the machine
-  reports its address.
+  have it. The VM's **General information** tab shows the SSH command once
+  the machine reports its address.
 - **ISO** - you install the system yourself from the browser console and
   choose your own account during the installation.
 

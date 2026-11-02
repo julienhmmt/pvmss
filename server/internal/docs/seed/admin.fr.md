@@ -13,16 +13,16 @@ créer des VM. **Utilisateurs PVMSS** crée les utilisateurs self-service
 
 ### Les modèles de VM portent les accès
 
-PVMSS n'ajoute ni clé SSH ni mot de passe aux VM qu'il crée (cloud-init est
-en pause). Un clone garde exactement ce que porte son modèle Proxmox :
-préparez donc chaque modèle approuvé avec les accès dont les utilisateurs
-auront besoin :
+PVMSS n'ajoute ni clé SSH ni mot de passe aux VM qu'il crée (l'écriture
+cloud-init a été supprimée). Un clone garde exactement ce que porte son
+modèle Proxmox : préparez donc chaque modèle approuvé avec les accès dont les
+utilisateurs auront besoin :
 
 - dans l'onglet **Cloud-Init** du modèle dans Proxmox, renseignez
   l'utilisateur et une clé SSH publique ou un mot de passe, ou intégrez un
   compte directement dans l'image ;
 - installez et activez `qemu-guest-agent`, pour que la VM signale son adresse
-  et que l'onglet **Connexion** affiche la commande SSH.
+  et que l'onglet **Informations générales** affiche la commande SSH.
 
 Toutes les VM clonées d'un même modèle partagent ces accès. Transmettez-les
 à vos utilisateurs, ou gardez un modèle par équipe. Les installations depuis
@@ -69,9 +69,15 @@ source et le nœud cible). Le jeton du compte de service Proxmox doit disposer d
 
 **Limites** définit le gabarit par cluster (sockets, cœurs, mémoire, disque
 par VM, cartes réseau, snapshots, VLAN d'isolation) et
-le quota par utilisateur (VM max). **Capacité des nœuds** plafonne ce que
-PVMSS peut allouer sur chaque nœud. Les deux sont appliqués côté serveur avant
-tout appel à Proxmox.
+le quota par pool (VM max). Un pool peut avoir sa propre limite : définissez
+ou retirez une surcharge depuis la page de détail du pool, et relisez-les
+toutes sur la page des limites. Un utilisateur arrivé à son quota peut
+déposer une demande d'augmentation depuis la page de création ; les demandes
+en attente mènent les alertes du tableau de bord et le compteur de la barre
+latérale. En approuver une écrit une surcharge pour le pool du demandeur
+(éventuellement un autre nombre) ; refuser ne change rien. **Capacité des
+nœuds** plafonne ce que PVMSS peut allouer sur chaque nœud. Tout cela est
+appliqué côté serveur avant tout appel à Proxmox.
 
 ## Documentation
 

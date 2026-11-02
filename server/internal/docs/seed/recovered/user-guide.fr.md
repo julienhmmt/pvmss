@@ -14,7 +14,8 @@ hébergées sur Proxmox VE, sans passer par l'interface Proxmox.
 ## Accueil
 
 Après connexion, vous arrivez sur **Mes VM**. Votre consommation de quota est
-affichée dans la barre latérale. Chaque opération
+affichée par l'indicateur sous la liste des machines ; la barre latérale
+compte vos machines et tâches en cours. Chaque opération
 longue (création, suppression, snapshot…) apparaît dans le tiroir des tâches
 en haut de page : vous pouvez naviguer pendant qu'elle s'exécute.
 
@@ -30,7 +31,7 @@ Configurez :
 - **Profil (optionnel)** : si votre administrateur a publié des profils matériels, choisissez-en un pour remplir CPU, mémoire et disque.
 - **Ressources** : sockets, cœurs, mémoire et taille de disque. Les valeurs sont bornées par la politique du cluster et votre quota.
 - **Stockage** : un stockage approuvé ; l'assistant vérifie l'espace libre en direct.
-- **Réseau** : une ou plusieurs cartes, chacune avec un bridge et un modèle (VirtIO, E1000, RTL8139, VMXNet3). Le pare-feu Proxmox est toujours activé ; votre administrateur peut imposer un VLAN d'isolation.
+- **Réseau** : une ou plusieurs cartes, chacune avec un bridge et un modèle (VirtIO, E1000, RTL8139). Le pare-feu Proxmox est toujours activé ; votre administrateur peut imposer un VLAN d'isolation.
 - **Firmware** : UEFI (activé par défaut) avec un magasin de clés EFI vide - Secure Boot n'est jamais activé, car la plupart des ISO Linux ne sont pas signés et ne démarreraient pas avec. TPM 2.0 pour les invités qui l'exigent.
 - **Démarrage** : choisissez si la VM démarre automatiquement après création.
 - **Tags** : à choisir dans la liste curée par l'administrateur.
@@ -51,8 +52,8 @@ PVMSS n'ajoute ni clé SSH ni mot de passe à votre VM.
   et créez votre propre compte pendant l'installation.
 
 Une fois la VM démarrée et son adresse signalée par l'agent invité, l'onglet
-**Connexion** affiche la commande SSH. La console du navigateur fonctionne
-dans tous les cas.
+**Informations générales** affiche la commande SSH. La console du navigateur
+fonctionne dans tous les cas.
 
 ## Retrouver une machine virtuelle
 
@@ -69,9 +70,13 @@ même VMID peut exister sur des clusters différents sans conflit.
 
 ## Gérer une machine virtuelle
 
-La page de détail d'une VM comporte trois onglets : **Connexion** (actions d'alimentation et console), **Configuration** (avec les sous-sections ci-dessous : Résumé, Disques, Réseau, Matériel, Snapshots) et **Activité**.
+La page de détail d'une VM comporte trois onglets : **Informations
+générales** (commande SSH, console, métriques, ressources allouées),
+**Configuration** (avec les sous-sections ci-dessous : Résumé, Disques,
+Réseau, Matériel, Snapshots) et **Activité**. L'en-tête porte le statut et
+une action d'alimentation.
 
-### Connexion
+### Informations générales et Résumé
 
 - **Démarrer**, **Éteindre** (arrêt propre, agent invité / ACPI), **Redémarrer**, **Forcer l'arrêt** (coupure forcée), **Réinitialiser**, **Mettre en pause**, **Reprendre**.
 - **Console** - ouvre la console graphique.
@@ -128,7 +133,7 @@ direct à Proxmox n'est nécessaire.
 Votre administrateur contrôle la plupart des limites par cluster ; PVMSS les
 applique côté serveur avant tout appel à Proxmox.
 
-- **Quota** - nombre maximal de VM par utilisateur.
+- **Quota** - nombre maximal de VM de votre pool (défaut du cluster, éventuellement surchargé pour votre pool par l'administrateur).
 - **Gabarit** - plafonds par VM : sockets, cœurs, mémoire, taille de disque, cartes réseau et snapshots.
 - **Nom de VM** - un nom d'hôte en minuscules, 63 caractères maximum, unique dans votre pool.
 - **Description** - 512 caractères maximum.
@@ -146,7 +151,6 @@ applique côté serveur avant tout appel à Proxmox.
 - Seules les VM KVM/QEMU sont prises en charge ; pas les conteneurs LXC.
 - Les sauvegardes se font dans Proxmox, pas dans PVMSS. Seuls les administrateurs peuvent migrer une VM.
 - Le réseau avancé (règles de pare-feu, SDN) se configure dans Proxmox.
-- Le changement de mot de passe n'est disponible que par l'API pour l'instant.
 
 ## Sécurité et confidentialité
 
@@ -156,6 +160,7 @@ applique côté serveur avant tout appel à Proxmox.
 
 ## Astuces
 
+- Changez votre mot de passe depuis la page **Profil**.
 - Utilisez la page de recherche pour des actions rapides sans ouvrir le détail.
 - Mettez en favori des listes filtrées et des pages de détail de VM.
 - L'application suit la langue de votre navigateur (français ou anglais).

@@ -95,7 +95,7 @@ _Avoid_: sync, refresh, reconciliation
 The Proxmox task identifier returned by async POST endpoints (create, clone,
 delete). PVMSS discards it on interactive power actions (start/stop/shutdown/
 reboot/reset) - matching both reference implementations - and waits on it only
-where post-task configuration is required (create → cloud-init attach, delete).
+where post-task configuration is required (create → post-clone hardware setup, delete).
 _Avoid_: task id, job id
 
 **Cluster id**:

@@ -6,10 +6,9 @@ from `git log` and tags, not from memory - re-run the commands in each
 section to check it against a later HEAD.
 
 Current state at time of writing: `v0.3.0` was the last tagged release
-(shipped on the original stack); `v0.4` is an in-progress rewrite, not yet
-tagged and not yet on `main`: at `HEAD c54b1089` (2026-10-22) the branch is
-945 commits ahead of `origin/main`, which is still an ancestor (the merge is a
-fast-forward).
+(shipped on the original stack); the `v0.4` rewrite is now the only codebase
+on `main` but still untagged - at `HEAD e484b578` (2026-11-02), `main` carries
+the Go API + SvelteKit stack end to end.
 
 ## History
 
@@ -80,9 +79,8 @@ findings cleaned up.
 
 Things structurally implied by the current codebase, not a feature backlog:
 
-- **Merge `v0.4` into `main`** (fast-forward).
-- **Tag `v0.4.0`.** The rewrite has been the only codebase on `v0.4` since
-  the T16 cutover (2026-08-12) and has not been tagged.
+- **Tag `v0.4.0`.** The rewrite has been the only codebase since the T16
+  cutover (2026-08-12) and now lives on `main`; it has not been tagged.
 
 ## How this file gets updated
 

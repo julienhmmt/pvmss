@@ -12,14 +12,14 @@ users (Proxmox user + pool + ACL in one step).
 
 ### VM templates carry the sign-in
 
-PVMSS adds no SSH key and no password to the VMs it creates (cloud-init is
-paused). A clone keeps exactly what its Proxmox template carries, so build
-every approved template with the sign-in users will need:
+PVMSS adds no SSH key and no password to the VMs it creates (cloud-init
+authoring was removed). A clone keeps exactly what its Proxmox template
+carries, so build every approved template with the sign-in users will need:
 
 - in the template's **Cloud-Init** tab in Proxmox, set the user and either an
   SSH public key or a password, or bake an account into the image itself;
 - install and enable `qemu-guest-agent`, so the VM reports its address and
-  the **Connect** tab can show the SSH command.
+  the **General information** tab can show the SSH command.
 
 Every VM cloned from one template shares that sign-in. Hand it to your users,
 or keep one template per team. ISO installs are unaffected: users create
@@ -64,8 +64,14 @@ target node). The Proxmox service token needs `VM.Migrate` (see the
 
 **Limits** sets the per-cluster gabarit (max sockets, cores, memory, disk per
 VM, network cards, snapshots, isolation VLAN) and the
-per-user quota (max VMs). **Node capacity** caps how much of each node PVMSS
-may allocate. Both are enforced server-side before any Proxmox call.
+per-pool quota (max VMs). A pool can get its own allowance: set or remove an
+override on the pool's details page, review them all on the limits page.
+Users at their quota can file an increase request from the create page;
+pending requests lead the dashboard alerts and the sidebar count. Approving
+one writes an override for the requester's pool (optionally a different
+number), denying leaves the allowance unchanged. **Node capacity** caps how
+much of each node PVMSS may allocate. All of this is enforced server-side
+before any Proxmox call.
 
 ## Documentation
 

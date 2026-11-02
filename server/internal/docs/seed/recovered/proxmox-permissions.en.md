@@ -39,10 +39,13 @@ pveum aclmod / -user pvmss-svc@pve -role PVMSS_Service -propagate 1
 pveum user token add pvmss-svc@pve pvmss-service-token --privsep 0
 ```
 
-The two `VM.GuestAgent.*` privileges cover the QEMU guest agent calls: `Audit`
-reads guest IP addresses, `Unrestricted` injects SSH keys (`agent/exec`) and
-sets the cloud-init password (`agent/set-user-password`). Without them those
-actions fail with `cluster_permission_denied`.
+The two `VM.GuestAgent.*` privileges cover the QEMU guest agent calls:
+`Audit` covers the reads PVMSS performs (`agent/network-get-interfaces`) so
+the VM page can show the guest's addresses. `Unrestricted` covers guest-agent
+writes (`agent/exec`, `agent/set-user-password`) that the removed cloud-init
+features needed; no shipped feature issues them, so it stays in the
+recommended role for compatibility and may be dropped for least privilege.
+Without `Audit` the address reads fail with `cluster_permission_denied`.
 
 ## Administrators (PVMSS_Admin)
 

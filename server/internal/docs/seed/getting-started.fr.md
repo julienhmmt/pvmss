@@ -13,7 +13,8 @@ formulaire l'indique - réessayez plus tard ou choisissez un autre cluster.
 ## Retrouver ses VM
 
 Une fois connecté, vous arrivez sur la page **Mes VM** (la barre latérale
-affiche votre quota et les tâches encore en cours). Elle liste toutes les
+affiche le nombre de machines et d'activités en cours ; l'indicateur de quota
+est sous la liste des VM). Elle liste toutes les
 machines virtuelles de votre pool sur le cluster auquel vous êtes connecté. Utilisez la
 recherche pour filtrer par nom, VMID ou tag. Pour voir un autre cluster,
 connectez-vous à celui-ci. Les filtres sont conservés dans l'URL :
@@ -34,8 +35,8 @@ PVMSS n'ajoute ni clé SSH ni mot de passe à votre VM :
 
 - **Template** - le système embarque les accès que votre équipe a intégrés au
   template (une clé SSH ou un mot de passe). Demandez-les à votre
-  administrateur si vous ne les avez pas. L'onglet **Connexion** de la VM
-  affiche la commande SSH dès que la machine signale son adresse.
+  administrateur si vous ne les avez pas. L'onglet **Informations générales**
+  de la VM affiche la commande SSH dès que la machine signale son adresse.
 - **ISO** - vous installez le système vous-même depuis la console du
   navigateur et choisissez votre compte pendant l'installation.
 

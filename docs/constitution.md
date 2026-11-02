@@ -112,8 +112,8 @@ appliquées au mauvais endroit. Un vocabulaire distinct rend l'erreur visible à
 ### II. API-first
 
 Aucun endpoint n'est réservé à l'interface web. La SPA est **un client de l'API publique
-parmi d'autres**. Le navigateur s'authentifie par cookie de session, l'automatisation par
-jeton Bearer - les deux attaquent la **même** surface d'API, avec les mêmes droits.
+parmi d'autres**. Le navigateur s'authentifie par cookie de session ; toute automatisation
+passe par la **même** surface d'API, avec les mêmes droits.
 
 Toute fonctionnalité accessible dans l'interface DOIT être accessible par API.
 

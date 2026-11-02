@@ -22,8 +22,8 @@ Deleted end to end:
 
 Kept on purpose:
 
-- `GET /api/v1/vms/{cluster}/{vmid}/cloudinit` - the VM Connect tab reads
-  the SSH user from the live cloud-init config.
+- `GET /api/v1/vms/{cluster}/{vmid}/cloudinit` - the VM's General information
+  tab reads the SSH user from the live cloud-init config.
 - `GetCloudInitConfig`, the domain read behind that route.
 - The `cloudinit` package's slug helper.
 - The `profile_ssh_keys` table: the profile SSH-key surface was deleted in

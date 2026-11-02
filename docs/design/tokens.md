@@ -105,11 +105,10 @@ Surfaces the mockup forgot, confirmed to inherit Layer B tokens by extension
 - `/admin/clusters` and the rest of `/admin/*` - inherit via `Card` / table
   retuning and the global sidebar (T034 folds the admin rail into the global
   sidebar).
-- Snapshots tab (`VmSnapshotsTab`), cloud-init tab (`CloudInitTab`), disks /
-  hardware / network sub-features - inherit token retune; no feature cuts in
-  this MVP.
+- Snapshots tab (`VmSnapshotsTab`), disks / hardware / network sub-features -
+  inherit token retune; no feature cuts in this MVP.
 - Docs routes (`/docs`, `/admin/docs`) - inherit.
-- Profile / tokens (`/profile`, `/profile/tokens`) - inherit.
+- Profile (`/profile`) - inherit.
 - Multi-cluster surfaces - inherit.
 
 No hard-coded hex or `oklch(...)` outside `app.css` was left in `web/src` after

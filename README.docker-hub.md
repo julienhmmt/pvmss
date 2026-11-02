@@ -27,10 +27,10 @@ The complete, route-by-route inventory lives in [docs/FEATURES.md](https://githu
 - **Catalog curation**: Approve nodes, storages, ISOs, VM templates, and network bridges; manage hardware profiles and curated tags; reconcile stale approvals against live cluster discovery.
 - **User pool provisioning**: Create a self-service user (Proxmox user + resource pool + ACL) in one step, with cascade deletion.
 - **Live VM migration**: Migrate a PVMSS-managed VM to another approved online node in the same cluster with preflight checks and task tracking.
-- **Policies & quotas**: Configure per-cluster gabarit limits (sockets, cores, memory, disk per VM, NICs, snapshots, isolation VLAN), per-user VM quotas, and per-node capacity caps.
+- **Policies & quotas**: Configure per-cluster gabarit limits (sockets, cores, memory, disk per VM, NICs, snapshots, isolation VLAN), per-pool VM quotas with per-pool overrides, and per-node capacity caps. Approving a user's quota request writes an override for that user's pool.
 - **System & operations**: Admin dashboard, runtime app info, runtime log-level switch, audit log with retention and prune preview, SQLite backup export and two-phase import, Prometheus `/metrics` endpoint, and in-app bilingual documentation CMS.
 
-> **Note on cloud-init**: Native cloud-init forms, cloud-image imports, and cloud-init snippet templates are temporarily paused in v0.4. Cloned VMs inherit the sign-in baked into their Proxmox VM template, and ISO installs use the account created during installation. See [docs/cloud-init.md](https://github.com/julienhmmt/pvmss/blob/main/docs/cloud-init.md).
+> **Note on cloud-init**: Cloud-init authoring (native forms, cloud-image imports, cloud-init snippet templates) was removed from PVMSS on 2026-10-31; only a read-only cloud-init inspection endpoint remains. Cloned VMs inherit the sign-in baked into their Proxmox VM template, and ISO installs use the account created during installation. See [docs/cloud-init.md](https://github.com/julienhmmt/pvmss/blob/main/docs/cloud-init.md).
 
 ## Getting started
 
@@ -200,7 +200,7 @@ helm install pvmss ./helm -f my-values.yaml
 - Security hardening is ongoing; no formal third-party penetration test has been performed yet.
 - No HA-managed VMs, no cross-cluster VM migration, and SDN / firewall rules remain managed in Proxmox.
 - Proxmox OIDC realms cannot sign in to PVMSS yet (only `pve` and `pam` realms are supported, plus PVMSS local administrator accounts).
-- Cloud-init customization and cloud-image imports are temporarily paused while reliability improvements are underway.
+- Cloud-init customization and cloud-image imports were removed on 2026-10-31; build the sign-in into your Proxmox VM templates instead.
 - ISO images and VM templates are uploaded/created in Proxmox and then approved in PVMSS.
 
 ## Sources

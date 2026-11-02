@@ -45,9 +45,14 @@ pveum user token add pvmss-svc@pve pvmss-service-token --privsep 0
 ```
 
 Les deux privilèges `VM.GuestAgent.*` couvrent les appels à l'agent invité QEMU :
-`Audit` lit les adresses IP de l'invité, `Unrestricted` injecte les clés SSH
-(`agent/exec`) et définit le mot de passe cloud-init (`agent/set-user-password`).
-Sans eux, ces actions échouent avec `cluster_permission_denied`.
+`Audit` couvre les lectures que PVMSS effectue (`agent/network-get-interfaces`)
+pour que la page de la VM affiche les adresses de l'invité. `Unrestricted`
+couvre les écritures de l'agent invité (`agent/exec`,
+`agent/set-user-password`) dont les fonctionnalités cloud-init supprimées
+avaient besoin ; aucune fonctionnalité livrée ne les émet, il reste donc dans
+le rôle recommandé pour compatibilité et peut être retiré pour un privilège
+minimal. Sans `Audit`, les lectures d'adresses échouent avec
+`cluster_permission_denied`.
 
 ## Administrateurs (PVMSS_Admin)
 

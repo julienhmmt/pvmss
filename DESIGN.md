@@ -873,8 +873,9 @@ running) or "Start machine" (primary, stopped).
    - **Usage charts** - below the resource strip: CPU / memory / disk / network
      history (hour / day / week) and the live stream.
 2. **Configuration** - a read-only `<dl>`: OS, approved size, disk, network &
-   placement ("Managed by your team"), machine identifier (mono). Hardware
-   editing and snapshots are designed later.
+   placement ("Managed by your team"), machine identifier (mono). The
+   prototype skipped hardware editing and snapshots; production ships them as
+   Configuration sub-tabs (Disks, Network, Hardware, Snapshots).
 3. **Activity** - a per-machine timeline: rows with a marker, a bold message, a
    "Simulated operation" subtitle, and a time. Empty state: "No operations in
    this demo session yet."
@@ -930,8 +931,8 @@ workspace that feels comfortable to use."
   - **Language** - "The complete interface is available in English and French."
     with a language select.
 - **Field note** - "Authentication, passwords and API tokens are intentionally
-  outside this prototype." (In production, this is where token management
-  lives - see `profile/tokens`.)
+  outside this prototype." (In production this is where the password change
+  lives - see `/profile`; personal API tokens were removed.)
 
 ### 6.7 Public pages (`/` and `/about`)
 
@@ -997,8 +998,8 @@ can reach `/about` from the footer, so `/about` must stand on its own.
 - **Illustrations are decorative and honest.** `aria-hidden`, built from
   tokens and house shapes, sample names only. Never a fabricated metric,
   testimonial, customer logo or benchmark (`PRODUCT.md`, "Evidence on Hand").
-- **Advertise only what ships.** A paused feature (cloud-init, cloud images)
-  is not on either page until it is back.
+- **Advertise only what ships.** A feature that was removed (cloud-init,
+  cloud images) is not on either page.
 - **Clip, don't hide.** The page root is `overflow-x-clip`, so slide-in
   offsets never cause a horizontal scroll and sticky elements still stick.
 - Same palette, font and tokens as the workspace: one orange accent, warm
@@ -1116,7 +1117,7 @@ migrating into `web/`:
   - `machines` → `/vms` (becomes the signed-in landing)
   - `create` → `/vms/create`
   - `detail` → `/vms/[cluster]/[id]`
-  - `activity` → `/tasks` (or a new `/activity` route)
+  - `activity` → `/activity` (shipped)
   - `help` → `/docs` (existing in-app docs)
   - `account` → `/profile`
 - **Add production tests** - Vitest for stores, Playwright for the creation
