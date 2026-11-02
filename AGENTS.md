@@ -139,7 +139,7 @@ Packages under `server/internal/`:
 | `logctx/`    | Request-scoped log attributes (requestId, user, span IDs)       |
 
 Cloud-init authoring was removed 2026-10-31. Kept on purpose: read-only
-`GET …/cloudinit`, the console-password guest-agent flow, and the
+`GET …/cloudinit` and the
 `vm_cloudinit_*` tables (VM delete still warns about leftover files).
 
 ### Web (`web/`)

@@ -321,8 +321,6 @@ var resolveExemptRoutes = map[string]string{
 	"GET /api/v1/vms/{cluster}/{vmid}/cloudinit/document":  "delegates to vm.GetCloudInitDocument which resolves",
 	"PUT /api/v1/vms/{cluster}/{vmid}/cloudinit/document":  "delegates to vm.SetCloudInitDocument which resolves",
 	"POST /api/v1/vms/{cluster}/{vmid}/cloudinit/ssh-keys": "delegates to vm.AddCloudInitSSHKey which resolves",
-	// console-password: handler delegates to vm.SetConsolePassword, which resolves the VM and enforces ownership.
-	"POST /api/v1/vms/{cluster}/{vmid}/console-password": "delegates to vm.SetConsolePassword which resolves",
 	// clone: handler delegates to vm.CloneOwn, which resolves the source via vm.Resolve before any write.
 	"POST /api/v1/vms/{cluster}/{vmid}/clone": "delegates to vm.CloneOwn which resolves the source",
 	// console: ticket endpoints call vm.GetConsoleTicket (Resolve -> GetVNCTicket -> Issue -> audit).
@@ -539,9 +537,8 @@ func newAuthzContractRouter(t *testing.T) (http.Handler, *httpapi.Auth) {
 	vms := httpapi.NewVMsWithRegistry(projectionRegistry(projection), authHandler, 100, -1, logger, nil, nil)
 	vmDetail := httpapi.NewVMDetailWithRegistry(httpapi.VMDetailDeps{Source: projectionRegistry(projection), Projection: projection, Auth: authHandler, Writer: cluster.Fake{}, Store: st, Refresher: worker, Log: logger}, policyService)
 	vmCloudInit := httpapi.NewVMCloudInit(httpapi.VMCloudInitDeps{
-		Source: projectionRegistry(projection), Projection: projection, Auth: authHandler, Reader: cluster.Fake{}, Writer: cluster.Fake{},
-		Store: st, Refresher: worker, Log: logger,
-	}, policyService)
+		Source: projectionRegistry(projection), Projection: projection, Auth: authHandler, Reader: cluster.Fake{}, Log: logger,
+	})
 	vmBulk := httpapi.NewVMBulkWithRegistry(httpapi.VMBulkRegistryDeps{Registry: projectionRegistry(projection), Projection: projection, Auth: authHandler, Writer: cluster.Fake{}, Store: st, Refresher: worker, Log: logger})
 	vmStatusBatch := httpapi.NewVMStatusBatch(httpapi.VMStatusBatchDeps{Source: projectionRegistry(projection), Auth: authHandler, StatusReader: cluster.Fake{}, Log: logger})
 	vmCreate := httpapi.NewVMCreateWithRegistry(authHandler, st, singleClientProvider(cluster.Fake{}), cluster.Fake{}, logger, policyService)

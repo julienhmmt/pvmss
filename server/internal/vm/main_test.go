@@ -12,7 +12,6 @@ import (
 func TestMain(m *testing.M) {
 	CreateTaskPoll = 5 * time.Millisecond
 	LockRetryPollInterval = 5 * time.Millisecond
-	agentPingPoll = 5 * time.Millisecond
 
 	os.Exit(m.Run())
 }

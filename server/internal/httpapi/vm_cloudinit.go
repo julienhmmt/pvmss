@@ -9,71 +9,39 @@ import (
 	"pvmss/server/internal/cluster"
 	"pvmss/server/internal/inventory"
 	"pvmss/server/internal/policy"
-	"pvmss/server/internal/store"
 	"pvmss/server/internal/vm"
 	"strconv"
-	"strings"
 )
 
 // VMCloudInit serves the per-VM cloud-init read (SSH user for the Connect
-// tab) and the console-password action.
+// tab).
 type VMCloudInit struct {
-	projection   *inventory.Projection
-	resolver     vm.ClusterIndexResolver
-	auth         *Auth
-	reader       cluster.CloudInitReader
-	writer       cluster.Writer
-	statusReader cluster.VMStatusReader
-	clients      cluster.ClientProvider
-	store        *store.Store
-	refresher    vm.IndexRefresher
-	refreshers   ClusterRefresherResolver
-	policy       *policy.Policy
-	log          *slog.Logger
+	projection *inventory.Projection
+	resolver   vm.ClusterIndexResolver
+	auth       *Auth
+	reader     cluster.CloudInitReader
+	clients    cluster.ClientProvider
+	log        *slog.Logger
 }
 
-// VMCloudInitDeps groups the shared dependencies for constructing a VMCloudInit
-// handler. It collapses the seven positional parameters NewVMCloudInit used to
-// take (SonarQube go:S107). Source and Clients are optional: when set (a
-// multi-cluster deployment), every index load and cluster.Reader/Writer call
-// below resolves per-request from the request's own :cluster path value
-// instead of the single bound Projection/Reader/Writer.
+// VMCloudInitDeps groups the dependencies for constructing a VMCloudInit
+// handler. Source and Clients are optional: when set (a multi-cluster
+// deployment), every index load and cluster.CloudInitReader call resolves
+// per-request from the request's own :cluster path value.
 type VMCloudInitDeps struct {
-	Source       inventory.LookupSource
-	Projection   *inventory.Projection
-	Auth         *Auth
-	Reader       cluster.CloudInitReader
-	Writer       cluster.Writer
-	StatusReader cluster.VMStatusReader
-	Clients      cluster.ClientProvider
-	Store        *store.Store
-	Refresher    vm.IndexRefresher
-	Log          *slog.Logger
+	Source     inventory.LookupSource
+	Projection *inventory.Projection
+	Auth       *Auth
+	Reader     cluster.CloudInitReader
+	Clients    cluster.ClientProvider
+	Log        *slog.Logger
 }
 
 // NewVMCloudInit creates the dedicated cloud-init handler.
-func NewVMCloudInit(deps VMCloudInitDeps, service *policy.Policy) *VMCloudInit {
-	registry := depsSourceRegistry(deps.Source)
-	resolver := vm.ClusterIndexResolver(registryResolver{registry: registry})
-	refreshers := registryRefresherResolver{registry: registry}
+func NewVMCloudInit(deps VMCloudInitDeps) *VMCloudInit {
+	resolver := vm.ClusterIndexResolver(registryResolver{registry: depsSourceRegistry(deps.Source)})
 
-	return &VMCloudInit{projection: deps.Projection, resolver: resolver, auth: deps.Auth, reader: deps.Reader, writer: deps.Writer, statusReader: deps.StatusReader, clients: deps.Clients, store: deps.Store, refresher: deps.Refresher, refreshers: refreshers, policy: service, log: deps.Log}
-}
-
-// statusReaderFor resolves the cluster.VMStatusReader for clusterName, falling
-// back to the single-cluster reader when per-cluster resolution is
-// unavailable - the same fallback rule VMStatusBatch applies.
-func (h *VMCloudInit) statusReaderFor(clusterName string) cluster.VMStatusReader {
-	if h.clients == nil {
-		return h.statusReader
-	}
-
-	reader, err := resolveCapability(h.clients, h.statusReader, clusterName, "VMStatusReader")
-	if err != nil {
-		return h.statusReader
-	}
-
-	return reader
+	return &VMCloudInit{projection: deps.Projection, resolver: resolver, auth: deps.Auth, reader: deps.Reader, clients: deps.Clients, log: deps.Log}
 }
 
 // index resolves the current Index for clusterName, writing the appropriate
@@ -93,37 +61,6 @@ func (h *VMCloudInit) readerFor(w http.ResponseWriter, clusterName string) (clus
 	return reader, true
 }
 
-// writerFor resolves the cluster.Writer for clusterName.
-func (h *VMCloudInit) writerFor(w http.ResponseWriter, clusterName string) (cluster.Writer, bool) {
-	writer, err := resolveCapability(h.clients, h.writer, clusterName, "Writer")
-	if err != nil {
-		h.writeError(w, http.StatusNotFound, "cluster_not_found", msgClusterNotFound)
-		return nil, false
-	}
-
-	return writer, true
-}
-
-// refresherFor resolves the vm.IndexRefresher for clusterName. A missing
-// refresher must not fail a write already applied on the cluster - so it
-// never writes an HTTP error. When the per-cluster resolver is unset
-// (single-cluster mode) or the cluster is unknown, it returns the fallback
-// refresher and logs a warning. The result is never nil when the fallback
-// is non-nil.
-func (h *VMCloudInit) refresherFor(clusterName string) vm.IndexRefresher {
-	if h.refreshers == nil {
-		return h.refresher
-	}
-
-	refresher, err := h.refreshers.RefresherFor(clusterName)
-	if err != nil {
-		h.log.Warn("refresher not found for cluster, using fallback", "component", "httpapi", "cluster", clusterName, "error", err)
-		return h.refresher
-	}
-
-	return refresher
-}
-
 type cloudInitConfigDTO struct {
 	User         string                  `json:"user"`
 	SSHKeys      []string                `json:"sshKeys"`
@@ -137,13 +74,8 @@ type cloudInitConfigDTO struct {
 // cloudInitDocumentDTO is the document a VM uses. TemplateID is "" when
 // none, "__baseline__" for the standalone baseline; Legacy marks a per-VM
 // document written before documents became admin-published.
-// ServeHTTP dispatches the cloud-init read and console-password routes by path suffix.
+// ServeHTTP serves the cloud-init read route.
 func (h *VMCloudInit) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	if strings.HasSuffix(r.URL.Path, "/console-password") {
-		h.handleConsolePassword(w, r)
-		return
-	}
-
 	h.handleConfig(w, r)
 }
 
@@ -194,61 +126,6 @@ func (h *VMCloudInit) getConfig(w http.ResponseWriter, r *http.Request, actor au
 	})
 }
 
-// consolePasswordResponse carries the generated password once for display.
-// The password is not persisted, not logged, and not recorded in the audit
-// trail.
-type consolePasswordResponse struct {
-	Password string `json:"password"`
-}
-
-func (h *VMCloudInit) handleConsolePassword(w http.ResponseWriter, r *http.Request) {
-	clusterName, vmid, ok := parseCloudInitPath(r)
-	if !ok {
-		h.writeError(w, http.StatusBadRequest, "invalid_request", msgInvalidVMPath)
-		return
-	}
-
-	if r.Method != http.MethodPost {
-		w.Header().Set("Allow", "POST")
-		h.writeError(w, http.StatusMethodNotAllowed, "method_not_allowed", msgMethodNotAllowed)
-
-		return
-	}
-
-	identity, err := h.auth.Principal(r)
-	if err != nil {
-		h.writeError(w, http.StatusUnauthorized, "unauthenticated", msgAuthRequired)
-		return
-	}
-
-	index, ok := h.index(w, clusterName)
-	if !ok {
-		return
-	}
-
-	reader, ok := h.readerFor(w, clusterName)
-	if !ok {
-		return
-	}
-
-	writer, ok := h.writerFor(w, clusterName)
-	if !ok {
-		return
-	}
-
-	password, err := vm.SetConsolePassword(r.Context(), vm.ConsolePasswordDeps{
-		Index: index, Actor: identity, ClusterName: clusterName, VMID: vmid,
-		Reader: reader, Writer: writer, Audit: h.store, Refresher: h.refresherFor(clusterName),
-		StatusReader: h.statusReaderFor(clusterName),
-	})
-	if err != nil {
-		h.writeDomainError(w, err)
-		return
-	}
-
-	h.writeJSONStatus(w, http.StatusOK, consolePasswordResponse{Password: password})
-}
-
 func (h *VMCloudInit) writeDomainError(w http.ResponseWriter, err error) {
 	switch {
 	case errors.Is(err, vm.ErrNotApproved):
@@ -259,8 +136,6 @@ func (h *VMCloudInit) writeDomainError(w http.ResponseWriter, err error) {
 		h.writeError(w, http.StatusForbidden, "forbidden", msgNotYourVM)
 	case errors.Is(err, vm.ErrNotFound):
 		h.writeError(w, http.StatusNotFound, "not_found", msgVMNotFound)
-	case h.writeGuestAgentError(w, err):
-		// Already written by the helper (password-path errors).
 	case h.writeClusterFailure(w, err):
 		// Already written: the cluster failed or refused the call.
 	default:
@@ -283,30 +158,6 @@ func (h *VMCloudInit) writeClusterFailure(w http.ResponseWriter, err error) bool
 	}
 
 	return false
-}
-
-// msgGuestAgentUnreachable is what a client sees when the guest agent never
-// answers; the Proxmox URL and transport error stay in the access log.
-const msgGuestAgentUnreachable = "guest agent did not answer in time; is qemu-guest-agent installed and running?"
-
-// writeGuestAgentError maps the password-path errors introduced by tickets 02
-// and 05. It writes the response and reports true when err is one of them.
-func (h *VMCloudInit) writeGuestAgentError(w http.ResponseWriter, err error) bool {
-	switch {
-	case errors.Is(err, vm.ErrNoCloudInitUser):
-		h.writeError(w, http.StatusBadRequest, "no_cloudinit_user", "no cloud-init user is defined on this VM; set one before setting a password")
-	case errors.Is(err, vm.ErrGuestAgentDisabled):
-		h.writeError(w, http.StatusConflict, "guest_agent_disabled", "the QEMU guest agent is not enabled on this VM")
-	case errors.Is(err, vm.ErrVMNotRunning):
-		h.writeError(w, http.StatusConflict, "vm_not_running", "start the VM first")
-	case errors.Is(err, vm.ErrGuestAgentUnreachable):
-		SetError(w, err)
-		h.writeError(w, http.StatusGatewayTimeout, "guest_agent_unreachable", msgGuestAgentUnreachable)
-	default:
-		return false
-	}
-
-	return true
 }
 
 func (h *VMCloudInit) writeJSONStatus(w http.ResponseWriter, status int, value any) {

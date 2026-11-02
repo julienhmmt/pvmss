@@ -257,7 +257,6 @@ func registerVMRoutes(mux *http.ServeMux, cfg RouterConfig, protect protectFunc,
 	if cfg.VMCloudInit != nil {
 		// The read stays: the Connect tab shows the SSH user from it.
 		mux.Handle("GET /api/v1/vms/{cluster}/{vmid}/cloudinit", cfg.VMCloudInit)
-		mux.Handle("POST /api/v1/vms/{cluster}/{vmid}/console-password", protect(cfg.VMCloudInit, vmWriteLimiter))
 	}
 
 	if len(cfg.SnapshotHandlers) > 0 && cfg.SnapshotHandlers[0] != nil {
