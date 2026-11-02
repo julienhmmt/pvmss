@@ -52,9 +52,9 @@
 
 	// Shown in clear, not behind a hover: an admin reads the split at a glance.
 	const VM_STATUS_BREAKDOWN = [
-		{ key: 'running', dot: 'bg-success', label: () => m['admin.dashboard.vmRunning']() },
-		{ key: 'paused', dot: 'bg-warning', label: () => m['admin.dashboard.vmPaused']() },
-		{ key: 'stopped', dot: 'bg-muted-foreground', label: () => m['admin.dashboard.vmStopped']() },
+		{ key: 'running', dot: 'bg-success', label: () => m['machine.status.running']() },
+		{ key: 'paused', dot: 'bg-warning', label: () => m['machine.status.paused']() },
+		{ key: 'stopped', dot: 'bg-muted-foreground', label: () => m['machine.status.stopped']() },
 		{ key: 'other', dot: 'bg-info', label: () => m['admin.dashboard.vmOther']() }
 	] as const;
 </script>

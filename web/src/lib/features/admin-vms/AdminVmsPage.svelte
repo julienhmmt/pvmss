@@ -46,8 +46,8 @@
 
 	const STATUS_OPTIONS: readonly { value: VmStatus | ''; label: () => string }[] = [
 		{ value: '', label: () => m['vms.list.filterAll']() },
-		{ value: 'running', label: () => m['vms.list.filterRunning']() },
-		{ value: 'stopped', label: () => m['vms.list.filterStopped']() },
+		{ value: 'running', label: () => m['machine.status.running']() },
+		{ value: 'stopped', label: () => m['machine.status.stopped']() },
 		{ value: 'paused', label: () => m['machine.status.paused']() }
 	];
 

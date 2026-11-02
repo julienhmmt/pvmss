@@ -3,10 +3,14 @@ import {
 	displayStatus,
 	canConnect,
 	isUncertainOutcome,
+	machineStatusView,
 	type MachineDisplayInput,
+	type MachineDisplayStatus,
+	type MachineStatusTone,
 	type TaskTraySnapshot,
 	type TaskOutcomeLedger
 } from './display-status';
+import { m } from '#lib/paraglide/messages.js';
 import type { TrackedTask } from '#lib/features/tasks/tasks.svelte.js';
 
 const vm = (overrides: Partial<MachineDisplayInput> = {}): MachineDisplayInput => ({
@@ -156,5 +160,32 @@ describe('isUncertainOutcome', () => {
 		expect(isUncertainOutcome('provisioning')).toBe(false);
 		expect(isUncertainOutcome('starting')).toBe(false);
 		expect(isUncertainOutcome('stopping')).toBe(false);
+	});
+});
+
+describe('machineStatusView', () => {
+	const expected: Record<MachineDisplayStatus, MachineStatusTone> = {
+		running: 'ok',
+		stopped: 'off',
+		paused: 'warn',
+		provisioning: 'warn',
+		starting: 'warn',
+		stopping: 'warn',
+		partial: 'warn',
+		failed: 'error'
+	};
+
+	it('gives every display status a tone and a non-empty label', () => {
+		for (const [status, tone] of Object.entries(expected) as [MachineDisplayStatus, MachineStatusTone][]) {
+			const view = machineStatusView(status);
+			expect(view.tone, `${status} tone`).toBe(tone);
+			expect(view.label().trim().length, `${status} label`).toBeGreaterThan(0);
+		}
+	});
+
+	it('labels every state through the canonical machine.status.* keys', () => {
+		expect(machineStatusView('running').label()).toBe(m['machine.status.running']());
+		expect(machineStatusView('stopped').label()).toBe(m['machine.status.stopped']());
+		expect(machineStatusView('failed').label()).toBe(m['machine.status.failed']());
 	});
 });

@@ -1,6 +1,7 @@
 import type { VmStatus } from './list.svelte';
 import type { VmAction } from './detail.svelte';
 import type { TrackedTask } from '#lib/features/tasks/tasks.svelte.js';
+import { m } from '#lib/paraglide/messages.js';
 
 /**
  * The seven end-user-facing machine states (DESIGN.md §7). These are not
@@ -114,4 +115,38 @@ export function canConnect(status: MachineDisplayStatus, address: string | undef
 /** True for the two states that must not be duplicated via the create form. */
 export function isUncertainOutcome(status: MachineDisplayStatus): boolean {
 	return status === 'failed' || status === 'partial';
+}
+
+/** The Pill tones a machine status may take. */
+export type MachineStatusTone = 'ok' | 'off' | 'warn' | 'error';
+
+/**
+ * The single vocabulary for machine states (issue-tracker:
+ * ui-review-remediation/01). Tone mapping:
+ *   running       → ok
+ *   stopped       → off
+ *   paused        → warn
+ *   provisioning  → warn
+ *   starting      → warn
+ *   stopping      → warn
+ *   partial       → warn
+ *   failed        → error
+ * Labels come from the canonical `machine.status.*` key set - the same words
+ * on the list, the detail page and the search results, in every locale.
+ * `VmStatus` (running / stopped / paused) is a subset of
+ * `MachineDisplayStatus`, so server-status callers can pass it directly.
+ */
+const MACHINE_STATUS_VIEW: Record<MachineDisplayStatus, { tone: MachineStatusTone; label: () => string }> = {
+	running: { tone: 'ok', label: () => m['machine.status.running']() },
+	stopped: { tone: 'off', label: () => m['machine.status.stopped']() },
+	paused: { tone: 'warn', label: () => m['machine.status.paused']() },
+	provisioning: { tone: 'warn', label: () => m['machine.status.provisioning']() },
+	starting: { tone: 'warn', label: () => m['machine.status.starting']() },
+	stopping: { tone: 'warn', label: () => m['machine.status.stopping']() },
+	partial: { tone: 'warn', label: () => m['machine.status.partial']() },
+	failed: { tone: 'error', label: () => m['machine.status.failed']() }
+};
+
+export function machineStatusView(status: MachineDisplayStatus): { tone: MachineStatusTone; label: () => string } {
+	return MACHINE_STATUS_VIEW[status];
 }

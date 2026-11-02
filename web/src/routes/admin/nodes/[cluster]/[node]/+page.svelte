@@ -12,6 +12,7 @@
 	import Skeleton from '#lib/shared/ui/Skeleton.svelte';
 	import MigrateDialog from '#lib/features/admin-migration/MigrateDialog.svelte';
 	import { getTaskTrayContext } from '#lib/features/tasks/tasks.svelte.js';
+	import { machineStatusView, type MachineStatusTone } from '#lib/features/vms/display-status.js';
 	import { usageTone } from '#lib/features/admin-dashboard/dashboard-alerts.js';
 	import { m } from '#lib/paraglide/messages.js';
 	import { formatDateTime } from '#lib/shared/format-date.js';
@@ -168,15 +169,16 @@
 	}
 
 	function guestStatusLabel(status: string): string {
-		if (status === 'running') return m['machine.status.running']();
-		if (status === 'stopped') return m['machine.status.stopped']();
-		if (status === 'paused') return m['admin.dashboard.vmPaused']();
+		if (status === 'running' || status === 'stopped' || status === 'paused') {
+			return machineStatusView(status).label();
+		}
 		return status;
 	}
 
-	function guestStatusTone(status: string): 'ok' | 'warn' | 'off' {
-		if (status === 'running') return 'ok';
-		if (status === 'paused') return 'warn';
+	function guestStatusTone(status: string): MachineStatusTone {
+		if (status === 'running' || status === 'stopped' || status === 'paused') {
+			return machineStatusView(status).tone;
+		}
 		return 'off';
 	}
 

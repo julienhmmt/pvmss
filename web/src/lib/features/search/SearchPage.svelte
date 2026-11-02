@@ -9,7 +9,7 @@
 	import Card from '#lib/shared/ui/Card.svelte';
 	import ClusterSelector from '#lib/shared/ui/ClusterSelector.svelte';
 	import PageHeader from '#lib/shared/ui/PageHeader.svelte';
-	import Pill from '#lib/shared/ui/Pill.svelte';
+	import MachineStatusPill from '#lib/features/vms/MachineStatusPill.svelte';
 	import Select from '#lib/shared/ui/Select.svelte';
 	import Skeleton from '#lib/shared/ui/Skeleton.svelte';
 	import TextField from '#lib/shared/ui/TextField.svelte';
@@ -20,27 +20,15 @@
 	const store = getSearchContext();
 	const pager = createPagination('search', () => store.result?.items ?? []);
 
-	const statusTone: Record<VmStatus, 'ok' | 'off' | 'warn'> = {
-		running: 'ok',
-		stopped: 'off',
-		paused: 'warn'
-	};
-
-	const statusLabels: Record<VmStatus, () => string> = {
-		running: () => m['common.statusRunning'](),
-		stopped: () => m['common.statusStopped'](),
-		paused: () => m['common.statusPaused']()
-	};
-
 	function vmHref(machine: VmListItem): string {
 		return resolve('/vms/[cluster]/[vmid]', { cluster: encodeURIComponent(machine.cluster), vmid: String(machine.vmid) });
 	}
 
 	const statusOptions = $derived([
 		{ value: '', label: m['common.all']() },
-		{ value: 'running', label: m['common.statusRunning']() },
-		{ value: 'stopped', label: m['common.statusStopped']() },
-		{ value: 'paused', label: m['common.statusPaused']() }
+		{ value: 'running', label: m['machine.status.running']() },
+		{ value: 'stopped', label: m['machine.status.stopped']() },
+		{ value: 'paused', label: m['machine.status.paused']() }
 	]);
 
 	function handleInput(event: Event): void {
@@ -143,7 +131,7 @@
 									{/if}
 								</div>
 								<div class="shrink-0">
-									<Pill tone={statusTone[machine.status]} label={statusLabels[machine.status]()} />
+									<MachineStatusPill status={machine.status} />
 								</div>
 							</div>
 
