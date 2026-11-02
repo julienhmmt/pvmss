@@ -37,12 +37,15 @@
 	import SearchIcon from '#lib/shared/ui/icons/SearchIcon.svelte';
 	import ChevronDownIcon from '#lib/shared/ui/icons/ChevronDownIcon.svelte';
 
+	import { getSessionContext } from '#lib/features/auth/session.svelte.js';
+
 	const store = getVmListContext();
 	const bulk = getVmBulkContext();
 	const toast = getToastContext();
 	const tray = getTaskTrayContext();
 	const ledger = getTaskOutcomeLedgerContext();
 	const powerActions = getPowerActionsContext();
+	const session = getSessionContext();
 
 	/** Allowances above this many slots render as a continuous bar. */
 	const MAX_SEGMENTS = 12;
@@ -255,10 +258,12 @@
 			<span class="absolute -right-2 -top-2 flex h-6 w-6 items-center justify-center rounded-full bg-primary-solid text-sm font-semibold text-primary-foreground">+</span>
 		</div>
 		<div class="max-w-md">
-			<p class="text-lg font-semibold text-foreground">{m['vms.list.emptyFirstTitle']()}</p>
-			<p class="mt-1.5 text-sm text-muted-foreground">{m['vms.list.emptyFirstBody']()}</p>
+			<p class="text-lg font-semibold text-foreground">{session.isAdmin ? m['vms.list.emptyFirstAdminTitle']() : m['vms.list.emptyFirstTitle']()}</p>
+			<p class="mt-1.5 text-sm text-muted-foreground">{session.isAdmin ? m['vms.list.emptyFirstAdminBody']() : m['vms.list.emptyFirstBody']()}</p>
 		</div>
-		<ButtonLink href={resolve('/vms/create')} data-testid="vm-empty-create">{m['vms.list.emptyFirstAction']()}</ButtonLink>
+		{#if !session.isAdmin}
+			<ButtonLink href={resolve('/vms/create')} data-testid="vm-empty-create">{m['vms.list.emptyFirstAction']()}</ButtonLink>
+		{/if}
 	</Card>
 {:else}
 	<Card pad="none" class="machine-collection overflow-hidden" aria-label={m['vms.list.caption']()}>

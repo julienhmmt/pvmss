@@ -160,4 +160,8 @@
 	{#if machinesFailed}
 		<p class="px-2 text-xs text-muted-foreground">{m['palette.machinesError']()}</p>
 	{/if}
+	<p class="mt-3 flex items-center justify-end gap-1.5 border-t border-border-subtle pt-2 text-xs text-muted-foreground">
+		<kbd class="rounded border border-border bg-muted px-1.5 font-mono text-2xs">?</kbd>
+		{m['chrome.palette.shortcutHint']()}
+	</p>
 </Dialog>

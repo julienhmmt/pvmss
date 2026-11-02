@@ -172,6 +172,8 @@ export class ActivityStore {
 	entries = $state.raw<ActivityEntry[] | null>(null);
 	loading = $state.raw(false);
 	error = $state.raw<string | null>(null);
+	/** True when only the first MAX_MACHINES machines were read. */
+	partialCoverage = $state.raw(false);
 
 	async load(): Promise<void> {
 		this.loading = true;
@@ -191,6 +193,7 @@ export class ActivityStore {
 					}
 				})
 			);
+			this.partialCoverage = list.total > MAX_MACHINES;
 			this.entries = mergeActivity(pages);
 		} catch {
 			this.error = m['activity.loadError']();
