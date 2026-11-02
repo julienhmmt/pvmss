@@ -3,10 +3,12 @@
 	import { openConsolePopout } from './console';
 	import { m } from '#lib/paraglide/messages.js';
 	import Button from '#lib/shared/ui/Button.svelte';
+	import ConsolePasswordDialog from './ConsolePasswordDialog.svelte';
 
 	const store = getConsoleContext();
 
 	let popoutBlocked = $state(false);
+	let passwordOpen = $state(false);
 
 	function popout(): void {
 		popoutBlocked = openConsolePopout(store.cluster, store.vmid) === null;
@@ -96,6 +98,18 @@
 	>
 		{m['vms.console.copyFromVm']()}
 	</Button>
+
+	<Button
+		variant="secondary"
+		size="sm"
+		disabled={store.consolePasswordInFlight}
+		onclick={() => (passwordOpen = true)}
+		data-testid="vm-console-set-password"
+	>
+		{m['vms.console.setPassword']()}
+	</Button>
+
+	<ConsolePasswordDialog bind:open={passwordOpen} onClose={() => (passwordOpen = false)} />
 
 	{#if store.clipboard.fromVM}
 		<span class="text-xs text-muted-foreground" data-testid="vm-console-clipboard-preview">

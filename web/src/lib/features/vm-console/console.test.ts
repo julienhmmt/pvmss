@@ -1,5 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { buildConsolePopoutURL, buildConsoleWebSocketURL, consoleTicketErrorMessage, fetchConsoleTicket, openConsolePopout, fetchSerialTicket, buildSerialWebSocketURL } from './console';
+import { buildConsolePopoutURL, buildConsoleWebSocketURL, consoleTicketErrorMessage, fetchConsoleTicket, fetchConsolePassword, openConsolePopout, fetchSerialTicket, buildSerialWebSocketURL } from './console';
+import { ConsoleStore } from './console.svelte';
 import { ApiRequestError } from '#lib/shared/api/client.js';
 import { m } from '#lib/paraglide/messages.js';
 
@@ -31,6 +32,54 @@ describe('fetchConsoleTicket', () => {
 	it('throws ApiRequestError on 403 (non-owner)', async () => {
 		vi.stubGlobal('fetch', vi.fn().mockResolvedValue(jsonResponse(403, { code: 'forbidden', message: 'not your VM' })));
 		await expect(fetchConsoleTicket('default', 100)).rejects.toThrow(ApiRequestError);
+	});
+});
+
+describe('fetchConsolePassword', () => {
+	it('POSTs the console-password endpoint and returns the password', async () => {
+		const fetchMock = vi.fn().mockResolvedValue(jsonResponse(200, { password: 'one-time-pw' }));
+		vi.stubGlobal('fetch', fetchMock);
+
+		const password = await fetchConsolePassword('default', 100);
+
+		expect(password).toBe('one-time-pw');
+		const [path, init] = (fetchMock.mock.calls[0] ?? []) as [string, RequestInit | undefined];
+		expect(path).toBe('/api/v1/vms/default/100/console-password');
+		expect(init?.method).toBe('POST');
+	});
+});
+
+describe('ConsoleStore.setConsolePassword', () => {
+	it('returns the password and clears the in-flight flag', async () => {
+		vi.stubGlobal('fetch', vi.fn().mockResolvedValue(jsonResponse(200, { password: 'pw-1' })));
+		const store = new ConsoleStore('default', 100);
+
+		await expect(store.setConsolePassword()).resolves.toBe('pw-1');
+		expect(store.consolePasswordInFlight).toBe(false);
+		expect(store.consolePasswordError).toBeNull();
+	});
+
+	it('records the server message on failure and returns null', async () => {
+		vi.stubGlobal('fetch', vi.fn().mockResolvedValue(jsonResponse(409, { code: 'agent_not_running', message: 'guest agent is not running' })));
+		const store = new ConsoleStore('default', 100);
+
+		await expect(store.setConsolePassword()).resolves.toBeNull();
+		// The store shows the localized ApiRequestError message, not the raw server text.
+		expect(store.consolePasswordError).toBe(new ApiRequestError(409, 'agent_not_running', 'guest agent is not running').message);
+		expect(store.consolePasswordInFlight).toBe(false);
+	});
+
+	it('ignores a second call while one is in flight', async () => {
+		const fetchMock = vi.fn().mockResolvedValue(jsonResponse(200, { password: 'pw-2' }));
+		vi.stubGlobal('fetch', fetchMock);
+		const store = new ConsoleStore('default', 100);
+
+		const first = store.setConsolePassword();
+		const second = await store.setConsolePassword();
+
+		expect(second).toBeNull();
+		await expect(first).resolves.toBe('pw-2');
+		expect(fetchMock).toHaveBeenCalledTimes(1);
 	});
 });
 
