@@ -13,8 +13,6 @@
 	import Card from '#lib/shared/ui/Card.svelte';
 	import Select from '#lib/shared/ui/Select.svelte';
 	import ProfilePasswordSection from '#lib/features/auth/ProfilePasswordSection.svelte';
-	// Cloud-init is disabled for now: see the commented-out SSH keys section below.
-	// import ProfileSshKeysSection from '#lib/features/profile-ssh-keys/ProfileSshKeysSection.svelte';
 	import { accountInitials } from '#lib/shared/initials.js';
 	import { m } from '#lib/paraglide/messages.js';
 
@@ -94,10 +92,4 @@
 	</Card>
 
 	<ProfilePasswordSection />
-
-	<!-- Cloud-init is disabled for now: not reliable or viable yet, too complex to set up.
-	Saved keys only feed the cloud-image wizard and the VM cloud-init tab, both paused.
-	{#if !session.isAdmin}
-		<ProfileSshKeysSection />
-	{/if} -->
 </section>
