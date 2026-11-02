@@ -35,6 +35,8 @@
 		noMatchDescription: string;
 		resetLabel: string;
 		onResetFilters: () => void;
+		/** Re-runs the load after a load error; the retry button is hidden without it. */
+		onRetry?: () => void;
 		/** The TableCard (toolbar + table) rendered when rows exist. */
 		children: Snippet;
 	}
@@ -43,6 +45,7 @@
 		loading,
 		error,
 		toggleError = null,
+		onRetry,
 		columns,
 		totalCount,
 		filteredCount,
@@ -63,6 +66,11 @@
 	<TableSkeleton {columns} />
 {:else if error}
 	<Alert>{error}</Alert>
+	{#if onRetry}
+		<Button variant="secondary" size="sm" class="mt-3" onclick={onRetry} data-testid="catalog-retry">
+			{m['common.retry']()}
+		</Button>
+	{/if}
 {:else}
 	<div role="status" aria-live="polite" class="sr-only">{loadedLabel}</div>
 

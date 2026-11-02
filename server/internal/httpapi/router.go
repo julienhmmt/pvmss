@@ -93,7 +93,6 @@ type RouterConfig struct {
 	AdminAccounts    *AdminAccounts
 	Docs             *DocsAPIHandler
 	AdminDocs        *AdminDocs
-	ProfileSSHKeys   *ProfileSSHKeys
 	// Setup serves GET /api/v1/setup (and POST /api/v1/setup/admin). Optional;
 	// both self-guard on live state, so they stay mounted after setup.
 	Setup *Setup
@@ -311,16 +310,6 @@ func registerAuthRoutes(mux *http.ServeMux, cfg RouterConfig, protect protectFun
 
 	mux.Handle("POST /api/v1/auth/logout", protect(http.HandlerFunc(cfg.Auth.Logout), authWriteLimiter))
 	mux.Handle("POST /api/v1/auth/password", protect(http.HandlerFunc(cfg.Auth.ChangePassword), authWriteLimiter))
-
-	// Profile-scoped user routes. The handler resolves the session itself
-	// (401 on its own); writes still go through CSRF + the per-user limiter
-	// like the other authenticated writes above. Nothing static lives under
-	// /profile/ssh-keys/ - only the {id} pattern.
-	if cfg.ProfileSSHKeys != nil {
-		mux.Handle("GET /api/v1/profile/ssh-keys", cfg.ProfileSSHKeys)
-		mux.Handle("POST /api/v1/profile/ssh-keys", protect(cfg.ProfileSSHKeys, authWriteLimiter))
-		mux.Handle("DELETE /api/v1/profile/ssh-keys/{id}", protect(cfg.ProfileSSHKeys, authWriteLimiter))
-	}
 
 	// Unauthenticated SPA telemetry: errors must report even before login, so
 	// it shares the per-IP limiter style of the auth endpoints (its own

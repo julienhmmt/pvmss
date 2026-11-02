@@ -92,23 +92,26 @@ type snapshotConfigDTO struct {
 	Config map[string]string `json:"config"`
 }
 
-// ServeHTTP dispatches the four snapshot routes registered by NewRouter.
+// ServeHTTP dispatches the snapshot routes registered by NewRouter on the
+// matched pattern, never on the path: a snapshot named "rollback" or "config"
+// must not be able to reroute its own DELETE.
 func (h *VMSnapshots) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	switch {
-	case isScheduleRoute(r.URL.Path):
-		h.handleSchedule(w, r)
-	case strings.HasSuffix(r.URL.Path, "/config"):
-		h.handleConfig(w, r)
-	case strings.HasSuffix(r.URL.Path, "/rollback"):
-		h.handleNamedAction(w, r, vm.RollbackSnapshot)
-	case r.Method == http.MethodGet:
+	switch r.Pattern {
+	case "GET /api/v1/vms/{cluster}/{vmid}/snapshots":
 		h.handleList(w, r)
-	case r.Method == http.MethodPost:
+	case "POST /api/v1/vms/{cluster}/{vmid}/snapshots":
 		h.handleCreate(w, r)
-	case r.Method == http.MethodDelete:
+	case "POST /api/v1/vms/{cluster}/{vmid}/snapshots/{name}/rollback":
+		h.handleNamedAction(w, r, vm.RollbackSnapshot)
+	case "DELETE /api/v1/vms/{cluster}/{vmid}/snapshots/{name}":
 		h.handleNamedAction(w, r, vm.DeleteSnapshot)
+	case "GET /api/v1/vms/{cluster}/{vmid}/snapshots/{name}/config":
+		h.handleConfig(w, r)
+	case "PUT /api/v1/vms/{cluster}/{vmid}/snapshot-schedule",
+		"DELETE /api/v1/vms/{cluster}/{vmid}/snapshot-schedule":
+		h.handleSchedule(w, r)
 	default:
-		w.Header().Set("Allow", "GET, POST, DELETE")
+		w.Header().Set("Allow", "GET, POST, PUT, DELETE")
 		h.writeError(w, http.StatusMethodNotAllowed, "method_not_allowed", msgMethodNotAllowed)
 	}
 }

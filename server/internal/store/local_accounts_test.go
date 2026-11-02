@@ -312,6 +312,10 @@ func TestDeleteOtherSessionsByProvider(t *testing.T) {
 	st := newLocalAccountStore(t)
 	ctx := context.Background()
 
+	// Local sessions now resolve only against a live local_accounts row.
+	seedLocalAccount(t, st, "albert")
+	seedLocalAccount(t, st, "bob")
+
 	newSession := func(hash string, provider auth.Provider, username string) auth.SessionRecord {
 		return auth.SessionRecord{
 			Hash:      []byte(hash),

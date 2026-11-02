@@ -26,11 +26,11 @@ async function useLocale(page: Page, locale: 'en' | 'fr'): Promise<void> {
 test.describe('Calm workspace', () => {
 	test.describe.configure({ mode: 'serial' });
 
-	test('the sidebar offers exactly the three workspace destinations', async ({ page }) => {
+	test('the sidebar offers exactly the four workspace destinations', async ({ page }) => {
 		await signInAlice(page.request);
 		await page.goto('/vms/create');
 		const nav = page.getByTestId('app-sidebar').first().getByRole('navigation').first();
-		await expect(nav.getByRole('link')).toHaveText([/My machines/, /Activity/, /Help & guides/]);
+		await expect(nav.getByRole('link')).toHaveText([/My machines/, /Activity/, /Nodes/, /Help & guides/]);
 		// Create is a state of My machines, not an item of its own.
 		await expect(nav.getByRole('link', { name: /My machines/ })).toHaveAttribute('aria-current', 'page');
 		await expect(page.getByTestId('context-screen')).toHaveText('Create a machine');

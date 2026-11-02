@@ -6,6 +6,7 @@
 	 */
 	import { onMount } from 'svelte';
 	import Button from '#lib/shared/ui/Button.svelte';
+	import ConfirmDialog from '#lib/shared/ui/ConfirmDialog.svelte';
 	import EmptyState from '#lib/shared/ui/EmptyState.svelte';
 	import { ApiRequestError } from '#lib/shared/api/client.js';
 	import { m } from '#lib/paraglide/messages.js';
@@ -23,6 +24,8 @@
 	let busyId = $state<number | null>(null);
 	/** Admin-edited allowance per request id; blank keeps the requested number. */
 	let overrides = $state<Record<number, string>>({});
+	/** A decision waiting for the admin's confirmation; null when no dialog is open. */
+	let pendingDecision = $state<{ request: QuotaRequest; approve: boolean } | null>(null);
 
 	async function load(): Promise<void> {
 		loading = true;
@@ -42,13 +45,35 @@
 		return value === -1 ? m['admin.quotaRequests.unlimited']() : String(value);
 	}
 
+	/** The number the admin typed, or undefined when the requested number is kept. */
+	function typedAllowance(request: QuotaRequest): number | undefined {
+		// bind:value on a number input yields a number (or null when cleared), not a string.
+		const override = String(overrides[request.id] ?? '').trim();
+		return override === '' ? undefined : Number(override);
+	}
+
+	/** Deny always asks; approve asks only when the typed allowance changes the request. */
+	function requestDecision(request: QuotaRequest, approve: boolean): void {
+		const granted = typedAllowance(request);
+		if (!approve || (granted !== undefined && granted !== request.requestedQuota)) {
+			pendingDecision = { request, approve };
+			return;
+		}
+		void decide(request, approve);
+	}
+
+	function confirmPendingDecision(): void {
+		const pending = pendingDecision;
+		pendingDecision = null;
+		if (pending) void decide(pending.request, pending.approve);
+	}
+
 	async function decide(request: QuotaRequest, approve: boolean): Promise<void> {
 		busyId = request.id;
 		actionError = null;
 		try {
 			if (approve) {
-				const override = overrides[request.id]?.trim() ?? '';
-				await approveQuotaRequest(request.id, override === '' ? undefined : Number(override));
+				await approveQuotaRequest(request.id, typedAllowance(request));
 			} else {
 				await denyQuotaRequest(request.id);
 			}
@@ -102,10 +127,10 @@
 									bind:value={overrides[request.id]}
 								/>
 								<div class="flex gap-2">
-									<Button disabled={busyId === request.id} onclick={() => void decide(request, true)}>
+									<Button disabled={busyId === request.id} onclick={() => requestDecision(request, true)}>
 										{m['admin.quotaRequests.approve']()}
 									</Button>
-									<Button variant="secondary" disabled={busyId === request.id} onclick={() => void decide(request, false)}>
+									<Button variant="secondary" disabled={busyId === request.id} onclick={() => requestDecision(request, false)}>
 										{m['admin.quotaRequests.deny']()}
 									</Button>
 								</div>
@@ -116,4 +141,37 @@
 			</tbody>
 		</table>
 	</div>
+{/if}
+
+{#if pendingDecision}
+	{@const pending = pendingDecision}
+	{@const granted = typedAllowance(pending.request)}
+	{#if pending.approve}
+		<ConfirmDialog
+			open
+			title={m['admin.quotaRequests.approveConfirmTitle']()}
+			message={m['admin.quotaRequests.approveConfirmBody']({
+				requester: pending.request.requester,
+				pool: pending.request.pool,
+				requested: quotaLabel(pending.request.requestedQuota),
+				granted: quotaLabel(granted ?? pending.request.requestedQuota)
+			})}
+			confirmLabel={m['admin.quotaRequests.approve']()}
+			cancelLabel={m['common.cancel']()}
+			testId="quota-decision-confirm"
+			onConfirm={confirmPendingDecision}
+			onClose={() => (pendingDecision = null)}
+		/>
+	{:else}
+		<ConfirmDialog
+			open
+			title={m['admin.quotaRequests.denyConfirmTitle']({ requester: pending.request.requester })}
+			message={m['admin.quotaRequests.denyConfirmBody']({ requester: pending.request.requester, pool: pending.request.pool })}
+			confirmLabel={m['admin.quotaRequests.deny']()}
+			cancelLabel={m['common.cancel']()}
+			testId="quota-decision-confirm"
+			onConfirm={confirmPendingDecision}
+			onClose={() => (pendingDecision = null)}
+		/>
+	{/if}
 {/if}

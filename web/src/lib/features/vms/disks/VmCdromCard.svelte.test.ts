@@ -11,13 +11,17 @@ vi.mock('../detail.svelte', async (importOriginal) => {
 });
 vi.mock('#lib/shared/ui/toast.svelte.js', () => ({ getToastContext: vi.fn() }));
 
-async function render(cdrom: VmCdrom): Promise<void> {
-	const store = { entity: { name: 'vm', status: 'running', cdrom }, cdromInFlight: false } as unknown as VmDetailStore;
+async function render(cdrom: VmCdrom): Promise<{ setCdrom: ReturnType<typeof vi.fn> }> {
+	const setCdrom = vi.fn();
+	const store = { entity: { name: 'vm', status: 'running', cdrom }, cdromInFlight: false, setCdrom } as unknown as VmDetailStore;
 	vi.mocked(getVmDetailContext).mockReturnValue(store);
 	vi.mocked(getToastContext).mockReturnValue({} as ReturnType<typeof getToastContext>);
 	mount(VmCdromCard, { target: document.body });
 	await tick();
+	return { setCdrom };
 }
+
+const confirmDialogButton = (id: string) => document.querySelector<HTMLButtonElement>(`[data-testid="${id}"]`);
 
 const button = (id: string) => document.querySelector<HTMLButtonElement>(`[data-testid="${id}"]`);
 
@@ -51,6 +55,33 @@ describe('VmCdromCard', () => {
 		await render({ state: 'ejected' as VmCdrom['state'] });
 
 		expect(document.querySelector('[data-testid="vm-cdrom-state"]')?.textContent).toContain('ejected');
+	});
+
+	it('asks before removing the drive and removes only on confirm', async () => {
+		const { setCdrom } = await render({ state: 'mounted' });
+
+		button('vm-cdrom-remove')?.click();
+		await tick();
+		expect(setCdrom).not.toHaveBeenCalled();
+		expect(confirmDialogButton('vm-cdrom-remove-confirm')).not.toBeNull();
+
+		confirmDialogButton('vm-cdrom-remove-confirm')?.click();
+		await tick();
+		expect(setCdrom).toHaveBeenCalledTimes(1);
+		expect(setCdrom).toHaveBeenCalledWith('remove');
+	});
+
+	it('does not remove the drive when the removal is cancelled', async () => {
+		const { setCdrom } = await render({ state: 'mounted' });
+
+		button('vm-cdrom-remove')?.click();
+		await tick();
+		const cancel = [...document.querySelectorAll<HTMLButtonElement>('button')].find(
+			(b) => b.textContent?.trim() === 'Cancel'
+		);
+		cancel?.click();
+		await tick();
+		expect(setCdrom).not.toHaveBeenCalled();
 	});
 
 	it('keeps the controls enabled for an empty drive', async () => {

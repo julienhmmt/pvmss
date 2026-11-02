@@ -123,7 +123,6 @@ func buildRouter(deps routerDeps) (http.Handler, error) {
 	docsHandler := httpapi.NewDocsAPIHandler(authHandler, st, logger)
 	adminDocs := httpapi.NewAdminDocs(authHandler, st, docsHandler, logger)
 	adminDocs.SetTrustedProxyHops(cfg.TrustedProxyHops)
-	profileSSHKeys := httpapi.NewProfileSSHKeys(authHandler, st, logger)
 	adminAccounts := httpapi.NewAdminAccounts(authHandler, st, cfg.MaxLocalAdmins, logger)
 	adminAccounts.SetTrustedProxyHops(cfg.TrustedProxyHops)
 	setup := httpapi.NewSetup(st, cfg.AdminPasswordHash != "", logger)
@@ -158,7 +157,6 @@ func buildRouter(deps routerDeps) (http.Handler, error) {
 		AdminClusters:    adminClusters,
 		Docs:             docsHandler,
 		AdminDocs:        adminDocs,
-		ProfileSSHKeys:   profileSSHKeys,
 		AdminMigration:   adminMigration,
 		AdminAccounts:    adminAccounts,
 		Setup:            setup,
@@ -231,7 +229,7 @@ type setupRouterSwap struct {
 	registry *cluster.Registry
 	log      *slog.Logger
 	build    func() (http.Handler, error)
-	once     sync.Once
+	mu       sync.Mutex
 	full     atomic.Pointer[http.Handler]
 }
 
@@ -244,14 +242,16 @@ func (s *setupRouterSwap) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		s.setup.ServeHTTP(w, r)
 		return
 	}
-	s.once.Do(func() {
-		built, err := s.build()
-		if err != nil {
+	// Only a successful build is stored, so a failed attempt is retried by the next request.
+	s.mu.Lock()
+	if s.full.Load() == nil {
+		if built, err := s.build(); err != nil {
 			s.log.ErrorContext(r.Context(), "full router build after setup failed", "component", "main", "error", err)
-			return
+		} else {
+			s.full.Store(&built)
 		}
-		s.full.Store(&built)
-	})
+	}
+	s.mu.Unlock()
 	if full := s.full.Load(); full != nil {
 		(*full).ServeHTTP(w, r)
 		return

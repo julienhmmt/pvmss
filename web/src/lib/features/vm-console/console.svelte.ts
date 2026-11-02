@@ -2,7 +2,12 @@ import { getContext, setContext } from 'svelte';
 import RFB from '@novnc/novnc';
 import { ApiRequestError } from '#lib/shared/api/client.js';
 import { m } from '#lib/paraglide/messages.js';
-import { buildConsoleWebSocketURL, consoleTicketErrorMessage, fetchConsoleTicket } from './console';
+import {
+	buildConsoleWebSocketURL,
+	consoleTicketErrorMessage,
+	fetchConsoleTicket,
+	fetchConsolePassword
+} from './console';
 
 /** Connection states the console UI reflects. */
 export type ConsoleState = 'idle' | 'connecting' | 'connected' | 'disconnected' | 'error';
@@ -33,6 +38,11 @@ export class ConsoleStore {
 	error = $state<string | null>(null);
 	scaleViewport = $state(true);
 	clipboard = $state<ClipboardState>({ fromVM: '', serverHasClipboard: false });
+
+	/** True while a console-password request is in flight (blocks double-POST). */
+	consolePasswordInFlight = $state(false);
+	/** Message of the last failed console-password request, if any. */
+	consolePasswordError = $state<string | null>(null);
 
 	#rfb: RFB | null = null;
 	#container: HTMLElement | null = null;
@@ -140,6 +150,24 @@ export class ConsoleStore {
 			await navigator.clipboard.writeText(this.clipboard.fromVM);
 		} catch {
 			this.error = 'Clipboard permission denied - cannot write to your local clipboard';
+		}
+	}
+
+	/**
+	 * Generates a one-time console password. Returns it to the caller only: it
+	 * is never stored on the store, so it cannot outlive the dialog that shows it.
+	 */
+	async setConsolePassword(): Promise<string | null> {
+		if (this.consolePasswordInFlight) return null;
+		this.consolePasswordInFlight = true;
+		this.consolePasswordError = null;
+		try {
+			return await fetchConsolePassword(this.cluster, this.vmid);
+		} catch (err) {
+			this.consolePasswordError = consoleTicketErrorMessage(err, () => m['vms.console.passwordError']());
+			return null;
+		} finally {
+			this.consolePasswordInFlight = false;
 		}
 	}
 

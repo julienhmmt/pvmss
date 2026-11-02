@@ -12,7 +12,7 @@
 	import { resolve } from '$app/paths';
 	import { getTaskTrayContext, type TaskKind } from '#lib/features/tasks/tasks.svelte.js';
 	import { getPowerActionsContext } from '#lib/features/tasks/power-actions.svelte.js';
-	import { ActivityStore, activityMessage } from '#lib/features/activity/activity.svelte.js';
+	import { ActivityStore, MAX_MACHINES, activityMessage } from '#lib/features/activity/activity.svelte.js';
 	import type { VmAction } from '#lib/features/vms/detail.svelte.js';
 	import PageHeader from '#lib/shared/ui/PageHeader.svelte';
 	import Card from '#lib/shared/ui/Card.svelte';
@@ -159,6 +159,9 @@
 					</li>
 				{/each}
 			</ol>
+			{#if store.partialCoverage}
+				<p class="px-5 py-3 text-xs text-muted-foreground" data-testid="activity-partial-coverage">{m['activity.partialCoverage']({ count: MAX_MACHINES })}</p>
+			{/if}
 			<Pagination {pager} />
 		{/if}
 	</Card>

@@ -36,6 +36,10 @@
 <Card pad="lg" aria-labelledby="activity-heading" data-testid="vm-activity">
 	<h2 id="activity-heading" class="text-lg font-semibold">{m['vm.activity.tab']()}</h2>
 
+	{#if store.auditError && store.auditItems !== null}
+		<Alert class="mt-6" data-testid="vm-activity-page-error">{store.auditError}</Alert>
+	{/if}
+
 	{#if store.auditLoading && (store.auditItems === null || store.auditItems.length === 0)}
 		<div role="status" aria-live="polite" class="mt-6" data-testid="vm-activity-loading">
 			<span class="sr-only">{m['common.loading']()}</span>

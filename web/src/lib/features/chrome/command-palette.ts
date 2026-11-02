@@ -26,6 +26,7 @@ export function navigationItems(isAdmin: boolean): PaletteItem[] {
 			page(resolve('/vms'), m['chrome.sidebar.navMyMachines']()),
 			page(resolve('/vms/create'), m['vms.create.heading']()),
 			page(resolve('/activity'), m['chrome.sidebar.navActivity']()),
+			page(resolve('/nodes'), m['chrome.sidebar.navNodes']()),
 			page(resolve('/docs'), m['chrome.sidebar.navHelp']()),
 			account
 		];

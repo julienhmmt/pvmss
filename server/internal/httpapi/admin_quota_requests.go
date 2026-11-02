@@ -55,8 +55,8 @@ func (handler *QuotaRequests) ServeAdminList(w http.ResponseWriter, r *http.Requ
 }
 
 // ServeApprove handles POST /api/v1/admin/quota-requests/{id}/approve. The
-// body is optional JSON; quota overrides the requested number. The cap is
-// written through the policy service, then the request is marked approved.
+// body is optional JSON; quota overrides the requested number. The cap and the
+// approval are committed together by the policy service.
 func (handler *QuotaRequests) ServeApprove(w http.ResponseWriter, r *http.Request) {
 	id, row, ok := handler.pendingRequest(w, r)
 	if !ok {
@@ -74,19 +74,16 @@ func (handler *QuotaRequests) ServeApprove(w http.ResponseWriter, r *http.Reques
 		target = *body.Quota
 	}
 
-	update, err := handler.service.UpdatePolicy(r.Context(), row.Cluster, func(current policy.Settings) policy.Settings {
-		current.Allowed = target
+	actor := handler.actorName(r)
 
-		return current
-	})
-	if err != nil {
-		handler.writeApproveError(w, err)
+	update, err := handler.service.ApproveQuota(r.Context(), row.Cluster, target, id, actor)
+	if errors.Is(err, sql.ErrNoRows) {
+		handler.writeDecidedConflict(w, r, id, err)
 		return
 	}
 
-	actor := handler.actorName(r)
-	if err := handler.store.DecideQuotaRequest(r.Context(), id, store.QuotaRequestApproved, actor); err != nil {
-		handler.writeDecidedConflict(w, r, id, err)
+	if err != nil {
+		handler.writeApproveError(w, err)
 		return
 	}
 
@@ -165,7 +162,7 @@ func (handler *QuotaRequests) writeApproveError(w http.ResponseWriter, err error
 }
 
 // writeDecidedConflict handles a decision that lost a race to another admin.
-// The policy write of an approval may already have landed; the log says so.
+// An approval's policy write is in the same transaction, so it rolled back too.
 func (handler *QuotaRequests) writeDecidedConflict(w http.ResponseWriter, r *http.Request, id int64, err error) {
 	if errors.Is(err, sql.ErrNoRows) {
 		logctx.FromOr(r.Context(), handler.log).WarnContext(r.Context(), "quota request decided concurrently",

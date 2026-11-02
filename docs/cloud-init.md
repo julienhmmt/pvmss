@@ -23,8 +23,12 @@ Kept on purpose:
   the SSH user from the live cloud-init config.
 - `POST /api/v1/vms/{cluster}/{vmid}/console-password` and its guest-agent
   helpers (`SetCloudInitPassword`, `PingGuestAgent`, `GetCloudInitConfig`).
-- Profile SSH-key API (`GET/POST/DELETE /api/v1/profile/ssh-keys`) and the
-  `cloudinit` package's SSH-key validation/slug helpers.
+- The `cloudinit` package's slug helper.
+- The `profile_ssh_keys` table: the profile SSH-key surface was deleted in
+  the follow-up removal (`GET/POST/DELETE /api/v1/profile/ssh-keys`, its
+  store, handlers, `/profile` section and i18n keys, plus the `cloudinit`
+  package's SSH-key validation helpers). The table is kept, unused, because
+  migrations are forward-only; it holds no data PVMSS still needs.
 - The `vm_cloudinit_snippets` and `vm_cloudinit_documents` tables, so the
   VM-delete path can still warn an operator about `pvmss-*.yml` files a
   pre-removal deployment left on the nodes. Remove those files by hand on

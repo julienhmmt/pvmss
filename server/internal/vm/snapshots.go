@@ -46,6 +46,15 @@ const maxSnapshotNameLength = 40
 // from lists, never a real snapshot, but resolvable for config reads.
 const currentSnapshotName = "current"
 
+// reservedSnapshotNames collide with sibling snapshot routes (rollback, config,
+// snapshot-schedule) so operators never create a snapshot that looks like one.
+var reservedSnapshotNames = map[string]bool{
+	currentSnapshotName: true,
+	"rollback":          true,
+	"config":            true,
+	"snapshot-schedule": true,
+}
+
 // snapshotNamePattern mirrors Proxmox's own pve-configid format
 // (^[a-z][a-z0-9_-]+$ case-insensitive): a leading letter, at least two
 // characters, no dots. Anything looser is accepted here and then rejected by
@@ -67,7 +76,7 @@ type SnapshotDependencies struct {
 
 // ValidateSnapshotName validates the single accepted snapshot-name policy.
 func ValidateSnapshotName(name string) error {
-	if name == currentSnapshotName || len(name) > maxSnapshotNameLength || !snapshotNamePattern.MatchString(name) {
+	if reservedSnapshotNames[name] || len(name) > maxSnapshotNameLength || !snapshotNamePattern.MatchString(name) {
 		return fmt.Errorf("%w: %q", ErrInvalidSnapshotName, name)
 	}
 

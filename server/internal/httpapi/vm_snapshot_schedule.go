@@ -5,7 +5,6 @@ import (
 	"net/http"
 	"pvmss/server/internal/store"
 	"pvmss/server/internal/vm"
-	"strings"
 )
 
 // snapshotScheduleRequest is the PUT body: frequency is daily, weekly or off.
@@ -140,10 +139,4 @@ func scheduleDTOFromModel(schedule store.SnapshotSchedule) snapshotScheduleDTO {
 	}
 
 	return dto
-}
-
-// isScheduleRoute reports whether the request targets the schedule resource
-// rather than the snapshot collection or one snapshot.
-func isScheduleRoute(path string) bool {
-	return strings.HasSuffix(path, "/snapshot-schedule")
 }

@@ -4,6 +4,7 @@
 	import CatalogFilesTable from '#lib/features/admin-catalog/CatalogFilesTable.svelte';
 	import CatalogListStates from '#lib/features/admin-catalog/CatalogListStates.svelte';
 	import CatalogToolbar from '#lib/features/admin-catalog/CatalogToolbar.svelte';
+	import RemoveApprovalDialog from '#lib/features/admin-catalog/RemoveApprovalDialog.svelte';
 	import ClusterSelector from '#lib/shared/ui/ClusterSelector.svelte';
 	import PageHeader from '#lib/shared/ui/PageHeader.svelte';
 	import Pagination from '#lib/shared/ui/Pagination.svelte';
@@ -39,6 +40,13 @@
 			toast.error(m['admin.catalog.removeIsoError']());
 		}
 	}
+	let removeTarget = $state<{ node: string; storage: string; file: string } | null>(null);
+
+	function confirmRemove(): void {
+		const target = removeTarget;
+		removeTarget = null;
+		if (target) void handleRemove(target.node, target.storage, target.file);
+	}
 </script>
 
 <svelte:head>
@@ -60,6 +68,7 @@
 	loading={store.loading}
 	error={store.error}
 	toggleError={store.toggleError}
+	onRetry={() => void store.loadAll()}
 	columns={5}
 	totalCount={store.isos.length}
 	filteredCount={store.filteredIsos.length}
@@ -80,7 +89,7 @@
 			files={pager.rows}
 			toggling={store.toggling}
 			onToggle={(n, s, f, e) => void handleToggle(n, s, f, e)}
-			onRemove={(n, s, f) => void handleRemove(n, s, f)}
+			onRemove={(n, s, f) => (removeTarget = { node: n, storage: s, file: f })}
 			sortBy={store.isoSortBy}
 			sortDir={store.isoSortDir}
 			onSort={(column) => store.setISOSort(column)}
@@ -90,3 +99,10 @@
 		{/snippet}
 	</TableCard>
 </CatalogListStates>
+
+<RemoveApprovalDialog
+	open={removeTarget !== null}
+	name={removeTarget?.file ?? ''}
+	onConfirm={confirmRemove}
+	onClose={() => (removeTarget = null)}
+/>

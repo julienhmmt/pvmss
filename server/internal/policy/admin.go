@@ -61,11 +61,84 @@ func (service *Policy) UpdatePolicy(ctx context.Context, clusterName string, mut
 // store.ErrPolicyConflict error means the row changed mid-flight and the
 // caller may retry; any other error is final.
 func (service *Policy) attemptPolicyUpdate(ctx context.Context, clusterName string, mutate func(current Settings) Settings) (Update, error) {
+	staged, err := service.stagePolicy(ctx, clusterName, mutate)
+	if err != nil {
+		return Update{}, err
+	}
+
+	if staged.before == staged.after {
+		return Update{Before: staged.before, After: staged.after}, nil
+	}
+
+	if err := service.store.ReplacePolicyRow(ctx, staged.expected(), policyRowFrom(clusterName, staged.after)); err != nil {
+		return Update{}, err
+	}
+
+	return Update{Before: staged.before, After: staged.after, Changed: true}, nil
+}
+
+// ApproveQuota sets the cluster's per-pool allowance to target and marks the
+// quota request approved in one transaction: the policy CAS and the status CAS
+// commit together or not at all. It retries policy conflicts like UpdatePolicy.
+// sql.ErrNoRows means the request was already decided; ErrConcurrentUpdate
+// means the policy kept changing.
+func (service *Policy) ApproveQuota(ctx context.Context, clusterName string, target int, requestID int64, decidedBy string) (Update, error) {
+	for range maxPolicyUpdateAttempts {
+		update, err := service.attemptApproveQuota(ctx, clusterName, target, requestID, decidedBy)
+		if errors.Is(err, store.ErrPolicyConflict) {
+			continue
+		}
+
+		return update, err
+	}
+
+	return Update{}, ErrConcurrentUpdate
+}
+
+func (service *Policy) attemptApproveQuota(ctx context.Context, clusterName string, target int, requestID int64, decidedBy string) (Update, error) {
+	staged, err := service.stagePolicy(ctx, clusterName, func(current Settings) Settings {
+		current.Allowed = target
+
+		return current
+	})
+	if err != nil {
+		return Update{}, err
+	}
+
+	err = service.store.DecideQuotaRequestWithPolicy(ctx, requestID, store.QuotaRequestApproved, decidedBy,
+		staged.expected(), policyRowFrom(clusterName, staged.after))
+	if err != nil {
+		return Update{}, err
+	}
+
+	return Update{Before: staged.before, After: staged.after, Changed: staged.before != staged.after}, nil
+}
+
+// stagedPolicy is one read-mutate-validate step of a policy update, waiting for
+// its compare-and-swap write. expected is the row the write must still find.
+type stagedPolicy struct {
+	row     store.PolicyRow
+	missing bool
+	before  Settings
+	after   Settings
+}
+
+func (staged stagedPolicy) expected() *store.PolicyRow {
+	if staged.missing {
+		return nil
+	}
+
+	row := staged.row
+
+	return &row
+}
+
+func (service *Policy) stagePolicy(ctx context.Context, clusterName string, mutate func(current Settings) Settings) (stagedPolicy, error) {
 	row, err := service.store.PolicyRow(ctx, clusterName)
 
 	missing := errors.Is(err, sql.ErrNoRows)
 	if err != nil && !missing {
-		return Update{}, err
+		return stagedPolicy{}, err
 	}
 
 	if missing {
@@ -76,23 +149,10 @@ func (service *Policy) attemptPolicyUpdate(ctx context.Context, clusterName stri
 	after := mutate(before)
 
 	if err := validateSettings(after); err != nil {
-		return Update{}, err
+		return stagedPolicy{}, err
 	}
 
-	if after == before {
-		return Update{Before: before, After: after}, nil
-	}
-
-	var expected *store.PolicyRow
-	if !missing {
-		expected = &row
-	}
-
-	if err := service.store.ReplacePolicyRow(ctx, expected, policyRowFrom(clusterName, after)); err != nil {
-		return Update{}, err
-	}
-
-	return Update{Before: before, After: after, Changed: true}, nil
+	return stagedPolicy{row: row, missing: missing, before: before, after: after}, nil
 }
 
 // SetPolicy replaces the global gabarit and quota in one atomic update.
