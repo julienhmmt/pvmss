@@ -9,11 +9,11 @@
 	 * Bulk actions stay available behind a "Select" toggle: calm by default,
 	 * the power path one click away.
 	 */
-	import { getVmListContext, type VmListItem, type VmStatus } from './list.svelte';
+	import { getVmListContext, type VmListItem } from './list.svelte';
 	import { getVmBulkContext } from './bulk.svelte';
 	import { displayStatus, type MachineDisplayStatus } from './display-status';
-	import { compactBytes, rowAction, rowHint } from './machine-row';
-	import MachineStatusPill from './MachineStatusPill.svelte';
+	import MachineRow from './MachineRow.svelte';
+	import MachineListToolbar from './MachineListToolbar.svelte';
 	import { getTaskTrayContext } from '#lib/features/tasks/tasks.svelte.js';
 	import { getTaskOutcomeLedgerContext } from '#lib/features/tasks/task-outcome-ledger.svelte.js';
 	import { getPowerActionsContext } from '#lib/features/tasks/power-actions.svelte.js';
@@ -26,15 +26,10 @@
 	import Button from '#lib/shared/ui/Button.svelte';
 	import ButtonLink from '#lib/shared/ui/ButtonLink.svelte';
 	import Card from '#lib/shared/ui/Card.svelte';
-	import Toolbar from '#lib/shared/ui/Toolbar.svelte';
-	import TextField from '#lib/shared/ui/TextField.svelte';
 	import Select from '#lib/shared/ui/Select.svelte';
-	import OsMark from '#lib/shared/ui/OsMark.svelte';
 	import AllowanceMeter from '#lib/shared/ui/AllowanceMeter.svelte';
 	import Skeleton from '#lib/shared/ui/Skeleton.svelte';
 	import SortButton from '#lib/shared/ui/SortButton.svelte';
-	import Pill from '#lib/shared/ui/Pill.svelte';
-	import SearchIcon from '#lib/shared/ui/icons/SearchIcon.svelte';
 	import ChevronDownIcon from '#lib/shared/ui/icons/ChevronDownIcon.svelte';
 
 	import { getSessionContext } from '#lib/features/auth/session.svelte.js';
@@ -50,11 +45,6 @@
 	/** Allowances above this many slots render as a continuous bar. */
 	const MAX_SEGMENTS = 12;
 
-	/** A server status, or the client-derived "needs attention" pseudo-status. */
-	type StatusFilter = VmStatus | '' | 'attention';
-
-	const ATTENTION_VALUE = 'attention';
-
 	/**
 	 * The states "needs attention" keeps. All three are derived client-side
 	 * (display-status.ts) - the server only knows running / stopped / paused -
@@ -65,13 +55,6 @@
 		'partial',
 		'provisioning'
 	]);
-
-	const STATUS_OPTIONS: readonly { value: StatusFilter; label: () => string }[] = [
-		{ value: '', label: () => m['vms.list.filterAll']() },
-		{ value: 'running', label: () => m['vms.list.filterRunning']() },
-		{ value: 'stopped', label: () => m['vms.list.filterStopped']() },
-		{ value: ATTENTION_VALUE, label: () => m['vms.list.filterAttention']() }
-	];
 
 	let selectMode = $state(false);
 	/** True while "select all matching" is fetching every page. */
@@ -85,20 +68,6 @@
 			{ cluster: machine.cluster, vmid: machine.vmid, status: machine.status },
 			{ tray: { tasks: tray.tasks }, ledger, inFlightAction: powerActions.get(machine.cluster, machine.vmid) }
 		);
-	}
-
-	function detailHref(machine: VmListItem): string {
-		return resolve('/vms/[cluster]/[vmid]', { cluster: machine.cluster, vmid: String(machine.vmid) });
-	}
-
-	function consoleHref(machine: VmListItem): string {
-		return resolve('/vms/[cluster]/[vmid]/console', { cluster: machine.cluster, vmid: String(machine.vmid) });
-	}
-
-	/** Tags minus the internal marker; the cluster no longer rides here - it
-	 *  is either the chip beside the name or implied by the active filter. */
-	function visibleTags(machine: VmListItem): string[] {
-		return machine.tags.filter((tag) => tag !== 'pvmss');
 	}
 
 	/**
@@ -170,13 +139,6 @@
 		} finally {
 			selectingAll = false;
 		}
-	}
-
-	const statusFilter = $derived<StatusFilter>(store.attention ? ATTENTION_VALUE : store.status);
-
-	function setStatusFilter(value: string): void {
-		if (value === ATTENTION_VALUE) store.setAttention(true);
-		else store.setStatus(value as VmStatus | '');
 	}
 
 	const quota = $derived(store.result?.quota ?? null);
@@ -267,54 +229,12 @@
 	</Card>
 {:else}
 	<Card pad="none" class="machine-collection overflow-hidden" aria-label={m['vms.list.caption']()}>
-		<Toolbar>
-			{#snippet search()}
-				<label for="vm-search" class="sr-only">{m['common.search']()}</label>
-				<TextField
-					id="vm-search"
-					type="search"
-					placeholder={m['vms.list.searchPlaceholder']()}
-					value={store.search}
-					oninput={(event: Event) => store.applySearch((event.currentTarget as HTMLInputElement).value)}
-					data-testid="vm-search"
-				>
-					{#snippet leading()}<SearchIcon class="h-4 w-4" />{/snippet}
-				</TextField>
-			{/snippet}
-
-			{#snippet filters()}
-				<label class="sr-only" for="vm-status-filter">{m['vms.list.filterStatusLabel']()}</label>
-				<Select
-					id="vm-status-filter"
-					class="w-auto min-w-[9rem]"
-					value={statusFilter}
-					onchange={(event: Event) => setStatusFilter((event.currentTarget as HTMLSelectElement).value)}
-					options={STATUS_OPTIONS.map((option) => ({ value: option.value, label: option.label() }))}
-					data-testid="vm-status-filter"
-				/>
-			{/snippet}
-
-			{#snippet meta()}
-				{#if store.result}
-					<span class="tabular-nums" data-testid="vm-count">{machineCountLabel}</span>
-				{/if}
-			{/snippet}
-
-			{#snippet actions()}
-				{#if items.length > 0}
-					<Button
-						variant={selectMode ? 'secondary' : 'ghost'}
-						size="sm"
-						aria-pressed={selectMode}
-						title={m['vms.list.selectModeHint']()}
-						onclick={toggleSelectMode}
-						data-testid="vm-select-mode"
-					>
-						{selectMode ? m['vms.list.selectModeDone']() : m['vms.list.selectMode']()}
-					</Button>
-				{/if}
-			{/snippet}
-		</Toolbar>
+		<MachineListToolbar
+			selectMode={selectMode}
+			showToggle={items.length > 0}
+			countLabel={machineCountLabel}
+			onToggleSelectMode={toggleSelectMode}
+		/>
 
 		{#if store.error && !unreachable}
 			<Alert data-testid="vm-list-error" class="m-4">{store.error}</Alert>
@@ -420,117 +340,14 @@
 			<ul class="flex flex-col">
 				{#each items as machine (`${machine.cluster}:${machine.vmid}`)}
 					{@const status = statusOf(machine)}
-					{@const hint = rowHint(status)}
-					{@const action = rowAction(status)}
-					{@const busy = powerActions.get(machine.cluster, machine.vmid) !== null}
-					<!-- The name link is stretched over the whole row (after:inset-0),
-					     so a click anywhere on it opens the machine; the checkbox and
-					     the action sit above the overlay (relative z-10). -->
-					<li class="relative border-b border-border-subtle px-4 py-3.5 last:border-b-0 hover:bg-muted/40" data-testid="vm-row" data-status={status}>
-						<div class="flex items-center gap-3">
-							{#if selectMode}
-								<input
-									type="checkbox"
-									class="relative z-10 h-4 w-4 shrink-0 rounded border-border accent-primary"
-									checked={bulk.isSelected(machine.cluster, machine.vmid)}
-									onchange={() => bulk.toggle({ cluster: machine.cluster, vmid: machine.vmid })}
-									data-testid="vm-bulk-select-row"
-									aria-label={m['vms.list.selectRow']({ name: machine.name })}
-								/>
-							{/if}
-							<div class="grid min-w-0 flex-1 grid-cols-[minmax(0,1fr)_auto] items-center gap-x-4 gap-y-2 min-[700px]:grid-cols-[minmax(0,1fr)_11rem_8.5rem_9rem]">
-								<div class="flex min-w-0 items-center gap-3">
-									<span class="max-[369px]:hidden"><OsMark ostype={machine.ostype} /></span>
-									<div class="min-w-0 flex-1">
-										<div class="flex min-w-0 items-center gap-2">
-											<a
-												href={detailHref(machine)}
-												class="pv-focus block max-w-full shrink-0 truncate font-medium text-foreground underline-offset-2 after:absolute after:inset-0 after:content-[''] hover:text-primary hover:underline"
-												aria-label={spansClusters
-													? m['vms.list.rowLinkLabel']({
-															name: machine.name,
-															cluster: machine.clusterDisplayName
-														})
-													: undefined}
-												data-testid="vm-row-link"
-											>
-												{machine.name}
-											</a>
-											{#if spansClusters}
-												<!-- The chip yields before the name does. -->
-												<span class="min-w-0 shrink overflow-hidden" data-testid="vm-row-cluster">
-													<Pill tone="off" dot={false} label={machine.clusterDisplayName} />
-												</span>
-											{/if}
-										</div>
-										{#if visibleTags(machine).length > 0}
-											<p class="truncate text-xs text-muted-foreground">
-												{visibleTags(machine).join(' · ')}
-											</p>
-										{/if}
-										<!-- The wide resources column hides below 700px; this compact
-										     line keeps size on the row where the list has to answer
-										     "which machine is it / is it big enough" on a phone. -->
-										<p class="mt-0.5 font-mono text-xs tabular-nums text-muted-foreground min-[700px]:hidden">
-											{m['vms.list.resourcesCompute']({ cpu: machine.cpuCores, memory: compactBytes(machine.memoryTotal) })}
-										</p>
-									</div>
-								</div>
-								<p class="text-xs leading-5 text-muted-foreground max-[699px]:hidden">
-									<span class="whitespace-nowrap font-mono tabular-nums">{m['vms.list.resourcesCompute']({ cpu: machine.cpuCores, memory: compactBytes(machine.memoryTotal) })}</span>
-									<span class="block font-mono tabular-nums text-muted-foreground-subtle">VM {machine.vmid}</span>
-								</p>
-								<div class="max-[699px]:order-3">
-									<MachineStatusPill {status} pending={busy || status === 'provisioning'} />
-								</div>
-								<div class="relative z-10 flex justify-end max-[699px]:order-4 max-[699px]:col-span-2 max-[699px]:justify-start max-[699px]:pl-[50px] max-[369px]:pl-0 gap-2">
-									{#if status === 'running' && !busy}
-										<ButtonLink
-											variant="secondary"
-											size="sm"
-											href={consoleHref(machine)}
-											target="_blank"
-											rel="noopener noreferrer"
-											aria-label={m['vms.list.actionConsoleFor']({ name: machine.name })}
-											data-testid="vm-row-console"
-										>
-											{m['vms.list.actionConsole']()}
-										</ButtonLink>
-									{/if}
-									{#if action === 'start'}
-										<Button
-											variant="secondary"
-											size="sm"
-											loading={busy}
-											aria-label={m['vms.list.actionStartFor']({ name: machine.name })}
-											onclick={() => void start(machine)}
-											data-testid="vm-row-start"
-										>
-											{m['vms.list.actionStart']()}
-										</Button>
-									{:else}
-										<ButtonLink
-											variant="secondary"
-											size="sm"
-											href={detailHref(machine)}
-											aria-label={m['vms.list.actionDetailsFor']({ name: machine.name })}
-											data-testid="vm-row-details"
-										>
-											{m['vms.list.actionDetails']()}
-										</ButtonLink>
-									{/if}
-								</div>
-							</div>
-						</div>
-						{#if hint}
-							<p
-								class="mt-1.5 text-xs {hint.tone === 'error' ? 'text-destructive' : 'text-muted-foreground'} {selectMode ? 'pl-7' : ''} min-[370px]:pl-[50px]"
-								data-testid="vm-row-hint"
-							>
-								{hint.text}
-							</p>
-						{/if}
-					</li>
+					<MachineRow
+						{machine}
+						{status}
+						busy={powerActions.get(machine.cluster, machine.vmid) !== null}
+						{selectMode}
+						{spansClusters}
+						onStart={(target) => void start(target)}
+					/>
 				{/each}
 			</ul>
 
