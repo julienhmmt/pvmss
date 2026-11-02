@@ -1205,7 +1205,7 @@
 	"admin.poolDetail.resetPassword": "Passwort zurücksetzen",
 	"admin.poolDetail.resetLabel": "Das Anmeldepasswort von {username} zurücksetzen",
 	"admin.poolDetail.resetTitle": "Passwort für {username} zurücksetzen",
-	"admin.poolDetail.resetWarning": "Das aktuelle Passwort funktioniert ab der Bestätigung nicht mehr. Wer als {username} angemeldet ist, kann abgemeldet werden.",
+	"admin.poolDetail.resetWarning": "Das aktuelle Passwort funktioniert ab der Bestätigung nicht mehr. Wer als {username} angemeldet ist, wird abgemeldet.",
 	"admin.poolDetail.resetCustom": "Das neue Passwort selbst festlegen",
 	"admin.poolDetail.resetSubmit": "Passwort zurücksetzen",
 	"admin.poolDetail.resetDoneTitle": "Passwort zurückgesetzt. Neue Anmeldedaten sichern.",

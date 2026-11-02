@@ -546,3 +546,39 @@ func TestClusters_SoftDeleteRevokesBoundSessions(t *testing.T) {
 		t.Fatalf("cluster-less session must survive: %v", err)
 	}
 }
+
+func TestSessions_DeleteAccountSessions(t *testing.T) {
+	t.Parallel()
+
+	st := openClusterStore(t)
+	ctx := context.Background()
+	newSession := func(hash, username, clusterName string) auth.SessionRecord {
+		return auth.SessionRecord{
+			Hash:      []byte(hash),
+			Identity:  auth.Identity{Username: username, Cluster: clusterName},
+			ExpiresAt: time.Now().Add(time.Hour),
+			CreatedAt: time.Now(),
+		}
+	}
+	target := newSession("target-hash", "team@pve", "c1")
+	otherCluster := newSession("other-cluster-hash", "team@pve", "c2")
+	otherUser := newSession("other-user-hash", "bob@pve", "c1")
+	for _, session := range []auth.SessionRecord{target, otherCluster, otherUser} {
+		if err := st.CreateSession(ctx, session); err != nil {
+			t.Fatalf("CreateSession: %v", err)
+		}
+	}
+
+	if err := st.DeleteAccountSessions(ctx, "c1", "team@pve"); err != nil {
+		t.Fatalf("DeleteAccountSessions: %v", err)
+	}
+
+	if _, err := st.FindSession(ctx, target.Hash); err == nil {
+		t.Fatal("target session should be revoked")
+	}
+	for _, kept := range []auth.SessionRecord{otherCluster, otherUser} {
+		if _, err := st.FindSession(ctx, kept.Hash); err != nil {
+			t.Fatalf("session %s must survive: %v", kept.Hash, err)
+		}
+	}
+}

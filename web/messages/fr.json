@@ -1205,7 +1205,7 @@
 	"admin.poolDetail.resetPassword": "Réinitialiser le mot de passe",
 	"admin.poolDetail.resetLabel": "Réinitialiser le mot de passe de connexion de {username}",
 	"admin.poolDetail.resetTitle": "Réinitialiser le mot de passe de {username}",
-	"admin.poolDetail.resetWarning": "Le mot de passe actuel cesse de fonctionner dès la confirmation. Toute personne connectée en tant que {username} peut être déconnectée.",
+	"admin.poolDetail.resetWarning": "Le mot de passe actuel cesse de fonctionner dès la confirmation. Toute personne connectée en tant que {username} est déconnectée.",
 	"admin.poolDetail.resetCustom": "Choisir moi-même le nouveau mot de passe",
 	"admin.poolDetail.resetSubmit": "Réinitialiser le mot de passe",
 	"admin.poolDetail.resetDoneTitle": "Mot de passe réinitialisé. Conservez les nouveaux identifiants de connexion.",

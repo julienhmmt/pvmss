@@ -1205,7 +1205,7 @@
 	"admin.poolDetail.resetPassword": "Reimposta password",
 	"admin.poolDetail.resetLabel": "Reimposta la password di accesso di {username}",
 	"admin.poolDetail.resetTitle": "Reimposta la password di {username}",
-	"admin.poolDetail.resetWarning": "La password attuale smette di funzionare alla conferma. Chi è connesso come {username} potrebbe essere disconnesso.",
+	"admin.poolDetail.resetWarning": "La password attuale smette di funzionare alla conferma. Chi è connesso come {username} viene disconnesso.",
 	"admin.poolDetail.resetCustom": "Scelgo io la nuova password",
 	"admin.poolDetail.resetSubmit": "Reimposta password",
 	"admin.poolDetail.resetDoneTitle": "Password reimpostata. Salva le nuove credenziali di accesso.",

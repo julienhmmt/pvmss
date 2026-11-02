@@ -372,6 +372,10 @@ func (h *AdminPools) ServeResetPassword(w http.ResponseWriter, r *http.Request) 
 		h.writeResetPasswordError(w, name, err)
 		return
 	}
+	// A reset often answers a leaked secret: open sessions must not outlive it.
+	if err := h.store.DeleteAccountSessions(r.Context(), clusterName, creds.Username); err != nil {
+		logctx.FromOr(r.Context(), h.log).WarnContext(r.Context(), "pool user session revocation failed", "component", "httpapi", "cluster", clusterName, "user", creds.Username, "error", err)
+	}
 	h.recordAdminAction(r, "admin.pools.password_reset", "pool", name,
 		fmt.Sprintf("reset sign-in password of pool %s on cluster %s", name, clusterName),
 		[]any{map[string]any{auditKeyCluster: clusterName, auditKeyName: name, "username": creds.Username}})

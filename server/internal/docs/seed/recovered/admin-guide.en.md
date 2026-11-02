@@ -155,7 +155,7 @@ The policy's **Isolation VLAN tag** applies one VLAN to every NIC created throug
 - a dedicated Proxmox pool for that user, and
 - an ACL binding the user to the shared `PVMSSUser` role on that pool.
 
-You enter a short name (1-32 lowercase alphanumeric characters with internal hyphens); PVMSS prefixes it with `pvmss-`, so the Proxmox pool is `pvmss-<name>` and the user `pvmss-<name>@pve`. The login password is generated for you, shown once in the create response, and never stored - communicate it to the user securely. A lost or compromised password is rotated from the user's detail page (`/admin/pools/<name>`): generated for you by default or typed by hand, shown once, and it recreates the Proxmox user and its ACL if they were deleted outside PVMSS. Users only ever see the VMs inside their own pool. Deleting a pool cascades to the Proxmox user and ACL; pools not created by PVMSS are refused.
+You enter a short name (1-32 lowercase alphanumeric characters with internal hyphens); PVMSS prefixes it with `pvmss-`, so the Proxmox pool is `pvmss-<name>` and the user `pvmss-<name>@pve`. The login password is generated for you, shown once in the create response, and never stored - communicate it to the user securely. A lost or compromised password is rotated from the user's detail page (`/admin/pools/<name>`): generated for you by default or typed by hand, shown once; it signs the user out of every open session and recreates the Proxmox user and its ACL if they were deleted outside PVMSS. Users only ever see the VMs inside their own pool. Deleting a pool cascades to the Proxmox user and ACL; pools not created by PVMSS are refused.
 
 ## Policy (limits)
 

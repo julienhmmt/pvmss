@@ -1205,7 +1205,7 @@
 	"admin.poolDetail.resetPassword": "Reset password",
 	"admin.poolDetail.resetLabel": "Reset the sign-in password of {username}",
 	"admin.poolDetail.resetTitle": "Reset password for {username}",
-	"admin.poolDetail.resetWarning": "The current password stops working as soon as you confirm. Anyone signed in as {username} may be logged out.",
+	"admin.poolDetail.resetWarning": "The current password stops working as soon as you confirm. Anyone signed in as {username} is logged out.",
 	"admin.poolDetail.resetCustom": "Choose the new password myself",
 	"admin.poolDetail.resetSubmit": "Reset password",
 	"admin.poolDetail.resetDoneTitle": "Password reset. Save the new sign-in details.",
