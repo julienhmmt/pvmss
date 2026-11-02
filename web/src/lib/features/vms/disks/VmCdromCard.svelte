@@ -14,6 +14,7 @@
 	const toast = getToastContext();
 	let mountOpen = $state(false);
 	let bootConfirmOpen = $state(false);
+	let removeConfirmOpen = $state(false);
 
 	const isoMounted = $derived(store.entity?.cdrom?.state === 'mounted');
 	// ide2 holds a cloud-init drive: mounting, ejecting or removing would destroy it.
@@ -103,7 +104,7 @@
 			variant="outline"
 			class="border-destructive/30 text-destructive hover:border-destructive/50 hover:bg-destructive/10 hover:text-destructive"
 			disabled={store.cdromInFlight || occupied}
-			onclick={() => store.setCdrom('remove')}
+			onclick={() => (removeConfirmOpen = true)}
 			data-testid="vm-cdrom-remove"
 		>
 			{m['vms.disks.removeDrive']()}
@@ -133,6 +134,25 @@
 			data-testid="vm-cdrom-boot-confirm"
 		>
 			{m['vms.disks.bootFromCdrom']()}
+		</Button>
+	</div>
+</Dialog>
+
+<Dialog bind:open={removeConfirmOpen} labelledBy="remove-cdrom-title" onClose={() => (removeConfirmOpen = false)}>
+	<h2 id="remove-cdrom-title" class="mb-2 text-lg font-semibold">{m['vms.disks.removeConfirmTitle']()}</h2>
+	<p class="text-sm text-muted-foreground">{m['vms.disks.removeConfirmBody']()}</p>
+	<div class="mt-4 flex justify-end gap-2">
+		<Button variant="secondary" onclick={() => (removeConfirmOpen = false)}>{m['common.cancel']()}</Button>
+		<Button
+			variant="destructive"
+			loading={store.cdromInFlight}
+			onclick={() => {
+				removeConfirmOpen = false;
+				void store.setCdrom('remove');
+			}}
+			data-testid="vm-cdrom-remove-confirm"
+		>
+			{m['vms.disks.removeDrive']()}
 		</Button>
 	</div>
 </Dialog>

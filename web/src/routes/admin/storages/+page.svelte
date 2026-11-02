@@ -4,6 +4,7 @@
 	import { setAdminCatalogContext } from '#lib/features/admin-catalog/admin-catalog.svelte.js';
 	import CatalogListStates from '#lib/features/admin-catalog/CatalogListStates.svelte';
 	import CatalogToolbar from '#lib/features/admin-catalog/CatalogToolbar.svelte';
+	import RemoveApprovalDialog from '#lib/features/admin-catalog/RemoveApprovalDialog.svelte';
 	import StoragesTable from '#lib/features/admin-catalog/StoragesTable.svelte';
 	import ClusterSelector from '#lib/shared/ui/ClusterSelector.svelte';
 	import { saveAdminCluster } from '#lib/shared/clusters.js';
@@ -51,6 +52,13 @@
 			toast.error(m['admin.catalog.removeStorageError']());
 		}
 	}
+	let removeTarget = $state<{ name: string; node: string } | null>(null);
+
+	function confirmRemove(): void {
+		const target = removeTarget;
+		removeTarget = null;
+		if (target) void handleRemove(target.name, target.node);
+	}
 </script>
 
 <svelte:head>
@@ -92,7 +100,7 @@
 			storages={pager.rows}
 			toggling={store.toggling}
 			onToggle={(name, node, e) => void handleToggle(name, node, e)}
-			onRemove={(name, node) => void handleRemove(name, node)}
+			onRemove={(name, node) => (removeTarget = { name, node })}
 			sortBy={store.storageSortBy}
 			sortDir={store.storageSortDir}
 			onSort={(column) => store.setStorageSort(column)}
@@ -102,3 +110,10 @@
 		{/snippet}
 	</TableCard>
 </CatalogListStates>
+
+<RemoveApprovalDialog
+	open={removeTarget !== null}
+	name={removeTarget?.name ?? ''}
+	onConfirm={confirmRemove}
+	onClose={() => (removeTarget = null)}
+/>

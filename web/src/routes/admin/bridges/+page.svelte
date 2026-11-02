@@ -4,6 +4,7 @@
 	import BridgesTable from '#lib/features/admin-catalog/BridgesTable.svelte';
 	import CatalogListStates from '#lib/features/admin-catalog/CatalogListStates.svelte';
 	import CatalogToolbar from '#lib/features/admin-catalog/CatalogToolbar.svelte';
+	import RemoveApprovalDialog from '#lib/features/admin-catalog/RemoveApprovalDialog.svelte';
 	import ClusterSelector from '#lib/shared/ui/ClusterSelector.svelte';
 	import PageHeader from '#lib/shared/ui/PageHeader.svelte';
 	import Pagination from '#lib/shared/ui/Pagination.svelte';
@@ -38,6 +39,13 @@
 		} catch {
 			toast.error(m['admin.catalog.removeBridgeError']());
 		}
+	}
+	let removeTarget = $state<{ node: string; name: string } | null>(null);
+
+	function confirmRemove(): void {
+		const target = removeTarget;
+		removeTarget = null;
+		if (target) void handleRemove(target.node, target.name);
 	}
 </script>
 
@@ -80,7 +88,7 @@
 			bridges={pager.rows}
 			toggling={store.toggling}
 			onToggle={(n, name, e) => void handleToggle(n, name, e)}
-			onRemove={(n, name) => void handleRemove(n, name)}
+			onRemove={(n, name) => (removeTarget = { node: n, name })}
 			sortBy={store.bridgeSortBy}
 			sortDir={store.bridgeSortDir}
 			onSort={(column) => store.setBridgeSort(column)}
@@ -90,3 +98,10 @@
 		{/snippet}
 	</TableCard>
 </CatalogListStates>
+
+<RemoveApprovalDialog
+	open={removeTarget !== null}
+	name={removeTarget?.name ?? ''}
+	onConfirm={confirmRemove}
+	onClose={() => (removeTarget = null)}
+/>
