@@ -231,7 +231,7 @@ type setupRouterSwap struct {
 	registry *cluster.Registry
 	log      *slog.Logger
 	build    func() (http.Handler, error)
-	once     sync.Once
+	mu       sync.Mutex
 	full     atomic.Pointer[http.Handler]
 }
 
@@ -244,14 +244,16 @@ func (s *setupRouterSwap) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		s.setup.ServeHTTP(w, r)
 		return
 	}
-	s.once.Do(func() {
-		built, err := s.build()
-		if err != nil {
+	// Only a successful build is stored, so a failed attempt is retried by the next request.
+	s.mu.Lock()
+	if s.full.Load() == nil {
+		if built, err := s.build(); err != nil {
 			s.log.ErrorContext(r.Context(), "full router build after setup failed", "component", "main", "error", err)
-			return
+		} else {
+			s.full.Store(&built)
 		}
-		s.full.Store(&built)
-	})
+	}
+	s.mu.Unlock()
 	if full := s.full.Load(); full != nil {
 		(*full).ServeHTTP(w, r)
 		return
