@@ -8,6 +8,7 @@ import (
 	"pvmss/server/internal/auth"
 	"pvmss/server/internal/cluster"
 	"pvmss/server/internal/inventory"
+	"pvmss/server/internal/policy"
 	"pvmss/server/internal/store"
 	"regexp"
 	"strings"
@@ -117,6 +118,9 @@ type WriteDeps struct {
 	// running, matching what real Proxmox rejects natively. The HTTP handler
 	// only sets this after the user has confirmed the force-stop in the UI.
 	Force bool
+	// Policy is optional; when present, Delete frees the name's create
+	// reservation. Nil-safe for tests that do not exercise creates.
+	Policy *policy.Policy
 }
 
 // Action performs a power transition on a VM. It is the only path from an
@@ -361,6 +365,10 @@ func Delete(ctx context.Context, deps WriteDeps) error {
 	// The VMID is free now: a lease left behind would bind to whatever VM
 	// reuses it.
 	dropLeaseRow(ctx, deps.Store, deps.Log, deps.ClusterName, deps.VMID)
+
+	if deps.Policy != nil {
+		deps.Policy.ForgetCreate(deps.ClusterName, entity.Pool, entity.Name)
+	}
 
 	if err := deps.Audit.RecordAction(ctx, deps.Actor.Username, deps.ClusterName, deps.VMID, "delete"); err != nil {
 		return fmt.Errorf(auditWrapFmt, err)

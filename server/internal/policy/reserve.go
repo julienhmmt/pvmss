@@ -79,6 +79,20 @@ func (service *Policy) ReserveCreate(ctx context.Context, clusterName string, ac
 	}, nil
 }
 
+// ForgetCreate drops the reservation for a VM that was just deleted. Reservations
+// are only swept during ReserveCreate, so one can outlive its VM.
+//
+// shortcut: a VM deleted or renamed outside this path keeps its name reserved
+// until the TTL; sweep on each inventory refresh if that ever matters.
+func (service *Policy) ForgetCreate(clusterName, pool, name string) {
+	service.mu.Lock()
+	defer service.mu.Unlock()
+
+	service.pending = slices.DeleteFunc(service.pending, func(p pendingCreate) bool {
+		return p.cluster == clusterName && p.pool == pool && p.name == name
+	})
+}
+
 // inventoryExpected reports whether a projection source is configured. A
 // deployment without one is the degraded unit-test mode that tolerates an
 // unloaded inventory instead of refusing every create.

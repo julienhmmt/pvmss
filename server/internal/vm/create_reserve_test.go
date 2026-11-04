@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"log/slog"
+	"pvmss/server/internal/cluster"
 	"pvmss/server/internal/inventory"
 	"pvmss/server/internal/policy"
 	"pvmss/server/internal/vm"
@@ -71,5 +72,57 @@ func TestCreate_RefusesBeforeFirstInventoryLoad(t *testing.T) {
 	_, err := vm.Create(context.Background(), aliceIdentity(), req.Cluster, req, vm.CreateDeps{Store: fixture.store, Creator: fixture.fake, Audit: fixture.store, Log: slog.New(slog.DiscardHandler), Policy: service})
 	if !errors.Is(err, policy.ErrInventoryNotReady) {
 		t.Fatalf("Create before first load: err = %v, want ErrInventoryNotReady", err)
+	}
+}
+
+// Create, projection shows the VM, delete: no later create swept the
+// reservation, so it must not outlive the VM and block the name until the TTL.
+//
+//nolint:paralleltest // Uses the process-wide cluster.FakeCalls log.
+func TestDelete_FreesNameReservedByEarlierCreate(t *testing.T) {
+	fixture := newCreateFixture(t)
+	ctx := context.Background()
+
+	snapshot, err := fixture.fake.Snapshot(ctx)
+	if err != nil {
+		t.Fatalf("Snapshot: %v", err)
+	}
+
+	before := inventory.BuildIndex(snapshot)
+	service := policyWithStaticProjection(fixture.store, inventory.NewProjectionFromIndex(&before), fixture.fake)
+	deps := vm.CreateDeps{Store: fixture.store, Creator: fixture.fake, Audit: fixture.store, Log: slog.New(slog.DiscardHandler), Policy: service}
+
+	req := detailedRequest()
+	req.Name = "recycled"
+
+	if _, err := vm.Create(ctx, aliceIdentity(), req.Cluster, req, deps); err != nil {
+		t.Fatalf("first create: %v", err)
+	}
+
+	// The VM being deleted carries the reserved name: rename a stopped alice VM.
+	vmid := 0
+
+	for i, machine := range snapshot.VMs {
+		if machine.Pool == aliceIdentity().Pool && machine.Status == cluster.VMStopped {
+			snapshot.VMs[i].Name = req.Name
+			vmid = machine.VMID
+
+			break
+		}
+	}
+
+	if vmid == 0 {
+		t.Fatal("fixture has no stopped VM in alice's pool")
+	}
+
+	withVM := inventory.BuildIndex(snapshot)
+
+	err = vm.Delete(ctx, vm.WriteDeps{Index: &withVM, Actor: aliceIdentity(), ClusterName: req.Cluster, VMID: vmid, Writer: fixture.fake, Audit: fixture.store, Refresher: noopRefresher{}, Policy: service})
+	if err != nil {
+		t.Fatalf("Delete: %v", err)
+	}
+
+	if _, err := vm.Create(ctx, aliceIdentity(), req.Cluster, req, deps); err != nil {
+		t.Fatalf("create after delete: %v", err)
 	}
 }
