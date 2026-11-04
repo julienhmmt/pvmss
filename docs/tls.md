@@ -27,9 +27,9 @@ browser --(1)--> reverse proxy --(2)--> PVMSS --> Proxmox API
 
 - **Hop 2, proxy to PVMSS.** This is what `PVMSS_TLS_*` protects. The "client"
   here is your reverse proxy (or Gateway), so you need **one client
-  certificate per proxy**, not one per user. This is the setting that matters:
-  without it, anything that can reach the PVMSS port (another pod, a
-  compromised host on the VLAN) talks to the API directly and skips your
+  certificate per proxy**, not one per user. Without it,
+  anything that can reach the PVMSS port (another pod, a compromised host on
+  the VLAN) talks to the API directly and skips your
   proxy, its access rules and its logs.
 - **Hop 1, browser to proxy.** Users already sign in to PVMSS with their
   Proxmox or local account. Requiring a client certificate in the browser as

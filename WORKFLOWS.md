@@ -88,7 +88,7 @@ Password change on `/profile` (`ProfilePasswordSection`) goes through `POST /api
 
 ## 2. VM lifecycle
 
-This is the core of the product. Everything else exists to support it.
+This is the core of the product.
 
 ### Browse my VMs
 
@@ -300,7 +300,7 @@ non-admin), wired in `router_admin.go`. Nav grouping comes from
 | Policy         | `/admin/policy`, `/admin/policy/nodes`, `/admin/quota-requests`                                                                                                        | Quotas, gabarit limits and per-pool overrides; per-node capacity; pending quota increase requests                                                                                                                                                       |
 | System         | `/admin/appinfo`, `/admin/docs`, `/admin/recovery`, `/admin/settings`                                                                                                    | App info; documentation CMS; recovery assistant; audit log with retention (`GET/PUT /api/v1/admin/audit/config`, `GET …/audit/prune-preview`); DB export/import                                                                                         |
 
-Six admin workflows deserve the full template because they are the risky ones.
+The riskier admin workflows get the full template.
 
 ### Manage PVMSS users
 

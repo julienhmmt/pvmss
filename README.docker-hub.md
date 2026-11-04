@@ -1,6 +1,6 @@
 # Proxmox VM Self-Service (PVMSS)
 
-PVMSS is a lightweight, self-service web portal for Proxmox Virtual Environment (PVE). It allows users to create, operate, and troubleshoot virtual machines (VMs) without exposing the Proxmox web UI. The application runs as a single container (Go REST API + SvelteKit SPA) backed by an embedded SQLite database.
+PVMSS is a lightweight, self-service web portal for Proxmox Virtual Environment (PVE). It lets users create, operate, and troubleshoot virtual machines (VMs) without exposing the Proxmox web UI. The application runs as a single container (Go REST API + SvelteKit SPA) backed by an embedded SQLite database.
 
 ⚠️ This application is under active development. Review the [Limitations](#limitations) section before deploying to production.
 

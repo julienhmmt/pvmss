@@ -1,8 +1,7 @@
 # Getting started
 
 Welcome to PVMSS, the self-service portal for your Proxmox virtual machines.
-This guide walks you through the essentials: logging in, finding your VMs, and
-creating a new one.
+This guide covers logging in, finding your VMs and creating a new one.
 
 ## Logging in
 
@@ -12,9 +11,9 @@ pick another cluster.
 
 ## Finding your VMs
 
-Once signed in, you land on the **My VMs** page (the sidebar shows the
-machine and activity counts; the allowance meter sits under the VM list). It lists every virtual machine your pool owns
-on the cluster you signed in to. Use the search box to filter by name,
+Once signed in, you land on the **My VMs** page. It lists every virtual machine
+your pool owns on the cluster you signed in to. The sidebar shows the machine
+and activity counts, and the allowance meter sits under the list. Use the search box to filter by name,
 VMID, or tag. To see another cluster, sign in to it.
 Filters are kept in the URL, so a filtered view can be bookmarked.
 
@@ -40,8 +39,7 @@ PVMSS does not add an SSH key or a password to your VM:
 
 ## Moving a VM
 
-Users cannot move a VM between nodes. If a VM needs to be moved, ask your PVMSS
-administrator.
+To move a VM to another node, ask your PVMSS administrator.
 
 For more, see the [VM creation guidelines](/docs/vm-creation-guidelines) and
 the [user guide](/docs/user-guide).

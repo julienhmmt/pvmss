@@ -1,6 +1,6 @@
 # Administrator guide
 
-Welcome to the PVMSS administrator guide. PVMSS (Proxmox Virtual Machine
+PVMSS (Proxmox Virtual Machine
 Self-Service) is a self-service portal that lets your users create, operate,
 and troubleshoot Proxmox VE virtual machines without exposing the Proxmox UI.
 
@@ -121,7 +121,7 @@ PVMSS supports connecting to more than one Proxmox environment at the same time.
 
 ## Nodes
 
-`/admin/nodes` lists every Proxmox VE host per cluster with live CPU and memory consumption, VM count, and online/offline status. Search, filter by status or enabled state, and sort the table. Toggle a node to approve or hide it for VM creation; disabling a node that runs VMs asks for confirmation and never touches those VMs. A background worker refreshes node metrics on `PVMSS_INVENTORY_REFRESH_INTERVAL`; the admin pages read this cache, so navigation stays instant even on large clusters.
+`/admin/nodes` lists every Proxmox VE host per cluster with live CPU and memory consumption, VM count, and online/offline status. Search, filter by status or enabled state, and sort the table. Toggle a node to approve or hide it for VM creation; disabling a node that runs VMs asks for confirmation and never touches those VMs. A background worker refreshes node metrics on `PVMSS_INVENTORY_REFRESH_INTERVAL`; the admin pages read this cache, so they do not wait on Proxmox.
 
 ## Resources and provisioning: what users can pick
 
@@ -232,4 +232,3 @@ Built-in pages are seeded once, when missing, and never overwritten on restart, 
 - Administrators can migrate one VM at a time from **Infrastructure > Nodes**. HA, cross-cluster migration and backup orchestration are performed directly in Proxmox.
 - Administrators cannot create VMs through the portal (they own no pool); they create them directly in Proxmox.
 - Backups and LXC containers are managed in Proxmox, not in PVMSS.
-- Personal API tokens were removed: the routes and the profile section are gone.

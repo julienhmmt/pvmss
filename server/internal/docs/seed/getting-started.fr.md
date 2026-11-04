@@ -1,8 +1,8 @@
 # Premiers pas
 
 Bienvenue sur PVMSS, le portail en libre-service pour vos machines virtuelles
-Proxmox. Ce guide couvre l'essentiel : se connecter, retrouver ses VM et en
-créer une nouvelle.
+Proxmox. Ce guide explique comment vous connecter, retrouver vos VM et en
+créer une.
 
 ## Se connecter
 
@@ -12,10 +12,10 @@ formulaire l'indique - réessayez plus tard ou choisissez un autre cluster.
 
 ## Retrouver ses VM
 
-Une fois connecté, vous arrivez sur la page **Mes VM** (la barre latérale
-affiche le nombre de machines et d'activités en cours ; l'indicateur de quota
-est sous la liste des VM). Elle liste toutes les
-machines virtuelles de votre pool sur le cluster auquel vous êtes connecté. Utilisez la
+Une fois connecté, vous arrivez sur la page **Mes VM**. Elle liste toutes les
+machines virtuelles de votre pool sur le cluster auquel vous êtes connecté. La
+barre latérale affiche le nombre de machines et d'activités en cours, et
+l'indicateur de quota se trouve sous la liste. Utilisez la
 recherche pour filtrer par nom, VMID ou tag. Pour voir un autre cluster,
 connectez-vous à celui-ci. Les filtres sont conservés dans l'URL :
 une vue filtrée peut être mise en favori.
@@ -42,8 +42,7 @@ PVMSS n'ajoute ni clé SSH ni mot de passe à votre VM :
 
 ## Déplacer une VM
 
-Les utilisateurs ne peuvent pas déplacer une VM d'un nœud à un autre. Pour
-déplacer une VM, demandez à votre administrateur PVMSS.
+Pour déplacer une VM vers un autre nœud, demandez à votre administrateur PVMSS.
 
 Pour aller plus loin, consultez les [règles de création de VM](/docs/vm-creation-guidelines)
 et le [guide utilisateur](/docs/user-guide).

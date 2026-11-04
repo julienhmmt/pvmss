@@ -1,6 +1,6 @@
 # Guide administrateur
 
-Bienvenue dans le guide administrateur de PVMSS. PVMSS (Proxmox Virtual
+PVMSS (Proxmox Virtual
 Machine Self-Service) est un portail en libre-service qui permet à vos
 utilisateurs de créer, exploiter et dépanner des machines virtuelles Proxmox
 VE sans exposer l'interface Proxmox.
@@ -128,7 +128,7 @@ PVMSS peut se connecter à plusieurs environnements Proxmox simultanément. Chaq
 
 ## Nœuds
 
-`/admin/nodes` liste chaque hôte Proxmox VE par cluster avec la consommation CPU et mémoire en direct, le nombre de VM et l'état en ligne / hors ligne. Recherchez, filtrez par état ou activation, triez la table. Basculez un nœud pour l'approuver ou le masquer à la création de VM ; désactiver un nœud qui héberge des VM demande confirmation et ne touche jamais ces VM. Un travail de fond rafraîchit les métriques selon `PVMSS_INVENTORY_REFRESH_INTERVAL` ; les pages admin lisent ce cache, la navigation reste instantanée même sur de gros clusters.
+`/admin/nodes` liste chaque hôte Proxmox VE par cluster avec la consommation CPU et mémoire en direct, le nombre de VM et l'état en ligne / hors ligne. Recherchez, filtrez par état ou activation, triez la table. Basculez un nœud pour l'approuver ou le masquer à la création de VM ; désactiver un nœud qui héberge des VM demande confirmation et ne touche jamais ces VM. Un travail de fond rafraîchit les métriques selon `PVMSS_INVENTORY_REFRESH_INTERVAL` ; les pages admin lisent ce cache et n'attendent donc pas Proxmox.
 
 ## Ressources et provisionnement : ce que les utilisateurs peuvent choisir
 
@@ -242,4 +242,3 @@ Les pages intégrées sont insérées une seule fois, si elles manquent, et jama
 - Les administrateurs peuvent migrer une VM à la fois depuis **Infrastructure > Nœuds**. La HA, la migration entre clusters et l'orchestration des sauvegardes se font directement dans Proxmox.
 - Les administrateurs ne peuvent pas créer de VM via le portail (ils n'ont pas de pool) ; ils les créent directement dans Proxmox.
 - Sauvegardes et conteneurs LXC sont gérés dans Proxmox, pas dans PVMSS.
-- Les tokens API personnels ont été supprimés : les routes et la section du profil n'existent plus.

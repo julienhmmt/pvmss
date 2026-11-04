@@ -108,17 +108,16 @@ components:
 
 **Creative North Star: "The Competent Colleague"**
 
-PVMSS is infrastructure management made human. The interface should feel like a
+The interface should feel like a
 competent colleague's desk: organized, warm, slightly informal, never clinical.
 The warm paper background and orange accent are the signature - they distinguish
-PVMSS from every cold, gray infrastructure dashboard. A colleague is not just
-friendly, though; they are dependable. The warmth earns the trust, the
-consistency keeps it.
+PVMSS from every cold, gray infrastructure dashboard. A colleague is also
+dependable, so the interface stays consistent from page to page.
 
 The system is restrained: one accent color (orange), warm neutral surfaces, and
 semantic colors used only for state (success, warning, destructive, info).
 Density is welcome when it serves the task - tables, admin forms, policy
-fields - but decoration is not. Every surface earns its visual weight.
+fields - but decoration is not.
 
 This system explicitly rejects generic SaaS aesthetics: no indigo gradients, no
 glassmorphism, no hero-metric templates, no identical card grids. It also rejects
@@ -158,7 +157,7 @@ colors carry state, not decoration.
 
 - **Blaze Orange** (`oklch(56% 0.16 51deg)`): the accent. Active nav state,
   focus rings, links, tints (`bg-primary/10`), status dots, meters and chart
-  strokes. Used on <=10% of any screen. Its rarity is the point. Deepened from
+  strokes. Used on <=10% of any screen. Deepened from
   the original 66% lightness so accent text clears AA on the paper ground
   (4.56:1); at 66% it sat at 3.09:1.
 - **Blaze Orange Solid** (`oklch(56% 0.16 51deg)`): the fill under a label -
@@ -266,8 +265,6 @@ substitute for **Panel Title** on a component that isn't already a `Card`.
 The public pages (home, about - see **6.7**) sit outside this scale on
 purpose: a hero `h1` at `text-4xl` rising to `text-5xl`/`text-6xl` on wide
 screens, section headers at `text-3xl`, card titles at `text-base`/`text-lg`.
-A story told to a visitor is allowed a heavier register than the app's own
-internal chrome.
 
 ### Type Rules
 
@@ -957,7 +954,7 @@ can reach `/about` from the footer, so `/about` must stand on its own.
    capacity) on a dot-grid band.
 5. **Closing** - one question-headline, log in, about.
 
-**About (`/about`, `features/about/`)** - the story, not a second pitch:
+**About (`/about`, `features/about/`)** - why PVMSS exists and how it is built:
 
 1. **Hero** - logo tile, `h1` "Your VM, without the ticket.", a one-line lead
    and the longer introduction.

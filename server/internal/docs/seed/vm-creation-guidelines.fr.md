@@ -1,15 +1,13 @@
 # Règles de création de VM
 
-Cette page rassemble les règles et recommandations qui encadrent la création
-de VM dans PVMSS. Votre administrateur peut imposer des limites plus strictes
-via la politique ; les valeurs indiquées ici sont celles par défaut.
+Les valeurs de cette page sont celles du portail par défaut. Votre
+administrateur peut imposer des limites plus strictes.
 
 ## Nommage
 
 Les noms de VM sont des noms d'hôte : minuscules, tirets, 63 caractères au
-plus, uniques dans votre pool. Évitez les noms génériques comme `vm1` - un nom descriptif
-(`web-prod-01`) rend la liste des VM cherchable et le journal d'activité
-lisible.
+plus, uniques dans votre pool. Un nom descriptif comme `web-prod-01` se retrouve plus facilement que `vm1`
+dans la liste des VM et le journal d'activité.
 
 ## Sources
 

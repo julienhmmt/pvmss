@@ -1,7 +1,6 @@
 # Proxmox permissions for PVMSS
 
-This page describes the Proxmox roles and API token PVMSS needs, and the
-privileges each role requires. The exact `pveum` commands are kept in sync with
+The exact `pveum` commands are kept in sync with
 the project README. These are the recommended roles; always validate the
 privilege list against the Proxmox documentation for your PVE version.
 

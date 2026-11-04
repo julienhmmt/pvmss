@@ -37,11 +37,7 @@ Full-size screenshots: [light](docs/PVMSS-0.4-index.webp) / [dark](docs/PVMSS-0.
 
 ## Overview
 
-PVMSS runs as a stateless web application (Go REST API + SvelteKit SPA) and relies on Proxmox APIs for every action. It is designed to be:
-
-- **Secure by default**: per-user sessions.
-- **Operations-friendly**: ready-to-use container image, configurable resource limits, cluster-aware storage selection.
-- **User-centric**: clear and guided VM forms, built-in documentation.
+PVMSS is a web application (Go REST API + SvelteKit SPA) that relies on Proxmox APIs for every VM action and keeps its own configuration in SQLite. It has per-user sessions, a ready-to-use container image, configurable resource limits, cluster-aware storage selection, guided VM forms and built-in documentation.
 
 > ⚠️ The project is still under active development. Review the [Limitations](#limitations) section before deploying to production.
 
@@ -126,7 +122,7 @@ If a local administrator loses their password: DB accounts are reset by the owne
 
 If you want to use PVMSS in development, you **must** create an API token for the user `root@pam`. It is the simple way to get started, but keep in mind that it is the least secure way.
 
-Go to Datacenter > Permissions > API Tokens. Click on “Add” button and select the user `root@pam`. Type the API token name, uncheck the case "Privilege Separations", and get the secret (will be visible only one time).
+Go to Datacenter > Permissions > API Tokens. Click on “Add” button and select the user `root@pam`. Type the API token name, uncheck "Privilege Separations", and get the secret (will be visible only one time).
 
 You can now use the API token in the environment variables `PROXMOX_API_TOKEN_NAME` and `PROXMOX_API_TOKEN_VALUE`.
 

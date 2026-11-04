@@ -1,7 +1,7 @@
 # Configuration
 
 Environment variables only, validated at startup by
-`server/internal/config/load.go` (fails fast). Moved out of `AGENTS.md`.
+`server/internal/config/load.go` (fails fast).
 
 **Required:**
 

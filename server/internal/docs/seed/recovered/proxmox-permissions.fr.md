@@ -1,7 +1,6 @@
 # Permissions Proxmox pour PVMSS
 
-Cette page décrit les rôles et le jeton API Proxmox dont PVMSS a besoin, ainsi
-que les privilèges requis par chaque rôle. Les commandes `pveum` exactes sont
+Les commandes `pveum` exactes sont
 tenues à jour avec le README du projet. Ce sont les rôles recommandés ;
 validez toujours la liste des privilèges contre la documentation Proxmox de
 votre version PVE.
@@ -14,7 +13,7 @@ PVMSS s'appuie sur des rôles et ACL Proxmox dédiés pour trois acteurs :
   (`PROXMOX_API_TOKEN_NAME` / `PROXMOX_API_TOKEN_VALUE`). Il effectue les
   opérations cluster, nœud, VM, stockage, réseau et utilisateur/pool pour le
   compte de l'application.
-- **PVMSS_Admin** - les administrateurs humains de PVMSS. Ils gèrent les VMs,
+- **PVMSS_Admin** - les administrateurs humains de PVMSS. Ils gèrent les VM,
   utilisateurs et pools créés par PVMSS, et consultent les ressources cluster et
   nœuds.
 - **PVMSSUser** - le rôle par pool attribué automatiquement à chaque
@@ -88,7 +87,7 @@ n'ont besoin ni de compte ni de permission Proxmox.
 PVMSS crée le rôle `PVMSSUser`, l'utilisateur, le pool dédié et l'ACL
 automatiquement lorsqu'un administrateur provisionne un pool depuis
 `/admin/pools`. Aucune étape `pveum` manuelle n'est requise pour les
-utilisateurs finaux. Chaque utilisateur ne voit que les VMs de son propre pool.
+utilisateurs finaux. Chaque utilisateur ne voit que les VM de son propre pool.
 
 ## Recommandations de sécurité
 
@@ -115,7 +114,7 @@ PVMSS appelle les familles d'API Proxmox standard :
 - **Authentification & utilisateurs** : `/access/ticket`, `/access/users`,
   `/access/password`, `/access/roles`, `/access/acl`, `/pools`.
 - **Cluster & nœuds** : `/cluster/status`, `/nodes`, `/nodes/{node}/status`.
-- **Gestion des VMs (QEMU)** : `/nodes/{node}/qemu`, ses sous-chemins `config`
+- **Gestion des VM (QEMU)** : `/nodes/{node}/qemu`, ses sous-chemins `config`
   et `status`, et la suppression de VM.
 - **Stockage** : `/storage`, `/nodes/{node}/storage`,
   `/nodes/{node}/storage/{storage}/content`.

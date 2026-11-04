@@ -34,7 +34,7 @@ Configurez :
 - **Réseau** : une ou plusieurs cartes, chacune avec un bridge et un modèle (VirtIO, E1000, RTL8139). Le pare-feu Proxmox est toujours activé ; votre administrateur peut imposer un VLAN d'isolation.
 - **Firmware** : UEFI (activé par défaut) avec un magasin de clés EFI vide - Secure Boot n'est jamais activé, car la plupart des ISO Linux ne sont pas signés et ne démarreraient pas avec. TPM 2.0 pour les invités qui l'exigent.
 - **Démarrage** : choisissez si la VM démarre automatiquement après création.
-- **Tags** : à choisir dans la liste curée par l'administrateur.
+- **Tags** : à choisir dans la liste gérée par l'administrateur.
 
 L'étape **Récapitulatif** résume tout avant validation. Quand vous atteignez
 votre quota (VM max) ou une limite de gabarit, la demande est refusée avant
@@ -101,7 +101,7 @@ Modifiez chaque carte réseau : bridge, modèle, tag VLAN et limite de débit
 ### Matériel
 
 Modifiez sockets, cœurs et mémoire dans les limites de la politique, choisissez
-les tags dans le sélecteur curé, et chargez ou éjectez une ISO dans le lecteur
+les tags dans le sélecteur prévu, et chargez ou éjectez une ISO dans le lecteur
 CD-ROM.
 
 ### Snapshots

@@ -22,9 +22,9 @@ Success looks like: a user creates a VM in under a minute, an admin approves a n
 
 ## Positioning
 
-The differentiator is warmth. Infrastructure tooling is cold by default - Proxmox's own UI, and the admin panels built around it, read as machinery. PVMSS is the same capability wearing a human face: warm paper surfaces, a friendly voice, empty states that teach. A competitor can copy the feature list; the felt experience of a tool that behaves like a competent colleague rather than a gatekeeper is the claim that is hard to copy truthfully.
+The differentiator is warmth. Infrastructure tooling is cold by default - Proxmox's own UI, and the admin panels built around it, read as machinery. PVMSS offers the same capability with warm paper surfaces, a friendly voice and empty states that teach. A competitor can copy the feature list, but it is harder to copy a tool that behaves like a competent colleague.
 
-The plumbing is hidden to deliver that experience: users see profiles and options, never nodes, storages, or API calls. Hiding Proxmox is how warmth is made possible, not the promise itself.
+The plumbing is hidden to deliver that experience: users see profiles and options, never nodes, storages, or API calls. Hiding Proxmox makes that warmth possible.
 
 ## Operating Context
 
@@ -53,7 +53,7 @@ PVMSS is self-hosted by a single organization for its own teams - one operator, 
 
 **Name**: PVMSS (Proxmox VM Self-Service).
 
-**Voice**: warm, clear, dependable - three words. Direct and friendly, never technical for its own sake. A competent colleague who helps you get things done, not a gatekeeper who demands technical knowledge.
+**Voice**: warm, clear, dependable. Direct and friendly, never technical for its own sake. A competent colleague who helps you get things done, not a gatekeeper who demands technical knowledge.
 
 **Identity**: the warm paper background and orange accent are intentional and binding - they signal a tool made by people, not a cold corporate dashboard.
 
@@ -71,9 +71,9 @@ The live application and screenshots of it. There are no testimonials, case stud
 
 1. **Show the task, hide the plumbing.** Users see profiles and options, not Proxmox API calls. Admins see catalog items and policy, not raw cluster responses. Implementation details surface only when the user explicitly asks (e.g. the review step's JSON preview).
 
-2. **Warmth over coldness.** Every surface should feel made by a person - friendly microcopy, empty states that teach rather than scold. This is the differentiator from generic admin panels.
+2. **A friendly voice.** Every surface should feel made by a person - friendly microcopy, empty states that teach rather than scold.
 
-3. **Consistency is the feature.** The same vocabulary, structure, and loading pattern across every page. Users navigate faster when structure is predictable. Inconsistency is a bug.
+3. **The same on every page.** The same vocabulary, structure, and loading pattern across every page. Users navigate faster when structure is predictable.
 
 4. **Safety nets for destructive actions.** Delete confirmations, undo toasts. The interface should never let a user lose data through a misclick. High-stakes moments (delete, reset, revoke) get design interventions.
 

@@ -1,14 +1,13 @@
 # VM creation guidelines
 
-This page collects the rules and recommendations that govern VM creation in
-PVMSS. Your administrator may enforce stricter limits via policy; the values
-shown here are the portal defaults.
+The values on this page are the portal defaults. Your administrator may set
+stricter limits.
 
 ## Naming
 
 VM names are hostnames: lowercase, hyphenated, at most 63 characters, and
-unique within your pool. Avoid generic names like `vm1` - a descriptive name
-(`web-prod-01`) makes the VMs list searchable and the activity log readable.
+unique within your pool. A descriptive name like `web-prod-01` is easier to find in the VM list and the
+activity log than `vm1`.
 
 ## Sources
 

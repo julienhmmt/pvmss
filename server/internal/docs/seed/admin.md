@@ -1,7 +1,7 @@
 # Admin guide
 
-This page is visible to administrators only. It summarizes the admin surface;
-the full walkthrough is the [Administrator guide](/docs/admin-guide).
+Only administrators can see this page. The full walkthrough is in the
+[Administrator guide](/docs/admin-guide).
 
 ## Infrastructure
 

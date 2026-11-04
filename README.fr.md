@@ -37,11 +37,7 @@ Captures en taille réelle : [thème clair](docs/PVMSS-0.4-index.webp) et [thèm
 
 ## Vue d'ensemble
 
-PVMSS est une application stateless (API REST Go + SPA SvelteKit) qui s'appuie exclusivement sur les API Proxmox pour toutes les actions. Ses objectifs :
-
-- **Sécurité par défaut** : sessions par utilisateur.
-- **Simplicité d'exploitation** : image conteneur prête à l'emploi, limites de ressources configurables, sélection de stockage compatible cluster.
-- **Centrée utilisateur** : formulaires clairs et guidés, documentation intégrée.
+PVMSS est une application web (API REST Go + SPA SvelteKit) qui s'appuie sur les API Proxmox pour toutes les actions sur les VM et garde sa configuration dans SQLite. Elle propose des sessions par utilisateur, une image conteneur prête à l'emploi, des limites de ressources configurables, une sélection de stockage compatible cluster, des formulaires guidés et une documentation intégrée.
 
 > ⚠️ Le projet reste en développement actif. Consultez la section [Limites connues](#limites-connues) avant un déploiement en production.
 

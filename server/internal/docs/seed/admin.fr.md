@@ -1,7 +1,6 @@
 # Guide admin
 
-Cette page n'est visible que des administrateurs. Elle résume la surface
-d'administration ; la procédure complète est dans le
+Seuls les administrateurs voient cette page. La procédure complète est dans le
 [Guide administrateur](/docs/admin-guide).
 
 ## Infrastructure

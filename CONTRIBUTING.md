@@ -31,7 +31,7 @@ If you'd like to contribute, here's how:
 - Touching logging or the SIEM sink? Update `docs/observability.md` (and the `PVMSS_SYSLOG_*` rows in the READMEs)
 - Avoid the em-dash character (U+2014) in code and docs: use a spaced hyphen ` - `
 - Be respectful and constructive
-- AI-generated code are welcome, but must be reviewed by a human before merging
+- AI-generated code is welcome, but must be reviewed by a human before merging
 
 ## Need help?
 
