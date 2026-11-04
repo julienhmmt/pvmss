@@ -75,7 +75,6 @@ func TestResolveWebBuildDir_Invalid(t *testing.T) {
 	}
 }
 
-//nolint:paralleltest // serial: process and listener lifecycle tests
 func TestResolveWebBuildDir_Fallback(t *testing.T) {
 	dir := t.TempDir()
 

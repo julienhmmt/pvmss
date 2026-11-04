@@ -118,7 +118,10 @@ func TestSerialFakeServe_MultipleReadsEchoEachAsFrame(t *testing.T) {
 	}
 
 	select {
-	case <-done:
+	case err := <-done:
+		if err != nil {
+			t.Fatalf("serialFakeServe returned %v, want nil on peer close", err)
+		}
 	case <-time.After(time.Second):
 		t.Fatal("serialFakeServe did not return after peer closed")
 	}
@@ -167,7 +170,10 @@ func TestSerialFakeServe_ClosesPeerOnExit(t *testing.T) {
 	cancel()
 
 	select {
-	case <-done:
+	case err := <-done:
+		if !errors.Is(err, ctx.Err()) {
+			t.Fatalf("err = %v, want %v", err, ctx.Err())
+		}
 	case <-time.After(time.Second):
 		t.Fatal("serialFakeServe did not return after context cancel")
 	}

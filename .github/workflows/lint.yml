@@ -64,6 +64,7 @@ jobs:
 
         - name: Run golangci-lint
           working-directory: server
-          # go tool, not the action's prebuilt binary: those lag go.mod's
-          # go directive and cannot decode its export data
-          run: go tool golangci-lint run -v --timeout=5m ./...
+          # go run @version, not a prebuilt binary: those lag go.mod's
+          # go directive and cannot decode its export data. Keep the
+          # version in sync with GOLANGCI_LINT in the Makefile.
+          run: go run github.com/golangci/golangci-lint/v2/cmd/golangci-lint@v2.15.0 run -v --timeout=5m ./...

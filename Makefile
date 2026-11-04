@@ -26,6 +26,12 @@ GO_TEST_FLAGS   ?=
 GO_UPDATE_FLAGS ?= -u=patch
 GO_VERSION      ?= latest
 
+# golangci-lint épinglé hors de go.mod: 'go run @version' le compile avec la
+# toolchain locale (un binaire précompilé ne lit pas l'export data Go 1.27).
+# >= v2.15.0 requis: x/tools v0.52.0 minimum pour décoder l'export data Go 1.27.
+# Garder en sync avec .github/workflows/lint.yml.
+GOLANGCI_LINT   := go run github.com/golangci/golangci-lint/v2/cmd/golangci-lint@v2.15.0
+
 # Tag Docker par défaut pour docker-build (surcharge: make docker-build PVMSS_TAG=v1.2.3)
 PVMSS_TAG ?= latest
 
@@ -173,12 +179,12 @@ buildkit-status: ## Vérifie le statut de buildkit
 
 server-lint: ## Lance golangci-lint sur le next-gen server/ (config server/.golangci.yml)
 	@echo "$(BLUE)Lancement du linter Go sur $(SERVER_DIR)/...$(NC)"
-	cd $(SERVER_DIR) && go tool golangci-lint run -v --timeout=5m ./...
+	cd $(SERVER_DIR) && $(GOLANGCI_LINT) run -v --timeout=5m ./...
 	@echo "$(GREEN)✓ Lint server terminé$(NC)"
 
 server-fmt: ## Formate le code Go du next-gen server/ (golangci-lint fmt)
 	@echo "$(BLUE)Formatage du code Go $(SERVER_DIR)/...$(NC)"
-	cd $(SERVER_DIR) && go tool golangci-lint fmt ./...
+	cd $(SERVER_DIR) && $(GOLANGCI_LINT) fmt ./...
 	@echo "$(GREEN)✓ Formatage server terminé$(NC)"
 
 server-vet: ## Lance go vet sur le next-gen server/ (vérification légère sans golangci-lint)

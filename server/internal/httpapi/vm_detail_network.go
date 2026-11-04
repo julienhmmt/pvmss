@@ -266,7 +266,7 @@ func (h *VMDetail) handleHardwareOptions(w http.ResponseWriter, r *http.Request)
 
 	remaining := map[string]int{}
 
-	for bus, max := range map[cluster.DiskBus]int{
+	for bus, capacity := range map[cluster.DiskBus]int{
 		cluster.DiskBusVirtio: 16,
 		cluster.DiskBusSCSI:   31,
 		cluster.DiskBusSATA:   6,
@@ -280,7 +280,7 @@ func (h *VMDetail) handleHardwareOptions(w http.ResponseWriter, r *http.Request)
 			}
 		}
 
-		remaining[string(bus)] = max - used
+		remaining[string(bus)] = capacity - used
 	}
 
 	tagDTOs, err := hardwareTagDTOs(r.Context(), h, clusterName)
