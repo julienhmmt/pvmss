@@ -2,8 +2,6 @@
 
 PVMSS is a lightweight, self-service web portal for Proxmox Virtual Environment (PVE). It lets users create, operate, and troubleshoot virtual machines (VMs) without exposing the Proxmox web UI. The application runs as a single container (Go REST API + SvelteKit SPA) backed by an embedded SQLite database.
 
-⚠️ This application is under active development. Review the [Limitations](#limitations) section before deploying to production.
-
 ⚠️ Only PVE 9.x and newer are supported. PVE 8 and earlier are not supported due to breaking role and permission changes introduced in PVE 9.
 
 ## Features
