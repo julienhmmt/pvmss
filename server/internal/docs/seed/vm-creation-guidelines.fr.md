@@ -12,7 +12,8 @@ dans la liste des VM et le journal d'activité.
 ## Sources
 
 - **ISO** - installation depuis une image approuvée par l'administrateur ; la
-  VM démarre d'abord sur le CD-ROM.
+  VM démarre sur l'installeur tant que le disque est vide, puis sur son disque
+  une fois installée, même si l'ISO reste montée.
 - **Template** - clone d'un template Proxmox approuvé. La VM reste sur le nœud
   du template, le disque ne peut pas être plus petit que celui du template, et
   l'assistant vous prévient quand le stockage cible impose une copie complète

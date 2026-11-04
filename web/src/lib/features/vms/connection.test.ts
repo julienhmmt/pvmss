@@ -48,9 +48,9 @@ describe('connectState', () => {
 		expect(connectState('running', { ...base, cdrom: { state: 'mounted' }, bootOrder: ['ide2', 'scsi0'] })).toBe('installing');
 	});
 
-	it('detects install completion when the boot order leads with a disk, ISO still mounted', () => {
+	it('treats a disk-first machine with an ISO as installed once it reports an address', () => {
 		expect(connectState('running', { ...base, cdrom: { state: 'mounted' }, bootOrder: ['scsi0', 'ide2'] })).toBe('ready');
-		expect(connectState('running', { ...base, cdrom: { state: 'mounted' }, bootOrder: ['scsi0'], networkInterfaces: [] })).toBe('noAddress');
+		expect(connectState('running', { ...base, cdrom: { state: 'mounted' }, bootOrder: ['scsi0', 'ide2'], networkInterfaces: [] })).toBe('installing');
 	});
 
 	it('maps the agent channel when no ISO is mounted', () => {

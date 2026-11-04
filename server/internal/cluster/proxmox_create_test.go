@@ -535,10 +535,10 @@ func TestProxmox_CreateVM_AgentOSTypeBoot(t *testing.T) {
 		wantBoot string
 	}{
 		{
-			name:     "disk and ISO (CD-ROM first so the VM boots from the installer)",
+			name:     "disk and ISO (disk first, an empty disk falls through to the installer)",
 			disk:     DiskSpec{Storage: FakeStorageLocalLVM, SizeGB: 32, Bus: string(DiskBusSCSI)},
 			iso:      &ISOSpec{Storage: FakeStorageLocal, File: "debian-12.iso"},
-			wantBoot: "order=ide2;scsi0",
+			wantBoot: "order=scsi0;ide2",
 		},
 		{
 			name:     "disk alone",

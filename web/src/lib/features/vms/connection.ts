@@ -82,10 +82,10 @@ interface ConnectInput {
 
 export function connectState(status: MachineDisplayStatus, entity: ConnectInput): ConnectState {
 	if (status !== 'running') return 'stopped';
-	// A mounted ISO only means "installing" while the machine actually boots
-	// from it: once the boot order leads with a disk the install is done and
-	// the attached ISO is just media in the drive.
-	if (entity.cdrom?.state === 'mounted' && bootsFromIso(entity.bootOrder)) return 'installing';
+	// New machines boot disk-first, so the boot order alone cannot tell: with a
+	// disk leading, a mounted ISO means "installing" until the guest reports an
+	// address. CD-first machines (older ones) stay "installing" until ejected.
+	if (entity.cdrom?.state === 'mounted' && (bootsFromIso(entity.bootOrder) || !primaryAddress(entity.networkInterfaces))) return 'installing';
 	if (primaryAddress(entity.networkInterfaces)) return 'ready';
 	if (entity.guestAgent === 'disabled') return 'agentDisabled';
 	if (entity.guestAgent === 'unreachable') return 'agentUnreachable';

@@ -1180,8 +1180,8 @@ func assertISOCreatedVM(t *testing.T, vm cluster.VM) {
 		t.Errorf("CDROM ISOVolID = %q, want local:iso/debian-12.iso", vm.CDROM.ISOVolID)
 	}
 
-	if !slices.Equal(vm.BootOrder, []string{"ide2", "scsi0"}) {
-		t.Errorf("BootOrder = %v, want [ide2 scsi0] (CD-ROM first for ISO install)", vm.BootOrder)
+	if !slices.Equal(vm.BootOrder, []string{"scsi0", "ide2"}) {
+		t.Errorf("BootOrder = %v, want [scsi0 ide2] (disk first, empty disk falls through to the ISO)", vm.BootOrder)
 	}
 }
 
