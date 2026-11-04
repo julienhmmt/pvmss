@@ -8,6 +8,7 @@
 	import { AUTO_SNAPSHOT_PREFIX, VmSnapshotsStore, type SnapshotFrequency, type VmSnapshot } from './snapshots.svelte';
 	import { m } from '#lib/paraglide/messages.js';
 	import { formatDateTime } from '#lib/shared/format-date.js';
+	import { getToastContext } from '#lib/shared/ui/toast.svelte.js';
 	import Alert from '#lib/shared/ui/Alert.svelte';
 	import Card from '#lib/shared/ui/Card.svelte';
 	import EmptyState from '#lib/shared/ui/EmptyState.svelte';
@@ -17,6 +18,7 @@
 
 	const vmStore = getVmDetailContext();
 	const tray = getTaskTrayContext();
+	const toast = getToastContext();
 	const snapshots = new VmSnapshotsStore(vmStore.cluster, vmStore.vmid, tray);
 	let createOpen = $state(false);
 	let rollbackOpen = $state(false);
@@ -59,11 +61,11 @@
 	async function saveSchedule(event: SubmitEvent): Promise<void> {
 		event.preventDefault();
 		if (scheduleFrequency === 'off') {
-			await snapshots.clearSchedule();
+			if (await snapshots.clearSchedule()) toast.success(m['toast.snapshotScheduleCleared']());
 			return;
 		}
 		if (!retainValid) return;
-		await snapshots.saveSchedule(scheduleFrequency, scheduleRetain);
+		if (await snapshots.saveSchedule(scheduleFrequency, scheduleRetain)) toast.success(m['toast.snapshotScheduleSaved']());
 	}
 
 	function isAutoSnapshot(snapshot: VmSnapshot): boolean {
