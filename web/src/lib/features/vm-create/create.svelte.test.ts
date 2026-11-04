@@ -83,6 +83,7 @@ describe('VmCreateStore.buildRequest in simple mode', () => {
 		expect(store.buildRequest()).toEqual({
 			cluster: 'default',
 			name: 'web-04',
+			ostype: 'l26',
 			profileId: 'small',
 			node: 'pve-node-01',
 			disk: { storage: 'local-lvm' },
@@ -113,6 +114,7 @@ describe('VmCreateStore.buildRequest in simple mode', () => {
 		expect(store.buildRequest()).toEqual({
 			cluster: 'default',
 			name: 'web-04',
+			ostype: 'l26',
 			profileId: 'small',
 			iso: { storage: 'local', file: 'ubuntu-24.04.iso' },
 			startAfterCreate: true,
@@ -132,6 +134,7 @@ describe('VmCreateStore.buildRequest in simple mode', () => {
 		expect(store.buildRequest()).toEqual({
 			cluster: 'default',
 			name: 'web-04',
+			ostype: 'l26',
 			profileId: 'small',
 			node: 'pve-node-01',
 			iso: { storage: 'local', file: 'debian-12.iso' },
@@ -152,6 +155,7 @@ describe('VmCreateStore.buildRequest in simple mode', () => {
 		expect(store.buildRequest()).toEqual({
 			cluster: 'default',
 			name: 'web-04',
+			ostype: 'l26',
 			profileId: 'small',
 			node: 'pve-node-01',
 			startAfterCreate: true,
@@ -249,5 +253,98 @@ describe('VmCreateStore.submit error translation', () => {
 		expect(msg).not.toBeNull();
 		// Generic message - does not echo the raw server text.
 		expect(msg).not.toContain('something else');
+	});
+});
+
+describe('VmCreateStore OS type selector', () => {
+	function catalog(): VmCreateCatalog {
+		return {
+			cluster: 'default',
+			nodes: ['pve-node-01'],
+			storages: [{ name: 'local-lvm', node: 'pve-node-01' }],
+			bridges: [],
+			isos: [{ storage: 'local', node: 'pve-node-01', file: 'win11.iso' }],
+			profiles: [{ id: 'small', label: 'Small', sockets: 1, cpuCores: 1, memoryMB: 2048, diskGB: 20, bus: 'scsi' }],
+			templates: [{ vmid: 9000, node: 'pve-node-01', name: 'debian-12-cloud', diskSizeGB: 8, diskStorage: 'local-lvm' }],
+			tags: []
+		};
+	}
+
+	it('sends ostype on an ISO request and omits it for a template clone', () => {
+		const store = new VmCreateStore();
+		store.catalog = catalog();
+		store.name = 'web-05';
+		store.profileId = 'small';
+		store.isoFile = 'win11.iso';
+		store.setOSType('win10');
+
+		expect(store.buildRequest().ostype).toBe('win10');
+
+		store.simpleSource = 'template';
+		store.templateId = 9000;
+
+		expect(store.buildRequest()).not.toHaveProperty('ostype');
+	});
+
+	it('defaults the payload to l26 when no OS is picked', () => {
+		const store = new VmCreateStore();
+		store.catalog = catalog();
+		store.name = 'web-05';
+		store.profileId = 'small';
+
+		expect(store.buildRequest().ostype).toBe('l26');
+	});
+
+	it('simple mode sends tpm once win11 is picked, unless uefi is unticked', () => {
+		const store = new VmCreateStore();
+		store.mode = 'simple';
+		store.simpleSource = 'profile';
+		store.setOSType('win11');
+		expect(store.buildRequest().tpm).toBe(true);
+		store.uefi = false;
+		expect(store.buildRequest().tpm).toBeUndefined();
+	});
+
+	it('selecting win11 turns on uefi and tpm, and the detailed payload carries tpm', () => {
+		const store = new VmCreateStore();
+		store.catalog = catalog();
+		store.mode = 'detailed';
+		store.name = 'win-01';
+		store.node = 'pve-node-01';
+		store.uefi = false;
+		store.tpm = false;
+
+		store.setOSType('win11');
+
+		expect(store.uefi).toBe(true);
+		expect(store.tpm).toBe(true);
+
+		const request = store.buildRequest();
+		expect(request.ostype).toBe('win11');
+		expect(request.uefi).toBe(true);
+		expect(request.tpm).toBe(true);
+	});
+
+	it('windows switches virtio NICs to e1000 and back, keeping other models', () => {
+		const store = new VmCreateStore();
+		store.nics = [{ bridge: 'a', model: 'virtio' }, { bridge: 'b', model: 'rtl8139' }];
+		store.setOSType('win10');
+		expect(store.nics.map((nic) => nic.model)).toEqual(['e1000', 'rtl8139']);
+		store.setOSType('win11');
+		expect(store.nics.map((nic) => nic.model)).toEqual(['e1000', 'rtl8139']);
+		store.setOSType('l26');
+		expect(store.nics.map((nic) => nic.model)).toEqual(['virtio', 'rtl8139']);
+	});
+
+	it('going back from win11 leaves the firmware checkboxes as they are', () => {
+		const store = new VmCreateStore();
+		store.setOSType('win11');
+		store.tpm = false;
+
+		store.setOSType('l26');
+
+		expect(store.ostype).toBe('l26');
+		expect(store.uefi).toBe(true);
+		expect(store.tpm).toBe(false);
 	});
 });

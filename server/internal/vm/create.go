@@ -67,6 +67,9 @@ const (
 // mode never asks for it).
 const defaultNetworkModel = "virtio"
 
+// windowsNetworkModel replaces it for a Windows install from ISO.
+const windowsNetworkModel = "e1000"
+
 // allocateVMIDError wraps a NextVMID failure in ErrClusterCreate.
 func allocateVMIDError(err error) error {
 	if errors.Is(err, ErrVMIDRangeExhausted) {
@@ -105,6 +108,14 @@ var allowedNetworkModels = map[string]bool{
 	"vmxnet3": true,
 }
 
+// allowedOSTypes is the Proxmox ostype allowlist for ISO creates. Empty means
+// l26 (applied downstream in the Proxmox form). Clones inherit their template's.
+var allowedOSTypes = map[string]bool{
+	"l26":   true,
+	"win10": true,
+	"win11": true,
+}
+
 // CreateRequest is the single creation request shape both frontend modes
 // build. It deliberately carries no pool field (nothing to forge) and no mode field (the server
 // cannot tell and does not care which
@@ -129,6 +140,7 @@ type CreateRequest struct {
 	Disk       DiskRequest    `json:"disk"`
 	Network    NetworkRequest `json:"network"`
 	ISO        *ISORequest    `json:"iso,omitempty"`
+	OSType     string         `json:"ostype,omitempty"`
 	TemplateID int            `json:"templateId,omitempty"`
 	// UEFI requests bios=ovmf + machine=q35 + efidisk0.
 	// Pointer so "omitted" (default true - modern OSes expect UEFI boot) is

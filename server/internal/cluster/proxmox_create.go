@@ -84,8 +84,13 @@ func (p Proxmox) CreateVM(ctx context.Context, spec VMSpec) (string, error) {
 	form.Set("agent", "1")
 
 	// ostype tunes Proxmox's own defaults (clock source, default drivers).
-	// Every catalog entry PVMSS exposes is Linux.
-	form.Set("ostype", "l26")
+	// Empty falls back to Linux.
+	ostype := spec.OSType
+	if ostype == "" {
+		ostype = "l26"
+	}
+
+	form.Set("ostype", ostype)
 
 	// Explicit boot order built only from the devices this spec actually
 	// created - a hardcoded order naming a device that is absent makes the

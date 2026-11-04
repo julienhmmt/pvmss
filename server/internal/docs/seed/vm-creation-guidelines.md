@@ -46,6 +46,11 @@ that the specific ISO is signed.
 
 Enable **TPM 2.0** for guests that require it (Windows 11).
 
+The **OS** field (ISO installs only) sets the guest family. Choosing **Windows 11**
+turns UEFI and TPM 2.0 on, since Windows 11 Setup requires both. A Windows
+install gets a SATA disk and, unless you choose another model, an e1000 network
+card, because Windows Setup has no VirtIO drivers.
+
 ## After creation
 
 New VMs appear in **My VMs** as soon as the create task finishes. The first

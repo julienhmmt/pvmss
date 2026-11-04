@@ -48,6 +48,12 @@ où vous pouvez vérifier que l'ISO concernée est bien signée.
 
 Activez le **TPM 2.0** pour les invités qui l'exigent (Windows 11).
 
+Le champ **OS** (installations depuis ISO uniquement) définit la famille du
+système. Choisir **Windows 11** active l'UEFI et le TPM 2.0, que l'installation
+de Windows 11 exige tous deux. Une installation Windows reçoit un disque SATA
+et, sauf si vous choisissez un autre modèle, une carte réseau e1000, car son
+programme d'installation n'a pas de pilotes VirtIO.
+
 ## Après la création
 
 Les nouvelles VM apparaissent dans **Mes VM** dès la fin de la tâche de

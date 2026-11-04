@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { getVmCreateContext, type VmSource } from '../create.svelte';
+	import { getVmCreateContext, type OSType, type VmSource } from '../create.svelte';
 	import { m } from '#lib/paraglide/messages.js';
 	import { getTaskOutcomeLedgerContext } from '#lib/features/tasks/task-outcome-ledger.svelte.js';
 	import FormField from '#lib/shared/ui/FormField.svelte';
@@ -172,6 +172,18 @@
 					{invalid}
 					bind:value={form.isoFile}
 					options={[{ value: '', label: m['common.none']() }, ...isosOnNode.map((iso) => ({ value: iso.file, label: iso.file }))]}
+				/>
+			{/snippet}
+		</FormField>
+		<FormField label={m['vms.create.os']()} hint={form.ostype === 'win11' ? m['vms.create.osHint']() : undefined}>
+			{#snippet children({ id, describedBy, invalid })}
+				<Select
+					{id}
+					{describedBy}
+					{invalid}
+					value={form.ostype}
+					onchange={(event: Event) => form.setOSType((event.currentTarget as HTMLSelectElement).value as OSType)}
+					options={form.osTypeOptions()}
 				/>
 			{/snippet}
 		</FormField>

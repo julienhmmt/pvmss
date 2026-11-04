@@ -522,7 +522,8 @@ func TestProxmox_CreateVM_NoUEFI(t *testing.T) {
 }
 
 // TestProxmox_CreateVM_AgentOSTypeBoot asserts the form keys:
-// agent=1 and ostype=l26 are always present, and boot=order= is built only
+// agent=1 is always present, ostype defaults to l26 when the spec leaves it
+// empty, and boot=order= is built only
 // from the devices the spec actually created (disk bus + ISO cdrom key).
 func TestProxmox_CreateVM_AgentOSTypeBoot(t *testing.T) {
 	t.Parallel()
@@ -581,7 +582,7 @@ func assertAgentOSTypeBootForm(t *testing.T, form url.Values, wantBoot string) {
 	}
 
 	if form.Get("ostype") != "l26" {
-		t.Errorf("ostype = %q, want l26 (every catalog entry is Linux)", form.Get("ostype"))
+		t.Errorf("ostype = %q, want l26 (empty spec OSType falls back to Linux)", form.Get("ostype"))
 	}
 
 	if form.Get("cpu") != CPUTypeV2AES {
@@ -590,6 +591,58 @@ func assertAgentOSTypeBootForm(t *testing.T, form url.Values, wantBoot string) {
 
 	if form.Get("boot") != wantBoot {
 		t.Errorf("boot = %q, want %q", form.Get("boot"), wantBoot)
+	}
+}
+
+// TestProxmox_CreateVM_OSTypeReachesForm asserts a Windows spec.OSType is sent
+// as ostype, and an empty one falls back to l26.
+func TestProxmox_CreateVM_OSTypeReachesForm(t *testing.T) {
+	t.Parallel()
+
+	cases := []struct {
+		name   string
+		ostype string
+		want   string
+	}{
+		{name: "win11 is sent", ostype: "win11", want: "win11"},
+		{name: "empty falls back to l26", ostype: "", want: "l26"},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
+			var gotForm url.Values
+
+			srv := newProxmoxTestServer(t, func(mux *http.ServeMux) {
+				mux.HandleFunc("POST /api2/json/nodes/node01/qemu", func(w http.ResponseWriter, r *http.Request) {
+					if err := r.ParseForm(); err != nil {
+						t.Fatalf("parse form: %v", err)
+					}
+
+					gotForm = r.Form
+
+					writeJSONFixture(t, w, `{"data":"UPID:node01:...:qmcreate:111:pvmss@pve:"}`)
+				})
+			})
+
+			p := Proxmox{BaseURL: srv.URL, APITokenName: testTokenName, APITokenValue: testTokenVal}
+
+			spec := VMSpec{
+				VMID: 111, Node: testNodeName, Name: "os-test", Pool: FakePoolAliceShort,
+				Sockets: 1, CPUCores: 2, MemoryMB: 2048, OSType: tc.ostype,
+				Disk:    DiskSpec{Storage: FakeStorageLocalLVM, SizeGB: 32, Bus: string(DiskBusSCSI)},
+				Network: NetworkSpec{{Bridge: FakeBridgeVMbr0, Model: string(DiskBusVirtio)}},
+			}
+
+			if _, err := p.CreateVM(context.Background(), spec); err != nil {
+				t.Fatalf("CreateVM: %v", err)
+			}
+
+			if got := gotForm.Get("ostype"); got != tc.want {
+				t.Errorf("ostype = %q, want %q", got, tc.want)
+			}
+		})
 	}
 }
 

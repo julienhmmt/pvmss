@@ -107,6 +107,11 @@ func (fake Fake) CreateVM(_ context.Context, spec VMSpec) (string, error) {
 		machine = resolveUEFIMachine(spec.Machine)
 	}
 
+	osType := spec.OSType
+	if osType == "" {
+		osType = fakeOSType
+	}
+
 	state.vms = append(state.vms, VM{
 		VMID:              spec.VMID,
 		Name:              spec.Name,
@@ -114,7 +119,7 @@ func (fake Fake) CreateVM(_ context.Context, spec VMSpec) (string, error) {
 		Status:            status,
 		Pool:              spec.Pool,
 		Tags:              append([]string(nil), spec.Tags...),
-		OSType:            fakeOSType,
+		OSType:            osType,
 		Sockets:           spec.Sockets,
 		Cores:             spec.CPUCores,
 		CPUCores:          spec.Sockets * spec.CPUCores,

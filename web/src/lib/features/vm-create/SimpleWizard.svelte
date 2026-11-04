@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { tick } from 'svelte';
-	import { getVmCreateContext, memoryLabel, type SimpleSource } from './create.svelte';
+	import { getVmCreateContext, memoryLabel, type OSType, type SimpleSource } from './create.svelte';
 	import { getTaskTrayContext } from '#lib/features/tasks/tasks.svelte.js';
 	import { getTaskOutcomeLedgerContext } from '#lib/features/tasks/task-outcome-ledger.svelte.js';
 	import { handleAccepted } from './post-submit';
@@ -236,6 +236,20 @@
 					<FormField label={m['vms.create.iso']()} hint={m['common.optional']()}>
 						{#snippet children({ id, describedBy, invalid })}
 							<Select {id} {describedBy} {invalid} bind:value={form.isoFile} options={[{ value: '', label: m['common.none']() }, ...isoOptions]} />
+						{/snippet}
+					</FormField>
+				{/if}
+				{#if form.simpleSource !== 'template'}
+					<FormField label={m['vms.create.os']()} hint={form.ostype === 'win11' ? m['vms.create.osHint']() : undefined}>
+						{#snippet children({ id, describedBy, invalid })}
+							<Select
+								{id}
+								{describedBy}
+								{invalid}
+								value={form.ostype}
+								onchange={(event: Event) => form.setOSType((event.currentTarget as HTMLSelectElement).value as OSType)}
+								options={form.osTypeOptions()}
+							/>
 						{/snippet}
 					</FormField>
 				{/if}

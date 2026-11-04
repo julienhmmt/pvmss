@@ -5,9 +5,11 @@ import (
 	"fmt"
 	"log/slog"
 	"pvmss/server/internal/catalog"
+	"pvmss/server/internal/cluster"
 	"pvmss/server/internal/policy"
 	"pvmss/server/internal/store"
 	"slices"
+	"strings"
 )
 
 // createPlan holds the resolved and validated values for a VM creation request.
@@ -61,6 +63,43 @@ func checkUEFICompat(req CreateRequest) error {
 	return nil
 }
 
+// checkOSType rejects an ostype outside allowedOSTypes. Empty is allowed and
+// means l26.
+func checkOSType(req CreateRequest) error {
+	if req.OSType != "" && !allowedOSTypes[req.OSType] {
+		return fmt.Errorf("%w: ostype %q", ErrInvalidRequest, req.OSType)
+	}
+
+	return nil
+}
+
+// isWindowsInstall reports a Windows install from ISO. A clone is excluded: it
+// keeps its template's OS and hardware.
+func isWindowsInstall(req CreateRequest) bool {
+	return req.TemplateID == 0 && strings.HasPrefix(req.OSType, "win")
+}
+
+// installDiskBus moves a Windows install off scsi and virtio, which Windows
+// Setup cannot see without the virtio-win drivers. It overrides a profile's bus
+// on purpose: an invisible disk makes the install impossible.
+func installDiskBus(req CreateRequest, bus string) string {
+	if isWindowsInstall(req) && (bus == string(cluster.DiskBusSCSI) || bus == string(cluster.DiskBusVirtio)) {
+		return string(cluster.DiskBusSATA)
+	}
+
+	return bus
+}
+
+// installNICModel is the model for a NIC the request leaves unset. An explicit
+// model is never changed. Windows has no virtio network driver out of the box.
+func installNICModel(req CreateRequest) string {
+	if isWindowsInstall(req) {
+		return windowsNetworkModel
+	}
+
+	return defaultNetworkModel
+}
+
 // planCreate runs the pre-allocation validation that follows the quota and
 // name reservation (reserveCreate): catalog, hardware ranges, gabarit,
 // resource resolution, node capacity, and live disk-space check.
@@ -68,6 +107,10 @@ func planCreate(ctx context.Context, policyService *policy.Policy, deps CreateDe
 	// TPM 2.0 requires UEFI - reject the impossible
 	// combination early, before any VMID or catalog work.
 	if err := checkUEFICompat(req); err != nil {
+		return createPlan{}, err
+	}
+
+	if err := checkOSType(req); err != nil {
 		return createPlan{}, err
 	}
 
@@ -109,7 +152,7 @@ func planCreate(ctx context.Context, policyService *policy.Policy, deps CreateDe
 	return createPlan{
 		node: node, storage: storage,
 		sockets: sockets, cpuCores: cpuCores,
-		memoryMB: memoryMB, diskGB: diskGB, bus: bus, nics: nics,
+		memoryMB: memoryMB, diskGB: diskGB, bus: installDiskBus(req, bus), nics: nics,
 		isolationVLANTag: vlanTag, uefi: resolveUEFI(req), tpm: req.TPM,
 	}, nil
 }
@@ -504,7 +547,7 @@ func resolveNICs(req CreateRequest, resources catalog.Resources, node string) ([
 			return nil, fmt.Errorf("%w: no approved bridge on node %q", ErrNotApproved, node)
 		}
 
-		return []nicPlan{{bridge: bridge, model: defaultNetworkModel}}, nil
+		return []nicPlan{{bridge: bridge, model: installNICModel(req)}}, nil
 	}
 
 	nics := make([]nicPlan, 0, len(requested))
@@ -519,7 +562,7 @@ func resolveNICs(req CreateRequest, resources catalog.Resources, node string) ([
 
 		model := reqNIC.Model
 		if model == "" {
-			model = defaultNetworkModel
+			model = installNICModel(req)
 		}
 
 		nics = append(nics, nicPlan{bridge: bridge, model: model})

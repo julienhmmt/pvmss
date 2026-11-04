@@ -141,6 +141,8 @@ export interface VMCreateRequest {
 	disk?: { storage?: string; sizeGB?: number };
 	network?: NICRequest[];
 	iso?: { storage: string; file: string };
+	/** Guest OS (ISO path only; omitted for template clones). Server default l26. */
+	ostype?: OSType;
 	templateId?: number;
 	uefi?: boolean;
 	tpm?: boolean;
@@ -168,6 +170,11 @@ export type VmSource = 'iso' | 'template';
  *  clone from an approved Proxmox template. This is a UI-only distinction;
  *  the request still carries profileId or templateId. */
 export type SimpleSource = 'profile' | 'template';
+
+/** Guest OS families the server accepts for an ISO create (Proxmox ostype).
+ *  Mirrors the server allowlist in vm/create.go; keep them in sync. */
+export const OS_TYPES = ['l26', 'win10', 'win11'] as const;
+export type OSType = (typeof OS_TYPES)[number];
 
 /** Conversion factor for disk-size checks - mirrors the server's
  *  bytesPerGB (server/internal/vm/create.go). */
@@ -396,6 +403,9 @@ export class VmCreateStore {
 	 *  to run, leaving the guest stuck in the UEFI shell. */
 	uefi = $state(true);
 	tpm = $state(false);
+	/** Guest OS for ISO creates. Windows 11 Setup requires UEFI + TPM 2.0, so
+	 *  picking win11 turns both on (see setOSType). */
+	ostype = $state<OSType>('l26');
 	/** The user's machines on the selected cluster (vmid + name), loaded
 	 *  with the catalog so the form can refuse a duplicate name before
 	 *  submitting (DESIGN.md §7, no duplicate on an uncertain outcome). The
@@ -511,7 +521,7 @@ export class VmCreateStore {
 	addNIC(): void {
 		const max = this.catalog?.gabarit?.maxNetworkCards ?? 4;
 		if (max !== 0 && this.nics.length >= max) return;
-		this.nics.push({ bridge: '', model: 'virtio' });
+		this.nics.push({ bridge: '', model: this.ostype === 'l26' ? 'virtio' : 'e1000' });
 	}
 
 	/** Removes a NIC row at the given index (US2/D3a). At least one row remains. */
@@ -549,6 +559,33 @@ export class VmCreateStore {
 		if (source !== 'profile') this.isoFile = '';
 	}
 
+	/** Picks the guest OS. win11 defaults UEFI and TPM on; switching back
+	 *  leaves the checkboxes as the user set them. */
+	setOSType(ostype: OSType): void {
+		const wasWindows = this.ostype !== 'l26';
+		const isWindows = ostype !== 'l26';
+		// Windows has no virtio network driver out of the box.
+		if (isWindows && !wasWindows) {
+			this.nics = this.nics.map((nic) => (nic.model === 'virtio' ? { ...nic, model: 'e1000' } : nic));
+		} else if (wasWindows && !isWindows) {
+			this.nics = this.nics.map((nic) => (nic.model === 'e1000' ? { ...nic, model: 'virtio' } : nic));
+		}
+		this.ostype = ostype;
+		if (ostype === 'win11') {
+			this.uefi = true;
+			this.tpm = true;
+		}
+	}
+
+	/** OS select options, labelled for the user. */
+	osTypeOptions(): { value: OSType; label: string }[] {
+		return [
+			{ value: 'l26', label: m['vms.create.osLinux']() },
+			{ value: 'win10', label: m['vms.create.osWin10']() },
+			{ value: 'win11', label: m['vms.create.osWin11']() }
+		];
+	}
+
 	/** True when the catalog has at least one profile. */
 	hasProfiles(): boolean {
 		return (this.catalog?.profiles ?? []).length > 0;
@@ -569,10 +606,12 @@ export class VmCreateStore {
 		if (this.mode === 'simple') {
 			if (this.simpleSource === 'template' && this.templateId !== 0) {
 				request.templateId = this.templateId;
-				// No uefi field: a clone inherits the template's own firmware.
+				// No uefi or ostype field: a clone inherits the template's own firmware and OS.
 				return request;
 			}
+			request.ostype = this.ostype;
 			request.uefi = this.uefi;
+			if (this.uefi && this.tpm) request.tpm = true;
 			if (this.profileId !== '') request.profileId = this.profileId;
 			const pinnedNode = this.nodeAdjusted ? this.effectiveNode() : '';
 			if (pinnedNode !== '') request.node = pinnedNode;
@@ -611,6 +650,7 @@ export class VmCreateStore {
 			// send a client-supplied node for template clones.
 		} else {
 			request.node = this.node;
+			request.ostype = this.ostype;
 			if (this.isoFile !== '') {
 				const iso = this.catalog?.isos.find((entry) => entry.file === this.isoFile && entry.node === this.node);
 				if (iso !== undefined) request.iso = { storage: iso.storage, file: iso.file };

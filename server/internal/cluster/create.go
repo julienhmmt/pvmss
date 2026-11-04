@@ -77,6 +77,9 @@ type VMSpec struct {
 	Disk     DiskSpec
 	Network  NetworkSpec
 	ISO      *ISOSpec
+	// OSType is the Proxmox kernel family ("l26", "win10", "win11"). Empty
+	// means l26 at the form layer.
+	OSType string
 	// Image is the optional cloud image the VM's primary disk imports from
 	// (import-from). Mutually exclusive with ISO at the vm.Create layer.
 	// CPUType is the Proxmox cpu model. Empty means CPUTypeV2AES at the form layer.

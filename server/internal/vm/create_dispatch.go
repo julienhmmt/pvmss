@@ -201,6 +201,7 @@ func buildCreateSpec(actor auth.Identity, req CreateRequest, plan createPlan, vm
 		VMID:             vmid,
 		Node:             plan.node,
 		Name:             req.Name,
+		OSType:           req.OSType,
 		Pool:             actor.Pool,
 		Tags:             tags,
 		Sockets:          plan.sockets,

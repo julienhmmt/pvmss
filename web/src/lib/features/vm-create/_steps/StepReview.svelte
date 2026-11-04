@@ -40,7 +40,10 @@
 					{ label: m['vms.create.memory'](), value: req.memoryMB !== undefined ? memoryLabel(req.memoryMB) : m['common.dash']() }
 				];
 
+		// ostype is absent on template clones; show the OS only when sent.
+		const osLabel = form.osTypeOptions().find((option) => option.value === req.ostype)?.label ?? req.ostype;
 		const options: Row[] = [
+			...(req.ostype !== undefined ? [{ label: m['vms.create.os'](), value: osLabel ?? m['common.dash']() }] : []),
 			{ label: m['vms.create.firmwareGroup'](), value: req.uefi === false ? m['vms.create.review.bios']() : req.tpm ? `${m['vms.create.uefi']()} + ${m['vms.create.tpm']()}` : m['vms.create.uefi']() },
 			{ label: m['vms.create.startAfterCreate'](), value: req.startAfterCreate ? m['common.yes']() : m['common.no']() }
 		];
