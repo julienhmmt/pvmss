@@ -104,7 +104,7 @@ grids, `recovery/` stale `backend/` refs.
   import.
 - **OIDC stubs deleted** (`d3138f25`). `POST /api/v1/auth/oidc` (501), the
   admin toggle endpoint, the `oidc_enabled` column (schema V36), the web
-  stores and the commented markup are gone. OIDC will not be implemented.
+  stores and the commented markup are gone. OIDC sign-in was reopened on 2026-11-02 (see "Reopened and funded").
 - **Shared storage uses the Proxmox `shared` flag** (`6a9a36fa`).
   `cluster.Storage` now carries it; the dashboard dedupes on `Shared ||`
   plugin list, so a shared `dir` counts once instead of once per node.

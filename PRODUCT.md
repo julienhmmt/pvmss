@@ -34,7 +34,7 @@ PVMSS is self-hosted by a single organization for its own teams - one operator, 
 - **Clusters**: one or more Proxmox clusters behind a single portal, selectable per user; `PVMSS_CLUSTER_SOURCE` chooses the live `proxmox` source or the `fake` demo source.
 - **Admin rituals**: approving catalog items (nodes, storages, bridges, ISOs, templates), setting quotas and gabarit limits, curating hardware profiles, and deciding user quota requests.
 - **User rituals**: sign in with Proxmox credentials, create from a starting point, connect over SSH or the in-browser console, manage power and snapshots.
-- **Locale**: bilingual English + French across every screen and state.
+- **Locale**: English, French, German and Italian across every screen and state; in-app docs in English and French.
 
 ## Capabilities and Constraints
 
@@ -88,4 +88,4 @@ Target: WCAG 2.1 AA compliance.
 - Reduced-motion support (all animations respect `prefers-reduced-motion`)
 - Color contrast meeting AA ratios (4.5:1 body, 3:1 large text)
 - Skip-to-content link for bypassing navigation
-- Bilingual interface (English + French) with proper `lang` attribute
+- Interface in English, French, German and Italian with proper `lang` attribute

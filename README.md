@@ -53,7 +53,7 @@ The complete, route-by-route inventory lives in [docs/FEATURES.md](docs/FEATURES
 - **Sign-in on VMs**: PVMSS adds no SSH key or password (cloud-init authoring was removed). A template clone keeps the sign-in built into its Proxmox template; an ISO install gets the account the user creates during installation. See [VM templates carry the sign-in](#vm-templates-carry-the-sign-in).
 - **Operate a VM**: 7 power actions, rename, Markdown description, delete; disks (add / grow / detach); NIC edit (bridge, model, VLAN, rate); CPU/RAM/tags/CD-ROM; snapshots (create / rollback / delete, RAM optional); metrics history (hour/day/week) and live stream; per-VM activity log.
 - **Consoles**: noVNC and serial (xterm.js), both proxied through PVMSS with single-use tickets; power actions from the console page.
-- Nodes page with live capacity, in-app documentation, EN + FR, keyboard-first and WCAG 2.1 AA target.
+- Nodes page with live capacity, in-app documentation (EN + FR), interface in EN, FR, DE and IT, keyboard-first and WCAG 2.1 AA target.
 
 ### Administrators
 
@@ -430,7 +430,7 @@ There is no migration from v0.3 to v0.4. v0.4 is a rewrite (Go API + SvelteKit) 
 - **Logs**: `docker logs -f pvmss` or `kubectl -n pvmss logs -f deploy/pvmss`. Switch `LOG_LEVEL=debug` for verbose traces. Use `LOG_FORMAT=json` with `LOG_OUTPUT=stdout` or a file path to emit JSON logs that can be shipped to a SIEM or log aggregator.
 - **Health**: startup logs include cluster connectivity and inventory refresh status. The admin "Application Info" page shows runtime metrics, environment variables, and Proxmox cluster status.
 - **Upgrades** (within v0.4.x): pull the desired image tag and restart the container. Configuration is stored in the SQLite database and persists automatically.
-- **Built-in documentation**: the in-app pages (`/docs`) are seeded once into the database and never overwritten, so admin edits survive upgrades. To pick up a newer built-in text after an upgrade, delete the page in **Admin › Documentation** and restart, or paste the new content from `server/internal/docs/seed/`.
+- **Built-in documentation**: the in-app pages (`/docs`) are seeded once into the database and never overwritten, so admin edits survive upgrades. To pick up a newer built-in text after an upgrade, paste the new content from `server/internal/docs/seed/`.
 - **Static analysis (SonarQube)**: run `make sonar` to generate Go coverage and scan the two projects into the shared local SonarQube (`~/git/gh/sonarqube`, started on demand) - `pvmss-server` (Go) and `pvmss-web` (SvelteKit TS). Results are at `http://localhost:9000/projects`. Stop it with `make sonar-down`.
 
 ## Limitations

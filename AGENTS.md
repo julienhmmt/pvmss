@@ -152,7 +152,7 @@ built with bun and served by the Go binary (catch-all to `index.html`).
 
 - `src/routes/` - pages: `vms/`, `nodes/`, `activity/`, `search/`, `docs/`, `about/`, `admin/`, `profile/`, `login/`, `setup/`
 - `src/lib/features/` - feature modules (stores + components per domain)
-- `src/lib/shared/` - API client and utilities; `shared/ui/` - in-house UI components (no shadcn/bits-ui)
+- `src/lib/shared/` - API client and utilities; `shared/ui/` - in-house UI components, some built on bits-ui primitives (no shadcn)
 - `messages/` (`en.json`, `fr.json`) + `project.inlang/` - i18n via Paraglide; `src/lib/paraglide/` is generated
 - `src/test/` - vitest setup; `e2e/` - Playwright specs
 

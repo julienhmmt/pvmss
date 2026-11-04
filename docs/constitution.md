@@ -210,8 +210,8 @@ Une tranche qui ne produit rien d'essayable est mal découpée.
 - Le jeu de jetons de couleur **OKLCH** de la v0.3 est conservé tel quel, thème clair et
   sombre. Aucune couleur n'est ajoutée ni modifiée sans décision explicite.
 - Le kit UI est **maison** (`src/lib/shared/ui/`) : aucune bibliothèque de composants
-  vendorée (ni shadcn ni bits-ui). Tout composant partagé y vit, avec son
-  accessibilité, plutôt qu'une dépendance de plus.
+  vendorée (pas de shadcn). Tout composant partagé y vit, avec son accessibilité ; il
+  peut s'appuyer sur les primitives bits-ui.
 - Icônes : composants SVG maison (`src/lib/shared/ui/icons/`), un fichier par icône.
 - Internationalisation via **Paraglide** : clés typées, absence détectée à la compilation.
 
@@ -342,4 +342,4 @@ plus simple écartée. Une violation non consignée bloque la fusion.
 _ce qu'il ne faut pas refaire_. Elle n'est pas publiée tant que la fiche `securite/S01`
 contient une preuve de concept exploitable.
 
-**Version**: 1.2.0 | **Ratified**: 2026-08-01 | **Last Amended**: 2026-10-04
+**Version**: 1.3.0 | **Ratified**: 2026-08-01 | **Last Amended**: 2026-11-04

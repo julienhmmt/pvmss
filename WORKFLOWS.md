@@ -519,7 +519,7 @@ These apply to every workflow above; a new workflow inherits them.
 
 | Concern           | Where                                                                                                          |
 | ----------------- | -------------------------------------------------------------------------------------------------------------- |
-| i18n              | Paraglide, EN + FR, `m['...']()` message keys - no bare user-facing strings                                    |
+| i18n              | Paraglide, EN + FR + DE + IT, `m['...']()` message keys - no bare user-facing strings                                    |
 | Background work   | Task tray polls `GET /api/v1/tasks/{upid}` and refreshes the affected list on completion                       |
 | Loading           | `TableSkeleton` and per-feature skeletons, never a blank page                                                  |
 | Quotas            | `Meter` / `quota-meter` components fed by `policy/`                                                            |

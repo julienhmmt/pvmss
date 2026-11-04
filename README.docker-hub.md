@@ -18,7 +18,7 @@ The complete, route-by-route inventory lives in [docs/FEATURES.md](https://githu
 - **Operate a VM**: 7 power actions (`start`, `shutdown`, `stop`, `reboot`, `reset`, `pause`, `resume`), rename, Markdown description, delete; disk add/grow/detach; NIC edit (bridge, model, VLAN, rate limit); CPU/RAM/tags/CD-ROM; snapshots (create/rollback/delete, optional RAM); historical (hour/day/week) and live streaming metrics; per-VM activity log.
 - **Consoles**: Built-in noVNC graphical console and serial (xterm.js) console, both WebSocket-proxied through PVMSS with single-use tickets.
 - **Activity & nodes**: Track running and recent operations across your VMs (`/activity`) and inspect live node capacity (`/nodes`).
-- **Profile & preferences**: Manage your password, theme, and language (**English** and **French**), with built-in user documentation (`/docs`).
+- **Profile & preferences**: Manage your password, theme, and language (**English**, **French**, **German** and **Italian**), with built-in user documentation (`/docs`).
 
 ### For administrators
 
@@ -192,7 +192,7 @@ helm install pvmss ./helm -f my-values.yaml
 ## Architecture
 
 - **Server (`server/`)**: Go 1.27 REST API (`net/http`), embedded SQLite (`modernc.org/sqlite`, CGO-free), structured logging (`log/slog`), OpenTelemetry tracing/metrics, and Prometheus `/metrics`. Serves `/api/v1/*`, WebSocket console proxies, and the static SPA.
-- **Web (`web/`)**: SvelteKit SPA built with Svelte 5 runes, TypeScript, Tailwind CSS v4, Paraglide i18n (EN/FR), noVNC, and xterm.js.
+- **Web (`web/`)**: SvelteKit SPA built with Svelte 5 runes, TypeScript, Tailwind CSS v4, Paraglide i18n (EN/FR/DE/IT), noVNC, and xterm.js.
 - **Container image**: Multi-arch (`linux/amd64`, `linux/arm64`) distroless non-root image (`gcr.io/distroless/static-debian13:nonroot`, UID `65532`).
 
 ## Limitations

@@ -958,7 +958,6 @@
 	"vms.create.errorGabaritExceeded": "{field} ({requested}) supera il massimo configurato ({maximum}).",
 	"vms.create.errorOutOfRange": "{field} deve essere compreso tra {min} e {max}.",
 	"vms.create.errorInvalidRequest": "La richiesta contiene una combinazione di opzioni non valida.",
-	"vms.create.errorNoSnippetStorage": "Sul nodo selezionato non è disponibile alcuno storage compatibile con gli snippet. Un amministratore deve abilitare il tipo di contenuto snippets su uno storage di quel nodo.",
 	"vms.create.fieldLabel.cpuCores": "Core CPU",
 	"vms.create.fieldLabel.memoryMB": "Memoria",
 	"vms.create.fieldLabel.diskSizeGB": "Dimensione del disco",

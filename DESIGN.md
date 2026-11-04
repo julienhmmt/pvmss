@@ -335,7 +335,7 @@ chosen concept ("Calm workspace") fixes three structural decisions:
    - A short reassurance note ("Approved by your team. Ready for your next
      idea.") with a shield icon.
    - Preferences row: theme control (light / dark / system, a three-icon
-     segmented group; system follows the OS) and language button (EN/FR with
+     segmented group; system follows the OS) and language button (EN/FR/DE/IT with
      a chevron).
    - Account link: avatar initials, name, "Personal account" subtitle, and a
      trailing chevron.
@@ -925,7 +925,7 @@ workspace that feels comfortable to use."
 - **Preference rows** (top-bordered, space-between):
   - **Appearance** - "Warm light or a quieter dark workspace." with a
     the same light / dark / system theme control.
-  - **Language** - "The complete interface is available in English and French."
+  - **Language** - "The complete interface is available in English, French, German and Italian."
     with a language select.
 - **Field note** - "Authentication, passwords and API tokens are intentionally
   outside this prototype." (In production this is where the password change
@@ -1073,12 +1073,12 @@ Target: WCAG 2.1 AA.
   traps focus and restores it on close; escape closes dialogs.
 - **Reduced motion** - `prefers-reduced-motion: reduce` disables all
   animations and transitions.
-- **Language** - `<html lang>` is set to the active locale (en/fr).
+- **Language** - `<html lang>` is set to the active locale (en/fr/de/it).
 - **Contrast** - body text ≥ 4.5:1, large text ≥ 3:1, focus rings ≥ 3:1.
 
 ## Internationalization
 
-- **Locales:** English (default) and French. Both are complete for every
+- **Locales:** English (default), French, German and Italian. All are complete for every
   screen, state, and microcopy string.
 - **Mechanism:** production uses Paraglide (`web/messages/` +
   `web/project.inlang/`, with generated output in `web/src/lib/paraglide/`).

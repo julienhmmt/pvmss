@@ -958,7 +958,6 @@
 	"vms.create.errorGabaritExceeded": "{field} ({requested}) dépasse le maximum configuré ({maximum}).",
 	"vms.create.errorOutOfRange": "{field} doit être compris entre {min} et {max}.",
 	"vms.create.errorInvalidRequest": "La requête contient une combinaison d'options invalide.",
-	"vms.create.errorNoSnippetStorage": "Aucun stockage capable de snippets n'est disponible sur le nœud sélectionné. Un administrateur doit activer le contenu snippets sur un stockage de ce nœud.",
 	"vms.create.fieldLabel.cpuCores": "Cœurs CPU",
 	"vms.create.fieldLabel.memoryMB": "Mémoire",
 	"vms.create.fieldLabel.diskSizeGB": "Taille du disque",

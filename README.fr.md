@@ -53,7 +53,7 @@ L'inventaire complet, route par route, est dans [docs/FEATURES.md](docs/FEATURES
 - **Accès aux VM** : PVMSS n'ajoute ni clé SSH ni mot de passe (l'écriture cloud-init a été supprimée). Un clone de template garde les accès intégrés à son template Proxmox ; une installation ISO reçoit le compte créé par l'utilisateur pendant l'installation. Voir [Les modèles de VM portent les accès](#les-modèles-de-vm-portent-les-accès).
 - **Exploitation d'une VM** : 7 actions d'alimentation, renommage, description Markdown, suppression ; disques (ajout / agrandissement / détachement) ; cartes réseau (bridge, modèle, VLAN, débit) ; CPU/RAM/tags/CD-ROM ; snapshots (création / restauration / suppression, RAM optionnelle) ; historique de métriques (heure/jour/semaine) et flux temps réel ; journal d'activité par VM.
 - **Consoles** : noVNC et série (xterm.js), toutes deux relayées par PVMSS avec ticket à usage unique ; actions d'alimentation depuis la console.
-- Page Nœuds avec capacité en direct, documentation intégrée, FR + EN, navigation clavier, cible WCAG 2.1 AA.
+- Page Nœuds avec capacité en direct, documentation intégrée (FR + EN), interface en FR, EN, DE et IT, navigation clavier, cible WCAG 2.1 AA.
 
 ### Administrateurs
 
@@ -417,7 +417,7 @@ Il n'y a pas de migration de la v0.3 vers la v0.4. La v0.4 est une réécriture 
 - **Logs** : `docker logs -f pvmss` ou `kubectl -n pvmss logs -f deploy/pvmss`. Passez `LOG_LEVEL=debug` pour plus de verbosité. Utilisez `LOG_FORMAT=json` avec `LOG_OUTPUT=stdout` ou un chemin de fichier pour produire des logs JSON exploitables par un SIEM ou un collecteur de logs.
 - **Santé** : les logs de démarrage détaillent la connectivité Proxmox et l'état du rafraîchissement d'inventaire ; `GET /health` répond pour les sondes. La page admin "Informations de l'application" affiche des métriques, des variables d'environnement et le statut du cluster Proxmox.
 - **Mises à jour** (au sein de la v0.4.x) : récupérez l'image souhaitée (le tag) et redémarrez le conteneur. La configuration est stockée dans la base de données SQLite et persiste automatiquement.
-- **Documentation intégrée** : les pages `/docs` sont insérées une seule fois en base et jamais écrasées, les modifications admin survivent donc aux mises à jour. Pour récupérer un texte intégré plus récent après une mise à jour, supprimez la page dans **Admin › Documentation** et redémarrez, ou collez le nouveau contenu depuis `server/internal/docs/seed/`.
+- **Documentation intégrée** : les pages `/docs` sont insérées une seule fois en base et jamais écrasées, les modifications admin survivent donc aux mises à jour. Pour récupérer un texte intégré plus récent après une mise à jour, collez le nouveau contenu depuis `server/internal/docs/seed/`.
 - **Analyse statique (SonarQube)** : lancez `make sonar` pour générer la couverture Go et scanner les deux projets dans le SonarQube local partagé (`~/git/gh/sonarqube`, démarré à la demande) - `pvmss-server` (Go) et `pvmss-web` (SvelteKit TS). Résultats sur `http://localhost:9000/projects`. Arrêt : `make sonar-down`.
 
 ## Limites connues

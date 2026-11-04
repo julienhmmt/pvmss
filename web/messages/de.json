@@ -958,7 +958,6 @@
 	"vms.create.errorGabaritExceeded": "{field} ({requested}) übersteigt das konfigurierte Maximum ({maximum}).",
 	"vms.create.errorOutOfRange": "{field} muss zwischen {min} und {max} liegen.",
 	"vms.create.errorInvalidRequest": "Die Anfrage enthält eine ungültige Kombination von Optionen.",
-	"vms.create.errorNoSnippetStorage": "Auf dem ausgewählten Knoten ist kein Snippet-fähiger Speicher verfügbar. Ein Administrator muss den Inhaltstyp Snippets auf einem Speicher dieses Knotens aktivieren.",
 	"vms.create.fieldLabel.cpuCores": "CPU-Kerne",
 	"vms.create.fieldLabel.memoryMB": "Arbeitsspeicher",
 	"vms.create.fieldLabel.diskSizeGB": "Festplattengröße",
