@@ -8,6 +8,8 @@
 	import LanguageSwitcher from './LanguageSwitcher.svelte';
 	import ThemeToggle from './ThemeToggle.svelte';
 	import Logo from '#lib/shared/ui/Logo.svelte';
+	import ButtonLink from '#lib/shared/ui/ButtonLink.svelte';
+	import { page } from '$app/state';
 	import { resolve } from '$app/paths';
 	import { m } from '#lib/paraglide/messages.js';
 </script>
@@ -40,5 +42,9 @@
 		</a>
 		<LanguageSwitcher />
 		<ThemeToggle />
+		<!-- Not during first-run setup: there is nobody to sign in yet. -->
+		{#if page.route.id !== '/setup'}
+			<ButtonLink href={resolve('/login')} size="sm">{m['home.cta.login']()}</ButtonLink>
+		{/if}
 	</nav>
 </header>

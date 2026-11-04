@@ -8,6 +8,7 @@
 	import HomeHero from '#lib/features/home/HomeHero.svelte';
 	import HomeHowItWorks from '#lib/features/home/HomeHowItWorks.svelte';
 	import { getSessionContext } from '#lib/features/auth/session.svelte.js';
+	import { m } from '#lib/paraglide/messages.js';
 
 	const session = getSessionContext();
 
@@ -22,6 +23,11 @@
 		}
 	});
 </script>
+
+<svelte:head>
+	<title>{m['shell.title']()}</title>
+	<meta name="description" content={m['capabilities.subtitle']()} />
+</svelte:head>
 
 {#if !session.principal}
 	<!-- The product pitch, a scroll page: hero, how it works, the capability
