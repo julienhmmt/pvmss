@@ -75,9 +75,11 @@
 		hideDelete?: boolean;
 		/** Icon-only, and only the actions that apply to the current status (console header). */
 		compact?: boolean;
+		/** Icon-only secondary actions for the detail header, beside its own start/shutdown button. */
+		quick?: boolean;
 	}
 
-	let { onDelete = () => {}, hideDelete = false, compact = false }: Props = $props();
+	let { onDelete = () => {}, hideDelete = false, compact = false, quick = false }: Props = $props();
 
 	/** The forceful action awaiting confirmation, if any. */
 	let pending = $state<VmAction | null>(null);
@@ -130,7 +132,22 @@
 	}
 </script>
 
-{#if compact}
+{#if quick}
+	<!-- Test ids differ from the full bar, which stays mounted in the Configuration tab. -->
+	{#each ACTIONS.filter((action) => isApplicable(action) && action.kind !== 'start' && action.kind !== 'shutdown') as action (action.kind)}
+		<Button
+			size="icon"
+			variant={BUTTON_VARIANT[action.variant]}
+			disabled={store.actionInFlight}
+			onclick={() => requestAction(action.kind)}
+			data-testid="vm-quick-{action.kind}"
+			title={action.label()}
+			label={action.label()}
+		>
+			<action.icon class="h-4 w-4" />
+		</Button>
+	{/each}
+{:else if compact}
 	<!-- Space-constrained bar: the first applicable action keeps a visible
 	     icon button, the rest (and Delete) fold into the overflow menu. -->
 	{@const applicableActions = ACTIONS.filter(isApplicable)}
@@ -241,15 +258,15 @@
 	/>
 {/if}
 
-{#if store.entity !== null && !compact}
+{#if store.entity !== null && !compact && !quick}
 	<CloneVmDialog bind:open={cloneOpen} cluster={store.entity.cluster} vmid={store.entity.vmid} sourceName={store.entity.name} />
 {/if}
 
-{#if store.actionError}
+{#if store.actionError && !quick}
 	<Alert data-testid="vm-action-error" class="mt-2">{store.actionError}</Alert>
 {/if}
 
-{#if store.actionInFlight && store.entity}
+{#if store.actionInFlight && store.entity && !quick}
 	<p role="status" aria-live="polite" class="sr-only" data-testid="vm-action-aria">
 		{m['vms.detail.statusChanged']({ name: store.entity.name, status: store.entity.status })}
 	</p>

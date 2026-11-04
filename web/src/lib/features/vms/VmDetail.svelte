@@ -340,6 +340,7 @@
 						{m['vms.detail.power.start']()}
 					</Button>
 				{/if}
+				<VmActionBar quick />
 			</div>
 		</div>
 
