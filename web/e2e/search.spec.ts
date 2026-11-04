@@ -1,4 +1,4 @@
-import { test, expect, type APIRequestContext, type Locator, type Page } from '@playwright/test';
+import { test, expect, type APIRequestContext, type Locator } from '@playwright/test';
 
 async function signInAlice(request: APIRequestContext): Promise<void> {
 	const response = await request.post('/api/v1/auth/login', {
