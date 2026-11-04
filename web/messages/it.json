@@ -1794,7 +1794,7 @@
 	"admin.dashboard.alert.nodeCpu": "CPU del nodo {subject} al {percent}%",
 	"admin.dashboard.alert.nodeMemory": "Memoria del nodo {subject} al {percent}%",
 	"admin.dashboard.alert.storageFull": "Lo storage {subject} è pieno al {percent}%",
-	"admin.dashboard.alert.poolAtQuota": "Il pool {subject} ha raggiunto la sua quota di VM ({used}/{limit})",
+	"admin.dashboard.alert.poolAtQuota": "Il pool di VM {subject} ha raggiunto la sua quota di VM ({used}/{limit})",
 	"admin.dashboard.severityCritical": "Critico",
 	"admin.dashboard.severityWarning": "Avviso",
 	"admin.dashboard.severityInfo": "Info",

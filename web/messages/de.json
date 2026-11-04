@@ -1794,7 +1794,7 @@
 	"admin.dashboard.alert.nodeCpu": "CPU von Knoten {subject} bei {percent} %",
 	"admin.dashboard.alert.nodeMemory": "Arbeitsspeicher von Knoten {subject} bei {percent} %",
 	"admin.dashboard.alert.storageFull": "Speicher {subject} ist zu {percent} % voll",
-	"admin.dashboard.alert.poolAtQuota": "Pool {subject} hat sein VM-Kontingent erreicht ({used}/{limit})",
+	"admin.dashboard.alert.poolAtQuota": "VM-Pool {subject} hat sein VM-Kontingent erreicht ({used}/{limit})",
 	"admin.dashboard.severityCritical": "Kritisch",
 	"admin.dashboard.severityWarning": "Warnung",
 	"admin.dashboard.severityInfo": "Info",
