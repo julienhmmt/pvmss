@@ -382,6 +382,111 @@ template(name="raw" type="string" string="%rawmsg%\n")
 action(type="omfile" file="/var/log/siem/pvmss.log" template="raw")
 ```
 
+## Logs to an OpenTelemetry collector
+
+PVMSS does not export logs over OTLP, and it does not need to. A collector can
+ship the records PVMSS already writes. Routes, in order of preference:
+
+1. **Stdout scrape (recommended).** The collector's `filelog` receiver reads
+   the container log files and parses the JSON lines. No PVMSS change.
+2. **Syslog receiver.** Point the existing SIEM sink at the collector's
+   `syslog` receiver. No PVMSS change. Use it when the collector cannot read
+   the node's container logs.
+3. **In-app OTLP log export.** Not built. It would add a dependency and a
+   second log path. Routes 1 and 2 cover the need.
+
+Route 1 needs the chart defaults, `LOG_FORMAT: json` and `LOG_OUTPUT: stdout`.
+Route 2 always sends RFC 5424 whatever `LOG_FORMAT` is set to.
+
+### Route 1: filelog on stdout
+
+Kubernetes, a collector DaemonSet that mounts `/var/log/pods` read-only. Adjust
+the include glob to your pod name. Each stdout line becomes the record body,
+`container` strips the runtime wrapper, `json_parser` turns the keys into
+attributes, and `trace_parser` copies `traceId` and `spanId` into the record's
+trace context, so the log links to its trace.
+
+```yaml
+receivers:
+  filelog:
+    include: ["/var/log/pods/*pvmss*/*/*.log"]
+    operators:
+      - type: container
+      - type: json_parser
+        parse_from: body
+      - type: time_parser
+        parse_from: attributes.timestamp
+        layout_type: gotime
+        layout: "2006-01-02T15:04:05.999999999Z07:00"
+      - type: trace_parser
+        trace_id:
+          parse_from: attributes.traceId
+        span_id:
+          parse_from: attributes.spanId
+exporters:
+  otlphttp:
+    endpoint: http://otel-backend:4318
+service:
+  pipelines:
+    logs:
+      receivers: [filelog]
+      exporters: [otlphttp]
+```
+
+Docker Compose works the same way if the collector can read Docker's
+`json-file` container logs (under `/var/lib/docker/containers`). Compose files
+in this repo do not mount them, so that is a host-level setup. The snippet is
+not run against a live collector; check one record end to end before relying
+on it.
+
+### Route 2: syslog receiver
+
+The sink already sends RFC 5424 over TLS with RFC 5425 octet-count framing.
+The receiver must present a certificate valid for the host in
+`PVMSS_SYSLOG_ADDR`, signed by the CA in `PVMSS_SYSLOG_TLS_CA_FILE`. PVMSS
+verifies it and sends no client certificate unless `PVMSS_SYSLOG_TLS_CERT_FILE`
+is set.
+
+```yaml
+receivers:
+  syslog:
+    protocol: rfc5424
+    enable_octet_counting: true
+    tcp:
+      listen_address: "0.0.0.0:6514"
+      tls:
+        cert_file: /etc/otelcol/tls/server.crt
+        key_file: /etc/otelcol/tls/server.key
+exporters:
+  otlphttp:
+    endpoint: http://otel-backend:4318
+service:
+  pipelines:
+    logs:
+      receivers: [syslog]
+      exporters: [otlphttp]
+```
+
+With this route, `traceId` and `spanId` arrive as SD parameters of
+`pvmss@32473`, not as trace context. Mapping them to trace context is a
+collector-side transform that this section does not provide.
+
+### Limits
+
+- **Trace IDs only on records logged with a span.** A record gets `traceId` and
+  `spanId` only when it is logged with a context that carries a span. Plain
+  `Info`, `Warn` and `Error` calls get none.
+- **File output bypasses stdout.** With `LOG_OUTPUT` set to a file path,
+  nothing reaches stdout, so route 1 must read that file instead.
+- **Redaction applies to both routes.** Secret-looking values are masked before
+  they reach stdout or the syslog copy, so the collector never sees them.
+- **Line size.** PVMSS caps each syslog frame at 8192 bytes (`syslogMaxLine`),
+  the same default as the receiver's `max_octets`. Longer records are cut and
+  marked `truncated="true"`.
+- **No collector config exists in this repo.** The only collector snippet is the
+  trace example below. The dev VictoriaLogs service is a syslog receiver, not an
+  OpenTelemetry collector.
+
 ## Traces
 
 Set `OTEL_EXPORTER_OTLP_ENDPOINT` and restart. PVMSS then sends:
@@ -416,7 +521,8 @@ service:
 ```
 
 Then run PVMSS with `OTEL_EXPORTER_OTLP_ENDPOINT=http://otel-collector:4318`.
-Logs stay on stdout; there is no OTLP log export.
+Logs are not exported over OTLP; see
+[Logs to an OpenTelemetry collector](#logs-to-an-opentelemetry-collector).
 
 ## Metrics
 
