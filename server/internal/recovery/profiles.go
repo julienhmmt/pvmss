@@ -8,7 +8,7 @@ import (
 )
 
 // legacyProfileConfig is the JSON shape stored in vm_profiles.config.
-// Fields match backend/state/settings.go's VMProfileConfig struct.
+// Fields match the v0.3 VMProfileConfig struct (backend/state/settings.go, removed).
 type legacyProfileConfig struct {
 	Sockets int    `json:"sockets"`
 	Cores   int    `json:"cores"`

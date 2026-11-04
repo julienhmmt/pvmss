@@ -69,9 +69,7 @@ an admin disables or deletes them.
 | --- | --- |
 | ~~ADR practice~~ | **Resolved** 2026-11-04: `docs/adr/` recreated by `0001-cluster-id-rename.md`; ADRs 0001-0003 from before the 2026-10-15 removal live in git history |
 | ~~Legacy single projection in `policy`~~ | **Resolved** (`refactor/audit-2026-11-cleanup`): `policy.New` no longer takes a projection; every caller shares the one service wired with `SetProjectionSource`, and the variadic `services` parameters are required `*policy.Policy` fields |
-
-Smalls moved to `.scratch/housekeeping/` (2026-11-02): two-column admin
-grids, `recovery/` stale `backend/` refs.
+| ~~Smalls in `.scratch/housekeeping/`~~ | **Resolved** 2026-11-04: two-column admin grids ruled per-page (`xl:grid-cols-2` on dashboard + appinfo, no blanket rule); `recovery/` stale `backend/` refs now flagged as removed paths in comments |
 
 ## Resolved 2026-10-22 (full app review)
 
