@@ -8,7 +8,12 @@ import (
 	"pvmss/server/internal/cloudinit"
 	"pvmss/server/internal/store"
 	"strings"
+	"unicode/utf8"
 )
+
+// maxProfileDescriptionRunes caps the admin-authored profile description. It
+// keeps the catalog payload small and the card readable; not a config knob.
+const maxProfileDescriptionRunes = 500
 
 // ErrDuplicateProfile is returned when a profile's derived slug already exists.
 var ErrDuplicateProfile = errors.New("duplicate profile")
@@ -23,14 +28,26 @@ var ErrInvalidProfile = errors.New("invalid profile")
 // by the admin profiles list endpoint (includes disabled profiles, unlike
 // catalog.Profiles which filters by enabled = 1).
 type AdminProfile struct {
-	ID       string
-	Label    string
-	Sockets  int
-	CPUCores int
-	MemoryMB int
-	DiskGB   int
-	Bus      string
-	Enabled  bool
+	ID          string
+	Label       string
+	Sockets     int
+	CPUCores    int
+	MemoryMB    int
+	DiskGB      int
+	Bus         string
+	Enabled     bool
+	Description string
+}
+
+// normalizeProfileDescription trims the description and enforces the
+// length cap. The Markdown is rendered and escaped by the httpapi layer. Empty is allowed and clears the description on update.
+func normalizeProfileDescription(description string) (string, error) {
+	trimmed := strings.TrimSpace(description)
+	if utf8.RuneCountInString(trimmed) > maxProfileDescriptionRunes {
+		return "", fmt.Errorf("%w: description must be at most %d characters", ErrInvalidProfile, maxProfileDescriptionRunes)
+	}
+
+	return trimmed, nil
 }
 
 // DeriveProfileID converts a label to a lowercase hyphenated slug matching
@@ -79,6 +96,7 @@ func ListAdminProfiles(ctx context.Context, st *store.Store, cluster string) ([]
 		out[i] = AdminProfile{
 			ID: r.ID, Label: r.Label, Sockets: r.Sockets, CPUCores: r.CPUCores,
 			MemoryMB: r.MemoryMB, DiskGB: r.DiskGB, Bus: r.Bus, Enabled: r.Enabled,
+			Description: r.Description,
 		}
 	}
 
@@ -90,12 +108,13 @@ func ListAdminProfiles(ctx context.Context, st *store.Store, cluster string) ([]
 // field parameters those functions used to take (SonarQube go:S107).
 // Sockets defaults to 1 when zero (older clients omit it).
 type ProfileSpec struct {
-	Label    string
-	Sockets  int
-	CPUCores int
-	MemoryMB int
-	DiskGB   int
-	Bus      string
+	Label       string
+	Sockets     int
+	CPUCores    int
+	MemoryMB    int
+	DiskGB      int
+	Bus         string
+	Description string
 }
 
 // CreateProfile derives a slug from the label, validates the fields, rejects
@@ -115,6 +134,11 @@ func CreateProfile(ctx context.Context, st *store.Store, cluster string, spec Pr
 		return AdminProfile{}, err
 	}
 
+	description, err := normalizeProfileDescription(spec.Description)
+	if err != nil {
+		return AdminProfile{}, err
+	}
+
 	id := DeriveProfileID(label)
 
 	exists, err := st.ProfileExists(ctx, cluster, id)
@@ -126,7 +150,7 @@ func CreateProfile(ctx context.Context, st *store.Store, cluster string, spec Pr
 		return AdminProfile{}, ErrDuplicateProfile
 	}
 
-	if err := st.InsertProfile(ctx, cluster, id, store.ProfileValues{Label: label, Sockets: spec.Sockets, CPUCores: spec.CPUCores, MemoryMB: spec.MemoryMB, DiskGB: spec.DiskGB, Bus: spec.Bus}); err != nil {
+	if err := st.InsertProfile(ctx, cluster, id, store.ProfileValues{Label: label, Sockets: spec.Sockets, CPUCores: spec.CPUCores, MemoryMB: spec.MemoryMB, DiskGB: spec.DiskGB, Bus: spec.Bus, Description: description}); err != nil {
 		if errors.Is(err, store.ErrDuplicate) {
 			return AdminProfile{}, ErrDuplicateProfile
 		}
@@ -137,6 +161,7 @@ func CreateProfile(ctx context.Context, st *store.Store, cluster string, spec Pr
 	return AdminProfile{
 		ID: id, Label: label, Sockets: spec.Sockets, CPUCores: spec.CPUCores,
 		MemoryMB: spec.MemoryMB, DiskGB: spec.DiskGB, Bus: spec.Bus, Enabled: true,
+		Description: description,
 	}, nil
 }
 
@@ -156,6 +181,11 @@ func UpdateProfile(ctx context.Context, st *store.Store, cluster, id string, spe
 		return AdminProfile{}, err
 	}
 
+	description, err := normalizeProfileDescription(spec.Description)
+	if err != nil {
+		return AdminProfile{}, err
+	}
+
 	exists, err := st.ProfileExists(ctx, cluster, id)
 	if err != nil {
 		return AdminProfile{}, err
@@ -165,7 +195,7 @@ func UpdateProfile(ctx context.Context, st *store.Store, cluster, id string, spe
 		return AdminProfile{}, ErrProfileNotFound
 	}
 
-	if err := st.UpdateProfile(ctx, cluster, id, store.ProfileValues{Label: label, Sockets: spec.Sockets, CPUCores: spec.CPUCores, MemoryMB: spec.MemoryMB, DiskGB: spec.DiskGB, Bus: spec.Bus}); err != nil {
+	if err := st.UpdateProfile(ctx, cluster, id, store.ProfileValues{Label: label, Sockets: spec.Sockets, CPUCores: spec.CPUCores, MemoryMB: spec.MemoryMB, DiskGB: spec.DiskGB, Bus: spec.Bus, Description: description}); err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return AdminProfile{}, ErrProfileNotFound
 		}
@@ -184,6 +214,7 @@ func UpdateProfile(ctx context.Context, st *store.Store, cluster, id string, spe
 			return AdminProfile{
 				ID: r.ID, Label: r.Label, Sockets: r.Sockets, CPUCores: r.CPUCores,
 				MemoryMB: r.MemoryMB, DiskGB: r.DiskGB, Bus: r.Bus, Enabled: r.Enabled,
+				Description: r.Description,
 			}, nil
 		}
 	}

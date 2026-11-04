@@ -18,6 +18,7 @@ export interface AdminProfile {
 	diskGB: number;
 	bus: string;
 	enabled: boolean;
+	description: string;
 }
 
 /** vCPU total a VM gets from this profile: sockets x cores (sockets default to 1). */
@@ -113,12 +114,12 @@ export class AdminProfilesStore {
 		}
 	}
 
-	async create(label: string, cpuCores: number, memoryMB: number, diskGB: number, bus: string, sockets = 1): Promise<boolean> {
+	async create(label: string, cpuCores: number, memoryMB: number, diskGB: number, bus: string, sockets = 1, description = ''): Promise<boolean> {
 		this.saving = true;
 		this.saveError = null;
 		try {
 			const created = await post<AdminProfile>('/api/v1/admin/profiles', {
-				cluster: this.cluster, label, sockets, cpuCores, memoryMB, diskGB, bus
+				cluster: this.cluster, label, sockets, cpuCores, memoryMB, diskGB, bus, description
 			});
 			this.profiles = [...this.profiles, created];
 			return true;
@@ -130,12 +131,12 @@ export class AdminProfilesStore {
 		}
 	}
 
-	async update(id: string, label: string, cpuCores: number, memoryMB: number, diskGB: number, bus: string, sockets = 1): Promise<boolean> {
+	async update(id: string, label: string, cpuCores: number, memoryMB: number, diskGB: number, bus: string, sockets = 1, description = ''): Promise<boolean> {
 		this.saving = true;
 		this.saveError = null;
 		try {
 			const updated = await put<AdminProfile>(`/api/v1/admin/profiles/${id}`, {
-				cluster: this.cluster, label, sockets, cpuCores, memoryMB, diskGB, bus
+				cluster: this.cluster, label, sockets, cpuCores, memoryMB, diskGB, bus, description
 			});
 			this.profiles = this.profiles.map((p) => (p.id === id ? updated : p));
 			return true;

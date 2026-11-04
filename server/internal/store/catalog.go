@@ -36,14 +36,15 @@ type CatalogISO struct {
 
 // CatalogProfile is one VM hardware profile (catalog_profiles row).
 type CatalogProfile struct {
-	Cluster  string
-	ID       string
-	Label    string
-	Sockets  int
-	CPUCores int
-	MemoryMB int
-	DiskGB   int
-	Bus      string
+	Cluster     string
+	ID          string
+	Label       string
+	Sockets     int
+	CPUCores    int
+	MemoryMB    int
+	DiskGB      int
+	Bus         string
+	Description string
 }
 
 // CatalogTemplate is one approved Proxmox template (catalog_templates row). The VMID is the
@@ -139,11 +140,11 @@ func (s *Store) CatalogISOs(ctx context.Context, cluster string) ([]CatalogISO, 
 // CatalogProfiles returns the VM profiles for a cluster, ordered by id.
 func (s *Store) CatalogProfiles(ctx context.Context, cluster string) ([]CatalogProfile, error) {
 	return queryCatalog(ctx, s.db, "catalog profiles",
-		`SELECT cluster, id, label, sockets, cpu_cores, memory_mb, disk_gb, bus FROM catalog_profiles WHERE cluster = ? AND enabled = 1 ORDER BY id`,
+		`SELECT cluster, id, label, sockets, cpu_cores, memory_mb, disk_gb, bus, description FROM catalog_profiles WHERE cluster = ? AND enabled = 1 ORDER BY id`,
 		[]any{cluster},
 		func(rows *sql.Rows) (CatalogProfile, error) {
 			var p CatalogProfile
-			return p, rows.Scan(&p.Cluster, &p.ID, &p.Label, &p.Sockets, &p.CPUCores, &p.MemoryMB, &p.DiskGB, &p.Bus)
+			return p, rows.Scan(&p.Cluster, &p.ID, &p.Label, &p.Sockets, &p.CPUCores, &p.MemoryMB, &p.DiskGB, &p.Bus, &p.Description)
 		},
 	)
 }

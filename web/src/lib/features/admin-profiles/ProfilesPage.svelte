@@ -16,6 +16,7 @@
 	import Dialog from '#lib/shared/ui/Dialog.svelte';
 	import FormField from '#lib/shared/ui/FormField.svelte';
 	import TextField from '#lib/shared/ui/TextField.svelte';
+	import Textarea from '#lib/shared/ui/Textarea.svelte';
 	import Select from '#lib/shared/ui/Select.svelte';
 	import TableHeader from '#lib/shared/ui/TableHeader.svelte';
 	import { m } from '#lib/paraglide/messages.js';
@@ -43,8 +44,8 @@
 		onEnabledFilterChange: (value: 'all' | 'enabled' | 'disabled') => void;
 		onSort: (column: ProfileSortColumn) => void;
 		onResetFilters: () => void;
-		onCreate: (label: string, cpuCores: number, memoryMB: number, diskGB: number, bus: string, sockets: number) => Promise<boolean>;
-		onUpdate: (id: string, label: string, cpuCores: number, memoryMB: number, diskGB: number, bus: string, sockets: number) => Promise<boolean>;
+		onCreate: (label: string, cpuCores: number, memoryMB: number, diskGB: number, bus: string, sockets: number, description: string) => Promise<boolean>;
+		onUpdate: (id: string, label: string, cpuCores: number, memoryMB: number, diskGB: number, bus: string, sockets: number, description: string) => Promise<boolean>;
 		onDelete: (id: string) => void;
 		onToggle: (id: string, enabled: boolean) => void;
 		onClearSaveError: () => void;
@@ -87,6 +88,7 @@
 	let memoryMB = $state(2048);
 	let diskGB = $state(20);
 	let bus = $state('scsi');
+	let description = $state('');
 
 	function openCreate(): void {
 		editingId = null;
@@ -96,6 +98,7 @@
 		memoryMB = 2048;
 		diskGB = 20;
 		bus = 'scsi';
+		description = '';
 		onClearSaveError();
 		showForm = true;
 	}
@@ -108,6 +111,7 @@
 		memoryMB = profile.memoryMB;
 		diskGB = profile.diskGB;
 		bus = profile.bus;
+		description = profile.description ?? '';
 		onClearSaveError();
 		showForm = true;
 	}
@@ -121,8 +125,8 @@
 		// A failed save keeps the dialog open with the draft intact and the
 		// store's saveError rendered inside it.
 		const succeeded = editingId
-			? await onUpdate(editingId, label, cpuCores, memoryMB, diskGB, bus, sockets)
-			: await onCreate(label, cpuCores, memoryMB, diskGB, bus, sockets);
+			? await onUpdate(editingId, label, cpuCores, memoryMB, diskGB, bus, sockets, description)
+			: await onCreate(label, cpuCores, memoryMB, diskGB, bus, sockets, description);
 		if (succeeded) showForm = false;
 	}
 
@@ -215,7 +219,12 @@
 					{#each pager.rows as profile (profile.id)}
 						<tr class="group transition-colors hover:bg-muted/40">
 							<td class="font-mono text-xs" data-label={m['admin.profiles.id']()}>{profile.id}</td>
-							<td data-label={m['admin.profiles.labelField']()}>{profile.label}</td>
+							<td data-label={m['admin.profiles.labelField']()}>
+								{profile.label}
+								{#if profile.description}
+									<span class="block max-w-xs truncate text-xs text-muted-foreground" title={profile.description}>{profile.description}</span>
+								{/if}
+							</td>
 							<td data-label={m['admin.profiles.vcpu']()}>{vcpuTotal(profile)}</td>
 							<td data-label={m['common.memory']()}>{profile.memoryMB} MB</td>
 							<td data-label={m['admin.profiles.disk']()}>{profile.diskGB} GB</td>
@@ -304,6 +313,11 @@
 				{/snippet}
 			</FormField>
 		</div>
+		<FormField label={m['admin.profiles.descriptionField']()} hint={m['admin.profiles.descriptionHint']()}>
+			{#snippet children({ id, describedBy, invalid })}
+				<Textarea {id} {describedBy} {invalid} bind:value={description} rows={3} />
+			{/snippet}
+		</FormField>
 		<div class="flex justify-end gap-2 pt-2">
 			<Button variant="secondary" onclick={closeForm}>{m['common.cancel']()}</Button>
 			<Button type="submit" disabled={saving}>

@@ -42,14 +42,15 @@ type CatalogISOEnabled struct {
 
 // CatalogProfileEnabled is one catalog_profiles row with its enabled state.
 type CatalogProfileEnabled struct {
-	ID       string
-	Label    string
-	Sockets  int
-	CPUCores int
-	MemoryMB int
-	DiskGB   int
-	Bus      string
-	Enabled  bool
+	ID          string
+	Label       string
+	Sockets     int
+	CPUCores    int
+	MemoryMB    int
+	DiskGB      int
+	Bus         string
+	Enabled     bool
+	Description string
 }
 
 // CatalogTemplateEnabled is one catalog_templates row with its enabled state.
@@ -132,11 +133,11 @@ func (s *Store) CatalogISOsEnabled(ctx context.Context, cluster string) ([]Catal
 // with their full fields, ordered by id.
 func (s *Store) CatalogProfilesEnabled(ctx context.Context, cluster string) ([]CatalogProfileEnabled, error) {
 	return queryCatalog(ctx, s.db, "catalog profiles enabled",
-		`SELECT id, label, sockets, cpu_cores, memory_mb, disk_gb, bus, enabled FROM catalog_profiles WHERE cluster = ? ORDER BY id`,
+		`SELECT id, label, sockets, cpu_cores, memory_mb, disk_gb, bus, enabled, description FROM catalog_profiles WHERE cluster = ? ORDER BY id`,
 		[]any{cluster},
 		func(rows *sql.Rows) (CatalogProfileEnabled, error) {
 			var p CatalogProfileEnabled
-			return p, rows.Scan(&p.ID, &p.Label, &p.Sockets, &p.CPUCores, &p.MemoryMB, &p.DiskGB, &p.Bus, &p.Enabled)
+			return p, rows.Scan(&p.ID, &p.Label, &p.Sockets, &p.CPUCores, &p.MemoryMB, &p.DiskGB, &p.Bus, &p.Enabled, &p.Description)
 		},
 	)
 }
@@ -313,12 +314,13 @@ func (s *Store) SetTemplateEnabled(ctx context.Context, cluster string, vmid int
 // collapses the five positional field parameters InsertProfile/UpdateProfile used
 // to take (SonarQube go:S107).
 type ProfileValues struct {
-	Label    string
-	Sockets  int
-	CPUCores int
-	MemoryMB int
-	DiskGB   int
-	Bus      string
+	Label       string
+	Sockets     int
+	CPUCores    int
+	MemoryMB    int
+	DiskGB      int
+	Bus         string
+	Description string
 }
 
 // InsertProfile inserts a new profile row. Returns ErrDuplicate if the id
@@ -327,9 +329,9 @@ type ProfileValues struct {
 // INSERT).
 func (s *Store) InsertProfile(ctx context.Context, cluster, id string, values ProfileValues) error {
 	return execInsertOne(ctx, s.db,
-		`INSERT INTO catalog_profiles (cluster, id, label, sockets, cpu_cores, memory_mb, disk_gb, bus, enabled) VALUES (?, ?, ?, ?, ?, ?, ?, ?, 1)
+		`INSERT INTO catalog_profiles (cluster, id, label, sockets, cpu_cores, memory_mb, disk_gb, bus, description, enabled) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 1)
 		 ON CONFLICT(cluster, id) DO NOTHING`,
-		[]any{cluster, id, values.Label, values.Sockets, values.CPUCores, values.MemoryMB, values.DiskGB, values.Bus},
+		[]any{cluster, id, values.Label, values.Sockets, values.CPUCores, values.MemoryMB, values.DiskGB, values.Bus, values.Description},
 	)
 }
 
@@ -338,8 +340,8 @@ func (s *Store) InsertProfile(ctx context.Context, cluster, id string, values Pr
 // layer's existence check and this UPDATE).
 func (s *Store) UpdateProfile(ctx context.Context, cluster, id string, values ProfileValues) error {
 	return execUpdateOne(ctx, s.db,
-		`UPDATE catalog_profiles SET label = ?, sockets = ?, cpu_cores = ?, memory_mb = ?, disk_gb = ?, bus = ? WHERE cluster = ? AND id = ?`,
-		[]any{values.Label, values.Sockets, values.CPUCores, values.MemoryMB, values.DiskGB, values.Bus, cluster, id},
+		`UPDATE catalog_profiles SET label = ?, sockets = ?, cpu_cores = ?, memory_mb = ?, disk_gb = ?, bus = ?, description = ? WHERE cluster = ? AND id = ?`,
+		[]any{values.Label, values.Sockets, values.CPUCores, values.MemoryMB, values.DiskGB, values.Bus, values.Description, cluster, id},
 	)
 }
 

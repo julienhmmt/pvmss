@@ -3,6 +3,7 @@ package httpapi_test
 import (
 	"encoding/json"
 	"net/http"
+	"strings"
 	"testing"
 )
 
@@ -11,6 +12,10 @@ const (
 	adminProfilesPath = "/api/v1/admin/profiles"
 	adminTagsPath     = "/api/v1/admin/tags"
 )
+
+// overLongDescriptionBody is a profile create body whose description is one
+// rune past the 500-rune cap.
+var overLongDescriptionBody = `{"cluster":"default","label":"Too Long","cpuCores":1,"memoryMB":2048,"diskGB":20,"bus":"scsi","description":"` + strings.Repeat("a", 501) + `"}`
 
 // Profiles, cloud-init templates and tags share the admin CRUD error shape:
 // a malformed body is invalid_request, an unknown id is not_found, and domain
@@ -31,6 +36,7 @@ func TestAdminCatalogCRUD_ErrorCodes(t *testing.T) {
 	}{
 		{"profile create bad body", http.MethodPost, adminProfilesPath, badJSONBody, http.StatusBadRequest, apiCodeInvalidRequest},
 		{"profile create blank label", http.MethodPost, adminProfilesPath, `{"cluster":"default","label":""}`, http.StatusBadRequest, "invalid_profile"},
+		{"profile create description too long", http.MethodPost, adminProfilesPath, overLongDescriptionBody, http.StatusBadRequest, "invalid_profile"},
 		{"profile update bad body", http.MethodPut, adminProfilesPath + "/nope", badJSONBody, http.StatusBadRequest, apiCodeInvalidRequest},
 		{"profile delete unknown", http.MethodDelete, adminProfilesPath + "/nope?cluster=default", "", http.StatusNotFound, apiCodeNotFound},
 		{"profile toggle unknown", http.MethodPost, adminProfilesPath + "/nope/toggle", `{"cluster":"default","enabled":true}`, http.StatusNotFound, apiCodeNotFound},

@@ -1341,6 +1341,8 @@
 	"admin.profiles.memoryMb": "Memoria (MB)",
 	"admin.profiles.diskGb": "Disco (GB)",
 	"admin.profiles.busField": "Bus",
+	"admin.profiles.descriptionField": "Descrizione",
+	"admin.profiles.descriptionHint": "Facoltativa. È supportato il Markdown (grassetto, corsivo, elenchi, link). Massimo 500 caratteri. Mostrata sotto la dimensione nella pagina di creazione VM.",
 	"admin.profiles.loadError": "impossibile caricare i profili",
 	"admin.profiles.createError": "impossibile creare il profilo",
 	"admin.profiles.updateError": "impossibile aggiornare il profilo",

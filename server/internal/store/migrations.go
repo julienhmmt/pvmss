@@ -279,6 +279,12 @@ CREATE TABLE pool_quota_overrides (
 );
 `
 
+// schemaV3 adds the admin-authored profile description shown on the create-VM
+// size step. Existing rows backfill to the empty string.
+const schemaV3 = `
+ALTER TABLE catalog_profiles ADD COLUMN description TEXT NOT NULL DEFAULT '';
+`
+
 // Migration is a single schema version and its forward-only DDL.
 type Migration struct {
 	Version int
@@ -294,4 +300,5 @@ type Migration struct {
 var Migrations = []Migration{
 	{Version: 1, DDL: schemaV1},
 	{Version: 2, DDL: schemaV2},
+	{Version: 3, DDL: schemaV3},
 }

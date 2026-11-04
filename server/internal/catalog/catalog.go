@@ -41,13 +41,14 @@ type ISO struct {
 // references a profile, these values are authoritative - client-submitted
 // hardware fields that accompany a profile are ignored.
 type Profile struct {
-	ID       string
-	Label    string
-	Sockets  int
-	CPUCores int
-	MemoryMB int
-	DiskGB   int
-	Bus      string
+	ID          string
+	Label       string
+	Sockets     int
+	CPUCores    int
+	MemoryMB    int
+	DiskGB      int
+	Bus         string
+	Description string
 }
 
 // Template is one approved Proxmox template. The VMID is the
@@ -194,13 +195,14 @@ func Profiles(ctx context.Context, st *store.Store, cluster string) ([]Profile, 
 	profiles := make([]Profile, 0, len(rows))
 	for _, row := range rows {
 		profiles = append(profiles, Profile{
-			ID:       row.ID,
-			Label:    row.Label,
-			Sockets:  row.Sockets,
-			CPUCores: row.CPUCores,
-			MemoryMB: row.MemoryMB,
-			DiskGB:   row.DiskGB,
-			Bus:      row.Bus,
+			ID:          row.ID,
+			Label:       row.Label,
+			Sockets:     row.Sockets,
+			CPUCores:    row.CPUCores,
+			MemoryMB:    row.MemoryMB,
+			DiskGB:      row.DiskGB,
+			Bus:         row.Bus,
+			Description: row.Description,
 		})
 	}
 

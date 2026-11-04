@@ -588,3 +588,117 @@ func TestDeleteTag_Success(t *testing.T) {
 		}
 	}
 }
+
+// TestProfileDescription_RoundTrip - the description is trimmed, optional, and
+// returned by both the admin list and the user-facing catalog.
+func TestProfileDescription_RoundTrip(t *testing.T) {
+	t.Parallel()
+
+	st := openAdminStore(t)
+	ctx := context.Background()
+
+	created, err := catalog.CreateProfile(ctx, st, "default", catalog.ProfileSpec{Label: "Desc Test", CPUCores: 1, MemoryMB: 2048, DiskGB: 20, Bus: testProfileBus, Description: "  Light web  "})
+	if err != nil {
+		t.Fatalf("CreateProfile: %v", err)
+	}
+
+	if created.Description != "Light web" {
+		t.Errorf("created.Description = %q, want trimmed %q", created.Description, "Light web")
+	}
+
+	admin, err := catalog.ListAdminProfiles(ctx, st, "default")
+	if err != nil {
+		t.Fatalf("ListAdminProfiles: %v", err)
+	}
+
+	if got, ok := findAdminProfileByID(admin, created.ID); !ok || got.Description != "Light web" {
+		t.Errorf("admin list description = %q (found %v), want %q", got.Description, ok, "Light web")
+	}
+
+	user, err := catalog.Profiles(ctx, st, "default")
+	if err != nil {
+		t.Fatalf("Profiles: %v", err)
+	}
+
+	if got, ok := findProfileByID(user, created.ID); !ok || got.Description != "Light web" {
+		t.Errorf("user catalog description = %q (found %v), want %q", got.Description, ok, "Light web")
+	}
+}
+
+// TestProfileDescription_RuneLimit - 500 runes after trimming is allowed, 501
+// is ErrInvalidProfile on both create and update.
+func TestProfileDescription_RuneLimit(t *testing.T) {
+	t.Parallel()
+
+	st := openAdminStore(t)
+	ctx := context.Background()
+	base := catalog.ProfileSpec{CPUCores: 1, MemoryMB: 2048, DiskGB: 20, Bus: testProfileBus}
+
+	atLimit := base
+	atLimit.Label = "Limit 500"
+	atLimit.Description = strings.Repeat("é", 500)
+
+	if _, err := catalog.CreateProfile(ctx, st, "default", atLimit); err != nil {
+		t.Fatalf("CreateProfile 500 runes: %v", err)
+	}
+
+	padded := base
+	padded.Label = "Limit Padded"
+	padded.Description = "  " + strings.Repeat("é", 500) + "  "
+
+	if _, err := catalog.CreateProfile(ctx, st, "default", padded); err != nil {
+		t.Fatalf("CreateProfile 500 runes plus padding: %v", err)
+	}
+
+	overLimit := base
+	overLimit.Label = "Limit 501"
+	overLimit.Description = strings.Repeat("é", 501)
+
+	if _, err := catalog.CreateProfile(ctx, st, "default", overLimit); !errors.Is(err, catalog.ErrInvalidProfile) {
+		t.Fatalf("CreateProfile 501 runes: got %v, want ErrInvalidProfile", err)
+	}
+
+	if _, err := catalog.UpdateProfile(ctx, st, "default", "limit-500", overLimit); !errors.Is(err, catalog.ErrInvalidProfile) {
+		t.Fatalf("UpdateProfile 501 runes: got %v, want ErrInvalidProfile", err)
+	}
+}
+
+// TestProfileDescription_UpdateKeepsEnabled - update sets and clears the
+// description without changing the enabled state.
+func TestProfileDescription_UpdateKeepsEnabled(t *testing.T) {
+	t.Parallel()
+
+	st := openAdminStore(t)
+	ctx := context.Background()
+
+	created, err := catalog.CreateProfile(ctx, st, "default", catalog.ProfileSpec{Label: "Desc Update", CPUCores: 1, MemoryMB: 2048, DiskGB: 20, Bus: testProfileBus, Description: "Old"})
+	if err != nil {
+		t.Fatalf("CreateProfile: %v", err)
+	}
+
+	if err := catalog.SetProfileEnabled(ctx, st, "default", created.ID, false); err != nil {
+		t.Fatalf("SetProfileEnabled: %v", err)
+	}
+
+	spec := catalog.ProfileSpec{Label: "Desc Update", CPUCores: 1, MemoryMB: 2048, DiskGB: 20, Bus: testProfileBus, Description: "New"}
+
+	updated, err := catalog.UpdateProfile(ctx, st, "default", created.ID, spec)
+	if err != nil {
+		t.Fatalf("UpdateProfile set: %v", err)
+	}
+
+	if updated.Description != "New" || updated.Enabled {
+		t.Errorf("after set: description=%q enabled=%v, want New/false", updated.Description, updated.Enabled)
+	}
+
+	spec.Description = ""
+
+	cleared, err := catalog.UpdateProfile(ctx, st, "default", created.ID, spec)
+	if err != nil {
+		t.Fatalf("UpdateProfile clear: %v", err)
+	}
+
+	if cleared.Description != "" || cleared.Enabled {
+		t.Errorf("after clear: description=%q enabled=%v, want empty/false", cleared.Description, cleared.Enabled)
+	}
+}
