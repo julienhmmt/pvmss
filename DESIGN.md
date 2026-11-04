@@ -959,7 +959,7 @@ can reach `/about` from the footer, so `/about` must stand on its own.
 
 **About (`/about`, `features/about/`)** - the story, not a second pitch:
 
-1. **Hero** - logo tile, `h1` "Proxmox, with a human face.", a one-line lead
+1. **Hero** - logo tile, `h1` "Your VM, without the ticket.", a one-line lead
    and the longer introduction.
 2. **Why PVMSS exists** - a before/after pair: "Without PVMSS" (dashed,
    muted, a ticket loop) beside "With PVMSS" (card, primary rail, checks).

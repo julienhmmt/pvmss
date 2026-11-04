@@ -71,7 +71,7 @@
 	"about.audience.userDescription": "Developers and team members who need VMs without direct Proxmox access. They log in with their Proxmox credentials, pick a profile, and get a running machine - then start, stop, snapshot, and console into it without filing tickets.",
 	"about.cta.heading": "Ready to start?",
 	"about.cta.description": "Sign in to create your first VM, or browse the documentation to learn more.",
-	"about.hero.title": "Proxmox, with a human face.",
+	"about.hero.title": "Your VM, without the ticket.",
 	"about.hero.lead": "PVMSS removes the ticket queue from everyday VM work, while your organization's rules keep applying on every request.",
 	"about.why.heading": "Why PVMSS exists",
 	"about.why.before.title": "Without PVMSS",
