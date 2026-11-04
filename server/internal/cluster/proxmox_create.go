@@ -67,6 +67,8 @@ func (p Proxmox) CreateVM(ctx context.Context, spec VMSpec) (string, error) {
 	// emulated LSI 53C895A, which also applies to SCSI disks added later.
 	form.Set("scsihw", scsiController)
 
+	form.Set("cpu", defaultCPUType)
+
 	setDiskFormKeys(form, spec)
 
 	// Enable the QEMU guest agent. Without agent=1 in the config, every

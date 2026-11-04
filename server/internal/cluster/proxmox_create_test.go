@@ -584,6 +584,10 @@ func assertAgentOSTypeBootForm(t *testing.T, form url.Values, wantBoot string) {
 		t.Errorf("ostype = %q, want l26 (every catalog entry is Linux)", form.Get("ostype"))
 	}
 
+	if form.Get("cpu") != defaultCPUType {
+		t.Errorf("cpu = %q, want %q (unset falls back to kvm64, which cannot boot Windows 11)", form.Get("cpu"), defaultCPUType)
+	}
+
 	if form.Get("boot") != wantBoot {
 		t.Errorf("boot = %q, want %q", form.Get("boot"), wantBoot)
 	}

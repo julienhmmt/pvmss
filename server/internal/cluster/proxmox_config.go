@@ -88,6 +88,11 @@ const diskKeySCSI0 = "scsi0"
 // controller, ignoring" and silently drops the option.
 const scsiController = "virtio-scsi-single"
 
+// defaultCPUType is the vCPU model set on created VMs, matching the Proxmox
+// web UI default. The API's own default is kvm64, which lacks SSE4.2 and POPCNT:
+// Windows 11 24H2 and later crash and reboot during early boot without them.
+const defaultCPUType = "x86-64-v2-AES"
+
 // cdromMountedValue is the Proxmox netN/ideN value form for a mounted ISO,
 // used in fixtures and assertions across config and writer tests.
 const cdromMountedValue = "local:iso/debian-12.iso,media=cdrom"
