@@ -11,7 +11,8 @@ export interface DashboardAlert {
 		| 'node_memory'
 		| 'storage_full'
 		| 'pool_at_quota'
-		| 'quota_requests_pending';
+		| 'quota_requests_pending'
+		| 'snapshot_schedule_failed';
 	severity: 'critical' | 'warning' | 'info';
 	cluster: string;
 	clusterKey?: string;
@@ -50,6 +51,8 @@ export function alertHref(alert: DashboardAlert): string {
 			return withQuery(resolve('/admin/policy'), { cluster: clusterKey });
 		case 'quota_requests_pending':
 			return resolve('/admin/quota-requests');
+		case 'snapshot_schedule_failed':
+			return withQuery(resolve('/vms/[cluster]/[vmid]', { cluster: clusterKey, vmid: alert.subject ?? '' }), { tab: 'configuration', sub: 'snapshots' });
 	}
 }
 
@@ -77,6 +80,8 @@ export function alertMessage(alert: DashboardAlert): string {
 			});
 		case 'quota_requests_pending':
 			return m['admin.dashboard.alert.quotaRequestsPending']({ count: alert.used ?? 0 });
+		case 'snapshot_schedule_failed':
+			return m['admin.dashboard.alert.snapshotScheduleFailed']({ subject });
 	}
 }
 

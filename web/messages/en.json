@@ -1808,6 +1808,7 @@
 	"admin.dashboard.vmOther": "Other",
 	"admin.dashboard.attentionTitle": "Needs attention",
 	"admin.dashboard.allClear": "Nothing to report. Every cluster, node and datastore is within limits.",
+	"admin.dashboard.alert.snapshotScheduleFailed": "Automatic snapshots are failing on VM {subject}",
 	"admin.dashboard.alert.clusterUnreachable": "Cluster {cluster} is unreachable",
 	"admin.dashboard.alert.nodeOffline": "Node {subject} is offline",
 	"admin.dashboard.alert.nodeOfflineDisabled": "Node {subject} is offline - disabled in PVMSS, no VMs affected",

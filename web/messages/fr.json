@@ -1808,6 +1808,7 @@
 	"admin.dashboard.vmOther": "Autres",
 	"admin.dashboard.attentionTitle": "À traiter",
 	"admin.dashboard.allClear": "Rien à signaler. Clusters, nœuds et stockages sont dans les limites.",
+	"admin.dashboard.alert.snapshotScheduleFailed": "Les instantanés automatiques échouent sur la VM {subject}",
 	"admin.dashboard.alert.clusterUnreachable": "Le cluster {cluster} est injoignable",
 	"admin.dashboard.alert.nodeOffline": "Le nœud {subject} est hors ligne",
 	"admin.dashboard.alert.nodeOfflineDisabled": "Le nœud {subject} est hors ligne - désactivé dans PVMSS, aucune VM concernée",

@@ -1808,6 +1808,7 @@
 	"admin.dashboard.vmOther": "Altro",
 	"admin.dashboard.attentionTitle": "Richiede attenzione",
 	"admin.dashboard.allClear": "Niente da segnalare. Ogni cluster, nodo e datastore è entro i limiti.",
+	"admin.dashboard.alert.snapshotScheduleFailed": "Gli snapshot automatici non riescono sulla VM {subject}",
 	"admin.dashboard.alert.clusterUnreachable": "Il cluster {cluster} non è raggiungibile",
 	"admin.dashboard.alert.nodeOffline": "Il nodo {subject} è offline",
 	"admin.dashboard.alert.nodeOfflineDisabled": "Il nodo {subject} è offline - disabilitato in PVMSS, nessuna VM interessata",
