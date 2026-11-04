@@ -2,6 +2,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { flushSync, mount, unmount } from 'svelte';
 import { TaskTrayStore } from '#lib/features/tasks/tasks.svelte.js';
 import { m } from '#lib/paraglide/messages.js';
+import { formatDateTime } from '#lib/shared/format-date.js';
 import { ToastRegion } from '#lib/shared/ui/toast.svelte.js';
 import VmSnapshotsTab from './VmSnapshotsTab.svelte';
 
@@ -67,6 +68,36 @@ describe('VmSnapshotsTab schedule feedback', () => {
 		flushSync();
 		await submit();
 		expect(toast.items.at(-1)).toMatchObject({ variant: 'success', message: m['toast.snapshotScheduleCleared']() });
+		await unmount(tab);
+	});
+
+	it('shows why the latest automatic snapshot failed', async () => {
+		const { target, tab } = await setup({ frequency: 'daily', retain: 3, lastRunAt: '', lastFailure: 'cap_reached', lastFailureAt: '2026-11-04T19:00:00Z' }, json(200, {}));
+		expect(target.querySelector('[data-testid="schedule-failure"]')?.textContent).toContain(m['vms.schedule.failedCap']({ date: formatDateTime('2026-11-04T19:00:00Z') }));
+		await unmount(tab);
+	});
+
+	it('toasts a new run found by the background refresh and keeps form edits', async () => {
+		const timers = vi.spyOn(globalThis, 'setInterval');
+		let schedule = { frequency: 'daily', retain: 3, lastRunAt: '', lastFailure: '' };
+		vi.stubGlobal('fetch', vi.fn(() => Promise.resolve(json(200, { snapshots: [], maxSnapshots: 5, schedule }))));
+		const target = document.createElement('div');
+		document.body.append(target);
+		const tab = mount(VmSnapshotsTab, { target });
+		await new Promise((resolve) => setTimeout(resolve));
+		flushSync();
+		target.querySelector<HTMLInputElement>('[data-testid="schedule-weekly"]')!.click();
+		flushSync();
+
+		schedule = { ...schedule, lastRunAt: '2026-11-04T19:00:00Z' };
+		const refresh = timers.mock.calls.at(-1)![0] as () => void;
+		refresh();
+		await new Promise((resolve) => setTimeout(resolve));
+		flushSync();
+
+		expect(toast.items.at(-1)).toMatchObject({ variant: 'success', message: m['toast.snapshotAutoTaken']() });
+		expect(target.querySelector<HTMLInputElement>('[data-testid="schedule-weekly"]')!.checked).toBe(true);
+		timers.mockRestore();
 		await unmount(tab);
 	});
 

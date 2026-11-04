@@ -128,6 +128,7 @@ func TestValidateSnapshotSchedule(t *testing.T) {
 
 // sweepStore records every schedule write and audit row the sweeper makes.
 type sweepStore struct {
+	failures  []string
 	schedules []store.SnapshotSchedule
 	marked    []time.Time
 	deleted   []int
@@ -146,6 +147,12 @@ func (s *sweepStore) DeleteSnapshotSchedule(_ context.Context, _ string, vmid in
 
 func (s *sweepStore) ListSnapshotSchedules(context.Context) ([]store.SnapshotSchedule, error) {
 	return s.schedules, nil
+}
+
+func (s *sweepStore) MarkSnapshotScheduleFailure(_ context.Context, _ string, _ int, failure string, _ time.Time) error {
+	s.failures = append(s.failures, failure)
+
+	return nil
 }
 
 func (s *sweepStore) MarkSnapshotScheduleRun(_ context.Context, _ string, _ int, at time.Time) error {
@@ -366,6 +373,9 @@ func TestSweepBlocksWhenCapFull(t *testing.T) {
 	if len(client.created) != 0 {
 		t.Fatalf("cap reached: must not create, created = %v", client.created)
 	}
+	if !slices.Equal(st.failures, []string{vm.ScheduleFailureCapReached}) {
+		t.Fatalf("blocked run must record its failure: %v", st.failures)
+	}
 	if !slices.Contains(st.actions, "system:vm_snapshot_schedule_blocked") {
 		t.Fatalf("blocked run must be audited: %v", st.actions)
 	}
@@ -484,5 +494,8 @@ func TestSweepCreateFailureRetriesNextPass(t *testing.T) {
 
 	if len(st.marked) != 0 {
 		t.Fatal("failed create must not advance last_run_at, so the next pass retries")
+	}
+	if !slices.Equal(st.failures, []string{vm.ScheduleFailureCreateFailed}) {
+		t.Fatalf("failed create must record its failure: %v", st.failures)
 	}
 }

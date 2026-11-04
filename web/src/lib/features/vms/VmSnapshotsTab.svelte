@@ -5,7 +5,7 @@
 	import CreateSnapshotDialog from './CreateSnapshotDialog.svelte';
 	import DeleteSnapshotDialog from './DeleteSnapshotDialog.svelte';
 	import RollbackSnapshotDialog from './RollbackSnapshotDialog.svelte';
-	import { AUTO_SNAPSHOT_PREFIX, VmSnapshotsStore, type SnapshotFrequency, type VmSnapshot } from './snapshots.svelte';
+	import { AUTO_SNAPSHOT_PREFIX, VmSnapshotsStore, type SnapshotFrequency, type VmSnapshot, type VmSnapshotSchedule } from './snapshots.svelte';
 	import { m } from '#lib/paraglide/messages.js';
 	import { formatDateTime } from '#lib/shared/format-date.js';
 	import { getToastContext } from '#lib/shared/ui/toast.svelte.js';
@@ -16,6 +16,8 @@
 	import Button from '#lib/shared/ui/Button.svelte';
 	import TableSkeleton from '#lib/shared/ui/TableSkeleton.svelte';
 
+	const SCHEDULE_REFRESH_MS = 60_000;
+
 	const vmStore = getVmDetailContext();
 	const tray = getTaskTrayContext();
 	const toast = getToastContext();
@@ -25,12 +27,34 @@
 	let deleteOpen = $state(false);
 	let selected = $state<VmSnapshot | null>(null);
 
+	/** Picks up what the 15-minute server sweep did while the page stays open. */
+	async function refreshSchedule(): Promise<void> {
+		const before = snapshots.schedule;
+		if (!before || document.hidden) return;
+		await snapshots.load(true);
+		const after = snapshots.schedule;
+		if (!after) return;
+		if (after.lastRunAt !== before.lastRunAt) toast.success(m['toast.snapshotAutoTaken']());
+		// A repeating failure toasts once; the alert in the form stays.
+		if (after.lastFailure && after.lastFailure !== before.lastFailure) toast.error(failureMessage(after));
+	}
+
+	function failureMessage(schedule: VmSnapshotSchedule): string {
+		const date = formatCreatedAt(schedule.lastFailureAt ?? '');
+		return schedule.lastFailure === 'cap_reached' ? m['vms.schedule.failedCap']({ date }) : m['vms.schedule.failedCreate']({ date });
+	}
+
 	onMount(() => {
 		void snapshots.load();
-		return tray.onTaskOk(() => {
+		const timer = setInterval(() => void refreshSchedule(), SCHEDULE_REFRESH_MS);
+		const stopTaskListener = tray.onTaskOk(() => {
 			void snapshots.load();
 			void vmStore.load();
 		});
+		return () => {
+			clearInterval(timer);
+			stopTaskListener();
+		};
 	});
 
 	function openRollback(snapshot: VmSnapshot): void {
@@ -47,12 +71,15 @@
 		return formatDateTime(value);
 	}
 
-	// The form mirrors the stored schedule; a reload after a save resets it.
+	// The form mirrors the stored values, not the object: a background refresh
+	// returns a new object and must not wipe what the user is typing.
+	const storedFrequency = $derived(snapshots.schedule?.frequency ?? 'off');
+	const storedRetain = $derived(snapshots.schedule?.retain ?? 3);
 	let scheduleFrequency = $state<SnapshotFrequency>('off');
 	let scheduleRetain = $state(3);
 	$effect(() => {
-		scheduleFrequency = snapshots.schedule?.frequency ?? 'off';
-		scheduleRetain = snapshots.schedule?.retain ?? 3;
+		scheduleFrequency = storedFrequency;
+		scheduleRetain = storedRetain;
 	});
 
 	const retainLimit = $derived(snapshots.maxSnapshots && snapshots.maxSnapshots > 0 ? snapshots.maxSnapshots - 1 : null);
@@ -110,6 +137,9 @@
 			<p class="mt-2 text-xs text-muted-foreground" data-testid="schedule-last-run">
 				{snapshots.schedule.lastRunAt ? m['vms.schedule.lastRun']({ date: formatCreatedAt(snapshots.schedule.lastRunAt) }) : m['vms.schedule.neverRun']()}
 			</p>
+		{/if}
+		{#if snapshots.schedule?.lastFailure}
+			<Alert class="mt-3" data-testid="schedule-failure">{failureMessage(snapshots.schedule)}</Alert>
 		{/if}
 		{#if snapshots.scheduleError}
 			<Alert class="mt-3" data-testid="schedule-error">{snapshots.scheduleError}</Alert>

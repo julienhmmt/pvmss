@@ -29,6 +29,34 @@ func newScheduleStore(t *testing.T) *store.Store {
 }
 
 //nolint:wsl_v5 // lifecycle tests keep fixture setup and assertions adjacent
+func TestSnapshotScheduleFailureClearedByRun(t *testing.T) {
+	t.Parallel()
+
+	ctx := context.Background()
+	st := newScheduleStore(t)
+	if err := st.UpsertSnapshotSchedule(ctx, testStoreCluster, 100, "tenants", "daily", 3); err != nil {
+		t.Fatalf("upsert: %v", err)
+	}
+
+	at := time.Date(2026, 11, 1, 3, 0, 0, 0, time.UTC)
+	if err := st.MarkSnapshotScheduleFailure(ctx, testStoreCluster, 100, "cap_reached", at); err != nil {
+		t.Fatalf("mark failure: %v", err)
+	}
+	got, _, err := st.GetSnapshotSchedule(ctx, testStoreCluster, 100)
+	if err != nil || got.LastFailure != "cap_reached" || !got.LastFailureAt.Equal(at) || !got.LastRunAt.IsZero() {
+		t.Fatalf("after failure: %+v err=%v", got, err)
+	}
+
+	if err := st.MarkSnapshotScheduleRun(ctx, testStoreCluster, 100, at.Add(time.Hour)); err != nil {
+		t.Fatalf("mark run: %v", err)
+	}
+	got, _, err = st.GetSnapshotSchedule(ctx, testStoreCluster, 100)
+	if err != nil || got.LastFailure != "" || !got.LastFailureAt.IsZero() {
+		t.Fatalf("after run: %+v err=%v", got, err)
+	}
+}
+
+//nolint:wsl_v5 // lifecycle tests keep fixture setup and assertions adjacent
 func TestSnapshotScheduleLifecycle(t *testing.T) {
 	t.Parallel()
 

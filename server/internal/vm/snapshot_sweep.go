@@ -44,6 +44,12 @@ type sweepTarget struct {
 	max    int
 }
 
+// Failure codes stored on a schedule; the web UI translates them.
+const (
+	ScheduleFailureCapReached   = "cap_reached"
+	ScheduleFailureCreateFailed = "create_failed"
+)
+
 // ownership is the verdict of checkOwnership for one schedule.
 type ownership int
 
@@ -177,6 +183,7 @@ func takeScheduledSnapshot(ctx context.Context, deps SweepDependencies, schedule
 		// Never overflow the cap: manual snapshots may have filled it.
 		log.WarnContext(ctx, "snapshot sweep: snapshot cap reached, scheduled snapshot blocked", "event", "snapshot_sweep_blocked")
 		recordSweepAction(ctx, deps, schedule, AuditActionScheduleBlocked, log)
+		markSweepFailure(ctx, deps, schedule, ScheduleFailureCapReached, now, log)
 
 		return false
 	}
@@ -187,6 +194,7 @@ func takeScheduledSnapshot(ctx context.Context, deps SweepDependencies, schedule
 	}
 	if err != nil {
 		log.WarnContext(ctx, "snapshot sweep: create snapshot failed, retry next pass", "event", "snapshot_sweep_failed", "error", err)
+		markSweepFailure(ctx, deps, schedule, ScheduleFailureCreateFailed, now, log)
 
 		return false
 	}
@@ -297,6 +305,12 @@ func pruneAutoSnapshots(ctx context.Context, deps SweepDependencies, schedule st
 		}
 
 		recordSweepAction(ctx, deps, schedule, AuditActionSnapshotPrune, log)
+	}
+}
+
+func markSweepFailure(ctx context.Context, deps SweepDependencies, schedule store.SnapshotSchedule, failure string, now time.Time, log *slog.Logger) {
+	if err := deps.Store.MarkSnapshotScheduleFailure(ctx, schedule.Cluster, schedule.VMID, failure, now); err != nil {
+		log.ErrorContext(ctx, "snapshot sweep: mark failure failed", "event", "snapshot_sweep_failed", "error", err)
 	}
 }
 

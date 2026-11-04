@@ -26,6 +26,9 @@ export interface VmSnapshotSchedule {
 	retain: number;
 	/** Empty until the first automatic snapshot has been taken. */
 	lastRunAt: string;
+	/** Failure code of the latest attempt, empty after a success. */
+	lastFailure?: string;
+	lastFailureAt?: string;
 }
 
 /** Name prefix the server gives scheduler-owned snapshots. */
@@ -84,9 +87,12 @@ export class VmSnapshotsStore {
 		this.#schedulePath = `/api/v1/vms/${encodeURIComponent(cluster)}/${vmid}/snapshot-schedule`;
 	}
 
-	async load(): Promise<void> {
-		this.loading = true;
-		this.error = null;
+	/** A silent load is a background refresh: no skeleton, no error banner. */
+	async load(silent = false): Promise<void> {
+		if (!silent) {
+			this.loading = true;
+			this.error = null;
+		}
 		try {
 			const response = await get<SnapshotListResponse>(this.#basePath);
 			this.snapshots = response.snapshots;
@@ -94,9 +100,9 @@ export class VmSnapshotsStore {
 			this.capability = response.capability ?? null;
 			this.schedule = response.schedule ?? null;
 		} catch (error: unknown) {
-			this.error = errorMessage(error, () => m['vms.snapshots.errorLoad']());
+			if (!silent) this.error = errorMessage(error, () => m['vms.snapshots.errorLoad']());
 		} finally {
-			this.loading = false;
+			if (!silent) this.loading = false;
 		}
 	}
 

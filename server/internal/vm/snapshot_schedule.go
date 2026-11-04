@@ -54,6 +54,7 @@ type SnapshotScheduleStore interface {
 	DeleteSnapshotSchedule(ctx context.Context, cluster string, vmid int) error
 	ListSnapshotSchedules(ctx context.Context) ([]store.SnapshotSchedule, error)
 	MarkSnapshotScheduleRun(ctx context.Context, cluster string, vmid int, at time.Time) error
+	MarkSnapshotScheduleFailure(ctx context.Context, cluster string, vmid int, failure string, at time.Time) error
 	RecordAction(ctx context.Context, actor, cluster string, vmid int, action string) error
 }
 
