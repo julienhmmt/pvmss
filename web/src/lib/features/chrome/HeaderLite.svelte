@@ -15,12 +15,12 @@
 </script>
 
 <header
-	class="sticky top-0 z-30 flex h-14 items-center gap-2 border-b border-border bg-background/80 px-3 backdrop-blur-md sm:px-5"
+	class="sticky top-0 z-30 flex h-14 items-center gap-2 border-b border-border bg-background/80 px-2 backdrop-blur-md sm:px-5"
 	aria-label={m['chrome.header.ariaLabel']()}
 >
 	<a
 		href={resolve('/')}
-		class="inline-flex h-9 items-center gap-2 rounded-lg px-2 text-sm font-bold tracking-tight text-foreground transition-colors hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+		class="inline-flex h-9 items-center gap-2 rounded-lg px-1 text-sm font-bold sm:px-2 tracking-tight text-foreground transition-colors hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
 	>
 		<Logo showText={false} class="text-foreground" />
 		<!-- Logo only on phones: the docs link, language and theme controls need the width. -->
@@ -44,7 +44,14 @@
 		<ThemeToggle />
 		<!-- Not during first-run setup: there is nobody to sign in yet. -->
 		{#if page.route.id !== '/setup'}
-			<ButtonLink href={resolve('/login')} size="sm">{m['home.cta.login']()}</ButtonLink>
+			<ButtonLink href={resolve('/login')} size="sm" class="max-sm:px-2">
+				<svg viewBox="0 0 24 24" class="h-4 w-4 sm:hidden" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+					<path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4" />
+					<path d="M10 17l5-5-5-5" />
+					<path d="M15 12H3" />
+				</svg>
+				<span class="max-sm:sr-only">{m['home.cta.login']()}</span>
+			</ButtonLink>
 		{/if}
 	</nav>
 </header>
