@@ -11,8 +11,9 @@ activity log than `vm1`.
 
 ## Sources
 
-- **ISO** - installs from an administrator-approved image; the VM boots from
-  the CD-ROM first.
+- **ISO** - installs from an administrator-approved image; the installer
+  starts from the empty disk's fallback to the CD-ROM, and the VM boots from its
+  disk once installed, even with the ISO still mounted.
 - **Template** - clones an approved Proxmox template. The VM stays on the
   template's node, the disk cannot be smaller than the template's, and the
   wizard tells you when the target storage forces a full copy instead of a

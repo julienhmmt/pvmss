@@ -172,19 +172,19 @@ func setDiskFormKeys(form url.Values, spec VMSpec) {
 // setBootOrderForm emits boot=order=<devices> built only from the devices the
 // spec actually created. A hardcoded order naming an absent device
 // makes the VM unbootable, so the disk bus key is added only when storage is
-// set and the cdrom key only when an ISO is mounted. When an ISO is present,
-// the CD-ROM goes first so the VM boots from the installer on a fresh empty
-// disk - a disk-first order makes the VM fail to boot and Proxmox stops it.
-// After installation the user removes the ISO or changes the boot order.
+// set and the cdrom key only when an ISO is mounted. The disk goes first: an
+// empty disk falls through to the installer, and once the OS is installed the
+// VM boots from the disk even with the ISO still mounted, so a reboot never
+// restarts the install.
 func setBootOrderForm(form url.Values, spec VMSpec) {
 	var bootOrder []string
 
-	if spec.ISO != nil {
-		bootOrder = append(bootOrder, cdromDiskKey)
-	}
-
 	if spec.Disk.Storage != "" {
 		bootOrder = append(bootOrder, spec.Disk.Bus+"0")
+	}
+
+	if spec.ISO != nil {
+		bootOrder = append(bootOrder, cdromDiskKey)
 	}
 
 	if len(bootOrder) > 0 {

@@ -296,17 +296,17 @@ func cdromFromSpec(spec VMSpec) CDROMState {
 	return CDROMState{State: CDROMMounted, ISOVolID: spec.ISO.Storage + ":iso/" + spec.ISO.File}
 }
 
-// bootOrderFromSpec mirrors proxmox_create.go's setBootOrderForm: CD-ROM first
-// when an ISO is present (so the VM boots from the installer), then disk.
+// bootOrderFromSpec mirrors proxmox_create.go's setBootOrderForm: disk first,
+// then the CD-ROM when an ISO is present.
 func bootOrderFromSpec(spec VMSpec) []string {
 	var order []string
 
-	if spec.ISO != nil {
-		order = append(order, cdromDiskKey)
-	}
-
 	if spec.Disk.Storage != "" {
 		order = append(order, spec.Disk.Bus+"0")
+	}
+
+	if spec.ISO != nil {
+		order = append(order, cdromDiskKey)
 	}
 
 	return order
