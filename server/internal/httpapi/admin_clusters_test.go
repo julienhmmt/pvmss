@@ -4,6 +4,7 @@ package httpapi_test
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"log/slog"
 	"net/http"
 	"net/http/httptest"
@@ -229,7 +230,7 @@ func aliceClusterCookie(t *testing.T, authHandler *httpapi.Auth) *http.Cookie {
 
 // TestAdminClusters_NonAdminReturns403 - every /admin/clusters/*
 // endpoint rejects a non-admin identity with 403, matching the contract's
-// {"code":"forbidden","message":"admin only"} body on every one of the six.
+// {"code":"forbidden","message":"admin only"} body on each.
 //
 //nolint:paralleltest // HTTP fixture shares fake cluster state
 func TestAdminClusters_NonAdminReturns403(t *testing.T) {
@@ -247,6 +248,7 @@ func TestAdminClusters_NonAdminReturns403(t *testing.T) {
 		{testOpList, fixture.handler.ServeList, http.MethodGet, adminClustersPath, "", ""},
 		{testOpCreate, fixture.handler.ServeCreate, http.MethodPost, adminClustersPath, "", `{"name":"tertiary","url":"https://pve-d.example.com:8006/api2/json","tokenId":"pvmss@pve!service","tokenSecret":"s"}`},
 		{testOpUpdate, fixture.handler.ServeUpdate, http.MethodPut, adminClustersSecondaryPath, crossSecondaryCluster, `{"url":"https://pve-b.example.com:8006/api2/json","tokenId":"pvmss@pve!service"}`},
+		{"rename", fixture.handler.ServeRename, http.MethodPut, adminClustersSecondaryPath + "/rename", crossSecondaryCluster, `{"newName":"secondary-renamed"}`},
 		{testOpTest, fixture.handler.ServeTest, http.MethodPost, adminClustersSecondaryPath + "/test", crossSecondaryCluster, ""},
 		{testActionDelete, fixture.handler.ServeDelete, http.MethodDelete, "/api/v1/admin/clusters/secondary", crossSecondaryCluster, ""},
 	}
@@ -441,6 +443,82 @@ func TestAdminClusters_UpdateRequiresSecretToRedirect(t *testing.T) {
 	// Same endpoint, no secret: still allowed (display name, token id edits).
 	if response := update(`{"displayName":"B","url":"https://pve-b.example.com:8006/api2/json","tokenId":"pvmss@pve!service"}`); response.Code != http.StatusOK {
 		t.Fatalf("unchanged-endpoint update status = %d, want 200: %s", response.Code, response.Body.String())
+	}
+}
+
+// TestAdminClusters_Rename - rename path: 400 on an invalid or unchanged id,
+// 404 on an unknown cluster, 409 on a collision with an active or a
+// soft-deleted id, and on success 200 with the client and inventory
+// registries re-keyed to the new id.
+//
+//nolint:paralleltest,gocyclo // HTTP fixture shares fake cluster state; rename covers the contract branches in one sequential test
+func TestAdminClusters_Rename(t *testing.T) {
+	fixture := newAdminClusterFixture(t)
+	cookie := adminClusterCookie(t, fixture.auth)
+
+	rename := func(name, body string) *httptest.ResponseRecorder {
+		return adminClusterRequest(t, fixture, cookie, clusterRequestSpec{Method: fixture.handler.ServeRename, HTTPMethod: http.MethodPut, Path: "/api/v1/admin/clusters/" + name + "/rename", Name: name, Body: body})
+	}
+
+	response := rename(crossSecondaryCluster, `{"newName":"Bad_Name"}`)
+	if response.Code != http.StatusBadRequest {
+		t.Fatalf("invalid name status = %d, want 400: %s", response.Code, response.Body.String())
+	}
+	assertClusterErrorBody(t, response, "invalid_cluster_name")
+
+	response = rename(crossSecondaryCluster, `{"newName":"secondary"}`)
+	if response.Code != http.StatusBadRequest {
+		t.Fatalf("same name status = %d, want 400: %s", response.Code, response.Body.String())
+	}
+
+	response = rename("nonexistent", `{"newName":"fresh-id"}`)
+	if response.Code != http.StatusNotFound {
+		t.Fatalf("unknown cluster status = %d, want 404: %s", response.Code, response.Body.String())
+	}
+	assertClusterErrorBody(t, response, "not_found")
+
+	response = rename(crossSecondaryCluster, `{"newName":"default"}`)
+	if response.Code != http.StatusConflict {
+		t.Fatalf("active target status = %d, want 409: %s", response.Code, response.Body.String())
+	}
+	assertClusterErrorBody(t, response, "duplicate_cluster")
+
+	create := adminClusterRequest(t, fixture, cookie, clusterRequestSpec{Method: fixture.handler.ServeCreate, HTTPMethod: http.MethodPost, Path: adminClustersPath, Name: "", Body: `{"name":"ghost","url":"https://pve-g.example.com:8006/api2/json","tokenId":"pvmss@pve!service","tokenSecret":"s"}`})
+	if create.Code != http.StatusCreated {
+		t.Fatalf("create ghost status = %d: %s", create.Code, create.Body.String())
+	}
+	deleteResponse := adminClusterRequest(t, fixture, cookie, clusterRequestSpec{Method: fixture.handler.ServeDelete, HTTPMethod: http.MethodDelete, Path: "/api/v1/admin/clusters/ghost", Name: "ghost", Body: ""})
+	if deleteResponse.Code != http.StatusOK {
+		t.Fatalf("delete ghost status = %d: %s", deleteResponse.Code, deleteResponse.Body.String())
+	}
+	response = rename(crossSecondaryCluster, `{"newName":"ghost"}`)
+	if response.Code != http.StatusConflict {
+		t.Fatalf("soft-deleted target status = %d, want 409: %s", response.Code, response.Body.String())
+	}
+	assertClusterErrorBody(t, response, "duplicate_cluster")
+
+	response = rename(crossSecondaryCluster, `{"newName":"secondary-renamed"}`)
+	if response.Code != http.StatusOK {
+		t.Fatalf("rename status = %d, want 200: %s", response.Code, response.Body.String())
+	}
+	var renamed adminClusterDTOForTest
+	if err := json.Unmarshal(response.Body.Bytes(), &renamed); err != nil {
+		t.Fatalf("decode renamed: %v", err)
+	}
+	if renamed.Name != "secondary-renamed" {
+		t.Fatalf("renamed name = %q, want secondary-renamed", renamed.Name)
+	}
+	if _, err := fixture.registry.Client("secondary-renamed"); err != nil {
+		t.Fatalf("new id resolves no client: %v", err)
+	}
+	if _, err := fixture.registry.Client(crossSecondaryCluster); !errors.Is(err, cluster.ErrClusterNotFound) {
+		t.Fatalf("old id client = %v, want ErrClusterNotFound", err)
+	}
+	if _, err := fixture.inventory.Index("secondary-renamed"); err != nil {
+		t.Fatalf("new id inventory = %v", err)
+	}
+	if _, err := fixture.inventory.Index(crossSecondaryCluster); !errors.Is(err, inventory.ErrClusterNotFound) {
+		t.Fatalf("old id inventory = %v, want ErrClusterNotFound", err)
 	}
 }
 

@@ -2,6 +2,7 @@
 	import { untrack } from 'svelte';
 	import Alert from '#lib/shared/ui/Alert.svelte';
 	import Dialog from '#lib/shared/ui/Dialog.svelte';
+	import ConfirmDialog from '#lib/shared/ui/ConfirmDialog.svelte';
 	import Button from '#lib/shared/ui/Button.svelte';
 	import FormField from '#lib/shared/ui/FormField.svelte';
 	import FormSection from '#lib/shared/ui/FormSection.svelte';
@@ -19,6 +20,7 @@
 		error: string | null;
 		onClose: () => void;
 		onSubmit: (input: ClusterInput) => void;
+		onRename?: (newName: string) => Promise<boolean>;
 	}
 
 	let {
@@ -27,7 +29,8 @@
 		saving,
 		error,
 		onClose,
-		onSubmit
+		onSubmit,
+		onRename
 	}: Props = $props();
 	let name = $state('');
 	let displayName = $state('');
@@ -41,6 +44,12 @@
 	let clientKeyPem = $state('');
 	let clearCa = $state(false);
 	let clearClient = $state(false);
+	let renameTo = $state('');
+	let renameConfirmOpen = $state(false);
+	let renaming = $state(false);
+	const renameValid = $derived(
+		editing !== null && /^[a-z0-9-]+$/.test(renameTo.trim()) && renameTo.trim() !== editing.name
+	);
 	const tlsInfo = $derived(editing?.tls);
 	// Changing what the cluster is trusted against must re-enter the secret.
 	const trustChanged = $derived(
@@ -90,9 +99,23 @@
 			clientKeyPem = '';
 			clearCa = false;
 			clearClient = false;
+			renameTo = '';
+			renameConfirmOpen = false;
+			renaming = false;
 			nodeFingerprints = (editing?.tls?.nodeFingerprints ?? []).join('\n');
 		});
 	});
+
+	async function confirmRename(): Promise<void> {
+		if (onRename === undefined || !renameValid) return;
+		renaming = true;
+		try {
+			await onRename(renameTo.trim());
+		} finally {
+			renaming = false;
+			renameConfirmOpen = false;
+		}
+	}
 
 	function submit(): void {
 		onSubmit({
@@ -123,6 +146,16 @@
 						<TextField {id} {describedBy} {invalid} bind:value={displayName} />
 					{/snippet}
 				</FormField>
+				{#if editing && onRename}
+					<FormField label={m['admin.clusters.newId']()} hint={m['admin.clusters.newIdHint']()}>
+						{#snippet children({ id, describedBy, invalid })}
+							<div class="flex gap-2">
+								<TextField {id} {describedBy} {invalid} bind:value={renameTo} pattern="[a-z0-9-]+" placeholder={editing.name} />
+								<Button variant="secondary" disabled={!renameValid || renaming} onclick={() => (renameConfirmOpen = true)}>{m['admin.clusters.rename']()}</Button>
+							</div>
+						{/snippet}
+					</FormField>
+				{/if}
 				<FormField label={m['admin.clusters.url']()} required>
 					{#snippet children({ id, describedBy, invalid })}
 						<TextField {id} {describedBy} {invalid} type="url" bind:value={url} placeholder="https://pve.example:8006/api2/json" required />
@@ -203,3 +236,17 @@
 		<Button type="submit" form={FORM_ID} loading={saving} disabled={saving}>{m['common.save']()}</Button>
 	{/snippet}
 </Dialog>
+
+{#if editing}
+	<ConfirmDialog
+		open={renameConfirmOpen}
+		title={m['admin.clusters.renameTitle']({ name: editing.name })}
+		message={m['admin.clusters.renameConfirm']()}
+		confirmLabel={m['admin.clusters.rename']()}
+		cancelLabel={m['common.cancel']()}
+		confirming={renaming}
+		testId="cluster-rename-confirm"
+		onConfirm={() => void confirmRename()}
+		onClose={() => (renameConfirmOpen = false)}
+	/>
+{/if}

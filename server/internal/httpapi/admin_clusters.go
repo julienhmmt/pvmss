@@ -76,6 +76,12 @@ type updateClusterRequest struct {
 	TLS                   *tlsRequest `json:"tls"`
 }
 
+// renameClusterRequest carries the new cluster id; the old id is the route
+// parameter, mirroring how updates take the name from the path.
+type renameClusterRequest struct {
+	NewName string `json:"newName"`
+}
+
 // probeClusterResponse mirrors testClusterResponse for a not-yet-saved
 // connection, plus the discovered name the wizard suggests back to the admin.
 type probeClusterResponse struct {
@@ -219,6 +225,46 @@ func (handler *AdminClusters) ServeUpdate(w http.ResponseWriter, r *http.Request
 		"updated cluster "+name,
 		[]any{map[string]any{auditKeyName: name, "url": updated.URL, "tlsInsecureSkipVerify": updated.TLSInsecureSkipVerify, "tokenId": updated.TokenID}})
 	writeAdminJSON(w, http.StatusOK, handler.clusterDTO(updated))
+}
+
+// ServeRename handles PUT /api/v1/admin/clusters/:name/rename. The store
+// transaction rewrites every cluster-keyed table (sessions and audit_log
+// included); the client and inventory registries are then re-keyed so the new
+// id resolves immediately.
+// Concurrency (docs/adr/0001-cluster-id-rename.md): requests that already
+// resolved the old client finish; after the re-key the old id answers
+// cluster-not-found; rows written under the old id in the commit-to-rekey
+// window stay orphaned; open VNC websockets live until closed; task-tracker
+// entries under the old id are lost though the Proxmox task continues.
+func (handler *AdminClusters) ServeRename(w http.ResponseWriter, r *http.Request) {
+	var request renameClusterRequest
+	if err := decodeJSON(w, r, &request); err != nil {
+		writeAdminError(w, http.StatusBadRequest, "invalid_request", msgInvalidClusterRequest)
+		return
+	}
+	name := r.PathValue("name")
+	if err := handler.store.RenameCluster(r.Context(), name, request.NewName); err != nil {
+		handler.writeStoreFailure(w, err)
+		return
+	}
+	handler.clients.Remove(name)
+	stored, err := handler.store.GetCluster(r.Context(), request.NewName)
+	if err != nil {
+		handler.writeFailure(w, err)
+		return
+	}
+	if err := handler.register(r.Context(), stored); err != nil {
+		handler.writeFailure(w, err)
+		return
+	}
+	if handler.inventories != nil {
+		handler.inventories.Remove(name)
+	}
+	handler.awaitFirstRefresh(r.Context(), request.NewName)
+	handler.recordAdminAction(r, "admin.clusters.rename", "cluster", request.NewName,
+		"renamed cluster "+name+" to "+request.NewName,
+		[]any{map[string]any{"from": name, "to": request.NewName}})
+	writeAdminJSON(w, http.StatusOK, handler.clusterDTO(stored))
 }
 
 // secretKeptSafely refuses an update that keeps the stored token secret while

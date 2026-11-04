@@ -122,8 +122,6 @@ func registerAdminQuotaOverrideRoutes(mux *http.ServeMux, adminProtect adminRout
 
 // registerAdminPoolRoutes wires the admin pool endpoints (create, list,
 // detail, comment update, password reset, cascade delete). Admin-only.
-//
-//nolint:dupl // registration blocks for distinct handlers stay symmetric on purpose
 func registerAdminPoolRoutes(mux *http.ServeMux, adminProtect adminRouteProtect, h *AdminPools) {
 	mux.Handle("GET /api/v1/admin/pools", adminProtect(http.MethodGet, http.HandlerFunc(h.ServeList)))
 	mux.Handle("GET /api/v1/admin/pools/{name}", adminProtect(http.MethodGet, http.HandlerFunc(h.ServeDetail)))
@@ -156,14 +154,13 @@ func registerAdminOpsRoutes(mux *http.ServeMux, adminProtect adminRouteProtect, 
 }
 
 // registerAdminClusterRoutes wires the admin cluster management endpoints
-// (list, create, update, test, delete). Admin-only.
-//
-//nolint:dupl // registration blocks for distinct handlers stay symmetric on purpose
+// (list, create, update, test, delete, rename). Admin-only.
 func registerAdminClusterRoutes(mux *http.ServeMux, adminProtect adminRouteProtect, h *AdminClusters) {
 	mux.Handle("GET /api/v1/admin/clusters", adminProtect(http.MethodGet, http.HandlerFunc(h.ServeList)))
 	mux.Handle("POST /api/v1/admin/clusters", adminProtect(http.MethodPost, http.HandlerFunc(h.ServeCreate)))
 	mux.Handle("POST /api/v1/admin/clusters/probe", adminProtect(http.MethodPost, http.HandlerFunc(h.ServeProbe)))
 	mux.Handle("PUT /api/v1/admin/clusters/{name}", adminProtect(http.MethodPut, http.HandlerFunc(h.ServeUpdate)))
+	mux.Handle("PUT /api/v1/admin/clusters/{name}/rename", adminProtect(http.MethodPut, http.HandlerFunc(h.ServeRename)))
 	mux.Handle("POST /api/v1/admin/clusters/{name}/test", adminProtect(http.MethodPost, http.HandlerFunc(h.ServeTest)))
 	mux.Handle("DELETE /api/v1/admin/clusters/{name}", adminProtect(http.MethodDelete, http.HandlerFunc(h.ServeDelete)))
 }

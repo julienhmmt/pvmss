@@ -12,9 +12,6 @@ Former limitations promoted to tracked work - specs and tickets in `.scratch/`:
   Proxmox OIDC realm; Proxmox stays the identity source.
 - **`ostype` selector at create** - `.scratch/ostype-selector/`. Windows
   demand exists; the create form gets an OS field instead of hardcoding `l26`.
-- **Cluster id rename** - `.scratch/cluster-rename/`. One transaction rewrites
-  every `cluster` column including `audit_log` (audit history follows the new
-  id). See "Cluster id rename" below for the surface.
 - **OTLP log export** - `.scratch/otlp-logs/`. A collector now exists;
   research ticket first (filelog scrape and the syslog sink are zero-code
   routes) - `otelslog` is the last resort.
@@ -70,7 +67,7 @@ an admin disables or deletes them.
 
 | Item | Note |
 | --- | --- |
-| ADR practice | `docs/adr/` was removed 2026-10-15 (`a4c5b553`); ADRs 0001-0003 live in git history - the cluster rename spec (`.scratch/cluster-rename/`) is the next real decision and recreates the directory |
+| ~~ADR practice~~ | **Resolved** 2026-11-04: `docs/adr/` recreated by `0001-cluster-id-rename.md`; ADRs 0001-0003 from before the 2026-10-15 removal live in git history |
 | ~~Legacy single projection in `policy`~~ | **Resolved** (`refactor/audit-2026-11-cleanup`): `policy.New` no longer takes a projection; every caller shares the one service wired with `SetProjectionSource`, and the variadic `services` parameters are required `*policy.Policy` fields |
 
 Smalls moved to `.scratch/housekeeping/` (2026-11-02): two-column admin
@@ -180,10 +177,6 @@ Resolved 2026-10-04 except:
   `fingerprint`, `label`, `section`, `step`, `port` are used as extra attrs;
   the fixed vocabulary in `AGENTS.md` permits domain extras, so this is a
   note, not debt.
-
-## Cluster id rename (2026-10-14, funded 2026-11-02)
-
-The cluster id (`clusters.name`, e.g. `default`) cannot be renamed today; only the display label is editable (edit form and `displayName`). The id is a plain `cluster TEXT` key in about 20 tables with no foreign keys, used as the `:cluster` route param, as the client and inventory registry key, and as the persisted active-cluster selection. Decided 2026-11-02: fund it - one transaction rewrites every `cluster` column (catalog, policy, pools, VM and audit tables, `audit_log` included so history follows the new id), and the in-memory registries are re-keyed. Spec and tickets: `.scratch/cluster-rename/`. Workaround until it ships: create a cluster with the wanted id and remove the old one.
 
 ## How to re-check any of this
 

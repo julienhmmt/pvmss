@@ -6,7 +6,7 @@ Only administrators can see this page. The full walkthrough is in the
 ## Infrastructure
 
 **Clusters** connects one or more Proxmox environments (URL, API token,
-connection test). Each cluster has an immutable id (chosen at creation; `default` for the first one) and an editable label; the id cannot be renamed. **Nodes**
+connection test). Each cluster has an id (chosen at creation; `default` for the first one) and an editable label; the edit form also renames the id - it is rewritten everywhere PVMSS stores it and old links stop working. **Nodes**
 approves the hosts users may create VMs on. **PVMSS users** creates self-service
 users (Proxmox user + pool + ACL in one step).
 

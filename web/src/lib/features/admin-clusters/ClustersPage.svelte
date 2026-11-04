@@ -37,6 +37,17 @@
 		pendingDelete = null;
 	}
 
+	async function renameCluster(newName: string): Promise<boolean> {
+		const target = editing;
+		if (target === null) return false;
+		const succeeded = await store.rename(target.name, newName);
+		// The edited row no longer exists under the old id - close the form.
+		if (succeeded) {
+			formOpen = false;
+		}
+		return succeeded;
+	}
+
 	async function saveCluster(input: ClusterInput): Promise<void> {
 		const succeeded =
 			editing === null
@@ -146,4 +157,5 @@
 	error={store.error}
 	onClose={() => (formOpen = false)}
 	onSubmit={saveCluster}
+	onRename={renameCluster}
 />

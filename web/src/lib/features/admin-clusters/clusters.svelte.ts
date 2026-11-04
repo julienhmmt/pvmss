@@ -1,4 +1,5 @@
 import { get, post, put, del, ApiRequestError } from '#lib/shared/api/client.js';
+import { getSavedAdminCluster, saveAdminCluster } from '#lib/shared/clusters.js';
 import { m } from '#lib/paraglide/messages.js';
 
 export interface ClusterTlsInfo {
@@ -128,6 +129,17 @@ export class AdminClustersStore {
 			const updated = await put<AdminCluster>(`/api/v1/admin/clusters/${encodeURIComponent(name)}`, input);
 			this.clusters = this.clusters.map((cluster) => (cluster.name === name ? updated : cluster));
 			this.announce = m['admin.clusters.updated']({ name });
+		});
+	}
+
+	async rename(name: string, newName: string): Promise<boolean> {
+		return this.run(`rename:${name}`, async () => {
+			const renamed = await put<AdminCluster>(`/api/v1/admin/clusters/${encodeURIComponent(name)}/rename`, { newName });
+			this.clusters = this.clusters.map((cluster) => (cluster.name === name ? renamed : cluster));
+			if (getSavedAdminCluster() === name) {
+				saveAdminCluster(newName);
+			}
+			this.announce = m['admin.clusters.renamed']({ from: name, to: newName });
 		});
 	}
 

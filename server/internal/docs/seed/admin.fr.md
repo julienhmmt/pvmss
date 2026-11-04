@@ -6,7 +6,7 @@ Seuls les administrateurs voient cette page. La procédure complète est dans le
 ## Infrastructure
 
 **Clusters** connecte un ou plusieurs environnements Proxmox (URL, token
-d'API, test de connexion). Chaque cluster a un identifiant immuable (choisi à la création ; `default` pour le premier) et un libellé modifiable ; l'identifiant ne peut pas être renommé. **Nœuds** approuve les hôtes sur lesquels les utilisateurs peuvent
+d'API, test de connexion). Chaque cluster a un identifiant (choisi à la création ; `default` pour le premier) et un libellé modifiable ; le formulaire d'édition permet aussi de renommer l'identifiant, qui est réécrit partout où PVMSS le stocke - les anciens liens cessent de fonctionner. **Nœuds** approuve les hôtes sur lesquels les utilisateurs peuvent
 créer des VM. **Utilisateurs PVMSS** crée les utilisateurs self-service
 (utilisateur Proxmox + pool + ACL en une étape).
 

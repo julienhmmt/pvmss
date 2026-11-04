@@ -21,7 +21,10 @@ credentials (`admin@pve` / `pvmss-admin`).
 **Optional when `PVMSS_CLUSTER_SOURCE=proxmox`:** `PROXMOX_URL`,
 `PROXMOX_API_TOKEN_NAME`, `PROXMOX_API_TOKEN_VALUE` are all-or-nothing. All
 three set: they seed the `default` cluster on first boot only; afterwards the
-admin UI owns clusters. All three empty: the server boots with zero clusters
+admin UI owns clusters (add, edit, remove, and rename the id - the rename
+rewrites every cluster-keyed row, audit history included, and old
+`?cluster=` links stop working; see `docs/adr/0001-cluster-id-rename.md`).
+All three empty: the server boots with zero clusters
 and serves the first-run setup (`/setup`) until an administrator registers the
 first cluster there. A partial set still fails startup.
 

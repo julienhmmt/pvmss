@@ -13,6 +13,9 @@ import (
 	"io"
 	"regexp"
 	"time"
+
+	"modernc.org/sqlite"
+	sqlite3 "modernc.org/sqlite/lib"
 )
 
 var (
@@ -25,6 +28,31 @@ var (
 )
 
 var clusterNamePattern = regexp.MustCompile(`^[a-z0-9-]+$`)
+
+// clusterScopedTables lists every live table that keys rows by cluster id.
+// RenameCluster rewrites them all in one transaction: sessions move so
+// logged-in users keep working, audit_log moves so history follows the new
+// id (docs/adr/0001-cluster-id-rename.md). Adding a cluster-keyed table means
+// adding it here - the store test iterates this slice.
+var clusterScopedTables = []string{
+	"sessions",
+	"audit_log",
+	"catalog_nodes",
+	"catalog_storages",
+	"catalog_bridges",
+	"catalog_isos",
+	"catalog_templates",
+	"catalog_profiles",
+	"catalog_tags",
+	"managed_pools",
+	"vm_limits",
+	"node_limits",
+	"profile_ssh_keys",
+	"quota_requests",
+	"vm_leases",
+	"vm_snapshot_schedules",
+	"pool_quota_overrides",
+}
 
 // ClusterRow is the in-memory representation of one managed cluster. TokenSecret
 // is decrypted only inside the server process and is never an API response field.
@@ -157,6 +185,64 @@ func (s *Store) UpdateCluster(ctx context.Context, row ClusterRow) error {
 		return fmt.Errorf("update cluster: %w", err)
 	}
 	return nil
+}
+
+// RenameCluster renames an active cluster in one transaction: the clusters
+// row itself plus every table that keys rows by cluster id
+// (clusterScopedTables), including audit_log so history follows the new id.
+//
+// Errors: ErrInvalidClusterName for a malformed newName or newName == oldName,
+// sql.ErrNoRows when oldName is unknown or soft-deleted, ErrDuplicateCluster
+// when a clusters row already uses newName (active or soft-deleted) or orphan
+// rows under newName trip a uniqueness constraint.
+func (s *Store) RenameCluster(ctx context.Context, oldName, newName string) error {
+	if !clusterNamePattern.MatchString(newName) || newName == oldName {
+		return ErrInvalidClusterName
+	}
+	tx, err := s.db.BeginTx(ctx, nil)
+	if err != nil {
+		return fmt.Errorf("begin cluster rename: %w", err)
+	}
+	defer func() { _ = tx.Rollback() }()
+	var removedAt sql.NullString
+	err = tx.QueryRowContext(ctx, `SELECT removed_at FROM clusters WHERE name = ?`, oldName).Scan(&removedAt)
+	switch {
+	case errors.Is(err, sql.ErrNoRows), removedAt.Valid:
+		return sql.ErrNoRows
+	case err != nil:
+		return fmt.Errorf("find cluster: %w", err)
+	}
+	var collision int
+	if err := tx.QueryRowContext(ctx, `SELECT COUNT(*) FROM clusters WHERE name = ?`, newName).Scan(&collision); err != nil {
+		return fmt.Errorf("check rename target: %w", err)
+	}
+	if collision > 0 {
+		return fmt.Errorf("%w: cluster %q already exists", ErrDuplicateCluster, newName)
+	}
+	if _, err := tx.ExecContext(ctx, `UPDATE clusters SET name = ? WHERE name = ?`, newName, oldName); err != nil {
+		return fmt.Errorf("rename cluster row: %w", err)
+	}
+	for _, table := range clusterScopedTables {
+		//nolint:gosec // table names come from the fixed clusterScopedTables list, never from input
+		if _, err := tx.ExecContext(ctx, `UPDATE `+table+` SET cluster = ? WHERE cluster = ?`, newName, oldName); err != nil {
+			if isSQLiteConstraint(err) {
+				return fmt.Errorf("%w: rows already exist under cluster %q", ErrDuplicateCluster, newName)
+			}
+			return fmt.Errorf("rename cluster in %s: %w", table, err)
+		}
+	}
+	if err := tx.Commit(); err != nil {
+		return fmt.Errorf("commit cluster rename: %w", err)
+	}
+	return nil
+}
+
+// isSQLiteConstraint reports whether err is a SQLite constraint violation
+// (extended codes included): orphan rows under the rename target trip
+// uniqueness on the (cluster, ...) keys.
+func isSQLiteConstraint(err error) bool {
+	var sqliteErr *sqlite.Error
+	return errors.As(err, &sqliteErr) && sqliteErr.Code()&0xff == sqlite3.SQLITE_CONSTRAINT
 }
 
 // SoftDeleteCluster removes a cluster from active registries and clears its secret.
