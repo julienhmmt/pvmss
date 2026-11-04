@@ -18,6 +18,9 @@ type Creator interface {
 	// The VM materializes as the task progresses; a successful return means
 	// accepted, not finished.
 	CreateVM(ctx context.Context, spec VMSpec) (upid string, err error)
+	// HostCPUFlags returns the cpuinfo flags of each online node, one list per
+	// node. An error means the flags are unknown, not that the cluster is down.
+	HostCPUFlags(ctx context.Context) ([][]string, error)
 	// CloneVM dispatches a clone of an existing template VM and returns the
 	// task's UPID. The clone is asynchronous like CreateVM;
 	// the caller polls TaskStatus until completion before post-clone config.
@@ -76,6 +79,8 @@ type VMSpec struct {
 	ISO      *ISOSpec
 	// Image is the optional cloud image the VM's primary disk imports from
 	// (import-from). Mutually exclusive with ISO at the vm.Create layer.
+	// CPUType is the Proxmox cpu model. Empty means CPUTypeV2AES at the form layer.
+	CPUType          string
 	BIOS             string
 	Machine          string
 	TPM              bool

@@ -24,6 +24,7 @@ func createFromISO(ctx context.Context, policyService *policy.Policy, deps Creat
 	}
 
 	spec := buildCreateSpec(actor, req, plan, vmid)
+	spec.CPUType = resolveCPUType(ctx, deps.Creator, clusterName)
 
 	finalVMID, upid, err := dispatchCreateWithRetry(ctx, deps, spec)
 	if err != nil {

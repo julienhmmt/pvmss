@@ -67,7 +67,13 @@ func (p Proxmox) CreateVM(ctx context.Context, spec VMSpec) (string, error) {
 	// emulated LSI 53C895A, which also applies to SCSI disks added later.
 	form.Set("scsihw", scsiController)
 
-	form.Set("cpu", defaultCPUType)
+	// cpu is always sent: the API default kvm64 cannot boot Windows 11 24H2.
+	cpuType := spec.CPUType
+	if cpuType == "" {
+		cpuType = CPUTypeV2AES
+	}
+
+	form.Set("cpu", cpuType)
 
 	setDiskFormKeys(form, spec)
 

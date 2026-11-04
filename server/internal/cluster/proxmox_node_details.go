@@ -15,6 +15,7 @@ type proxmoxNodeHealthResponse struct {
 		Cores   int    `json:"cores"`
 		CPUs    int    `json:"cpus"`
 		Model   string `json:"model"`
+		Flags   string `json:"flags"`
 		Sockets int    `json:"sockets"`
 	} `json:"cpuinfo"`
 	LoadAverage []string `json:"loadavg"`

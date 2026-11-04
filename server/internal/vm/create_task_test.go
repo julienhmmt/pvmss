@@ -28,6 +28,10 @@ func (m *mockTaskCreator) CreateVM(_ context.Context, _ cluster.VMSpec) (string,
 	return "UPID:mock", nil
 }
 
+func (m *mockTaskCreator) HostCPUFlags(_ context.Context) ([][]string, error) {
+	return nil, nil
+}
+
 func (m *mockTaskCreator) CloneVM(_ context.Context, _ cluster.CloneSpec) (string, error) {
 	return "UPID:mock", nil
 }
