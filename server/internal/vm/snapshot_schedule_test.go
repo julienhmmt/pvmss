@@ -129,6 +129,7 @@ func TestValidateSnapshotSchedule(t *testing.T) {
 // sweepStore records every schedule write and audit row the sweeper makes.
 type sweepStore struct {
 	failures  []string
+	cleared   int
 	schedules []store.SnapshotSchedule
 	marked    []time.Time
 	deleted   []int
@@ -151,6 +152,12 @@ func (s *sweepStore) ListSnapshotSchedules(context.Context) ([]store.SnapshotSch
 
 func (s *sweepStore) MarkSnapshotScheduleFailure(_ context.Context, _ string, _ int, failure string, _ time.Time) error {
 	s.failures = append(s.failures, failure)
+
+	return nil
+}
+
+func (s *sweepStore) ClearSnapshotScheduleFailure(context.Context, string, int) error {
+	s.cleared++
 
 	return nil
 }

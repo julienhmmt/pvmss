@@ -143,6 +143,19 @@ func (s *Store) MarkSnapshotScheduleFailure(ctx context.Context, cluster string,
 	return nil
 }
 
+// ClearSnapshotScheduleFailure forgets a failure that no longer applies.
+func (s *Store) ClearSnapshotScheduleFailure(ctx context.Context, cluster string, vmid int) error {
+	_, err := s.db.ExecContext(ctx,
+		`UPDATE vm_snapshot_schedules SET last_failure = '', last_failure_at = '' WHERE cluster = ? AND vmid = ?`,
+		cluster, vmid,
+	)
+	if err != nil {
+		return fmt.Errorf("clear snapshot schedule failure: %w", err)
+	}
+
+	return nil
+}
+
 // DeleteSnapshotSchedule removes a VM's schedule. No row is not an error.
 func (s *Store) DeleteSnapshotSchedule(ctx context.Context, cluster string, vmid int) error {
 	_, err := s.db.ExecContext(ctx,

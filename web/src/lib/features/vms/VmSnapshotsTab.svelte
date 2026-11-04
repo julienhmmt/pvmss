@@ -41,7 +41,16 @@
 
 	function failureMessage(schedule: VmSnapshotSchedule): string {
 		const date = formatCreatedAt(schedule.lastFailureAt ?? '');
-		return schedule.lastFailure === 'cap_reached' ? m['vms.schedule.failedCap']({ date }) : m['vms.schedule.failedCreate']({ date });
+		switch (schedule.lastFailure) {
+			case 'cap_reached':
+				return m['vms.schedule.failedCap']({ date });
+			case 'cluster_unavailable':
+				return m['vms.schedule.failedUnavailable']({ date });
+			case 'prune_failed':
+				return m['vms.schedule.failedPrune']({ date });
+			default:
+				return m['vms.schedule.failedCreate']({ date });
+		}
 	}
 
 	onMount(() => {

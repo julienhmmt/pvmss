@@ -785,6 +785,8 @@
 	"vms.schedule.lastRun": "Last run {date}",
 	"vms.schedule.failedCap": "Automatic snapshot failed on {date}: the snapshot limit is reached. Delete a snapshot to resume.",
 	"vms.schedule.failedCreate": "Automatic snapshot failed on {date}. It will be retried automatically.",
+	"vms.schedule.failedUnavailable": "Automatic snapshot skipped on {date}: the cluster could not be reached. It will be retried automatically.",
+	"vms.schedule.failedPrune": "Old automatic snapshots could not be removed on {date}. It will be retried automatically.",
 	"vms.schedule.neverRun": "No automatic snapshot taken yet. The first one runs within 15 minutes.",
 	"vms.schedule.errorSave": "Could not save the schedule.",
 	"vms.lock.badge": "Locked: {lock}",

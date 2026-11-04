@@ -48,6 +48,10 @@ type sweepTarget struct {
 const (
 	ScheduleFailureCapReached   = "cap_reached"
 	ScheduleFailureCreateFailed = "create_failed"
+	// ScheduleFailureUnavailable: a due snapshot could not be attempted
+	// because the cluster or its data could not be read.
+	ScheduleFailureUnavailable = "cluster_unavailable"
+	ScheduleFailurePruneFailed = "prune_failed"
 )
 
 // ownership is the verdict of checkOwnership for one schedule.
@@ -109,6 +113,7 @@ func checkOwnership(ctx context.Context, deps SweepDependencies, schedule store.
 	// "VM gone" would drop every schedule after a restart.
 	if !deps.Indexes.IsIndexFresh(schedule.Cluster) {
 		log.WarnContext(ctx, "snapshot sweep: cluster inventory not fresh, skipping", "event", "snapshot_sweep_skipped")
+		markDueSkipped(ctx, deps, schedule, log)
 
 		return cluster.VM{}, ownershipSkip
 	}
@@ -116,6 +121,7 @@ func checkOwnership(ctx context.Context, deps SweepDependencies, schedule store.
 	index, err := deps.Indexes.Index(schedule.Cluster)
 	if err != nil || index == nil {
 		log.WarnContext(ctx, "snapshot sweep: cluster index unavailable, skipping", "event", "snapshot_sweep_skipped", "error", err)
+		markDueSkipped(ctx, deps, schedule, log)
 
 		return cluster.VM{}, ownershipSkip
 	}
@@ -153,13 +159,16 @@ func sweepSchedule(ctx context.Context, deps SweepDependencies, schedule store.S
 	snapshots, err := target.reader.ListSnapshots(ctx, target.node, schedule.VMID)
 	if err != nil {
 		log.WarnContext(ctx, "snapshot sweep: list snapshots failed, skipping", "event", "snapshot_sweep_skipped", "error", err)
+		markDueSkipped(ctx, deps, schedule, log)
 
 		return
 	}
 
 	snapshots = visibleSnapshots(snapshots)
 
-	if IsSnapshotDue(schedule, now) && takeScheduledSnapshot(ctx, deps, schedule, target, snapshots, now, log) {
+	due := IsSnapshotDue(schedule, now)
+	taken := due && takeScheduledSnapshot(ctx, deps, schedule, target, snapshots, now, log)
+	if taken {
 		// The snapshot is awaited, so it is in the list now.
 		snapshots, err = target.reader.ListSnapshots(ctx, target.node, schedule.VMID)
 		if err != nil {
@@ -171,7 +180,18 @@ func sweepSchedule(ctx context.Context, deps SweepDependencies, schedule store.S
 		snapshots = visibleSnapshots(snapshots)
 	}
 
-	pruneAutoSnapshots(ctx, deps, schedule, target, snapshots, log)
+	pruned := pruneAutoSnapshots(ctx, deps, schedule, target, snapshots, log)
+
+	// A due snapshot that failed keeps its own, more useful, failure.
+	switch {
+	case !pruned && (!due || taken):
+		markSweepFailure(ctx, deps, schedule, ScheduleFailurePruneFailed, now, log)
+	case pruned && !due && schedule.LastFailure != "":
+		// Nothing is due and nothing failed: an older failure no longer applies.
+		if err := deps.Store.ClearSnapshotScheduleFailure(ctx, schedule.Cluster, schedule.VMID); err != nil {
+			log.ErrorContext(ctx, "snapshot sweep: clear failure failed", "event", "snapshot_sweep_failed", "error", err)
+		}
+	}
 }
 
 // takeScheduledSnapshot creates the due snapshot and waits for its task. It
@@ -214,6 +234,7 @@ func resolveSweepTarget(ctx context.Context, deps SweepDependencies, schedule st
 	client, err := deps.Clients.Client(schedule.Cluster)
 	if err != nil {
 		log.WarnContext(ctx, "snapshot sweep: cluster client unavailable, skipping", "event", "snapshot_sweep_skipped", "error", err)
+		markDueSkipped(ctx, deps, schedule, log)
 
 		return sweepTarget{}, false
 	}
@@ -224,6 +245,7 @@ func resolveSweepTarget(ctx context.Context, deps SweepDependencies, schedule st
 	tasks, tasksOK := client.(TaskReader)
 	if !readerOK || !writerOK || !statusOK || !tasksOK {
 		log.WarnContext(ctx, "snapshot sweep: cluster lacks snapshot capability, skipping", "event", "snapshot_sweep_skipped")
+		markDueSkipped(ctx, deps, schedule, log)
 
 		return sweepTarget{}, false
 	}
@@ -231,6 +253,7 @@ func resolveSweepTarget(ctx context.Context, deps SweepDependencies, schedule st
 	gabarit, err := deps.Policy.Gabarit(ctx, schedule.Cluster)
 	if err != nil {
 		log.WarnContext(ctx, "snapshot sweep: snapshot cap unavailable, skipping", "event", "snapshot_sweep_skipped", "error", err)
+		markDueSkipped(ctx, deps, schedule, log)
 
 		return sweepTarget{}, false
 	}
@@ -238,6 +261,7 @@ func resolveSweepTarget(ctx context.Context, deps SweepDependencies, schedule st
 	live, err := statusReader.VMStatus(ctx, machine.Node, schedule.VMID)
 	if err != nil {
 		log.WarnContext(ctx, "snapshot sweep: vm status read failed, skipping", "event", "snapshot_sweep_skipped", "error", err)
+		markDueSkipped(ctx, deps, schedule, log)
 
 		return sweepTarget{}, false
 	}
@@ -291,8 +315,10 @@ func pruneOrphanSchedule(ctx context.Context, deps SweepDependencies, schedule s
 
 // pruneAutoSnapshots deletes the oldest auto snapshots beyond retain. Each
 // delete is awaited. A failed delete is logged and left in the list, so the
-// next pass sees it again.
-func pruneAutoSnapshots(ctx context.Context, deps SweepDependencies, schedule store.SnapshotSchedule, target sweepTarget, snapshots []Snapshot, log *slog.Logger) {
+// next pass sees it again. It returns false when any delete failed.
+func pruneAutoSnapshots(ctx context.Context, deps SweepDependencies, schedule store.SnapshotSchedule, target sweepTarget, snapshots []Snapshot, log *slog.Logger) bool {
+	ok := true
+
 	for _, old := range AutoSnapshotsToPrune(snapshots, schedule.Retain) {
 		upid, err := target.writer.DeleteSnapshot(ctx, target.node, schedule.VMID, old.Name)
 		if err == nil {
@@ -301,10 +327,23 @@ func pruneAutoSnapshots(ctx context.Context, deps SweepDependencies, schedule st
 		if err != nil {
 			log.WarnContext(ctx, "snapshot sweep: prune failed, retry next pass", "event", "snapshot_sweep_prune_failed", "snapshot", old.Name, "error", err)
 
+			ok = false
+
 			continue
 		}
 
 		recordSweepAction(ctx, deps, schedule, AuditActionSnapshotPrune, log)
+	}
+
+	return ok
+}
+
+// markDueSkipped records a skip only when a snapshot was due: an outage between
+// two scheduled runs costs the user nothing, so it raises no alert.
+func markDueSkipped(ctx context.Context, deps SweepDependencies, schedule store.SnapshotSchedule, log *slog.Logger) {
+	now := deps.Now()
+	if IsSnapshotDue(schedule, now) {
+		markSweepFailure(ctx, deps, schedule, ScheduleFailureUnavailable, now, log)
 	}
 }
 

@@ -785,6 +785,8 @@
 	"vms.schedule.lastRun": "Ultima esecuzione {date}",
 	"vms.schedule.failedCap": "Snapshot automatico non riuscito il {date}: limite di snapshot raggiunto. Elimina uno snapshot per riprendere.",
 	"vms.schedule.failedCreate": "Snapshot automatico non riuscito il {date}. Verrà ritentato automaticamente.",
+	"vms.schedule.failedUnavailable": "Snapshot automatico saltato il {date}: cluster non raggiungibile. Verrà ritentato automaticamente.",
+	"vms.schedule.failedPrune": "Impossibile rimuovere i vecchi snapshot automatici il {date}. Verrà ritentato automaticamente.",
 	"vms.schedule.neverRun": "Nessuno snapshot automatico ancora. Il primo verrà creato entro 15 minuti.",
 	"vms.schedule.errorSave": "Impossibile salvare la pianificazione.",
 	"vms.lock.badge": "Bloccata: {lock}",
