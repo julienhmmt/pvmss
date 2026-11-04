@@ -112,15 +112,9 @@
 						<span class="h-2 w-2 rounded-full border border-muted-foreground-subtle/50 bg-background"></span>
 					</span>
 					<div class="flex-1 p-6">
-						<div class="flex items-start justify-between">
-							<span class="inline-flex rounded-xl bg-primary/10 p-2.5 text-primary transition-transform duration-300 group-hover:scale-110">
-								{@render moduleIcon(module.icon)}
-							</span>
-							<span
-								class="mt-1 h-2 w-2 rounded-full transition-colors duration-500 {online[i] ? 'bg-success shadow-[0_0_0_4px] shadow-success/20' : 'bg-muted-foreground-subtle'}"
-								aria-hidden="true"
-							></span>
-						</div>
+						<span class="inline-flex rounded-xl bg-primary/10 p-2.5 text-primary transition-transform duration-300 group-hover:scale-110">
+							{@render moduleIcon(module.icon)}
+						</span>
 						<h3 class="mt-4 text-base font-semibold tracking-tight">{module.title()}</h3>
 						<p class="mt-1.5 text-sm text-muted-foreground">{module.description()}</p>
 					</div>
