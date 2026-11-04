@@ -6,8 +6,6 @@ const tooltip = (): HTMLElement | null => document.body.querySelector<HTMLElemen
 const trigger = (): HTMLElement => document.body.querySelector<HTMLElement>('[data-tooltip-trigger]')!;
 
 async function showOnHover(): Promise<void> {
-	// The first tick lets bits-ui's effects register the trigger; dispatching
-	// before they run is a no-op.
 	await tick();
 	trigger().dispatchEvent(new Event('pointerenter'));
 	await vi.advanceTimersByTimeAsync(250);
@@ -83,7 +81,5 @@ describe('Tooltip', () => {
 		expect(tooltip()).toBeNull();
 	});
 
-	// Escape dismissal and near-top-edge flip are asserted in e2e (real
-	// layout and real keyboard): happy-dom cannot exercise bits-ui's escape
-	// layer or floating-ui collision detection.
+	// Near-top-edge flip is asserted in e2e: happy-dom has no real layout.
 });

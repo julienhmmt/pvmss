@@ -1,86 +1,3 @@
-<!--
-SYNC IMPACT REPORT
-==================
-Version change: (template, unversioned) → 1.0.0
-Bump rationale: MAJOR - initial ratification. First concrete constitution replacing
-the unfilled template. All principles newly defined.
-
-Principles defined (12):
-  I.    Vocabulaire imposé
-  II.   API-first
-  III.  Resolve() est l'unique accès en écriture (NON NÉGOCIABLE)
-  IV.   Chemins de lecture et d'écriture séparés
-  V.    Multi-cluster par construction
-  VI.   Le serveur est la seule frontière (NON NÉGOCIABLE)
-  VII.  Svelte 5 runes uniquement
-  VIII. Le plus simple qui marche
-  IX.   Tranches verticales
-  X.    Design figé
-  XI.   Accessibilité (NON NÉGOCIABLE)
-  XII.  Erreurs explicites
-
-Sections added:
-  - Contraintes techniques  (absorbe les plafonds de taille : règle source n°8)
-  - Qualité et workflow     (absorbe la discipline de test : règle source n°12)
-
-Note: les 14 règles fournies en entrée sont toutes présentes. Les règles 8 (plafonds
-de taille) et 12 (tests) ont été placées en sections dédiées plutôt qu'en principes,
-car le « Constitution Check » de plan-template.md consomme ces sections comme portes
-de validation - elles y sont donc plus contraignantes, pas moins.
-
-Templates requiring updates:
-  ✅ .specify/templates/plan-template.md - Constitution Check rempli (14 portes, dont 3
-                                            NON NÉGOCIABLES) ; arborescence remplacée par
-                                            server/ + web/ ; les 3 options génériques
-                                            (single project / web app / mobile) supprimées
-  ✅ .specify/templates/tasks-template.md - 2 conflits RÉELS corrigés :
-                                            (a) l.25 « Web app: backend/src/, frontend/src/ »
-                                                contredisait la structure server/ + web/ ;
-                                            (b) « Tests … (OPTIONAL - only if tests requested) »
-                                                × 3 contredisait la discipline de test
-                                                obligatoire → passé en (REQUIRED)
-  ✅ .specify/templates/spec-template.md - vérifié section par section, aucun conflit
-  ✅ .claude/skills/speckit-*/SKILL.md - aucune référence périmée
-
-Deferred TODOs: aucun.
-
-Correction: une première rédaction de ce rapport annonçait tasks-template.md « aucun
-conflit détecté » sans l'avoir vérifié. Contrôle effectué ensuite : deux conflits réels,
-corrigés ci-dessus.
-
---------------------------------------------------------------------------------
-AMENDEMENT 1.0.0 → 1.1.0 (2026-08-01)
-Bump rationale: MINOR - un principe ajouté, un principe renforcé, une section étendue.
-
-Ajouté:
-  XI. Aucun Proxmox requis (NON NÉGOCIABLE) - interface cluster.Client à deux
-      implémentations de production (réelle + factice), choix fait une seule fois au
-      câblage. Motivé par un constat vérifié : le legacy v0.3 compte 110 occurrences de
-      « Offline » dispersées dans son code (state/manager_cache.go, manager_proxmox.go…),
-      anti-motif explicitement proscrit.
-  Anciens XI et XII renumérotés en XII (Accessibilité) et XIII (Erreurs explicites).
-
-Renforcé:
-  IX. Tranches verticales → « démontrables à la main ». Toute tranche se termine par une
-      démonstration cliquable dans un navigateur, décrite dans son quickstart.md. Une
-      démonstration réduite à curl ou à une suite verte ne compte pas.
-
-Étendu:
-  « Qualité et workflow » → sous-section Tests de bout en bout : Playwright contre le
-  binaire réel et le client factice, mis en place à la première tranche cliquable, chaque
-  tranche ajoutant ensuite le scénario E2E de sa propre démonstration.
-
-Templates requiring updates:
-  ⚠ .specify/templates/plan-template.md - Constitution Check : ajouter la porte XI,
-                                          renuméroter XI→XII et XII→XIII, référence de
-                                          version v1.0.0 → v1.1.0
-  ⚠ .claude/v0.4/plan/PL00-plan-de-reecriture.md - découpage en tranches à revoir
-                                          (client factice et E2E dès le socle, point de
-                                          démonstration par tranche)
-  ✅ .specify/templates/tasks-template.md - renvois génériques à « Qualité et workflow »,
-                                          restent valides
--->
-
 # Constitution PVMSS
 
 PVMSS (Proxmox VM Self-Service) est un portail permettant à un utilisateur de gérer ses
@@ -88,10 +5,8 @@ machines virtuelles Proxmox sans accès à l'interface Proxmox. Cette constituti
 la réécriture intégrale **v0.4** (backend Go, frontend SvelteKit / Svelte 5 runes /
 TypeScript).
 
-Elle encode des décisions **déjà arbitrées** et documentées dans la cartographie
-`.claude/v0.4/` (93 fiches : 58 fonctions utilisateur, 17 domaines backend, 9 fiches
-techniques frontend, décisions produit et architecture). Aucune tranche de la réécriture
-ne rediscute ces points.
+Elle encode des décisions **déjà arbitrées** : aucune tranche ne les rediscute sans
+amendement.
 
 ## Core Principles
 
@@ -103,8 +18,9 @@ Trois concepts distincts, jamais confondus :
 - **quota** - nombre de VMs autorisé par utilisateur ;
 - **capacité** - agrégat de ressources par nœud.
 
-Le mot « limite » employé seul est **BANNI** du code, des identifiants, de l'interface,
-des specs et des messages d'erreur.
+Le code, les identifiants et les specs emploient toujours l'un de ces trois termes. Dans
+l'interface, « limites » reste admis comme mot générique pour l'utilisateur, quand il
+ne désigne pas une notion précise.
 
 _Rationale : ces trois notions ont été confondues dans le code v0.3, produisant des règles
 appliquées au mauvais endroit. Un vocabulaire distinct rend l'erreur visible à la lecture._
@@ -210,8 +126,8 @@ Une tranche qui ne produit rien d'essayable est mal découpée.
 - Le jeu de jetons de couleur **OKLCH** de la v0.3 est conservé tel quel, thème clair et
   sombre. Aucune couleur n'est ajoutée ni modifiée sans décision explicite.
 - Le kit UI est **maison** (`src/lib/shared/ui/`) : aucune bibliothèque de composants
-  vendorée (pas de shadcn). Tout composant partagé y vit, avec son accessibilité ; il
-  peut s'appuyer sur les primitives bits-ui.
+  vendorée (ni shadcn ni bits-ui). Tout composant partagé y vit, avec son
+  accessibilité, plutôt qu'une dépendance de plus.
 - Icônes : composants SVG maison (`src/lib/shared/ui/icons/`), un fichier par icône.
 - Internationalisation via **Paraglide** : clés typées, absence détectée à la compilation.
 
@@ -312,20 +228,18 @@ produit une nouvelle valeur.
 
 **Portes de validation** - une tranche n'est fusionnée que si :
 
-1. les principes ci-dessus sont respectés, ou la dérogation est justifiée dans le
-   « Complexity Tracking » du plan ;
+1. les principes ci-dessus sont respectés, ou la dérogation est justifiée dans la
+   pull request ;
 2. les plafonds de taille sont tenus ;
-3. la couverture de test de la logique métier est effective ;
-4. les fiches de la cartographie couvertes par la tranche passent.
+3. la couverture de test de la logique métier est effective.
 
 ## Governance
 
 Cette constitution **prévaut** sur toute autre pratique, habitude ou préférence exprimée
-dans une spec, un plan ou une revue.
+dans une spec, un ticket ou une revue.
 
 **Amendement** - toute modification exige : (1) la décision explicite du responsable du
-projet, (2) la mise à jour de ce fichier avec incrément de version, (3) la propagation aux
-templates dépendants (`plan-template.md`, `spec-template.md`, `tasks-template.md`).
+projet, (2) la mise à jour de ce fichier avec incrément de version.
 
 **Versionnement sémantique** :
 
@@ -333,13 +247,7 @@ templates dépendants (`plan-template.md`, `spec-template.md`, `tasks-template.m
 - **MINOR** - ajout d'un principe ou d'une section, ou extension matérielle d'une règle ;
 - **PATCH** - clarification, reformulation, correction sans effet sémantique.
 
-**Conformité** - chaque plan de tranche DOIT franchir le « Constitution Check » avant la
-phase de recherche, puis à nouveau après la conception. Toute violation assumée est
-consignée dans le tableau « Complexity Tracking » du plan, avec la raison et l'alternative
-plus simple écartée. Une violation non consignée bloque la fusion.
+**Conformité** - toute violation assumée est signalée dans la pull request, avec la raison
+et l'alternative plus simple écartée.
 
-**Référence** - la cartographie `.claude/v0.4/` fait foi sur _ce que fait_ l'application et
-_ce qu'il ne faut pas refaire_. Elle n'est pas publiée tant que la fiche `securite/S01`
-contient une preuve de concept exploitable.
-
-**Version**: 1.3.0 | **Ratified**: 2026-08-01 | **Last Amended**: 2026-11-04
+**Version**: 2.0.0 | **Ratified**: 2026-08-01 | **Last Amended**: 2026-11-04

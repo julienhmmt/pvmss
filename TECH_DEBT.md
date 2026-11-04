@@ -125,7 +125,7 @@ grids, `recovery/` stale `backend/` refs.
   real fetches; `src/test/setup.ts` now fails loudly on any unstubbed fetch.
 - **Constitution X amended** (`2c82e5fb`, v1.2.0): it now names the real
   design system - in-house `src/lib/shared/ui/` kit and icon components,
-  no shadcn/bits-ui, no Iconify.
+  no shadcn/bits-ui, no Iconify. bits-ui was tried and removed (2026-11-04).
 
 ## Fixed in the docs review (2026-09-28)
 

@@ -6,10 +6,6 @@ file records **Layer B only** - the PVMSS mockups - never the Modernist kit
 `web/src/app.css`; this document is the implementer's map from mockup tokens to
 those variables.
 
-Reference: the internal `002-design-import` feature spec (not vendored in
-this repo - `specs/` is gitignored). The contract and port plan live there;
-this document is the implementer-facing extract that stays in the repo.
-
 ## 1. Light ramp (Layer B)
 
 | Role          | Mockup token | CSS variable (`app.css`)               | Light value                                                                       |
@@ -150,4 +146,3 @@ T019, with one documented exception:
 - Modernist red `#ec3013`, 0-radius, Archivo-from-Google-CDN.
 - Hard-coded hex in `.svelte` files. Tokens live in `web/src/app.css`.
 - Third-party font or DS CDN requests at runtime.
-- The lone word "limit" / "limite" in UI copy.

@@ -17,7 +17,7 @@ describe('Menu', () => {
 	});
 
 	function open(): void {
-		trigger().dispatchEvent(new PointerEvent('pointerdown', { bubbles: true, button: 0 }));
+		trigger().click();
 	}
 
 	it('opens on the trigger and lists its items', async () => {
@@ -58,7 +58,44 @@ describe('Menu', () => {
 		expect(onclick).toHaveBeenCalledOnce();
 	});
 
-	// Escape, focus return and select-to-close are bits-ui/dismissible-layer
-	// machinery that happy-dom cannot exercise; they are asserted in the e2e
-	// pass on the compact VM action bar (ticket 04's seam).
+	it('closes on Escape, returns focus and moves with the arrow keys', async () => {
+		mounted = mount(Menu as unknown as Component, {
+			target: document.body,
+			props: {
+				label: 'More',
+				testId: 'm',
+				items: [
+					{ label: 'One', onclick: () => {} },
+					{ label: 'Off', onclick: () => {}, disabled: true },
+					{ label: 'Two', onclick: () => {} }
+				]
+			}
+		});
+		await tick();
+		open();
+		await tick();
+		await tick();
+		expect(document.activeElement).toBe(items()[0]);
+
+		menu()!.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowDown', bubbles: true }));
+		expect(document.activeElement).toBe(items()[2]);
+
+		menu()!.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+		await tick();
+		expect(menu()).toBeNull();
+		expect(document.activeElement).toBe(trigger());
+	});
+
+	it('closes after selecting an item', async () => {
+		mounted = mount(Menu as unknown as Component, {
+			target: document.body,
+			props: { label: 'More', testId: 'm', items: [{ label: 'One', onclick: () => {} }] }
+		});
+		await tick();
+		open();
+		await tick();
+		items()[0]!.click();
+		await tick();
+		expect(menu()).toBeNull();
+	});
 });

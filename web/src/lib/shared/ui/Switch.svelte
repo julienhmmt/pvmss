@@ -1,7 +1,7 @@
 <script lang="ts">
 	/**
 	 * Switch - a small accessible toggle primitive in the same hand-rolled
-	 * style as Dialog/Tabs/Dropdown (no bits-ui dependency in this codebase).
+	 * style as Dialog/Tabs/Menu.
 	 * Renders a role="switch" button with aria-checked, keyboard-activatable.
 	 * The toggle's own transition is guarded by the global prefers-reduced-
 	 * motion rule in app.css (constitution XII).

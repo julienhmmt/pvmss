@@ -48,8 +48,7 @@
 		"@fontsource-variable/archivo": "^5.3.0",
 		"@novnc/novnc": "1.7.0",
 		"@xterm/addon-fit": "^0.11.0",
-		"@xterm/xterm": "^6.0.0",
-		"bits-ui": "2.20.2"
+		"@xterm/xterm": "^6.0.0"
 	},
 	"overrides": {
 		"brace-expansion": "^5.0.12",
