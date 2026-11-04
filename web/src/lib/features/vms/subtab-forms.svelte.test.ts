@@ -96,6 +96,24 @@ describe('Ticket 10: VM detail power confirmation & sub-tab form hygiene', () =>
 		expect(dialog).not.toBeNull();
 	});
 
+	it('VmActionBar quick mode shows only secondary applicable actions and confirms forceful ones', async () => {
+		storeInstance = new VmDetailStore('default', 101);
+		storeInstance.entity = sampleEntity('running');
+		const actionSpy = vi.spyOn(storeInstance, 'action').mockResolvedValue();
+
+		mount(VmActionBar, { target: document.body, props: { quick: true } });
+
+		const ids = [...document.querySelectorAll('[data-testid^="vm-quick-"]')].map((el) => el.getAttribute('data-testid'));
+		expect(ids).toEqual(['vm-quick-stop', 'vm-quick-reboot', 'vm-quick-reset', 'vm-quick-pause']);
+
+		document.querySelector<HTMLButtonElement>('[data-testid="vm-quick-stop"]')!.click();
+		flushSync();
+		await tick();
+
+		expect(actionSpy).not.toHaveBeenCalled();
+		expect(document.querySelector('[data-testid="vm-action-confirm"]')).not.toBeNull();
+	});
+
 	it('EditNetworkInterfaceDialog filters bridges to the VM node without duplicate-key errors or node labels', async () => {
 		storeInstance = new VmDetailStore('default', 101);
 		storeInstance.entity = sampleEntity('running');
