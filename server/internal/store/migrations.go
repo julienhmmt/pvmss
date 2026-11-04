@@ -193,31 +193,6 @@ CREATE TABLE audit_config (
 );
 INSERT INTO audit_config (id, retention_days) VALUES (1, 365);
 
--- Which admin-published cloud-init file a VM uses. Unlike the legacy
--- vm_cloudinit_snippets rows, its file is never deleted with the VM.
-CREATE TABLE vm_cloudinit_documents (
-	cluster     TEXT NOT NULL,
-	vmid        INTEGER NOT NULL,
-	template_id TEXT NOT NULL,
-	filename    TEXT NOT NULL,
-	updated_at  TEXT NOT NULL,
-	updated_by  TEXT NOT NULL,
-	PRIMARY KEY (cluster, vmid)
-);
-
--- Legacy per-VM cloud-init files. Forgotten, never deleted: the rows record
--- snippets that exist on Proxmox storage and PVMSS cannot remove.
-CREATE TABLE vm_cloudinit_snippets (
-	cluster    TEXT NOT NULL,
-	vmid       INTEGER NOT NULL,
-	content    TEXT NOT NULL,
-	storage    TEXT NOT NULL,
-	filename   TEXT NOT NULL,
-	updated_at TEXT NOT NULL,
-	updated_by TEXT NOT NULL,
-	PRIMARY KEY (cluster, vmid)
-);
-
 CREATE TABLE profile_ssh_keys (
 	id         TEXT PRIMARY KEY,
 	cluster    TEXT NOT NULL,

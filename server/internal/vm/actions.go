@@ -106,8 +106,8 @@ type WriteDeps struct {
 	Writer      cluster.Writer
 	Audit       AuditRecorder
 	Refresher   IndexRefresher
-	// Store is optional; when present, Delete cleans up the VM's cloud-init
-	// document row and file. Nil-safe: tests that don't care about cleanup
+	// Store is optional; when present, Delete cleans up the VM's snapshot
+	// schedule and lease rows. Nil-safe: tests that don't care about cleanup
 	// can leave it unset.
 	Store *store.Store
 	// Log is optional; when present, cleanup failures are warned here.
@@ -357,9 +357,6 @@ func Delete(ctx context.Context, deps WriteDeps) error {
 		}
 	}
 
-	// ponytail: hygiene only - a stale file cannot leak into a recycled
-	// VMID because creation overwrites on rename. Never fail the delete.
-	cleanupCloudInitDocument(ctx, deps)
 	cleanupSnapshotSchedule(ctx, deps)
 
 	// The VMID is free now: a lease left behind would bind to whatever VM
@@ -494,12 +491,6 @@ func Patch(ctx context.Context, deps WriteDeps, name, description string) error 
 	return nil
 }
 
-// cleanupCloudInitDocument forgets the VM's cloud-init rows after the
-// cluster delete succeeded. Files stay on the nodes: the shared document
-// other VMs may use, and a legacy per-VM file (pvmss-<vmid>.yml), which
-// PVMSS cannot delete (the Proxmox API cannot remove snippets) - it is
-// logged for the admin to rm by hand. Never returns an error: a cleanup
-// failure must not block the delete. Nil-safe on Store and Log.
 // cleanupSnapshotSchedule removes the VM's automatic snapshot schedule so a
 // recycled VMID cannot inherit it. Nil-safe; a failure is only logged, since
 // the sweeper's pool check still refuses a reused VMID.
@@ -510,30 +501,5 @@ func cleanupSnapshotSchedule(ctx context.Context, deps WriteDeps) {
 
 	if err := deps.Store.DeleteSnapshotSchedule(ctx, deps.ClusterName, deps.VMID); err != nil && deps.Log != nil {
 		deps.Log.WarnContext(ctx, "snapshot schedule not removed", "component", "vm", "cluster", deps.ClusterName, "vmid", deps.VMID, "error", err)
-	}
-}
-
-func cleanupCloudInitDocument(ctx context.Context, deps WriteDeps) {
-	if deps.Store == nil {
-		return
-	}
-
-	if err := deps.Store.DeleteVMCloudInitDocument(ctx, deps.ClusterName, deps.VMID); err != nil && deps.Log != nil {
-		deps.Log.WarnContext(ctx, "cloud-init document row not removed", "component", "vm", "cluster", deps.ClusterName, "vmid", deps.VMID, "error", err)
-	}
-
-	row, found, err := deps.Store.GetCloudInitSnippet(ctx, deps.ClusterName, deps.VMID)
-	if err != nil || !found {
-		return
-	}
-
-	if deps.Log != nil {
-		deps.Log.InfoContext(ctx, "legacy cloud-init file left on the nodes, remove it by hand", "component", "vm", "cluster", deps.ClusterName, "vmid", deps.VMID, "volume", row.Storage+":snippets/"+row.Filename)
-	}
-
-	if err := deps.Store.DeleteCloudInitSnippet(ctx, deps.ClusterName, deps.VMID); err != nil {
-		if deps.Log != nil {
-			deps.Log.WarnContext(ctx, "cloud-init document row not removed", "component", "vm", "cluster", deps.ClusterName, "vmid", deps.VMID, "error", err)
-		}
 	}
 }

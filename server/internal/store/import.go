@@ -16,8 +16,9 @@ import (
 // importableTables is the literal allowlist of PVMSS instance-configuration
 // tables that an import may replace. Auth/system
 // bookkeeping (schema_migrations, sessions), historical/per-VM runtime
-// data (audit_log, vm_cloudinit_snippets), tables that only exist in older
-// backups (api_tokens), and any table not on this list are excluded.
+// data (audit_log), tables that only exist in older
+// backups (api_tokens, vm_cloudinit_snippets), and any table not on this
+// list are excluded.
 //
 // Each new table is appended here once its migration lands - the list
 // shape is fixed, not invented ad hoc. The list is
@@ -45,16 +46,14 @@ var importableTables = []string{
 // TestImportableTablesMatchLiveSchema), so a new table cannot be silently
 // left out of a restore.
 var excludedImportTables = map[string]string{
-	"schema_migrations":      "schema bookkeeping",
-	"sessions":               "login sessions",
-	"local_accounts":         "local administrator credentials; re-create them in the UI",
-	"audit_log":              "history, not configuration",
-	"quota_requests":         "per-user request history, not configuration",
-	"clusters":               "holds Proxmox API token secrets; re-enter clusters by hand",
-	"vm_cloudinit_snippets":  "legacy per-VM runtime state",
-	"vm_cloudinit_documents": "per-VM runtime state",
-	"vm_leases":              "per-VM expiry runtime state; restored VMs come back without a lease",
-	"vm_snapshot_schedules":  "per-VM runtime state keyed by cluster VMID; last_run_at is sweeper state",
+	"schema_migrations":     "schema bookkeeping",
+	"sessions":              "login sessions",
+	"local_accounts":        "local administrator credentials; re-create them in the UI",
+	"audit_log":             "history, not configuration",
+	"quota_requests":        "per-user request history, not configuration",
+	"clusters":              "holds Proxmox API token secrets; re-enter clusters by hand",
+	"vm_leases":             "per-VM expiry runtime state; restored VMs come back without a lease",
+	"vm_snapshot_schedules": "per-VM runtime state keyed by cluster VMID; last_run_at is sweeper state",
 }
 
 // importTempPattern names staged upload copies next to the live database.

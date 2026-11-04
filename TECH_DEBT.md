@@ -19,9 +19,6 @@ Former limitations promoted to tracked work - specs and tickets in `.scratch/`:
   research ticket first (filelog scrape and the syslog sink are zero-code
   routes) - `otelslog` is the last resort.
 - **Browser OTel (web-vitals, trace propagation)** - `.scratch/browser-otel/`.
-- **`vm_cloudinit_*` tables** - `.scratch/cloudinit-table-drop/`. Verified:
-  `GET …/cloudinit` reads live Proxmox config, the tables only feed the
-  VM-delete legacy-file warning.
 - **"Pool at quota" wording** - `.scratch/reword-pool-quota/`.
 
 ## Accepted limitations (decided 2026-10-04, amended 2026-11-02)
@@ -61,8 +58,11 @@ gone; recoverable from git history. Kept on purpose: `GET …/cloudinit` (the
 VM page reads the SSH user, from live Proxmox config). The
 `vm_cloudinit_snippets`/`vm_cloudinit_documents` tables were kept so the
 VM-delete cleanup could warn about files a pre-removal deployment left on
-the nodes; that warning is now scheduled for removal too
-(`.scratch/cloudinit-table-drop/`, decided 2026-11-02). Databases
+the nodes; that warning and the whole table surface were removed
+2026-11-04 (`.scratch/cloudinit-table-drop/`). The DDL left the squashed
+baseline, so fresh databases never create the tables; databases that already
+have them keep them inert, per the no-drop precedent (`profile_ssh_keys`).
+Databases
 seeded before keep the `cloud-init-howto`/`cloud-init-setup` doc pages until
 an admin disables or deletes them.
 
@@ -154,7 +154,8 @@ Superseded by the full cloud-init removal (2026-10-31).
 - **No garbage collection of published files** - superseded by the cloudinit
   table drop (`.scratch/cloudinit-table-drop/`, 2026-11-02); legacy
   `pvmss-<vmid>.yml` files are removed by hand.
-- `vm_cloudinit_snippets` - drop scheduled, see "Cloud-init removed" above.
+- `vm_cloudinit_snippets` - removed 2026-11-04, see "Cloud-init removed"
+  above.
 
 ## Left behind by the Connect-tab readiness pass (2026-09-29)
 

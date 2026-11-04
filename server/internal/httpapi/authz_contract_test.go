@@ -315,13 +315,9 @@ var handlerSourceMap = map[string]string{
 // contain a call to vm.Resolve() because ownership is enforced inside the vm
 // package helper they call. Each entry carries its written justification.
 var resolveExemptRoutes = map[string]string{
-	// cloud-init: handler delegates to vm.Get/SetCloudInitConfig, vm.AddCloudInitSSHKey,
-	// and vm.Get/SetCloudInitDocument, all of which resolve the VM and enforce ownership.
-	"GET /api/v1/vms/{cluster}/{vmid}/cloudinit":           "delegates to vm.GetCloudInitConfig which resolves",
-	"PUT /api/v1/vms/{cluster}/{vmid}/cloudinit":           "delegates to vm.SetCloudInitConfig which resolves",
-	"GET /api/v1/vms/{cluster}/{vmid}/cloudinit/document":  "delegates to vm.GetCloudInitDocument which resolves",
-	"PUT /api/v1/vms/{cluster}/{vmid}/cloudinit/document":  "delegates to vm.SetCloudInitDocument which resolves",
-	"POST /api/v1/vms/{cluster}/{vmid}/cloudinit/ssh-keys": "delegates to vm.AddCloudInitSSHKey which resolves",
+	// cloud-init: handler delegates to vm.GetCloudInitConfig, which resolves
+	// the VM and enforces ownership.
+	"GET /api/v1/vms/{cluster}/{vmid}/cloudinit": "delegates to vm.GetCloudInitConfig which resolves",
 	// clone: handler delegates to vm.CloneOwn, which resolves the source via vm.Resolve before any write.
 	"POST /api/v1/vms/{cluster}/{vmid}/clone": "delegates to vm.CloneOwn which resolves the source",
 	// console: ticket endpoints call vm.GetConsoleTicket (Resolve -> GetVNCTicket -> Issue -> audit).
@@ -412,9 +408,6 @@ var vmRequestBodies = map[string]string{
 	"PUT /api/v1/vms/{cluster}/{vmid}/network":                `{"interfaces":[]}`,
 	"PUT /api/v1/vms/{cluster}/{vmid}/hardware":               `{"sockets":2}`,
 	"POST /api/v1/vms/{cluster}/{vmid}/serial":                `{"enabled":true}`,
-	"PUT /api/v1/vms/{cluster}/{vmid}/cloudinit":              `{"user":"root"}`,
-	"PUT /api/v1/vms/{cluster}/{vmid}/cloudinit/document":     `{"templateId":""}`,
-	"POST /api/v1/vms/{cluster}/{vmid}/cloudinit/ssh-keys":    `{"user":"root","key":"ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIDIhz2GK/XCuN1lGHKPmXGP"}`,
 	"POST /api/v1/vms/{cluster}/{vmid}/snapshots":             `{"name":"x"}`,
 	"PUT /api/v1/vms/{cluster}/{vmid}/snapshot-schedule":      `{"frequency":"daily","retain":2}`,
 }

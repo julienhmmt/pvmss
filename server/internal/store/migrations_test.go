@@ -284,7 +284,8 @@ func TestRunMigrations_UnknownAppliedVersion_ReturnsError(t *testing.T) {
 
 // baselineTables is every table the v0.4 baseline must create - the final
 // form of the collapsed migration chain. Tables dropped during development
-// (api_tokens, user_cloudinit_files, cloudinit_publications) are absent.
+// (api_tokens, user_cloudinit_files, cloudinit_publications,
+// vm_cloudinit_documents, vm_cloudinit_snippets) are absent.
 var baselineTables = []string{
 	"sessions",
 	"local_accounts",
@@ -302,8 +303,6 @@ var baselineTables = []string{
 	"vm_limits",
 	"node_limits",
 	"audit_config",
-	"vm_cloudinit_documents",
-	"vm_cloudinit_snippets",
 	"profile_ssh_keys",
 	"quota_requests",
 	"vm_leases",
