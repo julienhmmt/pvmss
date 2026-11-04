@@ -46,6 +46,11 @@ const (
 	// spam vector.
 	clientErrorRateLimitMaxRequests = 60
 	clientErrorRateLimitWindow      = time.Minute
+	// tracesRateLimitMaxRequests: one export per page view, so 60/min is a
+	// sustained page-view per second - generous for telemetry, bounded for a
+	// proxy that spends an upstream round trip per request.
+	tracesRateLimitMaxRequests = 60
+	tracesRateLimitWindow      = time.Minute
 )
 
 // errorResponse is the public error shape for unknown API paths.
@@ -93,6 +98,10 @@ type RouterConfig struct {
 	AdminAccounts    *AdminAccounts
 	Docs             *DocsAPIHandler
 	AdminDocs        *AdminDocs
+	// Traces proxies browser OTLP exports to the collector. nil means the
+	// route is not registered and POST /api/v1/traces falls through to the
+	// API 404 - which is exactly what the client checks for.
+	Traces *TracesProxy
 	// Setup serves GET /api/v1/setup (and POST /api/v1/setup/admin). Optional;
 	// both self-guard on live state, so they stay mounted after setup.
 	Setup *Setup
@@ -315,6 +324,14 @@ func registerAuthRoutes(mux *http.ServeMux, cfg RouterConfig, protect protectFun
 	// bucket - an error burst must not lock out logins).
 	clientErrorLimiter := newIPRateLimiter(cfg.limitMax(clientErrorRateLimitMaxRequests), clientErrorRateLimitWindow, hops, cfg.Store)
 	mux.Handle("POST /api/v1/client-errors", clientErrorLimiter.middleware(csrf(http.HandlerFunc(ServeClientError))))
+
+	// Browser trace export: same unauthenticated + CSRF + per-IP shape as
+	// client-errors. Registered only when a collector endpoint exists; the
+	// SPA learns that through GET /api/v1/public/version.
+	if cfg.Traces != nil {
+		tracesLimiter := newIPRateLimiter(cfg.limitMax(tracesRateLimitMaxRequests), tracesRateLimitWindow, hops, cfg.Store)
+		mux.Handle("POST "+tracesPath, tracesLimiter.middleware(csrf(cfg.Traces)))
+	}
 }
 
 // registerAPINotFound installs the catch-all 404 for unknown /api/ paths across

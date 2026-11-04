@@ -15,7 +15,6 @@ Former limitations promoted to tracked work - specs and tickets in `.scratch/`:
 - **OTLP log export** - `.scratch/otlp-logs/`. A collector now exists;
   research ticket first (filelog scrape and the syslog sink are zero-code
   routes) - `otelslog` is the last resort.
-- **Browser OTel (web-vitals, trace propagation)** - `.scratch/browser-otel/`.
 - **"Pool at quota" wording** - `.scratch/reword-pool-quota/`.
 
 ## Accepted limitations (decided 2026-10-04, amended 2026-11-02)
@@ -167,7 +166,8 @@ Resolved 2026-10-04 except:
 - **No OTLP log export** - reopened 2026-11-02 (a collector now exists);
   investigation at `.scratch/otlp-logs/`.
 - **Web-client telemetry** - errors now report via `client-errors`
-  (`c94a8dca`); browser OTel funded 2026-11-02 (`.scratch/browser-otel/`).
+  (`c94a8dca`); browser OTel shipped 2026-11-04 (web vitals + traceparent
+  propagation, `POST /api/v1/traces` proxy - ADR 0002).
 - **Lint verified.** `sloglint` was checked on 2026-10-01 with the pinned
   `go tool golangci-lint` (`make server-lint`: 0 issues). A globally installed
   `golangci-lint` built with an older Go refuses the module; use `make server-lint`.

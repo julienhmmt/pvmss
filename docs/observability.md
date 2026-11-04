@@ -492,13 +492,35 @@ collector-side transform that this section does not provide.
 Set `OTEL_EXPORTER_OTLP_ENDPOINT` and restart. PVMSS then sends:
 
 - one server span per API request, named by route (`GET /api/v1/vms/{cluster}/{vmid}`);
-  `/health` and static assets are not traced;
+  `/health`, static assets and `POST /api/v1/traces` are not traced;
 - a client span per Proxmox call, named by templated path (`GET /nodes/{node}/qemu/{vmid}/status/current`),
   as a child of the request span;
-- one `inventory.refresh` span per refresh cycle.
+- one `inventory.refresh` span per refresh cycle;
+- browser spans, when the SPA opts in (next paragraph).
 
 An inbound W3C `traceparent` header is honoured. Log lines written inside a
 request carry `traceId` and `spanId`, so a trace links to its logs and back.
+
+### Browser traces
+
+With a trace endpoint configured, `GET /api/v1/public/version` reports
+`browserTelemetry: true` and the SPA turns its instrumentation on:
+
+- every same-origin `/api/` call carries a `traceparent` header, so the
+  server span becomes a child of the page-view span and the whole browser
+  session reads as one trace;
+- on `pagehide` the SPA posts one `browser.pageview` span (OTLP/HTTP JSON) to
+  `POST /api/v1/traces`, carrying the page path and the web vitals as
+  `web_vitals.lcp`, `.inp`, `.cls`, `.fcp`, `.ttfb` attributes. The server
+  proxies it to the collector verbatim, attaching
+  `OTEL_EXPORTER_OTLP_HEADERS` server-side so collector credentials never
+  reach the browser.
+
+The route is unauthenticated (a page view must export before login), CSRF
+checked when a session exists, per-IP rate limited at 60/min, and its body is
+capped at 64 KiB and never logged. With no endpoint configured the route is
+not registered and answers 404, so the browser stays silent. The decision and
+its alternatives are in `docs/adr/0002-browser-telemetry.md`.
 
 A minimal OpenTelemetry Collector that receives it and forwards to a backend:
 

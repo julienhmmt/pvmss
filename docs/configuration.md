@@ -54,8 +54,11 @@ first cluster there. A partial set still fails startup.
 | `PVMSS_SYSLOG_TLS_KEY_FILE`                   | Client key for mutual TLS; needs `PVMSS_SYSLOG_TLS_CERT_FILE`.  |
 
 Tracing/OTLP use the standard `OTEL_*` variables read by the SDK (see
-`docs/observability.md`). `LOG_LEVEL` is only the startup level; admins can
-change it at runtime (Admin > Settings).
+`docs/observability.md`). Setting a trace endpoint also turns on browser
+telemetry: `POST /api/v1/traces` proxies the SPA's page-view spans to the
+collector and `GET /api/v1/public/version` advertises it to the client, so an
+unset endpoint means the browser sends nothing. `LOG_LEVEL` is only the
+startup level; admins can change it at runtime (Admin > Settings).
 
 **Administrator sign-in.** There are two paths. A Proxmox user is an
 administrator when their ACL grants `Permissions.Modify` on `/` (the

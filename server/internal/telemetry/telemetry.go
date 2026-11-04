@@ -10,8 +10,10 @@ package telemetry
 import (
 	"context"
 	"errors"
+	"maps"
 	"net/http"
 	"net/url"
+	"strings"
 
 	prom "github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
@@ -75,6 +77,53 @@ func EndpointHost(getenv func(string) string) string {
 	}
 
 	return u.Host
+}
+
+// TraceEndpoint resolves the OTLP/HTTP URL the browser trace proxy forwards
+// to: OTEL_EXPORTER_OTLP_TRACES_ENDPOINT verbatim, or the generic endpoint
+// with the per-signal path appended. Empty when export is disabled.
+func TraceEndpoint(getenv func(string) string) string {
+	if !Enabled(getenv) {
+		return ""
+	}
+
+	if raw := getenv("OTEL_EXPORTER_OTLP_TRACES_ENDPOINT"); raw != "" {
+		return raw
+	}
+
+	return strings.TrimRight(getenv("OTEL_EXPORTER_OTLP_ENDPOINT"), "/") + "/v1/traces"
+}
+
+// TraceHeaders parses the collector headers the browser trace proxy attaches
+// server-side, so credentials in OTEL_EXPORTER_OTLP_HEADERS never reach the
+// browser. The per-signal OTEL_EXPORTER_OTLP_TRACES_HEADERS wins on a
+// duplicate key. Values are URL-decoded per the OTel convention.
+func TraceHeaders(getenv func(string) string) http.Header {
+	header := otlpHeaders(getenv("OTEL_EXPORTER_OTLP_HEADERS"))
+	maps.Copy(header, otlpHeaders(getenv("OTEL_EXPORTER_OTLP_TRACES_HEADERS")))
+
+	return header
+}
+
+// otlpHeaders parses the comma-separated key=value form of the
+// OTEL_EXPORTER_OTLP_*_HEADERS variables. Malformed pairs are dropped.
+func otlpHeaders(raw string) http.Header {
+	header := http.Header{}
+
+	for pair := range strings.SplitSeq(raw, ",") {
+		k, v, ok := strings.Cut(strings.TrimSpace(pair), "=")
+		if !ok || k == "" {
+			continue
+		}
+
+		if decoded, err := url.QueryUnescape(v); err == nil {
+			v = decoded
+		}
+
+		header.Set(k, v)
+	}
+
+	return header
 }
 
 // Setup installs the W3C propagator, then builds only what is configured:

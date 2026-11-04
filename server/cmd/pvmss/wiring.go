@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"log/slog"
 	"net/http"
+	"os"
 	"pvmss/server/internal/auth"
 	"pvmss/server/internal/cluster"
 	"pvmss/server/internal/config"
@@ -13,6 +14,7 @@ import (
 	"pvmss/server/internal/inventory"
 	"pvmss/server/internal/policy"
 	"pvmss/server/internal/store"
+	"pvmss/server/internal/telemetry"
 	"pvmss/server/internal/vm"
 	"sync"
 	"sync/atomic"
@@ -118,6 +120,15 @@ func buildRouter(deps routerDeps) (http.Handler, error) {
 	adminOps.SetLogLevel(deps.logLevel, deps.logLevel.Level())
 	adminOps.SetTrustedProxyHops(cfg.TrustedProxyHops)
 	adminOps.SetInventorySource(inventoryRegistry, 2*cfg.InventoryRefreshInterval)
+
+	// Browser trace export (ADR 0002): the proxy exists only when an OTLP
+	// trace endpoint is configured, and the public version endpoint tells the
+	// SPA so it sends nothing otherwise.
+	var traces *httpapi.TracesProxy
+	if endpoint := telemetry.TraceEndpoint(os.Getenv); endpoint != "" {
+		traces = httpapi.NewTracesProxy(endpoint, telemetry.TraceHeaders(os.Getenv))
+	}
+	adminOps.SetBrowserTelemetry(traces != nil)
 	adminClusters := httpapi.NewAdminClusters(authHandler, st, clusterRegistry, inventoryRegistry, logger)
 	adminClusters.SetTrustedProxyHops(cfg.TrustedProxyHops)
 	docsHandler := httpapi.NewDocsAPIHandler(authHandler, st, logger)
@@ -162,6 +173,7 @@ func buildRouter(deps routerDeps) (http.Handler, error) {
 		Setup:            setup,
 		TrustedProxyHops: cfg.TrustedProxyHops,
 		RateLimitMax:     cfg.RateLimitMax,
+		Traces:           traces,
 	}), nil
 }
 

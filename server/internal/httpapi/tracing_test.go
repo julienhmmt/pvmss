@@ -92,4 +92,19 @@ func TestTracing_HonoursInboundTraceparent(t *testing.T) {
 	if len(spans) != 1 || spans[0].SpanContext.TraceID().String() != "0af7651916cd43dd8448eb211c80319c" {
 		t.Fatalf("server span must join the inbound trace, got %v", spans)
 	}
+
+	if got := spans[0].Parent.SpanID().String(); got != "b7ad6b7169203331" {
+		t.Fatalf("server span parent = %q, want the inbound span id b7ad6b7169203331", got)
+	}
+}
+
+//nolint:paralleltest // serial: shared auth fixtures
+func TestTracing_TracesExportRouteIsNotTraced(t *testing.T) {
+	router, exp, _ := tracedRouter(t)
+
+	serve(router, http.MethodPost, "/api/v1/traces")
+
+	if n := len(exp.GetSpans()); n != 0 {
+		t.Fatalf("the export route must not trace its own export, got %d spans", n)
+	}
 }

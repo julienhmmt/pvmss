@@ -44,6 +44,49 @@ func TestEnabled(t *testing.T) {
 	}
 }
 
+func TestTraceEndpoint(t *testing.T) {
+	t.Parallel()
+
+	cases := []struct {
+		name string
+		env  map[string]string
+		want string
+	}{
+		{"nothing set", map[string]string{}, ""},
+		{"generic gets the traces path", map[string]string{"OTEL_EXPORTER_OTLP_ENDPOINT": "http://c:4318"}, "http://c:4318/v1/traces"},
+		{"generic trailing slash", map[string]string{"OTEL_EXPORTER_OTLP_ENDPOINT": "http://c:4318/"}, "http://c:4318/v1/traces"},
+		{"traces endpoint verbatim", map[string]string{"OTEL_EXPORTER_OTLP_TRACES_ENDPOINT": "http://c:4318/custom"}, "http://c:4318/custom"},
+		{"traces wins over generic", map[string]string{"OTEL_EXPORTER_OTLP_ENDPOINT": "http://a:4318", "OTEL_EXPORTER_OTLP_TRACES_ENDPOINT": "http://b:4318/v1/traces"}, "http://b:4318/v1/traces"},
+		{"disabled means empty", map[string]string{"OTEL_EXPORTER_OTLP_ENDPOINT": "http://c:4318", "OTEL_SDK_DISABLED": "true"}, ""},
+	}
+	for _, c := range cases {
+		if got := telemetry.TraceEndpoint(env(c.env)); got != c.want {
+			t.Errorf("%s: TraceEndpoint = %q, want %q", c.name, got, c.want)
+		}
+	}
+}
+
+func TestTraceHeaders(t *testing.T) {
+	t.Parallel()
+
+	got := telemetry.TraceHeaders(env(map[string]string{
+		"OTEL_EXPORTER_OTLP_HEADERS":        "Authorization=Bearer%20SECRET, X-Scope =one",
+		"OTEL_EXPORTER_OTLP_TRACES_HEADERS": "X-Scope=two",
+	}))
+
+	if got.Get("Authorization") != "Bearer SECRET" {
+		t.Errorf("Authorization = %q, want URL-decoded value", got.Get("Authorization"))
+	}
+
+	if got.Get("X-Scope") != "two" {
+		t.Errorf("X-Scope = %q, want the per-signal override", got.Get("X-Scope"))
+	}
+
+	if empty := telemetry.TraceHeaders(env(nil)); len(empty) != 0 {
+		t.Errorf("no env must give no headers, got %v", empty)
+	}
+}
+
 func TestEndpointHost_NeverLeaksCredentials(t *testing.T) {
 	t.Parallel()
 

@@ -38,6 +38,9 @@ type AdminOps struct {
 	// the endpoint is not wired (see SetLogLevel).
 	logLevel        *slog.LevelVar
 	logLevelDefault slog.Level
+	// browserTelemetry is surfaced on the public version endpoint so the SPA
+	// only ships trace exports when a collector endpoint is configured.
+	browserTelemetry bool
 }
 
 // NewAdminOps creates the handler for all admin exploitation endpoints.
@@ -60,6 +63,13 @@ func NewAdminOps(authHandler *Auth, st *store.Store, projection *inventory.Proje
 // when extracting the client IP for audit entries.
 func (h *AdminOps) SetTrustedProxyHops(n int) {
 	h.trustedProxyHops = n
+}
+
+// SetBrowserTelemetry tells the public version endpoint whether the SPA may
+// ship OTLP exports - true only when a collector trace endpoint is configured
+// (the operator's consent point, see docs/adr/0002-browser-telemetry.md).
+func (h *AdminOps) SetBrowserTelemetry(enabled bool) {
+	h.browserTelemetry = enabled
 }
 
 // actorAndIP returns the resolved identity and client IP for the request.
@@ -556,14 +566,16 @@ func (h *AdminOps) projectionClusterHealthDTOs() []clusterHealthDTO {
 }
 
 type publicVersionDTO struct {
-	Version string `json:"version"`
+	Version          string `json:"version"`
+	BrowserTelemetry bool   `json:"browserTelemetry"`
 }
 
 // ServePublicVersion handles GET /api/v1/public/version. No
 // authentication required - the version alone is visible in the public
-// footer.
+// footer. browserTelemetry lets the SPA decide once whether trace exports
+// are wanted; it reveals only that a collector exists, never its address.
 func (h *AdminOps) ServePublicVersion(w http.ResponseWriter, _ *http.Request) {
-	body, err := json.Marshal(publicVersionDTO{Version: h.version})
+	body, err := json.Marshal(publicVersionDTO{Version: h.version, BrowserTelemetry: h.browserTelemetry})
 	if err != nil {
 		_ = writeJSON(w, http.StatusInternalServerError, []byte(`{"code":"internal_error"}`))
 		return

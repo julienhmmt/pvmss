@@ -20,7 +20,9 @@ func withTracing(tp trace.TracerProvider, next http.Handler) http.Handler {
 		// Explicit rather than the global propagator, so joining an inbound
 		// trace never depends on telemetry.Setup having run.
 		otelhttp.WithPropagators(propagation.NewCompositeTextMapPropagator(propagation.TraceContext{}, propagation.Baggage{})),
-		otelhttp.WithFilter(func(r *http.Request) bool { return isAPIPath(r.URL.Path) }),
+		// The browser export route is excluded explicitly: tracing it would
+		// make the proxy record a span about its own export on every page view.
+		otelhttp.WithFilter(func(r *http.Request) bool { return isAPIPath(r.URL.Path) && r.URL.Path != tracesPath }),
 		otelhttp.WithSpanNameFormatter(func(operation string, r *http.Request) string {
 			if r.Pattern != "" {
 				return r.Pattern

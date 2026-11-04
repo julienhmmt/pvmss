@@ -1,6 +1,6 @@
 # 0002 - Browser telemetry: hand-rolled vitals and traceparent, proxied export
 
-Status: proposed (decision only, not implemented)
+Status: accepted (implemented 2026-11-04)
 
 ## Context
 
@@ -146,26 +146,31 @@ default level. The relative deltas are what matter.
 - **Per-user consent toggle.** Adds UI and storage for data that carries no
   identity. The operator who configures the collector is the consent point.
 
-## Implementation tickets (not done here)
+## Implementation tickets (done 2026-11-04)
 
 1. Server: `POST /api/v1/traces` proxy beside `client-errors` in
-   `router.go`. Body cap, CSRF, rate limit, forward to the configured trace
-   endpoint, 404 when no endpoint is set. Exclude `/api/v1/traces` from
-   `tracing.go:23`.
-2. Server test: assert that an inbound `traceparent` on `/api/v1/*` is joined
-   (same trace id, parent span id) in `tracing_test.go`.
-3. Web: `src/lib/shared/telemetry/` module with vitals from
+   `router.go`. Body cap (64 KiB), CSRF, per-IP rate limit (60/min), forward
+   to the configured trace endpoint; not registered - 404 - when no endpoint
+   is set. `/api/v1/traces` excluded from the `tracing.go` filter.
+   (`traces_proxy.go`, `telemetry.TraceEndpoint`/`TraceHeaders`.)
+2. Server test: `tracing_test.go` asserts the inbound `traceparent` is joined
+   (same trace id, parent span id) and that the export route opens no span.
+3. Web: `src/lib/shared/telemetry/browser-telemetry.ts` - vitals from
    `PerformanceObserver`, a `fetch` wrapper that adds `traceparent` for
-   same-origin `/api/` calls, and one `browser.pageview` span sent on
-   `pagehide`. Wire it from `hooks.client.ts`. Vitest unit tests for the
-   propagation header and the payload shape.
-4. Parent span: emit the `traceparent` span id as an exported span (the page
-   view or per-fetch client span), so server spans have a parent.
-5. Config flag: the server exposes whether browser telemetry is enabled (from
-   the trace endpoint being set), so the client sends nothing when it is off.
-   Document it in `docs/configuration.md` and `docs/observability.md`.
-6. Verify end to end in a browser against a local collector. Confirm the CSP
-   report stays empty and the bundle delta stays near the stub's measured size.
+   same-origin `/api/` calls, one `browser.pageview` span sent on `pagehide`
+   with `keepalive`. Wired from `hooks.client.ts`; vitest tests cover the
+   header, the payload shape and the opt-in flag.
+4. Parent span: every API call carries the pageview span's id in
+   `traceparent`, so server spans are children of the exported
+   `browser.pageview` span.
+5. Config flag: `GET /api/v1/public/version` reports `browserTelemetry`,
+   true only when a trace endpoint is configured. Documented in
+   `docs/configuration.md` and `docs/observability.md`.
+6. Verified end to end against a stub collector: the proxy forwards the
+   body verbatim with collector headers attached server-side, a real
+   Chromium page emitted the pageview span on `pagehide`, and API calls
+   carried a matching `traceparent`. Bundle delta: +3.0 kB raw / +1.3 kB
+   gzip over the same baseline (stub: +0.9 / +0.5; SDK: +72.9 / +23.3).
 
 ## Not verified
 

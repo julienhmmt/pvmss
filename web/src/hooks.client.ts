@@ -1,7 +1,9 @@
 import type { HandleClientError } from '@sveltejs/kit/hooks';
 import { installClientErrorReporting, reportClientError } from '#lib/shared/api/client-errors.js';
+import { installBrowserTelemetry } from '#lib/shared/telemetry/browser-telemetry.js';
 
 installClientErrorReporting();
+void installBrowserTelemetry();
 
 /** SvelteKit funnel for framework errors (load, actions, rendering): forward
  * to the server log, then let the default console reporting happen. */
