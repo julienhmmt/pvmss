@@ -373,6 +373,54 @@ func TestVMCreateCatalog_SeededShape(t *testing.T) {
 	}
 }
 
+// TestVMCreateCatalog_ExposesProfileDescription - the public catalog carries
+// each profile's description, and an empty one is serialized as "".
+//
+//nolint:paralleltest // serial: shared fake identity fixture
+func TestVMCreateCatalog_ExposesProfileDescription(t *testing.T) {
+	handler, authHandler, st := newVMCreateHandler(t)
+	cookie := loginCookie(t, authHandler, `{"username":"alice","password":"pvmss-alice"}`)
+	seedStaleStorageApprovals(t, st)
+
+	values := store.ProfileValues{Label: "Small", Sockets: 1, CPUCores: 1, MemoryMB: 2048, DiskGB: 20, Bus: "scsi", Description: "Light web workloads"}
+	if err := st.UpdateProfile(context.Background(), auditTestCluster, "small", values); err != nil {
+		t.Fatalf("UpdateProfile: %v", err)
+	}
+
+	req := httptest.NewRequest(http.MethodGet, "/api/v1/vm-create/catalog", nil)
+	req.AddCookie(cookie)
+
+	recorder := httptest.NewRecorder()
+	handler.ServeCatalog(recorder, req)
+
+	if recorder.Code != http.StatusOK {
+		t.Fatalf("status = %d, want %d: %s", recorder.Code, http.StatusOK, recorder.Body.String())
+	}
+
+	var body struct {
+		Profiles []struct {
+			ID          string `json:"id"`
+			Description string `json:"description"`
+		} `json:"profiles"`
+	}
+	if err := json.Unmarshal(recorder.Body.Bytes(), &body); err != nil {
+		t.Fatalf("decode catalog: %v", err)
+	}
+
+	descriptions := make(map[string]string, len(body.Profiles))
+	for _, profile := range body.Profiles {
+		descriptions[profile.ID] = profile.Description
+	}
+
+	if descriptions["small"] != "Light web workloads" {
+		t.Errorf("small description = %q, want %q", descriptions["small"], "Light web workloads")
+	}
+
+	if !strings.Contains(recorder.Body.String(), `"description":""`) {
+		t.Errorf("profiles without a description must serialize an empty string: %s", recorder.Body.String())
+	}
+}
+
 // TestVMCreateCatalog_SelectsStorageClientByCluster verifies catalog discovery
 // uses the requested cluster's client rather than the default client.
 //
@@ -616,4 +664,63 @@ func newTasksHandler(t *testing.T) (*httpapi.Tasks, *httpapi.Auth, *inventory.Pr
 	provider := vmCreateClientProvider{clients: map[string]cluster.Client{auditTestCluster: cluster.Fake{}}}
 
 	return httpapi.NewTasksWithRegistry(authHandler, provider, cluster.Fake{}, worker, nil, logger), authHandler, projection
+}
+
+// TestVMCreateCatalog_ProfileDescriptionHTML - the catalog renders the admin's
+// Markdown description server-side and never passes raw HTML or script through.
+//
+//nolint:paralleltest // serial: shared fake identity fixture
+func TestVMCreateCatalog_ProfileDescriptionHTML(t *testing.T) {
+	handler, authHandler, st := newVMCreateHandler(t)
+	cookie := loginCookie(t, authHandler, `{"username":"alice","password":"pvmss-alice"}`)
+	seedStaleStorageApprovals(t, st)
+
+	hostile := "**bold** <script>alert(1)</script> [x](javascript:alert(1))"
+	values := store.ProfileValues{Label: "Small", Sockets: 1, CPUCores: 1, MemoryMB: 2048, DiskGB: 20, Bus: "scsi", Description: hostile}
+
+	if err := st.UpdateProfile(context.Background(), auditTestCluster, "small", values); err != nil {
+		t.Fatalf("UpdateProfile: %v", err)
+	}
+
+	req := httptest.NewRequest(http.MethodGet, "/api/v1/vm-create/catalog", nil)
+	req.AddCookie(cookie)
+
+	recorder := httptest.NewRecorder()
+	handler.ServeCatalog(recorder, req)
+
+	if recorder.Code != http.StatusOK {
+		t.Fatalf("status = %d, want %d: %s", recorder.Code, http.StatusOK, recorder.Body.String())
+	}
+
+	var body struct {
+		Profiles []struct {
+			ID              string `json:"id"`
+			Description     string `json:"description"`
+			DescriptionHTML string `json:"descriptionHtml"`
+		} `json:"profiles"`
+	}
+	if err := json.Unmarshal(recorder.Body.Bytes(), &body); err != nil {
+		t.Fatalf("decode catalog: %v", err)
+	}
+
+	var html string
+
+	for _, profile := range body.Profiles {
+		if profile.ID == "small" {
+			html = profile.DescriptionHTML
+		}
+	}
+
+	if !strings.Contains(html, "<strong>bold</strong>") {
+		t.Errorf("descriptionHtml = %q, want Markdown bold rendered", html)
+	}
+
+	if !strings.Contains(html, "&lt;script&gt;") {
+		t.Errorf("descriptionHtml = %q, want raw script escaped", html)
+	}
+
+	lower := strings.ToLower(html)
+	if strings.Contains(lower, "<script") || strings.Contains(lower, "javascript:") {
+		t.Errorf("descriptionHtml = %q, must not contain executable markup", html)
+	}
 }

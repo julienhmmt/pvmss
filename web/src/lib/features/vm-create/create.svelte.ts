@@ -30,6 +30,10 @@ export interface CatalogProfile {
 	memoryMB: number;
 	diskGB: number;
 	bus: string;
+	/** Admin-authored limited Markdown source, optional so test fixtures stay terse. Never rendered directly. */
+	description?: string;
+	/** Server-rendered, escaped HTML of `description`. The only field inserted via {@html}. */
+	descriptionHtml?: string;
 }
 
 /** One approved Proxmox template (US2/issue-02). The VMID is the Proxmox

@@ -3,9 +3,9 @@ import { AdminProfilesStore, vcpuTotal } from './profiles.svelte';
 import { m } from '#lib/paraglide/messages.js';
 
 const testProfiles = [
-	{ id: 'small', label: 'Small', sockets: 1, cpuCores: 1, memoryMB: 2048, diskGB: 20, bus: 'scsi', enabled: true },
-	{ id: 'large', label: 'Large', sockets: 1, cpuCores: 4, memoryMB: 8192, diskGB: 80, bus: 'virtio', enabled: false },
-	{ id: 'medium', label: 'Medium', sockets: 1, cpuCores: 2, memoryMB: 4096, diskGB: 40, bus: 'scsi', enabled: true }
+	{ id: 'small', label: 'Small', sockets: 1, cpuCores: 1, memoryMB: 2048, diskGB: 20, bus: 'scsi', enabled: true, description: '' },
+	{ id: 'large', label: 'Large', sockets: 1, cpuCores: 4, memoryMB: 8192, diskGB: 80, bus: 'virtio', enabled: false, description: '' },
+	{ id: 'medium', label: 'Medium', sockets: 1, cpuCores: 2, memoryMB: 4096, diskGB: 40, bus: 'scsi', enabled: true, description: '' }
 ];
 
 describe('AdminProfilesStore filteredProfiles', () => {
@@ -121,6 +121,56 @@ describe('AdminProfilesStore create', () => {
 		await expect(store.update('small', 'p', 4, 2048, 20, 'scsi', 2)).resolves.toBe(false);
 		expect(store.saveError).toBe(m['error.generic']());
 		expect(store.profiles[0]?.label).toBe('Small');
+		vi.unstubAllGlobals();
+	});
+});
+
+describe('AdminProfilesStore description', () => {
+	function jsonResponse(status: number, body: unknown): Response {
+		return new Response(JSON.stringify(body), { status, headers: { 'Content-Type': 'application/json' } });
+	}
+
+	function sentBody(fetchMock: ReturnType<typeof vi.fn>): { description?: string } {
+		const init = fetchMock.mock.calls[0]![1] as RequestInit;
+		return JSON.parse(init.body as string) as { description?: string };
+	}
+
+	it('create() sends the description and stores the returned row', async () => {
+		const row = { id: 'p', label: 'p', sockets: 1, cpuCores: 4, memoryMB: 2048, diskGB: 20, bus: 'scsi', enabled: true, description: 'Web apps' };
+		const fetchMock = vi.fn().mockResolvedValue(jsonResponse(201, row));
+		vi.stubGlobal('fetch', fetchMock);
+		const store = new AdminProfilesStore();
+
+		await expect(store.create('p', 4, 2048, 20, 'scsi', 1, 'Web apps')).resolves.toBe(true);
+
+		expect(sentBody(fetchMock).description).toBe('Web apps');
+		expect(store.profiles[0]?.description).toBe('Web apps');
+		vi.unstubAllGlobals();
+	});
+
+	it('update() sends the description and replaces the row with the returned one', async () => {
+		const row = { ...testProfiles[0]!, description: 'Light web' };
+		const fetchMock = vi.fn().mockResolvedValue(jsonResponse(200, row));
+		vi.stubGlobal('fetch', fetchMock);
+		const store = new AdminProfilesStore();
+		store.profiles = testProfiles;
+
+		await expect(store.update('small', 'Small', 1, 2048, 20, 'scsi', 1, 'Light web')).resolves.toBe(true);
+
+		expect(sentBody(fetchMock).description).toBe('Light web');
+		expect(store.profiles.find((p) => p.id === 'small')?.description).toBe('Light web');
+		vi.unstubAllGlobals();
+	});
+
+	it('update() sends an empty description to clear it', async () => {
+		const fetchMock = vi.fn().mockResolvedValue(jsonResponse(200, { ...testProfiles[0]!, description: '' }));
+		vi.stubGlobal('fetch', fetchMock);
+		const store = new AdminProfilesStore();
+		store.profiles = testProfiles;
+
+		await expect(store.update('small', 'Small', 1, 2048, 20, 'scsi', 1, '')).resolves.toBe(true);
+
+		expect(sentBody(fetchMock).description).toBe('');
 		vi.unstubAllGlobals();
 	});
 });

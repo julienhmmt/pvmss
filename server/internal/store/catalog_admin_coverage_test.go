@@ -969,3 +969,48 @@ func TestDisableStorageAllNodes(t *testing.T) {
 		}
 	}
 }
+
+//nolint:paralleltest // migration fixtures are intentionally serial
+func TestProfileDescription_RoundTripAndClear(t *testing.T) {
+	st := openClusterStore(t)
+	ctx := context.Background()
+
+	values := store.ProfileValues{Label: "Compact", Sockets: 1, CPUCores: 1, MemoryMB: 2048, DiskGB: 20, Bus: catalogTestStorageBus, Description: "Light web workloads"}
+	if err := st.InsertProfile(ctx, catalogTestCluster, "small", values); err != nil {
+		t.Fatalf("InsertProfile: %v", err)
+	}
+
+	assertProfileDescription(t, st, "Light web workloads")
+
+	values.Description = ""
+	if err := st.UpdateProfile(ctx, catalogTestCluster, "small", values); err != nil {
+		t.Fatalf("UpdateProfile clear: %v", err)
+	}
+
+	assertProfileDescription(t, st, "")
+}
+
+// assertProfileDescription checks the description on both profile read paths.
+func assertProfileDescription(t *testing.T, st *store.Store, want string) {
+	t.Helper()
+
+	ctx := context.Background()
+
+	enabled, err := st.CatalogProfilesEnabled(ctx, catalogTestCluster)
+	if err != nil || len(enabled) != 1 {
+		t.Fatalf("CatalogProfilesEnabled: rows=%d err=%v", len(enabled), err)
+	}
+
+	if enabled[0].Description != want {
+		t.Errorf("CatalogProfilesEnabled description = %q, want %q", enabled[0].Description, want)
+	}
+
+	enabledOnly, err := st.CatalogProfiles(ctx, catalogTestCluster)
+	if err != nil {
+		t.Fatalf("CatalogProfiles: %v", err)
+	}
+
+	if len(enabledOnly) != 1 || enabledOnly[0].Description != want {
+		t.Errorf("CatalogProfiles description = %v, want %q", enabledOnly, want)
+	}
+}

@@ -1,23 +1,26 @@
 package httpapi_test
 
 import (
+	"context"
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
 	"pvmss/server/internal/httpapi"
+	"strings"
 	"testing"
 )
 
 //  - Profile DTOs for tests -
 
 type adminProfileDTO struct {
-	ID       string `json:"id"`
-	Label    string `json:"label"`
-	CPUCores int    `json:"cpuCores"`
-	MemoryMB int    `json:"memoryMB"`
-	DiskGB   int    `json:"diskGB"`
-	Bus      string `json:"bus"`
-	Enabled  bool   `json:"enabled"`
+	ID          string `json:"id"`
+	Label       string `json:"label"`
+	CPUCores    int    `json:"cpuCores"`
+	MemoryMB    int    `json:"memoryMB"`
+	DiskGB      int    `json:"diskGB"`
+	Bus         string `json:"bus"`
+	Enabled     bool   `json:"enabled"`
+	Description string `json:"description"`
 }
 
 type adminTagDTO struct {
@@ -487,4 +490,101 @@ func assertAllAdminReturn403(
 			t.Errorf("%s %s: status = %d, want %d", c.method, c.path, rec.Code, http.StatusForbidden)
 		}
 	}
+}
+
+// profileDescriptionDTO is the description-bearing shape of a profile response.
+type profileDescriptionDTO struct {
+	ID          string `json:"id"`
+	Description string `json:"description"`
+	Enabled     bool   `json:"enabled"`
+}
+
+// TestAdminProfiles_DescriptionLifecycle - POST and PUT return the description,
+// PUT with an empty string clears it, and the list keeps it for disabled rows.
+//
+//nolint:paralleltest // serial: shared fake dataset and database fixture
+func TestAdminProfiles_DescriptionLifecycle(t *testing.T) {
+	handler, authHandler, _ := newAdminHandler(t)
+	cookie := adminCookie(t, authHandler)
+
+	created := adminPost(t, handler, authHandler, cookie, "/api/v1/admin/profiles",
+		`{"cluster":"default","label":"Desc Life","cpuCores":1,"memoryMB":2048,"diskGB":20,"bus":"scsi","description":"Light web"}`)
+	if created.Code != http.StatusCreated {
+		t.Fatalf("create status = %d, want %d: %s", created.Code, http.StatusCreated, created.Body.String())
+	}
+
+	var profile profileDescriptionDTO
+	if err := json.Unmarshal(created.Body.Bytes(), &profile); err != nil {
+		t.Fatalf("decode created: %v", err)
+	}
+
+	if profile.Description != "Light web" {
+		t.Fatalf("created description = %q, want %q", profile.Description, "Light web")
+	}
+
+	toggled := adminPost(t, handler, authHandler, cookie, "/api/v1/admin/profiles/"+profile.ID+"/toggle",
+		`{"cluster":"default","enabled":false}`)
+	if toggled.Code != http.StatusOK {
+		t.Fatalf("toggle status = %d, want %d: %s", toggled.Code, http.StatusOK, toggled.Body.String())
+	}
+
+	list := adminGet(t, handler, authHandler, cookie, "/api/v1/admin/profiles?cluster=default")
+
+	var profiles []profileDescriptionDTO
+	if err := json.Unmarshal(list.Body.Bytes(), &profiles); err != nil {
+		t.Fatalf("decode list: %v", err)
+	}
+
+	if got := findDescriptionDTO(profiles, profile.ID); got.Description != "Light web" || got.Enabled {
+		t.Errorf("disabled list row = %+v, want description kept and enabled=false", got)
+	}
+
+	cleared := adminPut(t, handler, authHandler, cookie, "/api/v1/admin/profiles/"+profile.ID,
+		`{"cluster":"default","label":"Desc Life","cpuCores":1,"memoryMB":2048,"diskGB":20,"bus":"scsi","description":""}`)
+	if cleared.Code != http.StatusOK {
+		t.Fatalf("update status = %d, want %d: %s", cleared.Code, http.StatusOK, cleared.Body.String())
+	}
+
+	if !strings.Contains(cleared.Body.String(), `"description":""`) {
+		t.Errorf("cleared response must serialize an empty description: %s", cleared.Body.String())
+	}
+}
+
+// findDescriptionDTO returns the profile with the given id, or a zero value.
+func findDescriptionDTO(profiles []profileDescriptionDTO, id string) profileDescriptionDTO {
+	for _, p := range profiles {
+		if p.ID == id {
+			return p
+		}
+	}
+
+	return profileDescriptionDTO{}
+}
+
+// TestAdminProfiles_DescriptionAuditRow - the create audit row carries the
+// description like the other profile fields.
+//
+//nolint:paralleltest // serial: shared fake dataset and database fixture
+func TestAdminProfiles_DescriptionAuditRow(t *testing.T) {
+	handler, authHandler, st := newAdminHandler(t)
+	cookie := adminCookie(t, authHandler)
+
+	rec := adminPost(t, handler, authHandler, cookie, "/api/v1/admin/profiles",
+		`{"cluster":"default","label":"Desc Audit","cpuCores":1,"memoryMB":2048,"diskGB":20,"bus":"scsi","description":"Audit note"}`)
+	if rec.Code != http.StatusCreated {
+		t.Fatalf("create status = %d, want %d: %s", rec.Code, http.StatusCreated, rec.Body.String())
+	}
+
+	entries, err := st.QueryAudit(context.Background())
+	if err != nil {
+		t.Fatalf("QueryAudit: %v", err)
+	}
+
+	for _, entry := range entries {
+		if entry.Action == "admin.profiles.create" && strings.Contains(entry.Detail.String, "Audit note") {
+			return
+		}
+	}
+
+	t.Fatalf("no admin.profiles.create audit row carries the description")
 }

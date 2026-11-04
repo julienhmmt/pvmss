@@ -192,3 +192,11 @@ The table stays the business source of truth for `/activity` and retention; the
 mirror puts the same actions in the log stream for operators. There is one
 emission point and no per-handler log call.
 _Avoid_: audit log (that is the SQLite table)
+
+**Profile description**:
+Optional limited Markdown note an admin attaches to a VM hardware profile
+(`catalog_profiles.description`, raw source, at most 500 runes). It says which
+workload a profile suits and is shown only on the create-VM size step, rendered
+through the server's escaping Markdown renderer. It never affects
+sizing, the profile id or the Proxmox request.
+_Avoid_: profile label (the short name shown on the card)

@@ -267,6 +267,12 @@
 									{#snippet header()}<span aria-label={profile.label}>{profile.label}</span>{/snippet}
 									<span class="block font-mono text-xs tabular-nums text-foreground">{m['vms.create.sizeSpec']({ cpu: profile.cpuCores, memory: memoryLabel(profile.memoryMB) })}</span>
 									<span class="block text-xs">{m['vms.create.sizeStorage']({ disk: profile.diskGB })}</span>
+									{#if profile.descriptionHtml}
+										<div data-testid="profile-description" class="prose prose-sm max-w-none text-xs text-muted-foreground dark:prose-invert">
+											<!-- eslint-disable-next-line svelte/no-at-html-tags -- backend renderer is XSS-safe (server/internal/httpapi/markdown.go) -->
+											{@html profile.descriptionHtml}
+										</div>
+									{/if}
 								</RadioCard>
 							{/each}
 						</div>

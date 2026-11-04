@@ -150,13 +150,15 @@ type catalogISODTO struct {
 }
 
 type catalogProfileDTO struct {
-	ID       string `json:"id"`
-	Label    string `json:"label"`
-	Sockets  int    `json:"sockets"`
-	CPUCores int    `json:"cpuCores"`
-	MemoryMB int    `json:"memoryMB"`
-	DiskGB   int    `json:"diskGB"`
-	Bus      string `json:"bus"`
+	ID              string `json:"id"`
+	Label           string `json:"label"`
+	Sockets         int    `json:"sockets"`
+	CPUCores        int    `json:"cpuCores"`
+	MemoryMB        int    `json:"memoryMB"`
+	DiskGB          int    `json:"diskGB"`
+	Bus             string `json:"bus"`
+	Description     string `json:"description"`
+	DescriptionHTML string `json:"descriptionHtml"`
 }
 
 // catalogTemplateDTO is one approved Proxmox template. The

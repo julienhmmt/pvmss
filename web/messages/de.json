@@ -1341,6 +1341,8 @@
 	"admin.profiles.memoryMb": "Arbeitsspeicher (MB)",
 	"admin.profiles.diskGb": "Festplatte (GB)",
 	"admin.profiles.busField": "Bus",
+	"admin.profiles.descriptionField": "Beschreibung",
+	"admin.profiles.descriptionHint": "Optional. Markdown wird unterstützt (fett, kursiv, Listen, Links). Maximal 500 Zeichen. Wird auf der VM-Erstellungsseite unter der Größe angezeigt.",
 	"admin.profiles.loadError": "Profile konnten nicht geladen werden",
 	"admin.profiles.createError": "Profil konnte nicht erstellt werden",
 	"admin.profiles.updateError": "Profil konnte nicht aktualisiert werden",

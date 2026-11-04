@@ -223,13 +223,15 @@ func catalogISOView(iso catalog.ISO) catalogISODTO {
 // catalogProfileView maps a profile row to its catalog DTO.
 func catalogProfileView(profile catalog.Profile) catalogProfileDTO {
 	return catalogProfileDTO{
-		ID:       profile.ID,
-		Label:    profile.Label,
-		Sockets:  profile.Sockets,
-		CPUCores: profile.CPUCores,
-		MemoryMB: profile.MemoryMB,
-		DiskGB:   profile.DiskGB,
-		Bus:      profile.Bus,
+		ID:              profile.ID,
+		Label:           profile.Label,
+		Sockets:         profile.Sockets,
+		CPUCores:        profile.CPUCores,
+		MemoryMB:        profile.MemoryMB,
+		DiskGB:          profile.DiskGB,
+		Bus:             profile.Bus,
+		Description:     profile.Description,
+		DescriptionHTML: renderMarkdownToHTML(profile.Description),
 	}
 }
 

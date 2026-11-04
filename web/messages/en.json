@@ -1341,6 +1341,8 @@
 	"admin.profiles.memoryMb": "Memory (MB)",
 	"admin.profiles.diskGb": "Disk (GB)",
 	"admin.profiles.busField": "Bus",
+	"admin.profiles.descriptionField": "Description",
+	"admin.profiles.descriptionHint": "Optional. Markdown is supported (bold, italic, lists, links). Up to 500 characters. Shown under the size on the create-VM page.",
 	"admin.profiles.loadError": "failed to load profiles",
 	"admin.profiles.createError": "failed to create profile",
 	"admin.profiles.updateError": "failed to update profile",
