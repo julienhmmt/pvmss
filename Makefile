@@ -1,38 +1,38 @@
-# Makefile pour PVMSS
-# Permet de construire, démarrer, arrêter, nettoyer et tester l'application
+# Makefile for PVMSS
+# Build, start, stop, clean and test the application
 
 .DEFAULT_GOAL := help
 
-# Couleurs pour l'affichage
+# Output colors
 BLUE  := \033[0;34m
 GREEN := \033[0;32m
 RED   := \033[0;31m
 NC    := \033[0m
 
-# Répertoires
+# Directories
 SERVER_DIR   := server
 WEB_DIR      := web
 
-# Docker Compose dev (raccourci pour éviter de répéter -f ...)
+# Dev Docker Compose (shortcut to avoid repeating -f ...)
 COMPOSE_DEV  := docker compose -f docker-compose.dev.yml
 
-# Variables Go test - surchargeables en ligne de commande:
-#   make test-offline GO_TEST_FLAGS=-v                 # verbose (remplace test-offline-verbose)
-#   make test-offline GO_TEST_FLAGS=-short             # quick (remplace quick-test)
-#   make test-offline 'GO_TEST_FLAGS=-p 4 -parallel 4' # parallèle (remplace test-offline-parallel)
+# Go test variables - overridable on the command line:
+#   make test-offline GO_TEST_FLAGS=-v                 # verbose (replaces test-offline-verbose)
+#   make test-offline GO_TEST_FLAGS=-short             # quick (replaces quick-test)
+#   make test-offline 'GO_TEST_FLAGS=-p 4 -parallel 4' # parallel (replaces test-offline-parallel)
 GO_TEST_ENV     := GO_TEST_ENVIRONMENT=1 PVMSS_OFFLINE=true
 GO_TEST_TIMEOUT := -timeout=5m
 GO_TEST_FLAGS   ?=
 GO_UPDATE_FLAGS ?= -u=patch
 GO_VERSION      ?= latest
 
-# golangci-lint épinglé hors de go.mod: 'go run @version' le compile avec la
-# toolchain locale (un binaire précompilé ne lit pas l'export data Go 1.27).
-# >= v2.15.0 requis: x/tools v0.52.0 minimum pour décoder l'export data Go 1.27.
-# Garder en sync avec .github/workflows/lint.yml.
+# golangci-lint pinned outside go.mod: 'go run @version' builds it with the
+# local toolchain (a prebuilt binary cannot read Go 1.27 export data).
+# >= v2.15.0 required: x/tools v0.52.0 minimum to decode Go 1.27 export data.
+# Keep in sync with .github/workflows/lint.yml.
 GOLANGCI_LINT   := go run github.com/golangci/golangci-lint/v2/cmd/golangci-lint@v2.15.0
 
-# Tag Docker par défaut pour docker-build (surcharge: make docker-build PVMSS_TAG=v1.2.3)
+# Default Docker tag for docker-build (override: make docker-build PVMSS_TAG=v1.2.3)
 PVMSS_TAG ?= latest
 
 .PHONY: help proxy-e2e dev dev-logs build docker-build helm-package helm-upgrade \
@@ -45,27 +45,27 @@ PVMSS_TAG ?= latest
         lint \
         sonar sonar-up sonar-down sonar-coverage sonar-lint sonar-scan sonar-scan-server sonar-scan-web sonar-query
 
-# qualif doit exécuter ses prérequis séquentiellement (fmt → lint → test), jamais en parallèle
+# qualif must run its prerequisites sequentially (fmt -> lint -> test), never in parallel
 .NOTPARALLEL: qualif
 
 # =============================================================================
-# Commandes de base
+# Basic commands
 
-help: ## Affiche cette aide
+help: ## Show this help
 	@echo "$(BLUE)PVMSS - Commandes disponibles:$(NC)"
 	@echo ""
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | sort | awk 'BEGIN {FS = ":.*?## "}; {printf "  $(GREEN)%-18s$(NC) %s\n", $$1, $$2}'
 	@echo ""
 
-dev: build up ## Build et démarre l'application (http://localhost:50000)
-	@echo "$(GREEN)Application démarrée sur http://localhost:50000$(NC)"
+dev: build up ## Build and start the app (http://localhost:50000)
+	@echo "$(GREEN)Application started on http://localhost:50000$(NC)"
 	@echo ""
 
-dev-logs: up logs ## Démarre et affiche les logs
+dev-logs: up logs ## Start and follow the logs
 	@echo "$(GREEN)Logs de l'application$(NC)"
 	@echo ""
 
-build: ## Construit le binaire Go v0.4 et l'image Docker dev
+build: ## Build the Go v0.4 binary and the dev Docker image
 	@echo "$(BLUE)Construction du binaire Go (v0.4 server)...$(NC)"
 	go build -C $(SERVER_DIR) -o ../pvmss ./cmd/pvmss
 	@echo "$(GREEN)✓ Binaire construit$(NC)"
@@ -73,129 +73,129 @@ build: ## Construit le binaire Go v0.4 et l'image Docker dev
 	$(COMPOSE_DEV) build
 	@echo "$(GREEN)✓ Image construite$(NC)"
 
-docker-build: buildkit-start ## Construit les images multi-arch (amd64+arm64) et les push
+docker-build: buildkit-start ## Build and push the multi-arch images (amd64+arm64)
 	@echo "$(BLUE)Build Docker multi-arch (tag: $(PVMSS_TAG))...$(NC)"
 	docker buildx build --builder pvmss-builder --platform linux/amd64,linux/arm64 -t jhmmt/pvmss:$(PVMSS_TAG) --push .
-	@echo "$(GREEN)✓ Images construites et poussées (jhmmt/pvmss:$(PVMSS_TAG))$(NC)"
+	@echo "$(GREEN)✓ Images built and pushed (jhmmt/pvmss:$(PVMSS_TAG))$(NC)"
 
-helm-package: ## Construit le package Helm
+helm-package: ## Build the Helm package
 	@echo "$(BLUE)Construction du package Helm...$(NC)"
 	helm package ./helm
 	@echo "$(GREEN)✓ Package Helm construit$(NC)"
-# TODO: pousser le package vers un dépôt Helm
+# TODO: push the package to a Helm repository
 
-helm-upgrade: ## Met à jour l'application avec Helm
-	@echo "$(BLUE)Mise à jour Helm...$(NC)"
+helm-upgrade: ## Upgrade the app with Helm
+	@echo "$(BLUE)Helm upgrade...$(NC)"
 	helm upgrade --install pvmss ./helm
-	@echo "$(GREEN)✓ Application mise à jour$(NC)"
+	@echo "$(GREEN)✓ Application upgraded$(NC)"
 
-up: ## Démarre l'environnement dev (pvmss, web, SonarQube) en arrière-plan
+up: ## Start the dev environment (pvmss-dev behind the dev proxies) in the background
 	$(COMPOSE_DEV) up -d
 
-up-siem: ## Démarre le dev + le récepteur SIEM VictoriaLogs (syslog TLS 6514, UI http://127.0.0.1:9428/select/vmui)
+up-siem: ## Start dev + the VictoriaLogs SIEM receiver (TLS syslog 6514, UI http://127.0.0.1:9428/select/vmui)
 	PVMSS_SYSLOG_ADDR=victorialogs:6514 PVMSS_SYSLOG_TLS_CA_FILE=/syslog-tls/ca.crt $(COMPOSE_DEV) --profile siem up -d
 
-down: ## Arrête et supprime les conteneurs dev (y compris le profil siem)
+down: ## Stop and remove the dev containers (including the siem profile)
 	$(COMPOSE_DEV) --profile siem down
 
-restart: down up ## Redémarre les conteneurs dev (down puis up)
+restart: down up ## Restart the dev containers (down then up)
 
 PROXIES := proxy-haproxy proxy-nginx proxy-caddy proxy-traefik proxy-npm
 
-proxy-e2e: ## Teste la console VNC via chaque reverse proxy dev (fake cluster, Playwright)
+proxy-e2e: ## Test the VNC console through each dev reverse proxy (fake cluster, Playwright)
 	$(COMPOSE_DEV) -f dev/proxies/docker-compose.fake.yml up -d --build --wait pvmss-dev $(PROXIES)
 	dev/proxies/npm-setup.sh
 	# Always put pvmss-dev back on the .env config (real cluster, real DB) afterwards.
 	cd $(WEB_DIR) && bunx playwright test -c playwright.proxies.config.ts; \
 		status=$$?; $(COMPOSE_DEV) up -d pvmss-dev; exit $$status
 
-logs: ## Suit les logs des conteneurs dev
+logs: ## Follow the dev container logs
 	$(COMPOSE_DEV) logs -f
 
-clean: ## Nettoie les artéfacts de build et arrête les conteneurs dev
-	@echo "$(BLUE)Nettoyage...$(NC)"
+clean: ## Remove build artifacts and stop the dev containers
+	@echo "$(BLUE)Cleaning...$(NC)"
 	-$(COMPOSE_DEV) down --remove-orphans
 	rm -f pvmss
-	@echo "$(GREEN)✓ Nettoyage terminé$(NC)"
+	@echo "$(GREEN)✓ Cleanup done$(NC)"
 
-server-reset: ## Remet l'app à zéro : supprime la DB (volume dev + pvmss.db* locaux), rebuild et redémarre
-	@echo "$(BLUE)Arrêt des conteneurs dev...$(NC)"
+server-reset: ## Reset the app: delete the DB (dev volume + local pvmss.db*), rebuild and restart
+	@echo "$(BLUE)Stopping the dev containers...$(NC)"
 	-$(COMPOSE_DEV) --profile siem down
-	@echo "$(BLUE)Suppression de la base de données...$(NC)"
+	@echo "$(BLUE)Deleting the database...$(NC)"
 	docker volume rm $$(docker volume ls -q -f name='pvmss_dev_data$$') 2>/dev/null || true
 	rm -f pvmss.db pvmss.db-shm pvmss.db-wal
-	@echo "$(GREEN)✓ Base de données remise à zéro$(NC)"
+	@echo "$(GREEN)✓ Database reset$(NC)"
 	@$(MAKE) dev
 
 # =============================================================================
-# Commandes de test et qualification
+# Test and quality commands
 
-qualif: server-fmt server-lint server-test ## Lance tous les contrôles qualité (fmt → lint → tests) puis dev
-	@echo "$(GREEN)✓ Contrôles et tests réussis$(NC)"
+qualif: server-fmt server-lint server-test ## Run all quality checks (fmt -> lint -> tests) then dev
+	@echo "$(GREEN)✓ Checks and tests passed$(NC)"
 	@echo ""
-	@echo "$(BLUE)Démarrage de l'application...$(NC)"
+	@echo "$(BLUE)Starting the application...$(NC)"
 	@$(MAKE) dev
 
 # =============================================================================
-# Commandes BuildKit (pour builds multi-architecture)
+# BuildKit commands (for multi-arch builds)
 
-buildkit-start: ## Démarre le conteneur buildkit pour les builds multi-architecture
-	@echo "$(BLUE)Démarrage de buildkit...$(NC)"
+buildkit-start: ## Start the buildkit container for multi-arch builds
+	@echo "$(BLUE)Starting buildkit...$(NC)"
 	@if ! docker buildx ls | grep -q "pvmss-builder"; then \
-		echo "Création de l'instance buildkit pvmss-builder..."; \
+		echo "Creating the pvmss-builder buildkit instance..."; \
 		docker buildx create --name pvmss-builder --driver docker-container --use --bootstrap; \
 	else \
-		echo "L'instance buildkit pvmss-builder existe déjà, vérification de l'état..."; \
+		echo "The pvmss-builder buildkit instance already exists, checking its state..."; \
 		docker buildx inspect --bootstrap; \
 	fi
-	@echo "$(GREEN)✓ Buildkit prêt pour les builds multi-architecture$(NC)"
+	@echo "$(GREEN)✓ Buildkit ready for multi-arch builds$(NC)"
 
-buildkit-stop: ## Arrête le conteneur buildkit
-	@echo "$(BLUE)Arrêt de buildkit...$(NC)"
+buildkit-stop: ## Stop the buildkit container
+	@echo "$(BLUE)Stopping buildkit...$(NC)"
 	@if docker buildx ls | grep -q "pvmss-builder"; then \
-		echo "Arrêt de l'instance buildkit pvmss-builder..."; \
+		echo "Stopping the pvmss-builder buildkit instance..."; \
 		docker buildx rm pvmss-builder; \
-		echo "$(GREEN)✓ Buildkit arrêté$(NC)"; \
+		echo "$(GREEN)✓ Buildkit stopped$(NC)"; \
 	else \
-		echo "Buildkit n'est pas démarré"; \
+		echo "Buildkit is not running"; \
 	fi
 
-buildkit-status: ## Vérifie le statut de buildkit
+buildkit-status: ## Check buildkit status
 	@echo "$(BLUE)Statut de buildkit:$(NC)"
 	@if docker buildx ls | grep -q "pvmss-builder"; then \
-		echo "$(GREEN)✓ Buildkit est actif$(NC)"; \
+		echo "$(GREEN)✓ Buildkit is running$(NC)"; \
 		docker buildx inspect pvmss-builder; \
 	else \
-		echo "$(RED)❌ Buildkit n'est pas démarré$(NC)"; \
-		echo "Lancez 'make buildkit-start' pour l'activer"; \
+		echo "$(RED)❌ Buildkit is not running$(NC)"; \
+		echo "Run 'make buildkit-start' to start it"; \
 	fi
 
 # =============================================================================
-# Commandes Next-gen (server/ Go + web/ SvelteKit)
-# Module Go séparé `pvmss/server` et app SvelteKit `pvmss-web`.
-# Non connectés au Makefile principal - outillage indépendant.
+# Server and web commands (server/ Go + web/ SvelteKit)
+# Separate Go module `pvmss/server` and SvelteKit app `pvmss-web`.
+# Independent tooling for the two build units.
 
 # --- server/ (Go backend, module pvmss/server) ---
 
-server-lint: ## Lance golangci-lint sur le next-gen server/ (config server/.golangci.yml)
-	@echo "$(BLUE)Lancement du linter Go sur $(SERVER_DIR)/...$(NC)"
+server-lint: ## Run golangci-lint on server/ (config server/.golangci.yml)
+	@echo "$(BLUE)Running the Go linter on $(SERVER_DIR)/...$(NC)"
 	cd $(SERVER_DIR) && $(GOLANGCI_LINT) run -v --timeout=5m ./...
-	@echo "$(GREEN)✓ Lint server terminé$(NC)"
+	@echo "$(GREEN)✓ Server lint done$(NC)"
 
-server-fmt: ## Formate le code Go du next-gen server/ (golangci-lint fmt)
+server-fmt: ## Format server/ Go code (golangci-lint fmt)
 	@echo "$(BLUE)Formatage du code Go $(SERVER_DIR)/...$(NC)"
 	cd $(SERVER_DIR) && $(GOLANGCI_LINT) fmt ./...
-	@echo "$(GREEN)✓ Formatage server terminé$(NC)"
+	@echo "$(GREEN)✓ Server fmt done$(NC)"
 
-server-vet: ## Lance go vet sur le next-gen server/ (vérification légère sans golangci-lint)
+server-vet: ## Run go vet on server/ (light check, no golangci-lint)
 	@echo "$(BLUE)go vet sur $(SERVER_DIR)/...$(NC)"
 	cd $(SERVER_DIR) && go vet ./...
-	@echo "$(GREEN)✓ go vet server terminé$(NC)"
+	@echo "$(GREEN)✓ Server vet done$(NC)"
 
-server-test: ## Lance les tests Go du next-gen server/
+server-test: ## Run the server/ Go tests
 	@echo "$(BLUE)Tests Go $(SERVER_DIR)/...$(NC)"
 	cd $(SERVER_DIR) && go test $(GO_TEST_FLAGS) -race -timeout=5m ./...
-	@echo "$(GREEN)✓ Tests server terminés$(NC)"
+	@echo "$(GREEN)✓ Server tests done$(NC)"
 
 server-go-update: ## Update the Go version used by the server module (GO_VERSION=latest)
 	@echo "$(BLUE)Updating Go version in $(SERVER_DIR)/...$(NC)"
@@ -214,40 +214,40 @@ server-update: ## Update the Go version and module dependencies
 
 # --- web/ (SvelteKit + TypeScript, app pvmss-web) ---
 
-web-install: ## Installe les dépendances bun du next-gen web/ (SvelteKit)
-	@echo "$(BLUE)Installation des dépendances $(WEB_DIR)/...$(NC)"
+web-install: ## Install web/ bun dependencies (SvelteKit)
+	@echo "$(BLUE)Installing $(WEB_DIR)/ dependencies...$(NC)"
 	cd $(WEB_DIR) && bun install --frozen-lockfile
-	@echo "$(GREEN)✓ Dépendances web installées$(NC)"
+	@echo "$(GREEN)✓ Web dependencies installed$(NC)"
 
 web-deps-update: ## Update all Bun dependencies in web/ to latest versions
 	@echo "$(BLUE)Updating Bun dependencies in $(WEB_DIR)/...$(NC)"
 	cd $(WEB_DIR) && bun update --latest
 	@echo "$(GREEN)Web dependencies updated$(NC)"
 
-web-lint: ## Lance eslint sur le next-gen web/ (SvelteKit + TypeScript)
-	@echo "$(BLUE)Lancement d'eslint sur $(WEB_DIR)/...$(NC)"
+web-lint: ## Run eslint on web/ (SvelteKit + TypeScript)
+	@echo "$(BLUE)Running eslint on $(WEB_DIR)/...$(NC)"
 	cd $(WEB_DIR) && bun run lint
-	@echo "$(GREEN)✓ Lint web terminé$(NC)"
+	@echo "$(GREEN)✓ Web lint done$(NC)"
 
-web-lint-fix: ## Corige automatiquement les problèmes eslint du next-gen web/
+web-lint-fix: ## Auto-fix eslint problems in web/
 	@echo "$(BLUE)Correction eslint $(WEB_DIR)/...$(NC)"
 	cd $(WEB_DIR) && bun run lint:fix
-	@echo "$(GREEN)✓ Lint web corrigé$(NC)"
+	@echo "$(GREEN)✓ Web lint fixed$(NC)"
 
-web-check: ## Vérifie le typage du next-gen web/ (svelte-check)
-	@echo "$(BLUE)Vérification du typage $(WEB_DIR)/ (svelte-check)...$(NC)"
+web-check: ## Type-check web/ (svelte-check)
+	@echo "$(BLUE)Type-checking $(WEB_DIR)/ (svelte-check)...$(NC)"
 	cd $(WEB_DIR) && bun run check
-	@echo "$(GREEN)✓ Vérification web terminée$(NC)"
+	@echo "$(GREEN)✓ Web check done$(NC)"
 
-web-test: ## Lance les tests unitaires du next-gen web/ (vitest)
+web-test: ## Run web/ unit tests (vitest)
 	@echo "$(BLUE)Tests unitaires $(WEB_DIR)/ (vitest)...$(NC)"
 	cd $(WEB_DIR) && bun run test
-	@echo "$(GREEN)✓ Tests web terminés$(NC)"
+	@echo "$(GREEN)✓ Web tests done$(NC)"
 
-# --- Lint combiné (server + web) ---
+# --- Combined lint (server + web) ---
 
-lint: server-lint web-lint ## Lance le lint sur server/ (Go) et web/ (SvelteKit)
-	@echo "$(GREEN)✓ Lint next-gen (server + web) terminé$(NC)"
+lint: server-lint web-lint ## Lint server/ (Go) and web/ (SvelteKit)
+	@echo "$(GREEN)✓ Lint (server + web) done$(NC)"
 
 # =============================================================================
 # SonarQube local analysis

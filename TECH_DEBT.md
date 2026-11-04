@@ -64,12 +64,12 @@ an admin disables or deletes them.
 
 ## Still open (low priority)
 
-| Item | Note |
-| --- | --- |
+| Item                                        | Note                                                                                                                                                                                                                                          |
+| ------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | VM name reservations live in process memory | `policy/reserve.go` tracks in-flight creates in a 15-min map; correct for the single-replica deployment (move to SQLite if replicas > 1). A VM deleted or renamed outside the app holds its name until the TTL (see the `shortcut:` comments) |
-| ~~ADR practice~~ | **Resolved** 2026-11-04: `docs/adr/` recreated; `0002-browser-telemetry.md` is the live ADR (0001 was removed once implemented); ADRs 0001-0003 from before the 2026-10-15 removal live in git history |
-| ~~Legacy single projection in `policy`~~ | **Resolved** (`refactor/audit-2026-11-cleanup`): `policy.New` no longer takes a projection; every caller shares the one service wired with `SetProjectionSource`, and the variadic `services` parameters are required `*policy.Policy` fields |
-| ~~Smalls in `.scratch/housekeeping/`~~ | **Resolved** 2026-11-04: two-column admin grids ruled per-page (`xl:grid-cols-2` on dashboard + appinfo, no blanket rule); `recovery/` stale `backend/` refs now flagged as removed paths in comments |
+| ~~ADR practice~~                            | **Resolved** 2026-11-04: `docs/adr/` recreated; `0002-browser-telemetry.md` is the live ADR (0001 was removed once implemented); ADRs 0001-0003 from before the 2026-10-15 removal live in git history                                        |
+| ~~Legacy single projection in `policy`~~    | **Resolved** (`refactor/audit-2026-11-cleanup`): `policy.New` no longer takes a projection; every caller shares the one service wired with `SetProjectionSource`, and the variadic `services` parameters are required `*policy.Policy` fields |
+| ~~Smalls in `.scratch/housekeeping/`~~      | **Resolved** 2026-11-04: two-column admin grids ruled per-page (`xl:grid-cols-2` on dashboard + appinfo, no blanket rule); `recovery/` stale `backend/` refs now flagged as removed paths in comments                                         |
 
 ## Fixed in the docs review (2026-09-28)
 

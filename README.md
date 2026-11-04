@@ -51,14 +51,14 @@ The complete, route-by-route inventory lives in [docs/FEATURES.md](docs/FEATURES
 - **My VMs**: list of the sign-in cluster's VMs, search/filter/sort mirrored in the URL, live status, bulk power actions with per-VM results, console button in every row.
 - **Create a VM** wizard (Simple / Detailed) from two sources: an approved **ISO** or a Proxmox **template** (linked or full clone). Hardware profiles or custom CPU/RAM/disk, auto-placement with capacity scoring, multi-NIC (bridge + model), UEFI (no Secure Boot) / TPM 2.0, curated tags, boot from CD-ROM.
 - **Sign-in on VMs**: PVMSS adds no SSH key or password (cloud-init authoring was removed). A template clone keeps the sign-in built into its Proxmox template; an ISO install gets the account the user creates during installation. See [VM templates carry the sign-in](#vm-templates-carry-the-sign-in).
-- **Operate a VM**: 7 power actions, rename, Markdown description, delete; disks (add / grow / detach); NIC edit (bridge, model, VLAN, rate); CPU/RAM/tags/CD-ROM; snapshots (create / rollback / delete, RAM optional); metrics history (hour/day/week) and live stream; per-VM activity log.
+- **Operate a VM**: 7 power actions, rename, Markdown description, delete; disks (add / grow / detach); NIC edit (bridge, model, VLAN, rate); CPU/RAM/tags/CD-ROM; snapshots (create / rollback / delete, RAM optional) plus a daily/weekly automatic schedule with retention; duplicate a VM into a full clone; lease expiry and extension when the cluster enables leases; metrics history (hour/day/week) and live stream; per-VM activity log.
 - **Consoles**: noVNC and serial (xterm.js), both proxied through PVMSS with single-use tickets; power actions from the console page.
 - Nodes page with live capacity, in-app documentation (EN + FR), interface in EN, FR, DE and IT, keyboard-first and WCAG 2.1 AA target.
 
 ### Administrators
 
 - **Sign-in**: Proxmox users granted `Permissions.Modify` on `/` (the `PVEAdmin` or `Administrator` role, `pve` or `pam` realm), plus PVMSS local administrators that work even when no cluster is reachable. The bootstrap local administrator is the only one allowed to create and manage further local accounts.
-- **Clusters**: connect several Proxmox environments, test connectivity.
+- **Clusters**: connect several Proxmox environments, test connectivity, rename a cluster id (every cluster-keyed row follows); adopt pools and tags a previous PVMSS install left on a cluster from **Admin > Recovery**.
 - **Catalog**: approve nodes, storages, ISOs, VM templates, bridges; CRUD for hardware profiles and tags; stale approvals reconciled against live discovery.
 - **Pools**: create a self-service user = Proxmox user + pool + ACL in one step; cascade delete.
 - **Migration**: move a PVMSS-managed VM to another approved, online node of the same cluster from the node page (preflight, explicit confirmation, progress in the task tray).
@@ -178,9 +178,9 @@ users create their own account during installation, from the browser console.
 Cloud-init authoring was removed on 2026-10-31: no cloud-init templates, no
 per-VM user/password/SSH-key writes, no cloud-image imports, no snippet
 storage. What remains is the read-only `GET /api/v1/vms/{cluster}/{vmid}/cloudinit`
-endpoint (SSH user info for the console helper) and a VM-delete warning about
-leftover `pvmss-*.yml` snippet files written by older versions. Details and
-migration notes: [docs/cloud-init.md](docs/cloud-init.md).
+endpoint (SSH user info for the console helper). `pvmss-*.yml` snippet files an
+older version may have left on the nodes are no longer tracked - remove them
+by hand. Details and migration notes: [docs/cloud-init.md](docs/cloud-init.md).
 
 ### Environment variables
 
@@ -212,6 +212,7 @@ You can rely on `.env` + `env_file` or inline `environment:` entries, but **not 
 | `PVMSS_MAX_LOCAL_ADMINS`                                   | Maximum DB local admins (1-50; excludes the bootstrap admin)                                                  | ❌                       | `5`                    |
 | `PVMSS_TRUSTED_PROXY_HOPS`                                 | Trusted proxy count for client IP / rate limits (Helm sets `1`)                                               | ❌                       | `0`                    |
 | `PVMSS_RATE_LIMIT_MAX`                                     | Raises every built-in rate-limit ceiling (per-IP auth, per-user writes); `0` keeps the defaults               | ❌                       | `0`                    |
+| `PVMSS_DB_RESET_ON_INCOMPATIBLE`                           | On an incompatible database, rename it and start fresh instead of refusing to boot (dev convenience)          | ❌                       | `false`                |
 | `PVMSS_METRICS_PORT`                                       | Port of the `GET /metrics` listener on `PVMSS_HOST` (1-65535, different from `PVMSS_PORT`); empty disables it | ❌                       | empty                  |
 | `PVMSS_TLS_CERT_FILE` / `PVMSS_TLS_KEY_FILE`               | Serve HTTPS with this PEM certificate and key (set both); see [docs/tls.md](docs/tls.md)                      | ❌                       | empty (plain HTTP)     |
 | `PVMSS_TLS_CLIENT_CA_FILE`                                 | PEM CA bundle for client certificates: turns on mutual TLS (**recommended**)                                  | ❌                       | empty                  |

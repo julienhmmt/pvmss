@@ -31,11 +31,11 @@ once, is audited, and is not persisted: a restart returns to `LOG_LEVEL`. At
 
 ## What each level shows
 
-| Level   | What you see                                                                                                                          |
-| ------- | ------------------------------------------------------------------------------------------------------------------------------------- |
-| `error` | Something is broken: a 5xx (from the access log), a database failure, a cluster that just became unreachable.                         |
-| `warn`  | Degraded or refused: failed logins, 403, CSRF rejects, 429, a cluster that is still down (reminder every 5 minutes), Proxmox retries. |
-| `info`  | Startup banner, "server ready", shutdown, logins and logouts, every write request, every audited action, cluster recovery.            |
+| Level   | What you see                                                                                                                                                                                 |
+| ------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `error` | Something is broken: a 5xx (from the access log), a database failure, a cluster that just became unreachable.                                                                                |
+| `warn`  | Degraded or refused: failed logins, 403, CSRF rejects, 429, a cluster that is still down (reminder every 5 minutes), Proxmox retries.                                                        |
+| `info`  | Startup banner, "server ready", shutdown, logins and logouts, every write request, every audited action, cluster recovery.                                                                   |
 | `debug` | Every GET request, every Proxmox call (templated path, status, duration), every successful inventory refresh, and any request the client abandoned (`result=canceled`, whatever its status). |
 
 Every request produces one access-log line (`message` = `http request`) with
@@ -312,12 +312,12 @@ SANs `victorialogs`, `localhost` and `127.0.0.1`.
 The service runs `victoriametrics/victoria-logs:v1.53.0` with these flags
 (from the [VictoriaLogs syslog docs](https://docs.victoriametrics.com/victorialogs/data-ingestion/syslog/)):
 
-| Flag                              | Value in the dev stack                       |
-| --------------------------------- | -------------------------------------------- |
-| `-syslog.listenAddr.tcp`          | `:6514`                                      |
-| `-syslog.tls`                     | enables TLS on that listener                 |
-| `-syslog.tlsCertFile`             | `/tls/server.crt` (the dev PKI)              |
-| `-syslog.tlsKeyFile`              | `/tls/server.key`                            |
+| Flag                     | Value in the dev stack          |
+| ------------------------ | ------------------------------- |
+| `-syslog.listenAddr.tcp` | `:6514`                         |
+| `-syslog.tls`            | enables TLS on that listener    |
+| `-syslog.tlsCertFile`    | `/tls/server.crt` (the dev PKI) |
+| `-syslog.tlsKeyFile`     | `/tls/server.key`               |
 
 PVMSS sends RFC 5425 octet-counted frames over TLS, and the live test below
 stored them. The container drops all capabilities. The image runs as root,

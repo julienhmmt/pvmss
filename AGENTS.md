@@ -17,17 +17,17 @@ for context only).
 
 ## Repository Layout
 
-| Path              | Role                                                                     |
-| ----------------- | ------------------------------------------------------------------------ |
-| `server/`         | Go REST API - module `pvmss/server`, own `go.mod`                        |
-| `web/`            | SvelteKit SPA - app `pvmss-web`, own `package.json` (bun)                |
-| `helm/`           | Helm chart                                                               |
+| Path              | Role                                                                                                                      |
+| ----------------- | ------------------------------------------------------------------------------------------------------------------------- |
+| `server/`         | Go REST API - module `pvmss/server`, own `go.mod`                                                                         |
+| `web/`            | SvelteKit SPA - app `pvmss-web`, own `package.json` (bun)                                                                 |
+| `helm/`           | Helm chart                                                                                                                |
 | `docs/`           | `FEATURES.md`, `configuration.md`, `observability.md`, `tls.md`, `cloud-init.md`, `constitution.md`, `design/`, `agents/` |
-| `sonar-projects/` | Per-project SonarScanner `.properties` files                             |
-| `tools/`          | Helper scripts (`pq`, sonar, superlint)                                  |
-| `.devin/`         | Project rules + skills (gitignored - not in a fresh clone)               |
-| `.agents/`        | Agent-local files - `skills/`, `memory/` (gitignored)                    |
-| `.scratch/`       | Issues and specs as markdown (see `docs/agents/issue-tracker.md`)        |
+| `sonar-projects/` | Per-project SonarScanner `.properties` files                                                                              |
+| `tools/`          | Helper scripts (`pq`, sonar, superlint)                                                                                   |
+| `.devin/`         | Project rules + skills (gitignored - not in a fresh clone)                                                                |
+| `.agents/`        | Agent-local files - `skills/`, `memory/` (gitignored)                                                                     |
+| `.scratch/`       | Issues and specs as markdown (see `docs/agents/issue-tracker.md`)                                                         |
 
 `server/` and `web/` are separate build units; the root `Makefile` exposes them
 via `server-*` / `web-*` targets.
@@ -77,7 +77,8 @@ make buildkit-start / buildkit-stop / buildkit-status
 make helm-package / helm-upgrade
 
 # Dev stack (docker-compose.dev.yml: pvmss-dev Go server + proxies)
-make up / down / restart / logs
+make up / down / restart / logs / up-siem
+make server-reset    # wipe the dev database and restart pvmss-dev
 
 # SonarQube (shared server in ~/git/gh/sonarqube; projects pvmss-server, pvmss-web)
 make sonar              # full pipeline
@@ -119,30 +120,31 @@ Binaries under `server/cmd/`: `pvmss` (the HTTP server), `pvmss-recover`
 
 Packages under `server/internal/`:
 
-| Package      | Role                                                            |
-| ------------ | --------------------------------------------------------------- |
-| `httpapi/`   | HTTP handlers + routing for `/api/v1/*`, SPA serving, VNC WS    |
-| `vm/`        | VM domain logic - resolve, query, actions, cross-cluster        |
-| `cluster/`   | Cluster clients (`proxmox` and `fake` sources), multi-cluster   |
-| `store/`     | SQLite persistence                                              |
-| `inventory/` | Background inventory refresh + cache                            |
-| `catalog/`   | Approved nodes/ISOs/storages/bridges, templates, profiles, tags |
-| `policy/`    | Limits, quotas, authorization policy                            |
-| `pools/`     | Proxmox pool handling                                           |
-| `recovery/`  | `pvmss-recover` runs and v0.3 import fixtures                   |
-| `adoption/`  | `/admin/recovery` assistant: scan + adopt leftover pools/tags   |
-| `checklist/` | Operational checklist walkthroughs                              |
-| `auth/`      | Sessions, password hashing, admin auth                          |
-| `docs/`      | `docs/seed/` - embedded in-app doc pages seeded at startup      |
-| `cloudinit/` | Slug helpers (the SSH-key surface was deleted)                  |
-| `config/`    | Env-based configuration, validation, slog logger, redaction     |
-| `telemetry/` | OTel tracing and metrics, Prometheus `/metrics`                 |
-| `logctx/`    | Request-scoped log attributes (requestId, user, span IDs)       |
-| `testfixture/` | Shared hermetic test fixtures (demo catalog, checklist data)  |
+| Package        | Role                                                            |
+| -------------- | --------------------------------------------------------------- |
+| `httpapi/`     | HTTP handlers + routing for `/api/v1/*`, SPA serving, VNC WS    |
+| `vm/`          | VM domain logic - resolve, query, actions, cross-cluster        |
+| `cluster/`     | Cluster clients (`proxmox` and `fake` sources), multi-cluster   |
+| `store/`       | SQLite persistence                                              |
+| `inventory/`   | Background inventory refresh + cache                            |
+| `catalog/`     | Approved nodes/ISOs/storages/bridges, templates, profiles, tags |
+| `policy/`      | Limits, quotas, authorization policy                            |
+| `pools/`       | Proxmox pool handling                                           |
+| `recovery/`    | `pvmss-recover` runs and v0.3 import fixtures                   |
+| `adoption/`    | `/admin/recovery` assistant: scan + adopt leftover pools/tags   |
+| `checklist/`   | Operational checklist walkthroughs                              |
+| `auth/`        | Sessions, password hashing, admin auth                          |
+| `docs/`        | `docs/seed/` - embedded in-app doc pages seeded at startup      |
+| `cloudinit/`   | Slug helpers (the SSH-key surface was deleted)                  |
+| `config/`      | Env-based configuration, validation, slog logger, redaction     |
+| `telemetry/`   | OTel tracing and metrics, Prometheus `/metrics`                 |
+| `logctx/`      | Request-scoped log attributes (requestId, user, span IDs)       |
+| `testfixture/` | Shared hermetic test fixtures (demo catalog, checklist data)    |
 
 Cloud-init authoring was removed 2026-10-31. Kept on purpose: read-only
-`GET …/cloudinit` and the
-`vm_cloudinit_*` tables (VM delete still warns about leftover files).
+`GET …/cloudinit` (the VM page reads the SSH user from live config). The
+`vm_cloudinit_*` tables and the VM-delete warning about leftover files were
+dropped 2026-11-04 (existing databases keep the inert tables).
 
 ### Web (`web/`)
 
@@ -176,11 +178,11 @@ Gotchas: `LOG_LEVEL` is lowercase only; `PVMSS_CLUSTER_SOURCE` (`fake` |
 
 Binding for all server code. Operator detail lives in `docs/observability.md`.
 
-| Level   | Meaning                                                       | Examples                                                |
-| ------- | ------------------------------------------------------------- | ------------------------------------------------------- |
-| `Error` | Broken, needs a human                                         | a 5xx, a DB failure, a cluster becoming unreachable     |
-| `Warn`  | Degraded, or an expected refusal worth noticing               | failed login, 403, CSRF reject, 429, deprecated env var |
-| `Info`  | App lifecycle, user actions (audit mirror), state transitions | startup banner, login, VM action, cluster recovered     |
+| Level   | Meaning                                                       | Examples                                                 |
+| ------- | ------------------------------------------------------------- | -------------------------------------------------------- |
+| `Error` | Broken, needs a human                                         | a 5xx, a DB failure, a cluster becoming unreachable      |
+| `Warn`  | Degraded, or an expected refusal worth noticing               | failed login, 403, CSRF reject, 429, deprecated env var  |
+| `Info`  | App lifecycle, user actions (audit mirror), state transitions | startup banner, login, VM action, cluster recovered      |
 | `Debug` | Diagnostics                                                   | each Proxmox call, each successful refresh, GET requests |
 
 - **Log once, where the error is handled.** A handler that returns a 4xx/5xx

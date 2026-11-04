@@ -21,12 +21,12 @@ Built with `bun run build` in `web/` (bun 1.3.13, after
 `bun install --frozen-lockfile`). Size is the sum over every `*.js` file in
 `web/build`, raw bytes and `gzip -9` bytes:
 
-| Variant | Files | Raw bytes | gzip -9 bytes |
-| --- | ---: | ---: | ---: |
-| Baseline (main at c9a60a31) | 249 | 2,071,834 | 641,581 |
-| OTel SDK, spec'd set, no context manager (headline) | 249 | 2,144,715 (+72,881, +3.5%) | 664,891 (+23,310, +3.6%) |
-| OTel SDK, spec'd set plus `ZoneContextManager` (context-zone 3.0.0) | 249 | 2,181,415 (+109,581, +5.3%) | 676,928 (+35,347, +5.5%) |
-| Hand-rolled vitals + traceparent stub | 249 | 2,072,742 (+908, +0.04%) | 642,073 (+492, +0.08%) |
+| Variant                                                             | Files | Raw bytes                   | gzip -9 bytes            |
+| ------------------------------------------------------------------- | ----: | --------------------------: | -----------------------: |
+| Baseline (main at c9a60a31)                                         | 249   | 2,071,834                   | 641,581                  |
+| OTel SDK, spec'd set, no context manager (headline)                 | 249   | 2,144,715 (+72,881, +3.5%)  | 664,891 (+23,310, +3.6%) |
+| OTel SDK, spec'd set plus `ZoneContextManager` (context-zone 3.0.0) | 249   | 2,181,415 (+109,581, +5.3%) | 676,928 (+35,347, +5.5%) |
+| Hand-rolled vitals + traceparent stub                               | 249   | 2,072,742 (+908, +0.04%)    | 642,073 (+492, +0.08%)   |
 
 Measurement commands, run from the worktree root:
 
@@ -174,8 +174,10 @@ default level. The relative deltas are what matter.
 
 ## Not verified
 
-- No browser run of the stub or of the SDK. Only build output was measured.
-- The web-vitals library's size was not measured.
-- Propagation was checked by reading source and the otelhttp v0.72.0 module
-  cache, not by a running test.
-- No collector run and no export test.
+- The web-vitals library's size was not measured (the stub is the comparison,
+  not the library).
+- The end-to-end run used a stub collector, not a production backend
+  (Tempo, Jaeger). The proxy path is identical, but a real collector's
+  rejection modes are untested.
+- The measured hand-rolled cost (+3.0 kB raw / +1.3 kB gzip) is above the
+  original stub estimate (+0.9 / +0.5) but remains far below the SDK set.

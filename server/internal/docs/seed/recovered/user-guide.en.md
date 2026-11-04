@@ -78,7 +78,9 @@ sub-sections below: Summary, Disks, Network, Hardware, Snapshots), and
 - **Console** - open the graphical console.
 - **Boot from CD-ROM** once - restart on the mounted ISO for a single boot.
 - **Rename** and edit the **description** (Markdown is rendered).
+- **Duplicate** - clone the VM under a new name, on the same node.
 - **Delete** - permanently delete the VM (confirmation dialog).
+- **Lease** - when your cluster enables leases, the expiry date shows under the header and **Extend lease** pushes it out (capped at the cluster's lease length).
 - **Metrics** - CPU, memory, disk, and network history over the last hour, day, or week.
 
 Prefer **Shutdown** over **Force stop**. If shutdown does nothing, the QEMU guest
@@ -101,6 +103,7 @@ curated picker, and load or eject an ISO in the CD-ROM drive.
 ### Snapshots
 
 - **Create**: enter a name (starts with a letter, then letters, digits, hyphens or underscores - 2 to 40 characters), an optional description, and choose whether to include RAM state.
+- **Schedule**: optionally take a snapshot automatically every day or every week and keep the newest N; automatic snapshots are badged `auto` and only they are pruned - manual snapshots are never deleted by the schedule.
 - **View**: name, description, creation date, and whether RAM was included; the current state is marked.
 - **Restore**: restores the VM to the snapshot state (the VM is stopped, then restarted). This is destructive - changes made after the snapshot are lost.
 - **Delete**: permanently removes a snapshot and frees its storage.
@@ -157,4 +160,4 @@ server-side before any Proxmox call is made.
 - Change your password from the **Profile** page.
 - Use the search page to find a machine fast, across filters, without scrolling the list.
 - Bookmark filtered VM lists and specific VM detail pages.
-- The application follows your browser language preference (English or French).
+- The application follows your browser language preference, and you can pick another language on your **Profile** page - English, French, German and Italian are available.

@@ -37,14 +37,14 @@ browser --(1)--> reverse proxy --(2)--> PVMSS --> Proxmox API
   PVMSS, and it needs a PKI that can issue and revoke one certificate per user
   or device. See [Client certificates for users](#client-certificates-for-users-optional).
 
-| Your situation                                                         | Recommended                                                              |
-| ---------------------------------------------------------------------- | ------------------------------------------------------------------------ |
-| Production, PVMSS and proxy on different hosts or pods                 | **`mtls`** on hop 2                                                      |
-| Kubernetes behind a Gateway / ingress controller                       | **`mtls`** on hop 2 (Helm `tls.*` + `tls.clientCA.*`)                    |
-| Proxy runs as a sidecar in the same pod, PVMSS bound to `127.0.0.1`    | `http` is acceptable: the hop never leaves the pod                       |
-| Migrating an existing deployment                                       | `tls` first, then `mtls` with `PVMSS_TLS_CLIENT_AUTH=optional`, then `require` |
-| Access must be limited to managed laptops                              | `mtls` on hop 2 **and** client certificates on hop 1                     |
-| Demo or local test                                                     | `http`                                                                   |
+| Your situation                                                      | Recommended                                                                    |
+| ------------------------------------------------------------------- | ------------------------------------------------------------------------------ |
+| Production, PVMSS and proxy on different hosts or pods              | **`mtls`** on hop 2                                                            |
+| Kubernetes behind a Gateway / ingress controller                    | **`mtls`** on hop 2 (Helm `tls.*` + `tls.clientCA.*`)                          |
+| Proxy runs as a sidecar in the same pod, PVMSS bound to `127.0.0.1` | `http` is acceptable: the hop never leaves the pod                             |
+| Migrating an existing deployment                                    | `tls` first, then `mtls` with `PVMSS_TLS_CLIENT_AUTH=optional`, then `require` |
+| Access must be limited to managed laptops                           | `mtls` on hop 2 **and** client certificates on hop 1                           |
+| Demo or local test                                                  | `http`                                                                         |
 
 ## How it works
 
@@ -62,17 +62,17 @@ browser --(1)--> reverse proxy --(2)--> PVMSS --> Proxmox API
 
 ## Reference
 
-| Mode   | Variables                                                                  | Banner `tls` field |
-| ------ | -------------------------------------------------------------------------- | ------------------ |
-| `http` | none (default)                                                             | `http`             |
-| `tls`  | `PVMSS_TLS_CERT_FILE`, `PVMSS_TLS_KEY_FILE`                                | `tls`              |
-| `mtls` | the two above + `PVMSS_TLS_CLIENT_CA_FILE` (+ `PVMSS_TLS_CLIENT_AUTH`)     | `mtls`             |
+| Mode   | Variables                                                              | Banner `tls` field |
+| ------ | ---------------------------------------------------------------------- | ------------------ |
+| `http` | none (default)                                                         | `http`             |
+| `tls`  | `PVMSS_TLS_CERT_FILE`, `PVMSS_TLS_KEY_FILE`                            | `tls`              |
+| `mtls` | the two above + `PVMSS_TLS_CLIENT_CA_FILE` (+ `PVMSS_TLS_CLIENT_AUTH`) | `mtls`             |
 
-| Variable                   | Meaning                                                                                                     |
-| -------------------------- | ----------------------------------------------------------------------------------------------------------- |
-| `PVMSS_TLS_CERT_FILE`      | PEM server certificate, full chain (leaf first). Set together with the key.                                  |
-| `PVMSS_TLS_KEY_FILE`       | PEM private key of that certificate (RSA or ECDSA, unencrypted).                                            |
-| `PVMSS_TLS_CLIENT_CA_FILE` | PEM bundle of the CAs allowed to sign client certificates. Turns on mTLS. Several CAs may be concatenated (useful while rotating the CA). |
+| Variable                   | Meaning                                                                                                                                                                                                                |
+| -------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `PVMSS_TLS_CERT_FILE`      | PEM server certificate, full chain (leaf first). Set together with the key.                                                                                                                                            |
+| `PVMSS_TLS_KEY_FILE`       | PEM private key of that certificate (RSA or ECDSA, unencrypted).                                                                                                                                                       |
+| `PVMSS_TLS_CLIENT_CA_FILE` | PEM bundle of the CAs allowed to sign client certificates. Turns on mTLS. Several CAs may be concatenated (useful while rotating the CA).                                                                              |
 | `PVMSS_TLS_CLIENT_AUTH`    | `require` (default): no valid client certificate, no connection. `optional`: a certificate is verified when sent, clients without one still get in. Needs `PVMSS_TLS_CLIENT_CA_FILE`. `optional` is reported as `tls`. |
 
 Behaviour:
@@ -177,11 +177,11 @@ volumes:
 
 ### Rules for every certificate
 
-| Certificate             | `extendedKeyUsage` | SAN                                                    | Signed by        | Suggested lifetime   |
-| ----------------------- | ------------------ | ------------------------------------------------------ | ---------------- | -------------------- |
-| PVMSS server            | `serverAuth`       | every name a proxy dials (`pvmss`, `pvmss.ns.svc`, ...) | server CA        | 90 days (automated) to 397 days |
-| Proxy client (hop 2)    | `clientAuth`       | not needed; use a CN naming the proxy (`nginx-edge-01`) | **client CA**    | 90 days (automated) to 397 days |
-| User client (hop 1)     | `clientAuth`       | not needed; CN or email naming the user                | user CA          | 1 day to 1 year, see [revocation](#revocation) |
+| Certificate          | `extendedKeyUsage` | SAN                                                     | Signed by     | Suggested lifetime                             |
+| -------------------- | ------------------ | ------------------------------------------------------- | ------------- | ---------------------------------------------- |
+| PVMSS server         | `serverAuth`       | every name a proxy dials (`pvmss`, `pvmss.ns.svc`, ...) | server CA     | 90 days (automated) to 397 days                |
+| Proxy client (hop 2) | `clientAuth`       | not needed; use a CN naming the proxy (`nginx-edge-01`) | **client CA** | 90 days (automated) to 397 days                |
+| User client (hop 1)  | `clientAuth`       | not needed; CN or email naming the user                 | user CA       | 1 day to 1 year, see [revocation](#revocation) |
 
 - One client certificate **per proxy instance** (or per proxy fleet) lets you
   remove a single proxy by rotating the CA bundle without touching the others,
@@ -268,16 +268,16 @@ vault write pki_pvmss_client/issue/proxy common_name=nginx-edge-01.proxy.pvmss t
 
 The chart wires everything from `tls.*`:
 
-| Value                               | Effect                                                                                     |
-| ----------------------------------- | ------------------------------------------------------------------------------------------ |
-| `tls.enabled`                       | Mounts the server certificate Secret at `/tls/server` and sets `PVMSS_TLS_CERT_FILE` / `_KEY_FILE`. Probes use HTTPS. |
-| `tls.secretName`                    | An existing `kubernetes.io/tls` Secret (`tls.crt`, `tls.key`).                              |
-| `tls.certManager.enabled`           | The chart creates a `Certificate` instead (`issuerRef`, `dnsNames`, `duration`, `renewBefore`). The default SANs are the Service DNS names. |
-| `tls.clientCA.enabled`              | Turns on mTLS: mounts the client CA at `/tls/client-ca`, sets `PVMSS_TLS_CLIENT_CA_FILE` and `PVMSS_TLS_CLIENT_AUTH`. |
-| `tls.clientCA.secretName`           | **Required** with `clientCA.enabled`: the Secret holding the dedicated client CA.          |
-| `tls.clientCA.key`                  | Key of the PEM bundle in that Secret (default `ca.crt`).                                   |
-| `tls.clientCA.clientAuth`           | `require` (default) or `optional`. With `require`, probes switch to `tcpSocket` because the kubelet has no client certificate. |
-| `httpRoute.backendTLSPolicy.*`      | Makes the Gateway dial the pod over HTTPS and verify the PVMSS certificate (`hostname`, `caCertificateRefs` or `wellKnownCACertificates`). |
+| Value                          | Effect                                                                                                                                      |
+| ------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------- |
+| `tls.enabled`                  | Mounts the server certificate Secret at `/tls/server` and sets `PVMSS_TLS_CERT_FILE` / `_KEY_FILE`. Probes use HTTPS.                       |
+| `tls.secretName`               | An existing `kubernetes.io/tls` Secret (`tls.crt`, `tls.key`).                                                                              |
+| `tls.certManager.enabled`      | The chart creates a `Certificate` instead (`issuerRef`, `dnsNames`, `duration`, `renewBefore`). The default SANs are the Service DNS names. |
+| `tls.clientCA.enabled`         | Turns on mTLS: mounts the client CA at `/tls/client-ca`, sets `PVMSS_TLS_CLIENT_CA_FILE` and `PVMSS_TLS_CLIENT_AUTH`.                       |
+| `tls.clientCA.secretName`      | **Required** with `clientCA.enabled`: the Secret holding the dedicated client CA.                                                           |
+| `tls.clientCA.key`             | Key of the PEM bundle in that Secret (default `ca.crt`).                                                                                    |
+| `tls.clientCA.clientAuth`      | `require` (default) or `optional`. With `require`, probes switch to `tcpSocket` because the kubelet has no client certificate.              |
+| `httpRoute.backendTLSPolicy.*` | Makes the Gateway dial the pod over HTTPS and verify the PVMSS certificate (`hostname`, `caCertificateRefs` or `wellKnownCACertificates`).  |
 
 A complete `values.yaml` excerpt with cert-manager:
 
@@ -467,10 +467,10 @@ a device check before the PVMSS sign-in; it does not replace it.
 
 ### Sizing
 
-| Users / devices | What changes                                                                                        |
-| --------------- | --------------------------------------------------------------------------------------------------- |
+| Users / devices | What changes                                                                                         |
+| --------------- | ---------------------------------------------------------------------------------------------------- |
 | any number      | Nothing on PVMSS or on the proxy: validation is against the CA, the cost of a handshake is constant. |
-| about 10        | Manual issuance with OpenSSL and a shared `.p12` procedure is workable.                             |
+| about 10        | Manual issuance with OpenSSL and a shared `.p12` procedure is workable.                              |
 | 50 and more     | Manual issuance is not: use auto-enrollment or an MDM (below). Track who holds which certificate.    |
 
 For example, 342 users means 342 certificates (or one per device), issued and
@@ -478,13 +478,13 @@ renewed automatically, and **one** CA file on the proxy.
 
 ### Distributing certificates
 
-| Tool                                        | How                                                                                  |
-| ------------------------------------------- | ------------------------------------------------------------------------------------ |
-| Active Directory Certificate Services       | A *User* or *Workstation* template with *Client Authentication*, auto-enrolled by GPO. Windows and Edge/Chrome pick it from the user store. |
-| Microsoft Intune                            | SCEP or PKCS certificate profile to Windows, macOS, iOS, Android.                    |
-| Jamf Pro / other MDM                        | Certificate payload (SCEP or PKCS#12) in a configuration profile.                    |
-| step-ca                                     | ACME, OIDC or SCEP provisioners; short-lived certificates renewed by `step` on the device. |
-| Manual (few users)                          | `openssl pkcs12 -export -legacy` then import (below).                                |
+| Tool                                  | How                                                                                                                                         |
+| ------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------- |
+| Active Directory Certificate Services | A *User* or *Workstation* template with *Client Authentication*, auto-enrolled by GPO. Windows and Edge/Chrome pick it from the user store. |
+| Microsoft Intune                      | SCEP or PKCS certificate profile to Windows, macOS, iOS, Android.                                                                           |
+| Jamf Pro / other MDM                  | Certificate payload (SCEP or PKCS#12) in a configuration profile.                                                                           |
+| step-ca                               | ACME, OIDC or SCEP provisioners; short-lived certificates renewed by `step` on the device.                                                  |
+| Manual (few users)                    | `openssl pkcs12 -export -legacy` then import (below).                                                                                       |
 
 Manual issuance, per user:
 
@@ -506,13 +506,13 @@ Linux), *Settings > Certificates > Your Certificates* (Firefox).
 
 ### Proxy settings
 
-| Proxy   | Require a browser client certificate                                                |
-| ------- | ----------------------------------------------------------------------------------- |
-| HAProxy | `bind :443 ssl crt site.pem ca-file /tls/users-ca.crt verify required`               |
-| nginx   | `ssl_client_certificate /tls/users-ca.crt; ssl_verify_client on;`                   |
-| Caddy   | `tls { client_auth { mode require_and_verify; trust_pool file /tls/users-ca.crt } }` |
+| Proxy   | Require a browser client certificate                                                                           |
+| ------- | -------------------------------------------------------------------------------------------------------------- |
+| HAProxy | `bind :443 ssl crt site.pem ca-file /tls/users-ca.crt verify required`                                         |
+| nginx   | `ssl_client_certificate /tls/users-ca.crt; ssl_verify_client on;`                                              |
+| Caddy   | `tls { client_auth { mode require_and_verify; trust_pool file /tls/users-ca.crt } }`                           |
 | Traefik | `tls.options.default.clientAuth: { caFiles: [/tls/users-ca.crt], clientAuthType: RequireAndVerifyClientCert }` |
-| NPM     | the nginx lines in *Advanced*, with a custom SSL certificate on the host            |
+| NPM     | the nginx lines in *Advanced*, with a custom SSL certificate on the host                                       |
 
 Use a **users CA**, separate from the client CA of hop 2: a user certificate
 must not open a direct connection to PVMSS.
@@ -530,12 +530,12 @@ PVMSS does not check revocation; for hop 1 the proxy does. Pick one or both:
    certificate expires. This is the most reliable option.
 2. **A CRL on the proxy**, refreshed by a job and followed by a reload:
 
-| Proxy   | Setting                                                         |
-| ------- | --------------------------------------------------------------- |
-| nginx   | `ssl_crl /tls/users-ca.crl;`                                    |
+| Proxy   | Setting                                                                         |
+| ------- | ------------------------------------------------------------------------------- |
+| nginx   | `ssl_crl /tls/users-ca.crl;`                                                    |
 | HAProxy | `bind ... ca-file /tls/users-ca.crt crl-file /tls/users-ca.crl verify required` |
-| Traefik | not supported natively: use short-lived certificates            |
-| Caddy   | not supported natively: use short-lived certificates            |
+| Traefik | not supported natively: use short-lived certificates                            |
+| Caddy   | not supported natively: use short-lived certificates                            |
 
 ```bash
 # Revoke alice with an OpenSSL CA (openssl ca needs an index; most PKIs do this for you)
@@ -554,11 +554,11 @@ sign-in, independently of the certificate.
 
 **PVMSS reads its certificates once.** After a renewal:
 
-| Platform       | How to restart                                                                    |
-| -------------- | --------------------------------------------------------------------------------- |
+| Platform       | How to restart                                                                                                                     |
+| -------------- | ---------------------------------------------------------------------------------------------------------------------------------- |
 | Kubernetes     | stakater/Reloader (`extraAnnotations: { reloader.stakater.com/auto: "true" }`), or `kubectl -n pvmss rollout restart deploy/pvmss` |
-| Docker Compose | `docker compose restart pvmss` from the renewal job                              |
-| systemd        | `systemctl restart pvmss` in the renewal hook (`certbot --deploy-hook`, `step ca renew --exec`) |
+| Docker Compose | `docker compose restart pvmss` from the renewal job                                                                                |
+| systemd        | `systemctl restart pvmss` in the renewal hook (`certbot --deploy-hook`, `step ca renew --exec`)                                    |
 
 Rotating the **client CA** without downtime:
 
@@ -618,22 +618,22 @@ mTLS hop, which plain HTTP checks do not.
 
 ## Troubleshooting
 
-| Symptom                                                                                       | Cause and fix                                                                                                    |
-| --------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------- |
-| PVMSS does not start: `PVMSS_TLS_CERT_FILE and PVMSS_TLS_KEY_FILE must be set together`        | Only one of the two is set.                                                                                      |
-| PVMSS does not start: `PVMSS_TLS_CERT_FILE/PVMSS_TLS_KEY_FILE: open ...: permission denied`    | The key is not readable by uid 65532 (image user). `chgrp 65532` + `chmod 640`, or `fsGroup: 65532` in Kubernetes. |
-| PVMSS does not start: `... private key does not match public key`                              | Certificate and key are from different requests.                                                                 |
-| PVMSS does not start: `PVMSS_TLS_CLIENT_CA_FILE holds no PEM certificate`                      | The file is DER, empty or a key. Convert with `openssl x509 -inform der -in ca.der -out ca.crt`.                 |
-| Proxy returns `502`; PVMSS logs `tls: client didn't provide a certificate`                     | The proxy has no client certificate configured for the backend (hop 2).                                          |
-| PVMSS logs `tls: failed to verify certificate: x509: certificate signed by unknown authority`  | The proxy's certificate is not signed by a CA in `PVMSS_TLS_CLIENT_CA_FILE`.                                     |
-| PVMSS logs `... x509: certificate specifies an incompatible key usage`                         | The client certificate lacks `extendedKeyUsage=clientAuth`.                                                      |
-| PVMSS logs `... certificate has expired or is not yet valid`                                   | Renew the proxy certificate; check the clocks (NTP) on both hosts.                                               |
-| Proxy logs `upstream SSL certificate does not match "pvmss"` (nginx) or a hostname error       | `proxy_ssl_name` / `verifyhost` / `serverName` is not a SAN of the PVMSS certificate.                            |
-| Proxy logs `upstream SSL certificate verify error` / `unknown authority`                       | The proxy's trusted CA (`proxy_ssl_trusted_certificate`, `ca-file`, `rootCAs`) is not the server CA.             |
-| Proxy returns `400` or `502` and PVMSS logs `client sent an HTTP request to an HTTPS server`   | The proxy still targets `http://`. Use `https://`.                                                               |
-| Browser: `400 No required SSL certificate was sent` (nginx) or `ERR_BAD_SSL_CLIENT_AUTH_CERT`  | Hop 1 mTLS is on and the browser has no valid user certificate (not imported, expired, revoked, CRL out of date). |
-| Pods never become ready in Kubernetes                                                          | An `httpGet` probe under strict mTLS. The chart uses `tcpSocket` for `clientAuth: require`; check custom probes. |
-| Everything works except the VM console (black screen, WebSocket `1006`)                        | The hop to PVMSS uses HTTP/2 or a short idle timeout. Force HTTP/1.1 and a 1 h tunnel/read timeout (recipes above). |
+| Symptom                                                                                       | Cause and fix                                                                                                       |
+| --------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------- |
+| PVMSS does not start: `PVMSS_TLS_CERT_FILE and PVMSS_TLS_KEY_FILE must be set together`       | Only one of the two is set.                                                                                         |
+| PVMSS does not start: `PVMSS_TLS_CERT_FILE/PVMSS_TLS_KEY_FILE: open ...: permission denied`   | The key is not readable by uid 65532 (image user). `chgrp 65532` + `chmod 640`, or `fsGroup: 65532` in Kubernetes.  |
+| PVMSS does not start: `... private key does not match public key`                             | Certificate and key are from different requests.                                                                    |
+| PVMSS does not start: `PVMSS_TLS_CLIENT_CA_FILE holds no PEM certificate`                     | The file is DER, empty or a key. Convert with `openssl x509 -inform der -in ca.der -out ca.crt`.                    |
+| Proxy returns `502`; PVMSS logs `tls: client didn't provide a certificate`                    | The proxy has no client certificate configured for the backend (hop 2).                                             |
+| PVMSS logs `tls: failed to verify certificate: x509: certificate signed by unknown authority` | The proxy's certificate is not signed by a CA in `PVMSS_TLS_CLIENT_CA_FILE`.                                        |
+| PVMSS logs `... x509: certificate specifies an incompatible key usage`                        | The client certificate lacks `extendedKeyUsage=clientAuth`.                                                         |
+| PVMSS logs `... certificate has expired or is not yet valid`                                  | Renew the proxy certificate; check the clocks (NTP) on both hosts.                                                  |
+| Proxy logs `upstream SSL certificate does not match "pvmss"` (nginx) or a hostname error      | `proxy_ssl_name` / `verifyhost` / `serverName` is not a SAN of the PVMSS certificate.                               |
+| Proxy logs `upstream SSL certificate verify error` / `unknown authority`                      | The proxy's trusted CA (`proxy_ssl_trusted_certificate`, `ca-file`, `rootCAs`) is not the server CA.                |
+| Proxy returns `400` or `502` and PVMSS logs `client sent an HTTP request to an HTTPS server`  | The proxy still targets `http://`. Use `https://`.                                                                  |
+| Browser: `400 No required SSL certificate was sent` (nginx) or `ERR_BAD_SSL_CLIENT_AUTH_CERT` | Hop 1 mTLS is on and the browser has no valid user certificate (not imported, expired, revoked, CRL out of date).   |
+| Pods never become ready in Kubernetes                                                         | An `httpGet` probe under strict mTLS. The chart uses `tcpSocket` for `clientAuth: require`; check custom probes.    |
+| Everything works except the VM console (black screen, WebSocket `1006`)                       | The hop to PVMSS uses HTTP/2 or a short idle timeout. Force HTTP/1.1 and a 1 h tunnel/read timeout (recipes above). |
 
 ## FAQ
 

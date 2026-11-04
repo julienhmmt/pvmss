@@ -55,13 +55,17 @@ Requises :
 - `LOG_OUTPUT` - `stdout`, `stderr` ou un chemin de fichier.
 - `PVMSS_CLUSTER_SOURCE` - `proxmox` ou `fake`. Pas de valeur par défaut, volontairement : `fake` embarque des identifiants de démonstration et ne doit jamais être choisi par accident.
 
-Requises quand `PVMSS_CLUSTER_SOURCE=proxmox` :
+Optionnelles quand `PVMSS_CLUSTER_SOURCE=proxmox` (toutes ou aucune) :
 
 - `PROXMOX_URL` - par exemple `https://hote:8006/api2/json`.
 - `PROXMOX_API_TOKEN_NAME` - identifiant du token d'API Proxmox (`user@pve!token`).
 - `PROXMOX_API_TOKEN_VALUE` - le secret correspondant.
 
-Ces trois variables décrivent le premier cluster ; les clusters supplémentaires s'ajoutent depuis `/admin/clusters`.
+Les trois renseignées : elles créent le cluster `default` au premier démarrage
+uniquement. Les trois vides : le serveur démarre sans cluster et sert la
+configuration initiale sur `/setup` jusqu'à ce qu'un administrateur en
+enregistre un. Un renseignement partiel refuse le démarrage.
+Les clusters supplémentaires s'ajoutent depuis `/admin/clusters`.
 
 Optionnelles :
 
@@ -122,6 +126,7 @@ PVMSS peut se connecter à plusieurs environnements Proxmox simultanément. Chaq
 
 - Ouvrez **Infrastructure > Clusters** (`/admin/clusters`) pour ajouter, modifier, tester et retirer des connexions.
 - Un cluster est identifié par un nom ; les VM sont toujours adressées par `cluster` + `VMID`, deux clusters peuvent donc réutiliser les mêmes VMID sans conflit.
+- Le formulaire d'édition peut **renommer l'identifiant du cluster** : une seule transaction réécrit toutes les lignes concernées, historique d'audit compris, et les liens sous l'ancien identifiant cessent de fonctionner. Le libellé d'affichage se modifie librement.
 - Le **Test** vérifie la connectivité et les identifiants avant d'exposer le cluster ; il rapporte la version de Proxmox et le nombre de nœuds et de VM.
 - La **vérification TLS** se règle par cluster. Gardez-la active en production : ajoutez le certificat CA du cluster (`/etc/pve/pve-root-ca.pem`) ou épinglez les empreintes SHA-256 des nœuds dans la section « Certificats TLS » du cluster, puis lancez **Test** pour voir l'état TLS. Ne la désactivez que pour un labo auto-signé. Un certificat client et sa clé (mTLS) peuvent aussi être enregistrés ; la clé est chiffrée et n'est plus jamais affichée.
 - Nœuds, stockages, ISO, templates, bridges et politique sont gérés par cluster.
@@ -216,11 +221,25 @@ Cette page fait partie de celles gérées sous **Documentation** (`/admin/docs`)
 
 Les pages intégrées sont insérées une seule fois, si elles manquent, et jamais écrasées au redémarrage : vos modifications survivent aux mises à jour. Pour récupérer un texte intégré plus récent, collez le nouveau contenu de la release dans la page.
 
+## Récupération (adoption d'une installation précédente)
+
+`/admin/recovery` sert quand une installation PVMSS neuve (nouvelle base)
+pointe vers un cluster qu'une ancienne instance gérait déjà : le cluster porte
+encore les traces (pools `pvmss-*`, VM taguées `pvmss`, autres tags) mais les
+enregistrements locaux ont disparu. Le rapport liste les pools orphelins, les
+VM taguées `pvmss` hors pools gérés (informatif) et les tags du catalogue
+perdus avec l'ancienne base, chaque tag avec une couleur suggérée. Cochez ce
+qu'il faut adopter puis confirmez : les pools redeviennent gérés et les tags
+sont recréés - l'adoption n'écrit que des lignes locales et ne retouche jamais
+les tags des VM sur le cluster. Le rapport est mis en cache 5 minutes par
+cluster ; **Rescan** force une nouvelle lecture.
+
 ## Paramètres, audit et maintenance
 
 `/admin/settings` expose les commandes d'exploitation :
 
-- **Journal d'audit** - chaque écriture (création de VM, action d'alimentation, modification, suppression, changements de catalogue et de politique, connexions) est enregistrée avec l'utilisateur, l'IP, la sévérité et la cible. Filtrez et paginez ; chaque VM affiche aussi ses propres entrées dans son onglet Activité.
+- **Journal d'audit** - chaque écriture (création de VM, action d'alimentation, modification, suppression, changements de catalogue et de politique, connexions) est enregistrée avec l'utilisateur, l'IP, la sévérité et la cible. Filtrez et paginez, ou exportez la vue filtrée en CSV ; chaque VM affiche aussi ses propres entrées dans son onglet Activité.
+- **Niveau de logs** - changez le niveau de journalisation en cours (debug/info/warn/error) sans redémarrage ; un redémarrage revient à `LOG_LEVEL`.
 - **Comptes** - gestion réservée au propriétaire des administrateurs locaux : usage du plafond, statut et verrou, dernière connexion, création, réinitialisation du mot de passe, activation/désactivation, suppression.
 - **Rétention** - nombre de jours de conservation des lignes d'audit, avec aperçu du nombre de lignes qu'une purge supprimerait avant de l'appliquer.
 - **Export / import de la base** - sauvegardez la base SQLite ou restaurez-en une. L'import est en deux temps : l'envoi renvoie un aperçu table par table, rien n'est écrit avant confirmation.

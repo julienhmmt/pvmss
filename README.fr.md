@@ -51,13 +51,13 @@ L'inventaire complet, route par route, est dans [docs/FEATURES.md](docs/FEATURES
 - **Mes VM** : liste des VM du cluster de connexion, recherche/filtre/tri reflétés dans l'URL, statut en direct, actions d'alimentation groupées avec résultat par VM, bouton console sur chaque ligne.
 - **Assistant de création** (mode Simple / Détaillé) depuis deux sources : une **ISO** approuvée ou un **template** Proxmox (clone lié ou complet). Profils matériels ou valeurs libres, placement automatique avec score de capacité, multi-NIC (bridge + modèle), UEFI (sans Secure Boot) / TPM 2.0, tags curés, démarrage sur CD-ROM.
 - **Accès aux VM** : PVMSS n'ajoute ni clé SSH ni mot de passe (l'écriture cloud-init a été supprimée). Un clone de template garde les accès intégrés à son template Proxmox ; une installation ISO reçoit le compte créé par l'utilisateur pendant l'installation. Voir [Les modèles de VM portent les accès](#les-modèles-de-vm-portent-les-accès).
-- **Exploitation d'une VM** : 7 actions d'alimentation, renommage, description Markdown, suppression ; disques (ajout / agrandissement / détachement) ; cartes réseau (bridge, modèle, VLAN, débit) ; CPU/RAM/tags/CD-ROM ; snapshots (création / restauration / suppression, RAM optionnelle) ; historique de métriques (heure/jour/semaine) et flux temps réel ; journal d'activité par VM.
+- **Exploitation d'une VM** : 7 actions d'alimentation, renommage, description Markdown, suppression ; disques (ajout / agrandissement / détachement) ; cartes réseau (bridge, modèle, VLAN, débit) ; CPU/RAM/tags/CD-ROM ; snapshots (création / restauration / suppression, RAM optionnelle) plus une planification automatique quotidienne/hebdomadaire avec rétention ; duplication d'une VM en clone complet ; expiration et prolongation du bail quand le cluster active les baux ; historique de métriques (heure/jour/semaine) et flux temps réel ; journal d'activité par VM.
 - **Consoles** : noVNC et série (xterm.js), toutes deux relayées par PVMSS avec ticket à usage unique ; actions d'alimentation depuis la console.
 - Page Nœuds avec capacité en direct, documentation intégrée (FR + EN), interface en FR, EN, DE et IT, navigation clavier, cible WCAG 2.1 AA.
 
 ### Administrateurs
 
-- **Clusters** : connexion à plusieurs environnements Proxmox, test de connectivité.
+- **Clusters** : connexion à plusieurs environnements Proxmox, test de connectivité, renommage de l'identifiant d'un cluster (toutes les lignes concernées suivent) ; adoption des pools et tags qu'une installation PVMSS précédente a laissés sur un cluster depuis **Admin > Récupération**.
 - **Catalogue** : approbation des nœuds, stockages, ISO, templates de VM, bridges ; CRUD des profils matériels et des tags ; approbations obsolètes réconciliées avec la découverte en direct.
 - **Pools** : création d'un utilisateur self-service = utilisateur Proxmox + pool + ACL en une étape ; suppression en cascade.
 - **Migration** : déplacement d'une VM gérée par PVMSS vers un autre nœud approuvé et en ligne du même cluster depuis la page du nœud (contrôle préalable, confirmation explicite, progression dans le tiroir des tâches).
@@ -148,6 +148,18 @@ Persistez tout le répertoire `/data` (un volume), pas le seul fichier `pvmss.db
 
 Le tag `pvmss` est utilisé par défaut pour les VMs créées via PVMSS, il ne peut pas et ne doit pas être supprimé. Seul les tags créés par l'admin via PVMSS peuvent être utilisés.
 
+#### Profils de VM
+
+Les profils de VM sont des gabarits matériels (sockets, cœurs, mémoire, disque,
+bus de disque) que les administrateurs gèrent dans **Admin > Profils**. Les
+utilisateurs choisissent un profil dans l'assistant de création au lieu de
+saisir les valeurs CPU/RAM/disque. PVMSS ne livre aucun profil par défaut :
+créez ceux dont vos utilisateurs ont besoin. Chaque profil a un libellé, les
+valeurs ci-dessus, une description optionnelle en Markdown limité et un
+indicateur d'activation (seuls les profils activés sont proposés). Les limites
+par cluster (gabarit) d'**Admin > Politique** plafonnent toujours chaque
+valeur.
+
 ### Les modèles de VM portent les accès
 
 PVMSS n'ajoute ni clé SSH ni mot de passe aux VM qu'il crée : l'écriture
@@ -175,9 +187,9 @@ L'écriture cloud-init a été supprimée le 2026-10-31 : plus de modèles
 cloud-init, plus d'écriture d'utilisateur/mot de passe/clé SSH par VM, plus
 d'import d'images cloud, plus de stockage de snippets. Il reste l'endpoint en
 lecture seule `GET /api/v1/vms/{cluster}/{vmid}/cloudinit` (utilisateur SSH
-pour l'aide à la connexion) et un avertissement à la suppression d'une VM sur
-les fichiers `pvmss-*.yml` laissés par les anciennes versions. Détails et
-notes de migration : [docs/cloud-init.md](docs/cloud-init.md).
+pour l'aide à la connexion). Les fichiers `pvmss-*.yml` qu'une ancienne version
+aurait laissés sur les nœuds ne sont plus suivis - supprimez-les à la main.
+Détails et notes de migration : [docs/cloud-init.md](docs/cloud-init.md).
 
 ### Variables d'environnement
 
@@ -209,6 +221,7 @@ Utilisez **soit** un `.env` (via `env_file`) **soit** des variables inline, pas 
 | `PVMSS_MAX_LOCAL_ADMINS`                                   | Nombre maximum d'administrateurs locaux en base (1-50 ; hors admin d'amorçage)                                                       | ❌                    | `5`                |
 | `PVMSS_TRUSTED_PROXY_HOPS`                                 | Nombre de reverse proxies devant PVMSS (IP client / limitation de débit) ; à régler derrière un proxy (Helm : `1`)                   | ❌                    | `0`                |
 | `PVMSS_RATE_LIMIT_MAX`                                     | Relève tous les plafonds de limitation de débit intégrés (auth par IP, écritures par utilisateur) ; `0` garde les valeurs par défaut | ❌                    | `0`                |
+| `PVMSS_DB_RESET_ON_INCOMPATIBLE`                           | Sur une base incompatible, la renomme et repart à zéro au lieu de refuser le démarrage (commodité de dev)                            | ❌                    | `false`            |
 | `PVMSS_METRICS_PORT`                                       | Port de l'écouteur `GET /metrics` sur `PVMSS_HOST` (1-65535, différent de `PVMSS_PORT`) ; vide = désactivé                           | ❌                    | vide               |
 | `PVMSS_TLS_CERT_FILE` / `PVMSS_TLS_KEY_FILE`               | Sert du HTTPS avec ce certificat et cette clé PEM (les deux) ; voir [docs/tls.md](docs/tls.md)                                       | ❌                    | vide (HTTP clair)  |
 | `PVMSS_TLS_CLIENT_CA_FILE`                                 | Bundle CA PEM pour les certificats clients : active le TLS mutuel (**recommandé**)                                                   | ❌                    | vide               |

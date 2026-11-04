@@ -52,13 +52,16 @@ Required:
 - `LOG_OUTPUT` - `stdout`, `stderr`, or a file path.
 - `PVMSS_CLUSTER_SOURCE` - `proxmox` or `fake`. There is no default on purpose: `fake` ships with demo credentials and must never be selected by accident.
 
-Required when `PVMSS_CLUSTER_SOURCE=proxmox`:
+Optional when `PVMSS_CLUSTER_SOURCE=proxmox` (all-or-nothing):
 
 - `PROXMOX_URL` - for example `https://host:8006/api2/json`.
 - `PROXMOX_API_TOKEN_NAME` - the Proxmox API token id (`user@pve!token`).
 - `PROXMOX_API_TOKEN_VALUE` - the matching token secret.
 
-These three describe the first cluster; additional clusters are added from `/admin/clusters`.
+All three set: they seed the `default` cluster on first boot only. All three
+empty: the server boots with no cluster and serves the first-run setup at
+`/setup` until an administrator registers one. A partial set refuses to boot.
+Additional clusters are added from `/admin/clusters`.
 
 Optional:
 
@@ -115,6 +118,7 @@ PVMSS supports connecting to more than one Proxmox environment at the same time.
 
 - Open **Infrastructure > Clusters** (`/admin/clusters`) to add, edit, test, and remove cluster connections.
 - A cluster is identified by a name; VMs are always addressed by their `cluster` and `VMID`, so two clusters may reuse the same VMIDs without conflict.
+- The edit form can **rename the cluster id**: one transaction rewrites every cluster-keyed row, audit history included, and links under the old id stop working. The display label is freely editable.
 - Use the **Test** action to verify connectivity and credentials before exposing the cluster to users; it reports the Proxmox version and the node and VM counts.
 - **TLS verification** is set per cluster. Keep it on in production: add the cluster CA certificate (`/etc/pve/pve-root-ca.pem`) or pin the node SHA-256 fingerprints in the cluster's TLS certificates section, then run **Test** to see the TLS status. Skip it only for self-signed labs. A client certificate and key (mTLS) can also be stored; the key is encrypted and never shown again.
 - Approved nodes, storages, ISOs, templates, bridges, and the policy are all managed per cluster.
@@ -206,11 +210,24 @@ This page is one of several managed under **Documentation** (`/admin/docs`). Adm
 
 Built-in pages are seeded once, when missing, and never overwritten on restart, so your edits survive upgrades. To pick up a newer built-in text after an upgrade, paste the new content from the release into the page.
 
+## Recovery (adopting a previous install)
+
+`/admin/recovery` helps when a fresh PVMSS install (new database) points at a
+cluster an older PVMSS instance already managed: the cluster still carries the
+evidence (`pvmss-*` pools, `pvmss`-tagged VMs, other VM tags) but the local
+records are gone. The report lists orphan pools, stray `pvmss`-tagged VMs
+outside managed pools (informational), and catalog tags lost with the old
+database, each tag with a suggested color. Check what to adopt and confirm:
+pools are re-marked managed and tags recreated - adoption writes local rows
+only and never rewrites VM tags on the cluster. The report is cached for
+5 minutes per cluster; **Rescan** forces a fresh read.
+
 ## Settings, audit, and maintenance
 
 `/admin/settings` exposes operational controls:
 
-- **Audit log** - every write (VM create, power action, edit, delete, catalog and policy changes, sign-ins) is recorded with the acting user, IP, severity, and target. Filter and page through it; each VM also shows its own entries on its Activity tab.
+- **Audit log** - every write (VM create, power action, edit, delete, catalog and policy changes, sign-ins) is recorded with the acting user, IP, severity, and target. Filter and page through it, or export the filtered view as CSV; each VM also shows its own entries on its Activity tab.
+- **Log level** - switch the running log level (debug/info/warn/error) without a restart; a restart returns to the `LOG_LEVEL` value.
 - **Accounts** - owner-only management of local administrators: cap usage, status and lock, last sign-in, create, reset password, disable/enable, delete.
 - **Retention** - set the number of days to keep audit rows and preview how many rows a prune would delete before applying.
 - **Database export / import** - back up the SQLite database or restore one. Import is two-phase: upload returns a table-by-table preview, and nothing is written until you confirm.

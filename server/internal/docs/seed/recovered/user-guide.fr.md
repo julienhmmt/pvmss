@@ -82,7 +82,9 @@ une action d'alimentation.
 - **Console** - ouvre la console graphique.
 - **Démarrer sur le CD-ROM** une fois - redémarre sur l'ISO montée pour un seul démarrage.
 - **Renommer** et modifier la **description** (le Markdown est rendu).
+- **Dupliquer** - clone la VM sous un nouveau nom, sur le même nœud.
 - **Supprimer** - supprime définitivement la VM (boîte de confirmation).
+- **Bail** - quand le cluster active les baux, la date d'expiration s'affiche sous l'en-tête et **Prolonger le bail** la repousse (plafonnée à la durée de bail du cluster).
 - **Métriques** - historique CPU, mémoire, disque et réseau sur la dernière heure, le dernier jour ou la dernière semaine.
 
 Préférez **Éteindre** à **Forcer l'arrêt**. Si l'extinction ne fait rien, l'agent
@@ -107,6 +109,7 @@ CD-ROM.
 ### Snapshots
 
 - **Créer** : saisissez un nom (commence par une lettre, puis lettres, chiffres, tirets ou underscores - 2 à 40 caractères), une description optionnelle, et choisissez d'inclure ou non l'état de la RAM.
+- **Planifier** : prenez éventuellement un snapshot automatiquement chaque jour ou chaque semaine en gardant les N plus récents ; les snapshots automatiques portent le badge `auto` et seuls eux sont purgés - la planification ne supprime jamais les snapshots manuels.
 - **Consulter** : nom, description, date de création et présence de la RAM ; l'état courant est marqué.
 - **Restaurer** : ramène la VM à l'état du snapshot (la VM est arrêtée puis redémarrée). Opération destructive - les changements postérieurs sont perdus.
 - **Supprimer** : retire définitivement un snapshot et libère son stockage.
@@ -163,4 +166,4 @@ applique côté serveur avant tout appel à Proxmox.
 - Changez votre mot de passe depuis la page **Profil**.
 - Utilisez la page de recherche pour retrouver une machine rapidement, sans faire défiler la liste.
 - Mettez en favori des listes filtrées et des pages de détail de VM.
-- L'application suit la langue de votre navigateur (français ou anglais).
+- L'application suit la langue de votre navigateur, et vous pouvez choisir une autre langue sur votre page **Profil** - français, anglais, allemand et italien sont disponibles.

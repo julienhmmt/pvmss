@@ -7,7 +7,7 @@ section to check it against a later HEAD.
 
 Current state at time of writing: `v0.3.0` was the last tagged release
 (shipped on the original stack); the `v0.4` rewrite is now the only codebase
-on `main` but still untagged - at `HEAD a314e752` (2026-11-02), `main` carries
+on `main` but still untagged - at `HEAD 493cc71b` (2026-11-04), `main` carries
 the Go API + SvelteKit stack end to end.
 
 ## History
@@ -17,15 +17,15 @@ the Go API + SvelteKit stack end to end.
 First commit `3296f56d` ("pvmss 0.1"), 2025-10-13. Seven tags across the
 original `backend/` + `frontend/` codebase:
 
-| Tag | Date | Shape |
-| --- | --- | --- |
-| `0.1` | 2025-10-13 | initial release |
-| `0.1.1` | 2025-10-17 | first post-install fixes |
-| `0.1.2` | 2025-10-19 | VM detail page redesign |
-| `0.1.3` | 2025-10-23 | node name shown next to VMBR name, plus fixes |
-| `0.2` | 2025-11-11 | 139 commits: VM resource editing, TPM/UEFI support, auto-start on create, cluster detection, app-info page, consolidation of the Proxmox API client (`resty_*.go` files merged into their domain files) |
-| `0.2.1` | 2025-11-22 | 32 commits, mostly dependency updates |
-| `0.3.0` | 2025-12-07 | 78 commits since `0.2.1` |
+| Tag     | Date       | Shape                                                                                                                                                                                                   |
+| ------- | ---------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `0.1`   | 2025-10-13 | initial release                                                                                                                                                                                         |
+| `0.1.1` | 2025-10-17 | first post-install fixes                                                                                                                                                                                |
+| `0.1.2` | 2025-10-19 | VM detail page redesign                                                                                                                                                                                 |
+| `0.1.3` | 2025-10-23 | node name shown next to VMBR name, plus fixes                                                                                                                                                           |
+| `0.2`   | 2025-11-11 | 139 commits: VM resource editing, TPM/UEFI support, auto-start on create, cluster detection, app-info page, consolidation of the Proxmox API client (`resty_*.go` files merged into their domain files) |
+| `0.2.1` | 2025-11-22 | 32 commits, mostly dependency updates                                                                                                                                                                   |
+| `0.3.0` | 2025-12-07 | 78 commits since `0.2.1`                                                                                                                                                                                |
 
 ### Continued v0.3 development (2025-12-07 to 2026-07-21): 361 commits
 

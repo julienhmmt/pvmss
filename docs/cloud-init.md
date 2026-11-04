@@ -31,10 +31,15 @@ Kept on purpose:
   store, handlers, `/profile` section and i18n keys, plus the `cloudinit`
   package's SSH-key validation helpers). The table is kept, unused, because
   migrations are forward-only; it holds no data PVMSS still needs.
-- The `vm_cloudinit_snippets` and `vm_cloudinit_documents` tables, so the
-  VM-delete path can still warn an operator about `pvmss-*.yml` files a
-  pre-removal deployment left on the nodes. Remove those files by hand on
-  the nodes; PVMSS never creates new ones.
+Also gone since 2026-11-04:
+
+- The `vm_cloudinit_snippets` and `vm_cloudinit_documents` tables and the
+  VM-delete warning they fed. The tables tracked `pvmss-*.yml` files a
+  pre-removal deployment could have left on the nodes; fresh databases no
+  longer create them and existing ones keep them inert (the no-drop
+  precedent, like `profile_ssh_keys`). Nothing is tracked any more: remove
+  any leftover `pvmss-*.yml` files by hand on the nodes; PVMSS never creates
+  new ones.
 
 Why it went: the Proxmox API cannot write `snippets` files, so the admin had
 to copy-paste content onto nodes by hand - too fragile and too complex to

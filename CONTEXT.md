@@ -99,7 +99,7 @@ where post-task configuration is required (create → post-clone hardware setup,
 _Avoid_: task id, job id
 
 **Cluster id**:
-The immutable logical name of a Proxmox connection (`clusters.name`), chosen at creation and matching `^[a-z0-9-]+$`; `default` for the env-seeded cluster. In first-run setup the probe suggests an id derived from the discovered display name. It is the key in URLs, the API, audit history and per-cluster settings, and it cannot be renamed. Workaround: create a cluster with the wanted id.
+The logical name of a Proxmox connection (`clusters.name`), chosen at creation and matching `^[a-z0-9-]+$`; `default` for the env-seeded cluster. In first-run setup the probe suggests an id derived from the discovered display name. It is the key in URLs, the API, audit history and per-cluster settings. The cluster edit form can rename it (`PUT /api/v1/admin/clusters/{name}/rename`): one transaction rewrites every cluster-keyed table, `audit_log` included, so history follows the new id and links under the old one stop working.
 _Avoid_: cluster name, slug
 
 **Cluster display label**:
@@ -125,7 +125,7 @@ NFS or CephFS). Approved once per cluster rather than per node; enabled when any
 of its node rows is.
 _Avoid_: global storage, cluster storage
 
-**Tâche**:
+**Task (tâche)**:
 An asynchronous Proxmox operation tracked by UPID and polled by the task tray
 (create, snapshot, rollback, snapshot delete). Terminal states are
 running / ok / error. A task that ends in `WARNINGS: N` is a **success** - the
@@ -134,7 +134,7 @@ implies state `ok`. When the tray stops following a task (deadline, repeated
 errors) it says "we stopped following", never "it failed".
 _Avoid_: job, workflow, "task with warnings" as a state
 
-**Verrou Proxmox (lock)**:
+**Proxmox lock (verrou)**:
 A per-VM mutex PVE holds while an operation runs (snapshot, rollback, backup,
 migrate, clone, create…). While set, PVE refuses other operations on the VM.
 Snapshot operations retry on it (bounded, then fail naming the lock);
@@ -167,10 +167,10 @@ _Avoid_: dry run, validation
 Restoring a VM to a snapshot. Proxmox stops the VM, reverts the disks, and
 starts it again - with RAM state the VM resumes live at the snapshot point,
 without it the VM boots fresh from the restored disks. The confirmation UI
-must say « arrête puis redémarre la VM ».
+must state that the VM is stopped, then restarted.
 _Avoid_: silent restore, "revert" (no PVMSS usage)
 
-**Snapshot avec état RAM (vmstate)**:
+**Snapshot with RAM state (vmstate)**:
 A snapshot that also captures the VM's RAM, enabling resume-at-point
 rollback. Requires the VM to be running and every disk on storage able to hold
 the RAM state. The UI offers it as a checkbox and greys it out with a reason,

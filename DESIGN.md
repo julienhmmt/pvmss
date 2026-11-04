@@ -972,16 +972,16 @@ can reach `/about` from the footer, so `/about` must stand on its own.
 
 **Motion vocabulary** (all in `app.css`, all reduced-motion safe):
 
-| Class / helper                    | Use                                                   |
-| --------------------------------- | ----------------------------------------------------- |
-| `reveal()` (`#lib/shared/reveal`) | Fade + rise on scroll-in, once; optional `onShow`     |
-| `.pv-blade`                       | Sideways slide-in instead of the rise (rack blades)   |
-| `.pv-connector`                   | A line that draws itself when its parent reveals     |
-| `.pv-boot-*`                      | Status dot + label crossfade, starting → running      |
-| `.pv-load`                        | A usage bar breathing between 35% and 100%            |
-| `.pv-flow`                        | A packet travelling along a connector                 |
-| `.pv-pulse`                       | A slow "live" pulse on a small dot                    |
-| `.pv-dot-grid`                    | The 18px dot texture behind illustrations and bands   |
+| Class / helper                    | Use                                                 |
+| --------------------------------- | --------------------------------------------------- |
+| `reveal()` (`#lib/shared/reveal`) | Fade + rise on scroll-in, once; optional `onShow`   |
+| `.pv-blade`                       | Sideways slide-in instead of the rise (rack blades) |
+| `.pv-connector`                   | A line that draws itself when its parent reveals    |
+| `.pv-boot-*`                      | Status dot + label crossfade, starting → running    |
+| `.pv-load`                        | A usage bar breathing between 35% and 100%          |
+| `.pv-flow`                        | A packet travelling along a connector               |
+| `.pv-pulse`                       | A slow "live" pulse on a small dot                  |
+| `.pv-dot-grid`                    | The 18px dot texture behind illustrations and bands |
 
 **Rules:**
 
