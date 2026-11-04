@@ -13,7 +13,9 @@ import (
 	"pvmss/server/internal/policy"
 	"pvmss/server/internal/pools"
 	"pvmss/server/internal/store"
+	"pvmss/server/internal/vm"
 	"slices"
+	"strconv"
 	"strings"
 	"time"
 )
@@ -80,8 +82,8 @@ type vmStatusCountsDTO struct {
 
 // dashboardAlertDTO is one thing an administrator should act on. Kind is
 // one of cluster_unreachable, node_offline, node_offline_disabled, node_cpu,
-// node_memory, storage_full, pool_at_quota; Subject names the node, storage
-// or pool.
+// node_memory, storage_full, pool_at_quota, snapshot_schedule_failed; Subject
+// names the node, storage, pool or VMID.
 // Cluster is the display label; ClusterKey is the registry key routes use.
 type dashboardAlertDTO struct {
 	Kind       string `json:"kind"`
@@ -148,6 +150,7 @@ func (h *AdminOps) ServeDashboard(w http.ResponseWriter, r *http.Request) {
 
 	labels := h.clusterLabels(r.Context())
 	dash.Alerts = append(dash.Alerts, h.quotaRequestAlerts(r.Context(), labels)...)
+	dash.Alerts = append(dash.Alerts, h.snapshotScheduleAlerts(r.Context(), labels)...)
 
 	for _, name := range names {
 		idx := indexes[name]
@@ -502,6 +505,36 @@ func (h *AdminOps) quotaRequestAlerts(ctx context.Context, labels map[string]str
 		alerts = append(alerts, dashboardAlertDTO{
 			Kind: "quota_requests_pending", Severity: alertWarning, Cluster: cmp.Or(labels[name], name),
 			ClusterKey: name, Used: counts[name],
+		})
+	}
+
+	return alerts
+}
+
+// snapshotScheduleAlerts reports VMs whose latest automatic snapshot attempt
+// failed. An unreachable cluster is left out: cluster_unreachable already says
+// so, once, instead of once per scheduled VM.
+func (h *AdminOps) snapshotScheduleAlerts(ctx context.Context, labels map[string]string) []dashboardAlertDTO {
+	if h.store == nil {
+		return nil
+	}
+
+	schedules, err := h.store.ListSnapshotSchedules(ctx)
+	if err != nil {
+		logctx.FromOr(ctx, h.log).WarnContext(ctx, "failed to read snapshot schedules", "component", "httpapi", "error", err)
+		return nil
+	}
+
+	var alerts []dashboardAlertDTO
+
+	for _, schedule := range schedules {
+		if schedule.LastFailure == "" || schedule.LastFailure == vm.ScheduleFailureUnavailable || schedule.Frequency == vm.ScheduleOff {
+			continue
+		}
+
+		alerts = append(alerts, dashboardAlertDTO{
+			Kind: "snapshot_schedule_failed", Severity: alertWarning, Cluster: cmp.Or(labels[schedule.Cluster], schedule.Cluster),
+			ClusterKey: schedule.Cluster, Subject: strconv.Itoa(schedule.VMID),
 		})
 	}
 

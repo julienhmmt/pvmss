@@ -2,6 +2,7 @@
 package vm_test
 
 import (
+	"errors"
 	"pvmss/server/internal/cluster"
 	"pvmss/server/internal/store"
 	"pvmss/server/internal/vm"
@@ -9,6 +10,8 @@ import (
 	"testing"
 	"time"
 )
+
+var errBoom = errors.New("boom")
 
 // oldestAutoSnapshot is the first of the three scheduler snapshots from autoSnapshots.
 const oldestAutoSnapshot = "pvmss-auto-20261028-0300"
@@ -100,5 +103,69 @@ func TestSweepFailedCreateTaskKeepsRunAndStillPrunes(t *testing.T) {
 	}
 	if !slices.Equal(client.deleted, []string{oldestAutoSnapshot}) {
 		t.Fatalf("prune must still run to retain, deleted = %v", client.deleted)
+	}
+}
+
+func notDueOverRetain() store.SnapshotSchedule {
+	schedule := dueDaily(100)
+	schedule.Retain = 2
+	schedule.LastRunAt = sweepNow.Add(-1 * time.Hour)
+
+	return schedule
+}
+
+func TestSweepRecordsFailedPruneThenClearsIt(t *testing.T) {
+	t.Parallel()
+
+	schedule := notDueOverRetain()
+	st := &sweepStore{schedules: []store.SnapshotSchedule{schedule}}
+	client := &sweepClient{snapshots: autoSnapshots(), failDelete: map[string]bool{oldestAutoSnapshot: true}}
+	sweepPass(st, client, sweepCase{schedule: schedule, fresh: true})
+	if !slices.Equal(st.failures, []string{vm.ScheduleFailurePruneFailed}) {
+		t.Fatalf("failed prune must be recorded: %v", st.failures)
+	}
+
+	schedule.LastFailure = vm.ScheduleFailurePruneFailed
+	st.schedules = []store.SnapshotSchedule{schedule}
+	client.failDelete = nil
+	sweepPass(st, client, sweepCase{schedule: schedule, fresh: true})
+	if st.cleared != 1 {
+		t.Fatalf("successful prune must clear the failure, cleared = %d", st.cleared)
+	}
+}
+
+func TestSweepRecordsSkipOnlyWhenDue(t *testing.T) {
+	t.Parallel()
+
+	st, _ := runSweep(t, sweepCase{schedule: dueDaily(100), fresh: false})
+	if !slices.Equal(st.failures, []string{vm.ScheduleFailureUnavailable}) {
+		t.Fatalf("due schedule on a stale cluster must record the skip: %v", st.failures)
+	}
+
+	st, _ = runSweep(t, sweepCase{schedule: notDueOverRetain(), fresh: false})
+	if len(st.failures) != 0 {
+		t.Fatalf("not-due schedule must raise no alert: %v", st.failures)
+	}
+}
+
+func TestSweepLockedVMRecordsNoFailure(t *testing.T) {
+	t.Parallel()
+
+	st, _ := runSweep(t, sweepCase{schedule: dueDaily(100), fresh: true, client: &sweepClient{lock: "snapshot"}})
+	if len(st.failures) != 0 {
+		t.Fatalf("a lock is a normal retry, not a failure: %v", st.failures)
+	}
+}
+
+func TestSweepFailedCreateKeepsItsFailureOverPrune(t *testing.T) {
+	t.Parallel()
+
+	schedule := dueDaily(100)
+	schedule.Retain = 2
+	st, _ := runSweep(t, sweepCase{schedule: schedule, fresh: true, client: &sweepClient{
+		createErr: errBoom, snapshots: autoSnapshots(), failDelete: map[string]bool{oldestAutoSnapshot: true},
+	}})
+	if !slices.Equal(st.failures, []string{vm.ScheduleFailureCreateFailed}) {
+		t.Fatalf("create failure must not be replaced: %v", st.failures)
 	}
 }

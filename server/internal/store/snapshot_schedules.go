@@ -17,19 +17,24 @@ type SnapshotSchedule struct {
 	Frequency string
 	Retain    int
 	LastRunAt time.Time
+	// LastFailure is the failure code of the latest attempt, empty after a
+	// success. LastFailureAt is when it happened.
+	LastFailure   string
+	LastFailureAt time.Time
 }
 
 // GetSnapshotSchedule returns found=false when the VM has no schedule row.
 func (s *Store) GetSnapshotSchedule(ctx context.Context, cluster string, vmid int) (SnapshotSchedule, bool, error) {
 	var (
-		schedule SnapshotSchedule
-		lastRun  string
+		schedule      SnapshotSchedule
+		lastRun       string
+		lastFailureAt string
 	)
 
 	err := s.db.QueryRowContext(ctx,
-		`SELECT cluster, vmid, pool, frequency, retain, last_run_at FROM vm_snapshot_schedules WHERE cluster = ? AND vmid = ?`,
+		`SELECT cluster, vmid, pool, frequency, retain, last_run_at, last_failure, last_failure_at FROM vm_snapshot_schedules WHERE cluster = ? AND vmid = ?`,
 		cluster, vmid,
-	).Scan(&schedule.Cluster, &schedule.VMID, &schedule.Pool, &schedule.Frequency, &schedule.Retain, &lastRun)
+	).Scan(&schedule.Cluster, &schedule.VMID, &schedule.Pool, &schedule.Frequency, &schedule.Retain, &lastRun, &schedule.LastFailure, &lastFailureAt)
 	if errors.Is(err, sql.ErrNoRows) {
 		return SnapshotSchedule{}, false, nil
 	}
@@ -43,13 +48,18 @@ func (s *Store) GetSnapshotSchedule(ctx context.Context, cluster string, vmid in
 		return SnapshotSchedule{}, false, fmt.Errorf("parse snapshot schedule last run: %w", err)
 	}
 
+	schedule.LastFailureAt, err = parseScheduleTime(lastFailureAt)
+	if err != nil {
+		return SnapshotSchedule{}, false, fmt.Errorf("parse snapshot schedule last failure: %w", err)
+	}
+
 	return schedule, true, nil
 }
 
 // ListSnapshotSchedules returns every schedule row, for the sweeper.
 func (s *Store) ListSnapshotSchedules(ctx context.Context) ([]SnapshotSchedule, error) {
 	rows, err := s.db.QueryContext(ctx,
-		`SELECT cluster, vmid, pool, frequency, retain, last_run_at FROM vm_snapshot_schedules ORDER BY cluster, vmid`,
+		`SELECT cluster, vmid, pool, frequency, retain, last_run_at, last_failure, last_failure_at FROM vm_snapshot_schedules ORDER BY cluster, vmid`,
 	)
 	if err != nil {
 		return nil, fmt.Errorf("list snapshot schedules: %w", err)
@@ -60,17 +70,23 @@ func (s *Store) ListSnapshotSchedules(ctx context.Context) ([]SnapshotSchedule, 
 
 	for rows.Next() {
 		var (
-			schedule SnapshotSchedule
-			lastRun  string
+			schedule      SnapshotSchedule
+			lastRun       string
+			lastFailureAt string
 		)
 
-		if err := rows.Scan(&schedule.Cluster, &schedule.VMID, &schedule.Pool, &schedule.Frequency, &schedule.Retain, &lastRun); err != nil {
+		if err := rows.Scan(&schedule.Cluster, &schedule.VMID, &schedule.Pool, &schedule.Frequency, &schedule.Retain, &lastRun, &schedule.LastFailure, &lastFailureAt); err != nil {
 			return nil, fmt.Errorf("scan snapshot schedule: %w", err)
 		}
 
 		schedule.LastRunAt, err = parseScheduleTime(lastRun)
 		if err != nil {
 			return nil, fmt.Errorf("parse snapshot schedule last run: %w", err)
+		}
+
+		schedule.LastFailureAt, err = parseScheduleTime(lastFailureAt)
+		if err != nil {
+			return nil, fmt.Errorf("parse snapshot schedule last failure: %w", err)
 		}
 
 		schedules = append(schedules, schedule)
@@ -100,14 +116,41 @@ func (s *Store) UpsertSnapshotSchedule(ctx context.Context, cluster string, vmid
 	return nil
 }
 
-// MarkSnapshotScheduleRun records the time of the last automatic snapshot.
+// MarkSnapshotScheduleRun records the time of the last automatic snapshot and
+// clears any earlier failure.
 func (s *Store) MarkSnapshotScheduleRun(ctx context.Context, cluster string, vmid int, at time.Time) error {
 	_, err := s.db.ExecContext(ctx,
-		`UPDATE vm_snapshot_schedules SET last_run_at = ? WHERE cluster = ? AND vmid = ?`,
+		`UPDATE vm_snapshot_schedules SET last_run_at = ?, last_failure = '', last_failure_at = '' WHERE cluster = ? AND vmid = ?`,
 		at.UTC().Format(time.RFC3339Nano), cluster, vmid,
 	)
 	if err != nil {
 		return fmt.Errorf("mark snapshot schedule run: %w", err)
+	}
+
+	return nil
+}
+
+// MarkSnapshotScheduleFailure records why the latest attempt failed.
+func (s *Store) MarkSnapshotScheduleFailure(ctx context.Context, cluster string, vmid int, failure string, at time.Time) error {
+	_, err := s.db.ExecContext(ctx,
+		`UPDATE vm_snapshot_schedules SET last_failure = ?, last_failure_at = ? WHERE cluster = ? AND vmid = ?`,
+		failure, at.UTC().Format(time.RFC3339Nano), cluster, vmid,
+	)
+	if err != nil {
+		return fmt.Errorf("mark snapshot schedule failure: %w", err)
+	}
+
+	return nil
+}
+
+// ClearSnapshotScheduleFailure forgets a failure that no longer applies.
+func (s *Store) ClearSnapshotScheduleFailure(ctx context.Context, cluster string, vmid int) error {
+	_, err := s.db.ExecContext(ctx,
+		`UPDATE vm_snapshot_schedules SET last_failure = '', last_failure_at = '' WHERE cluster = ? AND vmid = ?`,
+		cluster, vmid,
+	)
+	if err != nil {
+		return fmt.Errorf("clear snapshot schedule failure: %w", err)
 	}
 
 	return nil

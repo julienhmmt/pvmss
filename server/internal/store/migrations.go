@@ -285,6 +285,13 @@ const schemaV3 = `
 ALTER TABLE catalog_profiles ADD COLUMN description TEXT NOT NULL DEFAULT '';
 `
 
+// schemaV4 records why the latest scheduled snapshot attempt failed, so the VM
+// page can show it. Both stay empty after a successful run.
+const schemaV4 = `
+ALTER TABLE vm_snapshot_schedules ADD COLUMN last_failure TEXT NOT NULL DEFAULT '';
+ALTER TABLE vm_snapshot_schedules ADD COLUMN last_failure_at TEXT NOT NULL DEFAULT '';
+`
+
 // Migration is a single schema version and its forward-only DDL.
 type Migration struct {
 	Version int
@@ -301,4 +308,5 @@ var Migrations = []Migration{
 	{Version: 1, DDL: schemaV1},
 	{Version: 2, DDL: schemaV2},
 	{Version: 3, DDL: schemaV3},
+	{Version: 4, DDL: schemaV4},
 }

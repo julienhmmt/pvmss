@@ -19,6 +19,9 @@ type snapshotScheduleDTO struct {
 	Frequency string `json:"frequency"`
 	Retain    int    `json:"retain"`
 	LastRunAt string `json:"lastRunAt"`
+	// LastFailure and LastFailureAt are empty unless the latest attempt failed.
+	LastFailure   string `json:"lastFailure"`
+	LastFailureAt string `json:"lastFailureAt"`
 }
 
 // handleSchedule serves PUT and DELETE .../snapshot-schedule.
@@ -133,7 +136,11 @@ func (h *VMSnapshots) scheduleListDTO(r *http.Request, clusterName string, vmid 
 }
 
 func scheduleDTOFromModel(schedule store.SnapshotSchedule) snapshotScheduleDTO {
-	dto := snapshotScheduleDTO{Frequency: schedule.Frequency, Retain: schedule.Retain}
+	dto := snapshotScheduleDTO{Frequency: schedule.Frequency, Retain: schedule.Retain, LastFailure: schedule.LastFailure}
+	if !schedule.LastFailureAt.IsZero() {
+		dto.LastFailureAt = schedule.LastFailureAt.UTC().Format("2006-01-02T15:04:05.999999999Z07:00")
+	}
+
 	if !schedule.LastRunAt.IsZero() {
 		dto.LastRunAt = schedule.LastRunAt.UTC().Format("2006-01-02T15:04:05.999999999Z07:00")
 	}

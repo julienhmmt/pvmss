@@ -24,6 +24,12 @@ describe('dashboard alerts', () => {
 		expect(alertHref(alert('pool_at_quota', { subject: 'p1' }))).toBe('/admin/policy?cluster=east');
 	});
 
+	it('links a failed snapshot schedule to its VM', () => {
+		const failed = alert('snapshot_schedule_failed', { subject: '101', cluster: 'East Campus', clusterKey: 'east' });
+		expect(alertHref(failed)).toBe('/vms/east/101?tab=configuration&sub=snapshots');
+		expect(alertMessage(failed)).toContain('101');
+	});
+
 	it('names the subject and the figure in the message', () => {
 		expect(alertMessage(alert('storage_full', { subject: 'ceph', percent: 96 }))).toContain('ceph');
 		expect(alertMessage(alert('storage_full', { subject: 'ceph', percent: 96 }))).toContain('96');
