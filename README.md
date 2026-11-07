@@ -8,8 +8,8 @@ French version: [README.fr.md](README.fr.md)
 
 <!-- markdownlint-disable MD033 -->
 <picture>
-  <source media="(prefers-color-scheme: dark)" srcset="img/pvmss-v0.4.0-index-dark.webp">
-  <img src="img/pvmss-v0.4.0-index.webp" alt="PVMSS landing page showing the VM overview and main features" width="900">
+  <source media="(prefers-color-scheme: dark)" srcset="img/pvmss-v0.4.0-index-eng-dark.png">
+  <img src="img/pvmss-v0.4.0-index-eng.png" alt="PVMSS landing page showing the VM overview and main features" width="900">
 </picture>
 <!-- markdownlint-enable MD033 -->
 
@@ -44,7 +44,12 @@ PVMSS is a web application (Go REST API + SvelteKit SPA) that drives every VM ac
 
 The complete, route-by-route inventory lives in [docs/FEATURES.md](docs/FEATURES.md).
 
-![My VMs page with live status, resource details, quotas, and power actions](img/pvmss-v0.4.0-my-vms.webp)
+<!-- markdownlint-disable MD033 -->
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="img/pvmss-v0.4.0-my-vms-eng-dark.webp">
+  <img src="img/pvmss-v0.4.0-my-vms-eng.webp" alt="My VMs page with live status, resource details, quotas, and power actions" width="900">
+</picture>
+<!-- markdownlint-enable MD033 -->
 
 ## Quick start
 
