@@ -8,12 +8,12 @@ French version: [README.fr.md](README.fr.md)
 
 <!-- markdownlint-disable MD033 -->
 <picture>
-  <source media="(prefers-color-scheme: dark)" srcset="docs/PVMSS-0.4-index-overview.webp">
-  <img src="docs/PVMSS-0.4-index-overview.webp" alt="PVMSS landing page in French, showing the VM overview and main features" width="600" loading="lazy">
+  <source media="(prefers-color-scheme: dark)" srcset="img/pvmss-v0.4.0-index-dark.png">
+  <img src="img/pvmss-v0.4.0-index.png" alt="PVMSS landing page showing the VM overview and main features" width="900">
 </picture>
 <!-- markdownlint-enable MD033 -->
 
-Full-size screenshots: [light](docs/PVMSS-0.4-index.webp) / [dark](docs/PVMSS-0.4-index-dark.webp)
+*The interface is available in English, French, German, and Italian. The screenshots below show the French interface.*
 
 ---
 
@@ -55,6 +55,18 @@ The complete, route-by-route inventory lives in [docs/FEATURES.md](docs/FEATURES
 - **Consoles**: noVNC and serial (xterm.js), both proxied through PVMSS with single-use tickets; power actions from the console page.
 - Nodes page with live capacity, in-app documentation (EN + FR), interface in EN, FR, DE and IT, keyboard-first and WCAG 2.1 AA target.
 
+![My VMs page with live status, resource details, quotas, and power actions](img/pvmss-v0.4.0-my-vms.png)
+
+*My VMs: live status, resource details, quotas, and power actions.*
+
+![VM overview with power controls, resource usage, and live metrics](img/pvmss-v0.4.0-vm-overview.png)
+
+*VM overview: power controls, configuration summary, and live metrics.*
+
+![Browser-based VM console with graphical and text modes](img/pvmss-v0.4.0-vm-console.png)
+
+*Browser console: graphical and serial access without exposing the Proxmox UI.*
+
 ### Administrators
 
 - **Sign-in**: Proxmox users granted `Permissions.Modify` on `/` (the `PVEAdmin` or `Administrator` role, `pve` or `pam` realm), plus PVMSS local administrators that work even when no cluster is reachable. The bootstrap local administrator is the only one allowed to create and manage further local accounts.
@@ -64,6 +76,10 @@ The complete, route-by-route inventory lives in [docs/FEATURES.md](docs/FEATURES
 - **Migration**: move a PVMSS-managed VM to another approved, online node of the same cluster from the node page (preflight, explicit confirmation, progress in the task tray).
 - **Policy**: per-cluster gabarit (sockets, cores, memory, disk per VM, NICs, snapshots, isolation VLAN) and quota (VMs per pool); per-pool quota overrides; per-node capacity caps with live usage. User quota increase requests land in the dashboard alerts and a sidebar count; approving one writes an override for the requester's pool, never the cluster-wide cap.
 - **System**: dashboard, app info, audit log with retention + prune preview, SQLite export and two-phase import, in-app documentation CMS (EN/FR, audience-scoped).
+
+![Admin dashboard with cluster capacity, recent activity, and pending requests](img/pvmss-v0.4.0-admin-dashboard.png)
+
+*Admin dashboard: capacity, recent activity, pending migrations, and quota requests.*
 
 ## Architecture at a glance
 
