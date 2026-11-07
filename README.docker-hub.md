@@ -194,7 +194,7 @@ docker logs -f pvmss
 PVMSS ships a Helm chart in the repository under [`helm/`](https://github.com/julienhmmt/pvmss/tree/main/helm):
 
 ```bash
-helm install pvmss ./helm -f my-values.yaml
+helm install pvmss ./helm -n pvmss --create-namespace -f my-values.yaml
 ```
 
 ## Architecture

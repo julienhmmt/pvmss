@@ -1,0 +1,178 @@
+{
+  "$schema": "https://json-schema.org/draft-07/schema#",
+  "type": "object",
+  "properties": {
+    "proxmox": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "url": {"type": "string", "pattern": "^(|https?://.+)$"},
+        "tokenName": {"type": "string", "pattern": "^(|[^@!]+@[^@!]+![^@!]+)$"}
+      }
+    },
+    "serviceAccount": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "create": {"type": "boolean"},
+        "name": {"type": "string"},
+        "automountToken": {"type": "boolean"},
+        "annotations": {"type": "object"}
+      }
+    },
+    "secrets": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "existingSecret": {"type": "string"},
+        "adminPasswordHashBase64": {"type": "string"},
+        "adminPasswordHash": {"type": "string"},
+        "pveApiToken": {"type": "string"},
+        "sessionSecret": {"type": "string"}
+      }
+    },
+    "persistence": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "db": {"$ref": "#/definitions/pvc"},
+        "logs": {"$ref": "#/definitions/pvc"}
+      }
+    },
+    "deployment": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "replicaCount": {"const": 1},
+        "strategy": {"enum": ["Recreate", "RollingUpdate"]},
+        "image": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "repository": {"type": "string", "minLength": 1},
+            "tag": {"type": "string"},
+            "pullPolicy": {"enum": ["Always", "IfNotPresent", "Never"]}
+          }
+        },
+        "resources": {"type": "object"},
+        "terminationGracePeriodSeconds": {"type": "integer", "minimum": 0},
+        "livenessProbe": {"type": "object"},
+        "readinessProbe": {"type": "object"},
+        "extraEnv": {"type": "array"},
+        "extraEnvFrom": {"type": "array"},
+        "extraVolumes": {"type": "array"},
+        "extraVolumeMounts": {"type": "array"},
+        "env": {
+          "type": "object",
+          "required": ["PVMSS_CLUSTER_SOURCE"],
+          "additionalProperties": {"type": ["string", "number", "boolean"]},
+          "properties": {
+            "PVMSS_CLUSTER_SOURCE": {"enum": ["proxmox", "fake"]},
+            "LOG_LEVEL": {"enum": ["debug", "info", "warn", "error"]},
+            "LOG_FORMAT": {"enum": ["json", "console"]},
+            "PVMSS_COOKIE_SECURE": {"enum": ["true", "false", true, false]}
+          }
+        }
+      }
+    },
+    "tls": {
+      "type": "object",
+      "properties": {
+        "enabled": {"type": "boolean"},
+        "secretName": {"type": "string"},
+        "clientCA": {
+          "type": "object",
+          "properties": {
+            "enabled": {"type": "boolean"},
+            "clientAuth": {"enum": ["require", "optional"]}
+          }
+        }
+      }
+    },
+    "metrics": {
+      "type": "object",
+      "properties": {
+        "enabled": {"type": "boolean"},
+        "port": {"$ref": "#/definitions/port"}
+      }
+    },
+    "networkPolicy": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "enabled": {"type": "boolean"},
+        "appFrom": {"type": "array"},
+        "metricsFrom": {"type": "array"}
+      }
+    },
+    "service": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "type": {"enum": ["ClusterIP", "NodePort", "LoadBalancer"]},
+        "port": {"$ref": "#/definitions/port"},
+        "targetPort": {"$ref": "#/definitions/port"},
+        "nodePort": {"type": ["integer", "null"]}
+      }
+    },
+    "ingress": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "enabled": {"type": "boolean"},
+        "className": {"type": "string"},
+        "annotations": {"type": "object"},
+        "hosts": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["host", "paths"],
+            "properties": {
+              "host": {"type": "string"},
+              "paths": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "required": ["path", "pathType"],
+                  "properties": {
+                    "path": {"type": "string"},
+                    "pathType": {"enum": ["Prefix", "Exact", "ImplementationSpecific"]}
+                  }
+                }
+              }
+            }
+          }
+        },
+        "tls": {"type": "array"}
+      }
+    },
+    "gateway": {"type": "object"},
+    "httpRoute": {"type": "object"},
+    "tests": {
+      "type": "object",
+      "properties": {"image": {"type": "string", "minLength": 1}}
+    },
+    "extraAnnotations": {"type": "object"},
+    "extraLabels": {"type": "object"},
+    "podAnnotations": {"type": "object"},
+    "podLabels": {"type": "object"},
+    "imagePullSecrets": {"type": "array"},
+    "priorityClassName": {"type": "string"},
+    "nodeSelector": {"type": "object"},
+    "tolerations": {"type": "array"},
+    "affinity": {"type": "object"}
+  },
+  "additionalProperties": false,
+  "definitions": {
+    "port": {"type": "integer", "minimum": 1, "maximum": 65535},
+    "pvc": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "enabled": {"type": "boolean"},
+        "size": {"type": "string"},
+        "storageClass": {"type": "string"}
+      }
+    }
+  }
+}

@@ -2,7 +2,7 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: {{ include "pvmss.fullname" . }}
-  namespace: {{ .Values.namespace }}
+  namespace: {{ .Release.Namespace }}
   labels:
     {{- include "pvmss.labels" . | nindent 4 }}
   {{- with .Values.extraAnnotations }}
@@ -66,7 +66,7 @@ spec:
         runAsGroup: 65532
         fsGroup: 65532
         fsGroupChangePolicy: OnRootMismatch
-      terminationGracePeriodSeconds: 5
+      terminationGracePeriodSeconds: {{ .Values.deployment.terminationGracePeriodSeconds }}
       containers:
         - name: pvmss
           image: "{{ .Values.deployment.image.repository }}:{{ default .Chart.AppVersion .Values.deployment.image.tag }}"
@@ -93,11 +93,18 @@ spec:
                 secretKeyRef:
                   name: {{ include "pvmss.secretName" . }}
                   key: pve-api-token
+                  optional: true
             - name: SESSION_SECRET
               valueFrom:
                 secretKeyRef:
                   name: {{ include "pvmss.secretName" . }}
                   key: session-secret
+            {{- if include "pvmss.proxmoxSeed" . }}
+            - name: PROXMOX_URL
+              value: {{ .Values.proxmox.url | quote }}
+            - name: PROXMOX_API_TOKEN_NAME
+              value: {{ .Values.proxmox.tokenName | quote }}
+            {{- end }}
             {{- if .Values.metrics.enabled }}
             - name: PVMSS_METRICS_PORT
               value: "{{ .Values.metrics.port }}"
@@ -135,6 +142,9 @@ spec:
           volumeMounts:
             - name: pvmss-data
               mountPath: /data
+            # Read-only root: multipart uploads (DB import) spill to /tmp.
+            - name: tmp
+              mountPath: /tmp
             {{- if .Values.persistence.logs.enabled }}
             - name: pvmss-logs
               mountPath: /data/logs
@@ -156,6 +166,7 @@ spec:
             {{- toYaml .Values.deployment.resources | nindent 12 }}
           securityContext:
             allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
             capabilities:
               drop:
                 - ALL
@@ -163,6 +174,9 @@ spec:
             seccompProfile:
               type: RuntimeDefault
       volumes:
+        - name: tmp
+          emptyDir:
+            sizeLimit: 256Mi
         - name: pvmss-data
           {{- if .Values.persistence.db.enabled }}
           persistentVolumeClaim:

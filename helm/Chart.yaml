@@ -2,8 +2,9 @@ apiVersion: v2
 name: pvmss
 description: Helm chart for Proxmox VM Self-Service (PVMSS)
 type: application
-version: 0.5.0
+version: 0.6.0
 appVersion: "0.4.0"
+icon: https://raw.githubusercontent.com/julienhmmt/pvmss/main/web/static/favicon-192x192.png
 home: https://github.com/julienhmmt/pvmss
 sources:
   - https://github.com/julienhmmt/pvmss

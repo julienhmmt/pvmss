@@ -1,6 +1,12 @@
-# GLOBAL SETTINGS
-namespace: pvmss
-createNamespace: true
+# Resources go to the release namespace: helm install -n pvmss --create-namespace
+
+# PROXMOX SEED CLUSTER
+# Optional. Seeds the first cluster on first boot (managed in Admin > Clusters
+# afterwards). Leave url, tokenName and secrets.pveApiToken all empty to
+# configure the cluster in the /setup wizard instead. All three or none.
+proxmox:
+  url: ""        # https://pve.example.com:8006/api2/json
+  tokenName: ""  # user@pve!token
 
 # SERVICE ACCOUNT
 serviceAccount:
@@ -13,7 +19,7 @@ serviceAccount:
 # SECRETS
 # Recommended with GitOps (ArgoCD, Flux): create the Secret yourself (SealedSecrets,
 # External Secrets, SOPS, ...) and set existingSecret. It must hold the keys
-# admin-password-hash (optional), pve-api-token and session-secret.
+# session-secret, and optionally admin-password-hash and pve-api-token.
 # Otherwise the chart creates the Secret from the plain values below.
 secrets:
   existingSecret: ""
@@ -26,8 +32,8 @@ secrets:
   # single-quote the plain hash: adminPasswordHash: '$2y$10$...'
   adminPasswordHashBase64: ""
   adminPasswordHash: ""
-  # Proxmox API token secret (the value matching deployment.env.PROXMOX_API_TOKEN_NAME).
-  pveApiToken: changeme
+  # Proxmox API token secret (the value matching proxmox.tokenName).
+  pveApiToken: ""
   # Required, 32+ bytes. Generate with: openssl rand -hex 32
   # (the server refuses the README example value).
   sessionSecret: ""
@@ -65,6 +71,8 @@ deployment:
   # Probe timings. The chart picks the handler from tls.*: httpGet /health
   # (HTTPS when TLS is on), or tcpSocket in strict mTLS where the kubelet
   # cannot present a client certificate.
+  # Time for in-flight requests and SQLite writes to finish on shutdown.
+  terminationGracePeriodSeconds: 30
   livenessProbe:
     initialDelaySeconds: 5
     periodSeconds: 15
@@ -92,9 +100,6 @@ deployment:
     # Required. "proxmox" for a real cluster; "fake" serves demo data with demo
     # credentials and must never be selected by accident (no default).
     PVMSS_CLUSTER_SOURCE: "proxmox"
-    # Seed the initial "default" cluster on first boot (managed via Admin UI afterwards).
-    PROXMOX_URL: "https://changeme:8006/api2/json"
-    PROXMOX_API_TOKEN_NAME: "user@pve!token"
     PVMSS_PORT: "50000"
     PVMSS_DB_PATH: "/data/pvmss.db"
     # Bind all interfaces inside the container; the Service controls exposure.
@@ -170,6 +175,17 @@ metrics:
     interval: 30s
     labels: {}
 
+# NETWORK POLICY
+# Restricts ingress to the pod (egress stays open: Proxmox, OTLP, syslog).
+# Empty peer lists allow any source on that port.
+networkPolicy:
+  enabled: false
+  # Peers allowed on the app port, e.g. the Gateway/Ingress controller:
+  # - namespaceSelector: {matchLabels: {kubernetes.io/metadata.name: gateway-system}}
+  appFrom: []
+  # Peers allowed on the metrics port (only with metrics.enabled), e.g. Prometheus.
+  metricsFrom: []
+
 # SERVICE
 service:
   type: ClusterIP
@@ -177,6 +193,21 @@ service:
   targetPort: 50000
   # Only used when type=NodePort
   nodePort: null
+
+# INGRESS (networking.k8s.io/v1)
+# Alternative to the Gateway API resources below; enable one or the other.
+ingress:
+  enabled: false
+  className: ""
+  annotations: {}
+  hosts:
+    - host: pvmss.example.com
+      paths:
+        - path: /
+          pathType: Prefix
+  tls: []
+  # - secretName: pvmss-ingress-tls
+  #   hosts: [pvmss.example.com]
 
 # GATEWAY-API (gateway.networking.k8s.io/v1)
 # Optional Gateway scaffold. Leave disabled to attach to an existing Gateway.
@@ -224,6 +255,11 @@ httpRoute:
         - path:
             type: PathPrefix
             value: /
+
+# HELM TEST (helm test <release>): GET /health through the Service.
+# Skipped in strict mTLS (the test pod has no client certificate).
+tests:
+  image: busybox:1.37
 
 # OPTIONAL CUSTOMISATIONS
 extraAnnotations: {}

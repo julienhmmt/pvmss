@@ -3,7 +3,7 @@ apiVersion: gateway.networking.k8s.io/v1
 kind: HTTPRoute
 metadata:
   name: {{ include "pvmss.fullname" . }}-route
-  namespace: {{ .Values.namespace }}
+  namespace: {{ .Release.Namespace }}
   labels:
     {{- include "pvmss.labels" . | nindent 4 }}
   {{- with .Values.httpRoute.annotations }}

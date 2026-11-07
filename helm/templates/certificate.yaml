@@ -4,7 +4,7 @@ apiVersion: cert-manager.io/v1
 kind: Certificate
 metadata:
   name: {{ $fullname }}
-  namespace: {{ .Values.namespace }}
+  namespace: {{ .Release.Namespace }}
   labels:
     {{- include "pvmss.labels" . | nindent 4 }}
 spec:
@@ -26,8 +26,8 @@ spec:
     {{- toYaml . | nindent 4 }}
     {{- else }}
     - {{ $fullname }}
-    - {{ $fullname }}.{{ .Values.namespace }}
-    - {{ $fullname }}.{{ .Values.namespace }}.svc
-    - {{ $fullname }}.{{ .Values.namespace }}.svc.cluster.local
+    - {{ $fullname }}.{{ .Release.Namespace }}
+    - {{ $fullname }}.{{ .Release.Namespace }}.svc
+    - {{ $fullname }}.{{ .Release.Namespace }}.svc.cluster.local
     {{- end }}
 {{- end }}

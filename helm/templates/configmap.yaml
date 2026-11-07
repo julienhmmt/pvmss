@@ -1,5 +1,0 @@
-{{/*
-  settings.json ConfigMap was removed in v0.4.
-  All application configuration is stored in the embedded SQLite database (/data/pvmss.db),
-  persisted via the db PersistentVolumeClaim.
-*/}}

@@ -1,0 +1,24 @@
+PVMSS {{ .Chart.AppVersion }} is deployed as {{ include "pvmss.fullname" . }} in namespace {{ .Release.Namespace }}.
+
+{{ if .Values.ingress.enabled -}}
+Open: {{ ternary "https" "http" (gt (len .Values.ingress.tls) 0) }}://{{ (first .Values.ingress.hosts).host }}
+{{- else if .Values.httpRoute.enabled }}
+Open: https://{{ first .Values.httpRoute.hostnames }}
+{{- else }}
+No Ingress or HTTPRoute is enabled. Try it locally:
+  kubectl -n {{ .Release.Namespace }} port-forward svc/{{ include "pvmss.fullname" . }} {{ .Values.service.port }}
+  then open {{ ternary "https" "http" .Values.tls.enabled }}://localhost:{{ .Values.service.port }}
+{{- if ne (toString .Values.deployment.env.PVMSS_COOKIE_SECURE) "false" }}
+  (PVMSS_COOKIE_SECURE is "true": sign-in needs HTTPS in front, or set it to "false" for this test.)
+{{- end }}
+{{- end }}
+
+{{- if not (include "pvmss.proxmoxSeed" .) }}
+
+No Proxmox cluster is seeded: finish the setup in the /setup wizard on first visit.
+{{- end }}
+
+Check the pod: kubectl -n {{ .Release.Namespace }} logs deploy/{{ include "pvmss.fullname" . }}
+{{- if not (include "pvmss.strictMTLS" .) }}
+Smoke test:    helm test {{ .Release.Name }} -n {{ .Release.Namespace }}
+{{- end }}

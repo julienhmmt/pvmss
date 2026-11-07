@@ -68,8 +68,12 @@ allowed to reach PVMSS (a cluster-wide ClusterIssuer, for example).
 Probe handler. Strict mTLS refuses the kubelet (no client certificate), so it
 gets a tcpSocket probe; otherwise /health over HTTP or HTTPS.
 */}}
+{{- define "pvmss.strictMTLS" -}}
+{{- if and .Values.tls.enabled .Values.tls.clientCA.enabled (eq .Values.tls.clientCA.clientAuth "require") -}}true{{- end -}}
+{{- end -}}
+
 {{- define "pvmss.probeHandler" -}}
-{{- if and .Values.tls.enabled .Values.tls.clientCA.enabled (eq .Values.tls.clientCA.clientAuth "require") -}}
+{{- if include "pvmss.strictMTLS" . -}}
 tcpSocket:
   port: backend
 {{- else -}}
@@ -77,5 +81,22 @@ httpGet:
   path: /health
   port: backend
   scheme: {{ ternary "HTTPS" "HTTP" .Values.tls.enabled }}
+{{- end -}}
+{{- end -}}
+
+{{/*
+"true" when the Proxmox seed cluster is configured, "" when left to /setup.
+URL and token name go together; the token value must match when the chart
+owns the Secret (with existingSecret the server checks it at boot).
+*/}}
+{{- define "pvmss.proxmoxSeed" -}}
+{{- $url := .Values.proxmox.url -}}
+{{- $name := .Values.proxmox.tokenName -}}
+{{- $token := or .Values.secrets.existingSecret .Values.secrets.pveApiToken -}}
+{{- if or $url $name (and .Values.secrets.pveApiToken (not .Values.secrets.existingSecret)) -}}
+{{- if not (and $url $name $token) -}}
+{{- fail "proxmox.url, proxmox.tokenName and secrets.pveApiToken are all-or-nothing: set all three, or none to use the /setup wizard" -}}
+{{- end -}}
+true
 {{- end -}}
 {{- end -}}

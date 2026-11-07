@@ -1,0 +1,31 @@
+{{- if not (include "pvmss.strictMTLS" .) }}
+apiVersion: v1
+kind: Pod
+metadata:
+  name: {{ include "pvmss.fullname" . }}-test-health
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "pvmss.labels" . | nindent 4 }}
+  annotations:
+    helm.sh/hook: test
+    helm.sh/hook-delete-policy: before-hook-creation,hook-succeeded
+spec:
+  restartPolicy: Never
+  automountServiceAccountToken: false
+  securityContext:
+    runAsNonRoot: true
+    runAsUser: 65532
+    seccompProfile:
+      type: RuntimeDefault
+  containers:
+    - name: wget
+      image: {{ .Values.tests.image }}
+      # The server cert is not trusted by the test pod; this only checks liveness.
+      command: ["wget", "-q", "-O-", {{- if .Values.tls.enabled }} "--no-check-certificate",{{- end }}
+        "{{ ternary "https" "http" .Values.tls.enabled }}://{{ include "pvmss.fullname" . }}:{{ .Values.service.port }}/health"]
+      securityContext:
+        allowPrivilegeEscalation: false
+        readOnlyRootFilesystem: true
+        capabilities:
+          drop: [ALL]
+{{- end }}

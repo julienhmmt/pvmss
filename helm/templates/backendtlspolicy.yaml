@@ -7,7 +7,7 @@ apiVersion: {{ $p.apiVersion }}
 kind: BackendTLSPolicy
 metadata:
   name: {{ include "pvmss.fullname" . }}
-  namespace: {{ .Values.namespace }}
+  namespace: {{ .Release.Namespace }}
   labels:
     {{- include "pvmss.labels" . | nindent 4 }}
 spec:
