@@ -8,8 +8,8 @@ Version anglaise : [README.md](README.md)
 
 <!-- markdownlint-disable MD033 -->
 <picture>
-  <source media="(prefers-color-scheme: dark)" srcset="img/pvmss-v0.4.0-index-dark.png">
-  <img src="img/pvmss-v0.4.0-index.png" alt="Page d'accueil PVMSS avec présentation des VM et des principales fonctionnalités" width="900">
+  <source media="(prefers-color-scheme: dark)" srcset="img/pvmss-v0.4.0-index-dark.webp">
+  <img src="img/pvmss-v0.4.0-index.webp" alt="Page d'accueil PVMSS avec présentation des VM et des principales fonctionnalités" width="900">
 </picture>
 <!-- markdownlint-enable MD033 -->
 
@@ -55,15 +55,15 @@ L'inventaire complet, route par route, est dans [docs/FEATURES.md](docs/FEATURES
 - **Consoles** : noVNC et série (xterm.js), toutes deux relayées par PVMSS avec ticket à usage unique ; actions d'alimentation depuis la console.
 - Page Nœuds avec capacité en direct, documentation intégrée (FR + EN), interface en FR, EN, DE et IT, navigation clavier, cible WCAG 2.1 AA.
 
-![Page Mes VM avec statut en direct, ressources, quotas et actions d'alimentation](img/pvmss-v0.4.0-my-vms.png)
+![Page Mes VM avec statut en direct, ressources, quotas et actions d'alimentation](img/pvmss-v0.4.0-my-vms.webp)
 
 *Mes VM : statut en direct, ressources, quotas et actions d'alimentation.*
 
-![Vue d'ensemble d'une VM avec actions d'alimentation, ressources et métriques en direct](img/pvmss-v0.4.0-vm-overview.png)
+![Vue d'ensemble d'une VM avec actions d'alimentation, ressources et métriques en direct](img/pvmss-v0.4.0-vm-overview.webp)
 
 *Vue d'ensemble d'une VM : actions d'alimentation, configuration et métriques en direct.*
 
-![Console de VM dans le navigateur avec modes graphique et texte](img/pvmss-v0.4.0-vm-console.png)
+![Console de VM dans le navigateur avec modes graphique et texte](img/pvmss-v0.4.0-vm-console.webp)
 
 *Console navigateur : accès graphique et série sans exposer l'interface Proxmox.*
 
@@ -76,7 +76,7 @@ L'inventaire complet, route par route, est dans [docs/FEATURES.md](docs/FEATURES
 - **Politique** : gabarit par cluster (sockets, cœurs, mémoire, disque par VM, NIC, snapshots, VLAN d'isolation) et quota (VM par pool) ; surcharges de quota par pool ; plafonds de capacité par nœud avec usage en direct. Les demandes d'augmentation de quota arrivent dans les alertes du tableau de bord et un compteur de la barre latérale ; en approuver une écrit une surcharge pour le pool du demandeur, jamais le plafond du cluster.
 - **Système** : tableau de bord, informations applicatives, journal d'audit avec rétention + aperçu de purge, export SQLite et import en deux temps, CMS de documentation intégrée (FR/EN, par audience).
 
-![Tableau de bord administrateur avec capacité du cluster, activité récente et demandes en attente](img/pvmss-v0.4.0-admin-dashboard.png)
+![Tableau de bord administrateur avec capacité du cluster, activité récente et demandes en attente](img/pvmss-v0.4.0-admin-dashboard.webp)
 
 *Tableau de bord administrateur : capacité, activité récente, migrations en attente et demandes de quota.*
 
