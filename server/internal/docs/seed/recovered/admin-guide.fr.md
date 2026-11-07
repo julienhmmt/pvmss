@@ -86,7 +86,7 @@ Pour les instructions de déploiement complètes (Docker, Kubernetes, Helm), voi
 
 Trois voies donnent les droits d'administration, et toutes mènent à la même interface :
 
-- **Administrateur Proxmox** - connectez-vous avec un compte Proxmox dont l'ACL accorde `Permissions.Modify` sur `/` (rôle `PVEAdmin`, `Administrator` ou un rôle personnalisé). Choisissez le realm `pve` ou `pam`, ou saisissez `user@realm` ; les realms OIDC ne sont pas encore pris en charge et répondent `realm_unsupported`. Le privilège est lu une fois à la connexion : accordez-le avant que l'utilisateur se connecte.
+- **Administrateur Proxmox** - connectez-vous avec un compte Proxmox dont l'ACL accorde `Permissions.Modify` sur `/` (utilisez le rôle dédié `PVMSS_Admin` ; le rôle intégré `PVEAdmin` ne l'accorde pas). Choisissez le realm `pve` ou `pam`, ou saisissez `user@realm` ; les realms OIDC ne sont pas encore pris en charge et répondent `realm_unsupported`. Le privilège est lu une fois à la connexion : accordez-le avant que l'utilisateur se connecte.
 - **Administrateur local bootstrap** - le compte `admin` initialisé par `ADMIN_PASSWORD_HASH`. Il est immuable, n'est jamais verrouillé et n'entre pas dans `PVMSS_MAX_LOCAL_ADMINS`.
 - **Administrateurs locaux en base** - comptes stockés dans PVMSS et créés par l'administrateur bootstrap dans **Paramètres > Comptes**. Ils fonctionnent sans aucune connexion à Proxmox.
 

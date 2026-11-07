@@ -72,8 +72,9 @@ lance une migration avec le jeton du compte de service, qui doit donc avoir
 ### Se connecter à PVMSS
 
 Le nom du rôle n'a pas d'importance : à la connexion, PVMSS demande à Proxmox
-si le compte détient `Permissions.Modify` sur `/`, privilège porté par les rôles
-intégrés `PVEAdmin` et `Administrator`. Conservez `-propagate 1` pour que
+si le compte détient `Permissions.Modify` sur `/`, privilège porté par le rôle
+dédié `PVMSS_Admin` ci-dessus. Le rôle intégré `PVEAdmin` ne le porte pas : il ne
+fait pas d'un compte un administrateur PVMSS. Conservez `-propagate 1` pour que
 l'autorisation couvre toute l'arborescence. La vérification a lieu une fois par
 session : une ACL ajoutée après la connexion exige une nouvelle connexion.
 

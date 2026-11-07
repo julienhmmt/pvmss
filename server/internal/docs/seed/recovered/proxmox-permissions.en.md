@@ -65,8 +65,9 @@ part of the per-user `PVMSSUser` role.
 ### Signing in to PVMSS
 
 The role name does not matter: at login PVMSS asks Proxmox whether the account
-holds `Permissions.Modify` on `/`, which the built-in `PVEAdmin` and
-`Administrator` roles both carry. Keep `-propagate 1` so the grant covers the
+holds `Permissions.Modify` on `/`. Use the dedicated `PVMSS_Admin` role above;
+the built-in `PVEAdmin` role does not carry that privilege, so it does not make
+a PVMSS administrator. Keep `-propagate 1` so the grant covers the
 whole tree. The check runs once per session, so an ACL added after a user
 signed in requires a new sign-in.
 

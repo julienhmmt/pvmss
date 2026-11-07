@@ -82,7 +82,7 @@ For full deployment instructions (Docker, Kubernetes, Helm), see the project REA
 
 There are three ways to hold administrator rights, and all of them land on the same admin surface:
 
-- **Proxmox administrator** - sign in with a Proxmox account whose ACL grants `Permissions.Modify` on `/` (the `PVEAdmin`, `Administrator`, or a custom role). Pick the `pve` or `pam` realm, or type `user@realm`; OIDC realms are not supported yet and answer `realm_unsupported`. The privilege is read once at login, so grant it before the user signs in.
+- **Proxmox administrator** - sign in with a Proxmox account whose ACL grants `Permissions.Modify` on `/` (use the dedicated `PVMSS_Admin` role; the built-in `PVEAdmin` role does not grant it). Pick the `pve` or `pam` realm, or type `user@realm`; OIDC realms are not supported yet and answer `realm_unsupported`. The privilege is read once at login, so grant it before the user signs in.
 - **Bootstrap local administrator** - the `admin` account seeded by `ADMIN_PASSWORD_HASH`. It is immutable, never locked, and not counted against `PVMSS_MAX_LOCAL_ADMINS`.
 - **DB local administrators** - accounts stored in PVMSS and created by the bootstrap administrator under **Settings > Accounts**. They work without any Proxmox connection.
 
