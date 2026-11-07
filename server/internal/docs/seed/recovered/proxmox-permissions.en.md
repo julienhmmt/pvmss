@@ -27,7 +27,7 @@ Run as `root` on the Proxmox node. Create the role, then the user and its API
 token. The token secret must be stored in `PROXMOX_API_TOKEN_VALUE`.
 
 ```bash
-pveum roleadd PVMSS_Service -privs "Sys.Audit VM.Audit VM.Allocate VM.PowerMgmt VM.Console VM.Config.CDROM VM.Config.CPU VM.Config.HWType VM.Config.Memory VM.Config.Disk VM.Config.Network VM.Config.Options VM.Config.Cloudinit VM.Snapshot VM.Snapshot.Rollback VM.Migrate VM.GuestAgent.Audit VM.GuestAgent.Unrestricted Datastore.Audit Datastore.AllocateSpace Datastore.AllocateTemplate Pool.Allocate Pool.Audit User.Modify Permissions.Modify Realm.AllocateUser SDN.Allocate SDN.Audit SDN.Use"
+pveum roleadd PVMSS_Service -privs "Sys.Audit VM.Audit VM.Allocate VM.PowerMgmt VM.Console VM.Config.CDROM VM.Config.CPU VM.Config.HWType VM.Config.Memory VM.Config.Disk VM.Config.Network VM.Config.Options VM.Config.Cloudinit VM.Snapshot VM.Snapshot.Rollback VM.Clone VM.Migrate VM.GuestAgent.Audit Datastore.Audit Datastore.AllocateSpace Pool.Allocate Pool.Audit User.Modify Permissions.Modify Realm.AllocateUser SDN.Audit SDN.Use"
 
 pveum useradd pvmss-svc@pve \
   -comment "PVMSS service account" \
@@ -35,16 +35,19 @@ pveum useradd pvmss-svc@pve \
 
 pveum aclmod / -user pvmss-svc@pve -role PVMSS_Service -propagate 1
 
+# PVMSSUser: role PVMSS grants each self-service user on their pool
+pveum roleadd PVMSSUser -privs "VM.Allocate VM.Audit VM.Console VM.Config.Disk VM.Config.Network VM.Config.CPU VM.Config.Memory VM.Config.Options VM.Config.Cloudinit VM.Config.CDROM VM.PowerMgmt VM.Snapshot VM.Snapshot.Rollback Datastore.AllocateSpace Datastore.Audit SDN.Use"
+
 pveum user token add pvmss-svc@pve pvmss-service-token --privsep 0
 ```
 
-The two `VM.GuestAgent.*` privileges cover the QEMU guest agent calls:
-`Audit` covers the reads PVMSS performs (`agent/network-get-interfaces`) so
-the VM page can show the guest's addresses. `Unrestricted` covers guest-agent
-writes (`agent/exec`, `agent/set-user-password`) that the removed cloud-init
-features needed; no shipped feature issues them, so it stays in the
-recommended role for compatibility and may be dropped for least privilege.
-Without `Audit` the address reads fail with `cluster_permission_denied`.
+`VM.GuestAgent.Audit` covers the guest agent reads PVMSS performs
+(`agent/ping`, `agent/network-get-interfaces`) so the VM page can show the
+guest's addresses; PVMSS issues no guest-agent writes, so
+`VM.GuestAgent.Unrestricted` is not needed. `VM.Clone` is required to create
+a VM from a template and to duplicate a VM. Create the `PVMSSUser` role
+yourself as above: PVMSS only creates it when it is missing, which would
+need the broad `Sys.Modify` privilege. Without `Audit` the address reads fail with `cluster_permission_denied`.
 
 ## Administrators (PVMSS_Admin)
 
@@ -78,7 +81,7 @@ account and no Proxmox permission at all.
 
 ## Per-user pools (PVMSSUser)
 
-PVMSS creates the `PVMSSUser` role, the user, the dedicated pool, and the ACL
+With the `PVMSSUser` role in place, PVMSS creates the user, the dedicated pool, and the ACL
 automatically when an administrator provisions a pool from `/admin/pools`. No
 manual `pveum` steps are required for end users. Each user only sees the VMs
 inside their own pool.

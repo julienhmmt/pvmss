@@ -43,10 +43,13 @@ PVMSS uses a dedicated service account and API token for cluster operations, plu
 
 ```bash
 # Service role, user, and API token (privilege separation disabled)
-pveum roleadd PVMSS_Service -privs "Sys.Audit VM.Audit VM.Allocate VM.PowerMgmt VM.Console VM.Config.CDROM VM.Config.CPU VM.Config.HWType VM.Config.Memory VM.Config.Disk VM.Config.Network VM.Config.Options VM.Config.Cloudinit VM.Snapshot VM.Snapshot.Rollback VM.Migrate VM.GuestAgent.Audit VM.GuestAgent.Unrestricted Datastore.Audit Datastore.AllocateSpace Datastore.AllocateTemplate Pool.Allocate Pool.Audit User.Modify Permissions.Modify Realm.AllocateUser SDN.Allocate SDN.Audit SDN.Use"
+pveum roleadd PVMSS_Service -privs "Sys.Audit VM.Audit VM.Allocate VM.PowerMgmt VM.Console VM.Config.CDROM VM.Config.CPU VM.Config.HWType VM.Config.Memory VM.Config.Disk VM.Config.Network VM.Config.Options VM.Config.Cloudinit VM.Snapshot VM.Snapshot.Rollback VM.Clone VM.Migrate VM.GuestAgent.Audit Datastore.Audit Datastore.AllocateSpace Pool.Allocate Pool.Audit User.Modify Permissions.Modify Realm.AllocateUser SDN.Audit SDN.Use"
 
 pveum useradd pvmss-svc@pve -comment "PVMSS service account" -enable 1
 pveum aclmod / -user pvmss-svc@pve -role PVMSS_Service -propagate 1
+
+# PVMSSUser: role PVMSS grants each self-service user on their pool
+pveum roleadd PVMSSUser -privs "VM.Allocate VM.Audit VM.Console VM.Config.Disk VM.Config.Network VM.Config.CPU VM.Config.Memory VM.Config.Options VM.Config.Cloudinit VM.Config.CDROM VM.PowerMgmt VM.Snapshot VM.Snapshot.Rollback Datastore.AllocateSpace Datastore.Audit SDN.Use"
 pveum user token add pvmss-svc@pve pvmss-service-token --privsep 0
 
 # Optional: human Proxmox administrator account for PVMSS

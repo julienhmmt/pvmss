@@ -32,7 +32,7 @@ l'utilisateur et son jeton API. Le secret du jeton doit être stocké dans
 `PROXMOX_API_TOKEN_VALUE`.
 
 ```bash
-pveum roleadd PVMSS_Service -privs "Sys.Audit VM.Audit VM.Allocate VM.PowerMgmt VM.Console VM.Config.CDROM VM.Config.CPU VM.Config.HWType VM.Config.Memory VM.Config.Disk VM.Config.Network VM.Config.Options VM.Config.Cloudinit VM.Snapshot VM.Snapshot.Rollback VM.Migrate VM.GuestAgent.Audit VM.GuestAgent.Unrestricted Datastore.Audit Datastore.AllocateSpace Datastore.AllocateTemplate Pool.Allocate Pool.Audit User.Modify Permissions.Modify Realm.AllocateUser SDN.Allocate SDN.Audit SDN.Use"
+pveum roleadd PVMSS_Service -privs "Sys.Audit VM.Audit VM.Allocate VM.PowerMgmt VM.Console VM.Config.CDROM VM.Config.CPU VM.Config.HWType VM.Config.Memory VM.Config.Disk VM.Config.Network VM.Config.Options VM.Config.Cloudinit VM.Snapshot VM.Snapshot.Rollback VM.Clone VM.Migrate VM.GuestAgent.Audit Datastore.Audit Datastore.AllocateSpace Pool.Allocate Pool.Audit User.Modify Permissions.Modify Realm.AllocateUser SDN.Audit SDN.Use"
 
 pveum useradd pvmss-svc@pve \
   -comment "PVMSS service account" \
@@ -40,17 +40,19 @@ pveum useradd pvmss-svc@pve \
 
 pveum aclmod / -user pvmss-svc@pve -role PVMSS_Service -propagate 1
 
+# PVMSSUser : rôle que PVMSS accorde à chaque utilisateur libre-service sur son pool
+pveum roleadd PVMSSUser -privs "VM.Allocate VM.Audit VM.Console VM.Config.Disk VM.Config.Network VM.Config.CPU VM.Config.Memory VM.Config.Options VM.Config.Cloudinit VM.Config.CDROM VM.PowerMgmt VM.Snapshot VM.Snapshot.Rollback Datastore.AllocateSpace Datastore.Audit SDN.Use"
+
 pveum user token add pvmss-svc@pve pvmss-service-token --privsep 0
 ```
 
-Les deux privilèges `VM.GuestAgent.*` couvrent les appels à l'agent invité QEMU :
-`Audit` couvre les lectures que PVMSS effectue (`agent/network-get-interfaces`)
-pour que la page de la VM affiche les adresses de l'invité. `Unrestricted`
-couvre les écritures de l'agent invité (`agent/exec`,
-`agent/set-user-password`) dont les fonctionnalités cloud-init supprimées
-avaient besoin ; aucune fonctionnalité livrée ne les émet, il reste donc dans
-le rôle recommandé pour compatibilité et peut être retiré pour un privilège
-minimal. Sans `Audit`, les lectures d'adresses échouent avec
+`VM.GuestAgent.Audit` couvre les lectures de l'agent invité que PVMSS
+effectue (`agent/ping`, `agent/network-get-interfaces`) pour que la page de la
+VM affiche les adresses de l'invité ; PVMSS n'écrit jamais via l'agent, donc
+`VM.GuestAgent.Unrestricted` n'est pas nécessaire. `VM.Clone` est requis pour
+créer une VM depuis un template et pour dupliquer une VM. Créez vous-même le
+rôle `PVMSSUser` comme ci-dessus : PVMSS ne le crée que s'il manque, ce qui
+demanderait le privilège très large `Sys.Modify`. Sans `Audit`, les lectures d'adresses échouent avec
 `cluster_permission_denied`.
 
 ## Administrateurs (PVMSS_Admin)
@@ -85,7 +87,7 @@ n'ont besoin ni de compte ni de permission Proxmox.
 
 ## Pools par utilisateur (PVMSSUser)
 
-PVMSS crée le rôle `PVMSSUser`, l'utilisateur, le pool dédié et l'ACL
+Une fois le rôle `PVMSSUser` en place, PVMSS crée l'utilisateur, le pool dédié et l'ACL
 automatiquement lorsqu'un administrateur provisionne un pool depuis
 `/admin/pools`. Aucune étape `pveum` manuelle n'est requise pour les
 utilisateurs finaux. Chaque utilisateur ne voit que les VM de son propre pool.
