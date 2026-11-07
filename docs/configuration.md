@@ -62,7 +62,8 @@ startup level; admins can change it at runtime (Admin > Settings).
 
 **Administrator sign-in.** There are two paths. A Proxmox user is an
 administrator when their ACL grants `Permissions.Modify` on `/` (the
-`PVEAdmin` or `Administrator` role); only the `pve` and `pam` realms are
+`Administrator` or `PVMSS_Admin` role; the built-in `PVEAdmin` role lacks
+it); only the `pve` and `pam` realms are
 supported, OIDC is not. PVMSS local administrators are independent of any
 cluster. `ADMIN_PASSWORD_HASH` seeds the immutable bootstrap owner (`admin`,
 provider `bootstrap`); DB-backed accounts (`local_accounts`, capped by
@@ -74,6 +75,19 @@ administrators get the full admin surface but every account route answers
 bytes (bcrypt); five consecutive failures lock an account for 15 minutes.
 The bootstrap admin is never locked: five failures from one client IP refuse
 that IP (429) for 15 minutes. Resetting, disabling or deleting an account revokes its sessions.
+
+**Lost local administrator password.** The owner resets DB accounts from
+Admin > Settings > Accounts (this also lifts a lock and revokes that
+account's sessions). The bootstrap `admin` is rotated by replacing
+`ADMIN_PASSWORD_HASH` with a fresh bcrypt hash and restarting. If the
+setup-created owner (the only owner while `ADMIN_PASSWORD_HASH` is unset)
+loses access, set `ADMIN_PASSWORD_HASH` and restart: `admin` takes ownership
+back and can reset or recreate the locked-out account. Generate a hash with
+`htpasswd -bnBC 10 "" "StrongPassword" | tr -d ':\n'` (escape every `$` as
+`$$` in Compose).
+
+**Container timezone.** `TZ` (default `UTC`) sets the timezone of log and
+audit timestamps.
 
 No longer read (startup warns for the SSH ones): `PVMSS_OFFLINE`, `PVMSS_ENV`,
 `JWT_SECRET`, `PROXMOX_VERIFY_SSL`, `LOG_FILE_PATH`, `PVMSS_SSH_KEY_FILE`,

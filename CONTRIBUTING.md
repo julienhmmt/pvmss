@@ -29,9 +29,23 @@ If you'd like to contribute, here's how:
 - Touching a user-facing feature? Update `WORKFLOWS.md`, `docs/FEATURES.md`, and the in-app pages under `server/internal/docs/seed/` (EN + FR) and the UI strings in `web/messages/` (EN, FR, DE, IT)
 - Follow existing code style; conventions, commands and architecture are in [AGENTS.md](AGENTS.md) (read it before a non-trivial change)
 - Touching logging or the SIEM sink? Update `docs/observability.md` (and the `PVMSS_SYSLOG_*` rows in the READMEs)
-- Avoid the em-dash character (U+2014) in code and docs: use a spaced hyphen ` - `
+- Avoid the em-dash character (U+2014) in code and docs: use a spaced hyphen `-`
 - Be respectful and constructive
 - AI-generated code is welcome, but must be reviewed by a human before merging
+
+## Development stack
+
+- `make up` starts `pvmss-dev` behind five reverse proxies (HAProxy on
+  `https://localhost:50000`, nginx `:50001`, Caddy `:50002`, Traefik `:50003`,
+  Nginx Proxy Manager `https://pvmss.localhost:50004`). Configs live in
+  [`dev/proxies/`](dev/proxies/). The stack runs mutual TLS on both hops:
+  import `dev/proxies/certs/client.p12` (password `pvmss`) and trust `ca.crt`
+  once. Details in [docs/tls.md](docs/tls.md).
+- `make proxy-e2e` checks the VNC console WebSocket through each proxy
+  (Playwright, fake cluster source, its own database).
+- `make sonar` scans `pvmss-server` and `pvmss-web` into the shared local
+  SonarQube (`~/git/gh/sonarqube`); results at `http://localhost:9000/projects`,
+  stop it with `make sonar-down`.
 
 ## Need help?
 

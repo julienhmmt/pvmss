@@ -160,7 +160,7 @@ services:
       - ./tls/proxy.crt:/tls/proxy.crt:ro
       - ./tls/proxy.key:/tls/proxy.key:ro
       - ./tls/server-ca.crt:/tls/server-ca.crt:ro
-      - ./site:/site:ro   # your public certificate for pvmss.example.com
+      - ./site:/site:ro # your public certificate for pvmss.example.com
     depends_on: [pvmss]
 
 volumes:
@@ -240,8 +240,8 @@ metadata: { name: pvmss-gateway-client, namespace: pvmss }
 spec:
   commonName: gateway-pvmss
   secretName: pvmss-gateway-client
-  duration: 2160h    # 90 days
-  renewBefore: 360h  # 15 days
+  duration: 2160h # 90 days
+  renewBefore: 360h # 15 days
   usages: [client auth, digital signature, key encipherment]
   issuerRef: { name: pvmss-client-ca, kind: Issuer }
 ```
@@ -291,7 +291,7 @@ tls:
     dnsNames: []
   clientCA:
     enabled: true
-    secretName: pvmss-client-ca   # from the cert-manager example above
+    secretName: pvmss-client-ca # from the cert-manager example above
     key: ca.crt
     clientAuth: require
 
@@ -304,7 +304,7 @@ httpRoute:
     caCertificateRefs:
       - group: ""
         kind: ConfigMap
-        name: internal-ca-bundle   # PEM of the issuer behind internal-ca
+        name: internal-ca-bundle # PEM of the issuer behind internal-ca
 
 # Restart the pod when cert-manager renews the Secrets (stakater/Reloader).
 extraAnnotations:
@@ -326,6 +326,31 @@ What the chart does not do for you:
 - **Probes in strict mTLS** are `tcpSocket`: they prove the port is open, not
   that `/health` answers. If you need a real health check, monitor `/health`
   through the proxy (see [Checking a deployment](#checking-a-deployment)).
+
+## Console WebSockets behind a proxy
+
+The VM consoles (noVNC and serial) are WebSockets on
+`/api/v1/vms/{cluster}/{vmid}/console/websocket` and `.../serial/websocket`.
+Any proxy chain works (HAProxy, nginx, Traefik, a Kubernetes Ingress or
+Gateway API), even one that rewrites `Host` to an internal name, as long as
+each hop:
+
+- forwards the WebSocket upgrade (`Upgrade` and `Connection` headers, or
+  HTTP/2 extended CONNECT, RFC 8441);
+- keeps idle connections open for the length of a console session (for
+  example `timeout tunnel 1h` in HAProxy, `proxy_read_timeout 3600s` in
+  nginx, an HTTPRoute `timeouts.request` of `0s` or longer).
+
+PVMSS never compares the WebSocket `Origin` to `Host`. Each single-use
+console ticket is bound to the `Origin` of the page that requested it, and
+the WebSocket must present that same `Origin`, so a proxy that rewrites
+`Host` or drops `X-Forwarded-Host` changes nothing.
+
+When the console stays black or the browser reports
+`ERR_HTTP2_REFUSED_STREAM`/`1006`, the WebSocket did not reach PVMSS: the VNC
+ticket call still succeeds, and Proxmox logs a `vncproxy` timeout because
+nothing ever connected. If a hop cannot forward WebSockets over HTTP/2, serve
+the site over HTTP/1.1 on that hop (HAProxy: `alpn http/1.1` on the `bind`).
 
 ## Proxy recipes, proxy to PVMSS
 
@@ -443,8 +468,8 @@ resource referenced by the `IngressRoute` service.
 ### Nginx Proxy Manager
 
 1. Mount the certificates into the NPM container (`/tls`, read-only).
-2. Proxy host: scheme `https`, host `pvmss`, port `50000`, *Websockets Support* on.
-3. *Advanced* tab:
+2. Proxy host: scheme `https`, host `pvmss`, port `50000`, _Websockets Support_ on.
+3. _Advanced_ tab:
 
 ```nginx
 proxy_ssl_certificate         /tls/proxy.crt;
@@ -480,7 +505,7 @@ renewed automatically, and **one** CA file on the proxy.
 
 | Tool                                  | How                                                                                                                                         |
 | ------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------- |
-| Active Directory Certificate Services | A *User* or *Workstation* template with *Client Authentication*, auto-enrolled by GPO. Windows and Edge/Chrome pick it from the user store. |
+| Active Directory Certificate Services | A _User_ or _Workstation_ template with _Client Authentication_, auto-enrolled by GPO. Windows and Edge/Chrome pick it from the user store. |
 | Microsoft Intune                      | SCEP or PKCS certificate profile to Windows, macOS, iOS, Android.                                                                           |
 | Jamf Pro / other MDM                  | Certificate payload (SCEP or PKCS#12) in a configuration profile.                                                                           |
 | step-ca                               | ACME, OIDC or SCEP provisioners; short-lived certificates renewed by `step` on the device.                                                  |
@@ -501,8 +526,8 @@ openssl pkcs12 -export -legacy -name "PVMSS alice" -inkey alice.key -in alice.cr
 
 Send the `.p12` and its password through two different channels. The user
 imports it in Keychain Access (macOS), `certmgr.msc` / double-click (Windows),
-or *Settings > Privacy and security > Manage certificates* (Chrome/Edge on
-Linux), *Settings > Certificates > Your Certificates* (Firefox).
+or _Settings > Privacy and security > Manage certificates_ (Chrome/Edge on
+Linux), _Settings > Certificates > Your Certificates_ (Firefox).
 
 ### Proxy settings
 
@@ -512,7 +537,7 @@ Linux), *Settings > Certificates > Your Certificates* (Firefox).
 | nginx   | `ssl_client_certificate /tls/users-ca.crt; ssl_verify_client on;`                                              |
 | Caddy   | `tls { client_auth { mode require_and_verify; trust_pool file /tls/users-ca.crt } }`                           |
 | Traefik | `tls.options.default.clientAuth: { caFiles: [/tls/users-ca.crt], clientAuthType: RequireAndVerifyClientCert }` |
-| NPM     | the nginx lines in *Advanced*, with a custom SSL certificate on the host                                       |
+| NPM     | the nginx lines in _Advanced_, with a custom SSL certificate on the host                                       |
 
 Use a **users CA**, separate from the client CA of hop 2: a user certificate
 must not open a direct connection to PVMSS.
@@ -658,7 +683,7 @@ front is the recommended layout.
 Restrict it at the network level.
 
 **Does PVMSS-to-Proxmox use this?** No. That connection is configured per
-cluster in *Admin > Clusters* (CA, fingerprint).
+cluster in _Admin > Clusters_ (CA, fingerprint).
 
 **How do I test all of this locally?** `make proxy-e2e` starts five proxies in
 front of PVMSS with mTLS on both hops and runs the console test through each

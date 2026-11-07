@@ -20,7 +20,7 @@ The complete, route-by-route inventory lives in [docs/FEATURES.md](https://githu
 
 ### For administrators
 
-- **Dual admin sign-in**: Sign in with a Proxmox account holding `Permissions.Modify` on `/` (`PVEAdmin` / `Administrator`), or with a PVMSS local administrator account (bootstrap owner via `ADMIN_PASSWORD_HASH` plus DB-managed local admin accounts) that works even when clusters are unreachable.
+- **Dual admin sign-in**: Sign in with a Proxmox account holding `Permissions.Modify` on `/` (`Administrator` / `PVMSS_Admin`; `PVEAdmin` lacks it), or with a PVMSS local administrator account (bootstrap owner via `ADMIN_PASSWORD_HASH` plus DB-managed local admin accounts) that works even when clusters are unreachable.
 - **Multi-cluster management**: Connect multiple Proxmox environments, test connectivity, monitor health, rename a cluster id, and adopt pools/tags a previous PVMSS install left on a cluster (**Admin > Recovery**).
 - **Catalog curation**: Approve nodes, storages, ISOs, VM templates, and network bridges; manage hardware profiles and curated tags; reconcile stale approvals against live cluster discovery.
 - **User pool provisioning**: Create a self-service user (Proxmox user + resource pool + ACL) in one step, with cascade deletion.
@@ -68,38 +68,24 @@ Always mount a persistent volume at `/data` (not a single file mount) because SQ
 
 The server validates all environment variables at startup and refuses to start if a required variable is missing or invalid.
 
-| Variable                                                   | Description                                                                                                                                       | Required      | Default          |
-| ---------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------- | ------------- | ---------------- |
-| `PVMSS_PORT`                                               | TCP port the HTTP server listens on (`1`–`65535`)                                                                                                 | ✅            | -                |
-| `PVMSS_DB_PATH`                                            | Path to the SQLite database file (preset to `/data/pvmss.db` in the Docker image)                                                                 | ✅            | `/data/pvmss.db` |
-| `SESSION_SECRET`                                           | 32+ byte secret to sign/encrypt sessions (`openssl rand -hex 32`)                                                                                 | ✅            | -                |
-| `PVMSS_CLUSTER_SOURCE`                                     | `proxmox` for a real cluster, `fake` for demo data (no default on purpose)                                                                        | ✅            | -                |
-| `LOG_LEVEL`                                                | `debug`, `info`, `warn`, or `error` (**lowercase only**)                                                                                          | ✅            | -                |
-| `LOG_FORMAT`                                               | `console` (human-readable) or `json` (log aggregators)                                                                                            | ✅            | -                |
-| `LOG_OUTPUT`                                               | `stdout`, `stderr`, or a writable file path                                                                                                       | ✅            | -                |
-| `PVMSS_SYSLOG_ADDR`                                        | `host:port` of a SIEM syslog receiver (RFC 5425 over TLS, usually 6514). Empty disables the sink                                                  | ❌            | empty            |
-| `PVMSS_SYSLOG_TLS_CA_FILE`                                 | PEM CA that signed the receiver's certificate; empty uses the system roots (verification stays on)                                                | ❌            | system roots     |
-| `PVMSS_SYSLOG_TLS_CERT_FILE` / `PVMSS_SYSLOG_TLS_KEY_FILE` | Client certificate and key for mutual TLS (set both); see [observability.md](https://github.com/julienhmmt/pvmss/blob/main/docs/observability.md) | ❌            | empty            |
-| `PROXMOX_URL`                                              | Full Proxmox API URL (`https://host:8006/api2/json`) to seed the initial `default` cluster                                                        | ❌ (see note) | -                |
-| `PROXMOX_API_TOKEN_NAME`                                   | Proxmox API token name (`user@pve!token`)                                                                                                         | ❌ (see note) | -                |
-| `PROXMOX_API_TOKEN_VALUE`                                  | Proxmox API token secret                                                                                                                          | ❌ (see note) | -                |
-| `ADMIN_PASSWORD_HASH`                                      | Bcrypt hash for the bootstrap local admin (`admin`); disabled when empty                                                                          | ❌            | empty            |
-| `PVMSS_HOST`                                               | Bind address (preset to `0.0.0.0` in the Docker image)                                                                                            | ❌            | `0.0.0.0`        |
-| `PVMSS_WEB_DIR`                                            | Directory holding the built SPA (preset to `/app/web/build` in the Docker image)                                                                  | ❌            | `/app/web/build` |
-| `PVMSS_COOKIE_SECURE`                                      | `Secure` attribute on session cookies (`true` behind HTTPS, set `false` for plain HTTP)                                                           | ❌            | `true`           |
-| `PVMSS_INVENTORY_REFRESH_INTERVAL`                         | Background inventory refresh interval                                                                                                             | ❌            | `30s`            |
-| `PVMSS_INVENTORY_MANUAL_REFRESH_MIN_INTERVAL`              | Minimum delay between manual inventory refreshes                                                                                                  | ❌            | `5s`             |
-| `PVMSS_INVENTORY_REFRESH_TIMEOUT`                          | Timeout for a single inventory refresh                                                                                                            | ❌            | `15s`            |
-| `PVMSS_MAX_LIST_PAGE_SIZE`                                 | Maximum page size for list endpoints                                                                                                              | ❌            | `100`            |
-| `PVMSS_MAX_LOCAL_ADMINS`                                   | Maximum number of DB local administrator accounts (`1`–`50`, excluding bootstrap `admin`)                                                         | ❌            | `5`              |
-| `PVMSS_TRUSTED_PROXY_HOPS`                                 | Number of reverse proxies in front of PVMSS (set it when behind one; Helm sets `1`)                                                               | ❌            | `0`              |
-| `PVMSS_RATE_LIMIT_MAX`                                     | Raises built-in rate-limit ceilings (`0` keeps built-in defaults)                                                                                 | ❌            | `0`              |
-| `PVMSS_METRICS_PORT`                                       | Port for the Prometheus `GET /metrics` listener (must differ from `PVMSS_PORT`); empty disables it                                                | ❌            | empty            |
-| `PVMSS_TLS_CERT_FILE` / `PVMSS_TLS_KEY_FILE`               | Serve HTTPS with this PEM certificate and key (set both); see [docs/tls.md](https://github.com/julienhmmt/pvmss/blob/main/docs/tls.md)            | ❌            | empty (HTTP)     |
-| `PVMSS_TLS_CLIENT_CA_FILE`                                 | PEM CA bundle for client certificates: enables mutual TLS                                                                                         | ❌            | empty            |
-| `PVMSS_TLS_CLIENT_AUTH`                                    | `require` or `optional` client certificate (needs `PVMSS_TLS_CLIENT_CA_FILE`)                                                                     | ❌            | `require`        |
-| `PVMSS_DB_RESET_ON_INCOMPATIBLE`                           | On an incompatible database, rename it and start fresh instead of refusing to boot                                                                | ❌            | `false`          |
-| `TZ`                                                       | Container timezone                                                                                                                                | ❌            | `UTC`            |
+| Variable                   | Description                                                                                | Required      | Default          |
+| -------------------------- | ------------------------------------------------------------------------------------------ | ------------- | ---------------- |
+| `PVMSS_PORT`               | TCP port the HTTP server listens on (`1`–`65535`)                                          | ✅            | -                |
+| `PVMSS_DB_PATH`            | Path to the SQLite database file (preset to `/data/pvmss.db` in the Docker image)          | ✅            | `/data/pvmss.db` |
+| `SESSION_SECRET`           | 32+ byte secret to sign/encrypt sessions (`openssl rand -hex 32`)                          | ✅            | -                |
+| `PVMSS_CLUSTER_SOURCE`     | `proxmox` for a real cluster, `fake` for demo data (no default on purpose)                 | ✅            | -                |
+| `LOG_LEVEL`                | `debug`, `info`, `warn`, or `error` (**lowercase only**)                                   | ✅            | -                |
+| `LOG_FORMAT`               | `console` (human-readable) or `json` (log aggregators)                                     | ✅            | -                |
+| `LOG_OUTPUT`               | `stdout`, `stderr`, or a writable file path                                                | ✅            | -                |
+| `PROXMOX_URL`              | Full Proxmox API URL (`https://host:8006/api2/json`) to seed the initial `default` cluster | ❌ (see note) | -                |
+| `PROXMOX_API_TOKEN_NAME`   | Proxmox API token name (`user@pve!token`)                                                  | ❌ (see note) | -                |
+| `PROXMOX_API_TOKEN_VALUE`  | Proxmox API token secret                                                                   | ❌ (see note) | -                |
+| `ADMIN_PASSWORD_HASH`      | Bcrypt hash for the bootstrap local admin (`admin`); disabled when empty                   | ❌            | empty            |
+| `PVMSS_COOKIE_SECURE`      | `Secure` attribute on session cookies (`true` behind HTTPS, set `false` for plain HTTP)    | ❌            | `true`           |
+| `PVMSS_TRUSTED_PROXY_HOPS` | Number of reverse proxies in front of PVMSS (set it when behind one; Helm sets `1`)        | ❌            | `0`              |
+| `TZ`                       | Container timezone                                                                         | ❌            | `UTC`            |
+
+The most common variables are listed above. Syslog/SIEM, TLS and mutual TLS, Prometheus metrics, inventory tuning and rate limits are described in [docs/configuration.md](https://github.com/julienhmmt/pvmss/blob/main/docs/configuration.md).
 
 > The three `PROXMOX_*` variables are all-or-nothing: set all three to seed the
 > `default` cluster on first boot (afterwards, clusters are managed from the
@@ -116,7 +102,7 @@ Create a `docker-compose.yml` file:
 ```yaml
 services:
   pvmss:
-    image: jhmmt/pvmss:0.4
+    image: jhmmt/pvmss:0.4.0
     container_name: pvmss
     restart: unless-stopped
     ports:
@@ -133,7 +119,7 @@ services:
       LOG_LEVEL: "info"
       LOG_OUTPUT: "stdout"
       LOG_FORMAT: "console"
-      SESSION_SECRET: "changeMeWithSomethingElseUniqueMinimum32Chars"
+      SESSION_SECRET: "replace-with-output-of-openssl-rand-hex-32" # generate: openssl rand -hex 32
       PVMSS_PORT: "50000"
       PVMSS_DB_PATH: "/data/pvmss.db"
       TZ: "Europe/Paris"
@@ -176,7 +162,7 @@ docker run -d \
   -e PVMSS_DB_PATH="/data/pvmss.db" \
   -e SESSION_SECRET="$(openssl rand -hex 32)" \
   -e TZ=Europe/Paris \
-  jhmmt/pvmss:0.4
+  jhmmt/pvmss:0.4.0
 ```
 
 The application will be available at [http://localhost:50000](http://localhost:50000). Sign in with your Proxmox account, or click **Local administrator** on the login page to sign in with `admin` and the password matching `ADMIN_PASSWORD_HASH`.
