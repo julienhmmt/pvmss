@@ -236,7 +236,7 @@ only and never rewrites VM tags on the cluster. The report is cached for
 
 - Serve PVMSS only over HTTPS (typically behind a reverse proxy) and restrict access to trusted networks. Set `PVMSS_TRUSTED_PROXY_HOPS` to the number of proxies so rate limits and the audit log see the real client IP.
 - Use dedicated Proxmox accounts for PVMSS; avoid sharing the built-in administrator password.
-- Keep Proxmox permissions simple: a service API token with the `PVMSS_Service` role for the backend, human administrators with the `PVMSS_Admin` role, and end users confined to their `PVMSSUser`-scoped pool. See `/docs/proxmox-permissions` for the exact `pveum` commands.
+- Keep Proxmox permissions simple: a service API token with the `PVMSS_Service` role for the backend, the `PVMSSUser` role created beforehand, human administrators with the `PVMSS_Admin` role, and end users confined to their `PVMSSUser`-scoped pool. See `/docs/proxmox-permissions` for the exact `pveum` commands.
 - Do not grant broad Proxmox privileges to regular self-service users.
 - Periodically review user pools and disable or delete unused accounts.
 - A template's sign-in is shared by every VM cloned from it; prefer SSH keys over passwords and rotate them when a user leaves.

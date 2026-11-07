@@ -8,7 +8,8 @@ served by the Go binary.
 
 **Proxmox administrator**:
 A Proxmox VE user whose ACL grants `Permissions.Modify` on `/` - any role
-carrying it (`PVEAdmin`, `Administrator`, or a custom one). PVMSS reads that
+carrying it (the dedicated `PVMSS_Admin` role, `Administrator`, or a custom
+one; the built-in `PVEAdmin` role lacks it). PVMSS reads that
 privilege once, at login, with the user's own ticket and stores it as
 `Identity.IsAdmin` for the session. Only the `pve` and `pam` realms can sign
 in; OIDC realms are unsupported.

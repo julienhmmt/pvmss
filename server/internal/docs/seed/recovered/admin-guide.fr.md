@@ -248,7 +248,7 @@ cluster ; **Rescan** force une nouvelle lecture.
 
 - Servez PVMSS uniquement en HTTPS (derrière un reverse proxy) et restreignez l'accès aux réseaux de confiance. Réglez `PVMSS_TRUSTED_PROXY_HOPS` au nombre de proxies pour que la limitation de débit et l'audit voient la vraie IP client.
 - Utilisez des comptes Proxmox dédiés à PVMSS ; ne partagez pas le mot de passe administrateur intégré.
-- Gardez des permissions Proxmox simples : un token de service avec le rôle `PVMSS_Service` pour le backend, des administrateurs humains avec le rôle `PVMSS_Admin`, et des utilisateurs confinés à leur pool `PVMSSUser`. Voir `/docs/proxmox-permissions` pour les commandes `pveum` exactes.
+- Gardez des permissions Proxmox simples : un token de service avec le rôle `PVMSS_Service` pour le backend, le rôle `PVMSSUser` créé au préalable, des administrateurs humains avec le rôle `PVMSS_Admin`, et des utilisateurs confinés à leur pool `PVMSSUser`. Voir `/docs/proxmox-permissions` pour les commandes `pveum` exactes.
 - N'accordez pas de privilèges Proxmox étendus aux utilisateurs self-service.
 - Passez régulièrement en revue les pools et désactivez ou supprimez les comptes inutilisés.
 - Les accès d'un template sont partagés par toutes les VM qui en sont clonées ; préférez les clés SSH aux mots de passe et renouvelez-les quand un utilisateur part.
