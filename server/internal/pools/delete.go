@@ -24,6 +24,12 @@ var maxDeleteWait = 15 * time.Second
 type DeleteResult struct {
 	Status      string
 	UserDeleted bool
+	Username    string
+}
+
+// poolUsername is the cluster account PVMSS provisions for a pool.
+func poolUsername(name string) string {
+	return name + "@pve"
 }
 
 // CascadeDeps groups the shared dependencies and context for a pool cascade
@@ -77,7 +83,7 @@ func Delete(ctx context.Context, deps CascadeDeps, name string) (DeleteResult, e
 		}
 	}
 	userDeleted := deletePoolUser(ctx, client, name)
-	return DeleteResult{Status: "deleted", UserDeleted: userDeleted}, nil
+	return DeleteResult{Status: "deleted", UserDeleted: userDeleted, Username: poolUsername(name)}, nil
 }
 
 // requireManaged refuses the operation when the pool is not recorded as
@@ -208,7 +214,7 @@ func remainingVMIDs(projection *inventory.Projection, name string) []int {
 }
 
 func deletePoolUser(ctx context.Context, client cluster.Client, name string) bool {
-	username := name + "@pve"
+	username := poolUsername(name)
 	if err := client.DeleteUser(ctx, username); err != nil {
 		slog.Default().ErrorContext(ctx, "pool user deletion failed", "pool", name, "username", username, "error", err)
 		return false
