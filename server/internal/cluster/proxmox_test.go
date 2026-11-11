@@ -3,9 +3,13 @@ package cluster
 import (
 	"context"
 	"errors"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
+	"slices"
+	"strings"
 	"testing"
+	"time"
 )
 
 // newProxmoxTestServer builds an httptest.Server driven by a ServeMux (Go
@@ -103,6 +107,102 @@ func TestProxmox_Snapshot(t *testing.T) {
 	}
 
 	assertProxmoxSnapshot(t, snap)
+}
+
+// proxmoxManyVMsServer serves vmCount running VMs (VMIDs 100..). Each config
+// and status read sleeps delay. The VM whose VMID equals gone answers 404 on
+// its config read, as a VM deleted mid-refresh does (0 means none).
+func proxmoxManyVMsServer(t *testing.T, vmCount int, delay time.Duration, gone int) *httptest.Server {
+	t.Helper()
+
+	rows := make([]string, 0, vmCount)
+	for id := 100; id < 100+vmCount; id++ {
+		rows = append(rows, fmt.Sprintf(`{"type":"qemu","node":"pve1","vmid":%d,"name":"vm-%d","status":"running","maxcpu":1,"maxmem":1073741824}`, id, id))
+	}
+
+	resources := `{"data":[` + strings.Join(rows, ",") + `]}`
+
+	return newProxmoxTestServer(t, func(mux *http.ServeMux) {
+		mux.HandleFunc("GET /api2/json/cluster/resources", func(w http.ResponseWriter, _ *http.Request) {
+			writeJSONFixture(t, w, resources)
+		})
+		mux.HandleFunc("GET /api2/json/version", func(w http.ResponseWriter, _ *http.Request) {
+			writeJSONFixture(t, w, `{"data":{"version":"8.2.4"}}`)
+		})
+
+		for id := 100; id < 100+vmCount; id++ {
+			mux.HandleFunc(fmt.Sprintf("GET /api2/json/nodes/pve1/qemu/%d/config", id), func(w http.ResponseWriter, r *http.Request) {
+				time.Sleep(delay)
+
+				if id == gone {
+					http.NotFound(w, r)
+
+					return
+				}
+
+				writeJSONFixture(t, w, `{"data":{"sockets":1,"cores":1}}`)
+			})
+			mux.HandleFunc(fmt.Sprintf("GET /api2/json/nodes/pve1/qemu/%d/status/current", id), func(w http.ResponseWriter, _ *http.Request) {
+				time.Sleep(delay)
+				writeJSONFixture(t, w, `{"data":{"uptime":60}}`)
+			})
+		}
+	})
+}
+
+// Sequential hydration of 50 running VMs at 20 ms per read takes about 2 s;
+// bounded concurrency must finish well inside that.
+func TestProxmox_Snapshot_HydratesVMsConcurrently(t *testing.T) {
+	t.Parallel()
+
+	const vmCount = 50
+
+	srv := proxmoxManyVMsServer(t, vmCount, 20*time.Millisecond, 0)
+	p := Proxmox{BaseURL: srv.URL, APITokenName: testTokenName, APITokenValue: testTokenVal}
+
+	start := time.Now()
+
+	snap, err := p.Snapshot(context.Background())
+	if err != nil {
+		t.Fatalf("Snapshot: %v", err)
+	}
+
+	if elapsed := time.Since(start); elapsed > time.Second {
+		t.Fatalf("Snapshot took %v for %d VMs; hydration looks sequential", elapsed, vmCount)
+	}
+
+	if len(snap.VMs) != vmCount {
+		t.Fatalf("len(VMs) = %d, want %d", len(snap.VMs), vmCount)
+	}
+
+	for _, vm := range snap.VMs {
+		if vm.Cores != 1 || vm.Uptime == 0 {
+			t.Fatalf("VM %d not hydrated: cores=%d uptime=%v", vm.VMID, vm.Cores, vm.Uptime)
+		}
+	}
+}
+
+// A VM deleted between the cluster listing and its config read is dropped
+// from the snapshot instead of failing the whole refresh; order is kept.
+func TestProxmox_Snapshot_SkipsVMDeletedMidRefresh(t *testing.T) {
+	t.Parallel()
+
+	srv := proxmoxManyVMsServer(t, 5, 0, 102)
+	p := Proxmox{BaseURL: srv.URL, APITokenName: testTokenName, APITokenValue: testTokenVal}
+
+	snap, err := p.Snapshot(context.Background())
+	if err != nil {
+		t.Fatalf("Snapshot: %v", err)
+	}
+
+	ids := make([]int, 0, len(snap.VMs))
+	for _, vm := range snap.VMs {
+		ids = append(ids, vm.VMID)
+	}
+
+	if want := []int{100, 101, 103, 104}; !slices.Equal(ids, want) {
+		t.Fatalf("VMIDs = %v, want %v", ids, want)
+	}
 }
 
 // assertProxmoxSnapshot asserts every field of a snapshot produced by the
