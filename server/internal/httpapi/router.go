@@ -460,6 +460,10 @@ func (s *spaHandler) serveFile(w http.ResponseWriter, r *http.Request, name stri
 		return fs.ErrNotExist
 	}
 
+	if cc := spaCacheControl(name); cc != "" {
+		w.Header().Set("Cache-Control", cc)
+	}
+
 	http.ServeContent(
 		w,
 		r,
@@ -469,6 +473,20 @@ func (s *spaHandler) serveFile(w http.ResponseWriter, r *http.Request, name stri
 	)
 
 	return nil
+}
+
+// spaCacheControl returns the Cache-Control value for a static SPA file.
+// Vite content-hashes everything under _app/immutable/, so those are cached
+// for a year. The shell must revalidate so a new deploy is seen at once.
+func spaCacheControl(name string) string {
+	switch name = strings.TrimPrefix(name, "/"); {
+	case strings.HasPrefix(name, "_app/immutable/"):
+		return "public, max-age=31536000, immutable"
+	case name == "" || name == "index.html":
+		return "no-cache"
+	default:
+		return ""
+	}
 }
 
 // writeJSON writes a JSON response with the given status code and returns any write error.
