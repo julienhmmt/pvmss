@@ -38,7 +38,7 @@ first cluster there. A partial set still fails startup.
 | `PVMSS_COOKIE_SECURE`                         | `true`                                                          |
 | `PVMSS_INVENTORY_REFRESH_INTERVAL`            | `30s`                                                           |
 | `PVMSS_INVENTORY_MANUAL_REFRESH_MIN_INTERVAL` | `5s`                                                            |
-| `PVMSS_INVENTORY_REFRESH_TIMEOUT`             | `15s`                                                           |
+| `PVMSS_INVENTORY_REFRESH_TIMEOUT`             | `25s`                                                           |
 | `PVMSS_MAX_LIST_PAGE_SIZE`                    | `100`                                                           |
 | `PVMSS_MAX_LOCAL_ADMINS`                      | `5` (range 1-50; excludes the bootstrap admin)                  |
 | `PVMSS_DB_RESET_ON_INCOMPATIBLE`              | `false` (dev compose: `true`; old DB is renamed, never deleted) |
