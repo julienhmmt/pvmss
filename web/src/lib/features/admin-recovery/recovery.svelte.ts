@@ -59,6 +59,8 @@ export class RecoveryStore {
 	cluster = $state('default');
 	selectedPools = new SvelteSet<string>();
 	selectedTags = new SvelteSet<string>();
+	/** Latest-wins guard for load: a cluster switch must not show the previous cluster's report. */
+	#loadRequestId = 0;
 
 	async loadClusters(): Promise<void> {
 		try {
@@ -78,15 +80,20 @@ export class RecoveryStore {
 	}
 
 	async load(): Promise<void> {
+		const requestId = ++this.#loadRequestId;
 		if (this.clusterOptions.length === 0) {
 			await this.loadClusters();
+			if (requestId !== this.#loadRequestId) return;
 		}
 		this.loading = true;
 		this.error = null;
 		try {
-			this.report = await get<RecoveryReport>(`/api/v1/admin/recovery?cluster=${encodeURIComponent(this.cluster)}`);
+			const report = await get<RecoveryReport>(`/api/v1/admin/recovery?cluster=${encodeURIComponent(this.cluster)}`);
+			if (requestId !== this.#loadRequestId) return;
+			this.report = report;
 			this.selectAllOrphans();
 		} catch (error) {
+			if (requestId !== this.#loadRequestId) return;
 			this.error = error instanceof ApiRequestError ? error.message : m['admin.recovery.loadError']();
 		} finally {
 			this.loading = false;

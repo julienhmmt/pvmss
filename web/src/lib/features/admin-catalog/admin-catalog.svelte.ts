@@ -137,6 +137,8 @@ export class AdminCatalogStore {
 
 	loading = $state.raw(false);
 	error = $state.raw<string | null>(null);
+	/** Latest-wins guard for loadAll (see VmCreateStore for the pattern). */
+	#loadRequestId = 0;
 
 	toggling = $state.raw<string | null>(null);
 	toggleError = $state.raw<string | null>(null);
@@ -411,7 +413,9 @@ export class AdminCatalogStore {
 	}
 
 	async loadAll(): Promise<void> {
+		const requestId = ++this.#loadRequestId;
 		await this.loadClusters();
+		if (requestId !== this.#loadRequestId) return;
 		this.loading = true;
 		this.error = null;
 		try {
@@ -421,20 +425,27 @@ export class AdminCatalogStore {
 				get<AdminBridge[]>(`/api/v1/admin/bridges?cluster=${encodeURIComponent(this.cluster)}`),
 				get<AdminISO[]>(`/api/v1/admin/isos?cluster=${encodeURIComponent(this.cluster)}`)
 			]);
+			if (requestId !== this.#loadRequestId) return;
 			this.nodes = nodes;
 			this.storages = storages;
 			this.bridges = bridges;
 			this.isos = isos;
 		} catch (err) {
-			this.error = err instanceof ApiRequestError ? err.message : m['admin.catalog.loadError']();
+			if (requestId === this.#loadRequestId) {
+				this.error = err instanceof ApiRequestError ? err.message : m['admin.catalog.loadError']();
+			}
 		} finally {
-			this.loading = false;
+			if (requestId === this.#loadRequestId) this.loading = false;
 		}
 	}
 
 	setCluster(value: string): void {
 		saveAdminCluster(value);
 		this.cluster = value;
+		this.nodes = [];
+		this.storages = [];
+		this.bridges = [];
+		this.isos = [];
 		void this.loadAll();
 	}
 

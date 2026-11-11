@@ -63,6 +63,8 @@ export class AdminProfilesStore {
 	);
 
 	busOptions = $derived([...new SvelteSet(this.profiles.map((p) => p.bus))].sort());
+	/** Latest-wins guard for load: a cluster switch must not show the previous cluster's profiles. */
+	#loadRequestId = 0;
 
 	setSort(column: 'id' | 'label' | 'cpuCores' | 'memoryMB' | 'diskGB'): void {
 		if (this.sortBy === column) {
@@ -102,15 +104,20 @@ export class AdminProfilesStore {
 	}
 
 	async load(): Promise<void> {
+		const requestId = ++this.#loadRequestId;
 		await this.loadClusters();
+		if (requestId !== this.#loadRequestId) return;
 		this.loading = true;
 		this.error = null;
 		try {
-			this.profiles = await get<AdminProfile[]>(`/api/v1/admin/profiles?cluster=${encodeURIComponent(this.cluster)}`);
+			const profiles = await get<AdminProfile[]>(`/api/v1/admin/profiles?cluster=${encodeURIComponent(this.cluster)}`);
+			if (requestId === this.#loadRequestId) this.profiles = profiles;
 		} catch (err) {
-			this.error = err instanceof ApiRequestError ? err.message : m['admin.profiles.loadError']();
+			if (requestId === this.#loadRequestId) {
+				this.error = err instanceof ApiRequestError ? err.message : m['admin.profiles.loadError']();
+			}
 		} finally {
-			this.loading = false;
+			if (requestId === this.#loadRequestId) this.loading = false;
 		}
 	}
 
