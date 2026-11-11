@@ -1060,6 +1060,8 @@
 	"admin.clusters.caption": "Clusters Proxmox configurés",
 	"admin.clusters.displayName": "Nom du cluster",
 	"admin.clusters.displayNameHint": "Libellé affiché dans l'interface. Facultatif : si vide, l'identifiant est affiché.",
+	"admin.clusters.oidcRealm": "Royaume SSO (OpenID)",
+	"admin.clusters.oidcRealmHint": "Identifiant du royaume OpenID Connect Proxmox utilisé pour l'authentification unique. Vide : SSO désactivé pour ce cluster.",
 	"admin.clusters.idHint": "Identifiant, choisi à la création. Utilisé dans les URL, l'API, l'historique d'audit et les réglages par cluster. Le libellé ci-dessus est celui affiché.",
 	"admin.clusters.newId": "Nouvel identifiant de cluster",
 	"admin.clusters.newIdHint": "Minuscules, chiffres et tirets. Réécrit l'identifiant partout où il est stocké.",

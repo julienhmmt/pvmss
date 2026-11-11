@@ -12,6 +12,7 @@ import (
 	"pvmss/server/internal/inventory"
 	"pvmss/server/internal/logctx"
 	"pvmss/server/internal/store"
+	"regexp"
 	"time"
 )
 
@@ -42,6 +43,7 @@ func NewAdminClusters(authHandler *Auth, st *store.Store, clients runtimeCluster
 type adminClusterDTO struct {
 	Name                  string  `json:"name"`
 	DisplayName           string  `json:"displayName"`
+	OIDCRealm             string  `json:"oidcRealm"`
 	URL                   string  `json:"url"`
 	TLSInsecureSkipVerify bool    `json:"tlsInsecureSkipVerify"`
 	TokenID               string  `json:"tokenId"`
@@ -59,6 +61,7 @@ type adminClusterDTO struct {
 type createClusterRequest struct {
 	Name                  string      `json:"name"`
 	DisplayName           string      `json:"displayName"`
+	OIDCRealm             string      `json:"oidcRealm"`
 	URL                   string      `json:"url"`
 	TLSInsecureSkipVerify bool        `json:"tlsInsecureSkipVerify"`
 	TokenID               string      `json:"tokenId"`
@@ -68,6 +71,7 @@ type createClusterRequest struct {
 
 type updateClusterRequest struct {
 	DisplayName           string      `json:"displayName"`
+	OIDCRealm             string      `json:"oidcRealm"`
 	URL                   string      `json:"url"`
 	TLSInsecureSkipVerify bool        `json:"tlsInsecureSkipVerify"`
 	TokenID               string      `json:"tokenId"`
@@ -131,6 +135,10 @@ func (handler *AdminClusters) ServeCreate(w http.ResponseWriter, r *http.Request
 		writeAdminError(w, http.StatusBadRequest, "invalid_request", msgInvalidClusterRequest)
 		return
 	}
+	if !validOIDCRealm(request.OIDCRealm) {
+		writeAdminError(w, http.StatusBadRequest, "invalid_request", msgInvalidOIDCRealm)
+		return
+	}
 	tlsMaterial, err := resolveTLS(store.ClusterTLS{}, request.TLS)
 	if err != nil {
 		writeAdminError(w, http.StatusBadRequest, "invalid_tls", err.Error())
@@ -142,6 +150,10 @@ func (handler *AdminClusters) ServeCreate(w http.ResponseWriter, r *http.Request
 		return
 	}
 	if err := handler.store.SetClusterTLS(r.Context(), row.Name, tlsMaterial); err != nil {
+		handler.writeStoreFailure(w, err)
+		return
+	}
+	if err := handler.store.SetClusterOIDCRealm(r.Context(), row.Name, request.OIDCRealm); err != nil {
 		handler.writeStoreFailure(w, err)
 		return
 	}
@@ -158,7 +170,7 @@ func (handler *AdminClusters) ServeCreate(w http.ResponseWriter, r *http.Request
 	}
 	handler.recordAdminAction(r, "admin.clusters.create", "cluster", created.Name,
 		"created cluster "+created.Name,
-		[]any{map[string]any{auditKeyName: created.Name, "url": created.URL, "tlsInsecureSkipVerify": created.TLSInsecureSkipVerify, "tokenId": created.TokenID}})
+		[]any{map[string]any{auditKeyName: created.Name, "url": created.URL, "tlsInsecureSkipVerify": created.TLSInsecureSkipVerify, "tokenId": created.TokenID, "oidcRealm": created.OIDCRealm}})
 	writeAdminJSON(w, http.StatusCreated, handler.clusterDTO(created))
 }
 
@@ -167,6 +179,10 @@ func (handler *AdminClusters) ServeUpdate(w http.ResponseWriter, r *http.Request
 	var request updateClusterRequest
 	if err := decodeJSON(w, r, &request); err != nil {
 		writeAdminError(w, http.StatusBadRequest, "invalid_request", msgInvalidClusterRequest)
+		return
+	}
+	if !validOIDCRealm(request.OIDCRealm) {
+		writeAdminError(w, http.StatusBadRequest, "invalid_request", msgInvalidOIDCRealm)
 		return
 	}
 	name := r.PathValue("name")
@@ -196,7 +212,7 @@ func (handler *AdminClusters) ServeUpdate(w http.ResponseWriter, r *http.Request
 		handler.writeStoreFailure(w, err)
 		return
 	}
-	if err := handler.store.SetClusterDisplayName(r.Context(), name, request.DisplayName); err != nil {
+	if err := handler.setClusterLabels(r.Context(), name, request.DisplayName, request.OIDCRealm); err != nil {
 		handler.writeStoreFailure(w, err)
 		return
 	}
@@ -222,7 +238,7 @@ func (handler *AdminClusters) ServeUpdate(w http.ResponseWriter, r *http.Request
 	}
 	handler.recordAdminAction(r, "admin.clusters.update", "cluster", name,
 		"updated cluster "+name,
-		[]any{map[string]any{auditKeyName: name, "url": updated.URL, "tlsInsecureSkipVerify": updated.TLSInsecureSkipVerify, "tokenId": updated.TokenID}})
+		[]any{map[string]any{auditKeyName: name, "url": updated.URL, "tlsInsecureSkipVerify": updated.TLSInsecureSkipVerify, "tokenId": updated.TokenID, "oidcRealm": updated.OIDCRealm}})
 	writeAdminJSON(w, http.StatusOK, handler.clusterDTO(updated))
 }
 
@@ -523,7 +539,7 @@ func (handler *AdminClusters) clusterDTO(row store.ClusterRow) adminClusterDTO {
 	}
 
 	return adminClusterDTO{
-		Name: row.Name, DisplayName: row.DisplayName, URL: row.URL, TLSInsecureSkipVerify: row.TLSInsecureSkipVerify, TokenID: row.TokenID,
+		Name: row.Name, DisplayName: row.DisplayName, OIDCRealm: row.OIDCRealm, URL: row.URL, TLSInsecureSkipVerify: row.TLSInsecureSkipVerify, TokenID: row.TokenID,
 		TokenSet: row.TokenSecret != "", RemovedAt: formatTime(row.RemovedAt),
 		LastTestStatus: lastTestStatus, LastTestAt: lastTestAt, LastTestMessage: lastTestMessage,
 		ProxmoxVersion: optionalValue(version), NodeCount: nodeCount, VMCount: vmCount,
@@ -591,3 +607,21 @@ func optionalValue(value string) *string {
 	}
 	return &value
 }
+
+// setClusterLabels stores the admin-edited display name and SSO realm.
+func (handler *AdminClusters) setClusterLabels(ctx context.Context, name, displayName, realm string) error {
+	if err := handler.store.SetClusterDisplayName(ctx, name, displayName); err != nil {
+		return err
+	}
+
+	return handler.store.SetClusterOIDCRealm(ctx, name, realm)
+}
+
+// msgInvalidOIDCRealm explains the Proxmox realm-id grammar enforced below.
+const msgInvalidOIDCRealm = "oidc realm must be a Proxmox realm id (lowercase letters, digits, - or _, max 32) or empty"
+
+// oidcRealmPattern is the Proxmox realm-id grammar (pve-realm format),
+// narrowed to lowercase. Empty is allowed and disables SSO.
+var oidcRealmPattern = regexp.MustCompile(`^(?:[a-z][a-z0-9_-]{0,31})?$`)
+
+func validOIDCRealm(realm string) bool { return oidcRealmPattern.MatchString(realm) }

@@ -11,6 +11,7 @@ function jsonResponse(status: number, body: unknown): Response {
 const cluster: AdminCluster = {
 	name: 'secondary',
 	displayName: 'prod-pve',
+	oidcRealm: '',
 	url: 'https://secondary.invalid',
 	tlsInsecureSkipVerify: false,
 	tokenId: 'pvmss@pve!service',

@@ -1060,6 +1060,8 @@
 	"admin.clusters.caption": "Konfigurierte Proxmox-Cluster",
 	"admin.clusters.displayName": "Clustername",
 	"admin.clusters.displayNameHint": "Die in der Oberfläche angezeigte Bezeichnung. Optional: Ist sie leer, wird die Kennung angezeigt.",
+	"admin.clusters.oidcRealm": "SSO-Realm (OpenID)",
+	"admin.clusters.oidcRealmHint": "Kennung des Proxmox-OpenID-Connect-Realms für Single Sign-on. Leer deaktiviert SSO für diesen Cluster.",
 	"admin.clusters.idHint": "Kennung, bei der Erstellung gewählt. Verwendet in URLs, der API, dem Audit-Verlauf und den Einstellungen pro Cluster. Angezeigt wird die obige Bezeichnung.",
 	"admin.clusters.newId": "Neue Cluster-ID",
 	"admin.clusters.newIdHint": "Kleinbuchstaben, Ziffern und Bindestriche. Schreibt die Kennung überall dort neu, wo sie gespeichert ist.",

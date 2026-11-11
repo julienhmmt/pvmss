@@ -300,6 +300,12 @@ CREATE INDEX IF NOT EXISTS audit_log_vm ON audit_log (cluster, vmid, action, id)
 CREATE INDEX IF NOT EXISTS audit_log_target ON audit_log (target_type, target_id);
 `
 
+// schemaV6 adds the per-cluster Proxmox OpenID realm PVMSS drives for SSO
+// sign-in (issue #159). Empty disables SSO for that cluster.
+const schemaV6 = `
+ALTER TABLE clusters ADD COLUMN oidc_realm TEXT NOT NULL DEFAULT '';
+`
+
 // Migration is a single schema version and its forward-only DDL.
 type Migration struct {
 	Version int
@@ -318,4 +324,5 @@ var Migrations = []Migration{
 	{Version: 3, DDL: schemaV3},
 	{Version: 4, DDL: schemaV4},
 	{Version: 5, DDL: schemaV5},
+	{Version: 6, DDL: schemaV6},
 }

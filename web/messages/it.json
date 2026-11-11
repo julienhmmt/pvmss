@@ -1060,6 +1060,8 @@
 	"admin.clusters.caption": "Cluster Proxmox configurati",
 	"admin.clusters.displayName": "Nome del cluster",
 	"admin.clusters.displayNameHint": "L'etichetta mostrata nell'interfaccia. Facoltativa: se vuota, viene mostrato l'identificatore.",
+	"admin.clusters.oidcRealm": "Realm SSO (OpenID)",
+	"admin.clusters.oidcRealmHint": "Identificatore del realm OpenID Connect di Proxmox usato per il single sign-on. Vuoto disattiva l'SSO per questo cluster.",
 	"admin.clusters.idHint": "Identificatore, scelto alla creazione. Usato negli URL, nell'API, nello storico di audit e nelle impostazioni per cluster. Viene mostrata l'etichetta qui sopra.",
 	"admin.clusters.newId": "Nuovo ID cluster",
 	"admin.clusters.newIdHint": "Lettere minuscole, cifre e trattini. Riscrive l'identificatore ovunque sia memorizzato.",

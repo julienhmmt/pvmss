@@ -74,6 +74,8 @@ type ClusterRow struct {
 	LastTestAt            *time.Time
 	LastTestMessage       *string
 	ProxmoxVersion        string
+	// OIDCRealm is the Proxmox OpenID realm used for SSO sign-in; empty = off.
+	OIDCRealm string
 	// TLS is the optional per-cluster certificate material. ClientKeyPEM is
 	// decrypted only in memory and is never an API response field.
 	TLS ClusterTLS
@@ -139,13 +141,13 @@ func (s *Store) CreateCluster(ctx context.Context, row ClusterRow) error {
 
 // GetCluster returns an active cluster and decrypts its service-account secret.
 func (s *Store) GetCluster(ctx context.Context, name string) (ClusterRow, error) {
-	row := s.db.QueryRowContext(ctx, `SELECT name, display_name, url, tls_insecure_skip_verify, token_id, token_secret_ciphertext, created_at, removed_at, last_test_status, last_test_at, last_test_message, proxmox_version, tls_ca_pem, tls_node_fingerprints, tls_client_cert_pem, tls_client_key_ciphertext FROM clusters WHERE name = ? AND removed_at IS NULL`, name)
+	row := s.db.QueryRowContext(ctx, `SELECT name, display_name, url, tls_insecure_skip_verify, token_id, token_secret_ciphertext, created_at, removed_at, last_test_status, last_test_at, last_test_message, proxmox_version, tls_ca_pem, tls_node_fingerprints, tls_client_cert_pem, tls_client_key_ciphertext, oidc_realm FROM clusters WHERE name = ? AND removed_at IS NULL`, name)
 	return s.scanCluster(row)
 }
 
 // ListClusters returns every active cluster ordered by immutable logical name.
 func (s *Store) ListClusters(ctx context.Context) ([]ClusterRow, error) {
-	rows, err := s.db.QueryContext(ctx, `SELECT name, display_name, url, tls_insecure_skip_verify, token_id, token_secret_ciphertext, created_at, removed_at, last_test_status, last_test_at, last_test_message, proxmox_version, tls_ca_pem, tls_node_fingerprints, tls_client_cert_pem, tls_client_key_ciphertext FROM clusters WHERE removed_at IS NULL ORDER BY name`)
+	rows, err := s.db.QueryContext(ctx, `SELECT name, display_name, url, tls_insecure_skip_verify, token_id, token_secret_ciphertext, created_at, removed_at, last_test_status, last_test_at, last_test_message, proxmox_version, tls_ca_pem, tls_node_fingerprints, tls_client_cert_pem, tls_client_key_ciphertext, oidc_realm FROM clusters WHERE removed_at IS NULL ORDER BY name`)
 	if err != nil {
 		return nil, fmt.Errorf("list clusters: %w", err)
 	}
@@ -365,6 +367,19 @@ func (s *Store) SetClusterTLS(ctx context.Context, name string, t ClusterTLS) er
 	return nil
 }
 
+// SetClusterOIDCRealm records the Proxmox OpenID realm used for SSO sign-in.
+// An empty realm disables SSO for the cluster.
+func (s *Store) SetClusterOIDCRealm(ctx context.Context, name, realm string) error {
+	res, err := s.db.ExecContext(ctx, `UPDATE clusters SET oidc_realm = ? WHERE name = ? AND removed_at IS NULL`, realm, name)
+	if err != nil {
+		return fmt.Errorf("set cluster oidc realm: %w", err)
+	}
+	if n, _ := res.RowsAffected(); n == 0 {
+		return ErrInvalidClusterName
+	}
+	return nil
+}
+
 func nullableString(value string) any {
 	if value == "" {
 		return nil
@@ -387,7 +402,7 @@ func (s *Store) scanCluster(scanner clusterScanner) (ClusterRow, error) {
 		proxmoxVersion                  sql.NullString
 		keyCiphertext                   []byte
 	)
-	if err := scanner.Scan(&row.Name, &displayName, &row.URL, &tlsInsecure, &row.TokenID, &ciphertext, &createdAt, &removedAt, &lastStatus, &lastAt, &lastMessage, &proxmoxVersion, &row.TLS.CAPEM, &row.TLS.NodeFingerprints, &row.TLS.ClientCertPEM, &keyCiphertext); err != nil {
+	if err := scanner.Scan(&row.Name, &displayName, &row.URL, &tlsInsecure, &row.TokenID, &ciphertext, &createdAt, &removedAt, &lastStatus, &lastAt, &lastMessage, &proxmoxVersion, &row.TLS.CAPEM, &row.TLS.NodeFingerprints, &row.TLS.ClientCertPEM, &keyCiphertext, &row.OIDCRealm); err != nil {
 		return ClusterRow{}, err
 	}
 	row.DisplayName = displayName.String

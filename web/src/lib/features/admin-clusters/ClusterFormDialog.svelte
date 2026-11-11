@@ -34,6 +34,7 @@
 	}: Props = $props();
 	let name = $state('');
 	let displayName = $state('');
+	let oidcRealm = $state('');
 	let url = $state('');
 	let tokenId = $state('');
 	let tokenSecret = $state('');
@@ -89,6 +90,7 @@
 		untrack(() => {
 			name = editing?.name ?? '';
 			displayName = editing?.displayName ?? '';
+			oidcRealm = editing?.oidcRealm ?? '';
 			url = editing?.url ?? '';
 			tokenId = editing?.tokenId ?? '';
 			tokenSecret = '';
@@ -121,6 +123,7 @@
 		onSubmit({
 			name: name.trim(),
 			displayName: displayName.trim(),
+			oidcRealm: oidcRealm.trim(),
 			url: url.trim(),
 			tokenId: tokenId.trim(),
 			tokenSecret,
@@ -144,6 +147,11 @@
 				<FormField label={m['admin.clusters.displayName']()} hint={m['admin.clusters.displayNameHint']()}>
 					{#snippet children({ id, describedBy, invalid })}
 						<TextField {id} {describedBy} {invalid} bind:value={displayName} />
+					{/snippet}
+				</FormField>
+				<FormField label={m['admin.clusters.oidcRealm']()} hint={m['admin.clusters.oidcRealmHint']()}>
+					{#snippet children({ id, describedBy, invalid })}
+						<TextField {id} {describedBy} {invalid} bind:value={oidcRealm} pattern={"[a-z][a-z0-9_\\-]{0,31}"} />
 					{/snippet}
 				</FormField>
 				{#if editing && onRename}
