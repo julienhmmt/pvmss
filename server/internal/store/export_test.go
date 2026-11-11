@@ -9,6 +9,7 @@ import (
 	"pvmss/server/internal/config"
 	"pvmss/server/internal/store"
 	"pvmss/server/internal/testfixture"
+	"strings"
 	"testing"
 
 	_ "modernc.org/sqlite"
@@ -213,5 +214,33 @@ func TestExportPreview_ReportsImportableTables(t *testing.T) {
 
 	if byName["catalog_nodes"] != 1 {
 		t.Errorf("catalog_nodes count = %d, want 1", byName["catalog_nodes"])
+	}
+}
+
+// TestExportTables_ListsEveryUserTable - the export audit lists the whole
+// snapshot: credential tables included, SQLite internals excluded.
+//
+//nolint:paralleltest // serial: shared database fixture
+func TestExportTables_ListsEveryUserTable(t *testing.T) {
+	st := newExportStore(t)
+
+	tables, err := st.ExportTables(context.Background())
+	if err != nil {
+		t.Fatalf("ExportTables: %v", err)
+	}
+
+	byName := make(map[string]bool, len(tables))
+	for _, entry := range tables {
+		if strings.HasPrefix(entry.Name, "sqlite_") {
+			t.Errorf("internal table %q must not be listed", entry.Name)
+		}
+
+		byName[entry.Name] = true
+	}
+
+	for _, want := range []string{"local_accounts", "clusters", "sessions", tblCatalogNodes} {
+		if !byName[want] {
+			t.Errorf("ExportTables missing %q", want)
+		}
 	}
 }

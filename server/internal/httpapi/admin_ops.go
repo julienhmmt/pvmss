@@ -309,8 +309,12 @@ func (h *AdminOps) ServeDBExport(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	preview, _ := h.store.ExportPreview(r.Context())
-	detail := exportDetail(preview)
+	tables, err := h.store.ExportTables(r.Context())
+	if err != nil {
+		logctx.FromOr(r.Context(), h.log).WarnContext(r.Context(), "admin db export audit detail incomplete", "component", "httpapi", "error", err)
+	}
+
+	detail := exportDetail(tables)
 	_ = h.store.RecordAdminAction(r.Context(), actor.Username, "admin.db_export", "db", "", detail, ip)
 }
 
@@ -628,5 +632,5 @@ func exportDetail(tables []store.TablePreview) string {
 		changes[i] = map[string]any{"table": t.Name, "rowCount": t.RowCount}
 	}
 
-	return detailJSON("database export", changes)
+	return detailJSON("database export: full database snapshot, includes credential tables (local_accounts, clusters) and sessions", changes)
 }

@@ -7,6 +7,7 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"strings"
 )
 
 // ExportDatabase produces a clean, internally consistent snapshot of the live
@@ -78,6 +79,59 @@ func (s *Store) ExportPreview(ctx context.Context) ([]TablePreview, error) {
 	}
 
 	return out, nil
+}
+
+// ExportTables returns every user table the export snapshot carries, with its
+// row count. Unlike ExportPreview it is not limited to the import allowlist:
+// the export is a full database snapshot, credential tables included.
+func (s *Store) ExportTables(ctx context.Context) ([]TablePreview, error) {
+	names, err := s.userTableNames(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	out := make([]TablePreview, 0, len(names))
+
+	for _, name := range names {
+		var rowCount int
+
+		query := "SELECT COUNT(*) FROM \"" + strings.ReplaceAll(name, `"`, `""`) + "\""
+		if err := s.db.QueryRowContext(ctx, query).Scan(&rowCount); err != nil {
+			return nil, fmt.Errorf("count %s: %w", name, err)
+		}
+
+		out = append(out, TablePreview{Name: name, RowCount: rowCount})
+	}
+
+	return out, nil
+}
+
+// userTableNames lists the non-internal tables of the live database, sorted.
+func (s *Store) userTableNames(ctx context.Context) ([]string, error) {
+	rows, err := s.db.QueryContext(ctx,
+		`SELECT name FROM sqlite_master WHERE type = 'table' AND name NOT LIKE 'sqlite_%' ORDER BY name`)
+	if err != nil {
+		return nil, fmt.Errorf("list tables: %w", err)
+	}
+
+	defer func() { _ = rows.Close() }()
+
+	var names []string
+
+	for rows.Next() {
+		var name string
+		if err := rows.Scan(&name); err != nil {
+			return nil, fmt.Errorf("scan table name: %w", err)
+		}
+
+		names = append(names, name)
+	}
+
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("iterate tables: %w", err)
+	}
+
+	return names, nil
 }
 
 // dbPath returns the on-disk path of the live database, or empty if it cannot

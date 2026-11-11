@@ -284,3 +284,41 @@ func TestAdminDB_NonAdmin_Returns403(t *testing.T) {
 		t.Errorf("confirm status = %d, want 403", confirmRec.Code)
 	}
 }
+
+// TestAdminDBExport_AuditDetailNamesCredentialTables - the export audit row
+// must say the file is a full snapshot and list every table it carries,
+// including the credential tables that the import allowlist leaves out.
+//
+//nolint:paralleltest // serial: shared database fixture
+func TestAdminDBExport_AuditDetailNamesCredentialTables(t *testing.T) {
+	ops, auth, st := newAdminOpsHandler(t)
+	cookie := adminCookie(t, auth)
+
+	rec := opsGet(t, ops, auth, cookie, "/api/v1/admin/db/export")
+	if rec.Code != http.StatusOK {
+		t.Fatalf("status = %d: %s", rec.Code, rec.Body.String())
+	}
+
+	entries, err := st.QueryAudit(context.Background())
+	if err != nil {
+		t.Fatalf("QueryAudit: %v", err)
+	}
+
+	var detail string
+
+	for _, e := range entries {
+		if e.Action == "admin.db_export" {
+			detail = e.Detail.String
+		}
+	}
+
+	if detail == "" {
+		t.Fatal("no admin.db_export audit row recorded")
+	}
+
+	for _, want := range []string{"full database snapshot", "local_accounts", "clusters", "sessions"} {
+		if !bytes.Contains([]byte(detail), []byte(want)) {
+			t.Errorf("audit detail missing %q: %s", want, detail)
+		}
+	}
+}
