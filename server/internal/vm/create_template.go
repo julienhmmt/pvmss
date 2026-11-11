@@ -87,9 +87,8 @@ func createFromTemplate(ctx context.Context, policyService *policy.Policy, deps 
 	// configuration. The VM does not exist until the task completes.
 	// If the task fails, the half-made VM is purged
 	// (best-effort) so it does not consume the user's quota.
-	if waitErr := waitCreateTask(ctx, deps.Creator, upid); waitErr != nil {
-		deps.Log.ErrorContext(ctx, "clone task wait failed", "component", "vm", "cluster", clusterName, "vmid", finalVMID, "error", waitErr)
-		rollbackFailedCreate(ctx, deps, actor, clusterName, finalVMID, tmpl.Node, "clone task failed")
+	if waitErr := awaitCloneTask(ctx, deps.Creator, upid); waitErr != nil {
+		cleanupFailedClone(ctx, deps, actor, clusterName, finalVMID, tmpl.Node, waitErr)
 
 		if err := deps.Audit.RecordAction(ctx, actor.Username, clusterName, finalVMID, "vm_create"); err != nil {
 			deps.Log.ErrorContext(ctx, auditLogMsg, "component", "vm", "cluster", clusterName, "vmid", finalVMID, "error", err)
