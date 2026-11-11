@@ -248,7 +248,7 @@ func (p Proxmox) TemplateByVMID(ctx context.Context, vmid int) (TemplateVM, erro
 		return TemplateVM{}, ErrNotFound
 	}
 
-	diskStorage, diskSizeGB, diskBus, err := proxmoxTemplateDisk(ctx, rest, found.Node, found.VMID)
+	cfg, err := fetchVMConfig(ctx, rest, found.Node, found.VMID)
 	if err != nil {
 		//nolint:sloglint // Proxmox has no injected logger yet; ticket 06 (observability) adds one
 		slog.WarnContext(ctx, "template config unreadable, returning row without disk fields",
@@ -257,14 +257,19 @@ func (p Proxmox) TemplateByVMID(ctx context.Context, vmid int) (TemplateVM, erro
 		return TemplateVM{VMID: found.VMID, Node: found.Node, Name: found.Name, DiskUnreadable: true}, nil
 	}
 
-	return TemplateVM{
+	diskStorage, diskSizeGB, diskBus := templateDiskFromConfig(cfg)
+
+	tmpl := TemplateVM{
 		VMID:        found.VMID,
 		Node:        found.Node,
 		Name:        found.Name,
 		DiskStorage: diskStorage,
 		DiskSizeGB:  diskSizeGB,
 		DiskBus:     diskBus,
-	}, nil
+	}
+	templateHardware(&tmpl, cfg)
+
+	return tmpl, nil
 }
 
 // StorageFreeSpace returns the available bytes on a storage backend on a node.
@@ -302,6 +307,13 @@ func proxmoxTemplateDisk(ctx context.Context, rest proxmoxRESTClient, node strin
 		return "", 0, "", err
 	}
 
+	storage, sizeGB, bus = templateDiskFromConfig(cfg)
+
+	return storage, sizeGB, bus, nil
+}
+
+// templateDiskFromConfig picks the primary disk from an already-read config.
+func templateDiskFromConfig(cfg proxmoxVMConfig) (storage string, sizeGB int, bus string) {
 	for _, b := range []string{"scsi", "virtio", "sata", "ide"} {
 		for i := range 16 {
 			key := fmt.Sprintf("%s%d", b, i)
@@ -319,11 +331,21 @@ func proxmoxTemplateDisk(ctx context.Context, rest proxmoxRESTClient, node strin
 				continue
 			}
 
-			return diskStorage, diskSizeGB, b, nil
+			return diskStorage, diskSizeGB, b
 		}
 	}
 
-	return "", 0, "", nil
+	return "", 0, ""
+}
+
+// templateHardware fills the hardware and NIC fields of a template row from
+// its config. Sockets and cores default to 1, as hydrateVM does for VMs.
+func templateHardware(tmpl *TemplateVM, cfg proxmoxVMConfig) {
+	tmpl.Sockets = max(cfg.int("sockets"), 1)
+	tmpl.Cores = max(cfg.int("cores"), 1)
+	tmpl.MemoryTotal = int64(cfg.int("memory")) * bytesPerMiBConfig
+	_, tmpl.DiskTotal = parseDisks(cfg)
+	tmpl.NetworkInterfaces = parseNetworkInterfaces(cfg)
 }
 
 // proxmoxNodeRow is one row of /nodes: the node name plus the cluster's own

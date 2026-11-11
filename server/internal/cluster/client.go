@@ -457,6 +457,15 @@ type TemplateVM struct {
 	DiskSizeGB       int
 	DiskBus          string
 	DiskUnreadable   bool
+	// Hardware and NICs mirror the VM fields of the same name, read from the
+	// template's config so the clone path can run the gabarit, capacity and
+	// isolation VLAN gates. Zero when the config is unreadable
+	// (DiskUnreadable is then true).
+	Sockets           int
+	Cores             int
+	MemoryTotal       int64
+	DiskTotal         int64
+	NetworkInterfaces []NetworkInterface
 }
 
 // VMSnapshot is a live snapshot entry returned by a cluster for one VM.

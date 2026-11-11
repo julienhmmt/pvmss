@@ -273,6 +273,10 @@ func (h *VMCreate) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 	ctx := policy.ContextWithAuditIP(r.Context(), clientIP(r, h.trustedProxyHops))
 
+	// The cluster client also serves the clone-time template reads (the
+	// freshness backstop and the isolation VLAN gate); nil if it cannot.
+	templates, _ := target.creator.(vm.TemplateReader)
+
 	result, err := vm.Create(ctx, identity, target.clusterName, req, vm.CreateDeps{
 		Store:     h.store,
 		Creator:   target.creator,
@@ -281,6 +285,7 @@ func (h *VMCreate) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		Audit:     h.store,
 		Log:       h.log,
 		Policy:    h.policy,
+		Templates: templates,
 	})
 	if err != nil {
 		h.writeCreateFailure(w, err)
