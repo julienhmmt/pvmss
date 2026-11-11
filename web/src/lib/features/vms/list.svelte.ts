@@ -457,9 +457,10 @@ export class VmListStore {
 				{ action }
 			);
 			// Converge: poll batch live status until it matches the optimistic target.
-			await convergeBatch({ cluster, vmid }, target, (status) => {
+			const converged = await convergeBatch({ cluster, vmid }, target, (status) => {
 				this.#patchRowStatus(cluster, vmid, status);
 			});
+			if (!converged) return { ok: false, error: m['vms.detail.errorNotConverged']() };
 			return { ok: true };
 		} catch (err) {
 			// Revert to the captured previous status.
