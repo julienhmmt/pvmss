@@ -2,10 +2,13 @@ package cluster
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"log/slog"
 	"net/http"
+	"pvmss/server/internal/logctx"
 	"pvmss/server/internal/store"
+	"sync"
 )
 
 // Proxmox is the real cluster implementation, talking to the Proxmox VE REST
@@ -145,13 +148,77 @@ func (p Proxmox) Snapshot(ctx context.Context) (Snapshot, error) {
 		}
 	}
 
-	for i := range snap.VMs {
-		if err := hydrateVM(ctx, rest, &snap.VMs[i]); err != nil {
-			return Snapshot{}, fmt.Errorf("hydrate vm %d: %w", snap.VMs[i].VMID, err)
+	vms, err := hydrateVMs(ctx, rest, snap.VMs)
+	if err != nil {
+		return Snapshot{}, err
+	}
+
+	snap.VMs = vms
+
+	return snap, nil
+}
+
+// hydrateConcurrency bounds the in-flight config/status reads of one snapshot.
+const hydrateConcurrency = 8
+
+// hydrateVMs runs hydrateVM for every VM with at most hydrateConcurrency reads
+// in flight. A VM that vanished before its config read (ErrNotFound) is dropped
+// and the rest are kept in order; any other failure aborts the snapshot.
+func hydrateVMs(ctx context.Context, rest proxmoxRESTClient, vms []VM) ([]VM, error) {
+	ctx, cancel := context.WithCancel(ctx)
+	defer cancel()
+
+	var (
+		wg       sync.WaitGroup
+		mu       sync.Mutex
+		firstErr error
+		gone     = make([]bool, len(vms))
+		sem      = make(chan struct{}, hydrateConcurrency)
+	)
+
+	for i := range vms {
+		sem <- struct{}{}
+
+		wg.Go(func() {
+			defer func() { <-sem }()
+
+			err := hydrateVM(ctx, rest, &vms[i])
+
+			switch {
+			case err == nil:
+			case errors.Is(err, ErrNotFound):
+				gone[i] = true
+
+				logctx.From(ctx).DebugContext(ctx, "vm gone before hydration", "vmid", vms[i].VMID, "node", vms[i].Node)
+			default:
+				mu.Lock()
+
+				if firstErr == nil {
+					firstErr = fmt.Errorf("hydrate vm %d: %w", vms[i].VMID, err)
+
+					cancel()
+				}
+
+				mu.Unlock()
+			}
+		})
+	}
+
+	wg.Wait()
+
+	if firstErr != nil {
+		return nil, firstErr
+	}
+
+	kept := make([]VM, 0, len(vms))
+
+	for i := range vms {
+		if !gone[i] {
+			kept = append(kept, vms[i])
 		}
 	}
 
-	return snap, nil
+	return kept, nil
 }
 
 // DisplayName implements Client. It calls /cluster/status and returns the name

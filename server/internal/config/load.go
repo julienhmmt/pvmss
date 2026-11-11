@@ -12,7 +12,7 @@ import (
 const (
 	defaultInventoryRefreshInterval          = 30 * time.Second
 	defaultInventoryManualRefreshMinInterval = 5 * time.Second
-	defaultInventoryRefreshTimeout           = 15 * time.Second
+	defaultInventoryRefreshTimeout           = 25 * time.Second
 	defaultMaxListPageSize                   = 100
 	defaultMaxLocalAdmins                    = 5
 	maxLocalAdminsCeiling                    = 50
