@@ -6,6 +6,8 @@ import (
 	"fmt"
 	"net/http"
 	"net/url"
+	"pvmss/server/internal/logctx"
+	"slices"
 	"strings"
 )
 
@@ -124,7 +126,7 @@ func proxmoxHasPermission(ctx context.Context, rest proxmoxRESTClient, path, pri
 func proxmoxOwnedPool(ctx context.Context, rest proxmoxRESTClient, username string) (string, error) {
 	candidate, ok := strings.CutSuffix(username, "@pve")
 	if !ok {
-		return "", nil
+		return proxmoxACLPool(ctx, rest, username), nil
 	}
 
 	pools, err := proxmoxListPools(ctx, rest)
@@ -139,6 +141,55 @@ func proxmoxOwnedPool(ctx context.Context, rest proxmoxRESTClient, username stri
 	}
 
 	return "", nil
+}
+
+// managedPoolPrefix mirrors pools.PoolPrefix (importing pools here would cycle).
+const managedPoolPrefix = "pvmss-"
+
+// proxmoxACLPool binds a non-@pve identity (an OIDC or LDAP realm user) to the
+// PVMSS pool its own user ACL grants, the exact shape SetPoolACL writes:
+// type user, poolRoleName, path /pool/pvmss-*. Inherited and group grants are
+// ignored on purpose, so a broad role never anchors a user to someone else's
+// pool. Several matches keep the first by name. Any failure yields no pool
+// (the login still succeeds) and is logged.
+func proxmoxACLPool(ctx context.Context, rest proxmoxRESTClient, username string) string {
+	raw, err := rest.do(ctx, http.MethodGet, "/access/acl", nil)
+	if err != nil {
+		logctx.From(ctx).WarnContext(ctx, "pool acl lookup failed", "error", err)
+		return ""
+	}
+
+	var rows []struct {
+		Path   string `json:"path"`
+		UGID   string `json:"ugid"`
+		Type   string `json:"type"`
+		RoleID string `json:"roleid"`
+	}
+	if err := decodeData(raw, &rows); err != nil {
+		logctx.From(ctx).WarnContext(ctx, "pool acl decode failed", "error", err)
+		return ""
+	}
+
+	var matches []string
+
+	for _, row := range rows {
+		pool, ok := strings.CutPrefix(row.Path, "/pool/")
+		if ok && row.Type == "user" && row.UGID == username && row.RoleID == poolRoleName && strings.HasPrefix(pool, managedPoolPrefix) {
+			matches = append(matches, pool)
+		}
+	}
+
+	if len(matches) == 0 {
+		return ""
+	}
+
+	slices.Sort(matches)
+
+	if len(matches) > 1 {
+		logctx.From(ctx).WarnContext(ctx, "pool multiple matches", "pools", matches)
+	}
+
+	return matches[0]
 }
 
 // ChangePassword implements Client by re-authenticating as username with
