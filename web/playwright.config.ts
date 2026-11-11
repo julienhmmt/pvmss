@@ -16,7 +16,7 @@ export default defineConfig({
 	failOnFlakyTests: !!process.env.CI,
 	reporter: process.env.CI ? [['list'], ['github'], ['html', { open: 'never' }]] : 'list',
 	use: {
-		baseURL: 'http://127.0.0.1:50001',
+		baseURL: 'http://127.0.0.1:50101',
 		trace: 'on-first-retry',
 		// The app follows the browser language when nothing is stored, while
 		// most specs assert English strings. Seed the persisted preference once
@@ -26,7 +26,7 @@ export default defineConfig({
 			cookies: [],
 			origins: [
 				{
-					origin: 'http://127.0.0.1:50001',
+					origin: 'http://127.0.0.1:50101',
 					localStorage: [{ name: 'pvmss-locale', value: 'en' }]
 				}
 			]
@@ -41,7 +41,7 @@ export default defineConfig({
 		command: 'rm -f ../tmp/e2e-pvmss.db ../tmp/e2e-pvmss.db-wal ../tmp/e2e-pvmss.db-shm && cd ../server && go run ./cmd/pvmss',
 		cwd: '.',
 		env: {
-			PVMSS_PORT: '50001',
+			PVMSS_PORT: '50101',
 			PVMSS_CLUSTER_SOURCE: 'fake',
 			PVMSS_DB_PATH: '../tmp/e2e-pvmss.db',
 			PVMSS_WEB_DIR: '../web/build',
@@ -60,7 +60,7 @@ export default defineConfig({
 			// (T11) is the only spec that needs POST /api/v1/auth/admin-login.
 			ADMIN_PASSWORD_HASH: '$2a$04$W8Da6bYNWJPztehxCYwifOoPpt0GfHtyMKGBtgy2PWkcCI7In6nee',
 		},
-		url: 'http://127.0.0.1:50001/health',
+		url: 'http://127.0.0.1:50101/health',
 		reuseExistingServer: !process.env.CI,
 		timeout: 120 * 1000,
 	},
