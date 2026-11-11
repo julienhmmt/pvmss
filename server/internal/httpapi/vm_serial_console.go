@@ -10,6 +10,7 @@ import (
 	"pvmss/server/internal/store"
 	"pvmss/server/internal/vm"
 	"strings"
+	"time"
 
 	"github.com/coder/websocket"
 )
@@ -36,19 +37,31 @@ type VMSerialConsole struct {
 	tickets    *vm.ConsoleTicketStore
 	store      *store.Store
 	log        *slog.Logger
+
+	sessionCheckEvery time.Duration
+}
+
+// WithSessionCheckInterval returns a copy that re-checks the browser session
+// on this interval while a serial WebSocket is open. Zero keeps the default.
+func (h *VMSerialConsole) WithSessionCheckInterval(every time.Duration) *VMSerialConsole {
+	c := *h
+	c.sessionCheckEvery = every
+
+	return &c
 }
 
 // consoleEnv bundles this handler's shared collaborators for the shared
 // console ticket and websocket helpers.
 func (h *VMSerialConsole) consoleEnv() consoleEnv {
 	return consoleEnv{
-		auth:     h.auth,
-		resolver: h.resolver,
-		clients:  h.clients,
-		relay:    h.relay,
-		tickets:  h.tickets,
-		store:    h.store,
-		log:      h.log,
+		auth:              h.auth,
+		resolver:          h.resolver,
+		clients:           h.clients,
+		relay:             h.relay,
+		tickets:           h.tickets,
+		store:             h.store,
+		log:               h.log,
+		sessionCheckEvery: h.sessionCheckEvery,
 	}
 }
 

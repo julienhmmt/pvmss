@@ -169,6 +169,22 @@ func (m *SessionManager) Resolve(ctx context.Context, r *http.Request) (Identity
 	return session.Identity, nil
 }
 
+// CheckSession reports whether the session behind a raw cookie value is still
+// usable. It reads the row only, so a long-lived stream cannot slide its own
+// session's expiry the way Resolve does.
+func (m *SessionManager) CheckSession(ctx context.Context, raw string) error {
+	session, err := m.repository.FindSession(ctx, m.hash(raw))
+	if err != nil {
+		return fmt.Errorf("find session: %w", err)
+	}
+
+	if !usable(session, time.Now()) {
+		return ErrUnauthenticated
+	}
+
+	return nil
+}
+
 // Logout revokes the session tied to the request's cookie, if any, and clears it.
 func (m *SessionManager) Logout(ctx context.Context, w http.ResponseWriter, r *http.Request) error {
 	if cookie, err := r.Cookie(SessionCookieName); err == nil {

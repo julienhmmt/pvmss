@@ -28,6 +28,17 @@ type VMMetrics struct {
 	currentReader cluster.MetricsCurrentReader
 	clients       cluster.ClientProvider
 	log           *slog.Logger
+
+	sessionCheckEvery time.Duration
+}
+
+// WithSessionCheckInterval returns a copy that re-checks the browser session
+// on this interval while a metrics stream is open. Zero keeps the default.
+func (h *VMMetrics) WithSessionCheckInterval(every time.Duration) *VMMetrics {
+	c := *h
+	c.sessionCheckEvery = every
+
+	return &c
 }
 
 const (
@@ -161,15 +172,21 @@ func (h *VMMetrics) handleStream(w http.ResponseWriter, r *http.Request) {
 
 	deps := vm.MetricsCurrentDependencies{Index: index, Actor: identity, ClusterName: clusterName, VMID: vmid, Reader: currentReader}
 
+	// A session that ends (logout, revocation, expiry) cancels the stream.
+	streamCtx, cancelStream := context.WithCancel(r.Context())
+	defer cancelStream()
+
+	go watchSession(streamCtx, h.sessionCheckEvery, h.auth.sessionChecker(r), cancelStream)
+
 	ticker := time.NewTicker(metricsStreamTickInterval)
 	defer ticker.Stop()
 
 	for {
 		select {
-		case <-r.Context().Done():
+		case <-streamCtx.Done():
 			return
 		case <-ticker.C:
-			if err := h.writeStreamTick(r.Context(), w, rc, deps); err != nil {
+			if err := h.writeStreamTick(streamCtx, w, rc, deps); err != nil {
 				logctx.FromOr(r.Context(), h.log).DebugContext(r.Context(), "metrics stream closed", "component", "httpapi", "error", err)
 				return
 			}

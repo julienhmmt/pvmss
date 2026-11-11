@@ -98,6 +98,7 @@ Activity.
 | Power actions on the console page                                                                                                         | same                            | `POST …/actions`                                                  | ✅     |
 | Serial (xterm.js) console; enable a serial port on a VM that has none                                                                     | same page                       | `POST …/serial`, `POST …/serial-ticket`, `GET …/serial/websocket` | ✅     |
 | Switch a UEFI VM to SeaBIOS so its graphical console is readable; refuses TPM / Secure Boot, a running VM needs confirmation (admin only) | same page                       | `POST …/retrofit-seabios`                                         | ✅     |
+| An open console (VNC or serial) and the metrics stream end when the session ends (logout, password reset, account disable, pool delete, expiry), re-checked every 30s | same page | `GET …/console/websocket`, `GET …/serial/websocket`, `GET …/metrics/stream` | ✅     |
 
 ## 6. Cloud-init documents
 
