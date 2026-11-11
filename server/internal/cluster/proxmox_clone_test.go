@@ -408,7 +408,7 @@ func TestProxmox_TemplateByVMID(t *testing.T) {
 		mux.HandleFunc("GET /api2/json/nodes/pve-node-02/qemu/9000/config", func(w http.ResponseWriter, _ *http.Request) {
 			configCalls++
 
-			writeJSONFixture(t, w, `{"data":{"scsi0":"local-lvm:vm-9000-disk-0,size=8G","ide3":"local-lvm:cloudinit"}}`)
+			writeJSONFixture(t, w, `{"data":{"sockets":2,"cores":4,"memory":4096,"scsi0":"local-lvm:vm-9000-disk-0,size=8G","ide3":"local-lvm:cloudinit","net0":"virtio=AA:BB:CC:DD:EE:01,bridge=vmbr0,tag=100"}}`)
 		})
 	})
 
@@ -423,8 +423,28 @@ func TestProxmox_TemplateByVMID(t *testing.T) {
 		t.Errorf("TemplateByVMID = %+v, want the hydrated debian-12-cloud row", tmpl)
 	}
 
+	assertTemplateHardware(t, tmpl)
+
 	if resourcesCalls != 1 || configCalls != 1 {
 		t.Errorf("calls = resources:%d config:%d, want 1/1", resourcesCalls, configCalls)
+	}
+}
+
+// assertTemplateHardware checks the hardware and NIC fields TemplateByVMID
+// reads from the template's config (the fixture in TestProxmox_TemplateByVMID).
+func assertTemplateHardware(t *testing.T, tmpl TemplateVM) {
+	t.Helper()
+
+	if tmpl.Sockets != 2 || tmpl.Cores != 4 || tmpl.MemoryTotal != 4096*bytesPerMiBConfig {
+		t.Errorf("hardware = sockets:%d cores:%d memory:%d, want 2/4/4096 MiB", tmpl.Sockets, tmpl.Cores, tmpl.MemoryTotal)
+	}
+
+	if tmpl.DiskTotal != 8<<30 {
+		t.Errorf("DiskTotal = %d, want 8 GiB", tmpl.DiskTotal)
+	}
+
+	if len(tmpl.NetworkInterfaces) != 1 || tmpl.NetworkInterfaces[0].VLAN == nil || *tmpl.NetworkInterfaces[0].VLAN != 100 {
+		t.Errorf("NetworkInterfaces = %+v, want one NIC on VLAN 100", tmpl.NetworkInterfaces)
 	}
 }
 

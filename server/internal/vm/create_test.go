@@ -111,6 +111,88 @@ func (f createFixture) create(t *testing.T, actor auth.Identity, req vm.CreateRe
 	})
 }
 
+// simpleTemplateRequest is a simple-mode clone request: no cpuCores or
+// memoryMB, so the clone keeps the template's live hardware and the template
+// gates run on it.
+func simpleTemplateRequest(templateVMID int) vm.CreateRequest {
+	req := templateRequest(templateVMID)
+	req.CPUCores = 0
+	req.MemoryMB = 0
+
+	return req
+}
+
+// createSimpleTemplate runs a simple-mode template clone with the live
+// template reader wired, so the discovery backstop and template gates run.
+func (f createFixture) createSimpleTemplate(t *testing.T, actor auth.Identity, req vm.CreateRequest) (vm.CreateResult, error) {
+	t.Helper()
+
+	return vm.Create(context.Background(), actor, req.Cluster, req, vm.CreateDeps{
+		Store:     f.store,
+		Creator:   f.fake,
+		Writer:    f.fake,
+		FreeSpace: f.fake,
+		Audit:     f.store,
+		Log:       slog.New(slog.DiscardHandler),
+		Policy:    policy.New(f.store, nil),
+		Templates: f.fake,
+	})
+}
+
+// TestCreate_TemplateClone_GateRefusals - a simple-mode clone of template 9000
+// (2 cores, NIC with no VLAN tag) is refused before a VMID is spent when its
+// live hardware breaks the gabarit or the cluster's isolation VLAN.
+//
+//nolint:paralleltest // serial: shared fake VM and database fixtures
+func TestCreate_TemplateClone_GateRefusals(t *testing.T) {
+	tests := []struct {
+		name    string
+		tweak   func(*policy.Gabarit)
+		wantErr error
+	}{
+		{name: "cores above gabarit", tweak: func(g *policy.Gabarit) { g.MaxCores = 1 }, wantErr: policy.ErrGabaritExceeded},
+		{name: "nic vlan differs from isolation tag", tweak: func(g *policy.Gabarit) { g.IsolationVLANTag = 100 }, wantErr: vm.ErrNotApproved},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			fixture := newCreateFixture(t)
+
+			gabarit := policy.DefaultGabarit()
+			tt.tweak(&gabarit)
+
+			if err := policy.New(fixture.store, nil).SetPolicy(context.Background(), testClusterName, gabarit, -1); err != nil {
+				t.Fatalf("SetPolicy: %v", err)
+			}
+
+			_, err := fixture.createSimpleTemplate(t, aliceIdentity(), simpleTemplateRequest(9000))
+			if !errors.Is(err, tt.wantErr) {
+				t.Fatalf("error = %v, want %v", err, tt.wantErr)
+			}
+
+			if calls := cluster.FakeCalls(); len(calls) != 0 {
+				t.Fatalf("refused clone reached the cluster: %+v", calls)
+			}
+		})
+	}
+}
+
+// TestCreate_TemplateClone_ConformingTemplateClones - a template within the
+// gabarit on the isolation VLAN still clones in simple mode.
+//
+//nolint:paralleltest // serial: shared fake VM and database fixtures
+func TestCreate_TemplateClone_ConformingTemplateClones(t *testing.T) {
+	fixture := newCreateFixture(t)
+
+	if _, err := fixture.createSimpleTemplate(t, aliceIdentity(), simpleTemplateRequest(9000)); err != nil {
+		t.Fatalf("conforming template clone: %v", err)
+	}
+
+	if len(cluster.FakeCalls()) == 0 {
+		t.Fatal("conforming clone did not reach the cluster")
+	}
+}
+
 func aliceIdentity() auth.Identity {
 	return auth.Identity{Username: cluster.FakeUserAlice, Pool: cluster.FakePoolAlice}
 }
