@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"pvmss/server/internal/cluster"
+	"pvmss/server/internal/inventory"
 	"pvmss/server/internal/vm"
 	"strings"
 	"sync"
@@ -462,6 +463,41 @@ func TestPatch_NotFound(t *testing.T) {
 	err := vm.Patch(context.Background(), vm.WriteDeps{Index: idx, Actor: aliceIdentity(), ClusterName: testClusterName, VMID: 999, Writer: cluster.Fake{}, Audit: noopAudit{}, Refresher: noopRefresher{}}, "renamed", "")
 	if !errors.Is(err, vm.ErrNotFound) {
 		t.Fatalf("err = %v, want ErrNotFound", err)
+	}
+}
+
+//nolint:paralleltest // serial: shared fake VM fixture
+func TestPatch_RenameOntoSiblingNameRefused(t *testing.T) {
+	idx := buildResolveIndex(t)
+	fake := actionsIndex(t)
+	service := policyWithStaticProjection(bulkTestStore(t), inventory.NewProjectionFromIndex(idx), fake)
+
+	// web-02 (101) is a sibling in alice's pool: web-01 (100) may not take it.
+	err := vm.Patch(context.Background(), vm.WriteDeps{Index: idx, Actor: aliceIdentity(), ClusterName: testClusterName, VMID: 100, Writer: fake, Audit: noopAudit{}, Refresher: noopRefresher{}, Policy: service}, "web-02", "")
+	if !errors.Is(err, vm.ErrNameTaken) {
+		t.Fatalf("err = %v, want ErrNameTaken", err)
+	}
+}
+
+//nolint:paralleltest // serial: shared fake VM fixture
+func TestPatch_RenameToOwnOrFreeNameAllowed(t *testing.T) {
+	idx := buildResolveIndex(t)
+
+	own, err := vm.Resolve(idx, aliceIdentity(), testClusterName, 100)
+	if err != nil {
+		t.Fatalf("Resolve: %v", err)
+	}
+
+	for _, name := range []string{own.Name, "web-new"} {
+		t.Run(name, func(t *testing.T) {
+			fake := actionsIndex(t)
+			service := policyWithStaticProjection(bulkTestStore(t), inventory.NewProjectionFromIndex(idx), fake)
+
+			err := vm.Patch(context.Background(), vm.WriteDeps{Index: idx, Actor: aliceIdentity(), ClusterName: testClusterName, VMID: 100, Writer: fake, Audit: noopAudit{}, Refresher: noopRefresher{}, Policy: service}, name, "")
+			if err != nil {
+				t.Fatalf("Patch to %q: %v", name, err)
+			}
+		})
 	}
 }
 
