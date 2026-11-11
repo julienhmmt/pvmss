@@ -236,6 +236,55 @@ type noopRefresher struct{}
 
 func (noopRefresher) Refresh(context.Context) (time.Time, error) { return time.Time{}, nil }
 
+// failingRefresher reports a refresh error, as a flaky inventory read would.
+type failingRefresher struct{ err error }
+
+func (f failingRefresher) Refresh(context.Context) (time.Time, error) { return time.Time{}, f.err }
+
+// A disk write that already reached the cluster must not be reported as a
+// failure when its audit row or inventory refresh fails: the client would
+// retry an add and attach a second disk.
+//
+//nolint:paralleltest // fake dataset is shared
+func TestDiskWrites_FollowUpFailureStillSucceeds(t *testing.T) {
+	followUpErr := errors.New("follow-up failed")
+	operations := map[string]func(vm.DiskDependencies) error{
+		"add disk": func(deps vm.DiskDependencies) error {
+			_, err := vm.AddDisk(context.Background(), deps, cluster.DiskBusSCSI, testDiskStorage, 10)
+			return err
+		},
+		"resize disk": func(deps vm.DiskDependencies) error {
+			return vm.ResizeDisk(context.Background(), deps, "scsi1", 20)
+		},
+		"remove disk": func(deps vm.DiskDependencies) error {
+			return vm.DeleteDisk(context.Background(), deps, "scsi1")
+		},
+	}
+	followUps := map[string]func(*vm.DiskDependencies){
+		"audit":   func(deps *vm.DiskDependencies) { deps.Audit = failingAuditErr{err: followUpErr} },
+		"refresh": func(deps *vm.DiskDependencies) { deps.Refresher = failingRefresher{err: followUpErr} },
+	}
+
+	for opName, operation := range operations {
+		for followName, breakFollowUp := range followUps {
+			t.Run(opName+"/"+followName, func(t *testing.T) {
+				cluster.ResetFake()
+
+				deps := diskDependencies(diskTestIndex(t, 101, cluster.VMStopped), auth.Identity{Username: cluster.FakeUserAlice, Pool: cluster.FakePoolAlice}, 101)
+				breakFollowUp(&deps)
+
+				if err := operation(deps); err != nil {
+					t.Fatalf("err = %v, want nil: the cluster write succeeded", err)
+				}
+
+				if calls := cluster.FakeCallsFor(101); len(calls) != 1 {
+					t.Fatalf("fake calls = %d, want 1: %+v", len(calls), calls)
+				}
+			})
+		}
+	}
+}
+
 // testDiskStorage is the approved storage diskDependencies offers.
 const testDiskStorage = "local-lvm"
 
