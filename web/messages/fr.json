@@ -1571,6 +1571,7 @@
 	"admin.tags.vmsColumnLocation": "Cluster / nœud",
 	"admin.db.exportTitle": "Exporter la base de données",
 	"admin.db.exportDescription": "Télécharger un instantané cohérent de la base de données de configuration. L'export n'interrompt pas les lectures ou écritures simultanées.",
+	"admin.db.exportWarning": "Le fichier contient des hachages de mots de passe et des identifiants de cluster chiffrés. Conservez-le comme un secret.",
 	"admin.db.export": "Exporter",
 	"admin.db.exportError": "Échec de l'export",
 	"admin.db.importTitle": "Importer la base de données",

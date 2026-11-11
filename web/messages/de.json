@@ -1571,6 +1571,7 @@
 	"admin.tags.vmsColumnLocation": "Cluster / Knoten",
 	"admin.db.exportTitle": "Datenbank exportieren",
 	"admin.db.exportDescription": "Laden Sie einen konsistenten Snapshot der Konfigurationsdatenbank herunter. Der Export unterbricht gleichzeitige Lese- oder Schreibvorgänge nicht.",
+	"admin.db.exportWarning": "Die Datei enthält Passwort-Hashes und verschlüsselte Cluster-Zugangsdaten. Behandeln Sie sie wie ein Geheimnis.",
 	"admin.db.export": "Exportieren",
 	"admin.db.exportError": "Export fehlgeschlagen",
 	"admin.db.importTitle": "Datenbank importieren",
