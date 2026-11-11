@@ -473,6 +473,12 @@ func Patch(ctx context.Context, deps WriteDeps, name, description string) error 
 		return err
 	}
 
+	if name != "" && name != entity.Name {
+		if err := ensureNameFree(deps, entity.Pool, name); err != nil {
+			return err
+		}
+	}
+
 	if err := deps.Writer.Patch(ctx, entity.Node, entity.VMID, name, description); err != nil {
 		return fmt.Errorf("cluster patch: %w", err)
 	}
@@ -487,6 +493,26 @@ func Patch(ctx context.Context, deps WriteDeps, name, description string) error 
 	}
 
 	_, _ = deps.Refresher.Refresh(ctx)
+
+	return nil
+}
+
+// ensureNameFree refuses a rename onto a name another VM in the pool already
+// carries, with the same error create returns. Nil-safe: without a Policy the
+// check is skipped (production always wires one).
+func ensureNameFree(deps WriteDeps, pool, name string) error {
+	if deps.Policy == nil {
+		return nil
+	}
+
+	taken, err := deps.Policy.PoolHasName(deps.ClusterName, pool, name)
+	if err != nil {
+		return fmt.Errorf("pool name check: %w", err)
+	}
+
+	if taken {
+		return fmt.Errorf("%w: %q is already used by a VM in your pool", ErrNameTaken, name)
+	}
 
 	return nil
 }

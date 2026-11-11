@@ -295,6 +295,8 @@ func (h *VMDetail) writePatchError(w http.ResponseWriter, err error) {
 		h.writeDetailError(w, http.StatusNotFound, "not_found", msgVMNotFound)
 	case errors.Is(err, vm.ErrInvalidName):
 		h.writeDetailError(w, http.StatusBadRequest, "invalid_name", "name must be a valid hostname (lowercase alphanumeric and hyphen, no leading/trailing hyphen, max 63 chars)")
+	case errors.Is(err, vm.ErrNameTaken):
+		h.writeDetailError(w, http.StatusBadRequest, "name_taken", err.Error())
 	case errors.Is(err, vm.ErrEmptyPatch):
 		h.writeDetailError(w, http.StatusBadRequest, "invalid_request", "at least one of name or description is required")
 	case errors.Is(err, vm.ErrDescriptionTooLong):
