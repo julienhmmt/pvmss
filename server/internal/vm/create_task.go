@@ -2,11 +2,20 @@ package vm
 
 import (
 	"context"
+	"errors"
 	"fmt"
+	"pvmss/server/internal/auth"
 	"pvmss/server/internal/cluster"
 	"strings"
 	"time"
 )
+
+// createRollbackTimeout bounds the purge of a half-made VM after a failed clone.
+const createRollbackTimeout = 30 * time.Second
+
+// ErrCreateTaskTimeout means a create or clone task was still running at
+// MaxCreateTaskWait. The VM may still be mid-clone, so it must not be deleted.
+var ErrCreateTaskTimeout = errors.New("create task timed out")
 
 // CreateTaskPoll is the interval between task-status reads while waiting for a
 // create or clone task; MaxCreateTaskWait bounds the total wait. Exported as
@@ -33,43 +42,68 @@ func WaitCreateTask(ctx context.Context, creator cluster.Creator, upid string) e
 
 	for {
 		status, err := creator.TaskStatus(ctx, upid)
-		if err != nil {
-			// A transient read error (network blip, 5xx) must not abort the
-			// wait - the task is still running on the cluster. Only ctx
-			// cancellation propagates.
-			if ctxErr := ctx.Err(); ctxErr != nil {
-				return ctxErr
+		// A read error (network blip, 5xx) falls through to the deadline check
+		// and the poll: the task is still running on the cluster.
+		if err == nil {
+			switch status.State {
+			case cluster.TaskOK:
+				return nil
+			case cluster.TaskError:
+				return fmt.Errorf("create task failed: %s%s", status.ExitMessage, tailLog(status.Log))
+			case cluster.TaskRunning:
+				// Still running - fall through to the deadline check below.
 			}
-
-			time.Sleep(CreateTaskPoll)
-
-			continue
-		}
-
-		switch status.State {
-		case cluster.TaskOK:
-			return nil
-		case cluster.TaskError:
-			return fmt.Errorf("create task failed: %s%s", status.ExitMessage, tailLog(status.Log))
-		case cluster.TaskRunning:
-			// Still running - fall through to the deadline check below.
 		}
 
 		if time.Now().After(deadline) {
-			return fmt.Errorf("create task timed out after %s (upid %s)", MaxCreateTaskWait, upid)
+			return fmt.Errorf("%w after %s (upid %s)", ErrCreateTaskTimeout, MaxCreateTaskWait, upid)
 		}
 
-		select {
-		case <-ctx.Done():
-			return ctx.Err()
-		case <-time.After(CreateTaskPoll):
+		if pollErr := sleepPoll(ctx); pollErr != nil {
+			return pollErr
 		}
 	}
 }
 
-// waitCreateTask is the internal alias.
-func waitCreateTask(ctx context.Context, creator cluster.Creator, upid string) error {
-	return WaitCreateTask(ctx, creator, upid)
+// sleepPoll waits one CreateTaskPoll interval, or returns early when ctx ends.
+func sleepPoll(ctx context.Context) error {
+	timer := time.NewTimer(CreateTaskPoll)
+	defer timer.Stop()
+
+	select {
+	case <-ctx.Done():
+		return ctx.Err()
+	case <-timer.C:
+		return nil
+	}
+}
+
+// awaitCloneTask waits for a clone task on a context a dropped request cannot
+// cancel: once the VM exists in Proxmox, abandoning the wait orphans it.
+func awaitCloneTask(ctx context.Context, creator cluster.Creator, upid string) error {
+	bounded, cancel := context.WithTimeout(context.WithoutCancel(ctx), MaxCreateTaskWait)
+	defer cancel()
+
+	return WaitCreateTask(bounded, creator, upid)
+}
+
+// cleanupFailedClone handles a clone whose task wait failed. A wait that ran
+// out of time leaves the VM possibly mid-clone, and Proxmox refuses to delete a
+// locked VM, so it is only logged for manual cleanup. Any other failure purges
+// the half-made VM on a context the cancelled request cannot reach.
+func cleanupFailedClone(ctx context.Context, deps CreateDeps, actor auth.Identity, clusterName string, vmid int, node string, waitErr error) {
+	if errors.Is(waitErr, ErrCreateTaskTimeout) || errors.Is(waitErr, context.DeadlineExceeded) {
+		deps.Log.ErrorContext(ctx, "clone task still running, vm needs manual cleanup", "component", "vm", "cluster", clusterName, "vmid", vmid, "node", node, "error", waitErr)
+
+		return
+	}
+
+	deps.Log.ErrorContext(ctx, "clone task wait failed", "component", "vm", "cluster", clusterName, "vmid", vmid, "error", waitErr)
+
+	bounded, cancel := context.WithTimeout(context.WithoutCancel(ctx), createRollbackTimeout)
+	defer cancel()
+
+	rollbackFailedCreate(bounded, deps, actor, clusterName, vmid, node, "clone task failed")
 }
 
 // tailLog appends up to 3 trailing log lines to an error message so support
