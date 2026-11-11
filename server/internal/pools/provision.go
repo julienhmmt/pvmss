@@ -116,6 +116,11 @@ func create(ctx context.Context, client cluster.Client, name, password, comment 
 	if err != nil {
 		return cluster.Pool{}, &ProvisionError{Step: "user", Err: err}
 	}
+	// EnsurePoolUser only creates: a surviving user keeps its old password.
+	// The set runs before the ACL because on Proxmox it drops the ACL.
+	if err := client.SetUserPassword(ctx, username, password); err != nil {
+		return cluster.Pool{}, &ProvisionError{Step: "password", Err: err}
+	}
 	if err := client.CreatePool(ctx, name, comment); err != nil {
 		return cluster.Pool{}, &ProvisionError{Step: "pool", Err: err}
 	}

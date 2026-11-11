@@ -38,7 +38,7 @@ func TestCreateManaged_RoleProvisionedOnce(t *testing.T) {
 		t.Fatalf("role privileges = %v, want fixed 16-entry list", roleCalls[0].Privileges)
 	}
 	calls := cluster.FakeCalls()
-	wantActions := []string{"ensure_role", "ensure_user", "create_pool", "set_acl", "ensure_user", "create_pool", "set_acl"}
+	wantActions := []string{"ensure_role", "ensure_user", "set_user_password", "create_pool", "set_acl", "ensure_user", "set_user_password", "create_pool", "set_acl"}
 	if len(calls) != len(wantActions) {
 		t.Fatalf("calls = %+v, want %d calls", calls, len(wantActions))
 	}
@@ -185,5 +185,33 @@ func TestCreateManaged_RejectsInvalidName(t *testing.T) {
 	_, err := pools.CreateManaged(context.Background(), auth.Identity{IsAdmin: true}, cluster.Fake{}, nil, "default", "UPPER", "")
 	if !errors.Is(err, pools.ErrInvalidName) {
 		t.Fatalf("err = %v, want ErrInvalidName", err)
+	}
+}
+
+// TestCreateManaged_ExistingPoolUserGetsNewPassword verifies that a pool user
+// left behind by an earlier partial create does not keep its old password: the
+// password returned to the admin must be the one that signs in.
+//
+//nolint:paralleltest // serial: shared fake fixtures
+func TestCreateManaged_ExistingPoolUserGetsNewPassword(t *testing.T) {
+	cluster.ResetFake()
+	t.Cleanup(cluster.ResetFake)
+	ctx := context.Background()
+	client := cluster.Fake{}
+	const oldPassword = "old-password-value"
+	if _, err := client.EnsurePoolUser(ctx, "pvmss-carol", oldPassword); err != nil {
+		t.Fatalf("seed pool user: %v", err)
+	}
+
+	admin := auth.Identity{Username: "admin", IsAdmin: true}
+	creds, err := pools.CreateManaged(ctx, admin, client, nil, "default", "carol", "")
+	if err != nil {
+		t.Fatalf("CreateManaged: %v", err)
+	}
+	if _, err := client.Authenticate(ctx, "pvmss-carol@pve", oldPassword); !errors.Is(err, cluster.ErrNotFound) {
+		t.Fatalf("old password still accepted: err = %v", err)
+	}
+	if _, err := client.Authenticate(ctx, "pvmss-carol@pve", creds.Password); err != nil {
+		t.Fatalf("returned password rejected: %v", err)
 	}
 }
