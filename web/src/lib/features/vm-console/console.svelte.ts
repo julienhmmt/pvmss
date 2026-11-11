@@ -41,6 +41,8 @@ export class ConsoleStore {
 
 	#rfb: RFB | null = null;
 	#container: HTMLElement | null = null;
+	// Bumped by disconnect(); a connect() still awaiting its ticket sees the change and stops.
+	#generation = 0;
 
 	constructor(cluster: string, vmid: number) {
 		this.cluster = cluster;
@@ -54,40 +56,62 @@ export class ConsoleStore {
 		this.#container = container;
 		this.state = 'connecting';
 		this.error = null;
+		const generation = this.#generation;
 
 		let token: string;
 		try {
 			token = await fetchConsoleTicket(this.cluster, this.vmid);
 		} catch (err) {
+			if (generation !== this.#generation) return;
 			this.state = 'error';
 			this.error = consoleTicketErrorMessage(err, () => m['vms.console.errorTicket']());
 			return;
 		}
+		if (generation !== this.#generation) return;
 
 		const url = buildConsoleWebSocketURL(this.cluster, this.vmid, token);
+		let rfb: RFB;
 		try {
-			this.#rfb = new RFB(container, url, { shared: true });
+			rfb = new RFB(container, url, { shared: true });
 		} catch (err) {
 			this.state = 'error';
 			this.error = err instanceof Error ? err.message : m['vms.console.errorConnection']();
 			return;
 		}
 
-		this.#rfb.scaleViewport = this.scaleViewport;
-		this.#rfb.addEventListener('connect', () => this.#onConnect());
-		this.#rfb.addEventListener('disconnect', (e) => this.#onDisconnect(e));
-		this.#rfb.addEventListener('securityfailure', (e) => this.#onSecurityFailure(e));
-		this.#rfb.addEventListener('clipboard', (e) => this.#onClipboard(e));
-		this.#rfb.addEventListener('capabilities', (e) => this.#onCapabilities(e));
+		this.#rfb = rfb;
+		rfb.scaleViewport = this.scaleViewport;
+		// Each listener ignores events from an RFB that has since been replaced or released.
+		rfb.addEventListener('connect', () => {
+			if (this.#owns(rfb)) this.#onConnect();
+		});
+		rfb.addEventListener('disconnect', (e) => {
+			if (this.#owns(rfb)) this.#onDisconnect(e);
+		});
+		rfb.addEventListener('securityfailure', (e) => {
+			if (this.#owns(rfb)) this.#onSecurityFailure(e);
+		});
+		rfb.addEventListener('clipboard', (e) => {
+			if (this.#owns(rfb)) this.#onClipboard(e);
+		});
+		rfb.addEventListener('capabilities', (e) => {
+			if (this.#owns(rfb)) this.#onCapabilities(e);
+		});
 	}
 
 	/** Disconnects and releases the RFB instance. Safe to call when idle. */
 	disconnect(): void {
-		if (this.#rfb !== null) {
-			this.#rfb.disconnect();
+		this.#generation += 1;
+		const rfb = this.#rfb;
+		if (rfb !== null) {
 			this.#rfb = null;
+			rfb.disconnect();
 		}
 		this.state = 'disconnected';
+	}
+
+	#owns(rfb: RFB): boolean {
+		return this.#rfb === rfb;
 	}
 
 	/** Reconnects after a disconnect. Reuses the stored container. */

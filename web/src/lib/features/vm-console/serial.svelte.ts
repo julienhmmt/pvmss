@@ -38,6 +38,8 @@ export class SerialConsoleStore {
 	// Proxmox returns EOF immediately when the VM has no serial device to
 	// attach to (see #onClose).
 	#connectedAt = 0;
+	// Bumped by disconnect(); a connect() still awaiting its ticket sees the change and stops.
+	#generation = 0;
 
 	constructor(cluster: string, vmid: number) {
 		this.cluster = cluster;
@@ -51,6 +53,7 @@ export class SerialConsoleStore {
 		this.#container = container;
 		this.state = 'connecting';
 		this.error = null;
+		const generation = this.#generation;
 
 		const term = new Terminal({
 			cursorBlink: true,
@@ -77,25 +80,39 @@ export class SerialConsoleStore {
 		try {
 			token = await fetchSerialTicket(this.cluster, this.vmid);
 		} catch (err) {
+			if (generation !== this.#generation) return;
 			this.state = 'error';
 			this.error = consoleTicketErrorMessage(err, () => m['vms.console.errorTicket']());
 			return;
 		}
+		// disconnect() already disposed this terminal; do not open a socket nobody owns.
+		if (generation !== this.#generation) return;
 
 		const url = buildSerialWebSocketURL(this.cluster, this.vmid, token);
 		const ws = new WebSocket(url);
 		ws.binaryType = 'arraybuffer';
 		this.#ws = ws;
 
-		ws.addEventListener('open', () => this.#onOpen());
-		ws.addEventListener('message', (e) => this.#onMessage(e));
-		ws.addEventListener('close', () => this.#onClose());
-		ws.addEventListener('error', () => this.#onError());
+		// Each listener ignores events from a socket that has since been replaced or released.
+		ws.addEventListener('open', () => {
+			if (this.#owns(ws)) this.#onOpen();
+		});
+		ws.addEventListener('message', (e) => {
+			if (this.#owns(ws)) this.#onMessage(e);
+		});
+		ws.addEventListener('close', () => {
+			if (this.#owns(ws)) this.#onClose();
+		});
+		ws.addEventListener('error', () => {
+			if (this.#owns(ws)) this.#onError();
+		});
 	}
 
 	/** Disconnects and releases the xterm.js Terminal + WebSocket. Safe when idle. */
 	disconnect(): void {
+		this.#generation += 1;
 		this.#stopKeepalive();
+		this.#connectedAt = 0;
 		if (this.#ws !== null) {
 			this.#ws.close();
 			this.#ws = null;
@@ -106,6 +123,10 @@ export class SerialConsoleStore {
 		}
 		this.#fit = null;
 		this.state = 'disconnected';
+	}
+
+	#owns(ws: WebSocket): boolean {
+		return this.#ws === ws;
 	}
 
 	/** Reconnects after a disconnect. Reuses the stored container. */
