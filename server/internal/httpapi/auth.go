@@ -531,6 +531,8 @@ func (h *Auth) ChangePassword(w http.ResponseWriter, r *http.Request) {
 		h.changeLocalPassword(w, r, identity, request)
 	case auth.ProviderPVE:
 		h.changeClusterPassword(w, r, identity, request)
+	case auth.ProviderOIDC:
+		writeAuthError(w, http.StatusBadRequest, "provider_unsupported", "the password of an SSO account is managed by its identity provider")
 	}
 }
 

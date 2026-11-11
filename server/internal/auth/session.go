@@ -49,6 +49,9 @@ const (
 	// ProviderBootstrap is the env-seeded administrator (ADMIN_PASSWORD_HASH).
 	// It is the immutable owner: only it may manage local accounts.
 	ProviderBootstrap Provider = "bootstrap"
+	// ProviderOIDC is a Proxmox OpenID realm account signed in through SSO.
+	// Its password belongs to the identity provider, not to PVMSS.
+	ProviderOIDC Provider = "oidc"
 )
 
 // Identity is the principal resolved for an API request.

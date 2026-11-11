@@ -308,6 +308,9 @@ func registerAuthRoutes(mux *http.ServeMux, cfg RouterConfig, protect protectFun
 	mux.Handle("POST /api/v1/auth/login", authLimiter.middleware(http.HandlerFunc(cfg.Auth.Login)))
 	mux.Handle("POST /api/v1/auth/admin-login", authLimiter.middleware(http.HandlerFunc(cfg.Auth.AdminLogin)))
 	mux.HandleFunc("GET /api/v1/auth/me", cfg.Auth.Me)
+	// SSO handshake (browser navigations): same per-IP budget as login.
+	mux.Handle("GET /api/v1/auth/oidc/start", authLimiter.middleware(http.HandlerFunc(cfg.Auth.OIDCStart)))
+	mux.Handle("GET /api/v1/auth/oidc/callback", authLimiter.middleware(http.HandlerFunc(cfg.Auth.OIDCCallback)))
 	mux.Handle("GET /api/v1/auth/clusters", clusterListLimiter.middleware(http.HandlerFunc(cfg.Auth.ServeClusters)))
 
 	if cfg.Setup != nil {
