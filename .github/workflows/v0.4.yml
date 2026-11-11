@@ -34,6 +34,33 @@ jobs:
         run: go test -race ./...
         working-directory: server
 
+      - name: Scan Go dependencies for known vulnerabilities
+        # Pinned like golangci-lint in lint.yml; keep in sync with the Makefile if added there.
+        run: go run golang.org/x/vuln/cmd/govulncheck@v1.9.0 ./...
+        working-directory: server
+
+  image:
+    runs-on: ubuntu-26.04
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Build container image (no push)
+        run: docker build .
+
+  helm:
+    runs-on: ubuntu-26.04
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Set up Helm
+        uses: azure/setup-helm@v5
+        with:
+          version: v3.20.2
+
+      - name: Lint Helm chart
+        # CI-only dummy value; the chart fails to render without a 32+ byte session secret.
+        run: helm lint ./helm --set secrets.sessionSecret=ci-only-dummy-session-secret-000000
+
   web:
     runs-on: ubuntu-26.04
     steps:
