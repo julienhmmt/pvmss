@@ -8,8 +8,10 @@ import (
 	"pvmss/server/internal/auth"
 	"pvmss/server/internal/cluster"
 	"pvmss/server/internal/httpapi"
+	"strconv"
 	"strings"
 	"testing"
+	"time"
 )
 
 const oidcStartPath = "/api/v1/auth/oidc/start"
@@ -192,5 +194,73 @@ func TestOIDC_PasswordChangeRefused(t *testing.T) {
 
 	if response.Code != http.StatusBadRequest || !strings.Contains(response.Body.String(), "provider_unsupported") {
 		t.Fatalf("got %d %s, want 400 provider_unsupported", response.Code, response.Body.String())
+	}
+}
+
+// TestOIDC_CallbackThroughRouter: the IdP's redirect back is a cross-site
+// GET with no session and no CSRF header; no global guard may block it.
+func TestOIDC_CallbackThroughRouter(t *testing.T) {
+	t.Parallel()
+
+	handler := newOIDCHandler(t, "zitadel")
+	mux := newCSRFRouter(t, handler)
+
+	startReq := httptest.NewRequestWithContext(context.Background(), http.MethodGet, "https://pvmss.example"+oidcStartPath+"?cluster="+auditTestCluster, nil)
+	start := httptest.NewRecorder()
+	mux.ServeHTTP(start, startReq)
+
+	if start.Code != http.StatusFound {
+		t.Fatalf("start through router = %d: %s", start.Code, start.Body.String())
+	}
+
+	callbackReq := httptest.NewRequestWithContext(context.Background(), http.MethodGet, start.Header().Get("Location"), nil)
+	callbackReq.Header.Set("Sec-Fetch-Site", "cross-site")
+	callbackReq.AddCookie(findCookie(start, httpapi.OIDCCookieName))
+
+	callback := httptest.NewRecorder()
+	mux.ServeHTTP(callback, callbackReq)
+
+	if callback.Code != http.StatusFound || callback.Header().Get("Location") != "/" {
+		t.Fatalf("callback through router = %d -> %q: %s", callback.Code, callback.Header().Get("Location"), callback.Body.String())
+	}
+}
+
+func TestOIDC_ExpiredHandshakeRejected(t *testing.T) {
+	t.Parallel()
+
+	handler := newOIDCHandler(t, "zitadel")
+
+	signer, err := auth.NewSessionManager(newSessionRepository(), "a-session-secret-with-at-least-thirty-two-bytes", false)
+	if err != nil {
+		t.Fatalf("NewSessionManager: %v", err)
+	}
+
+	expired := strconv.FormatInt(time.Now().Add(-time.Minute).Unix(), 10)
+	cookie := &http.Cookie{Name: httpapi.OIDCCookieName, Value: signer.Sign(auditTestCluster + "\nfake-oidc-state\n/\n" + expired), HttpOnly: true, Secure: true, SameSite: http.SameSiteLaxMode}
+
+	response := oidcCallback(handler, "https://pvmss.example/api/v1/auth/oidc/callback?code="+cluster.FakeOpenIDCode+"&state=fake-oidc-state", []*http.Cookie{cookie})
+	if response.Header().Get("Location") != "/login?oidc=error&reason=oidc_state_invalid" {
+		t.Fatalf("expired handshake redirected to %q", response.Header().Get("Location"))
+	}
+}
+
+func TestOIDC_IdPCancelIsNotAFailedLogin(t *testing.T) {
+	t.Parallel()
+
+	handler := newOIDCHandler(t, "zitadel")
+
+	for range 10 {
+		start := oidcStart(handler, "cluster="+auditTestCluster)
+		response := oidcCallback(handler, "https://pvmss.example/api/v1/auth/oidc/callback?error=access_denied&state=fake-oidc-state", []*http.Cookie{findCookie(start, httpapi.OIDCCookieName)})
+
+		if got := response.Header().Get("Location"); got != "/login?oidc=error&reason=oidc_cancelled" {
+			t.Fatalf("cancel redirected to %q", got)
+		}
+	}
+
+	// Ten cancels later, a real sign-in is still allowed.
+	start := oidcStart(handler, "cluster="+auditTestCluster)
+	if callback := oidcCallback(handler, start.Header().Get("Location"), []*http.Cookie{findCookie(start, httpapi.OIDCCookieName)}); callback.Header().Get("Location") != "/" {
+		t.Fatalf("after cancels: %q", callback.Header().Get("Location"))
 	}
 }

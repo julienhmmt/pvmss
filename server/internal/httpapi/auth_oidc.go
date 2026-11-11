@@ -76,6 +76,12 @@ func (h *Auth) OIDCCallback(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// The user backed out at the IdP: not a failed credential, never throttled.
+	if r.URL.Query().Get("error") != "" {
+		h.oidcFail(w, r, "oidc_cancelled", nil)
+		return
+	}
+
 	failKey := clusterName + "|oidc|" + clientIP(r, h.trustedProxyHops)
 	if h.pveFailures.exhausted(failKey, time.Now()) {
 		h.oidcFail(w, r, "rate_limited", nil)
