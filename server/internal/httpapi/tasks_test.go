@@ -7,6 +7,7 @@ import (
 	"log/slog"
 	"net/http"
 	"net/http/httptest"
+	"pvmss/server/internal/auth"
 	"pvmss/server/internal/cluster"
 	"pvmss/server/internal/httpapi"
 	"pvmss/server/internal/inventory"
@@ -219,6 +220,106 @@ func getTaskWithCluster(t *testing.T, handler *httpapi.Tasks, upid, clusterName 
 	return recorder
 }
 
+// newPinnedTasksFixture builds a Tasks handler and the session manager that
+// signs its cookies, so a test can mint sessions pinned to a chosen cluster.
+func newPinnedTasksFixture(t *testing.T, clients map[string]cluster.Client) (*httpapi.Tasks, *auth.SessionManager) {
+	t.Helper()
+	t.Cleanup(cluster.ResetFake)
+
+	sessions, err := auth.NewSessionManager(newSessionRepository(), "a-session-secret-with-at-least-thirty-two-bytes", false)
+	if err != nil {
+		t.Fatalf("NewSessionManager: %v", err)
+	}
+
+	logger := slog.New(slog.NewTextHandler(testWriter{t}, nil))
+
+	snap, err := (cluster.Fake{}).Snapshot(context.Background())
+	if err != nil {
+		t.Fatalf("Snapshot: %v", err)
+	}
+
+	projection := buildProjectionWithIndex(t, snap, time.Now())
+	worker := inventory.NewWorker(cluster.Fake{}, projection, time.Hour, logger)
+	authHandler := httpapi.NewAuthWithRegistry(singleClientProvider(cluster.Fake{}), nil, sessions, "", logger)
+	provider := vmCreateClientProvider{clients: clients}
+
+	return httpapi.NewTasksWithRegistry(authHandler, provider, cluster.Fake{}, worker, nil, logger), sessions
+}
+
+// signedSessionCookie mints a session cookie for identity from sessions.
+func signedSessionCookie(t *testing.T, sessions *auth.SessionManager, identity auth.Identity) *http.Cookie {
+	t.Helper()
+
+	rec := httptest.NewRecorder()
+	req := httptest.NewRequestWithContext(context.Background(), http.MethodGet, "/", nil)
+
+	if err := sessions.SetCookie(req.Context(), rec, identity); err != nil {
+		t.Fatalf("SetCookie: %v", err)
+	}
+
+	for _, cookie := range rec.Result().Cookies() {
+		if cookie.Name == auth.SessionCookieName {
+			return cookie
+		}
+	}
+
+	t.Fatalf("session cookie %q not set", auth.SessionCookieName)
+
+	return nil
+}
+
+// TestTasks_PinsNonAdminToSignInCluster - a non-admin pinned to cluster "a"
+// cannot read a task on cluster "b" (404, same as an unknown cluster), while
+// an admin may. Polling on the pinned cluster itself still works.
+//
+//nolint:paralleltest // serial: shared fake task fixture
+func TestTasks_PinsNonAdminToSignInCluster(t *testing.T) {
+	handler, sessions := newPinnedTasksFixture(t, map[string]cluster.Client{
+		"a": cluster.Fake{},
+		"b": cluster.Fake{},
+	})
+
+	ctx := context.Background()
+
+	vmid, err := (cluster.Fake{}).NextVMID(ctx)
+	if err != nil {
+		t.Fatalf("NextVMID: %v", err)
+	}
+
+	upid, err := (cluster.Fake{}).CreateVM(ctx, cluster.VMSpec{
+		VMID:     vmid,
+		Node:     cluster.FakeNode01,
+		Name:     "pinned-vm",
+		Pool:     cluster.FakePoolAlice,
+		Tags:     []string{cluster.FakeTagPvmss},
+		CPUCores: 1,
+		MemoryMB: 2048,
+		Disk:     cluster.DiskSpec{Storage: testStorageLocalLVM, SizeGB: 20},
+		Network:  cluster.NetworkSpec{{Bridge: testBridgeVmbr0, Model: testNICModelVirtio}},
+	})
+	if err != nil {
+		t.Fatalf("CreateVM: %v", err)
+	}
+
+	pinned := signedSessionCookie(t, sessions, auth.Identity{Username: cluster.FakeUserBob, Cluster: "a"})
+	admin := signedSessionCookie(t, sessions, auth.Identity{Username: "admin", IsAdmin: true, Cluster: "a"})
+
+	denied := getTaskWithCluster(t, handler, upid, "b", pinned)
+	if denied.Code != http.StatusNotFound {
+		t.Fatalf("pinned poll of other cluster: status = %d, want 404: %s", denied.Code, denied.Body.String())
+	}
+
+	assertAPIError(t, denied.Body.Bytes(), "cluster_not_found")
+
+	if own := getTaskWithCluster(t, handler, upid, "a", pinned); own.Code != http.StatusOK {
+		t.Fatalf("pinned poll of own cluster: status = %d, want 200: %s", own.Code, own.Body.String())
+	}
+
+	if adm := getTaskWithCluster(t, handler, upid, "b", admin); adm.Code != http.StatusOK {
+		t.Fatalf("admin poll of cluster b: status = %d, want 200: %s", adm.Code, adm.Body.String())
+	}
+}
+
 // TestTasks_WithRegistry_PollsNamedCluster - the registry-backed handler
 // resolves the ?cluster= param to that cluster's own Creator and polls the
 // task against it. A task created on the "secondary" cluster is observed
@@ -232,7 +333,8 @@ func TestTasks_WithRegistry_PollsNamedCluster(t *testing.T) {
 		auditTestCluster:      cluster.Fake{},
 		crossSecondaryCluster: secondary,
 	}, nil)
-	cookie := loginCookie(t, authHandler, `{"username":"alice","password":"pvmss-alice"}`)
+	// Admin: a non-admin is pinned to its own cluster and may not poll "secondary".
+	cookie := adminCookie(t, authHandler)
 
 	ctx := context.Background()
 
@@ -407,7 +509,8 @@ func TestTasks_WithRegistry_InvalidatesNamedClusterProjection(t *testing.T) {
 		auditTestCluster:      cluster.Fake{},
 		crossSecondaryCluster: secondary,
 	}, resolver)
-	cookie := loginCookie(t, authHandler, `{"username":"alice","password":"pvmss-alice"}`)
+	// Admin: a non-admin is pinned to its own cluster and may not poll "secondary".
+	cookie := adminCookie(t, authHandler)
 
 	ctx := context.Background()
 
