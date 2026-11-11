@@ -3,10 +3,13 @@ package httpapi_test
 
 import (
 	"context"
+	"database/sql"
 	"encoding/json"
+	"errors"
 	"log/slog"
 	"net/http"
 	"net/http/httptest"
+	"pvmss/server/internal/auth"
 	"pvmss/server/internal/cluster"
 	"pvmss/server/internal/httpapi"
 	"pvmss/server/internal/inventory"
@@ -111,6 +114,37 @@ func TestAdminPools_DeleteZeroVmPool(t *testing.T) {
 	unknown := adminPoolsRequest(t, handler.ServeDelete, http.MethodDelete, "/api/v1/admin/pools/pvmss-newteam", cookie, "")
 	if unknown.Code != http.StatusNotFound {
 		t.Fatalf("unknown status = %d, want 404", unknown.Code)
+	}
+}
+
+// TestAdminPools_DeleteRevokesPoolUserSessions verifies that deleting a pool
+// whose user is removed also revokes that user's open PVMSS sessions.
+//
+//nolint:paralleltest // serial: shared fake fixtures
+func TestAdminPools_DeleteRevokesPoolUserSessions(t *testing.T) {
+	handler, authHandler, st := newAdminPoolsHandlerWithStore(t)
+	cookie := adminCookie(t, authHandler)
+	if rec := adminPoolsRequest(t, handler.ServeCreate, http.MethodPost, "/api/v1/admin/pools", cookie, `{"name":"newteam"}`); rec.Code != http.StatusCreated {
+		t.Fatalf("create status = %d: %s", rec.Code, rec.Body.String())
+	}
+	hash := []byte("pool-user-session-hash")
+	session := auth.SessionRecord{
+		Hash:      hash,
+		Identity:  auth.Identity{Username: "pvmss-newteam@pve", Cluster: auditTestCluster, Provider: auth.ProviderPVE},
+		CSRFToken: "csrf-token",
+		ExpiresAt: time.Now().Add(time.Hour),
+		CreatedAt: time.Now(),
+	}
+	if err := st.CreateSession(context.Background(), session); err != nil {
+		t.Fatalf("CreateSession: %v", err)
+	}
+
+	deleted := adminPoolsRequest(t, handler.ServeDelete, http.MethodDelete, "/api/v1/admin/pools/pvmss-newteam", cookie, "")
+	if deleted.Code != http.StatusOK {
+		t.Fatalf("delete status = %d: %s", deleted.Code, deleted.Body.String())
+	}
+	if _, err := st.FindSession(context.Background(), hash); !errors.Is(err, sql.ErrNoRows) {
+		t.Fatalf("pool user session survived the pool delete: err = %v", err)
 	}
 }
 
