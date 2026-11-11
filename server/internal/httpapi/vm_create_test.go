@@ -13,6 +13,7 @@ import (
 	"pvmss/server/internal/config"
 	"pvmss/server/internal/httpapi"
 	"pvmss/server/internal/inventory"
+	"pvmss/server/internal/policy"
 	"pvmss/server/internal/store"
 	"pvmss/server/internal/testfixture"
 	"strings"
@@ -722,5 +723,59 @@ func TestVMCreateCatalog_ProfileDescriptionHTML(t *testing.T) {
 	lower := strings.ToLower(html)
 	if strings.Contains(lower, "<script") || strings.Contains(lower, "javascript:") {
 		t.Errorf("descriptionHtml = %q, must not contain executable markup", html)
+	}
+}
+
+// seedApprovedTemplate approves template 9000 (the fake's debian-12 cloud
+// image) so a clone request can name it.
+func seedApprovedTemplate(t *testing.T, st *store.Store) {
+	t.Helper()
+
+	values := store.TemplateValues{
+		Node: cluster.FakeNode02, Name: "debian-12-cloud",
+		DiskStorage: cluster.FakeStorageLocalLVM, DiskSizeGB: 8, DiskBus: string(cluster.DiskBusSCSI),
+	}
+	if err := st.InsertTemplate(context.Background(), auditTestCluster, 9000, values, true); err != nil {
+		t.Fatalf("seed template approval: %v", err)
+	}
+}
+
+// TestVMCreate_TemplateCloneIsolationVLAN - a simple-mode template clone goes
+// through the handler's live template reader: a template whose NIC VLAN
+// (untagged) differs from the isolation tag is refused with 400 not_approved,
+// and the same clone succeeds once the isolation tag is unset.
+//
+//nolint:paralleltest // serial: shared fake VM and database fixtures
+func TestVMCreate_TemplateCloneIsolationVLAN(t *testing.T) {
+	const body = `{"cluster":"default","name":"clone-01","templateId":9000,"network":[{"bridge":"vmbr0","model":"virtio"}]}`
+
+	tests := []struct {
+		name       string
+		isolation  int
+		wantStatus int
+	}{
+		{name: "isolation tag differs from template NIC", isolation: 100, wantStatus: http.StatusBadRequest},
+		{name: "isolation tag unset", isolation: 0, wantStatus: http.StatusAccepted},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			handler, authHandler, st := newVMCreateHandler(t)
+			seedApprovedTemplate(t, st)
+
+			gabarit := policy.DefaultGabarit()
+			gabarit.IsolationVLANTag = tt.isolation
+
+			if err := testPolicyService(st, nil).SetPolicy(context.Background(), auditTestCluster, gabarit, -1); err != nil {
+				t.Fatalf("SetPolicy: %v", err)
+			}
+
+			cookie := loginCookie(t, authHandler, `{"username":"alice","password":"pvmss-alice"}`)
+
+			response := postVMCreate(t, handler, body, cookie)
+			if response.Code != tt.wantStatus {
+				t.Fatalf("status = %d, want %d: %s", response.Code, tt.wantStatus, response.Body.String())
+			}
+		})
 	}
 }

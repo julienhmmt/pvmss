@@ -177,6 +177,31 @@ func TestCreate_TemplateClone_GateRefusals(t *testing.T) {
 	}
 }
 
+// TestCreate_TemplateClone_VLANRefusedWithOverride - the isolation VLAN is
+// enforced even when the request overrides cores and memory: the clone's
+// NICs are inherited from the template either way.
+//
+//nolint:paralleltest // serial: shared fake VM and database fixtures
+func TestCreate_TemplateClone_VLANRefusedWithOverride(t *testing.T) {
+	fixture := newCreateFixture(t)
+
+	gabarit := policy.DefaultGabarit()
+	gabarit.IsolationVLANTag = 100
+
+	if err := policy.New(fixture.store, nil).SetPolicy(context.Background(), testClusterName, gabarit, -1); err != nil {
+		t.Fatalf("SetPolicy: %v", err)
+	}
+
+	_, err := fixture.createSimpleTemplate(t, aliceIdentity(), templateRequest(9000))
+	if !errors.Is(err, vm.ErrNotApproved) {
+		t.Fatalf("error = %v, want ErrNotApproved", err)
+	}
+
+	if calls := cluster.FakeCalls(); len(calls) != 0 {
+		t.Fatalf("refused clone reached the cluster: %+v", calls)
+	}
+}
+
 // TestCreate_TemplateClone_ConformingTemplateClones - a template within the
 // gabarit on the isolation VLAN still clones in simple mode.
 //

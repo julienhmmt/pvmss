@@ -155,29 +155,16 @@ func refreshTemplateFromDiscovery(ctx context.Context, deps CreateDeps, clusterN
 	}
 }
 
-// checkInheritedTemplate runs the template gates only when the clone inherits
-// the template's hardware (no override) and discovery returned its config.
+// checkInheritedTemplate runs the template gates when discovery returned the
+// template's config. The isolation VLAN always applies: the clone's NICs come
+// from the template whether or not hardware is overridden. The gabarit and
+// node-capacity gates apply only when the clone inherits the template's
+// hardware (no override); an overridden request is checked by planCreate.
 func checkInheritedTemplate(ctx context.Context, policyService *policy.Policy, clusterName string, hardwareOverride bool, live cluster.TemplateVM) error {
-	if hardwareOverride || !templateLiveKnown(live) {
+	if !templateLiveKnown(live) {
 		return nil
 	}
 
-	return checkTemplateClone(ctx, policyService, clusterName, live)
-}
-
-// templateLiveKnown reports whether discovery returned the template's config,
-// so its hardware and NICs are real and the clone gates can run on them.
-// shortcut: when discovery is unavailable or the config is unreadable the
-// gates are skipped and the clone proceeds on stored values; upgrade by
-// refusing the clone when the live config cannot be read.
-func templateLiveKnown(live cluster.TemplateVM) bool {
-	return live.VMID != 0 && !live.DiskUnreadable
-}
-
-// checkTemplateClone runs the own-VM clone gates on a template's live
-// hardware: isolation VLAN, gabarit ceiling and node capacity. The refusals
-// are the same errors an own-VM clone returns.
-func checkTemplateClone(ctx context.Context, policyService *policy.Policy, clusterName string, live cluster.TemplateVM) error {
 	gabarit, err := policyService.Gabarit(ctx, clusterName)
 	if err != nil {
 		return fmt.Errorf("read vmid range: %w", err)
@@ -196,9 +183,22 @@ func checkTemplateClone(ctx context.Context, policyService *policy.Policy, clust
 		return err
 	}
 
+	if hardwareOverride {
+		return nil
+	}
+
 	if err := checkCloneGabarit(ctx, policyService, clusterName, source); err != nil {
 		return err
 	}
 
 	return checkCloneCapacity(ctx, policyService, clusterName, source)
+}
+
+// templateLiveKnown reports whether discovery returned the template's config,
+// so its hardware and NICs are real and the clone gates can run on them.
+// shortcut: when discovery is unavailable or the config is unreadable the
+// gates are skipped and the clone proceeds on stored values; upgrade by
+// refusing the clone when the live config cannot be read.
+func templateLiveKnown(live cluster.TemplateVM) bool {
+	return live.VMID != 0 && !live.DiskUnreadable
 }
