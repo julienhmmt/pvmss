@@ -203,14 +203,80 @@ func TestBestStorageOnNode_PicksMostFree(t *testing.T) {
 			{Name: "fast-ssd", Node: placementNodeA},
 		},
 	}
-	free := map[string]int64{
-		"slow-disk": 100 * 1024 * 1024 * 1024,
-		"fast-ssd":  500 * 1024 * 1024 * 1024,
+	free := map[storageKey]int64{
+		{node: placementNodeA, name: "slow-disk"}: 100 * 1024 * 1024 * 1024,
+		{node: placementNodeA, name: "fast-ssd"}:  500 * 1024 * 1024 * 1024,
 	}
 
 	got := bestStorageOnNode(resources, placementNodeA, free)
 	if got != "fast-ssd" {
 		t.Errorf("storage = %q, want %q (most free space)", got, "fast-ssd")
+	}
+}
+
+// TestBestStorageOnNode_SameNameDifferentNodes - a node-local storage name
+// (local-lvm) exists on every node. Free space is per node, so the choice on
+// pve-b must read pve-b's figure, not the figure of another node that shares
+// the name.
+func TestBestStorageOnNode_SameNameDifferentNodes(t *testing.T) {
+	t.Parallel()
+
+	resources := catalog.Resources{
+		Storages: []catalog.Storage{
+			{Name: isoStorageLVM, Node: placementNodeB},
+			{Name: "scratch", Node: placementNodeB},
+			{Name: isoStorageLVM, Node: placementNodeA},
+		},
+	}
+	free := map[storageKey]int64{
+		{node: placementNodeA, name: isoStorageLVM}: 500 * 1024 * 1024 * 1024,
+		{node: placementNodeB, name: isoStorageLVM}: 100 * 1024 * 1024 * 1024,
+		{node: placementNodeB, name: "scratch"}:     200 * 1024 * 1024 * 1024,
+	}
+
+	got := bestStorageOnNode(resources, placementNodeB, free)
+	if got != "scratch" {
+		t.Errorf("storage = %q, want %q (most free on pve-b)", got, "scratch")
+	}
+}
+
+// TestPlacementRequest_CopiesResolvedHardware - the placement input carries
+// the resolved profile hardware, and the caller's request is left untouched.
+func TestPlacementRequest_CopiesResolvedHardware(t *testing.T) {
+	t.Parallel()
+
+	req := CreateRequest{ProfileID: "small"}
+	got := placementRequest(req, 1, 2, 8192, 20)
+
+	if got.Sockets != 1 || got.CPUCores != 2 || got.MemoryMB != 8192 || got.Disk.SizeGB != 20 {
+		t.Errorf("placement request = %+v, want resolved sockets=1 cores=2 memory=8192 disk=20", got)
+	}
+
+	if req.MemoryMB != 0 || req.Disk.SizeGB != 0 || req.CPUCores != 0 {
+		t.Errorf("caller request mutated: %+v", req)
+	}
+}
+
+// TestResolveResources_ProfileMemoryDecidesFit - in profile mode the raw
+// request has zero hardware. pve-a is emptier by fraction but cannot hold the
+// 8 GB profile (ceiling 4 GB); pve-b can (16 GB, 8 GB used). Scoring the
+// resolved request must pick pve-b.
+func TestResolveResources_ProfileMemoryDecidesFit(t *testing.T) {
+	t.Parallel()
+
+	req := placementRequest(CreateRequest{}, 1, 2, 8192, 20)
+	caps := map[string]policy.Capacity{
+		placementNodeA: {Node: placementNodeA, PhysicalVCPUs: 16, PhysicalRAMGB: 64, MaxRAMGB: 4},
+		placementNodeB: {Node: placementNodeB, PhysicalVCPUs: 16, PhysicalRAMGB: 16, UsedRAMGB: 8},
+	}
+
+	node, _, _, err := resolveResources(req, placementResources(), caps, nil)
+	if err != nil {
+		t.Fatalf("resolveResources: %v", err)
+	}
+
+	if node != placementNodeB {
+		t.Errorf("node = %q, want %q (only node with room for the profile memory)", node, placementNodeB)
 	}
 }
 
