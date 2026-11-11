@@ -377,10 +377,7 @@ func splitProxmoxTags(raw string) []string {
 // call cannot provide (Sockets, Cores, Disks, CDROM, NetworkInterfaces,
 // BootOrder, Description) and, for a running VM, its live uptime.
 //
-// ponytail: one config fetch (plus one status fetch for running VMs) per VM,
-// sequential. Fine for a lab-sized cluster; a large fleet would want bounded
-// concurrency here - add it if inventory refresh starts taking noticeably
-// long.
+// Called by hydrateVMs, at most hydrateConcurrency VMs at a time.
 func hydrateVM(ctx context.Context, rest proxmoxRESTClient, vm *VM) error {
 	cfg, err := fetchVMConfig(ctx, rest, vm.Node, vm.VMID)
 	if err != nil {

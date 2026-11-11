@@ -28,6 +28,8 @@ type consoleEnv struct {
 	tickets  *vm.ConsoleTicketStore
 	store    *store.Store
 	log      *slog.Logger
+
+	sessionCheckEvery time.Duration
 }
 
 // ticketResponse is the shared JSON body for POST /vnc-ticket and POST
@@ -204,6 +206,10 @@ func acceptConsoleWebSocket(
 		env.log.WarnContext(r.Context(), params.wsUpgradeMsg, "component", "httpapi", "error", err) //nolint:sloglint // message differs per console kind (vnc/serial)
 		return vm.ConsoleTicket{}, nil, false
 	}
+
+	// Closing the socket fails the relay's reads and writes, so the relay returns.
+	// The watcher ends with the request, when the handler returns.
+	go watchSession(r.Context(), env.sessionCheckEvery, env.auth.sessionChecker(r), func() { _ = wsConn.CloseNow() })
 
 	env.log.InfoContext(r.Context(), params.acceptedMsg, "component", "httpapi", "cluster", consumed.Cluster, "vmid", consumed.VMID, "node", consumed.Node, "port", consumed.Port) //nolint:sloglint // message differs per console kind (vnc/serial)
 

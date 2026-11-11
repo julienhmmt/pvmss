@@ -213,9 +213,8 @@ func dispatchClone(ctx context.Context, deps CreateDeps, clusterName string, act
 		return CreateResult{}, err
 	}
 
-	if waitErr := waitCreateTask(ctx, deps.Creator, upid); waitErr != nil {
-		deps.Log.ErrorContext(ctx, "clone task wait failed", "component", "vm", "cluster", clusterName, "vmid", finalVMID, "error", waitErr)
-		rollbackFailedCreate(ctx, deps, actor, clusterName, finalVMID, source.Node, "clone task failed")
+	if waitErr := awaitCloneTask(ctx, deps.Creator, upid); waitErr != nil {
+		cleanupFailedClone(ctx, deps, actor, clusterName, finalVMID, source.Node, waitErr)
 
 		return CreateResult{}, fmt.Errorf("%w: clone task: %w", ErrClusterCreate, waitErr)
 	}

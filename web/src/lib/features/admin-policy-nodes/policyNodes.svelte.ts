@@ -67,6 +67,8 @@ export class AdminPolicyNodesStore {
 	refreshDisabled = $state.raw(false);
 
 	#reenableTimer: ReturnType<typeof setTimeout> | null = null;
+	/** Latest-wins guard for load: a cluster switch must not show the previous cluster's nodes. */
+	#loadRequestId = 0;
 
 	sortBy: NodeCapacitySortColumn = $state('node');
 	sortDir: 'asc' | 'desc' = $state('asc');
@@ -104,19 +106,23 @@ export class AdminPolicyNodesStore {
 	}
 
 	async load(): Promise<void> {
+		const requestId = ++this.#loadRequestId;
 		await this.loadClusters();
+		if (requestId !== this.#loadRequestId) return;
 		this.loading = true;
 		this.error = null;
 		this.errorCode = null;
 		try {
 			const response = await get<NodeCapacityListResponse>(`/api/v1/admin/policy/nodes?cluster=${encodeURIComponent(this.cluster)}`);
+			if (requestId !== this.#loadRequestId) return;
 			this.nodes = response.nodes;
 			this.refreshedAt = response.refreshedAt || null;
 		} catch (error: unknown) {
+			if (requestId !== this.#loadRequestId) return;
 			this.errorCode = error instanceof ApiRequestError ? error.code : null;
 			this.error = error instanceof ApiRequestError ? error.message : m['policy.nodesLoadError']();
 		} finally {
-			this.loading = false;
+			if (requestId === this.#loadRequestId) this.loading = false;
 		}
 	}
 

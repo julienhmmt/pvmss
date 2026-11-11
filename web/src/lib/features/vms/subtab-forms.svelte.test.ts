@@ -166,6 +166,38 @@ describe('Ticket 10: VM detail power confirmation & sub-tab form hygiene', () =>
 		expect(document.body.textContent).toContain('Enter a value between 1 and 8');
 	});
 
+	it('VmHardwareTab keeps unsaved edits across a background refresh and follows server changes when untouched', () => {
+		storeInstance = new VmDetailStore('default', 101);
+		storeInstance.entity = sampleEntity('stopped');
+		storeInstance.hardwareOptions = sampleHardwareOptions();
+
+		mount(VmHardwareTab, { target: document.body });
+		flushSync();
+
+		const coresInput = document.querySelector<HTMLInputElement>('[data-testid="vm-hardware-cores"]');
+		expect(coresInput).not.toBeNull();
+
+		// Untouched draft: a refresh where the server changed cores must update the draft.
+		const changedOnServer = sampleEntity('stopped');
+		changedOnServer.cores = 6;
+		changedOnServer.cpuCores = 6;
+		storeInstance.entity = changedOnServer;
+		flushSync();
+		expect(coresInput!.value).toBe('6');
+
+		// User edits the draft, then a refresh returns the same saved values: the edit is kept.
+		coresInput!.value = '4';
+		coresInput!.dispatchEvent(new Event('input', { bubbles: true }));
+		flushSync();
+
+		const refreshed = sampleEntity('stopped');
+		refreshed.cores = 6;
+		refreshed.cpuCores = 6;
+		storeInstance.entity = refreshed;
+		flushSync();
+		expect(coresInput!.value).toBe('4');
+	});
+
 	it('AddDiskDialog and ResizeDiskDialog wire maxDiskPerVMGB and disable full bus slots', async () => {
 		storeInstance = new VmDetailStore('default', 101);
 		storeInstance.entity = sampleEntity('stopped');

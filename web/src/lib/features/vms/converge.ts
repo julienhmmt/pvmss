@@ -95,11 +95,11 @@ export async function convergeBatch(
 	targetStatus: VmStatus,
 	onTick: (status: VmStatus, lock?: string) => void,
 	signal?: AbortSignal,
-): Promise<void> {
+): Promise<boolean> {
 	const deadline = Date.now() + ACTION_CONVERGE_TIMEOUT_MS;
 
 	while (Date.now() < deadline) {
-		if (signal?.aborted) return;
+		if (signal?.aborted) return false;
 
 		try {
 			const resp = await post<BatchStatusResponse>('/api/v1/vms/status', [
@@ -110,7 +110,7 @@ export async function convergeBatch(
 			);
 			if (item) {
 				onTick(item.status, item.lock);
-				if (item.status === targetStatus) return;
+				if (item.status === targetStatus) return true;
 			}
 		} catch {
 			// Intermediate read error: preserve optimistic state, retry next tick.
@@ -118,6 +118,7 @@ export async function convergeBatch(
 
 		await delay(ACTION_POLL_MS, signal);
 	}
+	return false;
 }
 
 /** Resolves after `ms`, or rejects immediately if the signal aborts. */

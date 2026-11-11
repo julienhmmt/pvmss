@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"pvmss/server/internal/cluster"
 	"pvmss/server/internal/logctx"
+	"pvmss/server/internal/vm"
 	"sync"
 	"time"
 )
@@ -112,7 +113,8 @@ func (h *Tasks) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		_ = rc.SetWriteDeadline(time.Now().Add(taskRefreshWriteDeadline))
 	}
 
-	if _, err := h.auth.Principal(r); err != nil {
+	identity, err := h.auth.Principal(r)
+	if err != nil {
 		h.writeTaskError(w, http.StatusUnauthorized, "unauthenticated", "authentication required")
 		return
 	}
@@ -128,6 +130,14 @@ func (h *Tasks) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		code, message := clusterParamError(err)
 		h.writeTaskError(w, http.StatusBadRequest, code, message)
 
+		return
+	}
+
+	// A non-admin is confined to its sign-in cluster. Answer like an unknown
+	// cluster so the response does not reveal that the other one exists.
+	clusterName, allowed := vm.TargetCluster(identity, clusterName)
+	if !allowed {
+		h.writeTaskError(w, http.StatusNotFound, "cluster_not_found", msgClusterNotFound)
 		return
 	}
 

@@ -292,6 +292,14 @@ ALTER TABLE vm_snapshot_schedules ADD COLUMN last_failure TEXT NOT NULL DEFAULT 
 ALTER TABLE vm_snapshot_schedules ADD COLUMN last_failure_at TEXT NOT NULL DEFAULT '';
 `
 
+// schemaV5 indexes audit_log for the time-ordered listing and the per-VM and
+// per-target lookups. Without them each page scans the whole retention window.
+const schemaV5 = `
+CREATE INDEX IF NOT EXISTS audit_log_time ON audit_log (timestamp DESC, id DESC);
+CREATE INDEX IF NOT EXISTS audit_log_vm ON audit_log (cluster, vmid, action, id);
+CREATE INDEX IF NOT EXISTS audit_log_target ON audit_log (target_type, target_id);
+`
+
 // Migration is a single schema version and its forward-only DDL.
 type Migration struct {
 	Version int
@@ -309,4 +317,5 @@ var Migrations = []Migration{
 	{Version: 2, DDL: schemaV2},
 	{Version: 3, DDL: schemaV3},
 	{Version: 4, DDL: schemaV4},
+	{Version: 5, DDL: schemaV5},
 }

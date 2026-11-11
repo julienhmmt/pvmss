@@ -348,3 +348,82 @@ describe('VmCreateStore OS type selector', () => {
 		expect(store.tpm).toBe(false);
 	});
 });
+
+describe('VmCreateStore cluster switch (stale responses)', () => {
+	afterEach(() => vi.unstubAllGlobals());
+
+	function deferred<T>(): { promise: Promise<T>; resolve: (value: T) => void } {
+		let resolve: (value: T) => void = () => {};
+		const promise = new Promise<T>((done) => {
+			resolve = done;
+		});
+		return { promise, resolve };
+	}
+
+	function json(status: number, body: unknown): Response {
+		return new Response(JSON.stringify(body), { status, headers: { 'Content-Type': 'application/json' } });
+	}
+
+	function catalogFor(cluster: string): VmCreateCatalog {
+		return {
+			cluster,
+			nodes: ['pve-node-01'],
+			storages: [{ name: 'local-lvm', node: 'pve-node-01' }],
+			bridges: [],
+			isos: [],
+			profiles: [],
+			templates: [],
+			tags: []
+		};
+	}
+
+	const flush = () => new Promise((done) => setTimeout(done, 0));
+
+	it('keeps the selected cluster when the previous cluster answers last', async () => {
+		const slowCatalogA = deferred<Response>();
+		const slowMachinesA = deferred<Response>();
+		vi.stubGlobal(
+			'fetch',
+			vi.fn((url: string) => {
+				if (url.startsWith('/api/v1/vm-create/catalog?cluster=A')) return slowCatalogA.promise;
+				if (url.includes('cluster=A')) return slowMachinesA.promise;
+				if (url.startsWith('/api/v1/vm-create/catalog?cluster=B')) return Promise.resolve(json(200, catalogFor('B')));
+				return Promise.resolve(json(200, { items: [{ vmid: 2, name: 'b-vm', cluster: 'B' }] }));
+			})
+		);
+		const store = new VmCreateStore();
+
+		store.setCluster('A');
+		store.setCluster('B');
+		await flush();
+		slowCatalogA.resolve(json(200, catalogFor('A')));
+		slowMachinesA.resolve(json(200, { items: [{ vmid: 1, name: 'a-vm', cluster: 'A' }] }));
+		await flush();
+
+		expect(store.catalog?.cluster).toBe('B');
+		expect(store.existingMachines).toEqual([{ vmid: 2, name: 'b-vm' }]);
+		expect(store.buildRequest().cluster).toBe('B');
+	});
+
+	it('does not send the previous cluster when the newly selected one fails', async () => {
+		const slowCatalogA = deferred<Response>();
+		vi.stubGlobal(
+			'fetch',
+			vi.fn((url: string) => {
+				if (url.startsWith('/api/v1/vm-create/catalog?cluster=A')) return slowCatalogA.promise;
+				if (url.startsWith('/api/v1/vm-create/catalog?cluster=B')) return Promise.resolve(json(500, { error: 'boom' }));
+				return Promise.resolve(json(200, { items: [] }));
+			})
+		);
+		const store = new VmCreateStore();
+
+		store.setCluster('A');
+		store.setCluster('B');
+		await flush();
+		slowCatalogA.resolve(json(200, catalogFor('A')));
+		await flush();
+
+		expect(store.catalog).toBeNull();
+		expect(store.buildRequest().cluster).toBe('B');
+	});
+});

@@ -459,10 +459,22 @@ func (h *AdminPools) ServeDelete(w http.ResponseWriter, r *http.Request) {
 		writeAdminError(w, http.StatusBadGateway, "deletion_failed", "pool deletion failed")
 		return
 	}
+	h.revokePoolUserSessions(r, clusterName, result)
 	h.recordAdminAction(r, "admin.pools.delete", "pool", name,
 		fmt.Sprintf("deleted managed pool %s on cluster %s", name, clusterName),
 		[]any{map[string]any{auditKeyCluster: clusterName, auditKeyName: name, "status": result.Status, "userDeleted": result.UserDeleted}})
 	writeAdminJSON(w, http.StatusOK, deletePoolResponse{Status: result.Status, UserDeleted: result.UserDeleted})
+}
+
+// revokePoolUserSessions ends the sessions of a pool user removed by a pool
+// delete, so they do not outlive the account for up to 24 h.
+func (h *AdminPools) revokePoolUserSessions(r *http.Request, clusterName string, result pools.DeleteResult) {
+	if !result.UserDeleted {
+		return
+	}
+	if err := h.store.DeleteAccountSessions(r.Context(), clusterName, result.Username); err != nil {
+		logctx.FromOr(r.Context(), h.log).WarnContext(r.Context(), "pool user session revocation failed", "component", "httpapi", "cluster", clusterName, "user", result.Username, "error", err)
+	}
 }
 
 // deletePoolResponse is the stable JSON contract for DELETE /api/v1/admin/pools/{name}.

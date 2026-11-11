@@ -7,6 +7,7 @@ import (
 	"path/filepath"
 	"pvmss/server/internal/config"
 	"pvmss/server/internal/store"
+	"strings"
 	"testing"
 	"time"
 )
@@ -840,5 +841,44 @@ func TestRecordVMActionDetail_InsertsRowWithDetail(t *testing.T) {
 
 	if gotDetail != detail {
 		t.Errorf("detail = %q, want %q", gotDetail, detail)
+	}
+}
+
+// The VM-scoped incarnation subqueries must be served by the audit_log_vm
+// index, not a scan of a year of audit rows on every VM page load.
+func TestAuditLog_VMActivityQueryUsesVMIndex(t *testing.T) {
+	t.Parallel()
+
+	st := newAuditStore(t)
+
+	rows, err := st.DB().QueryContext(context.Background(),
+		`EXPLAIN QUERY PLAN SELECT MAX(id) FROM audit_log WHERE cluster = ? AND vmid = ? AND action = 'vm_create'`,
+		testStoreCluster, 101)
+	if err != nil {
+		t.Fatalf("explain: %v", err)
+	}
+
+	defer func() { _ = rows.Close() }()
+
+	var details []string
+
+	for rows.Next() {
+		var id, parent, notUsed int
+
+		var detail string
+		if err := rows.Scan(&id, &parent, &notUsed, &detail); err != nil {
+			t.Fatalf("scan plan row: %v", err)
+		}
+
+		details = append(details, detail)
+	}
+
+	if err := rows.Err(); err != nil {
+		t.Fatalf("iterate plan: %v", err)
+	}
+
+	plan := strings.Join(details, "\n")
+	if !strings.Contains(plan, "audit_log_vm") {
+		t.Fatalf("expected plan to use audit_log_vm, got:\n%s", plan)
 	}
 }

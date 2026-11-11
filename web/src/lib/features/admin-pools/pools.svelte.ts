@@ -52,6 +52,8 @@ export class PoolsStore {
 	clusterOptions = $state.raw<ClusterOption[]>([]);
 	cluster = $state('default');
 	#searchTimer: ReturnType<typeof setTimeout> | null = null;
+	/** Latest-wins guard for load: a cluster switch must not show the previous cluster's pools. */
+	#loadRequestId = 0;
 
 	/** Resolves the real cluster name so requests never send the literal "default"
 	 *  against a deployment whose cluster is named something else. */
@@ -73,18 +75,23 @@ export class PoolsStore {
 	}
 
 	async load(): Promise<void> {
+		const requestId = ++this.#loadRequestId;
 		if (this.clusterOptions.length === 0) {
 			await this.loadClusters();
+			if (requestId !== this.#loadRequestId) return;
 		}
 		this.loading = true;
 		this.error = null;
 		try {
 			const query = this.searchTerm ? `&search=${encodeURIComponent(this.searchTerm)}` : '';
-			this.pools = await get<AdminPool[]>(`/api/v1/admin/pools?cluster=${encodeURIComponent(this.cluster)}${query}`);
+			const pools = await get<AdminPool[]>(`/api/v1/admin/pools?cluster=${encodeURIComponent(this.cluster)}${query}`);
+			if (requestId === this.#loadRequestId) this.pools = pools;
 		} catch (error) {
-			this.error = error instanceof ApiRequestError ? error.message : m['admin.pools.loadError']();
+			if (requestId === this.#loadRequestId) {
+				this.error = error instanceof ApiRequestError ? error.message : m['admin.pools.loadError']();
+			}
 		} finally {
-			this.loading = false;
+			if (requestId === this.#loadRequestId) this.loading = false;
 		}
 	}
 

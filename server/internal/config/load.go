@@ -12,13 +12,15 @@ import (
 const (
 	defaultInventoryRefreshInterval          = 30 * time.Second
 	defaultInventoryManualRefreshMinInterval = 5 * time.Second
-	defaultInventoryRefreshTimeout           = 15 * time.Second
+	defaultInventoryRefreshTimeout           = 25 * time.Second
 	defaultMaxListPageSize                   = 100
 	defaultMaxLocalAdmins                    = 5
 	maxLocalAdminsCeiling                    = 50
 	// exampleSessionSecret is the placeholder in README, example.env, the
 	// compose example and the Helm values.
 	exampleSessionSecret = "changeMeWithSomethingElseUniqueMinimum32Chars"
+	// exampleAdminPasswordHash is the bootstrap admin hash in the same examples.
+	exampleAdminPasswordHash = "$2y$10$Ppg7Wl3sNYrmxZmWgcq4reOyznt7AeqMrQucaH4HY.dBrzavhPP1e" //nolint:gosec // G101: public example hash, refused at startup
 )
 
 // Load reads and validates the runtime configuration from the environment.
@@ -185,6 +187,11 @@ func loadSecuritySettings(cfg *Configuration) error {
 	cfg.AdminPasswordHash = strings.TrimSpace(os.Getenv("ADMIN_PASSWORD_HASH"))
 	if cfg.AdminPasswordHash != "" && !strings.HasPrefix(cfg.AdminPasswordHash, "$2") {
 		return errors.New("ADMIN_PASSWORD_HASH must be a bcrypt hash")
+	}
+
+	// The examples ship this hash; anyone can read it and sign in as "admin".
+	if cfg.AdminPasswordHash == exampleAdminPasswordHash {
+		return errors.New("ADMIN_PASSWORD_HASH is the example value; generate one with: htpasswd -bnBC 12 \"\" <password> | tr -d ':\\n'")
 	}
 
 	cookieSecure, err := loadBool("PVMSS_COOKIE_SECURE", true)

@@ -5,6 +5,43 @@ function jsonResponse(status: number, body: unknown): Response {
 	return new Response(JSON.stringify(body), { status, headers: { 'Content-Type': 'application/json' } });
 }
 
+describe('AdminCatalogStore cluster switch (stale responses)', () => {
+	afterEach(() => vi.unstubAllGlobals());
+
+	function deferred<T>(): { promise: Promise<T>; resolve: (value: T) => void } {
+		let resolve: (value: T) => void = () => {};
+		const promise = new Promise<T>((done) => {
+			resolve = done;
+		});
+		return { promise, resolve };
+	}
+
+	const flush = () => new Promise((done) => setTimeout(done, 0));
+
+	it('ends with the second cluster rows when the first cluster answers last', async () => {
+		const slowNodesA = deferred<Response>();
+		vi.stubGlobal(
+			'fetch',
+			vi.fn((url: string) => {
+				if (url.startsWith('/api/v1/admin/nodes?cluster=a')) return slowNodesA.promise;
+				if (url.startsWith('/api/v1/admin/nodes?cluster=b')) return Promise.resolve(jsonResponse(200, [{ ...nodes[0], name: 'node-b' }]));
+				return Promise.resolve(jsonResponse(200, []));
+			})
+		);
+		const store = new AdminCatalogStore();
+
+		store.setCluster('a');
+		await flush();
+		store.setCluster('b');
+		await flush();
+		slowNodesA.resolve(jsonResponse(200, nodes));
+		await flush();
+
+		expect(store.cluster).toBe('b');
+		expect(store.nodes.map((node) => node.name)).toEqual(['node-b']);
+	});
+});
+
 const bridges: AdminBridge[] = [
 	{ name: 'vmbr0', node: 'node-a', active: true, comment: '', enabled: false },
 	{ name: 'vmbr0', node: 'node-b', active: true, comment: '', enabled: false }

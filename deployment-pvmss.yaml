@@ -27,7 +27,7 @@ automountServiceAccountToken: false
 ---
 # Prefer creating this Secret out of band (SealedSecrets, External Secrets, SOPS).
 #   session-secret: openssl rand -hex 32  (32+ bytes, required)
-#   admin-password-hash: optional bcrypt ("$2y$10$..."), enables the bootstrap "admin" account
+#   admin-password-hash: optional bcrypt ("<bcrypt hash - generate your own>"), enables the bootstrap "admin" account
 apiVersion: v1
 kind: Secret
 metadata:

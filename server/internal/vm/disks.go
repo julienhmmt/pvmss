@@ -8,6 +8,7 @@ import (
 	"pvmss/server/internal/catalog"
 	"pvmss/server/internal/cluster"
 	"pvmss/server/internal/inventory"
+	"pvmss/server/internal/logctx"
 	"pvmss/server/internal/policy"
 )
 
@@ -99,13 +100,8 @@ func AddDisk(ctx context.Context, deps DiskDependencies, bus cluster.DiskBus, st
 		return cluster.Disk{}, fmt.Errorf("add disk: %w", err)
 	}
 
-	if err := recordDiskAction(ctx, deps, "add_disk"); err != nil {
-		return cluster.Disk{}, err
-	}
-
-	if err := refreshDiskIndex(ctx, deps); err != nil {
-		return cluster.Disk{}, err
-	}
+	warnDiskFollowUp(ctx, deps, "add_disk", recordDiskAction(ctx, deps, "add_disk"))
+	warnDiskFollowUp(ctx, deps, "add_disk", refreshDiskIndex(ctx, deps))
 
 	return cluster.Disk{Key: key, Bus: bus, BusIndex: nextDiskIndex(entity.Disks, bus), Storage: storage, SizeGB: sizeGB}, nil
 }
@@ -142,11 +138,10 @@ func ResizeDisk(ctx context.Context, deps DiskDependencies, diskKey string, size
 		return fmt.Errorf("resize disk: %w", err)
 	}
 
-	if err := recordDiskAction(ctx, deps, "resize_disk"); err != nil {
-		return err
-	}
+	warnDiskFollowUp(ctx, deps, "resize_disk", recordDiskAction(ctx, deps, "resize_disk"))
+	warnDiskFollowUp(ctx, deps, "resize_disk", refreshDiskIndex(ctx, deps))
 
-	return refreshDiskIndex(ctx, deps)
+	return nil
 }
 
 // DeleteDisk removes a non-boot disk from a stopped VM.
@@ -168,11 +163,21 @@ func DeleteDisk(ctx context.Context, deps DiskDependencies, diskKey string) erro
 		return fmt.Errorf("delete disk: %w", err)
 	}
 
-	if err := recordDiskAction(ctx, deps, "delete_disk"); err != nil {
-		return err
+	warnDiskFollowUp(ctx, deps, "delete_disk", recordDiskAction(ctx, deps, "delete_disk"))
+	warnDiskFollowUp(ctx, deps, "delete_disk", refreshDiskIndex(ctx, deps))
+
+	return nil
+}
+
+// warnDiskFollowUp logs an audit or refresh failure that follows a disk write
+// which already succeeded on the cluster. The write is not undone, so the
+// caller still reports success. A nil err is a no-op.
+func warnDiskFollowUp(ctx context.Context, deps DiskDependencies, action string, err error) {
+	if err == nil {
+		return
 	}
 
-	return refreshDiskIndex(ctx, deps)
+	logctx.From(ctx).WarnContext(ctx, "disk write succeeded but a follow-up step failed", "component", "vm", "cluster", deps.ClusterName, "vmid", deps.VMID, "action", action, "error", err)
 }
 
 func resolveDiskTarget(deps DiskDependencies) (Entity, error) {

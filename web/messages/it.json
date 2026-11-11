@@ -1571,6 +1571,7 @@
 	"admin.tags.vmsColumnLocation": "Cluster / nodo",
 	"admin.db.exportTitle": "Esporta database",
 	"admin.db.exportDescription": "Scarica uno snapshot coerente del database di configurazione. L'esportazione non interrompe letture o scritture simultanee.",
+	"admin.db.exportWarning": "Il file contiene hash delle password e credenziali dei cluster cifrate. Conservalo come un segreto.",
 	"admin.db.export": "Esporta",
 	"admin.db.exportError": "esportazione non riuscita",
 	"admin.db.importTitle": "Importa database",

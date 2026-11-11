@@ -181,7 +181,7 @@ describe('convergeBatch', () => {
 			onTick,
 		);
 
-		await vi.waitFor(() => expect(promise).resolves.toBeUndefined());
+		await vi.waitFor(() => expect(promise).resolves.toBe(true));
 
 		expect(onTick).toHaveBeenCalledWith('stopped', undefined);
 		expect(post).toHaveBeenCalledTimes(1);
@@ -203,7 +203,7 @@ describe('convergeBatch', () => {
 		await vi.advanceTimersByTimeAsync(ACTION_POLL_MS);
 		await vi.advanceTimersByTimeAsync(ACTION_POLL_MS);
 
-		await vi.waitFor(() => expect(promise).resolves.toBeUndefined());
+		await vi.waitFor(() => expect(promise).resolves.toBe(true));
 
 		expect(onTick).toHaveBeenLastCalledWith('stopped', undefined);
 		expect(post).toHaveBeenCalledTimes(3);
@@ -223,13 +223,13 @@ describe('convergeBatch', () => {
 		await vi.advanceTimersByTimeAsync(ACTION_POLL_MS);
 		await vi.advanceTimersByTimeAsync(ACTION_POLL_MS);
 
-		await vi.waitFor(() => expect(promise).resolves.toBeUndefined());
+		await vi.waitFor(() => expect(promise).resolves.toBe(true));
 
 		expect(onTick).toHaveBeenCalledWith('running', undefined);
 		expect(post).toHaveBeenCalledTimes(2);
 	});
 
-	it('expires gracefully after the timeout', async () => {
+	it('expires gracefully after the timeout and reports not converged', async () => {
 		vi.mocked(post).mockResolvedValue([
 			{ cluster: 'default', vmid: 100, status: 'running' },
 		] as never);
@@ -243,7 +243,7 @@ describe('convergeBatch', () => {
 
 		await vi.advanceTimersByTimeAsync(ACTION_CONVERGE_TIMEOUT_MS + ACTION_POLL_MS);
 
-		await vi.waitFor(() => expect(promise).resolves.toBeUndefined());
+		await vi.waitFor(() => expect(promise).resolves.toBe(false));
 
 		expect(onTick).toHaveBeenLastCalledWith('running', undefined);
 	});

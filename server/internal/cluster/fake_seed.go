@@ -156,8 +156,16 @@ var fakeISOs = []ISOImage{
 // VMs on pve-node-02: a cloud-init capable debian-12 cloud image (full
 // clone) and a basic alpine appliance (linked clone when storage matches).
 var fakeTemplates = []TemplateVM{
-	{VMID: 9000, Node: FakeNode02, Name: "debian-12-cloud", CloudInitCapable: true, DiskStorage: FakeStorageLocalLVM, DiskSizeGB: 8, DiskBus: string(DiskBusSCSI)},
-	{VMID: 9001, Node: FakeNode02, Name: "alpine-appliance", CloudInitCapable: false, DiskStorage: FakeStorageLocal, DiskSizeGB: 2, DiskBus: string(DiskBusSCSI)},
+	{
+		VMID: 9000, Node: FakeNode02, Name: "debian-12-cloud", CloudInitCapable: true, DiskStorage: FakeStorageLocalLVM, DiskSizeGB: 8, DiskBus: string(DiskBusSCSI),
+		Sockets: 1, Cores: 2, MemoryTotal: 2048 * bytesPerMiBConfig, DiskTotal: 8 << 30,
+		NetworkInterfaces: []NetworkInterface{{Index: 0, Bridge: FakeBridgeVMbr0, Model: string(DiskBusVirtio)}},
+	},
+	{
+		VMID: 9001, Node: FakeNode02, Name: "alpine-appliance", CloudInitCapable: false, DiskStorage: FakeStorageLocal, DiskSizeGB: 2, DiskBus: string(DiskBusSCSI),
+		Sockets: 1, Cores: 1, MemoryTotal: 512 * bytesPerMiBConfig, DiskTotal: 2 << 30,
+		NetworkInterfaces: []NetworkInterface{{Index: 0, Bridge: FakeBridgeVMbr0, Model: string(DiskBusVirtio)}},
+	},
 }
 
 // fakeUptimeOnStart is the uptime the fake assigns when a stopped VM is started

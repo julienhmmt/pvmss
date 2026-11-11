@@ -131,7 +131,7 @@ func planCreate(ctx context.Context, policyService *policy.Policy, deps CreateDe
 	// Fetch node capacities for placement scoring and storage
 	// free space from the projection for best-storage selection, then resolve
 	// and validate the placement (node/storage/NICs against the catalog).
-	node, storage, nics, err := resolvePlacement(ctx, req, policyService, clusterName, resources, deps.Log)
+	node, storage, nics, err := resolvePlacement(ctx, placementRequest(req, sockets, cpuCores, memoryMB, diskGB), policyService, clusterName, resources, deps.Log)
 	if err != nil {
 		return createPlan{}, err
 	}
@@ -155,6 +155,25 @@ func planCreate(ctx context.Context, policyService *policy.Policy, deps CreateDe
 		memoryMB: memoryMB, diskGB: diskGB, bus: installDiskBus(req, bus), nics: nics,
 		isolationVLANTag: vlanTag, uefi: resolveUEFI(req), tpm: req.TPM,
 	}, nil
+}
+
+// storageKey identifies one storage on one node. Node-local storages share a
+// name across nodes (local-lvm), so free space is keyed by node and name.
+type storageKey struct {
+	node string
+	name string
+}
+
+// placementRequest returns req with the resolved hardware (profile values
+// included) so placement scores the VM that will actually be created. req is
+// passed by value, so the caller's request is not modified.
+func placementRequest(req CreateRequest, sockets, cpuCores, memoryMB, diskGB int) CreateRequest {
+	req.Sockets = sockets
+	req.CPUCores = cpuCores
+	req.MemoryMB = memoryMB
+	req.Disk.SizeGB = diskGB
+
+	return req
 }
 
 // resolvePlacement fetches node capacities and storage free space from the
@@ -274,8 +293,8 @@ func fetchNodeCapacities(ctx context.Context, policyService *policy.Policy, clus
 // fetchStorageFreeBytes reads the projected free bytes for each approved
 // storage from the cluster's in-memory projection. Storages not in the
 // projection get 0 (bestStorageOnNode treats 0 as a valid candidate).
-func fetchStorageFreeBytes(policyService *policy.Policy, clusterName string, storages []catalog.Storage) (map[string]int64, error) {
-	free := make(map[string]int64, len(storages))
+func fetchStorageFreeBytes(policyService *policy.Policy, clusterName string, storages []catalog.Storage) (map[storageKey]int64, error) {
+	free := make(map[storageKey]int64, len(storages))
 
 	for _, s := range storages {
 		bytes, err := policyService.StorageFreeBytes(clusterName, s.Node, s.Name)
@@ -283,7 +302,7 @@ func fetchStorageFreeBytes(policyService *policy.Policy, clusterName string, sto
 			return nil, err
 		}
 
-		free[s.Name] = bytes
+		free[storageKey{node: s.Node, name: s.Name}] = bytes
 	}
 
 	return free, nil
@@ -356,7 +375,7 @@ const (
 // When no explicit node is selected, candidates are scored by free resource
 // fractions: memFrac*0.5 + cpuFrac*0.35 + diskFrac*0.15, +1
 // if the VM fits. Catalog order breaks ties for reproducibility.
-func resolveResources(req CreateRequest, resources catalog.Resources, capacities map[string]policy.Capacity, storageFree map[string]int64) (node, storage string, nics []nicPlan, err error) {
+func resolveResources(req CreateRequest, resources catalog.Resources, capacities map[string]policy.Capacity, storageFree map[storageKey]int64) (node, storage string, nics []nicPlan, err error) {
 	node, err = resolveNode(req, resources, capacities)
 	if err != nil {
 		return "", "", nil, err
@@ -640,7 +659,7 @@ func checkTechnicalRange(cpuCores, memoryMB, diskGB int) error {
 // the selected node. Falls back to catalog order when
 // free-space data is unavailable (zero free bytes). Catalog order breaks ties
 // for reproducibility.
-func bestStorageOnNode(resources catalog.Resources, node string, storageFree map[string]int64) string {
+func bestStorageOnNode(resources catalog.Resources, node string, storageFree map[storageKey]int64) string {
 	best := ""
 	bestFree := int64(-1)
 
@@ -649,7 +668,7 @@ func bestStorageOnNode(resources catalog.Resources, node string, storageFree map
 			continue
 		}
 
-		free := storageFree[storage.Name]
+		free := storageFree[storageKey{node: node, name: storage.Name}]
 		if free > bestFree {
 			best = storage.Name
 			bestFree = free

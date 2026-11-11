@@ -10,6 +10,8 @@
 
 <Card pad="lg" title={m['admin.db.exportTitle']()} description={m['admin.db.exportDescription']()}>
 	<div class="space-y-3">
+	<Alert tone="warning" role="status">{m['admin.db.exportWarning']()}</Alert>
+
 	{#if store.exportError}
 		<Alert>{store.exportError}</Alert>
 	{/if}

@@ -84,9 +84,8 @@ func withSecurityHeaders(spaPolicy string, next http.Handler) http.Handler {
 		// HSTS is only meaningful over TLS; setting it on a plain-HTTP
 		// connection is ignored by browsers but harmless.
 		h.Set("Strict-Transport-Security", "max-age=31536000; includeSubDomains")
-		// Prevent caching of authenticated API responses. Static assets are
-		// served with hash-based filenames by Vite and cached separately by
-		// the browser via the SPA handler.
+		// Prevent caching of authenticated API responses. Static assets set
+		// their own Cache-Control in the SPA handler (spaCacheControl).
 		if isAPIPath(r.URL.Path) {
 			h.Set("Cache-Control", "no-store, no-cache, must-revalidate, private")
 		}

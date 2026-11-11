@@ -114,11 +114,12 @@ func (service *Policy) inflightLocked(clusterName, pool string) ([]string, error
 		}
 
 		named, err := service.PoolHasName(pending.cluster, pending.pool, pending.name)
-		if err != nil {
+		if err != nil && pending.cluster == clusterName {
 			return nil, err
 		}
 
-		if named {
+		// A removed or renamed other cluster must not block this one; its TTL drops the entry.
+		if err == nil && named {
 			continue
 		}
 

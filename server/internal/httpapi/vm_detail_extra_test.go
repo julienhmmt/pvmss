@@ -427,3 +427,22 @@ func TestVMDetail_Patch_DefaultErrorMapped(t *testing.T) {
 		t.Errorf("code = %q, want internal_error", env.Code)
 	}
 }
+
+// TestVMDetail_Patch_RenameOntoSiblingNameIs400 - renaming web-01 onto the
+// name of a sibling VM in the same pool is refused with 400 name_taken
+// (vm.ErrNameTaken, the same code create returns) and writes nothing.
+//
+//nolint:paralleltest // serial: shared fake VM and database fixtures
+func TestVMDetail_Patch_RenameOntoSiblingNameIs400(t *testing.T) {
+	handler, authHandler := newVMDetailHandlerWithWriter(t, cluster.Fake{})
+	cookie := aliceCookie(t, authHandler)
+
+	rec, env := serveDetailError(handler, detailRequest(http.MethodPatch, "/api/v1/vms/default/100", `{"name":"web-02"}`, cookie))
+	if rec.Code != http.StatusBadRequest {
+		t.Fatalf("status = %d, want %d", rec.Code, http.StatusBadRequest)
+	}
+
+	if env.Code != "name_taken" {
+		t.Errorf("code = %q, want name_taken", env.Code)
+	}
+}

@@ -97,3 +97,45 @@ func TestMultiCluster_ProjectionPerCluster(t *testing.T) {
 
 	release()
 }
+
+// TestReserveCreate_SurvivesRemovedCluster: a reservation made on a cluster that
+// was then removed must not fail creates on another cluster until its TTL ends.
+func TestReserveCreate_SurvivesRemovedCluster(t *testing.T) {
+	t.Parallel()
+
+	const (
+		removed = "removed"
+		other   = "other"
+		pool    = "pvmss-p"
+	)
+
+	st, err := store.Open(config.Configuration{DBPath: filepath.Join(t.TempDir(), "policy.db")})
+	if err != nil {
+		t.Fatalf("store.Open: %v", err)
+	}
+
+	t.Cleanup(func() { _ = st.Close() })
+
+	removedIndex := inventory.BuildIndexForCluster(removed, cluster.Snapshot{})
+	otherIndex := inventory.BuildIndexForCluster(other, cluster.Snapshot{})
+	registry := inventory.NewRegistryFromIndexes(map[string]*inventory.Index{
+		removed: &removedIndex,
+		other:   &otherIndex,
+	})
+
+	service := policy.New(st, nil)
+	service.SetProjectionSource(registry)
+
+	ctx := context.Background()
+	actor := auth.Identity{Username: testUserAlice, Pool: pool}
+
+	if _, err := service.ReserveCreate(ctx, removed, actor, "web"); err != nil {
+		t.Fatalf("ReserveCreate on %s: %v", removed, err)
+	}
+
+	registry.Remove(removed)
+
+	if _, err := service.ReserveCreate(ctx, other, actor, "web-2"); err != nil {
+		t.Fatalf("ReserveCreate on %s after %s was removed: %v", other, removed, err)
+	}
+}

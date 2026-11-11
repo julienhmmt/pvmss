@@ -20,7 +20,7 @@ func createFromTemplate(ctx context.Context, policyService *policy.Policy, deps 
 		return CreateResult{}, err
 	}
 
-	tmpl, err = refreshTemplateFromDiscovery(ctx, deps, clusterName, tmpl)
+	tmpl, live, err := refreshTemplateFromDiscovery(ctx, deps, clusterName, tmpl)
 	if err != nil {
 		return CreateResult{}, err
 	}
@@ -61,6 +61,13 @@ func createFromTemplate(ctx context.Context, policyService *policy.Policy, deps 
 		return CreateResult{}, err
 	}
 
+	// Without an override the clone inherits the template's live hardware and
+	// NICs, so the same gates an own-VM clone passes apply to it, before a
+	// VMID is spent.
+	if err := checkInheritedTemplate(ctx, policyService, clusterName, hardwareOverride, live); err != nil {
+		return CreateResult{}, err
+	}
+
 	vmid, err := allocateVMID(ctx, deps)
 	if err != nil {
 		return CreateResult{}, allocateVMIDError(err)
@@ -80,9 +87,8 @@ func createFromTemplate(ctx context.Context, policyService *policy.Policy, deps 
 	// configuration. The VM does not exist until the task completes.
 	// If the task fails, the half-made VM is purged
 	// (best-effort) so it does not consume the user's quota.
-	if waitErr := waitCreateTask(ctx, deps.Creator, upid); waitErr != nil {
-		deps.Log.ErrorContext(ctx, "clone task wait failed", "component", "vm", "cluster", clusterName, "vmid", finalVMID, "error", waitErr)
-		rollbackFailedCreate(ctx, deps, actor, clusterName, finalVMID, tmpl.Node, "clone task failed")
+	if waitErr := awaitCloneTask(ctx, deps.Creator, upid); waitErr != nil {
+		cleanupFailedClone(ctx, deps, actor, clusterName, finalVMID, tmpl.Node, waitErr)
 
 		if err := deps.Audit.RecordAction(ctx, actor.Username, clusterName, finalVMID, "vm_create"); err != nil {
 			deps.Log.ErrorContext(ctx, auditLogMsg, "component", "vm", "cluster", clusterName, "vmid", finalVMID, "error", err)
@@ -111,29 +117,32 @@ func createFromTemplate(ctx context.Context, policyService *policy.Policy, deps 
 // the template's current values. Re-check before a VMID is spent: a template
 // deleted since approval fails fast (ErrNotApproved) instead of failing
 // after a VMID is consumed.
-func refreshTemplateFromDiscovery(ctx context.Context, deps CreateDeps, clusterName string, tmpl catalog.Template) (catalog.Template, error) {
+//
+// It also returns the live discovery row (zero when discovery is skipped or
+// unavailable); the clone gates read its hardware and NICs.
+func refreshTemplateFromDiscovery(ctx context.Context, deps CreateDeps, clusterName string, tmpl catalog.Template) (catalog.Template, cluster.TemplateVM, error) {
 	if deps.Templates == nil {
-		return tmpl, nil
+		return tmpl, cluster.TemplateVM{}, nil
 	}
 
 	live, err := deps.Templates.TemplateByVMID(ctx, tmpl.VMID)
 	switch {
 	case errors.Is(err, cluster.ErrNotFound):
-		return catalog.Template{}, fmt.Errorf("%w: template no longer exists", ErrNotApproved)
+		return catalog.Template{}, cluster.TemplateVM{}, fmt.Errorf("%w: template no longer exists", ErrNotApproved)
 	case err != nil:
 		// Discovery is unavailable - the approval still stands; the clone
 		// itself will fail if the cluster is truly unreachable.
 		deps.Log.WarnContext(ctx, "template freshness check failed, proceeding with stored values", "component", "vm", "cluster", clusterName, "vmid", tmpl.VMID, "error", err)
 
-		return tmpl, nil
+		return tmpl, cluster.TemplateVM{}, nil
 	case live.DiskUnreadable:
 		// Keep the discovered node; the stored disk fields were validated at
-		// approval and are never empty.
+		// approval and are never empty. The live hardware is unknown.
 		deps.Log.WarnContext(ctx, "template disk unreadable at clone time, using stored disk fields", "component", "vm", "cluster", clusterName, "vmid", tmpl.VMID)
 
 		tmpl.Node = live.Node
 
-		return tmpl, nil
+		return tmpl, live, nil
 	default:
 		tmpl.Node = live.Node
 		tmpl.Name = live.Name
@@ -141,6 +150,54 @@ func refreshTemplateFromDiscovery(ctx context.Context, deps CreateDeps, clusterN
 		tmpl.DiskSizeGB = live.DiskSizeGB
 		tmpl.DiskBus = live.DiskBus
 
-		return tmpl, nil
+		return tmpl, live, nil
 	}
+}
+
+// checkInheritedTemplate runs the template gates when discovery returned the
+// template's config. The isolation VLAN always applies: the clone's NICs come
+// from the template whether or not hardware is overridden. The gabarit and
+// node-capacity gates apply only when the clone inherits the template's
+// hardware (no override); an overridden request is checked by planCreate.
+func checkInheritedTemplate(ctx context.Context, policyService *policy.Policy, clusterName string, hardwareOverride bool, live cluster.TemplateVM) error {
+	if !templateLiveKnown(live) {
+		return nil
+	}
+
+	gabarit, err := policyService.Gabarit(ctx, clusterName)
+	if err != nil {
+		return fmt.Errorf("read vmid range: %w", err)
+	}
+
+	source := Entity{
+		Node:              live.Node,
+		Sockets:           live.Sockets,
+		Cores:             live.Cores,
+		MemoryTotal:       live.MemoryTotal,
+		DiskTotal:         live.DiskTotal,
+		NetworkInterfaces: live.NetworkInterfaces,
+	}
+
+	if err := checkCloneVLAN(gabarit.IsolationVLANTag, source); err != nil {
+		return err
+	}
+
+	if hardwareOverride {
+		return nil
+	}
+
+	if err := checkCloneGabarit(ctx, policyService, clusterName, source); err != nil {
+		return err
+	}
+
+	return checkCloneCapacity(ctx, policyService, clusterName, source)
+}
+
+// templateLiveKnown reports whether discovery returned the template's config,
+// so its hardware and NICs are real and the clone gates can run on them.
+// shortcut: when discovery is unavailable or the config is unreadable the
+// gates are skipped and the clone proceeds on stored values; upgrade by
+// refusing the clone when the live config cannot be read.
+func templateLiveKnown(live cluster.TemplateVM) bool {
+	return live.VMID != 0 && !live.DiskUnreadable
 }

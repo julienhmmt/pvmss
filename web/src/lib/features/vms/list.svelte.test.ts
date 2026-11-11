@@ -2,6 +2,7 @@ import { describe, it, expect, vi, afterEach } from 'vitest';
 import { VmListStore, INCOMPLETE_RETRY_MS, type VmListResult } from './list.svelte';
 import { markVmDeleted } from './recently-deleted';
 import { m } from '#lib/paraglide/messages.js';
+import { ACTION_CONVERGE_TIMEOUT_MS, ACTION_POLL_MS } from './converge';
 
 function jsonResponse(status: number, body: unknown): Response {
 	return new Response(JSON.stringify(body), {
@@ -452,6 +453,35 @@ describe('VmListStore', () => {
 
 			pending.release?.(jsonResponse(200, { status: 'ok' }));
 			await actionPromise;
+		});
+
+		it('reports not converged when the live status never reaches the target', async () => {
+			vi.useFakeTimers();
+			try {
+				vi.stubGlobal(
+					'fetch',
+					vi.fn().mockImplementation((url: string) => {
+						if (url.endsWith('/actions')) return Promise.resolve(jsonResponse(200, { status: 'ok' }));
+						if (url === '/api/v1/vms/status') {
+							return Promise.resolve(
+								jsonResponse(200, [{ cluster: 'default', vmid: 100, status: 'stopped', uptime: 0 }])
+							);
+						}
+						return Promise.resolve(jsonResponse(200, oneVmResult));
+					})
+				);
+				const { store } = makeStore('');
+				store.result = oneVmResult;
+
+				const actionPromise = store.rowAction('default', 100, 'start');
+				await vi.advanceTimersByTimeAsync(ACTION_CONVERGE_TIMEOUT_MS + ACTION_POLL_MS);
+				const result = await actionPromise;
+
+				expect(result.ok).toBe(false);
+				expect(result.error).toBe(m['vms.detail.errorNotConverged']());
+			} finally {
+				vi.useRealTimers();
+			}
 		});
 	});
 	describe('noneOwned', () => {
