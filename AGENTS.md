@@ -162,7 +162,7 @@ built with bun and served by the Go binary (catch-all to `index.html`).
 - Port 50000 (`PVMSS_PORT`)
 - Image `gcr.io/distroless/static-debian13:nonroot` (uid 65532), entrypoint
   `/app/pvmss`, web dir from `PVMSS_WEB_DIR` (default `/app/web/build`)
-- Multi-stage build: `golang:1.27.3-alpine` + `oven/bun:1.4.3-alpine`
+- Multi-stage build: `golang:1.27.4-alpine` + `oven/bun:1.4.3-alpine`
 - Helm chart: `helm/`
 
 ## Configuration
