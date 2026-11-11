@@ -365,6 +365,10 @@ export class VmCreateStore {
 	submitError = $state.raw<string | null>(null);
 	clusterOptions = $state.raw<ClusterOption[]>([]);
 	cluster = $state.raw('');
+	/** Latest-wins guards: a slow response for a previously selected cluster
+	 *  must not overwrite the state of the cluster selected since. */
+	#catalogRequestId = 0;
+	#machinesRequestId = 0;
 
 	mode = $state<CreateMode>('simple');
 	name = $state('');
@@ -431,6 +435,7 @@ export class VmCreateStore {
 
 	setCluster(name: string): void {
 		this.cluster = name;
+		this.catalog = null;
 		void this.loadCatalog();
 		void this.loadExistingMachines();
 	}
@@ -446,15 +451,19 @@ export class VmCreateStore {
 
 	/** Fetch the approved-resource catalog for the selected cluster (FR-002). */
 	async loadCatalog(): Promise<void> {
+		const requestId = ++this.#catalogRequestId;
 		this.catalogError = null;
 		try {
 			const path =
 				this.cluster === ''
 					? '/api/v1/vm-create/catalog'
 					: `/api/v1/vm-create/catalog?cluster=${encodeURIComponent(this.cluster)}`;
-			this.catalog = await get<VmCreateCatalog>(path);
+			const catalog = await get<VmCreateCatalog>(path);
+			if (requestId === this.#catalogRequestId) this.catalog = catalog;
 		} catch (error: unknown) {
-			this.catalogError = error instanceof ApiRequestError ? error.message : m['vms.create.errorCatalog']();
+			if (requestId === this.#catalogRequestId) {
+				this.catalogError = error instanceof ApiRequestError ? error.message : m['vms.create.errorCatalog']();
+			}
 		}
 	}
 
@@ -462,14 +471,16 @@ export class VmCreateStore {
 	 *  Best-effort: a failure leaves the list empty and the server check
 	 *  answers instead. */
 	async loadExistingMachines(): Promise<void> {
+		const requestId = ++this.#machinesRequestId;
 		try {
 			const query = this.cluster === '' ? '' : `&cluster=${encodeURIComponent(this.cluster)}`;
 			const result = await get<{ items: { vmid: number; name: string; cluster: string }[] }>(`/api/v1/vms?pageSize=100${query}`);
+			if (requestId !== this.#machinesRequestId) return;
 			this.existingMachines = result.items
 				.filter((item) => this.cluster === '' || item.cluster === this.cluster)
 				.map((item) => ({ vmid: item.vmid, name: item.name }));
 		} catch {
-			this.existingMachines = [];
+			if (requestId === this.#machinesRequestId) this.existingMachines = [];
 		}
 	}
 
@@ -600,7 +611,7 @@ export class VmCreateStore {
 	 *  adjusted them (V08). */
 	buildRequest(): VMCreateRequest {
 		const request: VMCreateRequest = {
-			cluster: this.catalog?.cluster ?? this.cluster,
+			cluster: this.cluster === '' ? (this.catalog?.cluster ?? '') : this.cluster,
 			name: this.name.trim(),
 			startAfterCreate: this.startAfterCreate
 		};

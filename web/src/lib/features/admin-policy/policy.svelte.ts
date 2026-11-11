@@ -64,6 +64,8 @@ export class AdminPolicyStore {
 	/** Per-pool caps on the selected cluster; they sit beside the global quota. */
 	overrides = $state.raw<QuotaOverride[]>([]);
 	overridesError = $state.raw<string | null>(null);
+	/** Latest-wins guard for load: a cluster switch must not show the previous cluster's policy. */
+	#loadRequestId = 0;
 
 	/** Resolves the real cluster name (matches admin-catalog's pattern) so
 	 *  requests never send the literal "default" against a deployment whose
@@ -87,19 +89,24 @@ export class AdminPolicyStore {
 	}
 
 	async load(): Promise<void> {
+		const requestId = ++this.#loadRequestId;
 		await this.loadClusters();
+		if (requestId !== this.#loadRequestId) return;
 		this.loading = true;
 		this.error = null;
 		this.errorCode = null;
 		try {
-			this.policy = await get<AdminPolicy>(`/api/v1/admin/policy?cluster=${encodeURIComponent(this.cluster)}`);
+			const policy = await get<AdminPolicy>(`/api/v1/admin/policy?cluster=${encodeURIComponent(this.cluster)}`);
+			if (requestId === this.#loadRequestId) this.policy = policy;
 		} catch (error: unknown) {
-			this.errorCode = error instanceof ApiRequestError ? error.code : null;
-			this.error = error instanceof ApiRequestError ? error.message : m['policy.loadError']();
+			if (requestId === this.#loadRequestId) {
+				this.errorCode = error instanceof ApiRequestError ? error.code : null;
+				this.error = error instanceof ApiRequestError ? error.message : m['policy.loadError']();
+			}
 		} finally {
-			this.loading = false;
+			if (requestId === this.#loadRequestId) this.loading = false;
 		}
-		if (this.error === null) await this.loadOverrides();
+		if (requestId === this.#loadRequestId && this.error === null) await this.loadOverrides();
 	}
 
 	/** Reads the cluster's overrides; a failure is shown beside the policy, not instead of it. */

@@ -27,6 +27,8 @@ export class AdminTagsStore {
 	saveError = $state.raw<string | null>(null);
 	clusterOptions = $state.raw<ClusterOption[]>([]);
 	cluster = $state('default');
+	/** Latest-wins guard for load: a cluster switch must not show the previous cluster's tags. */
+	#loadRequestId = 0;
 
 	search = $state('');
 	protectedFilter: 'all' | 'protected' | 'unprotected' = $state('all');
@@ -83,15 +85,20 @@ export class AdminTagsStore {
 	}
 
 	async load(): Promise<void> {
+		const requestId = ++this.#loadRequestId;
 		await this.loadClusters();
+		if (requestId !== this.#loadRequestId) return;
 		this.loading = true;
 		this.error = null;
 		try {
-			this.tags = await get<AdminTag[]>(`/api/v1/admin/tags?cluster=${encodeURIComponent(this.cluster)}`);
+			const tags = await get<AdminTag[]>(`/api/v1/admin/tags?cluster=${encodeURIComponent(this.cluster)}`);
+			if (requestId === this.#loadRequestId) this.tags = tags;
 		} catch (err) {
-			this.error = err instanceof ApiRequestError ? err.message : m['admin.tags.loadError']();
+			if (requestId === this.#loadRequestId) {
+				this.error = err instanceof ApiRequestError ? err.message : m['admin.tags.loadError']();
+			}
 		} finally {
-			this.loading = false;
+			if (requestId === this.#loadRequestId) this.loading = false;
 		}
 	}
 
