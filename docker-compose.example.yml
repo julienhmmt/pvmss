@@ -35,7 +35,7 @@ services:
       # Bcrypt hash for the local admin login. Generate with:
       #   htpasswd -bnBC 10 "" "StrongPassword" | tr -d ':\n'
       # Escape every "$" as "$$" in compose files.
-      ADMIN_PASSWORD_HASH: "$$2y$$10$$Ppg7Wl3sNYrmxZmWgcq4reOyznt7AeqMrQucaH4HY.dBrzavhPP1e"
+      ADMIN_PASSWORD_HASH: "<bcrypt hash - generate your own>"
       # This example serves plain HTTP with no TLS terminator, so the Secure
       # cookie flag is off. Put PVMSS behind HTTPS and remove this line (or set
       # "true") in production.

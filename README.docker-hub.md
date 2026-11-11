@@ -116,7 +116,7 @@ services:
       PROXMOX_API_TOKEN_NAME: "tokenName@changeMe!value"
       PROXMOX_API_TOKEN_VALUE: "aaaaaaaa-0000-44aa-1111-aaaaaaaaaaa"
       # Every "$" of the bcrypt hash is doubled for Compose interpolation
-      ADMIN_PASSWORD_HASH: "$$2y$$10$$Ppg7Wl3sNYrmxZmWgcq4reOyznt7AeqMrQucaH4HY.dBrzavhPP1e"
+      ADMIN_PASSWORD_HASH: "<bcrypt hash - generate your own>"
       # Plain HTTP without a TLS reverse proxy: disable Secure cookie flag (set "true" behind HTTPS)
       PVMSS_COOKIE_SECURE: "false"
       LOG_LEVEL: "info"
@@ -152,7 +152,7 @@ docker run -d \
   --restart unless-stopped \
   -p 50000:50000 \
   -v pvmss_data:/data \
-  -e ADMIN_PASSWORD_HASH='$2y$10$Ppg7Wl3sNYrmxZmWgcq4reOyznt7AeqMrQucaH4HY.dBrzavhPP1e' \
+  -e ADMIN_PASSWORD_HASH='<bcrypt hash - generate your own>' \
   -e LOG_LEVEL=info \
   -e LOG_OUTPUT=stdout \
   -e LOG_FORMAT=console \

@@ -68,7 +68,7 @@ Prérequis : Docker, un cluster Proxmox VE 9.x et un jeton d'API (voir [Prépare
          # Générer avec : openssl rand -hex 32
          SESSION_SECRET: "remplacer-par-la-sortie-de-openssl-rand-hex-32"
          # Hash bcrypt du mot de passe de "admin" ; chaque "$" doublé pour Compose
-         ADMIN_PASSWORD_HASH: "$$2y$$10$$Ppg7Wl3sNYrmxZmWgcq4reOyznt7AeqMrQucaH4HY.dBrzavhPP1e"
+         ADMIN_PASSWORD_HASH: "<bcrypt hash - generate your own>"
          # HTTP simple sans TLS devant : retirer le drapeau Secure des cookies (le garder derrière HTTPS)
          PVMSS_COOKIE_SECURE: "false"
          PVMSS_PORT: "50000"
