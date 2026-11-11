@@ -73,7 +73,7 @@ Requirements: Docker, a Proxmox VE 9.x cluster and an API token (see [Proxmox se
          # Generate with: openssl rand -hex 32
          SESSION_SECRET: "replace-with-output-of-openssl-rand-hex-32"
          # Bcrypt hash of the bootstrap "admin" password; every "$" doubled for Compose
-         ADMIN_PASSWORD_HASH: "$$2y$$10$$Ppg7Wl3sNYrmxZmWgcq4reOyznt7AeqMrQucaH4HY.dBrzavhPP1e"
+         ADMIN_PASSWORD_HASH: "<bcrypt hash - generate your own>"
          # Plain HTTP with no TLS in front: drop the Secure cookie flag (keep it on behind HTTPS)
          PVMSS_COOKIE_SECURE: "false"
          PVMSS_PORT: "50000"

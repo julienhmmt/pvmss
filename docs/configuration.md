@@ -34,7 +34,7 @@ first cluster there. A partial set still fails startup.
 | --------------------------------------------- | --------------------------------------------------------------- |
 | `PVMSS_HOST`                                  | `127.0.0.1` (image sets `0.0.0.0`)                              |
 | `PVMSS_WEB_DIR`                               | relative to the executable                                      |
-| `ADMIN_PASSWORD_HASH`                         | empty; if set, must be `$2...`                                  |
+| `ADMIN_PASSWORD_HASH`                         | empty; if set, must be `$2...`; the example hash from the shipped examples is refused at startup |
 | `PVMSS_COOKIE_SECURE`                         | `true`                                                          |
 | `PVMSS_INVENTORY_REFRESH_INTERVAL`            | `30s`                                                           |
 | `PVMSS_INVENTORY_MANUAL_REFRESH_MIN_INTERVAL` | `5s`                                                            |
