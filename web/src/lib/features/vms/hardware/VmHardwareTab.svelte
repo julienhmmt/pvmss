@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { untrack } from 'svelte';
 	import { SvelteSet } from 'svelte/reactivity';
 	import { getVmDetailContext } from '../detail.svelte';
 	import { m } from '#lib/paraglide/messages.js';
@@ -16,14 +17,35 @@
 	let memoryDraft = $state('1024');
 	const selectedTags = new SvelteSet<string>();
 
+	// Values the drafts were last seeded from. A draft still equal to them is untouched,
+	// so a background refresh may overwrite it; an edited draft is kept.
+	let seeded: { key: string; sockets: string; cores: string; memory: string; tags: string } | null = null;
+
+	function tagsKey(tags: readonly string[]): string {
+		return [...tags].sort().join('\u0000');
+	}
+
 	$effect(() => {
 		const entity = store.entity;
 		if (entity === null) return;
-		socketsDraft = String(entity.sockets ?? 1);
-		coresDraft = String(entity.cores ?? entity.cpuCores);
-		memoryDraft = String(Math.round(entity.memoryTotal / 1024 / 1024));
-		selectedTags.clear();
-		for (const tag of entity.tags) selectedTags.add(tag);
+		const next = {
+			key: `${entity.cluster}/${entity.vmid}`,
+			sockets: String(entity.sockets ?? 1),
+			cores: String(entity.cores ?? entity.cpuCores),
+			memory: String(Math.round(entity.memoryTotal / 1024 / 1024)),
+			tags: tagsKey(entity.tags)
+		};
+		untrack(() => {
+			const sameVm = seeded !== null && seeded.key === next.key;
+			if (!sameVm || socketsDraft === seeded?.sockets) socketsDraft = next.sockets;
+			if (!sameVm || coresDraft === seeded?.cores) coresDraft = next.cores;
+			if (!sameVm || memoryDraft === seeded?.memory) memoryDraft = next.memory;
+			if (!sameVm || tagsKey([...selectedTags]) === seeded?.tags) {
+				selectedTags.clear();
+				for (const tag of entity.tags) selectedTags.add(tag);
+			}
+		});
+		seeded = next;
 	});
 
 	const catalogTags = $derived(store.hardwareOptions?.tags ?? []);
