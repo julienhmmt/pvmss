@@ -8,7 +8,6 @@ import (
 	"fmt"
 	"log/slog"
 	"net/http"
-	"net/url"
 	"pvmss/server/internal/cluster"
 	"pvmss/server/internal/inventory"
 	"pvmss/server/internal/logctx"
@@ -335,9 +334,8 @@ func (handler *AdminClusters) ServeProbe(w http.ResponseWriter, r *http.Request)
 // validateProbeRow applies the checks a persisted cluster gets, minus the name
 // pattern: the probe row's name is a throwaway placeholder.
 func validateProbeRow(row store.ClusterRow) error {
-	parsed, err := url.ParseRequestURI(row.URL)
-	if err != nil || parsed.Scheme == "" || parsed.Host == "" {
-		return errors.New("cluster url is malformed")
+	if err := store.ValidateClusterURL(row.URL); err != nil {
+		return err
 	}
 	if row.TokenID == "" || row.TokenSecret == "" {
 		return errors.New("cluster credentials are required")
@@ -537,6 +535,8 @@ func (handler *AdminClusters) writeStoreFailure(w http.ResponseWriter, err error
 	switch {
 	case errors.Is(err, store.ErrInvalidClusterName):
 		writeAdminError(w, http.StatusBadRequest, "invalid_cluster_name", "name must match [a-z0-9-]+")
+	case errors.Is(err, store.ErrInvalidClusterURL):
+		writeAdminError(w, http.StatusBadRequest, "invalid_cluster_url", err.Error())
 	case errors.Is(err, store.ErrDuplicateCluster), errors.Is(err, inventory.ErrDuplicateCluster):
 		writeAdminError(w, http.StatusConflict, "duplicate_cluster", err.Error())
 	case errors.Is(err, store.ErrLastActiveCluster):

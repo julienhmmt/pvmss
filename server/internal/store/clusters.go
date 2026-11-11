@@ -11,7 +11,10 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"net"
+	"net/url"
 	"regexp"
+	"strings"
 	"time"
 
 	"modernc.org/sqlite"
@@ -25,6 +28,8 @@ var (
 	ErrLastActiveCluster = errors.New("last active cluster")
 	// ErrInvalidClusterName indicates a name outside the cluster-name grammar.
 	ErrInvalidClusterName = errors.New("invalid cluster name")
+	// ErrInvalidClusterURL indicates a cluster URL that is not https, or plain http on loopback.
+	ErrInvalidClusterURL = errors.New("invalid cluster url")
 )
 
 var clusterNamePattern = regexp.MustCompile(`^[a-z0-9-]+$`)
@@ -420,12 +425,52 @@ func validateClusterRow(row ClusterRow) error {
 	return validateClusterSettings(row, true)
 }
 
+// ValidateClusterURL accepts an https URL, or plain http only for a loopback host.
+// It refuses userinfo and query strings. The error never echoes the raw URL, which may carry a password.
+func ValidateClusterURL(raw string) error {
+	parsed, err := url.ParseRequestURI(raw)
+	if err != nil {
+		return fmt.Errorf("%w: must be an absolute URL", ErrInvalidClusterURL)
+	}
+	if parsed.Host == "" {
+		return fmt.Errorf("%w: host is required", ErrInvalidClusterURL)
+	}
+	if parsed.User != nil {
+		return fmt.Errorf("%w: credentials must not be embedded in the URL", ErrInvalidClusterURL)
+	}
+	if parsed.RawQuery != "" || parsed.ForceQuery {
+		return fmt.Errorf("%w: query string is not allowed", ErrInvalidClusterURL)
+	}
+	switch parsed.Scheme {
+	case "https":
+		return nil
+	case "http":
+		if isLoopbackHost(parsed.Hostname()) {
+			return nil
+		}
+		return fmt.Errorf("%w: plain http is only allowed for localhost or loopback addresses, use https", ErrInvalidClusterURL)
+	default:
+		return fmt.Errorf("%w: scheme must be https", ErrInvalidClusterURL)
+	}
+}
+
+func isLoopbackHost(host string) bool {
+	if strings.EqualFold(host, "localhost") {
+		return true
+	}
+	ip := net.ParseIP(host)
+	return ip != nil && ip.IsLoopback()
+}
+
 func validateClusterSettings(row ClusterRow, requireSecret bool) error {
 	if !clusterNamePattern.MatchString(row.Name) {
 		return ErrInvalidClusterName
 	}
-	if row.URL == "" || row.TokenID == "" {
-		return errors.New("cluster url and token id are required")
+	if row.TokenID == "" {
+		return errors.New("cluster token id is required")
+	}
+	if err := ValidateClusterURL(row.URL); err != nil {
+		return err
 	}
 	if requireSecret && row.TokenSecret == "" {
 		return errors.New("cluster token secret is required")
