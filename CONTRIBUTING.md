@@ -47,6 +47,15 @@ If you'd like to contribute, here's how:
   SonarQube (`~/git/gh/sonarqube`); results at `http://localhost:9000/projects`,
   stop it with `make sonar-down`.
 
+## Releases
+
+Pushing a tag `vX.Y.Z` runs `.github/workflows/release.yml`. The tag must match
+the version in `server/cmd/pvmss/main.go`, `web/package.json` and
+`helm/Chart.yaml`, or the run stops before building. It then pushes the image
+`jhmmt/pvmss:X.Y.Z` and `jhmmt/pvmss:latest` and uploads the Helm chart as a
+workflow artifact. The repository needs two secrets (names only):
+`DOCKERHUB_USERNAME` and `DOCKERHUB_TOKEN`.
+
 ## Need help?
 
 Open an issue with the `question` label or reach out to us!

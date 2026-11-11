@@ -1,0 +1,145 @@
+name: release
+
+# Runs only for tags such as v0.4.0. Create and push tags from the maintainer's
+# machine; this workflow never creates a tag itself.
+on:
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-26.04
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Check the tag matches the version strings
+        id: version
+        env:
+          TAG: ${{ github.ref_name }}
+        run: |
+          set -euo pipefail
+          want="${TAG#v}"
+          go_v=$(sed -n 's/^[[:space:]]*appVersion = "\(.*\)"$/\1/p' server/cmd/pvmss/main.go)
+          web_v=$(sed -n 's/^[[:space:]]*"version": "\(.*\)",$/\1/p' web/package.json)
+          chart_v=$(sed -n 's/^appVersion: "\(.*\)"$/\1/p' helm/Chart.yaml)
+          status=0
+          for pair in "server/cmd/pvmss/main.go=$go_v" "web/package.json=$web_v" "helm/Chart.yaml=$chart_v"; do
+            file="${pair%%=*}"
+            got="${pair#*=}"
+            if [ "$got" != "$want" ]; then
+              echo "::error file=$file::version '$got' does not match tag $TAG (expected $want)"
+              status=1
+            fi
+          done
+          echo "version=$want" >> "$GITHUB_OUTPUT"
+          exit "$status"
+
+  test:
+    runs-on: ubuntu-26.04
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Set up Go
+        uses: actions/setup-go@v7
+        with:
+          go-version-file: server/go.mod
+          cache: true
+          cache-dependency-path: server/go.sum
+
+      - name: Verify Go dependencies
+        run: go mod verify
+        working-directory: server
+
+      - name: Build Go server
+        run: go build ./...
+        working-directory: server
+
+      - name: Run Go tests with race detector
+        run: go test -race ./...
+        working-directory: server
+
+      - name: Scan Go dependencies for known vulnerabilities
+        run: go run golang.org/x/vuln/cmd/govulncheck@v1.9.0 ./...
+        working-directory: server
+
+      - name: Set up Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version-file: web/.bun-version
+
+      - name: Install web dependencies
+        run: bun install --frozen-lockfile
+        working-directory: web
+
+      - name: Type check
+        run: bun run check
+        working-directory: web
+
+      - name: Lint
+        run: bun run lint
+        working-directory: web
+
+      - name: Build web shell
+        run: bun run build
+        working-directory: web
+
+      - name: Run Vitest
+        run: bun run test
+        working-directory: web
+
+  image:
+    needs: [verify, test]
+    runs-on: ubuntu-26.04
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v4
+
+      - name: Set up Buildx
+        uses: docker/setup-buildx-action@v4
+
+      - name: Log in to Docker Hub
+        uses: docker/login-action@v4
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Build and push multi-arch image
+        uses: docker/build-push-action@v7
+        with:
+          context: .
+          platforms: linux/amd64,linux/arm64
+          push: true
+          provenance: true
+          sbom: true
+          tags: |
+            jhmmt/pvmss:${{ needs.verify.outputs.version }}
+            jhmmt/pvmss:latest
+
+  chart:
+    needs: image
+    runs-on: ubuntu-26.04
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Set up Helm
+        uses: azure/setup-helm@v5
+        with:
+          version: v3.20.2
+
+      - name: Package Helm chart
+        run: helm package ./helm --destination dist
+
+      - name: Upload chart package
+        uses: actions/upload-artifact@v7
+        with:
+          name: helm-chart
+          path: dist/*.tgz
+          if-no-files-found: error
+          retention-days: 90
