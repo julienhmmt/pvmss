@@ -27,7 +27,7 @@ RUN --mount=type=cache,target=/root/.cache/go-build \
 RUN mkdir /data
 
 # Build SvelteKit SPA
-FROM oven/bun:1.4.3-alpine AS svelte-builder
+FROM oven/bun:1.4.4-alpine AS svelte-builder
 WORKDIR /app/web
 
 # Copy lockfile first for better layer caching
