@@ -178,7 +178,7 @@ There is no migration: v0.4 is a rewrite and imports nothing from v0.3. Deploy i
 - Only Proxmox VE 9.x and newer are supported.
 - Security hardening is ongoing; no formal penetration test yet.
 - No HA-managed VMs, no cross-cluster migration; SDN and firewall rules stay in Proxmox.
-- Proxmox OIDC realms cannot sign in (only `pve` and `pam`); local PVMSS administrators remain available.
+- SSO goes through a Proxmox OpenID realm set per cluster (see `docs/oidc.md`); logout is local only.
 
 Feedback and contributions are welcome through issues or pull requests. Next versions: <https://github.com/julienhmmt/pvmss/projects?query=is%3Aopen>.
 
