@@ -19,13 +19,13 @@ async function setRealm(request: APIRequestContext, realm: string): Promise<void
 
 test.describe.serial('SSO through the cluster OpenID realm', () => {
 	test.beforeAll(async ({ playwright, baseURL }) => {
-		const request = await playwright.request.newContext({ baseURL });
+		const request = await playwright.request.newContext(baseURL ? { baseURL } : {});
 		await setRealm(request, 'e2e-oidc');
 		await request.dispose();
 	});
 
 	test.afterAll(async ({ playwright, baseURL }) => {
-		const request = await playwright.request.newContext({ baseURL });
+		const request = await playwright.request.newContext(baseURL ? { baseURL } : {});
 		await setRealm(request, '');
 		await request.dispose();
 	});
