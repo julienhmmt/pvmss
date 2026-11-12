@@ -26,7 +26,9 @@
 			? m['account.source.local']()
 			: session.principal?.provider === 'bootstrap'
 				? m['account.source.bootstrap']()
-				: m['account.source.pve']()
+				: session.principal?.provider === 'oidc'
+					? m['account.source.oidc']()
+					: m['account.source.pve']()
 	);
 
 	const languageOptions = SUPPORTED_LOCALES.map((value) => ({ value, label: LOCALE_NAMES[value] }));
@@ -91,5 +93,9 @@
 		</div>
 	</Card>
 
-	<ProfilePasswordSection />
+	{#if session.principal?.provider === 'oidc'}
+		<p class="text-sm text-muted-foreground" data-testid="profile-sso-note">{m['profile.password.ssoNote']()}</p>
+	{:else}
+		<ProfilePasswordSection />
+	{/if}
 </section>

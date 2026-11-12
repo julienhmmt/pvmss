@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { LoginForm } from './login.svelte';
+import { LoginForm, oidcErrorMessage } from './login.svelte';
 import { m } from '#lib/paraglide/messages.js';
 
 function jsonResponse(status: number, body: unknown): Response {
@@ -148,5 +148,21 @@ describe('LoginForm', () => {
 		const init = fetchMock.mock.calls[0]?.[1] as RequestInit | undefined;
 		const body = JSON.parse(init?.body as string) as { username?: string };
 		expect(body.username).toBeUndefined();
+	});
+
+	it('builds the SSO url only for a cluster with a realm', () => {
+		const form = new LoginForm();
+		form.clusters = [{ name: 'a', displayName: 'A', oidcRealm: 'zitadel' }, { name: 'b', displayName: 'B', oidcRealm: '' }];
+		form.cluster = 'a';
+		expect(form.ssoUrl('/vms/1')).toBe('/api/v1/auth/oidc/start?cluster=a&next=%2Fvms%2F1');
+		expect(form.ssoUrl(null)).toBe('/api/v1/auth/oidc/start?cluster=a');
+		form.cluster = 'b';
+		expect(form.ssoUrl('/x')).toBeNull();
+	});
+
+	it('translates SSO callback reasons', () => {
+		expect(oidcErrorMessage('oidc_cancelled')).toBe(m['login.sso.error.cancelled']());
+		expect(oidcErrorMessage('cluster_unavailable')).toBe(m['login.error.clusterUnavailable']());
+		expect(oidcErrorMessage('whatever')).toBe(m['login.sso.error.generic']());
 	});
 });

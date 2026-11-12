@@ -14,6 +14,21 @@ const KNOWN_ERROR_CODES: Partial<Record<string, () => string>> = {
 	realm_unsupported: m['login.error.realmUnsupported']
 };
 
+/** Reasons the server's SSO callback puts in /login?oidc=error&reason=. */
+const OIDC_ERRORS: Partial<Record<string, () => string>> = {
+	cluster_required: m['login.error.clusterRequired'],
+	invalid_cluster: m['login.error.invalidCluster'],
+	cluster_unavailable: m['login.error.clusterUnavailable'],
+	oidc_cancelled: m['login.sso.error.cancelled'],
+	oidc_rejected: m['login.sso.error.rejected'],
+	oidc_state_invalid: m['login.sso.error.expired'],
+	rate_limited: m['login.sso.error.rateLimited']
+};
+
+export function oidcErrorMessage(reason: string | null): string {
+	return (OIDC_ERRORS[reason ?? ''] ?? m['login.sso.error.generic'])();
+}
+
 function translateError(error: unknown, fallback: () => string): string {
 	if (error instanceof ApiRequestError) {
 		const translated = KNOWN_ERROR_CODES[error.code];
@@ -32,7 +47,7 @@ export interface Principal {
 	isAdmin: boolean;
 	cluster: string;
 	clusterDisplayName: string;
-	provider: 'pve' | 'local' | 'bootstrap';
+	provider: 'pve' | 'local' | 'bootstrap' | 'oidc';
 	isOwner: boolean;
 }
 
@@ -66,6 +81,15 @@ export class LoginForm {
 
 	get selectedCluster(): ClusterOption | undefined {
 		return this.clusters.find((option) => option.name === this.cluster);
+	}
+
+	/** Full-page navigation target for SSO, or null when the cluster has no realm. */
+	ssoUrl(next: string | null): string | null {
+		const cluster = this.selectedCluster;
+		if (!cluster?.oidcRealm) return null;
+		const query = new URLSearchParams({ cluster: cluster.name });
+		if (next) query.set('next', next);
+		return `/api/v1/auth/oidc/start?${query.toString()}`;
 	}
 
 	async submit(): Promise<Principal | null> {
