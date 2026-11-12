@@ -87,9 +87,8 @@ export class LoginForm {
 	ssoUrl(next: string | null): string | null {
 		const cluster = this.selectedCluster;
 		if (!cluster?.oidcRealm) return null;
-		const query = new URLSearchParams({ cluster: cluster.name });
-		if (next) query.set('next', next);
-		return `/api/v1/auth/oidc/start?${query.toString()}`;
+		const nextParam = next ? `&next=${encodeURIComponent(next)}` : '';
+		return `/api/v1/auth/oidc/start?cluster=${encodeURIComponent(cluster.name)}${nextParam}`;
 	}
 
 	async submit(): Promise<Principal | null> {
