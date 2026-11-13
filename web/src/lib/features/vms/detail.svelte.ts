@@ -581,6 +581,27 @@ export class VmDetailStore {
 			this.auditLoading = false;
 		}
 	}
+
+	/**
+	 * Fetches the whole per-VM audit log by walking every page, for the CSV
+	 * export. Items come back newest first, so with `sinceMs` set the walk
+	 * stops at the first page holding an entry older than the cutoff. The
+	 * paged view state (`auditItems`, `auditPage`, ...) is untouched.
+	 */
+	async auditAll(sinceMs?: number): Promise<VmAuditEntry[]> {
+		const items: VmAuditEntry[] = [];
+		let page = 1;
+		for (;;) {
+			const result = await get<AuditPage>(`${this.#basePath}/audit?page=${page}`);
+			items.push(...result.items);
+			const reachedCutoff =
+				sinceMs !== undefined && result.items.some((entry) => Date.parse(entry.timestamp) < sinceMs);
+			if (result.items.length === 0 || items.length >= result.total || reachedCutoff) break;
+			page += 1;
+		}
+		if (sinceMs === undefined) return items;
+		return items.filter((entry) => Date.parse(entry.timestamp) >= sinceMs);
+	}
 }
 
 /** optimisticStatus returns the status a VM is expected to show after kind. */

@@ -119,7 +119,10 @@ snapshots consomment du stockage : supprimez les anciens devenus inutiles.
 
 ### Activité
 
-Chaque action effectuée sur la VM via PVMSS - qui, quoi, quand.
+Chaque action effectuée sur la VM via PVMSS - qui, quoi, quand. Cochez des
+lignes (ou la case de sélection de la page) et **Exporter en CSV** ne
+télécharge que les entrées cochées ; sans sélection, il télécharge toutes les
+entrées de la plage choisie (dernières 24 heures, 7 jours, 30 jours ou tout).
 
 ## Consoles
 

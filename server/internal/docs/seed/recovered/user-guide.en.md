@@ -113,7 +113,10 @@ consume storage, so delete old ones when no longer needed.
 
 ### Activity
 
-Every action performed on the VM through PVMSS - who, what, when.
+Every action performed on the VM through PVMSS - who, what, when. Tick rows
+(or the page's select-all box) and **Export CSV** downloads just the checked
+entries; with nothing checked it downloads every entry inside the chosen
+range (last 24 hours, 7 days, 30 days, or all).
 
 ## Consoles
 
