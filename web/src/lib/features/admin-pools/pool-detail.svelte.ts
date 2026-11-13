@@ -66,6 +66,21 @@ export interface ResetPoolCredentials {
 	password: string;
 }
 
+export type PoolTab = 'overview' | 'members' | 'activity';
+
+const POOL_TABS: readonly PoolTab[] = ['members', 'activity'];
+
+/** Maps the ?tab= query value to a tab; absent or unknown values land on overview. */
+export function parsePoolTab(raw: string | null): PoolTab {
+	if (raw === 'members' || raw === 'activity') return raw;
+	return 'overview';
+}
+
+/** Serializes a tab back to the query value; the default tab keeps URLs clean. */
+export function poolTabParam(tab: PoolTab): string | null {
+	return POOL_TABS.includes(tab) ? tab : null;
+}
+
 const ADMIN_POOL_DETAIL_CONTEXT_KEY = Symbol('admin-pool-detail');
 
 /** Manages the admin pool detail view: one pool's identity, managed marker,

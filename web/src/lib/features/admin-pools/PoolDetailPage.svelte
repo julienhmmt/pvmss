@@ -1,5 +1,8 @@
 <script lang="ts">
-	import type { PoolDetail, PoolMemberVM, ResetPoolCredentials } from './pool-detail.svelte';
+	import type { PoolDetail, PoolMemberVM, PoolTab, ResetPoolCredentials } from './pool-detail.svelte';
+	import { parsePoolTab, poolTabParam } from './pool-detail.svelte.js';
+	import { page } from '$app/state';
+	import { afterNavigate, pushState } from '$app/navigation';
 	import { resolve } from '$app/paths';
 	import { formatBytes } from '#lib/shared/format-bytes.js';
 	import DeletePoolConfirm from './DeletePoolConfirm.svelte';
@@ -17,6 +20,7 @@
 	import { createPagination } from '#lib/shared/ui/list-pager.svelte.js';
 	import Skeleton from '#lib/shared/ui/Skeleton.svelte';
 	import StatCard from '#lib/shared/ui/StatCard.svelte';
+	import Tabs from '#lib/shared/ui/Tabs.svelte';
 	import TextField from '#lib/shared/ui/TextField.svelte';
 	import { m } from '#lib/paraglide/messages.js';
 	import { machineStatusView, type MachineStatusTone } from '#lib/features/vms/display-status.js';
@@ -104,6 +108,33 @@
 			disk: vms.reduce((sum, vm) => sum + vm.diskBytes, 0)
 		};
 	});
+
+	// The active tab is local state pushed into the URL so ?tab= deep links,
+	// reloads and browser back/forward all land on the right panel.
+	let activeTab: PoolTab = $state(parsePoolTab(page.url.searchParams.get('tab')));
+
+	const tabs = $derived([
+		{ id: 'overview', label: () => m['admin.poolDetail.tabOverview']() },
+		{
+			id: 'members',
+			label: () => m['admin.poolDetail.tabMembers'](),
+			...(detail ? { count: totals.total } : {})
+		},
+		{ id: 'activity', label: () => m['admin.poolDetail.tabActivity']() }
+	]);
+
+	afterNavigate(() => {
+		activeTab = parsePoolTab(page.url.searchParams.get('tab'));
+	});
+
+	function selectTab(id: string): void {
+		activeTab = parsePoolTab(id);
+		const url: URL = new URL(page.url.href);
+		const param: string | null = poolTabParam(activeTab);
+		if (param === null) url.searchParams.delete('tab');
+		else url.searchParams.set('tab', param);
+		pushState(`${url.pathname}${url.search}`, page.state);
+	}
 
 	function statusLabel(status: string): string {
 		if (status === 'running' || status === 'stopped' || status === 'paused') {
@@ -193,193 +224,207 @@
 		<Alert>{notFound ? m['admin.poolDetail.notFound']() : (error ?? m['admin.poolDetail.loadError']())}</Alert>
 	{/if}
 {:else}
-	<div class="space-y-6" data-testid="admin-pool-detail">
-		<div class="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-			<StatCard label={m['common.vms']()} value={totals.total} hint={m['admin.poolDetail.vmsBreakdown']({ running: totals.running, stopped: totals.total - totals.running })} />
-			<StatCard label={m['admin.nodeDetails.vcpu']()} value={totals.cores} />
-			<StatCard label={m['common.memory']()} value={formatBytes(totals.memory)} />
-			<StatCard label={m['admin.nodeDetails.disk']()} value={formatBytes(totals.disk)} />
+	<div data-testid="admin-pool-detail">
+		<Tabs {tabs} look="folder" bind:active={() => activeTab, selectTab} />
+
+		<div id="panel-overview" role="tabpanel" aria-labelledby="tab-overview" hidden={activeTab !== 'overview'} class="pv-tabpanel">
+			<div class="space-y-6">
+				<div class="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+					<StatCard label={m['common.vms']()} value={totals.total} hint={m['admin.poolDetail.vmsBreakdown']({ running: totals.running, stopped: totals.total - totals.running })} />
+					<StatCard label={m['admin.nodeDetails.vcpu']()} value={totals.cores} />
+					<StatCard label={m['common.memory']()} value={formatBytes(totals.memory)} />
+					<StatCard label={m['admin.nodeDetails.disk']()} value={formatBytes(totals.disk)} />
+				</div>
+
+				<Card pad="none" title={m['admin.poolDetail.accountTitle']()} titleId="pool-account-section">
+					<div class="divide-y divide-border">
+						<dl class="grid grid-cols-1 gap-x-6 gap-y-4 p-5 text-sm sm:grid-cols-2 lg:grid-cols-4">
+							<div>
+								<dt class="text-xs text-muted-foreground">{m['admin.pools.username']()}</dt>
+								<dd class="mt-1 break-all font-mono">{detail.username}</dd>
+								{#if detail.managed && !detail.sso}
+									<dd class="mt-2">
+										<Button
+											size="sm"
+											variant="secondary"
+											label={m['admin.poolDetail.resetLabel']({ username: detail.username })}
+											onclick={() => (showReset = true)}
+											data-testid="pool-reset-open"
+										>
+											{m['admin.poolDetail.resetPassword']()}
+										</Button>
+									</dd>
+								{/if}
+							</div>
+							<div>
+								<dt class="text-xs text-muted-foreground">{m['admin.pools.poolName']()}</dt>
+								<dd class="mt-1 font-mono">{detail.name}</dd>
+							</div>
+							<div>
+								<dt class="text-xs text-muted-foreground">{m['common.cluster']()}</dt>
+								<dd class="mt-1">{detail.cluster}</dd>
+							</div>
+							<div>
+								<dt class="text-xs text-muted-foreground">{m['admin.poolDetail.provisioned']()}</dt>
+								<dd class="mt-1 font-mono">
+									{#if detail.createdAt}
+										<time datetime={detail.createdAt}>{formatDateTime(detail.createdAt)}</time>
+									{:else}
+										{m['admin.nodeDetails.notReported']()}
+									{/if}
+								</dd>
+							</div>
+							<div class="sm:col-span-2 lg:col-span-4">
+								<dt class="text-xs text-muted-foreground">{m['admin.pools.comment']()}</dt>
+								{#if editingComment}
+									<dd class="mt-1">
+										<form class="flex flex-wrap items-center gap-2" onsubmit={saveComment}>
+											<div class="min-w-0 flex-1">
+												<TextField
+													id="pool-comment-input"
+													type="text"
+													bind:value={commentDraft}
+													maxLength={255}
+													aria-label={m['admin.pools.comment']()}
+												/>
+											</div>
+											<Button type="submit" size="sm" disabled={savingComment}>{m['common.save']()}</Button>
+											<Button
+												type="button"
+												size="sm"
+												variant="secondary"
+												disabled={savingComment}
+												onclick={() => (editingComment = false)}>{m['common.cancel']()}</Button
+											>
+										</form>
+										{#if commentError}
+											<p class="mt-2 text-xs text-destructive" role="alert">{commentError}</p>
+										{/if}
+									</dd>
+								{:else}
+									<dd class="mt-1 flex items-center gap-2">
+										<span>{detail.comment || m['admin.nodeDetails.notReported']()}</span>
+										<Button size="sm" variant="ghost" onclick={startCommentEdit}>
+											{detail.comment ? m['common.edit']() : m['admin.poolDetail.addComment']()}
+										</Button>
+									</dd>
+								{/if}
+							</div>
+						</dl>
+						<div class="p-5">
+							<p class="mb-2 text-xs text-muted-foreground">{m['admin.poolDetail.allowance']()}</p>
+							<Meter quota={detail.quota} />
+						</div>
+					</div>
+				</Card>
+
+				<PoolQuotaOverride
+					{override}
+					saving={overrideSaving}
+					error={overrideError}
+					onSave={onSaveOverride}
+					onRemove={onRemoveOverride}
+				/>
+			</div>
 		</div>
 
-		<Card pad="none" title={m['admin.poolDetail.accountTitle']()} titleId="pool-account-section">
-			<div class="divide-y divide-border">
-				<dl class="grid grid-cols-1 gap-x-6 gap-y-4 p-5 text-sm sm:grid-cols-2 lg:grid-cols-4">
-					<div>
-						<dt class="text-xs text-muted-foreground">{m['admin.pools.username']()}</dt>
-						<dd class="mt-1 break-all font-mono">{detail.username}</dd>
-						{#if detail.managed && !detail.sso}
-							<dd class="mt-2">
-								<Button
-									size="sm"
-									variant="secondary"
-									label={m['admin.poolDetail.resetLabel']({ username: detail.username })}
-									onclick={() => (showReset = true)}
-									data-testid="pool-reset-open"
-								>
-									{m['admin.poolDetail.resetPassword']()}
-								</Button>
-							</dd>
-						{/if}
-					</div>
-					<div>
-						<dt class="text-xs text-muted-foreground">{m['admin.pools.poolName']()}</dt>
-						<dd class="mt-1 font-mono">{detail.name}</dd>
-					</div>
-					<div>
-						<dt class="text-xs text-muted-foreground">{m['common.cluster']()}</dt>
-						<dd class="mt-1">{detail.cluster}</dd>
-					</div>
-					<div>
-						<dt class="text-xs text-muted-foreground">{m['admin.poolDetail.provisioned']()}</dt>
-						<dd class="mt-1 font-mono">
-							{#if detail.createdAt}
-								<time datetime={detail.createdAt}>{formatDateTime(detail.createdAt)}</time>
-							{:else}
-								{m['admin.nodeDetails.notReported']()}
-							{/if}
-						</dd>
-					</div>
-					<div class="sm:col-span-2 lg:col-span-4">
-						<dt class="text-xs text-muted-foreground">{m['admin.pools.comment']()}</dt>
-						{#if editingComment}
-							<dd class="mt-1">
-								<form class="flex flex-wrap items-center gap-2" onsubmit={saveComment}>
-									<div class="min-w-0 flex-1">
-										<TextField
-											id="pool-comment-input"
-											type="text"
-											bind:value={commentDraft}
-											maxLength={255}
-											aria-label={m['admin.pools.comment']()}
-										/>
-									</div>
-									<Button type="submit" size="sm" disabled={savingComment}>{m['common.save']()}</Button>
-									<Button
-										type="button"
-										size="sm"
-										variant="secondary"
-										disabled={savingComment}
-										onclick={() => (editingComment = false)}>{m['common.cancel']()}</Button
-									>
-								</form>
-								{#if commentError}
-									<p class="mt-2 text-xs text-destructive" role="alert">{commentError}</p>
-								{/if}
-							</dd>
-						{:else}
-							<dd class="mt-1 flex items-center gap-2">
-								<span>{detail.comment || m['admin.nodeDetails.notReported']()}</span>
-								<Button size="sm" variant="ghost" onclick={startCommentEdit}>
-									{detail.comment ? m['common.edit']() : m['admin.poolDetail.addComment']()}
-								</Button>
-							</dd>
-						{/if}
-					</div>
-				</dl>
-				<div class="p-5">
-					<p class="mb-2 text-xs text-muted-foreground">{m['admin.poolDetail.allowance']()}</p>
-					<Meter quota={detail.quota} />
-				</div>
+		<div id="panel-members" role="tabpanel" aria-labelledby="tab-members" hidden={activeTab !== 'members'} class="pv-tabpanel">
+			<div class="space-y-6">
+				<Card pad="none" title={m['admin.poolDetail.vmsTitle']()} titleId="pool-vms-section">
+					{#if detail.vms.length === 0}
+						<EmptyState title={m['admin.poolDetail.vmsEmpty']()} />
+					{:else}
+						<div class="overflow-x-auto">
+							<table class="pv-table pv-responsive-table w-full">
+								<caption class="sr-only">{m['admin.poolDetail.vmsTitle']()}</caption>
+								<thead>
+									<tr>
+										<th class="font-medium">{m['admin.nodeDetails.vmid']()}</th>
+										<th class="font-medium">{m['admin.nodeDetails.name']()}</th>
+										<th class="font-medium">{m['common.node']()}</th>
+										<th class="font-medium">{m['admin.nodeDetails.status']()}</th>
+										<th class="font-medium">{m['admin.nodeDetails.uptimeLabel']()}</th>
+										<th class="text-right font-medium">{m['admin.nodeDetails.vcpu']()}</th>
+										<th class="text-right font-medium">{m['admin.nodeDetails.memory']()}</th>
+										<th class="text-right font-medium">{m['admin.nodeDetails.disk']()}</th>
+										<th class="font-medium">{m['admin.poolDetail.ipAddresses']()}</th>
+									</tr>
+								</thead>
+								<tbody>
+									{#each vmsPager.rows as vm (vm.vmid)}
+										<tr class="transition-colors hover:bg-muted/40">
+											<td class="font-mono tabular-nums" data-label={m['admin.nodeDetails.vmid']()}>{vm.vmid}</td>
+											<td data-label={m['admin.nodeDetails.name']()}>
+												<a
+													href={resolve('/vms/[cluster]/[vmid]', vmHref(vm))}
+													class="font-medium text-primary hover:underline"
+												>{vm.name || m['admin.nodeDetails.notReported']()}</a>
+											</td>
+											<td data-label={m['common.node']()}>{vm.node}</td>
+											<td data-label={m['admin.nodeDetails.status']()}><Pill tone={statusTone(vm.status)} label={statusLabel(vm.status)} /></td>
+											<td class="font-mono tabular-nums" data-label={m['admin.nodeDetails.uptimeLabel']()}>{uptimeLabel(vm.uptimeSeconds)}</td>
+											<td class="text-right font-mono tabular-nums" data-label={m['admin.nodeDetails.vcpu']()}>{vm.cpuCores}</td>
+											<td class="text-right font-mono tabular-nums" data-label={m['admin.nodeDetails.memory']()}>{formatBytes(vm.memoryBytes)}</td>
+											<td class="text-right font-mono tabular-nums" data-label={m['admin.nodeDetails.disk']()}>{formatBytes(vm.diskBytes)}</td>
+											<td class="font-mono text-xs" data-label={m['admin.poolDetail.ipAddresses']()}>{vm.ipAddresses.length > 0 ? vm.ipAddresses.join(', ') : '-'}</td>
+										</tr>
+									{/each}
+								</tbody>
+							</table>
+						</div>
+						<Pagination pager={vmsPager} />
+					{/if}
+				</Card>
 			</div>
-		</Card>
+		</div>
 
-		<PoolQuotaOverride
-			{override}
-			saving={overrideSaving}
-			error={overrideError}
-			onSave={onSaveOverride}
-			onRemove={onRemoveOverride}
-		/>
+		<div id="panel-activity" role="tabpanel" aria-labelledby="tab-activity" hidden={activeTab !== 'activity'} class="pv-tabpanel">
+			<div class="space-y-6">
+				<Card pad="none" title={m['admin.poolDetail.activityTitle']()} titleId="pool-activity-section">
+					{#if detail.activity.length === 0}
+						<p class="px-5 py-4 text-sm text-muted-foreground">{m['admin.poolDetail.activityEmpty']()}</p>
+					{:else}
+						<div class="overflow-x-auto">
+							<table class="pv-table pv-responsive-table w-full">
+								<caption class="sr-only">{m['admin.poolDetail.activityTitle']()}</caption>
+								<thead>
+									<tr>
+										<th class="font-medium">{m['admin.audit.time']()}</th>
+										<th class="font-medium">{m['admin.audit.actor']()}</th>
+										<th class="font-medium">{m['admin.audit.action']()}</th>
+										<th class="font-medium">{m['admin.audit.columnVm']()}</th>
+										{#if hasActivityDetail}<th class="font-medium">{m['admin.audit.detail']()}</th>{/if}
+									</tr>
+								</thead>
+								<tbody>
+									{#each activityPager.rows as entry (entry.id)}
+										<tr>
+											<td class="whitespace-nowrap font-mono text-xs tabular-nums" data-label={m['admin.audit.time']()}>{formatDateTime(entry.timestamp, 'short')}</td>
+											<td class="font-mono text-xs" data-label={m['admin.audit.actor']()}>{entry.actor}</td>
+											<td data-label={m['admin.audit.action']()}><code class="text-xs">{entry.action}</code></td>
+											<td class="font-mono tabular-nums" data-label={m['admin.audit.columnVm']()}>{entry.vmid ?? '-'}</td>
+											{#if hasActivityDetail}<td class="max-w-72 truncate text-xs text-muted-foreground" title={activitySummary(entry)} data-label={m['admin.audit.detail']()}>{activitySummary(entry) || '-'}</td>{/if}
+										</tr>
+									{/each}
+								</tbody>
+							</table>
+						</div>
+						<Pagination pager={activityPager} />
+					{/if}
+				</Card>
 
-		<Card pad="none" title={m['admin.poolDetail.vmsTitle']()} titleId="pool-vms-section">
-			{#if detail.vms.length === 0}
-				<EmptyState title={m['admin.poolDetail.vmsEmpty']()} />
-			{:else}
-				<div class="overflow-x-auto">
-					<table class="pv-table pv-responsive-table w-full">
-						<caption class="sr-only">{m['admin.poolDetail.vmsTitle']()}</caption>
-						<thead>
-							<tr>
-								<th class="font-medium">{m['admin.nodeDetails.vmid']()}</th>
-								<th class="font-medium">{m['admin.nodeDetails.name']()}</th>
-								<th class="font-medium">{m['common.node']()}</th>
-								<th class="font-medium">{m['admin.nodeDetails.status']()}</th>
-								<th class="font-medium">{m['admin.nodeDetails.uptimeLabel']()}</th>
-								<th class="text-right font-medium">{m['admin.nodeDetails.vcpu']()}</th>
-								<th class="text-right font-medium">{m['admin.nodeDetails.memory']()}</th>
-								<th class="text-right font-medium">{m['admin.nodeDetails.disk']()}</th>
-								<th class="font-medium">{m['admin.poolDetail.ipAddresses']()}</th>
-							</tr>
-						</thead>
-						<tbody>
-							{#each vmsPager.rows as vm (vm.vmid)}
-								<tr class="transition-colors hover:bg-muted/40">
-									<td class="font-mono tabular-nums" data-label={m['admin.nodeDetails.vmid']()}>{vm.vmid}</td>
-									<td data-label={m['admin.nodeDetails.name']()}>
-										<a
-											href={resolve('/vms/[cluster]/[vmid]', vmHref(vm))}
-											class="font-medium text-primary hover:underline"
-										>{vm.name || m['admin.nodeDetails.notReported']()}</a>
-									</td>
-									<td data-label={m['common.node']()}>{vm.node}</td>
-									<td data-label={m['admin.nodeDetails.status']()}><Pill tone={statusTone(vm.status)} label={statusLabel(vm.status)} /></td>
-									<td class="font-mono tabular-nums" data-label={m['admin.nodeDetails.uptimeLabel']()}>{uptimeLabel(vm.uptimeSeconds)}</td>
-									<td class="text-right font-mono tabular-nums" data-label={m['admin.nodeDetails.vcpu']()}>{vm.cpuCores}</td>
-									<td class="text-right font-mono tabular-nums" data-label={m['admin.nodeDetails.memory']()}>{formatBytes(vm.memoryBytes)}</td>
-									<td class="text-right font-mono tabular-nums" data-label={m['admin.nodeDetails.disk']()}>{formatBytes(vm.diskBytes)}</td>
-									<td class="font-mono text-xs" data-label={m['admin.poolDetail.ipAddresses']()}>{vm.ipAddresses.length > 0 ? vm.ipAddresses.join(', ') : '-'}</td>
-								</tr>
-							{/each}
-						</tbody>
-					</table>
-				</div>
-				<Pagination pager={vmsPager} />
-			{/if}
-		</Card>
-
-		<Card pad="none" title={m['admin.poolDetail.activityTitle']()} titleId="pool-activity-section">
-			{#if detail.activity.length === 0}
-				<p class="px-5 py-4 text-sm text-muted-foreground">{m['admin.poolDetail.activityEmpty']()}</p>
-			{:else}
-				<div class="overflow-x-auto">
-					<table class="pv-table pv-responsive-table w-full">
-						<caption class="sr-only">{m['admin.poolDetail.activityTitle']()}</caption>
-						<thead>
-							<tr>
-								<th class="font-medium">{m['admin.audit.time']()}</th>
-								<th class="font-medium">{m['admin.audit.actor']()}</th>
-								<th class="font-medium">{m['admin.audit.action']()}</th>
-								<th class="font-medium">{m['admin.audit.columnVm']()}</th>
-								{#if hasActivityDetail}<th class="font-medium">{m['admin.audit.detail']()}</th>{/if}
-							</tr>
-						</thead>
-						<tbody>
-							{#each activityPager.rows as entry (entry.id)}
-								<tr>
-									<td class="whitespace-nowrap font-mono text-xs tabular-nums" data-label={m['admin.audit.time']()}>{formatDateTime(entry.timestamp, 'short')}</td>
-									<td class="font-mono text-xs" data-label={m['admin.audit.actor']()}>{entry.actor}</td>
-									<td data-label={m['admin.audit.action']()}><code class="text-xs">{entry.action}</code></td>
-									<td class="font-mono tabular-nums" data-label={m['admin.audit.columnVm']()}>{entry.vmid ?? '-'}</td>
-									{#if hasActivityDetail}<td class="max-w-72 truncate text-xs text-muted-foreground" title={activitySummary(entry)} data-label={m['admin.audit.detail']()}>{activitySummary(entry) || '-'}</td>{/if}
-								</tr>
-							{/each}
-						</tbody>
-					</table>
-				</div>
-				<Pagination pager={activityPager} />
-			{/if}
-		</Card>
-
-		{#if detail.managed}
-			<Card pad="none" title={m['admin.poolDetail.dangerTitle']()} titleId="pool-danger-section">
-				<div class="flex flex-wrap items-center justify-between gap-3 p-5">
-					<p class="max-w-prose text-sm text-muted-foreground">{m['admin.poolDetail.dangerBody']({ name: detail.name })}</p>
-					<Button variant="destructive" onclick={() => (showDelete = true)} data-testid="pool-detail-delete">
-						{m['admin.pools.deletePool']()}
-					</Button>
-				</div>
-			</Card>
-		{/if}
+				{#if detail.managed}
+					<Card pad="none" title={m['admin.poolDetail.dangerTitle']()} titleId="pool-danger-section">
+						<div class="flex flex-wrap items-center justify-between gap-3 p-5">
+							<p class="max-w-prose text-sm text-muted-foreground">{m['admin.poolDetail.dangerBody']({ name: detail.name })}</p>
+							<Button variant="destructive" onclick={() => (showDelete = true)} data-testid="pool-detail-delete">
+								{m['admin.pools.deletePool']()}
+							</Button>
+						</div>
+					</Card>
+				{/if}
+			</div>
+		</div>
 	</div>
 {/if}
 
