@@ -14,7 +14,7 @@ SERVER_DIR   := server
 WEB_DIR      := web
 
 # Dev Docker Compose (shortcut to avoid repeating -f ...)
-COMPOSE_DEV  := docker compose -f docker-compose.dev.yml
+COMPOSE_DEV  := docker compose -f docker-compose.dev.yml --profile oidc
 
 # Go test variables - overridable on the command line:
 #   make test-offline GO_TEST_FLAGS=-v                 # verbose (replaces test-offline-verbose)
@@ -65,8 +65,8 @@ dev-logs: up logs ## Start and follow the logs
 	@echo "$(GREEN)Logs de l'application$(NC)"
 	@echo ""
 
-build: ## Build the Go v0.4 binary and the dev Docker image
-	@echo "$(BLUE)Construction du binaire Go (v0.4 server)...$(NC)"
+build: ## Build the Go binary and the dev Docker image
+	@echo "$(BLUE)Construction du binaire Go...$(NC)"
 	go build -C $(SERVER_DIR) -o ../pvmss ./cmd/pvmss
 	@echo "$(GREEN)✓ Binaire construit$(NC)"
 	@echo "$(BLUE)Construction de l'image Docker dev...$(NC)"
