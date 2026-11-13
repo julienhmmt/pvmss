@@ -40,7 +40,7 @@
 	let requestedRoute: string = '';
 	let requestId: number = 0;
 
-	const ifacePager = createPagination('node-interfaces', () => detail?.network.interfaces ?? []);
+	const ifacePager = createPagination('node-interfaces', () => netInterfaces);
 	const vmsPager = createPagination('node-vms', () => detail?.inventory.vms ?? []);
 	const storagePager = createPagination('node-storages', () => detail?.inventory.storages ?? []);
 	const pciPager = createPagination('node-pci', () => pciDevices);
@@ -119,19 +119,24 @@
 		clusterKey: string;
 		cluster: string;
 		name: string;
-		health: NodeHealth;
-		network: { available: boolean; interfaces: NodeNetworkInterface[] };
+		status: string;
 		inventory: { refreshedAt: string; vms: NodeVM[]; storages: NodeStorage[] };
 	}
 
-	type PCIState = 'idle' | 'loading' | 'loaded' | 'unavailable';
+	type SectionState = 'idle' | 'loading' | 'loaded' | 'unavailable';
 
 	// The active tab is local state pushed into the URL so ?tab= deep links,
 	// reloads and browser back/forward all land on the right panel.
 	let activeTab: NodeTab = $state(parseNodeTab(page.url.searchParams.get('tab')));
+	// The cached payload paints first; live sections stream in behind it.
+	let health = $state<NodeHealth | null>(null);
+	let healthError = $state<boolean>(false);
+	let healthRequestId: number = 0;
 	let pciOpen = $state<boolean>(false);
-	let pciState = $state<PCIState>('idle');
+	let pciState = $state<SectionState>('idle');
 	let pciDevices = $state<PCIDevice[]>([]);
+	let netState = $state<SectionState>('idle');
+	let netInterfaces = $state<NodeNetworkInterface[]>([]);
 	let migrating = $state<NodeVM | null>(null);
 
 	const tabs = $derived([
@@ -166,10 +171,13 @@
 		pushState(`${url.pathname}${url.search}`, page.state);
 	}
 
-	const healthPoll = createHealthPoll(() => void loadNode(clusterKey, nodeName));
+	const healthPoll = createHealthPoll(() => void loadHealth());
 	$effect(() => {
 		if (activeTab === 'health') healthPoll.start();
 		else healthPoll.stop();
+	});
+	$effect(() => {
+		if (activeTab === 'hardware' && netState === 'idle') void loadNetwork();
 	});
 	onDestroy(() => healthPoll.stop());
 
@@ -185,8 +193,15 @@
 		const currentRoute: string = `${cluster}/${node}`;
 		if (currentRoute !== requestedRoute) {
 			detail = null;
+			health = null;
+			healthError = false;
+			netState = 'idle';
+			netInterfaces = [];
+			pciState = 'idle';
+			pciDevices = [];
 			requestedRoute = currentRoute;
 		}
+		void loadHealth();
 		loading = true;
 		error = null;
 		try {
@@ -200,9 +215,38 @@
 		}
 	}
 
+	async function loadHealth(): Promise<void> {
+		const currentRequest: number = ++healthRequestId;
+		const cluster: string = clusterKey;
+		const node: string = nodeName;
+		try {
+			const path: string = `/api/v1/admin/nodes/${encodeURIComponent(cluster)}/${encodeURIComponent(node)}/health`;
+			const response: NodeHealth = await get<NodeHealth>(path);
+			if (currentRequest === healthRequestId && `${cluster}/${node}` === requestedRoute) {
+				health = response;
+				healthError = false;
+			}
+		} catch {
+			if (currentRequest === healthRequestId) healthError = true;
+		}
+	}
+
+	async function loadNetwork(): Promise<void> {
+		netState = 'loading';
+		try {
+			const path: string = `/api/v1/admin/nodes/${encodeURIComponent(clusterKey)}/${encodeURIComponent(nodeName)}/network`;
+			const response: { available: boolean; interfaces: NodeNetworkInterface[] } = await get(path);
+			netInterfaces = response.interfaces ?? [];
+			netState = response.available ? 'loaded' : 'unavailable';
+		} catch {
+			netState = 'unavailable';
+		}
+	}
+
 	function refreshNode(): void {
 		void loadNode(clusterKey, nodeName);
-		if (pciOpen && pciState !== 'loading') void loadPci();
+		if (netState === 'loaded' || netState === 'unavailable') void loadNetwork();
+		if (pciOpen && (pciState === 'loaded' || pciState === 'unavailable')) void loadPci();
 	}
 
 	async function loadPci(): Promise<void> {
@@ -291,10 +335,11 @@
 >
 	{#snippet titleMeta()}
 		{#if detail}
+			{@const status = health?.status ?? detail.status}
 			<Pill
 				size="md"
-				tone={detail.health.status === 'online' ? 'ok' : detail.health.status === 'offline' ? 'error' : 'off'}
-				label={nodeStatusLabel(detail.health.status)}
+				tone={status === 'online' ? 'ok' : status === 'offline' ? 'error' : 'off'}
+				label={nodeStatusLabel(status)}
 			/>
 		{/if}
 	{/snippet}
@@ -325,10 +370,9 @@
 		<Alert>{error}</Alert>
 	{/if}
 {:else}
-	{@const health = detail.health}
 	{@const vms = detail.inventory.vms}
 	<div data-testid="admin-node-details">
-		{#if health.stale}
+		{#if health?.stale}
 			<Alert tone="warning" role="status" class="mb-4" data-testid="node-health-stale">{m['admin.nodeDetails.healthStale']()}</Alert>
 		{/if}
 
@@ -338,6 +382,11 @@
 			<div class="space-y-6">
 				<Card pad="none" title={m['admin.nodeDetails.healthTitle']()} titleId="node-health-section">
 					<div class="space-y-5 p-5">
+						{#if healthError}
+							<p role="status" class="text-sm text-muted-foreground">{m['admin.nodeDetails.sectionUnavailable']()}</p>
+						{:else if health === null}
+							<div class="space-y-3" data-testid="node-health-loading"><Skeleton class="h-4 w-full" /><Skeleton class="h-4 w-2/3" /><Skeleton class="h-4 w-1/2" /></div>
+						{:else}
 						<dl class="flex flex-wrap gap-x-6 gap-y-1.5 text-xs">
 							<div class="flex items-baseline gap-1.5">
 								<dt class="text-muted-foreground">{m['admin.nodeDetails.uptimeLabel']()}</dt>
@@ -362,6 +411,7 @@
 							{@render usageMeter(m['admin.nodeDetails.swap'](), `${formatBytes(health.swapUsedBytes)} / ${formatBytes(health.swapTotalBytes)}`, usagePercent(health.swapUsedBytes, health.swapTotalBytes))}
 							{@render usageMeter(m['admin.nodeDetails.rootfs'](), `${formatBytes(health.rootfsUsedBytes)} / ${formatBytes(health.rootfsTotalBytes)}`, usagePercent(health.rootfsUsedBytes, health.rootfsTotalBytes))}
 						</div>
+						{/if}
 						<div class="flex flex-wrap items-center justify-between gap-2 border-t border-border pt-4">
 							<p class="text-sm text-muted-foreground" data-testid="node-workload-summary">{workloadSummary}</p>
 							{#if vms.length > 0}
@@ -410,18 +460,26 @@
 		<div id="panel-hardware" role="tabpanel" aria-labelledby="tab-hardware" hidden={activeTab !== 'hardware'} class="pv-tabpanel">
 			<div class="space-y-6">
 				<Card pad="none" title={m['admin.nodeDetails.nodeInfoTitle']()} titleId="node-info-section">
+					{#if healthError}
+						<p role="status" class="px-5 py-4 text-sm text-muted-foreground">{m['admin.nodeDetails.sectionUnavailable']()}</p>
+					{:else if health === null}
+						<div class="space-y-3 p-5"><Skeleton class="h-4 w-full" /><Skeleton class="h-4 w-1/2" /></div>
+					{:else}
 					<dl class="grid grid-cols-2 gap-x-5 gap-y-4 p-5 text-sm">
 						<div><dt class="text-xs text-muted-foreground">{m['admin.nodeDetails.cpuModel']()}</dt><dd class="mt-1 break-words">{health.cpuModel || m['admin.nodeDetails.notReported']()}</dd></div>
 						<div><dt class="text-xs text-muted-foreground">{m['admin.nodeDetails.cores']()}</dt><dd class="mt-1 font-mono tabular-nums">{health.cpuCores}</dd></div>
 						<div><dt class="text-xs text-muted-foreground">{m['admin.nodeDetails.threads']()}</dt><dd class="mt-1 font-mono tabular-nums">{health.cpuTotalThreads}</dd></div>
 						<div><dt class="text-xs text-muted-foreground">{m['admin.nodeDetails.sockets']()}</dt><dd class="mt-1 font-mono tabular-nums">{health.cpuSockets}</dd></div>
 					</dl>
+					{/if}
 				</Card>
 
 				<Card pad="none" title={m['admin.nodeDetails.networkTitle']()} titleId="node-network-section">
-					{#if !detail.network.available}
+					{#if netState === 'idle' || netState === 'loading'}
+						<div class="space-y-3 p-5" data-testid="node-network-loading"><Skeleton class="h-4 w-full" /><Skeleton class="h-4 w-2/3" /></div>
+					{:else if netState === 'unavailable'}
 						<p role="status" class="px-5 py-4 text-sm text-muted-foreground">{m['admin.nodeDetails.sectionUnavailable']()}</p>
-					{:else if detail.network.interfaces.length === 0}
+					{:else if netInterfaces.length === 0}
 						<p class="px-5 py-4 text-sm text-muted-foreground">{m['admin.nodeDetails.networkEmpty']()}</p>
 					{:else}
 						<div class="overflow-x-auto">

@@ -77,6 +77,8 @@ func registerAdminAccountRoutes(mux *http.ServeMux, adminProtect adminRouteProte
 func registerAdminCatalogRoutes(mux *http.ServeMux, adminProtect adminRouteProtect, h *AdminCatalog) {
 	mux.Handle("GET /api/v1/admin/nodes", adminProtect(http.MethodGet, http.HandlerFunc(h.ServeNodes)))
 	mux.Handle("GET /api/v1/admin/nodes/{cluster}/{name}", adminProtect(http.MethodGet, http.HandlerFunc(h.ServeNodeDetails)))
+	mux.Handle("GET /api/v1/admin/nodes/{cluster}/{name}/health", adminProtect(http.MethodGet, http.HandlerFunc(h.ServeNodeHealth)))
+	mux.Handle("GET /api/v1/admin/nodes/{cluster}/{name}/network", adminProtect(http.MethodGet, http.HandlerFunc(h.ServeNodeNetwork)))
 	mux.Handle("GET /api/v1/admin/nodes/{cluster}/{name}/pci", adminProtect(http.MethodGet, http.HandlerFunc(h.ServeNodePCI)))
 	mux.Handle("POST /api/v1/admin/nodes/toggle", adminProtect(http.MethodPost, http.HandlerFunc(h.ServeNodeToggle)))
 	mux.Handle("DELETE /api/v1/admin/nodes/{cluster}/{name}", adminProtect(http.MethodDelete, http.HandlerFunc(h.ServeNodeDelete)))
