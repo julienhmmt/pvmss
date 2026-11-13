@@ -35,7 +35,7 @@ GOLANGCI_LINT   := go run github.com/golangci/golangci-lint/v2/cmd/golangci-lint
 # Default Docker tag for docker-build (override: make docker-build PVMSS_TAG=v1.2.3)
 PVMSS_TAG ?= latest
 
-.PHONY: help proxy-e2e dev dev-logs build docker-build helm-package helm-upgrade \
+.PHONY: help proxy-e2e dev dev-logs dev-web build docker-build helm-package helm-upgrade \
         up up-siem up-oidc down restart logs clean \
         qualif \
         buildkit-start buildkit-stop buildkit-status \
@@ -64,6 +64,16 @@ dev: build up ## Build and start the app (http://localhost:50000)
 dev-logs: up logs ## Start and follow the logs
 	@echo "$(GREEN)Logs de l'application$(NC)"
 	@echo ""
+
+dev-web: up ## Live web dev: docker backend (mTLS) + Vite dev server on http://localhost:5173
+	@for i in $$(seq 1 30); do \
+		[ -f dev/proxies/certs/proxy-client.crt ] && exit 0; \
+		sleep 1; \
+	done; \
+	echo "$(RED)Dev certs not found under dev/proxies/certs$(NC)"; exit 1
+	@[ -d $(WEB_DIR)/node_modules ] || $(MAKE) web-install
+	@echo "$(GREEN)Web UI (hot reload) on http://localhost:5173 - API via https://localhost:50000$(NC)"
+	cd $(WEB_DIR) && VITE_BACKEND_URL=https://localhost:50000 VITE_BACKEND_TLS_DIR=../dev/proxies/certs bun run dev
 
 build: ## Build the Go binary and the dev Docker image
 	@echo "$(BLUE)Construction du binaire Go...$(NC)"
