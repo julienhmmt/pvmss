@@ -53,7 +53,6 @@ describe('navigationItems', () => {
 	it('never offers admin pages to a pool user', () => {
 		const hrefs = navigationItems(false).map((entry) => entry.href);
 		expect(hrefs).toContain('/vms');
-		expect(hrefs).toContain('/nodes');
 		expect(hrefs.some((href) => href.startsWith('/admin'))).toBe(false);
 	});
 

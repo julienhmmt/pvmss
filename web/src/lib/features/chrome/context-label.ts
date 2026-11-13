@@ -26,7 +26,6 @@ export function contextLabel(pathname: string): ContextLabel {
 	if (path === '/profile') return { section: workspace, screen: m['chrome.context.account']() };
 	if (path === '/search') return { section: workspace, screen: m['chrome.context.search']() };
 	if (path === '/about') return { section: workspace, screen: m['chrome.context.about']() };
-	if (path === '/nodes') return { section: workspace, screen: m['chrome.context.nodes']() };
 	return { section: workspace, screen: '' };
 }
 

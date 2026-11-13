@@ -19,7 +19,6 @@ describe('contextLabel', () => {
 		['/profile', 'Workspace', 'Your account'],
 		['/search', 'Workspace', 'Search'],
 		['/about', 'Workspace', 'About'],
-		['/nodes', 'Workspace', 'Nodes'],
 		['/admin', 'Administration', 'Dashboard'],
 		['/admin/nodes', 'Administration', 'Nodes'],
 		['/admin/clusters', 'Administration', 'Clusters'],
