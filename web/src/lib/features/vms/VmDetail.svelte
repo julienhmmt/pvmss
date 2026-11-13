@@ -23,7 +23,7 @@
 	import { getPowerActionsContext } from '#lib/features/tasks/power-actions.svelte.js';
 	import { getToastContext } from '#lib/shared/ui/toast.svelte.js';
 	import { page } from '$app/state';
-	import { beforeNavigate, goto } from '$app/navigation';
+	import { afterNavigate, beforeNavigate, goto, replaceState } from '$app/navigation';
 	import { resolve } from '$app/paths';
 	import Button from '#lib/shared/ui/Button.svelte';
 	import ButtonLink from '#lib/shared/ui/ButtonLink.svelte';
@@ -31,6 +31,12 @@
 	import Pill from '#lib/shared/ui/Pill.svelte';
 	import OsMark from '#lib/shared/ui/OsMark.svelte';
 	import MonitorIcon from '#lib/shared/ui/icons/MonitorIcon.svelte';
+	import GaugeIcon from '#lib/shared/ui/icons/GaugeIcon.svelte';
+	import DiscIcon from '#lib/shared/ui/icons/DiscIcon.svelte';
+	import GlobeIcon from '#lib/shared/ui/icons/GlobeIcon.svelte';
+	import CpuIcon from '#lib/shared/ui/icons/CpuIcon.svelte';
+	import HistoryIcon from '#lib/shared/ui/icons/HistoryIcon.svelte';
+	import ActivityIcon from '#lib/shared/ui/icons/ActivityIcon.svelte';
 	import ConfirmDialog from '#lib/shared/ui/ConfirmDialog.svelte';
 	import Textarea from '#lib/shared/ui/Textarea.svelte';
 	import { getSessionContext } from '#lib/features/auth/session.svelte.js';
@@ -60,20 +66,20 @@
 	const toast = getToastContext();
 
 	// Flat detail tabs (DESIGN.md §6.3): Overview answers "is it ready, and how
-	// do I connect?"; the rest are one panel each. The active tab is derived
-	// from the URL so deep links (?tab=) and back/forward navigation land on
-	// the right panel; the setter writes the query string back, omitting the
-	// default value to keep URLs clean.
+	// do I connect?"; the rest are one panel each. The active tab is local
+	// state mirrored into the URL via replaceState (shallow, no navigation):
+	// deep links (?tab=) and reloads land on the right panel, and the switch
+	// can never be swallowed by the unsaved-draft navigation guard.
 	const PANEL_TABS = ['disks', 'network', 'hardware', 'snapshots'] as const;
 	type PanelTab = (typeof PANEL_TABS)[number];
 	type MainTab = 'overview' | PanelTab | 'activity';
 	const tabs = [
-		{ id: 'overview', label: () => m['vms.detail.tabOverview']() },
-		{ id: 'disks', label: () => m['vms.detail.tabDisks']() },
-		{ id: 'network', label: () => m['vms.detail.tabNetwork']() },
-		{ id: 'hardware', label: () => m['vms.detail.tabHardware']() },
-		{ id: 'snapshots', label: () => m['vms.detail.tabSnapshots']() },
-		{ id: 'activity', label: () => m['vm.activity.tab']() }
+		{ id: 'overview', label: () => m['vms.detail.tabOverview'](), icon: GaugeIcon },
+		{ id: 'disks', label: () => m['vms.detail.tabDisks'](), icon: DiscIcon },
+		{ id: 'network', label: () => m['vms.detail.tabNetwork'](), icon: GlobeIcon },
+		{ id: 'hardware', label: () => m['vms.detail.tabHardware'](), icon: CpuIcon },
+		{ id: 'snapshots', label: () => m['vms.detail.tabSnapshots'](), icon: HistoryIcon },
+		{ id: 'activity', label: () => m['vm.activity.tab'](), icon: ActivityIcon }
 	];
 
 	function isPanelTab(id: string | null): id is PanelTab {
@@ -92,18 +98,23 @@
 		return 'overview';
 	}
 
-	const activeTab: MainTab = $derived(parseTab(page.url.searchParams));
+	let activeTab: MainTab = $state(parseTab(page.url.searchParams));
 
-	function syncTabUrl(tab: MainTab): void {
-		const url = new URL(page.url.href);
-		if (tab === 'overview') url.searchParams.delete('tab');
-		else url.searchParams.set('tab', tab);
-		url.searchParams.delete('sub');
-		void goto(`${url.pathname}${url.search}`, { replace: true, reset: false });
-	}
+	// Real navigations (deep link, back/forward) re-read the query string;
+	// replaceState writes below do not fire this, so they cannot clobber it.
+	afterNavigate(() => {
+		activeTab = parseTab(page.url.searchParams);
+	});
 
 	function selectTab(id: string): void {
-		syncTabUrl(id === 'activity' || isPanelTab(id) ? id : 'overview');
+		activeTab = id === 'activity' || isPanelTab(id) ? id : 'overview';
+		// The default tab omits ?tab= to keep URLs clean; `sub` is a legacy
+		// parameter that no longer selects anything.
+		const url = new URL(window.location.href);
+		if (activeTab === 'overview') url.searchParams.delete('tab');
+		else url.searchParams.set('tab', activeTab);
+		url.searchParams.delete('sub');
+		replaceState(`${url.pathname}${url.search}`, page.state);
 	}
 
 	const status = $derived(
@@ -243,7 +254,7 @@
 	<Alert data-testid="vm-detail-error">{store.error}</Alert>
 {:else if store.entity}
 	{@const entity = store.entity}
-	<header class="mb-6" data-testid="vm-detail-header">
+	<header class="mb-4" data-testid="vm-detail-header">
 		<ButtonLink href={backHref} variant="secondary" size="sm" class="mb-4" data-testid="page-back-link">
 			{#snippet icon()}
 				<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="h-3.5 w-3.5" aria-hidden="true">
@@ -365,7 +376,7 @@
 		{/if}
 	</header>
 
-	<div class="mb-6 grid gap-3 empty:hidden">
+	<div class="mb-4 grid gap-3 empty:hidden">
 		<VmStateBanners
 			{status}
 			{confirmingShutdown}
@@ -386,9 +397,9 @@
 		</p>
 	{/if}
 
-	<Tabs {tabs} look="underline" bind:active={() => activeTab, selectTab} />
+	<Tabs {tabs} look="folder" bind:active={() => activeTab, selectTab} />
 
-	<div id="panel-overview" role="tabpanel" aria-labelledby="tab-overview" hidden={activeTab !== 'overview'} class="mt-5">
+	<div id="panel-overview" role="tabpanel" aria-labelledby="tab-overview" hidden={activeTab !== 'overview'} class="mt-4">
 		<div class="grid content-start gap-5 lg:grid-cols-[minmax(0,1fr)_300px]">
 			<div class="grid content-start gap-5">
 				<VmConnectTab {status} onStart={() => void power('start')} />
@@ -501,25 +512,25 @@
 		</div>
 	</div>
 
-	<div id="panel-disks" role="tabpanel" aria-labelledby="tab-disks" hidden={activeTab !== 'disks'} class="mt-5">
+	<div id="panel-disks" role="tabpanel" aria-labelledby="tab-disks" hidden={activeTab !== 'disks'} class="mt-4">
 		<VmDisksTab />
 	</div>
 
-	<div id="panel-network" role="tabpanel" aria-labelledby="tab-network" hidden={activeTab !== 'network'} class="mt-5">
+	<div id="panel-network" role="tabpanel" aria-labelledby="tab-network" hidden={activeTab !== 'network'} class="mt-4">
 		<VmNetworkTab />
 	</div>
 
-	<div id="panel-hardware" role="tabpanel" aria-labelledby="tab-hardware" hidden={activeTab !== 'hardware'} class="mt-5">
+	<div id="panel-hardware" role="tabpanel" aria-labelledby="tab-hardware" hidden={activeTab !== 'hardware'} class="mt-4">
 		<VmHardwareTab />
 	</div>
 
-	<div id="panel-snapshots" role="tabpanel" aria-labelledby="tab-snapshots" hidden={activeTab !== 'snapshots'} class="mt-5">
+	<div id="panel-snapshots" role="tabpanel" aria-labelledby="tab-snapshots" hidden={activeTab !== 'snapshots'} class="mt-4">
 		{#if activeTab === 'snapshots'}
 			<VmSnapshotsTab />
 		{/if}
 	</div>
 
-	<div id="panel-activity" role="tabpanel" aria-labelledby="tab-activity" hidden={activeTab !== 'activity'} class="mt-5">
+	<div id="panel-activity" role="tabpanel" aria-labelledby="tab-activity" hidden={activeTab !== 'activity'} class="mt-4">
 		{#if activeTab === 'activity'}
 			<VmActivityTab />
 		{/if}

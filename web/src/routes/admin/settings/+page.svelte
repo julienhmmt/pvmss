@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
 	import { page } from '$app/state';
-	import { goto } from '$app/navigation';
+	import { afterNavigate, replaceState } from '$app/navigation';
 	import { setAuditLogContext } from '#lib/features/admin-audit/auditLog.svelte.js';
 	import { setAuditRetentionContext } from '#lib/features/admin-audit/auditRetention.svelte.js';
 	import { setLogLevelContext } from '#lib/features/admin-logging/logLevel.svelte.js';
@@ -38,17 +38,23 @@
 		return 'audit';
 	}
 
-	// The active tab is derived from the URL so back/forward and dashboard
-	// deep links land on the right panel; absent or unknown ?tab= → audit.
-	const activeTab: SettingsTab = $derived(parseTab(page.url.searchParams.get('tab')));
+	// The active tab is local state mirrored into the URL via replaceState
+	// (shallow, no navigation): deep links and back/forward land on the
+	// right panel; absent or unknown ?tab= falls back to audit.
+	let activeTab: SettingsTab = $state(parseTab(page.url.searchParams.get('tab')));
+
+	afterNavigate(() => {
+		activeTab = parseTab(page.url.searchParams.get('tab'));
+	});
 
 	function selectTab(id: string): void {
 		const tab: SettingsTab = parseTab(id);
 		if (tab === activeTab) return;
-		const url = new URL(page.url.href);
+		activeTab = tab;
+		const url = new URL(window.location.href);
 		if (tab === 'audit') url.searchParams.delete('tab');
 		else url.searchParams.set('tab', tab);
-		void goto(`${url.pathname}${url.search}`, { replace: true, reset: false });
+		replaceState(`${url.pathname}${url.search}`, page.state);
 	}
 
 	const auditStore = setAuditLogContext();
@@ -71,7 +77,7 @@
 
 <PageHeader title={m['admin.settings.heading']()} eyebrow={m['chrome.adminNav.system']()} />
 
-<Tabs tabs={SETTINGS_TABS} look="underline" class="mb-6" bind:active={() => activeTab, selectTab} />
+<Tabs tabs={SETTINGS_TABS} look="folder" class="mb-4" bind:active={() => activeTab, selectTab} />
 
 {#if activeTab === 'audit'}
 	<div id="panel-audit" role="tabpanel" aria-labelledby="tab-audit">

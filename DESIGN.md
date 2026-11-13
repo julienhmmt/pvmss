@@ -853,7 +853,8 @@ errors and the sr-only status line render once, below the header.
   Connection options will appear once it is running." / "Waiting for a graceful
   shutdown. Your files will be kept."
 
-**Tabs** (underline-style, accent on active; flat - one panel per tab, deep
+**Tabs** (folder-style: card-surface tabs on a rail, the active tab opens
+onto the panel with an accent top edge; flat - one panel per tab, deep
 links via `?tab=`, the default Overview omits it; legacy
 `?tab=configuration&sub=X` and `?tab=connect` URLs still land on the right
 panel):
