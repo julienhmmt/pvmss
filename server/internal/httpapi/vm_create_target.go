@@ -55,13 +55,6 @@ func (h *VMCreate) resolveCreateTarget(w http.ResponseWriter, requestedCluster s
 		return createTarget{}, false
 	}
 
-	if !ok {
-		SetError(w, errors.New("cluster client does not implement CloudInitPusher"))
-		h.writeCreateError(w, http.StatusInternalServerError, "internal_error", msgInternalServerError)
-
-		return createTarget{}, false
-	}
-
 	writer, ok := client.(vm.HardwareUpdater)
 	if !ok {
 		SetError(w, errors.New("cluster client does not implement HardwareUpdater"))
@@ -70,13 +63,8 @@ func (h *VMCreate) resolveCreateTarget(w http.ResponseWriter, requestedCluster s
 		return createTarget{}, false
 	}
 
-	freeSpace, ok := client.(vm.FreeSpaceChecker)
-	if !ok {
-		SetError(w, errors.New("cluster client does not implement FreeSpaceChecker"))
-		h.writeCreateError(w, http.StatusInternalServerError, "internal_error", msgInternalServerError)
-
-		return createTarget{}, false
-	}
+	// cluster.Client always carries StorageFreeSpace.
+	freeSpace := vm.FreeSpaceChecker(client)
 
 	return createTarget{clusterName: clusterName, creator: creator, writer: writer, freeSpace: freeSpace}, true
 }
