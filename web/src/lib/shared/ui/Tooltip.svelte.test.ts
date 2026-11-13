@@ -49,11 +49,20 @@ describe('Tooltip', () => {
 		mountTooltip({ text: 'Hint' });
 
 		await tick();
-		trigger().dispatchEvent(new FocusEvent('focus'));
+		trigger().dispatchEvent(new FocusEvent('focusin', { bubbles: true }));
 		await vi.advanceTimersByTimeAsync(250);
 		await tick();
 
 		expect(tooltip()).not.toBeNull();
+	});
+
+	it('interactive mode leaves tabbability to the child', () => {
+		mounted = mount(Tooltip as unknown as Component, {
+			target: document.body,
+			props: { text: 'Hint', interactive: true }
+		});
+
+		expect(trigger().tabIndex).toBe(-1);
 	});
 
 	it('describes the trigger with the bubble while open', async () => {

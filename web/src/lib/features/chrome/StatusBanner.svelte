@@ -46,9 +46,9 @@
 		aria-live="polite"
 		class="border-b px-4 py-2 text-center text-sm {SEVERITY_STYLES[severity]}"
 	>
-		<span class="inline-flex items-center gap-2">
+		<span class="inline-flex flex-wrap items-center justify-center gap-x-2">
 			{message()}
-			{#if status.clusterDownCounts && !status.ownClusterDown}
+			{#if severity === 'degraded' && status.clusterDownCounts && !status.ownClusterDown}
 				<span class="font-medium">
 					{m['banner.degraded.clustersDetail'](status.clusterDownCounts)}
 				</span>

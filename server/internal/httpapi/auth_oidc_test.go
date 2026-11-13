@@ -264,3 +264,37 @@ func TestOIDC_IdPCancelIsNotAFailedLogin(t *testing.T) {
 		t.Fatalf("after cancels: %q", callback.Header().Get("Location"))
 	}
 }
+
+func TestOIDC_StartClusterUnavailable(t *testing.T) {
+	t.Parallel()
+
+	handler := newOIDCHandler(t, "zitadel")
+	handler.SetClusterFreshnessChecker(fakeFreshnessChecker{clusters: []httpapi.ClusterFreshness{{Name: auditTestCluster, RefreshedAt: time.Now().Add(-time.Hour)}}}, time.Minute)
+
+	response := oidcStart(handler, "cluster="+auditTestCluster)
+	if response.Code != http.StatusFound || response.Header().Get("Location") != "/login?oidc=error&reason=cluster_unavailable" {
+		t.Fatalf("got %d -> %q, want cluster_unavailable redirect", response.Code, response.Header().Get("Location"))
+	}
+}
+
+func TestOIDC_StartBehindTrustedProxy(t *testing.T) {
+	t.Parallel()
+
+	handler := newOIDCHandler(t, "zitadel")
+	handler.SetTrustedProxyHops(1)
+
+	request := httptest.NewRequestWithContext(context.Background(), http.MethodGet, "https://pvmss.example"+oidcStartPath+"?cluster="+auditTestCluster, nil)
+	request.Header.Set("X-Forwarded-Proto", "https")
+	request.Header.Set("X-Forwarded-Host", "portal.example.com")
+
+	response := httptest.NewRecorder()
+	handler.OIDCStart(response, request)
+
+	if response.Code != http.StatusFound {
+		t.Fatalf("status = %d, want redirect to IdP", response.Code)
+	}
+
+	if loc := response.Header().Get("Location"); !strings.Contains(loc, "portal.example.com") {
+		t.Fatalf("redirect = %q, want the forwarded host in the callback URL", loc)
+	}
+}

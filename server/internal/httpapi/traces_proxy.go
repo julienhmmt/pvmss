@@ -22,6 +22,10 @@ const (
 	// tracesUpstreamDrain bounds how much of a refused upstream response is
 	// read so the keepalive connection can be reused.
 	tracesUpstreamDrain = 1 << 10
+
+	// tracesExportFailedMsg is the client-facing message for every upstream
+	// failure mode (bad forward request, unreachable collector, refusal).
+	tracesExportFailedMsg = "trace export failed"
 )
 
 // TracesProxy forwards browser OTLP/HTTP trace exports (POST /api/v1/traces)
@@ -61,7 +65,7 @@ func (h *TracesProxy) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	up, err := http.NewRequestWithContext(r.Context(), http.MethodPost, h.endpoint, bytes.NewReader(body))
 	if err != nil {
 		SetErrorMsg(w, "build trace export forward request", err)
-		writeAuthError(w, http.StatusBadGateway, "upstream_error", "trace export failed")
+		writeAuthError(w, http.StatusBadGateway, "upstream_error", tracesExportFailedMsg)
 
 		return
 	}
@@ -76,7 +80,7 @@ func (h *TracesProxy) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	resp, err := h.client.Do(up)
 	if err != nil {
 		SetErrorMsg(w, "forward trace export", err)
-		writeAuthError(w, http.StatusBadGateway, "upstream_error", "trace export failed")
+		writeAuthError(w, http.StatusBadGateway, "upstream_error", tracesExportFailedMsg)
 
 		return
 	}
@@ -87,7 +91,7 @@ func (h *TracesProxy) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 	if resp.StatusCode >= http.StatusMultipleChoices {
 		SetErrorMsg(w, "collector refused trace export", fmt.Errorf("upstream status %d", resp.StatusCode))
-		writeAuthError(w, http.StatusBadGateway, "upstream_error", "trace export failed")
+		writeAuthError(w, http.StatusBadGateway, "upstream_error", tracesExportFailedMsg)
 
 		return
 	}

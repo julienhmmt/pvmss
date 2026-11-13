@@ -56,8 +56,8 @@
 	};
 
 	const sizes: Record<Size, string> = {
-		sm: 'gap-1.5 px-2.5 py-0.5 text-xs',
-		md: 'gap-2 px-3 py-1 text-sm'
+		sm: 'h-8 gap-1.5 px-2.5 text-xs',
+		md: 'h-10 gap-2 px-3 text-sm'
 	};
 </script>
 

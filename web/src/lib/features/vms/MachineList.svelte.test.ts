@@ -94,18 +94,33 @@ describe('MachineList sorting and selection', () => {
 		document.body.innerHTML = '';
 	});
 
-	it('sorts by CPU from the resources column header', async () => {
+	it('sorts by CPU from the toolbar sort select', async () => {
 		const store = makeStore('', makeResult(1));
 		const setSort = vi.spyOn(store, 'setSort').mockImplementation(() => {});
 		vi.mocked(getVmListContext).mockReturnValue(store);
 		mount(MachineList, { target: document.body });
 
-		const cpuSort = document.querySelector('[data-testid="vm-sort-cpu"]');
-		expect(cpuSort).not.toBeNull();
-		cpuSort?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+		const sortField = document.querySelector<HTMLSelectElement>('[data-testid="vm-sort-field"]');
+		expect(sortField).not.toBeNull();
+		sortField!.value = 'cpu';
+		sortField!.dispatchEvent(new Event('change', { bubbles: true }));
 		await tick();
 
 		expect(setSort).toHaveBeenCalledWith('cpu');
+	});
+
+	it('toggles direction by re-selecting the active sort key', async () => {
+		const store = makeStore('', makeResult(1));
+		const setSort = vi.spyOn(store, 'setSort').mockImplementation(() => {});
+		vi.mocked(getVmListContext).mockReturnValue(store);
+		mount(MachineList, { target: document.body });
+
+		const sortDir = document.querySelector('[data-testid="vm-sort-dir"]');
+		expect(sortDir).not.toBeNull();
+		sortDir?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+		await tick();
+
+		expect(setSort).toHaveBeenCalledWith('name');
 	});
 
 	it('offers select-all-matching when the result spans pages, and selects them all', async () => {

@@ -22,6 +22,7 @@
 	import Skeleton from '#lib/shared/ui/Skeleton.svelte';
 	import { m } from '#lib/paraglide/messages.js';
 	import { formatDateTime } from '#lib/shared/format-date.js';
+	import { buildUserActivityCsv, downloadCsv, userActivityCsvFilename } from '#lib/features/vms/activity-csv.js';
 
 	const tray = getTaskTrayContext();
 	const powerActions = getPowerActionsContext();
@@ -97,6 +98,16 @@
 	>
 		{#snippet actions()}
 			<span class="text-xs text-muted-foreground">{m['activity.window']()}</span>
+			{#if store.entries && store.entries.length > 0}
+				<Button
+					variant="secondary"
+					size="sm"
+					onclick={() => downloadCsv(buildUserActivityCsv(store.entries ?? [], activityMessage), userActivityCsvFilename())}
+					data-testid="activity-export"
+				>
+					{m['vm.activity.export']()}
+				</Button>
+			{/if}
 		{/snippet}
 	</PageHeader>
 

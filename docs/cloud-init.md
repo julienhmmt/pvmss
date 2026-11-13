@@ -22,7 +22,7 @@ Deleted end to end:
 
 Kept on purpose:
 
-- `GET /api/v1/vms/{cluster}/{vmid}/cloudinit` - the VM's General information
+- `GET /api/v1/vms/{cluster}/{vmid}/cloudinit` - the VM's Overview
   tab reads the SSH user from the live cloud-init config.
 - `GetCloudInitConfig`, the domain read behind that route.
 - The `cloudinit` package's slug helper.

@@ -28,9 +28,11 @@
 		testId?: string;
 		/** Custom trigger content; defaults to the ellipsis icon. */
 		trigger?: Snippet;
+		/** `md` matches the default Button height (detail headers). */
+		size?: 'sm' | 'md';
 	}
 
-	let { label, items, testId, trigger }: Props = $props();
+	let { label, items, testId, trigger, size = 'sm' }: Props = $props();
 
 	const TRIGGER_GAP = 4;
 	const VIEWPORT_MARGIN = 8;
@@ -124,7 +126,7 @@
 	data-testid={testId}
 	onclick={() => (open ? close() : void openMenu())}
 	onkeydown={handleTriggerKeydown}
-	class="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-[var(--radius-control)] border border-muted-foreground-subtle/50 bg-card text-foreground transition-colors pv-focus hover:border-muted-foreground-subtle hover:bg-muted"
+	class="inline-flex {size === 'md' ? 'h-10 w-10' : 'h-8 w-8'} shrink-0 items-center justify-center rounded-[var(--radius-control)] border border-muted-foreground-subtle/50 bg-card text-foreground transition-colors pv-focus hover:border-muted-foreground-subtle hover:bg-muted"
 >
 	{#if trigger}
 		{@render trigger()}
@@ -151,7 +153,7 @@
 				disabled={item.disabled ?? false}
 				onclick={() => select(item)}
 				data-testid={item.testId}
-				class="flex w-full cursor-pointer items-center gap-2 rounded-[var(--radius-control)] px-2 py-1.5 text-left text-sm outline-none select-none hover:bg-muted focus:bg-muted disabled:pointer-events-none disabled:opacity-50 {item.destructive
+				class="flex w-full cursor-pointer items-center gap-2 rounded-[var(--radius-control)] px-2 py-1.5 text-left text-sm outline-none select-none hover:bg-muted focus-visible:bg-muted disabled:pointer-events-none disabled:opacity-50 {item.destructive
 					? 'text-destructive'
 					: 'text-foreground'}"
 			>

@@ -159,7 +159,6 @@
 						countAccent: true,
 						countLabel: (count) => m['chrome.sidebar.activityCount']({ count })
 					},
-					{ href: resolve('/nodes'), label: () => m['chrome.sidebar.navNodes'](), icon: 'infrastructure', prefix: true },
 					{ href: resolve('/docs'), label: () => m['chrome.sidebar.navHelp'](), icon: 'help', prefix: true }
 				]
 	);

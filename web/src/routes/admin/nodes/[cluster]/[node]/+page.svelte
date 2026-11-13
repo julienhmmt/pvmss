@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { page } from '$app/state';
 	import { onDestroy, onMount } from 'svelte';
+	import { afterNavigate, pushState } from '$app/navigation';
 	import { resolve } from '$app/paths';
 	import { get } from '#lib/shared/api/client.js';
 	import { formatBytes, usagePercent } from '#lib/shared/format-bytes.js';
@@ -10,11 +11,20 @@
 	import PageHeader from '#lib/shared/ui/PageHeader.svelte';
 	import Pill from '#lib/shared/ui/Pill.svelte';
 	import Skeleton from '#lib/shared/ui/Skeleton.svelte';
+	import Tabs from '#lib/shared/ui/Tabs.svelte';
 	import MigrateDialog from '#lib/features/admin-migration/MigrateDialog.svelte';
 	import { getTaskTrayContext } from '#lib/features/tasks/tasks.svelte.js';
 	import { machineStatusView, type MachineStatusTone } from '#lib/features/vms/display-status.js';
 	import { usageTone } from '#lib/features/admin-dashboard/dashboard-alerts.js';
+	import {
+		createHealthPoll,
+		nodeTabParam,
+		parseNodeTab,
+		workloadStatusCounts,
+		type NodeTab
+	} from '#lib/features/admin-nodes/node-details.js';
 	import { m } from '#lib/paraglide/messages.js';
+	import { onVisibleRefresh, STALE_REFRESH_MS } from '#lib/shared/visibility-refresh.js';
 	import { formatDateTime } from '#lib/shared/format-date.js';
 	import Pagination from '#lib/shared/ui/Pagination.svelte';
 	import { createPagination } from '#lib/shared/ui/list-pager.svelte.js';
@@ -30,12 +40,12 @@
 	let error = $state<string | null>(null);
 	let requestedRoute: string = '';
 	let requestId: number = 0;
+	let lastLoadedAt: number = 0;
 
-	const ifacePager = createPagination('node-interfaces', () => detail?.network.interfaces ?? []);
-	const pciPager = createPagination('node-pci', () => detail?.pci.devices ?? []);
+	const ifacePager = createPagination('node-interfaces', () => netInterfaces);
 	const vmsPager = createPagination('node-vms', () => detail?.inventory.vms ?? []);
-	const lxcPager = createPagination('node-lxc', () => detail?.containers.containers ?? []);
 	const storagePager = createPagination('node-storages', () => detail?.inventory.storages ?? []);
+	const pciPager = createPagination('node-pci', () => pciDevices);
 
 	interface NodeHealth {
 		status: string;
@@ -90,18 +100,6 @@
 		mediatedDevice: boolean;
 	}
 
-	interface LXCContainer {
-		vmid: number;
-		name: string;
-		status: string;
-		cpuCount: number;
-		cpuUsage: number;
-		memoryTotalBytes: number;
-		memoryUsedBytes: number;
-		diskTotalBytes: number;
-		diskUsedBytes: number;
-	}
-
 	interface NodeVM {
 		vmid: number;
 		name: string;
@@ -123,19 +121,76 @@
 		clusterKey: string;
 		cluster: string;
 		name: string;
-		health: NodeHealth;
-		network: { available: boolean; interfaces: NodeNetworkInterface[] };
-		pci: { available: boolean; devices: PCIDevice[] };
-		containers: { available: boolean; containers: LXCContainer[] };
+		status: string;
 		inventory: { refreshedAt: string; vms: NodeVM[]; storages: NodeStorage[] };
 	}
 
+	type SectionState = 'idle' | 'loading' | 'loaded' | 'unavailable';
+
+	// The active tab is local state pushed into the URL so ?tab= deep links,
+	// reloads and browser back/forward all land on the right panel.
+	let activeTab: NodeTab = $state(parseNodeTab(page.url.searchParams.get('tab')));
+	// The cached payload paints first; live sections stream in behind it.
+	let health = $state<NodeHealth | null>(null);
+	let healthError = $state<boolean>(false);
+	let healthRequestId: number = 0;
+	let pciOpen = $state<boolean>(false);
+	let pciState = $state<SectionState>('idle');
+	let pciDevices = $state<PCIDevice[]>([]);
+	let netState = $state<SectionState>('idle');
+	let netInterfaces = $state<NodeNetworkInterface[]>([]);
 	let migrating = $state<NodeVM | null>(null);
+
+	const tabs = $derived([
+		{ id: 'health', label: () => m['admin.nodeDetails.tabHealth']() },
+		{
+			id: 'workloads',
+			label: () => m['admin.nodeDetails.workloadsTitle'](),
+			...(detail ? { count: detail.inventory.vms.length } : {})
+		},
+		{ id: 'hardware', label: () => m['admin.nodeDetails.tabHardware']() }
+	]);
+
+	const workloadSummary: string = $derived.by(() => {
+		const vms: NodeVM[] = detail?.inventory.vms ?? [];
+		if (vms.length === 0) return m['admin.nodeDetails.vmsEmpty']();
+		const parts: string[] = workloadStatusCounts(vms.map((vm) => vm.status)).map(
+			([status, count]) => `${count} ${guestStatusLabel(status).toLowerCase()}`
+		);
+		return `${m['admin.nodeDetails.workloadVms']({ count: vms.length })} · ${parts.join(' · ')}`;
+	});
+
+	afterNavigate(() => {
+		activeTab = parseNodeTab(page.url.searchParams.get('tab'));
+	});
+
+	function selectTab(id: string): void {
+		activeTab = parseNodeTab(id);
+		const url: URL = new URL(page.url.href);
+		const param: string | null = nodeTabParam(activeTab);
+		if (param === null) url.searchParams.delete('tab');
+		else url.searchParams.set('tab', param);
+		pushState(`${url.pathname}${url.search}`, page.state);
+	}
+
+	const healthPoll = createHealthPoll(() => void loadHealth());
+	$effect(() => {
+		if (activeTab === 'health') healthPoll.start();
+		else healthPoll.stop();
+	});
+	$effect(() => {
+		if (activeTab === 'hardware' && netState === 'idle') void loadNetwork();
+	});
+	onDestroy(() => healthPoll.stop());
+
 	const stopListening = getTaskTrayContext().onTaskOk(() => void loadNode(clusterKey, nodeName));
 	onDestroy(stopListening);
 
 	onMount(() => {
 		void loadNode(clusterKey, nodeName);
+		return onVisibleRefresh(() => {
+			if (Date.now() - lastLoadedAt > STALE_REFRESH_MS) void loadNode(clusterKey, nodeName);
+		});
 	});
 
 	async function loadNode(cluster: string, node: string): Promise<void> {
@@ -143,14 +198,24 @@
 		const currentRoute: string = `${cluster}/${node}`;
 		if (currentRoute !== requestedRoute) {
 			detail = null;
+			health = null;
+			healthError = false;
+			netState = 'idle';
+			netInterfaces = [];
+			pciState = 'idle';
+			pciDevices = [];
 			requestedRoute = currentRoute;
 		}
+		void loadHealth();
 		loading = true;
 		error = null;
 		try {
 			const path: string = `/api/v1/admin/nodes/${encodeURIComponent(cluster)}/${encodeURIComponent(node)}`;
 			const response: NodeDetails = await get<NodeDetails>(path);
-			if (currentRequest === requestId) detail = response;
+			if (currentRequest === requestId) {
+				detail = response;
+				lastLoadedAt = Date.now();
+			}
 		} catch {
 			if (currentRequest === requestId) error = m['admin.nodeDetails.loadError']();
 		} finally {
@@ -158,8 +223,54 @@
 		}
 	}
 
+	async function loadHealth(): Promise<void> {
+		const currentRequest: number = ++healthRequestId;
+		const cluster: string = clusterKey;
+		const node: string = nodeName;
+		try {
+			const path: string = `/api/v1/admin/nodes/${encodeURIComponent(cluster)}/${encodeURIComponent(node)}/health`;
+			const response: NodeHealth = await get<NodeHealth>(path);
+			if (currentRequest === healthRequestId && `${cluster}/${node}` === requestedRoute) {
+				health = response;
+				healthError = false;
+			}
+		} catch {
+			if (currentRequest === healthRequestId) healthError = true;
+		}
+	}
+
+	async function loadNetwork(): Promise<void> {
+		netState = 'loading';
+		try {
+			const path: string = `/api/v1/admin/nodes/${encodeURIComponent(clusterKey)}/${encodeURIComponent(nodeName)}/network`;
+			const response: { available: boolean; interfaces: NodeNetworkInterface[] } = await get(path);
+			netInterfaces = response.interfaces ?? [];
+			netState = response.available ? 'loaded' : 'unavailable';
+		} catch {
+			netState = 'unavailable';
+		}
+	}
+
 	function refreshNode(): void {
 		void loadNode(clusterKey, nodeName);
+		if (netState === 'loaded' || netState === 'unavailable') void loadNetwork();
+		if (pciOpen && (pciState === 'loaded' || pciState === 'unavailable')) void loadPci();
+	}
+
+	async function loadPci(): Promise<void> {
+		pciState = 'loading';
+		try {
+			const path: string = `/api/v1/admin/nodes/${encodeURIComponent(clusterKey)}/${encodeURIComponent(nodeName)}/pci`;
+			const response: { available: boolean; devices: PCIDevice[] } = await get(path);
+			pciDevices = response.devices ?? [];
+			pciState = response.available ? 'loaded' : 'unavailable';
+		} catch {
+			pciState = 'unavailable';
+		}
+	}
+
+	function onPciToggle(): void {
+		if (pciOpen && pciState === 'idle') void loadPci();
 	}
 
 	function nodeStatusLabel(status: string): string {
@@ -189,7 +300,7 @@
 		return { href: resolve('/admin/nodes'), label: m['admin.nodes.heading']() };
 	});
 
-	function uptimeLabel(seconds: number): string {
+	function formatUptime(seconds: number): string {
 		const days: number = Math.floor(seconds / (SECONDS_PER_MINUTE * MINUTES_PER_HOUR * HOURS_PER_DAY));
 		const hours: number = Math.floor((seconds / (SECONDS_PER_MINUTE * MINUTES_PER_HOUR)) % HOURS_PER_DAY);
 		const minutes: number = Math.floor((seconds / SECONDS_PER_MINUTE) % MINUTES_PER_HOUR);
@@ -232,10 +343,11 @@
 >
 	{#snippet titleMeta()}
 		{#if detail}
+			{@const status = health?.status ?? detail.status}
 			<Pill
 				size="md"
-				tone={detail.health.status === 'online' ? 'ok' : detail.health.status === 'offline' ? 'error' : 'off'}
-				label={nodeStatusLabel(detail.health.status)}
+				tone={status === 'online' ? 'ok' : status === 'offline' ? 'error' : 'off'}
+				label={nodeStatusLabel(status)}
 			/>
 		{/if}
 	{/snippet}
@@ -266,128 +378,170 @@
 		<Alert>{error}</Alert>
 	{/if}
 {:else}
-	{@const health = detail.health}
-	<div class="space-y-6" data-testid="admin-node-details">
-		{#if health.stale}
-			<Alert tone="warning" role="status" data-testid="node-health-stale">{m['admin.nodeDetails.healthStale']()}</Alert>
+	{@const vms = detail.inventory.vms}
+	<div data-testid="admin-node-details">
+		{#if health?.stale}
+			<Alert tone="warning" role="status" class="mb-4" data-testid="node-health-stale">{m['admin.nodeDetails.healthStale']()}</Alert>
 		{/if}
 
-		<Card pad="none" title={m['admin.nodeDetails.healthTitle']()} titleId="node-health-section">
-			<div class="grid gap-5 p-5 lg:grid-cols-2">
-				<div class="space-y-5">
-					{@render usageMeter(m['admin.nodeDetails.cpu'](), `${Math.round(health.cpuUsage * 100)}%`, Math.min(100, Math.round(health.cpuUsage * 100)))}
-					{@render usageMeter(m['admin.nodeDetails.memory'](), `${formatBytes(health.memoryUsedBytes)} / ${formatBytes(health.memoryTotalBytes)}`, usagePercent(health.memoryUsedBytes, health.memoryTotalBytes))}
-					{@render usageMeter(m['admin.nodeDetails.swap'](), `${formatBytes(health.swapUsedBytes)} / ${formatBytes(health.swapTotalBytes)}`, usagePercent(health.swapUsedBytes, health.swapTotalBytes))}
-					{@render usageMeter(m['admin.nodeDetails.rootfs'](), `${formatBytes(health.rootfsUsedBytes)} / ${formatBytes(health.rootfsTotalBytes)}`, usagePercent(health.rootfsUsedBytes, health.rootfsTotalBytes))}
-				</div>
-				<dl class="grid grid-cols-2 content-start gap-x-5 gap-y-4 text-sm">
-					<div><dt class="text-xs text-muted-foreground">{m['admin.nodeDetails.cpuModel']()}</dt><dd class="mt-1 break-words">{health.cpuModel || m['admin.nodeDetails.notReported']()}</dd></div>
-					<div><dt class="text-xs text-muted-foreground">{m['admin.nodeDetails.cores']()}</dt><dd class="mt-1 font-mono tabular-nums">{health.cpuCores}</dd></div>
-					<div><dt class="text-xs text-muted-foreground">{m['admin.nodeDetails.threads']()}</dt><dd class="mt-1 font-mono tabular-nums">{health.cpuTotalThreads}</dd></div>
-					<div><dt class="text-xs text-muted-foreground">{m['admin.nodeDetails.sockets']()}</dt><dd class="mt-1 font-mono tabular-nums">{health.cpuSockets}</dd></div>
-					<div><dt class="text-xs text-muted-foreground">{m['admin.nodeDetails.loadAverage']()}</dt><dd class="mt-1 font-mono tabular-nums">{health.loadAverage.join(' / ') || m['admin.nodeDetails.notReported']()}</dd></div>
-					<div><dt class="text-xs text-muted-foreground">{m['admin.nodeDetails.uptimeLabel']()}</dt><dd class="mt-1 font-mono tabular-nums">{uptimeLabel(health.uptimeSeconds)}</dd></div>
-					<div><dt class="text-xs text-muted-foreground">{m['admin.nodeDetails.proxmoxVersion']()}</dt><dd class="mt-1 font-mono">{health.proxmoxVersion || m['admin.nodeDetails.notReported']()}</dd></div>
-					<div><dt class="text-xs text-muted-foreground">{m['admin.nodeDetails.kernel']()}</dt><dd class="mt-1 break-words font-mono">{health.kernelVersion || m['admin.nodeDetails.notReported']()}</dd></div>
-				</dl>
-			</div>
-		</Card>
+		<Tabs {tabs} look="folder" bind:active={() => activeTab, selectTab} />
 
-		<Card pad="none" title={m['admin.nodeDetails.networkTitle']()} titleId="node-network-section">
-			{#if !detail.network.available}
-				<p role="status" class="px-5 py-4 text-sm text-muted-foreground">{m['admin.nodeDetails.sectionUnavailable']()}</p>
-			{:else if detail.network.interfaces.length === 0}
-				<p class="px-5 py-4 text-sm text-muted-foreground">{m['admin.nodeDetails.networkEmpty']()}</p>
-			{:else}
-				<div class="overflow-x-auto">
-					<table class="pv-table pv-responsive-table">
-						<caption class="sr-only">{m['admin.nodeDetails.networkTitle']()}</caption>
-						<thead><tr>
-							<th class="font-medium">{m['admin.nodeDetails.interface']()}</th><th class="font-medium">{m['admin.nodeDetails.type']()}</th><th class="font-medium">{m['admin.nodeDetails.state']()}</th><th class="font-medium">{m['admin.nodeDetails.address']()}</th><th class="font-medium">{m['admin.nodeDetails.gateway']()}</th><th class="font-medium">{m['admin.nodeDetails.topology']()}</th><th class="font-medium">{m['admin.nodeDetails.vlan']()}</th><th class="text-right font-medium">{m['admin.nodeDetails.mtu']()}</th>
-						</tr></thead>
-						<tbody>
-							{#each ifacePager.rows as iface (iface.name)}
-								<tr>
-									<td class="font-mono font-medium" data-label={m['admin.nodeDetails.interface']()}>{iface.name}</td><td data-label={m['admin.nodeDetails.type']()}>{iface.type}</td><td data-label={m['admin.nodeDetails.state']()}><Pill tone={iface.active ? 'ok' : 'off'} label={iface.active ? m['admin.nodeDetails.active']() : m['admin.nodeDetails.inactive']()} /></td><td class="font-mono text-xs" data-label={m['admin.nodeDetails.address']()}>{interfaceAddresses(iface)}</td><td class="font-mono text-xs" data-label={m['admin.nodeDetails.gateway']()}>{interfaceGateways(iface)}</td><td class="max-w-64 text-xs text-muted-foreground" data-label={m['admin.nodeDetails.topology']()}>{interfaceLinks(iface)}</td><td class="font-mono tabular-nums" data-label={m['admin.nodeDetails.vlan']()}>{#if iface.vlanId > 0}{iface.vlanId}{:else if iface.bridgeVlanAware}{m['admin.nodeDetails.vlanAware']()}{:else}{m['admin.nodeDetails.notReported']()}{/if}</td><td class="text-right font-mono tabular-nums" data-label={m['admin.nodeDetails.mtu']()}>{iface.mtu || m['admin.nodeDetails.notReported']()}</td>
-								</tr>
-							{/each}
-						</tbody>
-					</table>
-				</div>
-				<Pagination pager={ifacePager} />
-			{/if}
-		</Card>
+		<div id="panel-health" role="tabpanel" aria-labelledby="tab-health" hidden={activeTab !== 'health'} class="pv-tabpanel">
+			<div class="space-y-6">
+				<Card pad="none" title={m['admin.nodeDetails.healthTitle']()} titleId="node-health-section">
+					<div class="space-y-5 p-5">
+						{#if healthError}
+							<p role="status" class="text-sm text-muted-foreground">{m['admin.nodeDetails.sectionUnavailable']()}</p>
+						{:else if health === null}
+							<div class="space-y-3" data-testid="node-health-loading"><Skeleton class="h-4 w-full" /><Skeleton class="h-4 w-2/3" /><Skeleton class="h-4 w-1/2" /></div>
+						{:else}
+						<dl class="flex flex-wrap gap-x-6 gap-y-1.5 text-xs">
+							<div class="flex items-baseline gap-1.5">
+								<dt class="text-muted-foreground">{m['admin.nodeDetails.uptimeLabel']()}</dt>
+								<dd class="font-mono tabular-nums">{formatUptime(health.uptimeSeconds)}</dd>
+							</div>
+							<div class="flex items-baseline gap-1.5">
+								<dt class="text-muted-foreground">{m['admin.nodeDetails.loadAverage']()}</dt>
+								<dd class="font-mono tabular-nums">{health.loadAverage.join(' / ') || m['admin.nodeDetails.notReported']()}</dd>
+							</div>
+							<div class="flex items-baseline gap-1.5">
+								<dt class="text-muted-foreground">{m['admin.nodeDetails.kernel']()}</dt>
+								<dd class="break-words font-mono">{health.kernelVersion || m['admin.nodeDetails.notReported']()}</dd>
+							</div>
+							<div class="flex items-baseline gap-1.5">
+								<dt class="text-muted-foreground">{m['admin.nodeDetails.proxmoxVersion']()}</dt>
+								<dd class="font-mono">{health.proxmoxVersion || m['admin.nodeDetails.notReported']()}</dd>
+							</div>
+						</dl>
+						<div class="grid gap-5 sm:grid-cols-2">
+							{@render usageMeter(m['admin.nodeDetails.cpu'](), `${Math.round(health.cpuUsage * 100)}%`, Math.min(100, Math.round(health.cpuUsage * 100)))}
+							{@render usageMeter(m['admin.nodeDetails.memory'](), `${formatBytes(health.memoryUsedBytes)} / ${formatBytes(health.memoryTotalBytes)}`, usagePercent(health.memoryUsedBytes, health.memoryTotalBytes))}
+							{@render usageMeter(m['admin.nodeDetails.swap'](), `${formatBytes(health.swapUsedBytes)} / ${formatBytes(health.swapTotalBytes)}`, usagePercent(health.swapUsedBytes, health.swapTotalBytes))}
+							{@render usageMeter(m['admin.nodeDetails.rootfs'](), `${formatBytes(health.rootfsUsedBytes)} / ${formatBytes(health.rootfsTotalBytes)}`, usagePercent(health.rootfsUsedBytes, health.rootfsTotalBytes))}
+						</div>
+						{/if}
+						<div class="flex flex-wrap items-center justify-between gap-2 border-t border-border pt-4">
+							<p class="text-sm text-muted-foreground" data-testid="node-workload-summary">{workloadSummary}</p>
+							{#if vms.length > 0}
+								<Button variant="secondary" size="sm" onclick={() => selectTab('workloads')} data-testid="node-view-workloads">
+									{m['admin.nodeDetails.viewWorkloads']()}
+								</Button>
+							{/if}
+						</div>
+					</div>
+				</Card>
 
-		<Card pad="none" title={m['admin.nodeDetails.pciTitle']()} titleId="node-pci-section">
-			{#if !detail.pci.available}
-				<p role="status" class="px-5 py-4 text-sm text-muted-foreground">{m['admin.nodeDetails.sectionUnavailable']()}</p>
-			{:else if detail.pci.devices.length === 0}
-				<p class="px-5 py-4 text-sm text-muted-foreground">{m['admin.nodeDetails.pciEmpty']()}</p>
-			{:else}
-				<div class="overflow-x-auto">
-					<table class="pv-table pv-responsive-table">
-						<caption class="sr-only">{m['admin.nodeDetails.pciTitle']()}</caption>
-						<thead><tr>
-							<th class="font-medium">{m['admin.nodeDetails.pciId']()}</th><th class="font-medium">{m['admin.nodeDetails.device']()}</th><th class="font-medium">{m['admin.nodeDetails.vendor']()}</th><th class="font-medium">{m['admin.nodeDetails.class']()}</th><th class="font-medium">{m['admin.nodeDetails.iommuGroup']()}</th><th class="font-medium">{m['admin.nodeDetails.mediatedDevice']()}</th>
-						</tr></thead>
-						<tbody>
-							{#each pciPager.rows as device (device.id)}
-								<tr><td class="font-mono text-xs" data-label={m['admin.nodeDetails.pciId']()}>{device.id}</td><td data-label={m['admin.nodeDetails.device']()}>{device.deviceName || device.deviceId}</td><td data-label={m['admin.nodeDetails.vendor']()}>{device.vendorName || device.vendorId}</td><td class="font-mono text-xs" data-label={m['admin.nodeDetails.class']()}>{device.class}</td><td class="font-mono tabular-nums" data-label={m['admin.nodeDetails.iommuGroup']()}>{device.iommuGroup}</td><td data-label={m['admin.nodeDetails.mediatedDevice']()}>{device.mediatedDevice ? m['admin.nodeDetails.yes']() : m['admin.nodeDetails.no']()}</td></tr>
-							{/each}
-						</tbody>
-					</table>
-				</div>
-				<Pagination pager={pciPager} />
-			{/if}
-		</Card>
-
-		<Card pad="none" title={m['admin.nodeDetails.workloadsTitle']()} titleId="node-workloads-section">
-			<div class="space-y-6 p-5">
-				<section aria-labelledby="node-vms-heading">
-					<h3 id="node-vms-heading" class="mb-3 text-sm font-semibold">{m['admin.nodeDetails.vmsTitle']()}</h3>
-					{#if detail.inventory.vms.length === 0}
-						<p class="text-sm text-muted-foreground">{m['admin.nodeDetails.vmsEmpty']()}</p>
+				<Card pad="none" title={m['admin.nodeDetails.storageTitle']()} titleId="node-storage-section">
+					{#if detail.inventory.storages.length === 0}
+						<p class="px-5 py-4 text-sm text-muted-foreground">{m['admin.nodeDetails.storageEmpty']()}</p>
 					{:else}
+						<ul class="divide-y divide-border">
+							{#each storagePager.rows as storage (`${storage.name}/${storage.type}`)}
+								{@const percent = usagePercent(storage.usedBytes, storage.totalBytes)}
+								<li class="space-y-2 px-5 py-3">
+									<div class="flex flex-wrap items-center justify-between gap-2 text-sm"><span><span class="font-mono font-semibold">{storage.name}</span><span class="ml-2 text-xs text-muted-foreground">{storage.type}{#if storage.shared}&nbsp;· {m['admin.nodeDetails.shared']()}{/if}</span></span><span class="font-mono text-xs tabular-nums">{percent}%</span></div>
+									{@render usageMeter(m['admin.nodeDetails.storageTitle'](), `${formatBytes(storage.usedBytes)} / ${formatBytes(storage.totalBytes)}`, percent)}
+								</li>
+							{/each}
+						</ul>
+						<Pagination pager={storagePager} />
+					{/if}
+				</Card>
+			</div>
+		</div>
+
+		<div id="panel-workloads" role="tabpanel" aria-labelledby="tab-workloads" hidden={activeTab !== 'workloads'} class="pv-tabpanel">
+			<Card pad="none" title={m['admin.nodeDetails.vmsTitle']()} titleId="node-vms-section">
+				{#if vms.length === 0}
+					<p class="px-5 py-4 text-sm text-muted-foreground">{m['admin.nodeDetails.vmsEmpty']()}</p>
+				{:else}
 					<div class="overflow-x-auto"><table class="pv-table pv-responsive-table">
 						<caption class="sr-only">{m['admin.nodeDetails.vmsTitle']()}</caption>
 						<thead><tr><th class="font-medium">{m['admin.nodeDetails.vmid']()}</th><th class="font-medium">{m['admin.nodeDetails.name']()}</th><th class="font-medium">{m['admin.nodeDetails.status']()}</th><th class="font-medium">{m['admin.nodeDetails.vcpu']()}</th><th class="text-right font-medium">{m['admin.nodeDetails.memory']()}</th><th class="text-right font-medium">{m['admin.nodeDetails.actions']()}</th></tr></thead>
 						<tbody>{#each vmsPager.rows as vm (vm.vmid)}<tr><td class="font-mono" data-label={m['admin.nodeDetails.vmid']()}>{vm.vmid}</td><td data-label={m['admin.nodeDetails.name']()}>{vm.name || m['admin.nodeDetails.notReported']()}</td><td data-label={m['admin.nodeDetails.status']()}><Pill tone={guestStatusTone(vm.status)} label={guestStatusLabel(vm.status)} /></td><td class="font-mono tabular-nums" data-label={m['admin.nodeDetails.vcpu']()}>{vm.cpuCores}</td><td class="text-right font-mono tabular-nums" data-label={m['admin.nodeDetails.memory']()}>{formatBytes(vm.memoryTotalBytes)}</td><td class="text-right" data-label={m['admin.nodeDetails.actions']()}>{#if vm.managed}<Button variant="secondary" size="sm" label={m['admin.nodeDetails.migrateActionLabel']({ vmid: vm.vmid, name: vm.name })} onclick={() => (migrating = vm)} data-testid="node-vm-migrate-{vm.vmid}">{m['admin.nodeDetails.migrateAction']()}</Button>{/if}</td></tr>{/each}</tbody>
 					</table></div>
 					<Pagination pager={vmsPager} />
-					{/if}
-				</section>
-				<section aria-labelledby="node-lxc-heading">
-					<div class="mb-3 flex items-center gap-2"><h3 id="node-lxc-heading" class="text-sm font-semibold">{m['admin.nodeDetails.lxcTitle']()}</h3>{#if !detail.containers.available}<span class="text-xs text-muted-foreground">{m['admin.nodeDetails.sectionUnavailable']()}</span>{/if}</div>
-					{#if detail.containers.available && detail.containers.containers.length === 0}
-						<p class="text-sm text-muted-foreground">{m['admin.nodeDetails.containersEmpty']()}</p>
-					{:else if detail.containers.available}
-						<div class="overflow-x-auto"><table class="pv-table pv-responsive-table">
-							<caption class="sr-only">{m['admin.nodeDetails.lxcTitle']()}</caption>
-							<thead><tr><th class="font-medium">{m['admin.nodeDetails.vmid']()}</th><th class="font-medium">{m['admin.nodeDetails.name']()}</th><th class="font-medium">{m['admin.nodeDetails.status']()}</th><th class="font-medium">{m['admin.nodeDetails.vcpu']()}</th><th class="font-medium">{m['admin.nodeDetails.memory']()}</th><th class="text-right font-medium">{m['admin.nodeDetails.disk']()}</th></tr></thead>
-							<tbody>{#each lxcPager.rows as container (container.vmid)}<tr><td class="font-mono" data-label={m['admin.nodeDetails.vmid']()}>{container.vmid}</td><td data-label={m['admin.nodeDetails.name']()}>{container.name || m['admin.nodeDetails.notReported']()}</td><td data-label={m['admin.nodeDetails.status']()}><Pill tone={guestStatusTone(container.status)} label={guestStatusLabel(container.status)} /></td><td class="font-mono tabular-nums" data-label={m['admin.nodeDetails.vcpu']()}>{container.cpuCount}</td><td class="font-mono tabular-nums" data-label={m['admin.nodeDetails.memory']()}>{formatBytes(container.memoryUsedBytes)} / {formatBytes(container.memoryTotalBytes)}</td><td class="text-right font-mono tabular-nums" data-label={m['admin.nodeDetails.disk']()}>{formatBytes(container.diskUsedBytes)} / {formatBytes(container.diskTotalBytes)}</td></tr>{/each}</tbody>
-						</table></div>
-						<Pagination pager={lxcPager} />
-					{/if}
-				</section>
-			</div>
-		</Card>
+				{/if}
+			</Card>
+		</div>
 
-		<Card pad="none" title={m['admin.nodeDetails.storageTitle']()} titleId="node-storage-section">
-			{#if detail.inventory.storages.length === 0}
-				<p class="px-5 py-4 text-sm text-muted-foreground">{m['admin.nodeDetails.storageEmpty']()}</p>
-			{:else}
-				<ul class="divide-y divide-border">
-					{#each storagePager.rows as storage (`${storage.name}/${storage.type}`)}
-						{@const percent = usagePercent(storage.usedBytes, storage.totalBytes)}
-						<li class="space-y-2 px-5 py-3">
-							<div class="flex flex-wrap items-center justify-between gap-2 text-sm"><span><span class="font-mono font-semibold">{storage.name}</span><span class="ml-2 text-xs text-muted-foreground">{storage.type}{#if storage.shared} · {m['admin.nodeDetails.shared']()}{/if}</span></span><span class="font-mono text-xs tabular-nums">{percent}%</span></div>
-							{@render usageMeter(m['admin.nodeDetails.storageTitle'](), `${formatBytes(storage.usedBytes)} / ${formatBytes(storage.totalBytes)}`, percent)}
-						</li>
-					{/each}
-				</ul>
-				<Pagination pager={storagePager} />
-			{/if}
-		</Card>
+		<div id="panel-hardware" role="tabpanel" aria-labelledby="tab-hardware" hidden={activeTab !== 'hardware'} class="pv-tabpanel">
+			<div class="space-y-6">
+				<Card pad="none" title={m['admin.nodeDetails.nodeInfoTitle']()} titleId="node-info-section">
+					{#if healthError}
+						<p role="status" class="px-5 py-4 text-sm text-muted-foreground">{m['admin.nodeDetails.sectionUnavailable']()}</p>
+					{:else if health === null}
+						<div class="space-y-3 p-5"><Skeleton class="h-4 w-full" /><Skeleton class="h-4 w-1/2" /></div>
+					{:else}
+					<dl class="grid grid-cols-2 gap-x-5 gap-y-4 p-5 text-sm">
+						<div><dt class="text-xs text-muted-foreground">{m['admin.nodeDetails.cpuModel']()}</dt><dd class="mt-1 break-words">{health.cpuModel || m['admin.nodeDetails.notReported']()}</dd></div>
+						<div><dt class="text-xs text-muted-foreground">{m['admin.nodeDetails.cores']()}</dt><dd class="mt-1 font-mono tabular-nums">{health.cpuCores}</dd></div>
+						<div><dt class="text-xs text-muted-foreground">{m['admin.nodeDetails.threads']()}</dt><dd class="mt-1 font-mono tabular-nums">{health.cpuTotalThreads}</dd></div>
+						<div><dt class="text-xs text-muted-foreground">{m['admin.nodeDetails.sockets']()}</dt><dd class="mt-1 font-mono tabular-nums">{health.cpuSockets}</dd></div>
+					</dl>
+					{/if}
+				</Card>
+
+				<Card pad="none" title={m['admin.nodeDetails.networkTitle']()} titleId="node-network-section">
+					{#if netState === 'idle' || netState === 'loading'}
+						<div class="space-y-3 p-5" data-testid="node-network-loading"><Skeleton class="h-4 w-full" /><Skeleton class="h-4 w-2/3" /></div>
+					{:else if netState === 'unavailable'}
+						<p role="status" class="px-5 py-4 text-sm text-muted-foreground">{m['admin.nodeDetails.sectionUnavailable']()}</p>
+					{:else if netInterfaces.length === 0}
+						<p class="px-5 py-4 text-sm text-muted-foreground">{m['admin.nodeDetails.networkEmpty']()}</p>
+					{:else}
+						<div class="overflow-x-auto">
+							<table class="pv-table pv-responsive-table">
+								<caption class="sr-only">{m['admin.nodeDetails.networkTitle']()}</caption>
+								<thead><tr>
+									<th class="font-medium">{m['admin.nodeDetails.interface']()}</th><th class="font-medium">{m['admin.nodeDetails.type']()}</th><th class="font-medium">{m['admin.nodeDetails.state']()}</th><th class="font-medium">{m['admin.nodeDetails.address']()}</th><th class="font-medium">{m['admin.nodeDetails.gateway']()}</th><th class="font-medium">{m['admin.nodeDetails.topology']()}</th><th class="font-medium">{m['admin.nodeDetails.vlan']()}</th><th class="text-right font-medium">{m['admin.nodeDetails.mtu']()}</th>
+								</tr></thead>
+								<tbody>
+									{#each ifacePager.rows as iface (iface.name)}
+										<tr>
+											<td class="font-mono font-medium" data-label={m['admin.nodeDetails.interface']()}>{iface.name}</td><td data-label={m['admin.nodeDetails.type']()}>{iface.type}</td><td data-label={m['admin.nodeDetails.state']()}><Pill tone={iface.active ? 'ok' : 'off'} label={iface.active ? m['admin.nodeDetails.active']() : m['admin.nodeDetails.inactive']()} /></td><td class="font-mono text-xs" data-label={m['admin.nodeDetails.address']()}>{interfaceAddresses(iface)}</td><td class="font-mono text-xs" data-label={m['admin.nodeDetails.gateway']()}>{interfaceGateways(iface)}</td><td class="max-w-64 text-xs text-muted-foreground" data-label={m['admin.nodeDetails.topology']()}>{interfaceLinks(iface)}</td><td class="font-mono tabular-nums" data-label={m['admin.nodeDetails.vlan']()}>{#if iface.vlanId > 0}{iface.vlanId}{:else if iface.bridgeVlanAware}{m['admin.nodeDetails.vlanAware']()}{:else}{m['admin.nodeDetails.notReported']()}{/if}</td><td class="text-right font-mono tabular-nums" data-label={m['admin.nodeDetails.mtu']()}>{iface.mtu || m['admin.nodeDetails.notReported']()}</td>
+										</tr>
+									{/each}
+								</tbody>
+							</table>
+						</div>
+						<Pagination pager={ifacePager} />
+					{/if}
+				</Card>
+
+				<details class="group rounded-xl border border-border bg-card shadow-card" bind:open={pciOpen} ontoggle={onPciToggle} data-testid="node-pci-disclosure">
+					<summary class="pv-focus flex cursor-pointer list-none items-center gap-3 rounded-xl px-5 py-4 [&::-webkit-details-marker]:hidden">
+						<span class="flex-1 font-medium">{m['admin.nodeDetails.pciTitle']()}</span>
+						<span class="w-4 text-center text-lg leading-none text-muted-foreground group-open:hidden" aria-hidden="true">+</span>
+						<span class="hidden w-4 text-center text-lg leading-none text-muted-foreground group-open:inline" aria-hidden="true">&minus;</span>
+					</summary>
+					<div class="border-t border-border">
+						{#if pciState === 'idle' || pciState === 'loading'}
+							<div class="space-y-3 p-5" data-testid="node-pci-loading"><Skeleton class="h-4 w-full" /><Skeleton class="h-4 w-2/3" /></div>
+						{:else if pciState === 'unavailable'}
+							<p role="status" class="px-5 py-4 text-sm text-muted-foreground">{m['admin.nodeDetails.sectionUnavailable']()}</p>
+						{:else if pciDevices.length === 0}
+							<p class="px-5 py-4 text-sm text-muted-foreground">{m['admin.nodeDetails.pciEmpty']()}</p>
+						{:else}
+							<div class="overflow-x-auto">
+								<table class="pv-table pv-responsive-table">
+									<caption class="sr-only">{m['admin.nodeDetails.pciTitle']()}</caption>
+									<thead><tr>
+										<th class="font-medium">{m['admin.nodeDetails.pciId']()}</th><th class="font-medium">{m['admin.nodeDetails.device']()}</th><th class="font-medium">{m['admin.nodeDetails.vendor']()}</th><th class="font-medium">{m['admin.nodeDetails.class']()}</th><th class="font-medium">{m['admin.nodeDetails.iommuGroup']()}</th><th class="font-medium">{m['admin.nodeDetails.mediatedDevice']()}</th>
+									</tr></thead>
+									<tbody>
+										{#each pciPager.rows as device (device.id)}
+											<tr><td class="font-mono text-xs" data-label={m['admin.nodeDetails.pciId']()}>{device.id}</td><td data-label={m['admin.nodeDetails.device']()}>{device.deviceName || device.deviceId}</td><td data-label={m['admin.nodeDetails.vendor']()}>{device.vendorName || device.vendorId}</td><td class="font-mono text-xs" data-label={m['admin.nodeDetails.class']()}>{device.class}</td><td class="font-mono tabular-nums" data-label={m['admin.nodeDetails.iommuGroup']()}>{device.iommuGroup}</td><td data-label={m['admin.nodeDetails.mediatedDevice']()}>{device.mediatedDevice ? m['admin.nodeDetails.yes']() : m['admin.nodeDetails.no']()}</td></tr>
+										{/each}
+									</tbody>
+								</table>
+							</div>
+							<Pagination pager={pciPager} />
+						{/if}
+					</div>
+				</details>
+			</div>
+		</div>
 	</div>
 {/if}
 

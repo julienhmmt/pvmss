@@ -7,6 +7,9 @@
 	import StatusDot from '#lib/shared/ui/StatusDot.svelte';
 	import Skeleton from '#lib/shared/ui/Skeleton.svelte';
 	import ErrorState from '#lib/shared/ui/ErrorState.svelte';
+	import EyeIcon from '#lib/shared/ui/icons/EyeIcon.svelte';
+	import EyeOffIcon from '#lib/shared/ui/icons/EyeOffIcon.svelte';
+	import ConfirmDialog from '#lib/shared/ui/ConfirmDialog.svelte';
 	import { m } from '#lib/paraglide/messages.js';
 	import { formatDateTime } from '#lib/shared/format-date.js';
 
@@ -14,7 +17,9 @@
 
 	const clusters = $derived(store.info?.clusters ?? []);
 	const healthyCount = $derived(clusters.filter((c) => c.lastRefreshSucceeded).length);
-	const totalClusters = $derived(clusters.length);
+	const clusterSource = $derived(
+		store.info?.config.find((f) => f.name === 'PVMSS_CLUSTER_SOURCE')?.value ?? null
+	);
 
 	type GroupKey = 'core' | 'logging' | 'proxmox' | 'security';
 
@@ -22,23 +27,20 @@
 
 	function groupForField(name: string): GroupKey {
 		switch (name) {
-			case 'Host':
-			case 'Port':
-			case 'WebDir':
-			case 'DBPath':
-			case 'ClusterSource':
-				return 'core';
-			case 'LogLevel':
-			case 'LogFormat':
-			case 'LogOutput':
+			case 'LOG_LEVEL':
+			case 'LOG_FORMAT':
+			case 'LOG_OUTPUT':
 				return 'logging';
-			case 'ProxmoxURL':
-			case 'ProxmoxAPITokenName':
+			case 'PROXMOX_URL':
+			case 'PROXMOX_API_TOKEN_NAME':
 			case 'PROXMOX_API_TOKEN_VALUE':
 				return 'proxmox';
 			case 'SESSION_SECRET':
 			case 'ADMIN_PASSWORD_HASH':
-			case 'CookieSecure':
+			case 'PVMSS_COOKIE_SECURE':
+			case 'TLSMode':
+			case 'PVMSS_TLS_CERT_FILE':
+			case 'PVMSS_TLS_CLIENT_CA_FILE':
 				return 'security';
 			default:
 				return 'core';
@@ -74,10 +76,26 @@
 		return { tone: 'off', label: m['common.no']() };
 	}
 
-	function sourcePill(value: string): { tone: 'ok' | 'warn'; label: string } {
-		if (value === 'proxmox') return { tone: 'ok', label: value };
-		if (value === 'fake') return { tone: 'warn', label: value };
-		return { tone: 'warn', label: value };
+	/** The secret field waiting on the reveal confirmation, if any. */
+	let pendingSecret = $state<string | null>(null);
+	let revealOpen = $state(false);
+
+	function askReveal(name: string): void {
+		pendingSecret = name;
+		revealOpen = true;
+	}
+
+	async function confirmReveal(): Promise<void> {
+		const name = pendingSecret;
+		if (name == null) return;
+		await store.reveal(name);
+		revealOpen = false;
+		pendingSecret = null;
+	}
+
+	function cancelReveal(): void {
+		revealOpen = false;
+		pendingSecret = null;
 	}
 </script>
 
@@ -99,76 +117,126 @@
 	{/snippet}
 </PageHeader>
 
-<section class="space-y-8" aria-labelledby="appinfo-title">
+<section class="space-y-6" aria-labelledby="appinfo-title">
 	{#if store.loading}
-		<div class="grid grid-cols-1 gap-4 sm:grid-cols-2" role="status" aria-live="polite">
-			<Card as="div" pad="md">
-				<Skeleton class="h-4 w-20" />
-				<Skeleton class="mt-2 h-8 w-24" />
-			</Card>
-			<Card as="div" pad="md">
-				<Skeleton class="h-4 w-28" />
-				<Skeleton class="mt-2 h-8 w-20" />
-			</Card>
-		</div>
-		<Card as="div" pad="md">
-			<Skeleton class="h-64 w-full" />
+		<Card as="div" pad="none" role="status" aria-live="polite">
+			<div class="px-5 py-4">
+				<Skeleton class="h-3 w-24" />
+				<Skeleton class="mt-2 h-6 w-40" />
+			</div>
+			<div class="border-t border-border px-5 py-3">
+				<Skeleton class="h-4 w-56" />
+			</div>
 		</Card>
 		<Card as="div" pad="md">
-			<Skeleton class="h-32 w-full" />
+			<Skeleton class="h-64 w-full" />
 		</Card>
 	{:else if store.error}
 		<ErrorState title={store.error} retry={() => void store.load()} retryLabel={m['common.retry']()} />
 	{:else if store.info}
 		<div role="status" aria-live="polite" class="sr-only">{m['admin.appinfo.loaded']()}</div>
 
-		<!-- Overview -->
-		<div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
-			<Card as="div" pad="md">
-				<p class="text-sm text-muted-foreground">{m['admin.appinfo.version']()}</p>
-				<p class="mt-1 text-2xl font-semibold">{store.info.version}</p>
-			</Card>
-
-			<Card as="div" pad="md">
-				<p class="text-sm text-muted-foreground">{m['admin.appinfo.clusterHealth']()}</p>
-				<div class="mt-1">
-					{#if totalClusters === 0}
-						<Pill tone="off" label={m['common.none']()} />
-					{:else if healthyCount === totalClusters}
-						<Pill tone="ok" label={m['admin.appinfo.healthy']()} />
-					{:else}
-						<Pill tone="warn" label={m['admin.appinfo.degraded']()} />
-					{/if}
+		<!-- Status: version, source and per-cluster refresh health -->
+		<Card as="div" pad="none">
+			<dl class="flex flex-wrap gap-x-10 gap-y-4 px-5 py-4">
+				<div>
+					<dt class="text-2xs font-semibold uppercase tracking-[0.06em] text-muted-foreground">
+						{m['admin.appinfo.version']()}
+					</dt>
+					<dd class="mt-1 font-mono text-xl font-semibold leading-none tabular-nums">
+						{store.info.version}
+					</dd>
 				</div>
-			</Card>
-		</div>
+				<div>
+					<dt class="text-2xs font-semibold uppercase tracking-[0.06em] text-muted-foreground">
+						{m['admin.appinfo.clusterSource']()}
+					</dt>
+					<dd class="mt-1.5">
+						{#if clusterSource == null}
+							<span class="text-sm text-muted-foreground"> - </span>
+						{:else}
+							<Pill tone={clusterSource === 'proxmox' ? 'ok' : 'warn'} label={clusterSource} />
+						{/if}
+					</dd>
+				</div>
+				<div>
+					<dt class="text-2xs font-semibold uppercase tracking-[0.06em] text-muted-foreground">
+						{m['admin.appinfo.clusterHealth']()}
+					</dt>
+					<dd class="mt-1.5">
+						{#if clusters.length === 0}
+							<Pill tone="off" label={m['common.none']()} />
+						{:else if healthyCount === clusters.length}
+							<Pill tone="ok" label="{healthyCount}/{clusters.length} {m['admin.appinfo.healthy']()}" />
+						{:else}
+							<Pill tone="warn" label="{healthyCount}/{clusters.length} {m['admin.appinfo.degraded']()}" />
+						{/if}
+					</dd>
+				</div>
+			</dl>
+			{#if clusters.length > 0}
+				<ul class="divide-y divide-border border-t border-border">
+					{#each clusters as cluster (cluster.name)}
+						<li class="flex flex-wrap items-center justify-between gap-x-6 gap-y-1 px-5 py-3">
+							<p class="truncate font-mono text-sm font-medium">{cluster.name}</p>
+							<div class="flex items-center gap-4">
+								<span class="text-xs text-muted-foreground">
+									{m['admin.appinfo.lastRefresh']()}:
+									<time datetime={cluster.refreshedAt}>
+										{formatClusterTimestamp(cluster.refreshedAt)}
+									</time>
+								</span>
+								<StatusDot
+									tone={cluster.lastRefreshSucceeded ? 'success' : 'destructive'}
+									label={cluster.lastRefreshSucceeded ? m['admin.appinfo.healthy']() : m['common.statusUnreachable']()}
+								/>
+							</div>
+						</li>
+					{/each}
+				</ul>
+			{/if}
+		</Card>
 
 		<!-- Configuration -->
-		<div class="space-y-4">
-			<h2 class="text-lg font-semibold" id="appinfo-config-heading">
-				{m['admin.appinfo.configuration']()}
-			</h2>
-			<div class="grid grid-cols-1 gap-4 xl:grid-cols-2" aria-labelledby="appinfo-config-heading">
+		<Card as="div" pad="md" title={m['admin.appinfo.configuration']()}>
+			<div class="grid gap-x-10 gap-y-6 xl:grid-cols-2">
 				{#each groupedConfig(store.info.config) as { group, fields } (group)}
-					<Card as="div" pad="md">
-						<h3 class="mb-4 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+					<div>
+						<h3 class="text-2xs font-semibold uppercase tracking-[0.06em] text-muted-foreground">
 							{m[`admin.appinfo.group.${group}`]()}
 						</h3>
-						<dl class="divide-y divide-border">
+						<dl class="mt-1 divide-y divide-border">
 							{#each fields as field (field.name)}
-								<div
-									class="flex flex-col gap-1 py-3 sm:flex-row sm:items-start sm:justify-between"
-								>
-									<dt class="text-sm font-medium text-foreground">{field.name}</dt>
-									<dd class="flex flex-wrap items-center gap-2 text-sm sm:justify-end">
+								<div class="flex items-baseline justify-between gap-4 py-2">
+									<dt class="font-mono text-xs font-medium text-foreground">{field.name}</dt>
+									<dd class="text-right text-xs">
 										{#if field.redacted}
-											<Pill tone="off" label={m['admin.appinfo.redacted']()} />
-										{:else if field.name === 'ClusterSource'}
-											{#if field.value == null}
-												<span class="text-muted-foreground"> - </span>
+											{#if field.value === ''}
+												<span class="text-muted-foreground">{m['admin.appinfo.notSet']()}</span>
 											{:else}
-												{@const pill = sourcePill(field.value)}
-												<Pill tone={pill.tone} label={pill.label} />
+												{@const shown =
+													store.revealedSecrets.has(field.name) && field.value != null}
+												<span class="inline-flex items-center gap-1.5">
+												{#if shown}
+													<span class="break-all font-mono text-foreground">{field.value}</span>
+												{:else}
+													<span class="font-mono tracking-widest text-muted-foreground" aria-hidden="true"
+														>••••••••</span
+													>
+												{/if}
+												<button
+													type="button"
+													class="rounded text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-none focus-visible:text-foreground"
+													aria-label={shown
+														? m['admin.appinfo.hideSecret']()
+														: m['admin.appinfo.showSecret']()}
+													onclick={() => (shown ? store.hide(field.name) : askReveal(field.name))}
+												>
+													{#if shown}<EyeOffIcon class="h-3.5 w-3.5" />{:else}<EyeIcon
+															class="h-3.5 w-3.5"
+														/>{/if}
+												</button>
+												</span>
 											{/if}
 										{:else if isBooleanLike(field)}
 											{@const pill = booleanPill(field)}
@@ -177,47 +245,25 @@
 											<span class="break-all font-mono text-foreground">
 												{field.value ?? ' - '}
 											</span>
-											{/if}
+										{/if}
 									</dd>
 								</div>
 							{/each}
 						</dl>
-					</Card>
+					</div>
 				{/each}
 			</div>
-		</div>
-
-		<!-- Cluster health -->
-		<div class="space-y-4">
-			<h2 class="text-lg font-semibold" id="appinfo-clusters-heading">
-				{m['admin.appinfo.clusterHealth']()}
-			</h2>
-			<Card as="div" pad="none">
-				<ul class="divide-y divide-border">
-					{#each store.info.clusters as cluster (cluster.name)}
-						<li class="flex flex-col gap-2 p-4 sm:flex-row sm:items-center sm:justify-between">
-							<div class="space-y-0.5">
-								<p class="font-mono font-medium">{cluster.name}</p>
-								<p class="text-sm text-muted-foreground">
-									{m['admin.appinfo.lastRefresh']()}:
-									<time
-										datetime={cluster.refreshedAt}
-										title={formatClusterTimestamp(cluster.refreshedAt)}
-									>
-										{formatClusterTimestamp(cluster.refreshedAt)}
-									</time>
-								</p>
-							</div>
-							<StatusDot
-								tone={cluster.lastRefreshSucceeded ? 'success' : 'destructive'}
-								label={cluster.lastRefreshSucceeded ? m['admin.appinfo.healthy']() : m['common.statusUnreachable']()}
-							/>
-						</li>
-					{:else}
-						<li class="p-4 text-sm text-muted-foreground">{m['common.none']()}</li>
-					{/each}
-				</ul>
-			</Card>
-		</div>
+		</Card>
 	{/if}
+
+	<ConfirmDialog
+		bind:open={revealOpen}
+		title={m['admin.appinfo.revealTitle']()}
+		message={m['admin.appinfo.revealMessage']()}
+		confirmLabel={m['admin.appinfo.revealConfirm']()}
+		cancelLabel={m['common.cancel']()}
+		confirming={store.loading}
+		onConfirm={() => void confirmReveal()}
+		onClose={cancelReveal}
+	/>
 </section>

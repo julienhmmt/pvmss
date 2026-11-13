@@ -3,6 +3,7 @@ package httpapi_test
 import (
 	"encoding/json"
 	"net/http"
+	"path/filepath"
 	"pvmss/server/internal/httpapi"
 	"strings"
 	"testing"
@@ -29,6 +30,22 @@ type appInfoDTO struct {
 
 type publicVersionDTO struct {
 	Version string `json:"version"`
+}
+
+// findConfigField returns the appinfo config field named name, failing the
+// test when it is absent.
+func findConfigField(t *testing.T, info appInfoDTO, name string) configFieldDTO {
+	t.Helper()
+
+	for _, f := range info.Config {
+		if f.Name == name {
+			return f
+		}
+	}
+
+	t.Fatalf("config field %s missing from response", name)
+
+	return configFieldDTO{}
 }
 
 // TestAdminAppInfo_AsAdmin_ReturnsVersionAndConfig - GET /admin/appinfo
@@ -112,6 +129,55 @@ func TestAdminAppInfo_Sc006_HashNotInResponseBody(t *testing.T) {
 				t.Errorf("ADMIN_PASSWORD_HASH = %+v, want redacted=true value=nil", f)
 			}
 		}
+	}
+}
+
+// TestAdminAppInfo_Reveal_ReturnsSecretValues - GET /admin/appinfo?reveal=1
+// returns the real secret values while keeping redacted=true so the UI
+// still masks them by default.
+func TestAdminAppInfo_Reveal_ReturnsSecretValues(t *testing.T) {
+	hash := "$2a$10$N9qo8uLOickgx2ZMRZoMy.MrqK0aVzJqDOKU3FqZwM9FqZwM9FqZwM9"
+	// config.Load must succeed for the handler to see real values, so the
+	// full required env is set here (unlike the redaction tests, which only
+	// need the fallback zero config).
+	t.Setenv("PVMSS_PORT", "50001")
+	t.Setenv("PVMSS_DB_PATH", filepath.Join(t.TempDir(), "pvmss.db"))
+	t.Setenv("LOG_LEVEL", "info")
+	t.Setenv("LOG_FORMAT", "json")
+	t.Setenv("LOG_OUTPUT", "stdout")
+	t.Setenv("PVMSS_CLUSTER_SOURCE", "fake")
+	t.Setenv("ADMIN_PASSWORD_HASH", hash)
+	t.Setenv("SESSION_SECRET", strings.Repeat("s", 32))
+
+	ops, auth, _ := newAdminOpsHandler(t)
+	cookie := adminCookie(t, auth)
+
+	rec := opsGet(t, ops, auth, cookie, "/api/v1/admin/appinfo?reveal=1")
+	if rec.Code != http.StatusOK {
+		t.Fatalf("status = %d: %s", rec.Code, rec.Body.String())
+	}
+
+	var info appInfoDTO
+	if err := json.Unmarshal(rec.Body.Bytes(), &info); err != nil {
+		t.Fatalf("decode: %v", err)
+	}
+
+	hashField := findConfigField(t, info, "ADMIN_PASSWORD_HASH")
+
+	if !hashField.Redacted {
+		t.Error("ADMIN_PASSWORD_HASH redacted = false, want true")
+	}
+
+	if hashField.Value == nil || *hashField.Value != hash {
+		t.Errorf("ADMIN_PASSWORD_HASH value = %v, want the configured hash", hashField.Value)
+	}
+
+	// An unset secret (no PROXMOX_API_TOKEN_VALUE in this env) still
+	// serializes its value as "" under reveal so the UI can show "unset"
+	// rather than a dead mask.
+	tokenField := findConfigField(t, info, "PROXMOX_API_TOKEN_VALUE")
+	if tokenField.Value == nil || *tokenField.Value != "" {
+		t.Errorf("PROXMOX_API_TOKEN_VALUE value = %v, want empty string (unset secret)", tokenField.Value)
 	}
 }
 

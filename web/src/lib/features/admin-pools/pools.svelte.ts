@@ -6,6 +6,7 @@ import {
 	type ClusterOption
 } from '#lib/shared/clusters.js';
 import { getContext, setContext } from 'svelte';
+import { STALE_REFRESH_MS } from '#lib/shared/visibility-refresh.js';
 import { m } from '#lib/paraglide/messages.js';
 
 export interface AdminPool {
@@ -54,6 +55,16 @@ export class PoolsStore {
 	#searchTimer: ReturnType<typeof setTimeout> | null = null;
 	/** Latest-wins guard for load: a cluster switch must not show the previous cluster's pools. */
 	#loadRequestId = 0;
+	/** `Date.now()` of the last completed load - `refreshIfStale()` uses it to
+	 * skip reloads fresher than the interval. */
+	lastLoadedAt = 0;
+
+	/** Reloads when the last completed load is older than `minIntervalMs` -
+	 * the visibility/poll hook calls this instead of loading on every tick. */
+	async refreshIfStale(minIntervalMs: number = STALE_REFRESH_MS): Promise<void> {
+		if (Date.now() - this.lastLoadedAt <= minIntervalMs) return;
+		await this.load();
+	}
 
 	/** Resolves the real cluster name so requests never send the literal "default"
 	 *  against a deployment whose cluster is named something else. */
@@ -85,7 +96,10 @@ export class PoolsStore {
 		try {
 			const query = this.searchTerm ? `&search=${encodeURIComponent(this.searchTerm)}` : '';
 			const pools = await get<AdminPool[]>(`/api/v1/admin/pools?cluster=${encodeURIComponent(this.cluster)}${query}`);
-			if (requestId === this.#loadRequestId) this.pools = pools;
+			if (requestId === this.#loadRequestId) {
+				this.pools = pools;
+				this.lastLoadedAt = Date.now();
+			}
 		} catch (error) {
 			if (requestId === this.#loadRequestId) {
 				this.error = error instanceof ApiRequestError ? error.message : m['admin.pools.loadError']();

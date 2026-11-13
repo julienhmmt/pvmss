@@ -6,7 +6,7 @@
 	 * from context like the rest of the feature; only view-local state
 	 * (select mode, the derived count label) arrives as props.
 	 */
-	import { getVmListContext, type VmStatus } from './list.svelte';
+	import { getVmListContext, type VmSortBy, type VmStatus } from './list.svelte';
 	import { m } from '#lib/paraglide/messages.js';
 	import Button from '#lib/shared/ui/Button.svelte';
 	import Select from '#lib/shared/ui/Select.svelte';
@@ -23,6 +23,15 @@
 		{ value: 'running', label: () => m['machine.status.running']() },
 		{ value: 'stopped', label: () => m['machine.status.stopped']() },
 		{ value: ATTENTION_VALUE, label: () => m['vms.list.filterAttention']() }
+	];
+
+	/** The sort keys the list offers, in the order the select shows them. */
+	const SORT_OPTIONS: readonly { value: VmSortBy; label: () => string }[] = [
+		{ value: 'name', label: () => m['vms.list.sortFieldName']() },
+		{ value: 'cpu', label: () => m['vms.list.columnCpu']() },
+		{ value: 'memory', label: () => m['vms.list.columnMemory']() },
+		{ value: 'vmid', label: () => m['vms.list.sortFieldVmid']() },
+		{ value: 'status', label: () => m['vms.list.columnStatus']() }
 	];
 
 	interface Props {
@@ -44,6 +53,10 @@
 		if (value === ATTENTION_VALUE) store.setAttention(true);
 		else store.setStatus(value as VmStatus | '');
 	}
+
+	const sortDirLabel = $derived(
+		store.sortDir === 'asc' ? m['vms.list.sortDirAsc']() : m['vms.list.sortDirDesc']()
+	);
 </script>
 
 <Toolbar>
@@ -71,6 +84,40 @@
 			options={STATUS_OPTIONS.map((option) => ({ value: option.value, label: option.label() }))}
 			data-testid="vm-status-filter"
 		/>
+		<div class="flex items-center gap-1">
+			<label class="sr-only" for="vm-sort-field">{m['vms.list.sortLabel']()}</label>
+			<Select
+				id="vm-sort-field"
+				class="w-auto"
+				value={store.sortBy}
+				onchange={(event: Event) => store.setSort((event.currentTarget as HTMLSelectElement).value as VmSortBy)}
+				options={SORT_OPTIONS.map((option) => ({ value: option.value, label: option.label() }))}
+				data-testid="vm-sort-field"
+			/>
+			<!-- Re-clicking the active key is the store's direction toggle. -->
+			<Button
+				variant="ghost"
+				size="icon-sm"
+				label={sortDirLabel}
+				title={sortDirLabel}
+				onclick={() => store.setSort(store.sortBy)}
+				data-testid="vm-sort-dir"
+			>
+				<svg
+					viewBox="0 0 12 12"
+					class="h-3.5 w-3.5 transition-transform duration-150 {store.sortDir === 'desc' ? 'rotate-180' : ''}"
+					fill="none"
+					stroke="currentColor"
+					stroke-width="1.75"
+					stroke-linecap="round"
+					stroke-linejoin="round"
+					aria-hidden="true"
+				>
+					<path d="M6 10.5v-9" />
+					<path d="M2.75 4.75 6 1.5l3.25 3.25" />
+				</svg>
+			</Button>
+		</div>
 	{/snippet}
 
 	{#snippet meta()}

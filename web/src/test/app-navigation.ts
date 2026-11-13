@@ -7,3 +7,8 @@ export async function goto(_url: string | URL): Promise<void> {
 export function afterNavigate(_callback: unknown): void {
 	// no-op
 }
+
+/** No-op in unit tests - URL state changes are not exercised. */
+export function pushState(_url: string | URL, _state: unknown): void {
+	// no-op
+}

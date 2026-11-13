@@ -14,7 +14,7 @@ SERVER_DIR   := server
 WEB_DIR      := web
 
 # Dev Docker Compose (shortcut to avoid repeating -f ...)
-COMPOSE_DEV  := docker compose -f docker-compose.dev.yml
+COMPOSE_DEV  := docker compose -f docker-compose.dev.yml --profile oidc
 
 # Go test variables - overridable on the command line:
 #   make test-offline GO_TEST_FLAGS=-v                 # verbose (replaces test-offline-verbose)
@@ -35,7 +35,7 @@ GOLANGCI_LINT   := go run github.com/golangci/golangci-lint/v2/cmd/golangci-lint
 # Default Docker tag for docker-build (override: make docker-build PVMSS_TAG=v1.2.3)
 PVMSS_TAG ?= latest
 
-.PHONY: help proxy-e2e dev dev-logs build docker-build helm-package helm-upgrade \
+.PHONY: help proxy-e2e dev dev-logs dev-web build docker-build helm-package helm-upgrade \
         up up-siem up-oidc down restart logs clean \
         qualif \
         buildkit-start buildkit-stop buildkit-status \
@@ -65,8 +65,18 @@ dev-logs: up logs ## Start and follow the logs
 	@echo "$(GREEN)Logs de l'application$(NC)"
 	@echo ""
 
-build: ## Build the Go v0.4 binary and the dev Docker image
-	@echo "$(BLUE)Construction du binaire Go (v0.4 server)...$(NC)"
+dev-web: up ## Live web dev: docker backend (mTLS) + Vite dev server on http://localhost:5173
+	@for i in $$(seq 1 30); do \
+		[ -f dev/proxies/certs/proxy-client.crt ] && exit 0; \
+		sleep 1; \
+	done; \
+	echo "$(RED)Dev certs not found under dev/proxies/certs$(NC)"; exit 1
+	@[ -d $(WEB_DIR)/node_modules ] || $(MAKE) web-install
+	@echo "$(GREEN)Web UI (hot reload) on http://localhost:5173 - API via https://localhost:50000$(NC)"
+	cd $(WEB_DIR) && VITE_BACKEND_URL=https://localhost:50000 VITE_BACKEND_TLS_DIR=../dev/proxies/certs bun run dev
+
+build: ## Build the Go binary and the dev Docker image
+	@echo "$(BLUE)Construction du binaire Go...$(NC)"
 	go build -C $(SERVER_DIR) -o ../pvmss ./cmd/pvmss
 	@echo "$(GREEN)✓ Binaire construit$(NC)"
 	@echo "$(BLUE)Construction de l'image Docker dev...$(NC)"
@@ -256,7 +266,7 @@ lint: server-lint web-lint ## Lint server/ (Go) and web/ (SvelteKit)
 # SonarQube local analysis
 # =============================================================================
 
-SONAR_HOME ?= $(HOME)/git/gh/sonarqube
+SONAR_HOME ?= $(HOME)/sonarqube
 
 sonar-up: ## Start the shared SonarQube server (http://localhost:9000)
 	@$(MAKE) -C $(SONAR_HOME) up

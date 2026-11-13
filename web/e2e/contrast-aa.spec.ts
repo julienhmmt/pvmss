@@ -30,7 +30,9 @@ const ROUTES: Route[] = [
 	// The wizard is behind the mode chooser.
 	{ path: '/vms/create', signIn: signInAlice, ready: '[data-testid="source-card-template"]', open: (page) => page.getByRole('button', { name: /Simple/ }).click() },
 	// VM 100 runs in the fake dataset, so its metrics stream shows "Live".
-	{ path: '/vms/default/100', signIn: signInAlice, ready: '[data-testid="vm-metrics-stream-live"]', open: (page) => page.getByTestId('vm-tab-configuration').click() },
+	// The badge sits on the Overview panel - switching tabs hides it, so the
+	// scan covers the overview and the folder tab bar together.
+	{ path: '/vms/default/100', signIn: signInAlice, ready: '[data-testid="vm-metrics-stream-live"]' },
 	{ path: '/admin/policy/nodes', signIn: signInAdmin, ready: '[data-testid="node-details-link"]' }
 ];
 

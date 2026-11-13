@@ -115,7 +115,7 @@
 		<div class="flex items-center gap-4">
 			<ClusterSelector options={clusterOptions} value={cluster} onChange={onClusterChange} id="policy-nodes-cluster" />
 			<div class="flex flex-col items-end gap-1">
-				<Button variant="secondary" size="sm" onclick={onRefresh} disabled={refreshing || refreshDisabled} label={refreshButtonLabel}>
+				<Button variant="secondary" size="sm" onclick={onRefresh} disabled={refreshing || refreshDisabled} label={refreshButtonLabel} data-testid="refresh-button">
 					{refreshButtonLabel}
 				</Button>
 				<p class="text-xs text-muted-foreground" data-testid="refreshed-at">

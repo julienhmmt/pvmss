@@ -26,7 +26,6 @@ export function contextLabel(pathname: string): ContextLabel {
 	if (path === '/profile') return { section: workspace, screen: m['chrome.context.account']() };
 	if (path === '/search') return { section: workspace, screen: m['chrome.context.search']() };
 	if (path === '/about') return { section: workspace, screen: m['chrome.context.about']() };
-	if (path === '/nodes') return { section: workspace, screen: m['chrome.context.nodes']() };
 	return { section: workspace, screen: '' };
 }
 
@@ -45,6 +44,7 @@ function adminScreen(path: string): string {
 		nodes: () => m['chrome.adminNav.nodes'](),
 		clusters: () => m['chrome.adminNav.clusters'](),
 		pools: () => m['chrome.adminNav.pools'](),
+		vms: () => m['chrome.adminNav.vms'](),
 		storages: () => m['chrome.adminNav.storages'](),
 		isos: () => m['chrome.adminNav.isos'](),
 		templates: () => m['chrome.adminNav.templates'](),
@@ -53,7 +53,9 @@ function adminScreen(path: string): string {
 		profiles: () => m['chrome.adminNav.profiles'](),
 		tags: () => m['chrome.adminNav.tags'](),
 		policy: () => (path === '/admin/policy/nodes' ? m['chrome.adminNav.nodeCapacity']() : m['chrome.adminNav.limits']()),
+		'quota-requests': () => m['chrome.adminNav.quotaRequests'](),
 		appinfo: () => m['chrome.adminNav.appInfo'](),
+		recovery: () => m['chrome.adminNav.recovery'](),
 		settings: () => m['chrome.adminNav.settings']()
 	};
 	return labels[segment]?.() ?? '';

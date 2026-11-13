@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { onMount } from 'svelte';
+	import { onMount, onDestroy } from 'svelte';
 	import { setAdminCatalogContext, type AdminNode } from '#lib/features/admin-catalog/admin-catalog.svelte.js';
 	import CatalogListStates from '#lib/features/admin-catalog/CatalogListStates.svelte';
 	import CatalogToolbar from '#lib/features/admin-catalog/CatalogToolbar.svelte';
@@ -12,15 +12,20 @@
 	import { createPagination } from '#lib/shared/ui/list-pager.svelte.js';
 	import TableCard from '#lib/shared/ui/TableCard.svelte';
 	import { getToastContext } from '#lib/shared/ui/toast.svelte.js';
+	import { onVisibleRefresh } from '#lib/shared/visibility-refresh.js';
 	import { m } from '#lib/paraglide/messages.js';
 
 	const store = setAdminCatalogContext();
 	const toast = getToastContext();
 	const pager = createPagination('nodes', () => store.filteredNodes);
 
+	let offVisible: (() => void) | undefined;
+
 	onMount(() => {
 		void store.loadAll();
+		offVisible = onVisibleRefresh(() => void store.refreshIfStale());
 	});
+	onDestroy(() => offVisible?.());
 
 	let disableDialogOpen = $state(false);
 	let pendingNode: AdminNode | null = $state(null);

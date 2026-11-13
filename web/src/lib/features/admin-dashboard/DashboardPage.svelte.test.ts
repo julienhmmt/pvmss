@@ -4,6 +4,7 @@ import { goto } from '$app/navigation';
 import { m } from '#lib/paraglide/messages.js';
 import DashboardPage from './DashboardPage.svelte';
 import { getDashboardContext } from './dashboard.svelte';
+import type { DashboardAlert } from './dashboard-alerts';
 
 vi.mock('$app/navigation', () => ({ goto: vi.fn() }));
 vi.mock('$app/paths', () => ({
@@ -43,7 +44,9 @@ const store = {
 	loading: false,
 	error: null,
 	errorCode: null,
-	load: async (): Promise<void> => {}
+	lastLoadedAt: 0,
+	load: async (): Promise<void> => {},
+	refreshIfStale: async (): Promise<void> => {}
 };
 
 beforeEach(() => {
@@ -79,6 +82,20 @@ describe('DashboardPage VM summary', () => {
 
 		expect(document.querySelector('[data-testid="dashboard-create-user"]')?.getAttribute('href')).toBe('/admin/pools?create=1');
 		expect(document.querySelectorAll('[data-testid="dashboard-quick-action-slot"]')).toHaveLength(0);
+	});
+
+	it('sums pending quota requests across clusters on the quick action', () => {
+		const alerts: DashboardAlert[] = [
+			{ kind: 'quota_requests_pending', severity: 'warning', cluster: 'Default', clusterKey: 'default', used: 2 },
+			{ kind: 'quota_requests_pending', severity: 'warning', cluster: 'Edge', clusterKey: 'edge', used: 1 },
+			{ kind: 'node_offline', severity: 'critical', cluster: 'Default', clusterKey: 'default', subject: 'pve-01' }
+		];
+		vi.mocked(getDashboardContext).mockReturnValue({ ...store, summary: { ...store.summary, alerts } });
+		mount(DashboardPage, { target: document.body });
+
+		const tile = document.querySelector('[data-testid="dashboard-quota-requests"]');
+		expect(tile?.getAttribute('href')).toBe('/admin/quota-requests');
+		expect(tile?.textContent).toContain('3');
 	});
 
 	it('names recent changes in plain language', () => {

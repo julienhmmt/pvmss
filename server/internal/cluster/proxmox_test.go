@@ -35,8 +35,7 @@ func writeJSONFixture(t *testing.T, w http.ResponseWriter, body string) {
 	}
 }
 
-//nolint:dupl,gocyclo,wsl_v5 // one fake server covers the live node-read contract
-//nolint:dupl,gocyclo,wsl_v5 // covers all four live node API response shapes
+//nolint:wsl_v5 // one fake server covers the live node API response shapes
 func TestProxmox_NodeDetailReads(t *testing.T) {
 	t.Parallel()
 	srv := newProxmoxTestServer(t, func(mux *http.ServeMux) {
@@ -48,9 +47,6 @@ func TestProxmox_NodeDetailReads(t *testing.T) {
 		})
 		mux.HandleFunc("GET /api2/json/nodes/pve1/hardware/pci", func(w http.ResponseWriter, _ *http.Request) {
 			writeJSONFixture(t, w, `{"data":[{"id":"0000:03:00.0","class":"0x020000","vendor":"0x8086","vendor_name":"Intel Corporation","device":"0x1572","device_name":"X550","iommugroup":14,"mdev":false}]}`)
-		})
-		mux.HandleFunc("GET /api2/json/nodes/pve1/lxc", func(w http.ResponseWriter, _ *http.Request) {
-			writeJSONFixture(t, w, `{"data":[{"vmid":210,"name":"dns","status":"running","maxcpu":2,"cpu":0.01,"maxmem":2147483648,"mem":536870912,"maxdisk":8589934592,"disk":2147483648}]}`)
 		})
 	})
 	client := Proxmox{BaseURL: srv.URL, APITokenName: testTokenName, APITokenValue: testTokenVal}
@@ -66,10 +62,6 @@ func TestProxmox_NodeDetailReads(t *testing.T) {
 	devices, err := client.ReadNodePCI(context.Background(), "pve1")
 	if err != nil || len(devices) != 1 || devices[0].DeviceName != "X550" || devices[0].IOMMUGroup != 14 {
 		t.Fatalf("ReadNodePCI = %+v, %v", devices, err)
-	}
-	containers, err := client.ListNodeContainers(context.Background(), "pve1")
-	if err != nil || len(containers) != 1 || containers[0].Name != "dns" || containers[0].MemoryUsed != 536870912 {
-		t.Fatalf("ListNodeContainers = %+v, %v", containers, err)
 	}
 }
 

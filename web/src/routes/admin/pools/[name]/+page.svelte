@@ -5,6 +5,7 @@
 	import { onMount } from 'svelte';
 	import PoolDetailPage from '#lib/features/admin-pools/PoolDetailPage.svelte';
 	import { setAdminPoolDetailContext } from '#lib/features/admin-pools/pool-detail.svelte.js';
+	import { onVisibleRefresh } from '#lib/shared/visibility-refresh.js';
 
 	const store = setAdminPoolDetailContext();
 	const poolName: string = $derived(page.params.name ?? '');
@@ -12,6 +13,7 @@
 
 	onMount(() => {
 		void store.load(poolName, clusterHint);
+		return onVisibleRefresh(() => void store.refreshIfStale());
 	});
 </script>
 

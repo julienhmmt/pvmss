@@ -499,6 +499,14 @@ prepared options" control.
 - **Header:** Sticky, 3.5rem height, translucent. Contains: menu button
   (mobile), docs link, activity button with badge, language switcher, theme
   toggle.
+- **Tabs:** `Tabs.svelte` - `segmented` for a small closed set of views
+  inside a card, `folder` for page-level section navigation (VM detail,
+  admin node detail). Folder panels carry `.pv-tabpanel`, which pulls the
+  panel 1px under the rail and squares the first rounded child's top
+  corners, so the active tab and its card read as one surface. The rail and
+  its panels must stay direct siblings in an unspaced container: a `space-y-*`
+  on the shared parent out-specifies the -1px pull and reopens the gap. Give
+  banners or alerts above the rail their own margin (`mb-4`) instead.
 
 ### Tables
 
@@ -825,9 +833,13 @@ and the controls):
 before anything else.
 
 **Heading:** back link "My machines". A detail identity row: large OS mark,
-`<h1>` machine name, and a description line (OS · size · `VM {id}` in mono). At
-the right: a status pill and the primary power action - "Shut down" (secondary,
-running) or "Start machine" (primary, stopped).
+`<h1>` machine name (click to rename), and an identity line (size · `VM {id}`
+in mono · cluster). At the right: a status pill, the lock badge, the
+state-appropriate primary power action - "Shut down" (secondary, running) or
+"Start machine" (primary, stopped) - and one overflow menu holding every other
+applicable power action (forceful ones confirm first), "Duplicate" and a
+destructive "Delete". Admins also get "Switch to SeaBIOS" in that menu. Action
+errors and the sr-only status line render once, below the header.
 
 **State banners (above the tabs, in priority order):**
 
@@ -849,33 +861,44 @@ running) or "Start machine" (primary, stopped).
   Connection options will appear once it is running." / "Waiting for a graceful
   shutdown. Your files will be kept."
 
-**Tabs** (underline-style, accent on active):
+**Tabs** (folder-style: tabs on a rail, the active tab wears the tinted
+active fill and opens onto the card panel below; flat - one panel per tab,
+deep
+links via `?tab=`, the default Overview omits it; legacy
+`?tab=configuration&sub=X` and `?tab=connect` URLs still land on the right
+panel):
 
-1. **General information** (default) - a two-column layout: SSH section (fluid) + browser
-   console aside (260px).
-   - **SSH section** - eyebrow "FROM YOUR COMPUTER", title "Connect with SSH",
-     one line of body, then the command in a bordered bar: `$ ssh user@address`
-     with a copy icon button. A demo-address note (prototype) / a real-address
-     note (production). A `<dl>` of connection facts (Username, IP address,
-     Network). A connection-help note about the private key and team network.
+1. **Overview** (default) - a two-column layout at ≥1024px: main column
+   (fluid) + a ~300px details rail; it stacks on mobile.
+   - **Connect section** - eyebrow "FROM YOUR COMPUTER", title "Connect with
+     SSH", one line of body, then the command in a bordered bar:
+     `$ ssh user@address` with a copy icon button, and an "Open the console"
+     secondary link inline in the section header (new tab). A `<dl>` of
+     connection facts (Username, IP address, Network). A connection-help note
+     about the private key and team network.
    - **Address unavailable** - when running but no address: "The address isn't
-     available yet" with guidance to use the console or ask an admin. "We won't
-     guess an address." When not running: "SSH isn't available right now."
-   - **Console aside** - "Or stay in your browser.", one line of body, "Open
-     browser console" (secondary, full-width, disabled unless running), and a
-     hint.
-   - **Resource strip** - below the layout: vCPU / memory / storage, each with
-     an icon, a bold value, and a one-line caption ("Allocated, not live
-     usage").
-   - **Usage charts** - below the resource strip: CPU / memory / disk / network
-     history (hour / day / week) and the live stream.
-2. **Configuration** - a read-only `<dl>`: OS, approved size, disk, network &
-   placement ("Managed by your team"), machine identifier (mono). The
-   prototype skipped hardware editing and snapshots; production ships them as
-   Configuration sub-tabs (Disks, Network, Hardware, Snapshots).
+     available yet" with guidance to use the console or ask an admin, the
+     console link still offered. "We won't guess an address."
+   - **Stopped** - a single compact card: "SSH isn't available right now",
+     one line of body, and an inline "Start machine" primary button. No
+     console card.
+   - **Installing** - "Installation in progress": the console as primary
+     action and "Eject the ISO".
+   - **Usage charts** - below the connect section: CPU / memory / disk /
+     network history (hour / day / week) and the live stream. While the
+     machine is not running, a single muted line replaces the charts:
+     "History is recorded while the machine runs."
+   - **Details rail** - one card with a hairline-divided second section: a
+     "Details" `<dl>` (approved size, disk, VM id in mono, cluster in mono;
+     node and pool admin-only; the lease expiry - warning colour inside 7
+     days - with a small "Extend lease" button and its inline error) and the
+     "Description" inline editor (a muted text button when empty, click to
+     edit otherwise).
+2. **Disks / Network / Hardware / Snapshots** - the configuration panels, one
+   flat tab each. Snapshots mounts lazily.
 3. **Activity** - a per-machine timeline: rows with a marker, a bold message, a
    "Simulated operation" subtitle, and a time. Empty state: "No operations in
-   this demo session yet."
+   this demo session yet." Mounts lazily.
 
 **Browser console dialog** (`<dialog>`):
 

@@ -23,13 +23,20 @@
 	import { getPowerActionsContext } from '#lib/features/tasks/power-actions.svelte.js';
 	import { getToastContext } from '#lib/shared/ui/toast.svelte.js';
 	import { page } from '$app/state';
-	import { beforeNavigate, goto } from '$app/navigation';
+	import { afterNavigate, beforeNavigate, goto, replaceState } from '$app/navigation';
 	import { resolve } from '$app/paths';
 	import Button from '#lib/shared/ui/Button.svelte';
 	import ButtonLink from '#lib/shared/ui/ButtonLink.svelte';
 	import Card from '#lib/shared/ui/Card.svelte';
 	import Pill from '#lib/shared/ui/Pill.svelte';
 	import OsMark from '#lib/shared/ui/OsMark.svelte';
+	import MonitorIcon from '#lib/shared/ui/icons/MonitorIcon.svelte';
+	import GaugeIcon from '#lib/shared/ui/icons/GaugeIcon.svelte';
+	import DiscIcon from '#lib/shared/ui/icons/DiscIcon.svelte';
+	import GlobeIcon from '#lib/shared/ui/icons/GlobeIcon.svelte';
+	import CpuIcon from '#lib/shared/ui/icons/CpuIcon.svelte';
+	import HistoryIcon from '#lib/shared/ui/icons/HistoryIcon.svelte';
+	import ActivityIcon from '#lib/shared/ui/icons/ActivityIcon.svelte';
 	import ConfirmDialog from '#lib/shared/ui/ConfirmDialog.svelte';
 	import Textarea from '#lib/shared/ui/Textarea.svelte';
 	import { getSessionContext } from '#lib/features/auth/session.svelte.js';
@@ -58,55 +65,56 @@
 	const powerActions = getPowerActionsContext();
 	const toast = getToastContext();
 
-	// Connection-first detail (DESIGN.md §6.3): Connect is the default tab,
-	// Configuration holds the existing panels as sub-tabs, Activity is the
-	// per-machine audit timeline.
+	// Flat detail tabs (DESIGN.md §6.3): Overview answers "is it ready, and how
+	// do I connect?"; the rest are one panel each. The active tab is local
+	// state mirrored into the URL via replaceState (shallow, no navigation):
+	// deep links (?tab=) and reloads land on the right panel, and the switch
+	// can never be swallowed by the unsaved-draft navigation guard.
+	const PANEL_TABS = ['disks', 'network', 'hardware', 'snapshots'] as const;
+	type PanelTab = (typeof PANEL_TABS)[number];
+	type MainTab = 'overview' | PanelTab | 'activity';
 	const tabs = [
-		{ id: 'connect', label: () => m['vms.detail.tabConnect']() },
-		{ id: 'configuration', label: () => m['vms.detail.tabConfiguration']() },
-		{ id: 'activity', label: () => m['vm.activity.tab']() }
+		{ id: 'overview', label: () => m['vms.detail.tabOverview'](), icon: GaugeIcon },
+		{ id: 'disks', label: () => m['vms.detail.tabDisks'](), icon: DiscIcon },
+		{ id: 'network', label: () => m['vms.detail.tabNetwork'](), icon: GlobeIcon },
+		{ id: 'hardware', label: () => m['vms.detail.tabHardware'](), icon: CpuIcon },
+		{ id: 'snapshots', label: () => m['vms.detail.tabSnapshots'](), icon: HistoryIcon },
+		{ id: 'activity', label: () => m['vm.activity.tab'](), icon: ActivityIcon }
 	];
-	type MainTab = 'connect' | 'configuration' | 'activity';
-	const configTabs = [
-		{ id: 'overview', label: () => m['vms.detail.tabSummary']() },
-		{ id: 'disks', label: () => m['vms.detail.tabDisks']() },
-		{ id: 'network', label: () => m['vms.detail.tabNetwork']() },
-		{ id: 'hardware', label: () => m['vms.detail.tabHardware']() },
-		{ id: 'snapshots', label: () => m['vms.detail.tabSnapshots']() }
-	];
-	type ConfigTab = 'overview' | 'disks' | 'network' | 'hardware' | 'snapshots';
 
-	function parseTab(raw: string | null): MainTab {
-		if (raw === 'configuration' || raw === 'activity') return raw;
-		return 'connect';
+	function isPanelTab(id: string | null): id is PanelTab {
+		return (PANEL_TABS as readonly string[]).includes(id ?? '');
 	}
 
-	function parseSub(raw: string | null): ConfigTab {
-		if (raw === 'disks' || raw === 'network' || raw === 'hardware' || raw === 'snapshots') return raw;
+	function parseTab(searchParams: { get(name: string): string | null }): MainTab {
+		const raw = searchParams.get('tab');
+		// Legacy links: ?tab=configuration&sub=X pointed at a nested sub-tab and
+		// ?tab=connect was the old default - both land on the flat equivalents.
+		if (raw === 'configuration') {
+			const sub = searchParams.get('sub');
+			return isPanelTab(sub) ? sub : 'overview';
+		}
+		if (raw === 'activity' || isPanelTab(raw)) return raw;
 		return 'overview';
 	}
 
-	// Both tabs are derived from the URL so deep links (?tab=&sub=) and
-	// back/forward navigation land on the right panel. The setters write the
-	// query string back, omitting default values to keep URLs clean.
-	const activeTab: MainTab = $derived(parseTab(page.url.searchParams.get('tab')));
-	const configTab: ConfigTab = $derived(parseSub(page.url.searchParams.get('sub')));
+	let activeTab: MainTab = $state(parseTab(page.url.searchParams));
 
-	function syncTabUrl(tab: MainTab, sub: ConfigTab): void {
-		const url = new URL(page.url.href);
-		if (tab === 'connect') url.searchParams.delete('tab');
-		else url.searchParams.set('tab', tab);
-		if (sub === 'overview') url.searchParams.delete('sub');
-		else url.searchParams.set('sub', sub);
-		void goto(`${url.pathname}${url.search}`, { replace: true, reset: false });
-	}
+	// Real navigations (deep link, back/forward) re-read the query string;
+	// replaceState writes below do not fire this, so they cannot clobber it.
+	afterNavigate(() => {
+		activeTab = parseTab(page.url.searchParams);
+	});
 
 	function selectTab(id: string): void {
-		syncTabUrl(parseTab(id), configTab);
-	}
-
-	function selectConfigTab(id: string): void {
-		syncTabUrl('configuration', parseSub(id));
+		activeTab = id === 'activity' || isPanelTab(id) ? id : 'overview';
+		// The default tab omits ?tab= to keep URLs clean; `sub` is a legacy
+		// parameter that no longer selects anything.
+		const url = new URL(window.location.href);
+		if (activeTab === 'overview') url.searchParams.delete('tab');
+		else url.searchParams.set('tab', activeTab);
+		url.searchParams.delete('sub');
+		replaceState(`${url.pathname}${url.search}`, page.state);
 	}
 
 	const status = $derived(
@@ -246,7 +254,7 @@
 	<Alert data-testid="vm-detail-error">{store.error}</Alert>
 {:else if store.entity}
 	{@const entity = store.entity}
-	<header class="mb-6" data-testid="vm-detail-header">
+	<header class="mb-4" data-testid="vm-detail-header">
 		<ButtonLink href={backHref} variant="secondary" size="sm" class="mb-4" data-testid="page-back-link">
 			{#snippet icon()}
 				<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="h-3.5 w-3.5" aria-hidden="true">
@@ -321,6 +329,20 @@
 					</span>
 				{/if}
 				{#if entity.status === 'running'}
+					<ButtonLink href={resolve('/vms/[cluster]/[vmid]/console', { cluster: store.cluster, vmid: String(store.vmid) })} variant="primary" data-testid="vm-console-open">
+						{#snippet icon()}<MonitorIcon class="h-4 w-4" />{/snippet}
+						{m['vms.detail.connect.consoleOpen']()}
+					</ButtonLink>
+				{:else}
+					<span title={m['vms.detail.consoleNeedsRunning']()}>
+						<Button variant="primary" disabled aria-describedby="vm-console-hint" data-testid="vm-console-disabled">
+							<MonitorIcon class="h-4 w-4" />
+							{m['vms.detail.connect.consoleOpen']()}
+						</Button>
+						<span id="vm-console-hint" class="sr-only">{m['vms.detail.consoleNeedsRunning']()}</span>
+					</span>
+				{/if}
+				{#if entity.status === 'running'}
 					<Button
 						variant="secondary"
 						loading={store.actionInFlight && store.inFlightActionKind === 'shutdown'}
@@ -340,7 +362,10 @@
 						{m['vms.detail.power.start']()}
 					</Button>
 				{/if}
-				<VmActionBar quick />
+				<VmActionBar
+					onDelete={() => { deleteOpen = true; }}
+					onRetrofit={session.isAdmin ? () => { retrofitOpen = true; } : undefined}
+				/>
 			</div>
 		</div>
 
@@ -351,23 +376,7 @@
 		{/if}
 	</header>
 
-	{#if store.entity.expiresAt}
-		{@const expiry = new Date(store.entity.expiresAt)}
-		{@const daysLeft = (expiry.getTime() - Date.now()) / 86_400_000}
-		<div class="mb-6 flex flex-wrap items-center gap-3 text-sm" data-testid="vm-lease">
-			<span class={daysLeft < 7 ? 'font-medium text-warning' : 'text-muted-foreground'}>
-				{m['vms.lease.expiresOn']({ date: formatDate(expiry) })}
-			</span>
-			<Button variant="secondary" size="sm" onclick={() => store.extendLease(30)} label={m['vms.lease.extend']()} disabled={store.leaseInFlight}>
-				{m['vms.lease.extend']()}
-			</Button>
-			{#if store.leaseError}
-				<p role="alert" class="text-sm text-destructive">{store.leaseError}</p>
-			{/if}
-		</div>
-	{/if}
-
-	<div class="mb-6 grid gap-3 empty:hidden">
+	<div class="mb-4 grid gap-3 empty:hidden">
 		<VmStateBanners
 			{status}
 			{confirmingShutdown}
@@ -375,149 +384,153 @@
 			onCancelShutdown={() => (confirmingShutdown = false)}
 			detail={ledger.detail(store.cluster, store.vmid)}
 		/>
+		{#if store.actionError}
+			<Alert data-testid="vm-action-error">{store.actionError}</Alert>
+		{/if}
+		{#if store.retrofitError}
+			<Alert data-testid="vm-retrofit-seabios-error">{store.retrofitError}</Alert>
+		{/if}
 	</div>
+	{#if store.actionInFlight && store.entity}
+		<p role="status" aria-live="polite" class="sr-only" data-testid="vm-action-aria">
+			{m['vms.detail.statusChanged']({ name: store.entity.name, status: store.entity.status })}
+		</p>
+	{/if}
 
-	<Tabs {tabs} look="underline" bind:active={() => activeTab, selectTab} />
+	<Tabs {tabs} look="folder" bind:active={() => activeTab, selectTab} />
 
-	<div id="panel-connect" role="tabpanel" aria-labelledby="tab-connect" hidden={activeTab !== 'connect'} class="mt-5">
-		<div class="grid gap-5">
-			<VmConnectTab {status} />
-			<section aria-labelledby="vm-usage-heading">
-				<h2 id="vm-usage-heading" class="sr-only">{m['vms.detail.config.usage']()}</h2>
+	<div id="panel-overview" role="tabpanel" aria-labelledby="tab-overview" hidden={activeTab !== 'overview'} class="pv-tabpanel">
+		<div class="grid content-start gap-5 lg:grid-cols-[minmax(0,1fr)_300px]">
+			<div class="grid content-start gap-5">
+				<VmConnectTab {status} onStart={() => void power('start')} />
 				<VmMetricsRow />
-			</section>
-		</div>
-	</div>
+			</div>
 
-	<div id="panel-configuration" role="tabpanel" aria-labelledby="tab-configuration" hidden={activeTab !== 'configuration'} class="mt-5">
-		<Tabs tabs={configTabs} bind:active={() => configTab, selectConfigTab} />
-
-		<div
-			id="panel-overview"
-			role="tabpanel"
-			aria-labelledby="tab-overview"
-			hidden={configTab !== 'overview'}
-			class="mt-4 grid gap-5"
-		>
-			<Card pad="lg">
-				<dl class="grid gap-x-6 gap-y-4 text-sm sm:grid-cols-2" data-testid="vm-config-summary">
-					<div>
+			<Card as="aside" pad="lg" aria-labelledby="vm-details-heading" class="self-start">
+				<h2 id="vm-details-heading" class="text-2xs font-semibold uppercase tracking-[0.08em] text-muted-foreground-subtle">
+					{m['vms.detail.detailsHeading']()}
+				</h2>
+				<dl class="mt-4 grid gap-y-3 text-sm" data-testid="vm-details">
+					<div class="flex items-baseline justify-between gap-4">
 						<dt class="text-xs text-muted-foreground">{m['vms.detail.config.size']()}</dt>
-						<dd class="mt-0.5">{m['vms.detail.config.sizeValue']({ cpu: entity.cpuCores, memory: compactBytes(entity.memoryTotal) })}</dd>
+						<dd>{m['vms.detail.config.sizeValue']({ cpu: entity.cpuCores, memory: compactBytes(entity.memoryTotal) })}</dd>
 					</div>
-					<div>
+					<div class="flex items-baseline justify-between gap-4">
 						<dt class="text-xs text-muted-foreground">{m['vms.detail.config.disk']()}</dt>
-						<dd class="mt-0.5 font-mono">{compactBytes(entity.diskTotal)}</dd>
+						<dd class="font-mono">{compactBytes(entity.diskTotal)}</dd>
 					</div>
-					<div>
-						<dt class="text-xs text-muted-foreground">{m['vms.detail.config.placement']()}</dt>
-						<dd class="mt-0.5">
-							{m['vms.detail.config.managed']()}
-							{#if session.isAdmin}
-								<span class="font-mono text-xs text-muted-foreground">({entity.node})</span>
-							{/if}
-						</dd>
+					<div class="flex items-baseline justify-between gap-4">
+						<dt class="text-xs text-muted-foreground">{m['vms.detail.fieldVmid']()}</dt>
+						<dd class="font-mono">{entity.vmid}</dd>
 					</div>
-					<div>
-						<dt class="text-xs text-muted-foreground">{m['vms.detail.config.identifier']()}</dt>
-						<dd class="mt-0.5 font-mono">{clusterLabel} / {entity.vmid}</dd>
+					<div class="flex items-baseline justify-between gap-4">
+						<dt class="text-xs text-muted-foreground">{m['common.cluster']()}</dt>
+						<dd class="font-mono">{clusterLabel}</dd>
 					</div>
-				</dl>
-			</Card>
-
-			<Card pad="lg">
-				<div class="flex items-center justify-between">
-					<h2 class="text-sm font-medium text-muted-foreground">{m['vms.detail.descriptionLabel']()}</h2>
-					{#if !editingDescription}
-						<Button variant="secondary" size="sm" onclick={startEditDescription} label={m['common.edit']()}>
-							{m['common.edit']()}
-						</Button>
+					{#if session.isAdmin}
+						<div class="flex items-baseline justify-between gap-4">
+							<dt class="text-xs text-muted-foreground">{m['common.node']()}</dt>
+							<dd class="font-mono">{entity.node}</dd>
+						</div>
+						<div class="flex items-baseline justify-between gap-4">
+							<dt class="text-xs text-muted-foreground">{m['vms.list.columnPool']()}</dt>
+							<dd class="font-mono">{entity.pool}</dd>
+						</div>
 					{/if}
-				</div>
-				{#if editingDescription}
-					<Textarea
-						class="mt-3"
-						bind:value={descriptionDraft}
-						onEscape={cancelDescription}
-						onCmdEnter={() => void commitDescription()}
-						data-testid="vm-description-edit"
-						focusOnMount
-					/>
-					<div class="mt-3 flex gap-2">
-						<Button size="sm" onclick={() => void commitDescription()} data-testid="vm-description-save">
-							{m['common.save']()}
-						</Button>
-						<Button variant="secondary" size="sm" onclick={cancelDescription}>
-							{m['common.cancel']()}
-						</Button>
+					{#if entity.expiresAt}
+						{@const expiry = new Date(entity.expiresAt)}
+						{@const daysLeft = (expiry.getTime() - Date.now()) / 86_400_000}
+						<div class="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-2" data-testid="vm-lease">
+							<dt class="text-xs text-muted-foreground">{m['vms.detail.fieldLease']()}</dt>
+							<dd class="flex flex-wrap items-center gap-2">
+								<span class={daysLeft < 7 ? 'font-medium text-warning' : ''}>{formatDate(expiry)}</span>
+								<Button variant="secondary" size="sm" onclick={() => void store.extendLease(30)} label={m['vms.lease.extend']()} disabled={store.leaseInFlight}>
+									{m['vms.lease.extend']()}
+								</Button>
+							</dd>
+						</div>
+						{#if store.leaseError}
+							<p role="alert" class="text-sm text-destructive">{store.leaseError}</p>
+						{/if}
+					{/if}
+				</dl>
+
+				<div class="mt-6 border-t border-border pt-5">
+					<div class="flex items-center justify-between">
+						<h2 class="text-2xs font-semibold uppercase tracking-[0.08em] text-muted-foreground-subtle">{m['vms.detail.descriptionLabel']()}</h2>
+						{#if !editingDescription}
+							<Button variant="secondary" size="sm" onclick={startEditDescription} label={m['common.edit']()}>
+								{m['common.edit']()}
+							</Button>
+						{/if}
 					</div>
-				{:else}
-					<div
-						class="mt-3 w-full rounded-lg border border-dashed border-border bg-muted/30 px-4 py-4 text-left text-sm leading-6 hover:cursor-text hover:bg-muted/50"
-						role="button"
-						tabindex="0"
-						onclick={startEditDescription}
-						onkeydown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); startEditDescription(); } }}
-						title={m['vms.detail.clickToEdit']()}
-						data-testid="vm-description"
-					>
-						{#if entity.descriptionHtml}
+					{#if editingDescription}
+						<Textarea
+							class="mt-3"
+							bind:value={descriptionDraft}
+							onEscape={cancelDescription}
+							onCmdEnter={() => void commitDescription()}
+							data-testid="vm-description-edit"
+							focusOnMount
+						/>
+						<div class="mt-3 flex gap-2">
+							<Button size="sm" onclick={() => void commitDescription()} data-testid="vm-description-save">
+								{m['common.save']()}
+							</Button>
+							<Button variant="secondary" size="sm" onclick={cancelDescription}>
+								{m['common.cancel']()}
+							</Button>
+						</div>
+					{:else if entity.descriptionHtml}
+						<div
+							class="mt-3 w-full text-left text-sm leading-6 hover:cursor-text"
+							role="button"
+							tabindex="0"
+							onclick={startEditDescription}
+							onkeydown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); startEditDescription(); } }}
+							title={m['vms.detail.clickToEdit']()}
+							data-testid="vm-description"
+						>
 							<article class="prose prose-sm max-w-none dark:prose-invert">
 								<!-- eslint-disable-next-line svelte/no-at-html-tags -- backend renderer is XSS-safe (server/internal/httpapi/markdown.go) -->
 								{@html entity.descriptionHtml}
 							</article>
-						{:else}
-							{m['vms.detail.noDescription']()}
-						{/if}
-					</div>
-				{/if}
-			</Card>
-
-			<Card pad="lg" aria-labelledby="vm-power-heading">
-				<h2 id="vm-power-heading" class="mb-4 text-sm font-medium text-muted-foreground">{m['vms.detail.config.power']()}</h2>
-				<VmActionBar onDelete={() => { deleteOpen = true; }} />
-				{#if session.isAdmin}
-					<div class="mt-4 flex flex-wrap items-center gap-2" data-testid="vm-admin-actions">
-						<Button
-							size="sm"
-							variant="secondary"
-							disabled={store.retrofitInFlight}
-							onclick={() => { retrofitOpen = true; }}
-							data-testid="vm-retrofit-seabios-btn"
-							title={m['vms.detail.retrofitSeabiosHint']()}
-							label={m['vms.detail.retrofitSeabios']()}
+						</div>
+					{:else}
+						<button
+							type="button"
+							class="mt-3 text-sm text-muted-foreground underline-offset-2 hover:cursor-text hover:text-foreground hover:underline"
+							onclick={startEditDescription}
+							title={m['vms.detail.clickToEdit']()}
+							data-testid="vm-description"
 						>
-							{m['vms.detail.retrofitSeabios']()}
-						</Button>
-						{#if store.retrofitError}
-							<p class="text-destructive text-sm" data-testid="vm-retrofit-seabios-error">{store.retrofitError}</p>
-						{/if}
-					</div>
-				{/if}
+							{m['vms.detail.noDescription']()}
+						</button>
+					{/if}
+				</div>
 			</Card>
-
-		</div>
-
-		<div id="panel-disks" role="tabpanel" aria-labelledby="tab-disks" hidden={configTab !== 'disks'} class="mt-4">
-			<VmDisksTab />
-		</div>
-
-		<div id="panel-network" role="tabpanel" aria-labelledby="tab-network" hidden={configTab !== 'network'} class="mt-4">
-			<VmNetworkTab />
-		</div>
-
-		<div id="panel-hardware" role="tabpanel" aria-labelledby="tab-hardware" hidden={configTab !== 'hardware'} class="mt-4">
-			<VmHardwareTab />
-		</div>
-
-			<div id="panel-snapshots" role="tabpanel" aria-labelledby="tab-snapshots" hidden={configTab !== 'snapshots'} class="mt-4">
-			{#if activeTab === 'configuration' && configTab === 'snapshots'}
-				<VmSnapshotsTab />
-			{/if}
 		</div>
 	</div>
 
-	<div id="panel-activity" role="tabpanel" aria-labelledby="tab-activity" hidden={activeTab !== 'activity'} class="mt-5">
+	<div id="panel-disks" role="tabpanel" aria-labelledby="tab-disks" hidden={activeTab !== 'disks'} class="pv-tabpanel">
+		<VmDisksTab />
+	</div>
+
+	<div id="panel-network" role="tabpanel" aria-labelledby="tab-network" hidden={activeTab !== 'network'} class="pv-tabpanel">
+		<VmNetworkTab />
+	</div>
+
+	<div id="panel-hardware" role="tabpanel" aria-labelledby="tab-hardware" hidden={activeTab !== 'hardware'} class="pv-tabpanel">
+		<VmHardwareTab />
+	</div>
+
+	<div id="panel-snapshots" role="tabpanel" aria-labelledby="tab-snapshots" hidden={activeTab !== 'snapshots'} class="pv-tabpanel">
+		{#if activeTab === 'snapshots'}
+			<VmSnapshotsTab />
+		{/if}
+	</div>
+
+	<div id="panel-activity" role="tabpanel" aria-labelledby="tab-activity" hidden={activeTab !== 'activity'} class="pv-tabpanel">
 		{#if activeTab === 'activity'}
 			<VmActivityTab />
 		{/if}

@@ -38,10 +38,10 @@ test.describe('T05 VM detail & actions (closes S01)', () => {
 		// admin-only plumbing.
 		await expect(page.getByTestId('vm-placement')).toContainText('Demo Cluster Alpha');
 		await expect(page.getByTestId('vm-placement')).not.toContainText('pve-node-01');
-		await expect(page.getByTestId('vm-stat-cpu')).toContainText('2');
-		// Connection-first: the Connect tab is the default and shows the SSH
+		await expect(page.getByTestId('vm-details')).toContainText('2 vCPU');
+		// Connection-first: the Overview tab is the default and shows the SSH
 		// command built from the address the guest agent reports.
-		await expect(page.getByTestId('vm-tab-connect')).toHaveAttribute('aria-selected', 'true');
+		await expect(page.getByTestId('tab-overview')).toHaveAttribute('aria-selected', 'true');
 		await expect(page.getByTestId('vm-ssh-command')).toContainText('@10.10.100.10');
 	});
 
@@ -119,8 +119,8 @@ test.describe('T05 VM detail & actions (closes S01)', () => {
 		const vm = await createVm(page.request, 'detail-e2e-del');
 		await page.goto(`/vms/default/${vm.vmid}`);
 
-		await page.getByTestId('vm-tab-configuration').click();
-		await page.getByTestId('vm-action-delete').click();
+		await page.getByTestId('vm-action-menu').click();
+		await page.getByTestId('vm-menu-delete').click();
 		await expect(page.getByRole('dialog')).toBeVisible();
 		await page.getByTestId('vm-delete-confirm').click();
 
@@ -133,8 +133,8 @@ test.describe('T05 VM detail & actions (closes S01)', () => {
 		const vm = await createVm(page.request, 'detail-e2e-run', { start: true });
 		await page.goto(`/vms/default/${vm.vmid}`);
 
-		await page.getByTestId('vm-tab-configuration').click();
-		await page.getByTestId('vm-action-delete').click();
+		await page.getByTestId('vm-action-menu').click();
+		await page.getByTestId('vm-menu-delete').click();
 		await expect(page.getByRole('dialog')).toBeVisible();
 
 		// First confirm - the server reports the VM is running.

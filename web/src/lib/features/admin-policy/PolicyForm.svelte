@@ -5,9 +5,16 @@
 	import Alert from '#lib/shared/ui/Alert.svelte';
 	import Button from '#lib/shared/ui/Button.svelte';
 	import Card from '#lib/shared/ui/Card.svelte';
-	import FormField from '#lib/shared/ui/FormField.svelte';
+	import LimitField from './LimitField.svelte';
 	import Switch from '#lib/shared/ui/Switch.svelte';
-	import TextField from '#lib/shared/ui/TextField.svelte';
+	import CalendarIcon from '#lib/shared/ui/icons/CalendarIcon.svelte';
+	import CpuIcon from '#lib/shared/ui/icons/CpuIcon.svelte';
+	import FeatureQuotasIcon from '#lib/shared/ui/icons/FeatureQuotasIcon.svelte';
+	import GaugeIcon from '#lib/shared/ui/icons/GaugeIcon.svelte';
+	import HardDriveIcon from '#lib/shared/ui/icons/HardDriveIcon.svelte';
+	import HashIcon from '#lib/shared/ui/icons/HashIcon.svelte';
+	import MemoryIcon from '#lib/shared/ui/icons/MemoryIcon.svelte';
+	import NetworkIcon from '#lib/shared/ui/icons/NetworkIcon.svelte';
 
 	interface Props {
 		policy: AdminPolicy;
@@ -59,6 +66,16 @@
 
 	function setMemoryGiB(v: string | number): void {
 		form.gabarit.maxMemoryMB = (v === '' || v == null ? null : Math.round(Number(v) * 1024)) as number;
+	}
+
+	// The -1 sentinel stays in the form but is never displayed: while
+	// unlimited, the input shows an empty placeholder instead.
+	function quotaValue(): string | number {
+		return quotaUnlimited || form.maxVmPerUser == null ? '' : form.maxVmPerUser;
+	}
+
+	function setQuotaValue(v: string | number): void {
+		form.maxVmPerUser = (v === '' || v == null ? null : Number(v)) as number;
 	}
 
 	let isDirty = $derived(
@@ -251,131 +268,124 @@
 </script>
 
 <form class="grid max-w-5xl gap-6 lg:grid-cols-[minmax(0,2fr)_minmax(0,1fr)] lg:items-start" onsubmit={(event) => { event.preventDefault(); saveNow(); }}>
-	<Card pad="lg">
-		<div class="mb-4 grid gap-1">
-			<h2 class="text-lg font-medium text-foreground">{m['policy.gabarit']()}</h2>
-			<p class="text-sm text-muted-foreground">{m['policy.gabaritDescription']()}</p>
-			<p class="text-xs text-muted-foreground-subtle">{m['policy.noCap']()}</p>
-		</div>
+	<div class="grid gap-6">
+		<Card pad="none">
+			<div class="px-6 pb-4 pt-5">
+				<h2 class="flex items-center gap-2 text-lg font-medium text-foreground">
+					<GaugeIcon class="h-5 w-5 text-muted-foreground" />
+					{m['policy.gabarit']()}
+				</h2>
+				<p class="mt-1 text-sm text-muted-foreground">{m['policy.gabaritDescription']()}</p>
+				<p class="mt-1 text-xs text-muted-foreground-subtle">{m['policy.noCap']()}</p>
+			</div>
 
-		<div class="grid gap-6">
-			<fieldset>
-				<legend class="mb-3 text-sm font-medium text-muted-foreground">{m['policy.cpuGroup']()}</legend>
-				<div class="grid gap-4 sm:grid-cols-2">
-					<FormField label={m['policy.maxSockets']()} required error={maxSocketsError ?? serverErrorForField('maxSockets')}>
-						{#snippet children({ id, describedBy, invalid })}
-							<TextField {id} {describedBy} {invalid} type="number" min={0} max={MAX_SOCKETS} bind:value={form.gabarit.maxSockets} required />
-						{/snippet}
-					</FormField>
-					<FormField label={m['policy.maxCores']()} required error={maxCoresError ?? serverErrorForField('maxCores')}>
-						{#snippet children({ id, describedBy, invalid })}
-							<TextField {id} {describedBy} {invalid} type="number" min={0} max={MAX_CORES} bind:value={form.gabarit.maxCores} required />
-						{/snippet}
-					</FormField>
-				</div>
-			</fieldset>
+			<div class="border-t border-border">
+				<fieldset class="min-w-0">
+					<legend class="float-none w-full px-6 pt-4 text-2xs font-semibold uppercase tracking-wider text-muted-foreground-subtle">
+						<span class="flex items-center gap-1.5"><CpuIcon class="h-3.5 w-3.5" />{m['policy.cpuGroup']()}</span>
+					</legend>
+					<div class="mt-1 divide-y divide-border">
+						<LimitField label={m['policy.maxSockets']()} min={0} max={MAX_SOCKETS} bind:value={form.gabarit.maxSockets} error={maxSocketsError ?? serverErrorForField('maxSockets')} />
+						<LimitField label={m['policy.maxCores']()} min={0} max={MAX_CORES} bind:value={form.gabarit.maxCores} error={maxCoresError ?? serverErrorForField('maxCores')} />
+					</div>
+				</fieldset>
+			</div>
 
-			<fieldset>
-				<legend class="mb-3 text-sm font-medium text-muted-foreground">{m['policy.memoryGroup']()}</legend>
-				<div class="grid gap-4 sm:grid-cols-2">
-					<FormField label={m['policy.maxMemoryGiB']()} required error={maxMemoryError ?? serverErrorForField('maxMemoryMB')}>
-						{#snippet children({ id, describedBy, invalid })}
-							<TextField
-								{id}
-								{describedBy}
-								{invalid}
-								type="number"
-								min={0}
-								max={MAX_MEMORY_MB / 1024}
-								step={0.5}
-								bind:value={memoryGiB, setMemoryGiB}
-								required
-							>
-								{#snippet trailing()}<span class="text-xs text-muted-foreground">{m['policy.unitGiB']()}</span>{/snippet}
-							</TextField>
-						{/snippet}
-					</FormField>
-				</div>
-			</fieldset>
+			<div class="border-t border-border">
+				<fieldset class="min-w-0">
+					<legend class="float-none w-full px-6 pt-4 text-2xs font-semibold uppercase tracking-wider text-muted-foreground-subtle">
+						<span class="flex items-center gap-1.5"><MemoryIcon class="h-3.5 w-3.5" />{m['policy.memoryGroup']()}</span>
+					</legend>
+					<div class="mt-1 divide-y divide-border">
+						<LimitField
+							label={m['policy.maxMemoryGiB']()}
+							min={0}
+							max={MAX_MEMORY_MB / 1024}
+							step={0.5}
+							unit={m['policy.unitGiB']()}
+							bind:value={memoryGiB, setMemoryGiB}
+							error={maxMemoryError ?? serverErrorForField('maxMemoryMB')}
+						/>
+					</div>
+				</fieldset>
+			</div>
 
-			<fieldset>
-				<legend class="mb-3 text-sm font-medium text-muted-foreground">{m['policy.storageGroup']()}</legend>
-				<div class="grid gap-4 sm:grid-cols-2">
-					<FormField label={m['policy.maxDisk']()} required error={maxDiskError ?? serverErrorForField('maxDiskPerVmGb')}>
-						{#snippet children({ id, describedBy, invalid })}
-							<TextField {id} {describedBy} {invalid} type="number" min={0} max={MAX_DISK_GB} bind:value={form.gabarit.maxDiskPerVmGb} required>
-								{#snippet trailing()}<span class="text-xs text-muted-foreground">{m['policy.unitGB']()}</span>{/snippet}
-							</TextField>
-						{/snippet}
-					</FormField>
-					<FormField label={m['policy.maxSnapshots']()} required error={maxSnapshotsError ?? serverErrorForField('maxSnapshots')}>
-						{#snippet children({ id, describedBy, invalid })}
-							<TextField {id} {describedBy} {invalid} type="number" min={0} max={MAX_SNAPSHOTS} bind:value={form.gabarit.maxSnapshots} required />
-						{/snippet}
-					</FormField>
-				</div>
-			</fieldset>
+			<div class="border-t border-border">
+				<fieldset class="min-w-0">
+					<legend class="float-none w-full px-6 pt-4 text-2xs font-semibold uppercase tracking-wider text-muted-foreground-subtle">
+						<span class="flex items-center gap-1.5"><HardDriveIcon class="h-3.5 w-3.5" />{m['policy.storageGroup']()}</span>
+					</legend>
+					<div class="mt-1 divide-y divide-border">
+						<LimitField label={m['policy.maxDisk']()} min={0} max={MAX_DISK_GB} unit={m['policy.unitGB']()} bind:value={form.gabarit.maxDiskPerVmGb} error={maxDiskError ?? serverErrorForField('maxDiskPerVmGb')} />
+						<LimitField label={m['policy.maxSnapshots']()} min={0} max={MAX_SNAPSHOTS} bind:value={form.gabarit.maxSnapshots} error={maxSnapshotsError ?? serverErrorForField('maxSnapshots')} />
+					</div>
+				</fieldset>
+			</div>
 
-			<fieldset>
-				<legend class="mb-3 text-sm font-medium text-muted-foreground">{m['policy.networkGroup']()}</legend>
-				<div class="grid gap-4 sm:grid-cols-2">
-					<FormField label={m['policy.maxNetworkCards']()} required error={maxNetworkCardsError ?? serverErrorForField('maxNetworkCards')}>
-						{#snippet children({ id, describedBy, invalid })}
-							<TextField {id} {describedBy} {invalid} type="number" min={0} max={MAX_NETWORK_CARDS} bind:value={form.gabarit.maxNetworkCards} required />
-						{/snippet}
-					</FormField>
-					<FormField
-						label={m['policy.isolationVlanTag']()}
-						hint={m['policy.isolationVlanHint']()}
-						error={isolationVlanError ?? serverErrorForField('isolationVlanTag')}
-					>
-						{#snippet children({ id, describedBy, invalid })}
-							<TextField {id} {describedBy} {invalid} type="number" min={0} max={4094} bind:value={form.gabarit.isolationVlanTag} />
-						{/snippet}
-					</FormField>
-				</div>
-			</fieldset>
-			<fieldset class="mt-6">
-				<legend class="mb-3 text-sm font-medium text-muted-foreground">{m['policy.vmidGroup']()}</legend>
-				<p class="mb-3 text-xs text-muted-foreground-subtle">{m['policy.vmidHint']()}</p>
-				<div class="grid gap-4 sm:grid-cols-2">
-					<FormField label={m['policy.vmidMin']()} error={vmidRangeError ?? serverErrorForField('vmidMin')}>
-						{#snippet children({ id, describedBy, invalid })}
-							<TextField {id} {describedBy} {invalid} type="number" min={0} max={999999999} bind:value={form.gabarit.vmidMin} />
-						{/snippet}
-					</FormField>
-					<FormField label={m['policy.vmidMax']()} error={serverErrorForField('vmidMax')}>
-						{#snippet children({ id, describedBy, invalid })}
-							<TextField {id} {describedBy} {invalid} type="number" min={0} max={999999999} bind:value={form.gabarit.vmidMax} />
-						{/snippet}
-					</FormField>
-				</div>
-			</fieldset>
-			<fieldset class="mt-6">
-				<legend class="mb-3 text-sm font-medium text-muted-foreground">{m['policy.leaseGroup']()}</legend>
-				<p class="mb-3 text-xs text-muted-foreground-subtle">{m['policy.leaseHint']()}</p>
-				<FormField label={m['policy.leaseDays']()} error={serverErrorForField('leaseDays')}>
-					{#snippet children({ id, describedBy, invalid })}
-						<TextField {id} {describedBy} {invalid} type="number" min={0} max={3650} bind:value={form.gabarit.leaseDays} />
-					{/snippet}
-				</FormField>
-			</fieldset>
-		</div>
-	</Card>
+			<div class="border-t border-border">
+				<fieldset class="min-w-0">
+					<legend class="float-none w-full px-6 pt-4 text-2xs font-semibold uppercase tracking-wider text-muted-foreground-subtle">
+						<span class="flex items-center gap-1.5"><NetworkIcon class="h-3.5 w-3.5" />{m['policy.networkGroup']()}</span>
+					</legend>
+					<div class="mt-1 divide-y divide-border">
+						<LimitField label={m['policy.maxNetworkCards']()} min={0} max={MAX_NETWORK_CARDS} bind:value={form.gabarit.maxNetworkCards} error={maxNetworkCardsError ?? serverErrorForField('maxNetworkCards')} />
+						<LimitField label={m['policy.isolationVlanTag']()} min={0} max={4094} hint={m['policy.isolationVlanHint']()} bind:value={form.gabarit.isolationVlanTag} error={isolationVlanError ?? serverErrorForField('isolationVlanTag')} />
+					</div>
+				</fieldset>
+			</div>
+		</Card>
+
+		<Card pad="none">
+			<div class="px-6 pb-4 pt-5">
+				<h2 class="flex items-center gap-2 text-lg font-medium text-foreground">
+					<HashIcon class="h-5 w-5 text-muted-foreground" />
+					{m['policy.vmidGroup']()}
+				</h2>
+				<p class="mt-1 text-xs leading-relaxed text-muted-foreground">{m['policy.vmidHint']()}</p>
+			</div>
+			<div class="divide-y divide-border border-t border-border">
+				<LimitField label={m['policy.vmidMin']()} min={0} max={999999999} bind:value={form.gabarit.vmidMin} error={vmidRangeError ?? serverErrorForField('vmidMin')} />
+				<LimitField label={m['policy.vmidMax']()} min={0} max={999999999} bind:value={form.gabarit.vmidMax} error={serverErrorForField('vmidMax')} />
+			</div>
+		</Card>
+
+		<Card pad="none">
+			<div class="px-6 pb-4 pt-5">
+				<h2 class="flex items-center gap-2 text-lg font-medium text-foreground">
+					<CalendarIcon class="h-5 w-5 text-muted-foreground" />
+					{m['policy.leaseGroup']()}
+				</h2>
+				<p class="mt-1 text-xs leading-relaxed text-muted-foreground">{m['policy.leaseHint']()}</p>
+			</div>
+			<div class="divide-y divide-border border-t border-border">
+				<LimitField label={m['policy.leaseDays']()} min={0} max={3650} bind:value={form.gabarit.leaseDays} error={serverErrorForField('leaseDays')} />
+			</div>
+		</Card>
+	</div>
 
 	<div class="grid gap-4 lg:sticky lg:top-24">
-		<Card pad="lg">
-			<div class="mb-3 grid gap-1">
-				<h2 class="text-lg font-medium text-foreground">{m['policy.quota']()}</h2>
+		<Card pad="none">
+			<div class="px-6 pb-4 pt-5">
+				<h2 class="flex items-center gap-2 text-lg font-medium text-foreground">
+					<FeatureQuotasIcon class="h-5 w-5 text-muted-foreground" />
+					{m['policy.quota']()}
+				</h2>
+				<p class="mt-1 text-xs leading-relaxed text-muted-foreground">{m['policy.quotaDescription']()}</p>
 			</div>
-			<FormField label={m['policy.maxVmPerUser']()} required error={maxVmPerUserError ?? serverErrorForField('maxVmPerUser')}>
-				{#snippet children({ id, describedBy, invalid })}
-					<TextField {id} {describedBy} {invalid} type="number" min={-1} max={MAX_VM_PER_USER} bind:value={form.maxVmPerUser} disabled={quotaUnlimited} required />
-				{/snippet}
-			</FormField>
-			<div class="mt-3 flex items-center gap-2">
-				<Switch label={m['policy.quotaUnlimited']()} checked={quotaUnlimited} onToggle={toggleQuotaUnlimited} />
-				<span class="text-sm text-foreground">{m['policy.quotaUnlimited']()}</span>
+			<div class="divide-y divide-border border-t border-border">
+				<LimitField
+					label={m['policy.maxVmPerUser']()}
+					min={-1}
+					max={MAX_VM_PER_USER}
+					disabled={quotaUnlimited}
+					placeholder={quotaUnlimited ? m['policy.quotaUnlimited']() : ''}
+					bind:value={quotaValue, setQuotaValue}
+					error={maxVmPerUserError ?? serverErrorForField('maxVmPerUser')}
+				/>
+				<div class="flex items-center justify-between gap-8 px-6 py-4">
+					<span class="text-sm font-medium text-foreground">{m['policy.quotaUnlimited']()}</span>
+					<Switch label={m['policy.quotaUnlimited']()} checked={quotaUnlimited} onToggle={toggleQuotaUnlimited} />
+				</div>
 			</div>
 			{@render quotaOverrides?.()}
 		</Card>

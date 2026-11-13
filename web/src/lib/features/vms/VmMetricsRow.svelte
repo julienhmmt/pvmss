@@ -50,7 +50,6 @@
 <Card
 	pad="lg"
 	aria-labelledby="metrics-heading"
-	class="mt-6"
 	data-testid="vm-metrics-row"
 >
 	<div class="flex flex-wrap items-center justify-between gap-3">
@@ -73,6 +72,7 @@
 				</span>
 			{/if}
 		</div>
+		{#if isRunning}
 		<div class="inline-flex rounded-lg border border-border" role="group" aria-label={m['vms.detail.metricsRangeLabel']()}>
 			{#each ranges as r (r.value)}
 				<button
@@ -88,9 +88,12 @@
 				</button>
 			{/each}
 		</div>
+		{/if}
 	</div>
 
-	{#if store.error}
+	{#if !isRunning}
+		<p class="mt-4 text-sm text-muted-foreground" data-testid="vm-metrics-stopped">{m['vms.detail.metrics.stoppedNote']()}</p>
+	{:else if store.error}
 		<Alert data-testid="vm-metrics-error" class="mt-4">{store.error}</Alert>
 	{:else if store.loading && store.samples.length === 0}
 		<div class="mt-5 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4" data-testid="vm-metrics-loading">

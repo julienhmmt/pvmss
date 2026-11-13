@@ -485,3 +485,88 @@ func TestDeleteSnapshot_LockSnapshotDeleteCarriesUnlockCommand(t *testing.T) {
 		t.Errorf("error %q should carry the qm unlock command", err.Error())
 	}
 }
+
+//nolint:paralleltest // serial: shared fake snapshot registry
+func TestListSnapshots_ReturnsVisibleWithGabaritAndCapability(t *testing.T) {
+	cluster.ResetFake()
+	t.Cleanup(cluster.ResetFake)
+
+	seedSnapshot(t, "listed-one")
+	index := testSnapshotIndex(t, nil)
+	deps := snapshotDependencies(index, 101, policy.DefaultGabarit())
+
+	snapshots, maxSnapshots, capability, err := vm.ListSnapshots(context.Background(), deps)
+	if err != nil {
+		t.Fatalf("ListSnapshots: %v", err)
+	}
+
+	for _, snap := range snapshots {
+		if snap.Name == "current" {
+			t.Fatalf("current pseudo-snapshot must be filtered: %+v", snapshots)
+		}
+	}
+
+	found := false
+
+	for _, snap := range snapshots {
+		if snap.Name == "listed-one" {
+			found = true
+		}
+	}
+
+	if !found || maxSnapshots != policy.DefaultGabarit().MaxSnapshots || !capability.CanSnapshot {
+		t.Fatalf("snapshots=%+v max=%d capability=%+v", snapshots, maxSnapshots, capability)
+	}
+}
+
+//nolint:paralleltest // serial: shared fake snapshot registry
+func TestCreateSnapshot_DuplicateNameRejected(t *testing.T) {
+	cluster.ResetFake()
+	t.Cleanup(cluster.ResetFake)
+
+	seedSnapshot(t, "already-there")
+	index := testSnapshotIndex(t, nil)
+	deps := snapshotDependencies(index, 101, policy.DefaultGabarit())
+
+	if _, err := vm.CreateSnapshot(context.Background(), deps, "already-there", "", false); !errors.Is(err, vm.ErrDuplicateSnapshotName) {
+		t.Fatalf("CreateSnapshot error = %v, want ErrDuplicateSnapshotName", err)
+	}
+}
+
+//nolint:paralleltest // serial: shared fake snapshot registry
+func TestCreateSnapshot_MaxSnapshotsReached(t *testing.T) {
+	cluster.ResetFake()
+	t.Cleanup(cluster.ResetFake)
+
+	seedSnapshot(t, "only-slot")
+	index := testSnapshotIndex(t, nil)
+	gabarit := policy.DefaultGabarit()
+	gabarit.MaxSnapshots = 1
+	deps := snapshotDependencies(index, 101, gabarit)
+
+	if _, err := vm.CreateSnapshot(context.Background(), deps, "second", "", false); !errors.Is(err, vm.ErrMaxSnapshotsReached) {
+		t.Fatalf("CreateSnapshot error = %v, want ErrMaxSnapshotsReached", err)
+	}
+}
+
+//nolint:paralleltest // serial: shared fake snapshot registry
+func TestSnapshotConfig_CurrentAndNamed(t *testing.T) {
+	cluster.ResetFake()
+	t.Cleanup(cluster.ResetFake)
+
+	seedSnapshot(t, "cfg-snap")
+	index := testSnapshotIndex(t, nil)
+	deps := snapshotDependencies(index, 101, policy.DefaultGabarit())
+
+	if _, err := vm.SnapshotConfig(context.Background(), deps, "current"); err != nil {
+		t.Fatalf("SnapshotConfig current: %v", err)
+	}
+
+	if _, err := vm.SnapshotConfig(context.Background(), deps, "cfg-snap"); err != nil {
+		t.Fatalf("SnapshotConfig named: %v", err)
+	}
+
+	if _, err := vm.SnapshotConfig(context.Background(), deps, "no-such"); !errors.Is(err, vm.ErrSnapshotNotFound) {
+		t.Fatalf("SnapshotConfig missing error = %v, want ErrSnapshotNotFound", err)
+	}
+}

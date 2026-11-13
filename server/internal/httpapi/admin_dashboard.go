@@ -5,6 +5,7 @@ import (
 	"context"
 	"database/sql"
 	"errors"
+	"log/slog"
 	"net/http"
 	"pvmss/server/internal/catalog"
 	"pvmss/server/internal/cluster"
@@ -149,8 +150,8 @@ func (h *AdminOps) ServeDashboard(w http.ResponseWriter, r *http.Request) {
 	var newest time.Time
 
 	labels := h.clusterLabels(r.Context())
-	dash.Alerts = append(dash.Alerts, h.quotaRequestAlerts(r.Context(), labels)...)
-	dash.Alerts = append(dash.Alerts, h.snapshotScheduleAlerts(r.Context(), labels)...)
+	dash.Alerts = append(dash.Alerts, quotaRequestAlerts(r.Context(), h.store, h.log, labels)...)
+	dash.Alerts = append(dash.Alerts, snapshotScheduleAlerts(r.Context(), h.store, h.log, labels)...)
 
 	for _, name := range names {
 		idx := indexes[name]
@@ -168,7 +169,7 @@ func (h *AdminOps) ServeDashboard(w http.ResponseWriter, r *http.Request) {
 			newest = idx.RefreshedAt
 		}
 
-		h.addClusterToDashboard(r.Context(), &dash, name, label, idx)
+		foldClusterIntoDashboard(r.Context(), h.store, h.log, &dash, name, label, idx)
 	}
 
 	if !anyIndex(indexes) {
@@ -209,10 +210,11 @@ func anyIndex(indexes map[string]*inventory.Index) bool {
 	return false
 }
 
-// addClusterToDashboard folds one cluster into dash. name keys the store
-// (policy); label is what the administrator reads.
-func (h *AdminOps) addClusterToDashboard(ctx context.Context, dash *dashboardDTO, name, label string, idx *inventory.Index) {
-	enabled, catalogKnown := h.enabledCatalogNodes(ctx, name)
+// foldClusterIntoDashboard folds one cluster into dash. name keys the store
+// (policy); label is what the administrator reads. Shared with the cluster
+// detail endpoint so both compute identical alerts.
+func foldClusterIntoDashboard(ctx context.Context, st *store.Store, log *slog.Logger, dash *dashboardDTO, name, label string, idx *inventory.Index) {
+	enabled, catalogKnown := enabledCatalogNodes(ctx, st, log, name)
 
 	for _, node := range idx.Nodes {
 		vms := idx.ByNode[node.Name]
@@ -258,16 +260,16 @@ func (h *AdminOps) addClusterToDashboard(ctx context.Context, dash *dashboardDTO
 		dash.Alerts = appendStorageAlert(dash.Alerts, name, s)
 	}
 
-	dash.Alerts = append(dash.Alerts, h.poolQuotaAlerts(ctx, name, label, idx)...)
+	dash.Alerts = append(dash.Alerts, poolQuotaAlerts(ctx, st, log, name, label, idx)...)
 }
 
 // enabledCatalogNodes returns the set of node names enabled in the catalog.
 // A read failure is logged and reported as unknown so offline nodes keep
 // their critical alert - an unknown state must not silence it.
-func (h *AdminOps) enabledCatalogNodes(ctx context.Context, clusterName string) (map[string]bool, bool) {
-	rows, err := h.store.CatalogNodesEnabled(ctx, clusterName)
+func enabledCatalogNodes(ctx context.Context, st *store.Store, log *slog.Logger, clusterName string) (map[string]bool, bool) {
+	rows, err := st.CatalogNodesEnabled(ctx, clusterName)
 	if err != nil {
-		h.log.WarnContext(ctx, "dashboard catalog read failed", "component", "httpapi", "cluster", clusterName, "error", err)
+		log.WarnContext(ctx, "dashboard catalog read failed", "component", "httpapi", "cluster", clusterName, "error", err)
 		return nil, false
 	}
 
@@ -383,19 +385,19 @@ func appendStorageAlert(alerts []dashboardAlertDTO, clusterKey string, s dashboa
 // poolQuotaAlerts reports PVMSS-managed ("pvmss-") pools holding as many
 // pvmss-tagged VMs as the cluster's per-user quota allows. Other Proxmox pools are
 // ignored. A cluster with no stored policy is unlimited.
-func (h *AdminOps) poolQuotaAlerts(ctx context.Context, clusterName, label string, idx *inventory.Index) []dashboardAlertDTO {
-	row, err := h.store.PolicyRow(ctx, clusterName)
+func poolQuotaAlerts(ctx context.Context, st *store.Store, log *slog.Logger, clusterName, label string, idx *inventory.Index) []dashboardAlertDTO {
+	row, err := st.PolicyRow(ctx, clusterName)
 	if err != nil {
 		if !errors.Is(err, sql.ErrNoRows) {
-			h.log.WarnContext(ctx, "dashboard policy read failed", "component", "httpapi", "cluster", clusterName, "error", err)
+			log.WarnContext(ctx, "dashboard policy read failed", "component", "httpapi", "cluster", clusterName, "error", err)
 		}
 
 		return nil
 	}
 
-	overrides, err := h.store.ListPoolQuotaOverrides(ctx, clusterName)
+	overrides, err := st.ListPoolQuotaOverrides(ctx, clusterName)
 	if err != nil {
-		h.log.WarnContext(ctx, "dashboard pool quota override read failed", "component", "httpapi", "cluster", clusterName, "error", err)
+		log.WarnContext(ctx, "dashboard pool quota override read failed", "component", "httpapi", "cluster", clusterName, "error", err)
 
 		return nil
 	}
@@ -477,14 +479,14 @@ func countVMStatus(counts *vmStatusCountsDTO, status cluster.VMStatus) {
 // quotaRequestAlerts raises one warning per cluster that has quota requests
 // waiting for a decision, so the admin inbox is reachable from the dashboard.
 // Used carries the count. A read failure is logged and drops only this alert.
-func (h *AdminOps) quotaRequestAlerts(ctx context.Context, labels map[string]string) []dashboardAlertDTO {
-	if h.store == nil {
+func quotaRequestAlerts(ctx context.Context, st *store.Store, log *slog.Logger, labels map[string]string) []dashboardAlertDTO {
+	if st == nil {
 		return nil
 	}
 
-	rows, err := h.store.ListQuotaRequests(ctx, store.QuotaRequestPending)
+	rows, err := st.ListQuotaRequests(ctx, store.QuotaRequestPending)
 	if err != nil {
-		logctx.FromOr(ctx, h.log).WarnContext(ctx, "failed to read pending quota requests", "component", "httpapi", "error", err)
+		logctx.FromOr(ctx, log).WarnContext(ctx, "failed to read pending quota requests", "component", "httpapi", "error", err)
 		return nil
 	}
 
@@ -514,14 +516,14 @@ func (h *AdminOps) quotaRequestAlerts(ctx context.Context, labels map[string]str
 // snapshotScheduleAlerts reports VMs whose latest automatic snapshot attempt
 // failed. An unreachable cluster is left out: cluster_unreachable already says
 // so, once, instead of once per scheduled VM.
-func (h *AdminOps) snapshotScheduleAlerts(ctx context.Context, labels map[string]string) []dashboardAlertDTO {
-	if h.store == nil {
+func snapshotScheduleAlerts(ctx context.Context, st *store.Store, log *slog.Logger, labels map[string]string) []dashboardAlertDTO {
+	if st == nil {
 		return nil
 	}
 
-	schedules, err := h.store.ListSnapshotSchedules(ctx)
+	schedules, err := st.ListSnapshotSchedules(ctx)
 	if err != nil {
-		logctx.FromOr(ctx, h.log).WarnContext(ctx, "failed to read snapshot schedules", "component", "httpapi", "error", err)
+		logctx.FromOr(ctx, log).WarnContext(ctx, "failed to read snapshot schedules", "component", "httpapi", "error", err)
 		return nil
 	}
 

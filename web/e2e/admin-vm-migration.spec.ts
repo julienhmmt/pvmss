@@ -38,12 +38,15 @@ async function migrateBack(request: APIRequestContext): Promise<void> {
 	}
 }
 
-// Reaches the node page through the node list link (client-side navigation);
-// the detail page also loads on direct URL entry - it fetches in onMount.
+// Reaches the node page through the node list link (client-side navigation)
+// and opens the Workloads tab where the VM table lives. The detail page also
+// loads on direct URL entry - it fetches in onMount.
 async function openNode(page: Page, node: string): Promise<void> {
 	await page.goto('/admin/nodes');
 	await page.getByRole('link', { name: node, exact: true }).click();
 	await expect(page).toHaveURL(new RegExp(`/admin/nodes/default/${node}$`));
+	await page.getByRole('tab', { name: 'Workloads' }).click();
+	await expect(page).toHaveURL(new RegExp(`/admin/nodes/default/${node}\\?tab=workloads$`));
 }
 
 function vmRow(page: Page) {

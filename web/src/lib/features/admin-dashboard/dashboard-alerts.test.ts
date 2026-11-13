@@ -10,7 +10,7 @@ const alert = (kind: DashboardAlert['kind'], extra: Partial<DashboardAlert> = {}
 
 describe('dashboard alerts', () => {
 	it('sends each alert to the page where it is fixed', () => {
-		expect(alertHref(alert('cluster_unreachable'))).toBe('/admin/clusters');
+		expect(alertHref(alert('cluster_unreachable'))).toBe('/admin/clusters/east?tab=connection');
 		// clusterKey wins over the display label when the server sends both.
 		expect(alertHref(alert('node_offline', { subject: 'n1', cluster: 'East Campus', clusterKey: 'east' }))).toBe('/admin/nodes/east/n1?from=dashboard');
 		expect(alertHref(alert('node_offline_disabled', { subject: 'n1' }))).toBe('/admin/nodes/east/n1?from=dashboard');
@@ -26,7 +26,7 @@ describe('dashboard alerts', () => {
 
 	it('links a failed snapshot schedule to its VM', () => {
 		const failed = alert('snapshot_schedule_failed', { subject: '101', cluster: 'East Campus', clusterKey: 'east' });
-		expect(alertHref(failed)).toBe('/vms/east/101?tab=configuration&sub=snapshots');
+		expect(alertHref(failed)).toBe('/vms/east/101?tab=snapshots');
 		expect(alertMessage(failed)).toContain('101');
 	});
 

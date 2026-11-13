@@ -283,3 +283,171 @@ func TestAdminRecovery_ExpiredCooldownRescans(t *testing.T) {
 		t.Fatalf("report after cooldown = %+v, want rescan showing no pools", report.Pools)
 	}
 }
+
+// newRecoveryDeps builds the default handler deps so error-path tests can
+// swap one collaborator at a time (no source registry, empty client list,
+// closed store, unpopulated projection).
+func newRecoveryDeps(t *testing.T) (httpapi.AdminRecoveryDeps, *httpapi.Auth) {
+	t.Helper()
+	t.Cleanup(cluster.ResetFake)
+
+	authHandler := newAuthHandler(t)
+	client := cluster.Fake{}
+	if err := client.CreatePool(context.Background(), recoveryOldPool, "previous install"); err != nil {
+		t.Fatalf("CreatePool: %v", err)
+	}
+	index := inventory.BuildIndex(cluster.Snapshot{VMs: []cluster.VM{
+		{VMID: 900, Name: "web-old-01", Node: cluster.FakeNode01, Status: cluster.VMRunning, Pool: recoveryOldPool, Tags: []string{extraPvmssTag}},
+	}})
+
+	return httpapi.AdminRecoveryDeps{
+		Auth:       authHandler,
+		Clients:    vmCreateClientProvider{clients: map[string]cluster.Client{auditTestCluster: client}},
+		Projection: inventory.NewProjectionFromIndex(&index),
+		Store:      newAdminStore(t),
+		Log:        slog.Default(),
+	}, authHandler
+}
+
+func TestAdminRecovery_ReportUnknownCluster404(t *testing.T) {
+	handler, authHandler, _, _ := newAdminRecoveryHandler(t)
+	rec := adminRecoveryRequest(t, handler.ServeReport, http.MethodGet, "/api/v1/admin/recovery?cluster=bogus", adminCookie(t, authHandler), "")
+	if rec.Code != http.StatusNotFound {
+		t.Fatalf("status = %d, want 404", rec.Code)
+	}
+}
+
+func TestAdminRecovery_ReportFallsBackToFirstCluster(t *testing.T) {
+	handler, authHandler, _, _ := newAdminRecoveryHandler(t)
+	rec := adminRecoveryRequest(t, handler.ServeReport, http.MethodGet, "/api/v1/admin/recovery", adminCookie(t, authHandler), "")
+	if rec.Code != http.StatusOK {
+		t.Fatalf("status = %d: %s", rec.Code, rec.Body.String())
+	}
+	var report recoveryReportDTO
+	if err := json.Unmarshal(rec.Body.Bytes(), &report); err != nil {
+		t.Fatalf("decode: %v", err)
+	}
+	if report.Cluster != auditTestCluster {
+		t.Fatalf("cluster = %q, want %q", report.Cluster, auditTestCluster)
+	}
+}
+
+func TestAdminRecovery_ReportUnauthenticated(t *testing.T) {
+	handler, _, _, _ := newAdminRecoveryHandler(t)
+	rec := adminRecoveryRequest(t, handler.ServeReport, http.MethodGet, "/api/v1/admin/recovery?cluster=default", nil, "")
+	if rec.Code != http.StatusUnauthorized {
+		t.Fatalf("status = %d, want 401", rec.Code)
+	}
+}
+
+// An unpopulated projection means the inventory has not refreshed yet - the
+// report is a 503, not a failure.
+func TestAdminRecovery_ReportProjectionNotReady503(t *testing.T) {
+	deps, authHandler := newRecoveryDeps(t)
+	deps.Projection = inventory.NewProjection()
+	handler := httpapi.NewAdminRecovery(deps)
+
+	rec := adminRecoveryRequest(t, handler.ServeReport, http.MethodGet, "/api/v1/admin/recovery?cluster=default", adminCookie(t, authHandler), "")
+	if rec.Code != http.StatusServiceUnavailable {
+		t.Fatalf("status = %d, want 503: %s", rec.Code, rec.Body.String())
+	}
+}
+
+// A dead store mid-scan is the generic 500 path of writeRecoveryError.
+func TestAdminRecovery_ReportStoreFailure500(t *testing.T) {
+	deps, authHandler := newRecoveryDeps(t)
+	if err := deps.Store.Close(); err != nil {
+		t.Fatalf("close store: %v", err)
+	}
+	handler := httpapi.NewAdminRecovery(deps)
+
+	rec := adminRecoveryRequest(t, handler.ServeReport, http.MethodGet, "/api/v1/admin/recovery?cluster=default", adminCookie(t, authHandler), "")
+	if rec.Code != http.StatusInternalServerError {
+		t.Fatalf("status = %d, want 500: %s", rec.Code, rec.Body.String())
+	}
+}
+
+func TestAdminRecovery_ReportNilClients404(t *testing.T) {
+	deps, authHandler := newRecoveryDeps(t)
+	deps.Clients = nil
+	handler := httpapi.NewAdminRecovery(deps)
+
+	rec := adminRecoveryRequest(t, handler.ServeReport, http.MethodGet, "/api/v1/admin/recovery?cluster=default", adminCookie(t, authHandler), "")
+	if rec.Code != http.StatusNotFound {
+		t.Fatalf("status = %d, want 404", rec.Code)
+	}
+}
+
+func TestAdminRecovery_ReportEmptyClientList404(t *testing.T) {
+	deps, authHandler := newRecoveryDeps(t)
+	deps.Clients = vmCreateClientProvider{clients: map[string]cluster.Client{}}
+	handler := httpapi.NewAdminRecovery(deps)
+
+	rec := adminRecoveryRequest(t, handler.ServeReport, http.MethodGet, "/api/v1/admin/recovery", adminCookie(t, authHandler), "")
+	if rec.Code != http.StatusNotFound {
+		t.Fatalf("status = %d, want 404", rec.Code)
+	}
+}
+
+func TestAdminRecovery_ScanBadJSON(t *testing.T) {
+	handler, authHandler, _, _ := newAdminRecoveryHandler(t)
+	rec := adminRecoveryRequest(t, handler.ServeScan, http.MethodPost, "/api/v1/admin/recovery/scan", adminCookie(t, authHandler), "{invalid")
+	if rec.Code != http.StatusBadRequest {
+		t.Fatalf("status = %d, want 400", rec.Code)
+	}
+}
+
+// With several clusters registered an empty cluster field is ambiguous.
+func TestAdminRecovery_ScanClusterRequired(t *testing.T) {
+	deps, authHandler := newRecoveryDeps(t)
+	deps.Clients = vmCreateClientProvider{clients: map[string]cluster.Client{"a": cluster.Fake{}, "b": cluster.Fake{}}}
+	handler := httpapi.NewAdminRecovery(deps)
+
+	rec := adminRecoveryRequest(t, handler.ServeScan, http.MethodPost, "/api/v1/admin/recovery/scan", adminCookie(t, authHandler), `{"cluster":""}`)
+	if rec.Code != http.StatusBadRequest {
+		t.Fatalf("status = %d, want 400", rec.Code)
+	}
+}
+
+func TestAdminRecovery_AdoptBadJSON(t *testing.T) {
+	handler, authHandler, _, _ := newAdminRecoveryHandler(t)
+	rec := adminRecoveryRequest(t, handler.ServeAdopt, http.MethodPost, "/api/v1/admin/recovery", adminCookie(t, authHandler), "{invalid")
+	if rec.Code != http.StatusBadRequest {
+		t.Fatalf("status = %d, want 400", rec.Code)
+	}
+}
+
+func TestAdminRecovery_AdoptClusterRequired(t *testing.T) {
+	deps, authHandler := newRecoveryDeps(t)
+	deps.Clients = vmCreateClientProvider{clients: map[string]cluster.Client{"a": cluster.Fake{}, "b": cluster.Fake{}}}
+	handler := httpapi.NewAdminRecovery(deps)
+
+	rec := adminRecoveryRequest(t, handler.ServeAdopt, http.MethodPost, "/api/v1/admin/recovery", adminCookie(t, authHandler), `{"cluster":"","pools":["pvmss-old"]}`)
+	if rec.Code != http.StatusBadRequest {
+		t.Fatalf("status = %d, want 400", rec.Code)
+	}
+}
+
+// A named-but-unknown cluster passes ResolveClusterValue and dies in
+// adoptionDeps instead.
+func TestAdminRecovery_AdoptUnknownCluster404(t *testing.T) {
+	handler, authHandler, _, _ := newAdminRecoveryHandler(t)
+	rec := adminRecoveryRequest(t, handler.ServeAdopt, http.MethodPost, "/api/v1/admin/recovery", adminCookie(t, authHandler), `{"cluster":"bogus","pools":["pvmss-old"]}`)
+	if rec.Code != http.StatusNotFound {
+		t.Fatalf("status = %d, want 404", rec.Code)
+	}
+}
+
+// Adopt through a proxy-hops-configured handler still audits with the right
+// client IP source.
+func TestAdminRecovery_AdoptWithTrustedProxyHops(t *testing.T) {
+	handler, authHandler, _, _ := newAdminRecoveryHandler(t)
+	handler.SetTrustedProxyHops(1)
+	cookie := adminCookie(t, authHandler)
+
+	rec := adminRecoveryRequest(t, handler.ServeAdopt, http.MethodPost, "/api/v1/admin/recovery", cookie,
+		`{"cluster":"default","pools":["pvmss-old"],"tags":["oldtag"]}`)
+	if rec.Code != http.StatusOK {
+		t.Fatalf("adopt status = %d: %s", rec.Code, rec.Body.String())
+	}
+}

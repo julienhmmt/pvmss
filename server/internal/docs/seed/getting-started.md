@@ -32,7 +32,7 @@ PVMSS does not add an SSH key or a password to your VM:
 
 - **Template** - the system comes with the sign-in your team built into the
   template (an SSH key or a password). Ask your administrator if you do not
-  have it. The VM's **General information** tab shows the SSH command once
+  have it. The VM's **Overview** tab shows the SSH command once
   the machine reports its address.
 - **ISO** - you install the system yourself from the browser console and
   choose your own account during the installation.

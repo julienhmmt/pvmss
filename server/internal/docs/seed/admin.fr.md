@@ -21,7 +21,7 @@ utilisateurs auront besoin :
   l'utilisateur et une clé SSH publique ou un mot de passe, ou intégrez un
   compte directement dans l'image ;
 - installez et activez `qemu-guest-agent`, pour que la VM signale son adresse
-  et que l'onglet **Informations générales** affiche la commande SSH.
+  et que l'onglet **Vue d'ensemble** affiche la commande SSH.
 
 Toutes les VM clonées d'un même modèle partagent ces accès. Transmettez-les
 à vos utilisateurs, ou gardez un modèle par équipe. Les installations depuis

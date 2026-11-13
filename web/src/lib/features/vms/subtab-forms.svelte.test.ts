@@ -78,35 +78,43 @@ describe('Ticket 10: VM detail power confirmation & sub-tab form hygiene', () =>
 		vi.unstubAllGlobals();
 	});
 
-	it('VmActionBar asks for confirmation when Shutdown is clicked', async () => {
+	it('VmActionBar header mode folds the non-primary actions, Duplicate and Delete into one overflow menu', async () => {
 		storeInstance = new VmDetailStore('default', 101);
 		storeInstance.entity = sampleEntity('running');
 		const actionSpy = vi.spyOn(storeInstance, 'action').mockResolvedValue();
 
 		mount(VmActionBar, { target: document.body });
 
-		const shutdownBtn = document.querySelector<HTMLButtonElement>('[data-testid="vm-action-shutdown"]');
-		expect(shutdownBtn).not.toBeNull();
-		shutdownBtn!.click();
+		// The detail header keeps start/shutdown as its own button; the menu
+		// carries every other applicable action plus Duplicate and Delete.
+		const trigger = document.querySelector<HTMLButtonElement>('[data-testid="vm-action-menu"]');
+		expect(trigger).not.toBeNull();
+		trigger!.click();
 		flushSync();
 		await tick();
 
-		expect(actionSpy).not.toHaveBeenCalled();
-		const dialog = document.querySelector('[data-testid="vm-action-confirm"]');
-		expect(dialog).not.toBeNull();
+		const ids = [...document.querySelectorAll('[role="menuitem"]')].map((el) => el.getAttribute('data-testid'));
+		expect(ids).toEqual(['vm-menu-stop', 'vm-menu-reboot', 'vm-menu-reset', 'vm-menu-pause', 'vm-menu-clone', 'vm-menu-delete']);
+
+		document.querySelector<HTMLButtonElement>('[data-testid="vm-menu-reboot"]')!.click();
+		flushSync();
+		await tick();
+
+		expect(actionSpy).toHaveBeenCalledWith('reboot');
 	});
 
-	it('VmActionBar quick mode shows only secondary applicable actions and confirms forceful ones', async () => {
+	it('VmActionBar asks for confirmation before a forceful menu action', async () => {
 		storeInstance = new VmDetailStore('default', 101);
 		storeInstance.entity = sampleEntity('running');
 		const actionSpy = vi.spyOn(storeInstance, 'action').mockResolvedValue();
 
-		mount(VmActionBar, { target: document.body, props: { quick: true } });
+		mount(VmActionBar, { target: document.body });
 
-		const ids = [...document.querySelectorAll('[data-testid^="vm-quick-"]')].map((el) => el.getAttribute('data-testid'));
-		expect(ids).toEqual(['vm-quick-stop', 'vm-quick-reboot', 'vm-quick-reset', 'vm-quick-pause']);
+		document.querySelector<HTMLButtonElement>('[data-testid="vm-action-menu"]')!.click();
+		flushSync();
+		await tick();
 
-		document.querySelector<HTMLButtonElement>('[data-testid="vm-quick-stop"]')!.click();
+		document.querySelector<HTMLButtonElement>('[data-testid="vm-menu-stop"]')!.click();
 		flushSync();
 		await tick();
 

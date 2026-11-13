@@ -1,15 +1,19 @@
 import { getContext, setContext } from 'svelte';
 import { SvelteURLSearchParams } from 'svelte/reactivity';
-import { get, ApiRequestError } from '#lib/shared/api/client.js';
+import { get, post, ApiRequestError } from '#lib/shared/api/client.js';
 import { fetchClusterOptions, type ClusterOption } from '#lib/shared/clusters.js';
 import { m } from '#lib/paraglide/messages.js';
-import type { VmListResult, VmStatus } from '#lib/features/vms/list.svelte.js';
+import type { VmListItem, VmListResult, RowActionResult, VmSortBy, VmSortDir, VmStatus } from '#lib/features/vms/list.svelte.js';
+import { SORTABLE_COLUMNS } from '#lib/features/vms/list.svelte.js';
+import type { VmAction } from '#lib/features/vms/detail.svelte.js';
+import { optimisticStatus } from '#lib/features/vms/detail.svelte.js';
+import { convergeBatch } from '#lib/features/vms/converge.js';
 
 const DEFAULT_PAGE_SIZE = 15;
 const SEARCH_DEBOUNCE_MS = 300;
 const SEARCH_SCOPE = 'all';
-const DEFAULT_SORT_BY = 'name';
-const DEFAULT_SORT_DIR = 'asc';
+const DEFAULT_SORT_BY: VmSortBy = 'name';
+const DEFAULT_SORT_DIR: VmSortDir = 'asc';
 
 const SEARCH_CONTEXT_KEY = Symbol('search');
 
@@ -17,6 +21,14 @@ const VALID_STATUSES: readonly VmStatus[] = ['running', 'stopped', 'paused'];
 
 function parseStatus(value: string | null): '' | VmStatus {
 	return VALID_STATUSES.includes(value as VmStatus) ? (value as VmStatus) : '';
+}
+
+function parseSortBy(value: string | null): VmSortBy {
+	return SORTABLE_COLUMNS.includes(value as VmSortBy) ? (value as VmSortBy) : DEFAULT_SORT_BY;
+}
+
+function parseSortDir(value: string | null): VmSortDir {
+	return value === 'desc' ? 'desc' : DEFAULT_SORT_DIR;
 }
 
 /**
@@ -30,6 +42,8 @@ export class SearchStore {
 	query = $state('');
 	cluster = $state('');
 	status = $state<'' | VmStatus>('');
+	sortBy = $state<VmSortBy>(DEFAULT_SORT_BY);
+	sortDir = $state<VmSortDir>(DEFAULT_SORT_DIR);
 	clusterOptions = $state.raw<ClusterOption[]>([]);
 	loading = $state(false);
 	error = $state<string | null>(null);
@@ -50,6 +64,8 @@ export class SearchStore {
 		this.query = params.get('q') ?? '';
 		this.cluster = params.get('cluster') ?? '';
 		this.status = parseStatus(params.get('status'));
+		this.sortBy = parseSortBy(params.get('sortBy'));
+		this.sortDir = parseSortDir(params.get('sortDir'));
 		this.#navigate = options.navigate ?? (() => {});
 		this.#committedQuery = this.query;
 		this.#committedCluster = this.cluster;
@@ -71,6 +87,8 @@ export class SearchStore {
 		if (this.#committedQuery !== '') params.set('q', this.#committedQuery);
 		if (this.cluster !== '') params.set('cluster', this.cluster);
 		if (this.status !== '') params.set('status', this.status);
+		if (this.sortBy !== DEFAULT_SORT_BY) params.set('sortBy', this.sortBy);
+		if (this.sortDir !== DEFAULT_SORT_DIR) params.set('sortDir', this.sortDir);
 		return params.toString();
 	}
 
@@ -99,6 +117,17 @@ export class SearchStore {
 		this.#commitFilters();
 	}
 
+	/** Clicking the active column reverses direction; a new column resets to asc. */
+	setSort(column: VmSortBy): void {
+		if (this.sortBy === column) {
+			this.sortDir = this.sortDir === 'asc' ? 'desc' : 'asc';
+		} else {
+			this.sortBy = column;
+			this.sortDir = 'asc';
+		}
+		this.#commitFilters();
+	}
+
 	/** Updates the query and debounces the server call. */
 	applySearch(value: string): void {
 		this.query = value;
@@ -119,7 +148,16 @@ export class SearchStore {
 		const query: string = params.get('q') ?? '';
 		const cluster: string = params.get('cluster') ?? '';
 		const status: '' | VmStatus = parseStatus(params.get('status'));
-		if (query === this.#committedQuery && cluster === this.#committedCluster && status === this.#committedStatus) return;
+		const sortBy: VmSortBy = parseSortBy(params.get('sortBy'));
+		const sortDir: VmSortDir = parseSortDir(params.get('sortDir'));
+		if (
+			query === this.#committedQuery &&
+			cluster === this.#committedCluster &&
+			status === this.#committedStatus &&
+			sortBy === this.sortBy &&
+			sortDir === this.sortDir
+		)
+			return;
 		this.dispose();
 		this.#committedQuery = query;
 		this.#committedCluster = cluster;
@@ -127,6 +165,8 @@ export class SearchStore {
 		this.query = query;
 		this.cluster = cluster;
 		this.status = status;
+		this.sortBy = sortBy;
+		this.sortDir = sortDir;
 		void this.load();
 	}
 
@@ -141,6 +181,12 @@ export class SearchStore {
 		return this.result !== null && this.result.items.length < this.result.total;
 	}
 
+	/** The query the current results were fetched with - highlight this, not
+	 *  the half-typed text still inside the debounce window. */
+	get matchQuery(): string {
+		return this.#committedQuery;
+	}
+
 	/** One page of matching VMs from the shared VM list endpoint. */
 	#fetchPage(page: number): Promise<VmListResult> {
 		const params = new SvelteURLSearchParams();
@@ -149,8 +195,8 @@ export class SearchStore {
 		if (this.cluster !== '') params.set('cluster', this.cluster);
 		if (this.status !== '') params.set('status', this.status);
 		params.set('scope', SEARCH_SCOPE);
-		params.set('sortBy', DEFAULT_SORT_BY);
-		params.set('sortDir', DEFAULT_SORT_DIR);
+		params.set('sortBy', this.sortBy);
+		params.set('sortDir', this.sortDir);
 		params.set('page', String(page));
 		params.set('pageSize', String(DEFAULT_PAGE_SIZE));
 		return get<VmListResult>(`/api/v1/vms?${params.toString()}`);
@@ -193,6 +239,37 @@ export class SearchStore {
 		} finally {
 			if (requestId === this.#requestId) this.loadingMore = false;
 		}
+	}
+
+	/** Per-row power action: optimistic flip, then converge on live status.
+	 *  Same contract as VmListStore.rowAction, minus the refresh suppression
+	 *  (search reloads only on user input, nothing races the flip). */
+	async rowAction(cluster: string, vmid: number, action: VmAction): Promise<RowActionResult> {
+		const row: VmListItem | null = this.result?.items.find((item) => item.cluster === cluster && item.vmid === vmid) ?? null;
+		if (row === null) return { ok: false, error: m['vms.detail.errorAction']() };
+		const previousStatus: VmStatus = row.status;
+		const target: VmStatus = optimisticStatus(action);
+		this.#patchRowStatus(cluster, vmid, target);
+		try {
+			await post<{ status: string }>(`/api/v1/vms/${encodeURIComponent(cluster)}/${vmid}/actions`, { action });
+			const converged: boolean = await convergeBatch({ cluster, vmid }, target, (status) => {
+				this.#patchRowStatus(cluster, vmid, status);
+			});
+			if (!converged) return { ok: false, error: m['vms.detail.errorNotConverged']() };
+			return { ok: true };
+		} catch (err) {
+			this.#patchRowStatus(cluster, vmid, previousStatus);
+			return { ok: false, error: err instanceof ApiRequestError ? err.message : m['vms.detail.errorAction']() };
+		}
+	}
+
+	/** Patches a single row's status in-place without reloading the list. */
+	#patchRowStatus(cluster: string, vmid: number, status: VmStatus): void {
+		if (this.result === null) return;
+		this.result = {
+			...this.result,
+			items: this.result.items.map((item) => (item.cluster === cluster && item.vmid === vmid ? { ...item, status } : item))
+		};
 	}
 }
 

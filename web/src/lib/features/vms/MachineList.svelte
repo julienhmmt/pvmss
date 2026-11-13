@@ -29,7 +29,6 @@
 	import Select from '#lib/shared/ui/Select.svelte';
 	import AllowanceMeter from '#lib/shared/ui/AllowanceMeter.svelte';
 	import Skeleton from '#lib/shared/ui/Skeleton.svelte';
-	import SortButton from '#lib/shared/ui/SortButton.svelte';
 	import ChevronDownIcon from '#lib/shared/ui/icons/ChevronDownIcon.svelte';
 
 	import { getSessionContext } from '#lib/features/auth/session.svelte.js';
@@ -260,55 +259,17 @@
 				{/snippet}
 			</EmptyState>
 		{:else if store.result}
+			<!-- Caption row only - sorting lives in the toolbar's single
+			     "Sort by" control. The select-mode left padding mirrors the
+			     row's checkbox (1rem box + 0.75rem gap inside px-4). -->
 			<div
-				class="grid grid-cols-[minmax(0,1fr)_11rem_8.5rem_9rem] items-center gap-4 border-b border-border bg-muted/60 px-4 py-2 text-2xs font-semibold uppercase tracking-[0.04em] text-muted-foreground max-[699px]:hidden {selectMode
-					? 'pl-12'
+				class="grid grid-cols-[minmax(0,1fr)_11rem_9rem_12.5rem] items-center gap-4 border-b border-border bg-muted/60 px-4 py-2 text-2xs font-semibold uppercase tracking-[0.04em] text-muted-foreground max-[1079px]:hidden {selectMode
+					? 'pl-11'
 					: ''}"
-				role="group"
-				aria-label={m['vms.list.sortGroupLabel']()}
 			>
-				<SortButton
-					label={m['vms.list.columnMachine']()}
-					active={store.sortBy === 'name'}
-					direction={store.sortDir}
-					aria-label={m['vms.list.sortByName']()}
-					onclick={() => store.setSort('name')}
-					data-testid="vm-sort-name"
-				/>
-				<div class="flex items-center gap-2">
-					<SortButton
-						label={m['vms.list.columnCpu']()}
-						active={store.sortBy === 'cpu'}
-						direction={store.sortDir}
-						aria-label={m['vms.list.sortByCpu']()}
-						onclick={() => store.setSort('cpu')}
-						data-testid="vm-sort-cpu"
-					/>
-					<SortButton
-						label={m['vms.list.columnMemory']()}
-						active={store.sortBy === 'memory'}
-						direction={store.sortDir}
-						aria-label={m['vms.list.sortByMemory']()}
-						onclick={() => store.setSort('memory')}
-						data-testid="vm-sort-memory"
-					/>
-					<SortButton
-						label={m['vms.list.columnId']()}
-						active={store.sortBy === 'vmid'}
-						direction={store.sortDir}
-						aria-label={m['vms.list.sortByVmid']()}
-						onclick={() => store.setSort('vmid')}
-						data-testid="vm-sort-vmid"
-					/>
-				</div>
-				<SortButton
-					label={m['vms.list.columnStatus']()}
-					active={store.sortBy === 'status'}
-					direction={store.sortDir}
-					aria-label={m['vms.list.sortByStatus']()}
-					onclick={() => store.setSort('status')}
-					data-testid="vm-sort-status"
-				/>
+				<span>{m['vms.list.columnMachine']()}</span>
+				<span>{m['vms.list.columnResources']()}</span>
+				<span>{m['vms.list.columnStatus']()}</span>
 				<span class="sr-only">{m['vms.list.columnActions']()}</span>
 			</div>
 			{#if selectMode}

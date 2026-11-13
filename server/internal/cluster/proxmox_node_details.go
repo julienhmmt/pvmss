@@ -72,19 +72,6 @@ type proxmoxPCIRow struct {
 	MediatedDevice bool   `json:"mdev"`
 }
 
-type proxmoxLXCRaw struct {
-	VMID     int     `json:"vmid"`
-	Name     string  `json:"name"`
-	Status   string  `json:"status"`
-	MaxCPU   float64 `json:"maxcpu"`
-	CPUs     int     `json:"cpus"`
-	CPUUsage float64 `json:"cpu"`
-	MaxMem   int64   `json:"maxmem"`
-	Mem      int64   `json:"mem"`
-	MaxDisk  int64   `json:"maxdisk"`
-	Disk     int64   `json:"disk"`
-}
-
 type proxmoxBool bool
 
 func proxmoxNodeAPIPath(node, resource string) string {
@@ -132,17 +119,6 @@ func (row proxmoxPCIRow) pciDevice() PCIDevice {
 	return PCIDevice(row)
 }
 
-func (row proxmoxLXCRaw) lxcContainer() LXCContainer {
-	cpuCount := int(row.MaxCPU)
-	if cpuCount == 0 {
-		cpuCount = row.CPUs
-	}
-	return LXCContainer{
-		VMID: row.VMID, Name: row.Name, Status: row.Status, CPUCount: cpuCount, CPUUsage: row.CPUUsage,
-		MemoryTotal: row.MaxMem, MemoryUsed: row.Mem, DiskTotal: row.MaxDisk, DiskUsed: row.Disk,
-	}
-}
-
 // ReadNodeHealth reads CPU, memory, filesystem, uptime, and software versions from one node.
 func (proxmox Proxmox) ReadNodeHealth(ctx context.Context, node string) (NodeHealth, error) {
 	response, err := readProxmoxNodeData[proxmoxNodeHealthResponse](ctx, proxmox, node, "status")
@@ -176,19 +152,6 @@ func (proxmox Proxmox) ReadNodePCI(ctx context.Context, node string) ([]PCIDevic
 		devices[i] = row.pciDevice()
 	}
 	return devices, nil
-}
-
-// ListNodeContainers reads the LXC containers currently hosted by one node.
-func (proxmox Proxmox) ListNodeContainers(ctx context.Context, node string) ([]LXCContainer, error) {
-	rows, err := readProxmoxNodeData[[]proxmoxLXCRaw](ctx, proxmox, node, "lxc")
-	if err != nil {
-		return nil, fmt.Errorf("list node %q containers: %w", node, err)
-	}
-	containers := make([]LXCContainer, len(rows))
-	for i, row := range rows {
-		containers[i] = row.lxcContainer()
-	}
-	return containers, nil
 }
 
 func (value *proxmoxBool) UnmarshalJSON(data []byte) error {

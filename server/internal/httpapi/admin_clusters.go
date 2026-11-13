@@ -2,6 +2,7 @@
 package httpapi
 
 import (
+	"cmp"
 	"context"
 	"database/sql"
 	"errors"
@@ -13,6 +14,7 @@ import (
 	"pvmss/server/internal/logctx"
 	"pvmss/server/internal/store"
 	"regexp"
+	"slices"
 	"time"
 )
 
@@ -126,6 +128,126 @@ func (handler *AdminClusters) ServeList(w http.ResponseWriter, r *http.Request) 
 		result = append(result, handler.clusterDTO(row))
 	}
 	writeAdminJSON(w, http.StatusOK, result)
+}
+
+// clusterInventoryDTO is the per-cluster slice of the dashboard: the nodes,
+// datastores and alerts of one cluster's index, so the detail page needs no
+// fleet-wide request. Nodes lists every indexed node, including those hosting
+// no VM - unlike the dashboard, which only lists VM-hosting nodes.
+type clusterInventoryDTO struct {
+	Stale          bool                  `json:"stale"`
+	RefreshedAt    string                `json:"refreshedAt,omitempty"`
+	Nodes          []nodeSummaryDTO      `json:"nodes"`
+	Storages       []dashboardStorageDTO `json:"storages"`
+	Alerts         []dashboardAlertDTO   `json:"alerts"`
+	VMCount        int                   `json:"vmCount"`
+	VMStatusCounts vmStatusCountsDTO     `json:"vmStatusCounts"`
+}
+
+// adminClusterDetailDTO is adminClusterDTO plus the cluster's inventory
+// section, so the detail page needs a single request.
+type adminClusterDetailDTO struct {
+	adminClusterDTO
+	Inventory clusterInventoryDTO `json:"inventory"`
+}
+
+// ServeClusterDetail handles GET /api/v1/admin/clusters/{name}. The store row
+// and the in-memory index answer everything - no Proxmox call is made, the
+// same read/write separation the dashboard documents.
+func (handler *AdminClusters) ServeClusterDetail(w http.ResponseWriter, r *http.Request) {
+	name := r.PathValue("name")
+	row, err := handler.store.GetCluster(r.Context(), name)
+	if err != nil {
+		handler.writeStoreFailure(w, err)
+		return
+	}
+	writeAdminJSON(w, http.StatusOK, adminClusterDetailDTO{
+		adminClusterDTO: handler.clusterDTO(row),
+		Inventory:       handler.clusterInventory(r.Context(), row),
+	})
+}
+
+// clusterInventory folds the cluster's index into the detail payload. A
+// missing or stale index reports stale plus the same cluster_unreachable
+// alert the dashboard synthesizes; the store-backed alerts (pending quota
+// requests, failed snapshot schedules) still apply, so they are included
+// either way.
+func (handler *AdminClusters) clusterInventory(ctx context.Context, row store.ClusterRow) clusterInventoryDTO {
+	name := row.Name
+	label := cmp.Or(row.DisplayName, name)
+
+	inv := clusterInventoryDTO{
+		Nodes:    []nodeSummaryDTO{},
+		Storages: []dashboardStorageDTO{},
+		Alerts:   []dashboardAlertDTO{},
+	}
+
+	var idx *inventory.Index
+	fresh := false
+	if handler.inventories != nil {
+		idx, _ = handler.inventories.Index(name)
+		fresh = handler.inventories.IsIndexFresh(name)
+	}
+
+	inv.Stale = !fresh
+
+	if idx == nil || !fresh {
+		inv.Alerts = append(inv.Alerts, dashboardAlertDTO{Kind: "cluster_unreachable", Severity: alertCritical, Cluster: label, ClusterKey: name})
+	}
+
+	if idx != nil {
+		if !idx.RefreshedAt.IsZero() {
+			inv.RefreshedAt = idx.RefreshedAt.UTC().Format(time.RFC3339)
+		}
+
+		scratch := dashboardDTO{Alerts: []dashboardAlertDTO{}, Storages: []dashboardStorageDTO{}}
+		foldClusterIntoDashboard(ctx, handler.store, handler.log, &scratch, name, label, idx)
+		inv.Alerts = append(inv.Alerts, scratch.Alerts...)
+		inv.Storages = scratch.Storages
+		inv.VMCount = scratch.VMCount
+		inv.VMStatusCounts = scratch.VMStatusCounts
+		inv.Nodes = clusterInventoryNodes(name, label, idx)
+	}
+
+	labels := map[string]string{name: label}
+	inv.Alerts = append(inv.Alerts, filterClusterAlerts(quotaRequestAlerts(ctx, handler.store, handler.log, labels), name)...)
+	inv.Alerts = append(inv.Alerts, filterClusterAlerts(snapshotScheduleAlerts(ctx, handler.store, handler.log, labels), name)...)
+	slices.SortStableFunc(inv.Alerts, compareAlerts)
+
+	return inv
+}
+
+// clusterInventoryNodes lists every indexed node with its VM counts, so an
+// empty or sick node stays visible on the cluster detail page.
+func clusterInventoryNodes(clusterKey, label string, idx *inventory.Index) []nodeSummaryDTO {
+	nodes := make([]nodeSummaryDTO, 0, len(idx.Nodes))
+	for _, node := range idx.Nodes {
+		vms := idx.ByNode[node.Name]
+		nodes = append(nodes, nodeSummaryDTO{
+			ClusterKey:       clusterKey,
+			Cluster:          label,
+			Name:             node.Name,
+			Status:           string(node.Status),
+			VMCount:          len(vms),
+			VMRunningCount:   countRunning(vms),
+			CPUCores:         node.CPUCores,
+			CPUUsage:         node.CPUUsage,
+			MemoryTotalBytes: node.MemoryTotal,
+			MemoryUsedBytes:  node.MemoryUsed,
+		})
+	}
+	return nodes
+}
+
+// filterClusterAlerts keeps the alerts of one cluster out of a fleet-wide list.
+func filterClusterAlerts(alerts []dashboardAlertDTO, clusterKey string) []dashboardAlertDTO {
+	out := make([]dashboardAlertDTO, 0, len(alerts))
+	for _, alert := range alerts {
+		if alert.ClusterKey == clusterKey {
+			out = append(out, alert)
+		}
+	}
+	return out
 }
 
 // ServeCreate handles POST /api/v1/admin/clusters.

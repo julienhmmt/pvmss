@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { getDashboardContext, type NodeSummary } from './dashboard.svelte';
-	import { usageTone } from './dashboard-alerts';
+	import { usageTone, withQuery } from './dashboard-alerts';
 	import DashboardAttention from './DashboardAttention.svelte';
 	import { goto } from '$app/navigation';
 	import { resolve } from '$app/paths';
@@ -9,6 +9,7 @@
 	import Button from '#lib/shared/ui/Button.svelte';
 	import ButtonLink from '#lib/shared/ui/ButtonLink.svelte';
 	import UserIcon from '#lib/shared/ui/icons/UserIcon.svelte';
+	import FeatureQuotasIcon from '#lib/shared/ui/icons/FeatureQuotasIcon.svelte';
 	import Card from '#lib/shared/ui/Card.svelte';
 	import Skeleton from '#lib/shared/ui/Skeleton.svelte';
 	import EmptyState from '#lib/shared/ui/EmptyState.svelte';
@@ -48,6 +49,15 @@
 	const STORAGE_LIMIT = 5;
 	const RECENT_LIMIT = 5;
 
+	// Pending quota requests ride in the alerts, one row per cluster.
+	const pendingQuotaCount = $derived(
+		(store.summary?.alerts ?? [])
+			.filter((alert) => alert.kind === 'quota_requests_pending')
+			.reduce((total, alert) => total + (alert.used ?? 0), 0)
+	);
+
+	// Two clusters can both have a "local" on "pve-node-01": name the cluster then.
+	const storagesSpanClusters = $derived(new Set((store.summary?.storages ?? []).map((s) => s.cluster)).size > 1);
 	const busiestStorages = $derived([...(store.summary?.storages ?? [])].sort((a, b) => b.percent - a.percent).slice(0, STORAGE_LIMIT));
 
 	// Shown in clear, not behind a hover: an admin reads the split at a glance.
@@ -94,6 +104,21 @@
 			<span class="flex min-w-0 flex-col">
 				<span class="text-sm font-semibold text-foreground">{m['admin.dashboard.createUser']()}</span>
 				<span class="text-xs text-muted-foreground">{m['admin.dashboard.createUserHint']()}</span>
+			</span>
+		</a>
+		<a
+			href={resolve('/admin/quota-requests')}
+			class="col-span-2 flex min-h-24 items-center gap-3 rounded-xl border border-border bg-card p-4 transition-colors duration-150 hover:border-muted-foreground-subtle hover:shadow-raised md:col-span-1 pv-focus"
+			data-testid="dashboard-quota-requests"
+		>
+			<span class="grid h-10 w-10 shrink-0 place-items-center rounded-lg {pendingQuotaCount > 0 ? 'bg-warning-soft text-warning-soft-foreground' : 'bg-muted text-muted-foreground'}">
+				<FeatureQuotasIcon class="h-5 w-5" />
+			</span>
+			<span class="flex min-w-0 flex-col">
+				<span class="text-sm font-semibold text-foreground">{m['admin.quotaRequests.title']()}</span>
+				<span class="text-xs {pendingQuotaCount > 0 ? 'font-medium text-foreground' : 'text-muted-foreground'}">
+					{pendingQuotaCount > 0 ? m['admin.dashboard.quotaRequestsPending']({ count: pendingQuotaCount }) : m['admin.dashboard.quotaRequestsHint']()}
+				</span>
 			</span>
 		</a>
 	</div>
@@ -221,7 +246,7 @@
 								<div class="flex items-baseline justify-between gap-3 text-sm">
 									<span class="min-w-0 truncate">
 										<span class="font-mono font-semibold">{storage.name}</span>
-										<span class="ml-2 text-xs text-muted-foreground">{storage.shared ? m['admin.dashboard.storageShared']() : storage.node}</span>
+										<span class="ml-2 text-xs text-muted-foreground">{storage.shared ? m['admin.dashboard.storageShared']() : storage.node}{#if storagesSpanClusters}&nbsp;· <a class="hover:text-foreground hover:underline pv-focus" href={withQuery(resolve('/admin/clusters/[name]', { name: storage.cluster }), { tab: 'infrastructure' })}>{storage.cluster}</a>{/if}</span>
 									</span>
 									<span class="shrink-0 text-xs text-muted-foreground tabular-nums">
 										<span class="hidden sm:inline">{m['admin.dashboard.storageFree']({ free: formatBytes(Math.max(0, storage.totalBytes - storage.usedBytes)), total: formatBytes(storage.totalBytes) })}</span>
@@ -252,7 +277,7 @@
 								</time>
 								<span class="min-w-0 truncate text-xs font-semibold" title={activityMessage(change.action)}>{activityMessage(change.action)}</span>
 								<span class="min-w-0 flex-1 truncate text-muted-foreground">
-									{change.actor}{#if change.vmid !== null} · VM {change.vmid}{:else if change.targetType} · {auditTarget(change.targetType, change.targetId)}{/if}
+									{change.actor}{#if change.vmid !== null}&nbsp;· VM {change.vmid}{:else if change.targetType}&nbsp;· {auditTarget(change.targetType, change.targetId)}{/if}
 								</span>
 							</li>
 						{/each}

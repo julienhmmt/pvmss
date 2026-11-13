@@ -80,14 +80,14 @@ func TestConfigurationRedacted_NonSecretFieldsShowRealValue(t *testing.T) {
 		fieldName string
 		wantValue string
 	}{
-		{"Host", "Host", cfg.Host},
-		{"Port", "Port", "50001"},
-		{"DBPath", "DBPath", cfg.DBPath},
-		{"LogLevel", "LogLevel", cfg.LogLevel},
-		{"LogFormat", "LogFormat", cfg.LogFormat},
-		{"LogOutput", "LogOutput", cfg.LogOutput},
-		{"ClusterSource", "ClusterSource", cfg.ClusterSource},
-		{"ProxmoxURL", "ProxmoxURL", cfg.ProxmoxURL},
+		{"Host", "PVMSS_HOST", cfg.Host},
+		{"Port", "PVMSS_PORT", "50001"},
+		{"DBPath", "PVMSS_DB_PATH", cfg.DBPath},
+		{"LogLevel", "LOG_LEVEL", cfg.LogLevel},
+		{"LogFormat", "LOG_FORMAT", cfg.LogFormat},
+		{"LogOutput", "LOG_OUTPUT", cfg.LogOutput},
+		{"ClusterSource", "PVMSS_CLUSTER_SOURCE", cfg.ClusterSource},
+		{"ProxmoxURL", "PROXMOX_URL", cfg.ProxmoxURL},
 	}
 
 	for _, tc := range tests {

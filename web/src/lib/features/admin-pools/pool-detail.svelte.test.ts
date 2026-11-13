@@ -15,7 +15,7 @@ vi.mock('#lib/shared/api/client.js', async (importOriginal) => ({
 }));
 vi.mock('#lib/features/quota-overrides/quota-overrides.js', () => quota);
 
-import { PoolDetailStore } from './pool-detail.svelte';
+import { PoolDetailStore, parsePoolTab, poolTabParam } from './pool-detail.svelte';
 
 const detail = {
 	name: 'lab',
@@ -131,5 +131,28 @@ describe('PoolDetailStore resetPassword', () => {
 
 		expect(store.resetError).toBe(failure.message);
 		expect(store.resetting).toBe(false);
+	});
+});
+
+describe('parsePoolTab', () => {
+	it.each([
+		['overview', 'overview'],
+		['members', 'members'],
+		['activity', 'activity'],
+		['bogus', 'overview'],
+		['', 'overview'],
+		[null, 'overview']
+	] as const)('maps %s to %s', (raw, want) => {
+		expect(parsePoolTab(raw)).toBe(want);
+	});
+});
+
+describe('poolTabParam', () => {
+	it.each([
+		['overview', null],
+		['members', 'members'],
+		['activity', 'activity']
+	] as const)('serializes %s to %s', (tab, want) => {
+		expect(poolTabParam(tab)).toBe(want);
 	});
 });

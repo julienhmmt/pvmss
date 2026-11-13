@@ -213,3 +213,34 @@ func TestManagedPoolNames(t *testing.T) {
 		}
 	})
 }
+
+// RegisterSSOPool both inserts the managed marker and rewrites it on
+// conflict - a second SSO bind for the same pool updates sso_user.
+func TestRegisterSSOPool(t *testing.T) {
+	t.Parallel()
+
+	st := openClusterStore(t)
+	ctx := context.Background()
+
+	if err := st.RegisterSSOPool(ctx, testStoreCluster, "sso-pool", "alice@pve"); err != nil {
+		t.Fatalf("RegisterSSOPool: %v", err)
+	}
+
+	managed, err := st.IsPoolManaged(ctx, testStoreCluster, "sso-pool")
+	if err != nil || !managed {
+		t.Fatalf("IsPoolManaged = %v, %v; want managed", managed, err)
+	}
+
+	if err := st.RegisterSSOPool(ctx, testStoreCluster, "sso-pool", "sso-bob@pve"); err != nil {
+		t.Fatalf("RegisterSSOPool upsert: %v", err)
+	}
+
+	var ssoUser string
+	if err := st.DB().QueryRowContext(ctx, "SELECT sso_user FROM managed_pools WHERE cluster = ? AND name = ?", testStoreCluster, "sso-pool").Scan(&ssoUser); err != nil {
+		t.Fatalf("read sso_user: %v", err)
+	}
+
+	if ssoUser != "sso-bob@pve" {
+		t.Fatalf("sso_user = %q, want bob@pve after upsert", ssoUser)
+	}
+}

@@ -77,6 +77,9 @@ func registerAdminAccountRoutes(mux *http.ServeMux, adminProtect adminRouteProte
 func registerAdminCatalogRoutes(mux *http.ServeMux, adminProtect adminRouteProtect, h *AdminCatalog) {
 	mux.Handle("GET /api/v1/admin/nodes", adminProtect(http.MethodGet, http.HandlerFunc(h.ServeNodes)))
 	mux.Handle("GET /api/v1/admin/nodes/{cluster}/{name}", adminProtect(http.MethodGet, http.HandlerFunc(h.ServeNodeDetails)))
+	mux.Handle("GET /api/v1/admin/nodes/{cluster}/{name}/health", adminProtect(http.MethodGet, http.HandlerFunc(h.ServeNodeHealth)))
+	mux.Handle("GET /api/v1/admin/nodes/{cluster}/{name}/network", adminProtect(http.MethodGet, http.HandlerFunc(h.ServeNodeNetwork)))
+	mux.Handle("GET /api/v1/admin/nodes/{cluster}/{name}/pci", adminProtect(http.MethodGet, http.HandlerFunc(h.ServeNodePCI)))
 	mux.Handle("POST /api/v1/admin/nodes/toggle", adminProtect(http.MethodPost, http.HandlerFunc(h.ServeNodeToggle)))
 	mux.Handle("DELETE /api/v1/admin/nodes/{cluster}/{name}", adminProtect(http.MethodDelete, http.HandlerFunc(h.ServeNodeDelete)))
 	mux.Handle("GET /api/v1/admin/storages", adminProtect(http.MethodGet, http.HandlerFunc(h.ServeStorages)))
@@ -154,11 +157,12 @@ func registerAdminOpsRoutes(mux *http.ServeMux, adminProtect adminRouteProtect, 
 }
 
 // registerAdminClusterRoutes wires the admin cluster management endpoints
-// (list, create, update, test, delete, rename). Admin-only.
+// (list, create, detail, update, test, delete, rename). Admin-only.
 func registerAdminClusterRoutes(mux *http.ServeMux, adminProtect adminRouteProtect, h *AdminClusters) {
 	mux.Handle("GET /api/v1/admin/clusters", adminProtect(http.MethodGet, http.HandlerFunc(h.ServeList)))
 	mux.Handle("POST /api/v1/admin/clusters", adminProtect(http.MethodPost, http.HandlerFunc(h.ServeCreate)))
 	mux.Handle("POST /api/v1/admin/clusters/probe", adminProtect(http.MethodPost, http.HandlerFunc(h.ServeProbe)))
+	mux.Handle("GET /api/v1/admin/clusters/{name}", adminProtect(http.MethodGet, http.HandlerFunc(h.ServeClusterDetail)))
 	mux.Handle("PUT /api/v1/admin/clusters/{name}", adminProtect(http.MethodPut, http.HandlerFunc(h.ServeUpdate)))
 	mux.Handle("PUT /api/v1/admin/clusters/{name}/rename", adminProtect(http.MethodPut, http.HandlerFunc(h.ServeRename)))
 	mux.Handle("POST /api/v1/admin/clusters/{name}/test", adminProtect(http.MethodPost, http.HandlerFunc(h.ServeTest)))

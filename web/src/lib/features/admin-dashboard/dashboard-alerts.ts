@@ -23,7 +23,7 @@ export interface DashboardAlert {
 }
 
 /** Appends non-empty params as a query string, or returns the path alone. */
-function withQuery(path: string, query: Record<string, string>): string {
+export function withQuery(path: string, query: Record<string, string>): string {
 	const params = new URLSearchParams();
 	for (const [key, value] of Object.entries(query)) {
 		if (value !== '') params.set(key, value);
@@ -44,7 +44,7 @@ export function alertHref(alert: DashboardAlert): string {
 		case 'node_memory':
 			return withQuery(resolve('/admin/nodes/[cluster]/[node]', { cluster: clusterKey, node: alert.subject ?? '' }), { from: 'dashboard' });
 		case 'cluster_unreachable':
-			return resolve('/admin/clusters');
+			return withQuery(resolve('/admin/clusters/[name]', { name: clusterKey }), { tab: 'connection' });
 		case 'storage_full':
 			return withQuery(resolve('/admin/storages'), { cluster: clusterKey, search: alert.subject ?? '' });
 		case 'pool_at_quota':
@@ -52,7 +52,7 @@ export function alertHref(alert: DashboardAlert): string {
 		case 'quota_requests_pending':
 			return resolve('/admin/quota-requests');
 		case 'snapshot_schedule_failed':
-			return withQuery(resolve('/vms/[cluster]/[vmid]', { cluster: clusterKey, vmid: alert.subject ?? '' }), { tab: 'configuration', sub: 'snapshots' });
+			return withQuery(resolve('/vms/[cluster]/[vmid]', { cluster: clusterKey, vmid: alert.subject ?? '' }), { tab: 'snapshots' });
 	}
 }
 

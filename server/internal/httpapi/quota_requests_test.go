@@ -238,8 +238,7 @@ func TestQuotaRequest_ApproveAfterDenyLeavesPolicyUnchanged(t *testing.T) {
 	user := aliceCookie(t, fixture.auth)
 	admin := adminCookie(t, fixture.auth)
 
-	_, created := fixture.do(t, http.MethodPost, "/api/v1/quota-requests", `{"requestedQuota":10,"reason":"lab"}`, user)
-	path := "/api/v1/admin/quota-requests/" + formatID(requestID(t, created))
+	path := pendingAdminPath(t, fixture, user)
 
 	if recorder, _ := fixture.do(t, http.MethodPost, path+"/deny", "", admin); recorder.Code != http.StatusOK {
 		t.Fatalf("deny = %d", recorder.Code)
@@ -263,8 +262,7 @@ func TestQuotaRequest_ApproveAtCurrentQuotaMarksDecided(t *testing.T) {
 	user := aliceCookie(t, fixture.auth)
 	admin := adminCookie(t, fixture.auth)
 
-	_, created := fixture.do(t, http.MethodPost, "/api/v1/quota-requests", `{"requestedQuota":10,"reason":"lab"}`, user)
-	path := "/api/v1/admin/quota-requests/" + formatID(requestID(t, created))
+	path := pendingAdminPath(t, fixture, user)
 
 	recorder, approved := fixture.do(t, http.MethodPost, path+"/approve", `{"quota":2}`, admin)
 	if recorder.Code != http.StatusOK || approved["status"] != "approved" {
@@ -331,4 +329,143 @@ func requireApprovedOverride(t *testing.T, fixture quotaFixture, want int) {
 	if err != nil || settings.Allowed != 2 {
 		t.Fatalf("global allowed = %d, err %v; want unchanged 2", settings.Allowed, err)
 	}
+}
+
+func TestQuotaRequest_MineReturnsNullRequestBeforeAnyCreate(t *testing.T) {
+	t.Parallel()
+
+	fixture := newQuotaFixture(t)
+	user := aliceCookie(t, fixture.auth)
+
+	recorder, body := fixture.do(t, http.MethodGet, "/api/v1/quota-requests/mine", "", user)
+	if recorder.Code != http.StatusOK {
+		t.Fatalf("mine = %d, want 200", recorder.Code)
+	}
+
+	if value, present := body["request"]; !present || value != nil {
+		t.Fatalf("request = %v, want explicit null", body["request"])
+	}
+}
+
+func TestQuotaRequest_MineUnauthenticated(t *testing.T) {
+	t.Parallel()
+
+	fixture := newQuotaFixture(t)
+
+	recorder, _ := fixture.do(t, http.MethodGet, "/api/v1/quota-requests/mine", "", nil)
+	if recorder.Code != http.StatusUnauthorized {
+		t.Fatalf("mine unauthenticated = %d, want 401", recorder.Code)
+	}
+}
+
+func TestQuotaRequest_CreateReasonTooLong(t *testing.T) {
+	t.Parallel()
+
+	fixture := newQuotaFixture(t)
+	user := aliceCookie(t, fixture.auth)
+
+	recorder, _ := fixture.do(t, http.MethodPost, "/api/v1/quota-requests",
+		`{"requestedQuota":10,"reason":"`+strings.Repeat("x", 501)+`"}`, user)
+	if recorder.Code != http.StatusBadRequest {
+		t.Fatalf("long reason status = %d, want 400", recorder.Code)
+	}
+}
+
+func TestQuotaRequest_AdminListFiltersDecidedRows(t *testing.T) {
+	t.Parallel()
+
+	fixture := newQuotaFixture(t)
+	user := aliceCookie(t, fixture.auth)
+	admin := adminCookie(t, fixture.auth)
+
+	path := pendingAdminPath(t, fixture, user)
+
+	if recorder, _ := fixture.do(t, http.MethodPost, path+"/deny", "", admin); recorder.Code != http.StatusOK {
+		t.Fatalf("deny = %d", recorder.Code)
+	}
+
+	for _, testCase := range []struct {
+		status string
+		want   int
+	}{
+		{"pending", 0},
+		{"denied", 1},
+		{"all", 1},
+	} {
+		recorder, list := fixture.do(t, http.MethodGet, "/api/v1/admin/quota-requests?status="+testCase.status, "", admin)
+		if recorder.Code != http.StatusOK || requestCount(t, list) != testCase.want {
+			t.Fatalf("status=%s: %d rows %v, want %d", testCase.status, recorder.Code, list, testCase.want)
+		}
+	}
+}
+
+func TestQuotaRequest_AdminDecisionValidation(t *testing.T) {
+	t.Parallel()
+
+	fixture := newQuotaFixture(t)
+	admin := adminCookie(t, fixture.auth)
+
+	for _, testCase := range []struct {
+		name   string
+		path   string
+		body   string
+		status int
+	}{
+		{"approve non-numeric id", "/api/v1/admin/quota-requests/abc/approve", `{}`, http.StatusBadRequest},
+		{"approve zero id", "/api/v1/admin/quota-requests/0/approve", `{}`, http.StatusBadRequest},
+		{"approve missing id", "/api/v1/admin/quota-requests/999/approve", `{}`, http.StatusNotFound},
+		{"deny non-numeric id", "/api/v1/admin/quota-requests/abc/deny", ``, http.StatusBadRequest},
+		{"deny negative id", "/api/v1/admin/quota-requests/-1/deny", ``, http.StatusBadRequest},
+	} {
+		t.Run(testCase.name, func(t *testing.T) {
+			t.Parallel()
+
+			recorder, _ := fixture.do(t, http.MethodPost, testCase.path, testCase.body, admin)
+			if recorder.Code != testCase.status {
+				t.Fatalf("status = %d, want %d", recorder.Code, testCase.status)
+			}
+		})
+	}
+}
+
+func TestQuotaRequest_ApproveBadJSON(t *testing.T) {
+	t.Parallel()
+
+	fixture := newQuotaFixture(t)
+	user := aliceCookie(t, fixture.auth)
+	admin := adminCookie(t, fixture.auth)
+
+	path := pendingAdminPath(t, fixture, user)
+
+	recorder, _ := fixture.do(t, http.MethodPost, path+"/approve", `{`, admin)
+	if recorder.Code != http.StatusBadRequest {
+		t.Fatalf("approve bad json = %d, want 400", recorder.Code)
+	}
+}
+
+// An approve body whose quota is out of the policy range maps to 400
+// invalid_policy, not a generic failure.
+func TestQuotaRequest_ApproveQuotaOutOfRange(t *testing.T) {
+	t.Parallel()
+
+	fixture := newQuotaFixture(t)
+	user := aliceCookie(t, fixture.auth)
+	admin := adminCookie(t, fixture.auth)
+
+	path := pendingAdminPath(t, fixture, user)
+
+	recorder, body := fixture.do(t, http.MethodPost, path+"/approve", `{"quota":-5}`, admin)
+	if recorder.Code != http.StatusBadRequest || body["code"] != "invalid_policy" {
+		t.Fatalf("approve out of range = %d %v, want 400 invalid_policy", recorder.Code, body)
+	}
+}
+
+// pendingAdminPath posts a pending request as the user and returns its admin
+// decision path.
+func pendingAdminPath(t *testing.T, fixture quotaFixture, user *http.Cookie) string {
+	t.Helper()
+
+	_, created := fixture.do(t, http.MethodPost, "/api/v1/quota-requests", `{"requestedQuota":10,"reason":"lab"}`, user)
+
+	return "/api/v1/admin/quota-requests/" + formatID(requestID(t, created))
 }

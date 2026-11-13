@@ -7,6 +7,7 @@ import {
 } from '#lib/shared/clusters.js';
 import { setContext, getContext } from 'svelte';
 import { SvelteSet } from 'svelte/reactivity';
+import { STALE_REFRESH_MS } from '#lib/shared/visibility-refresh.js';
 import { m } from '#lib/paraglide/messages.js';
 
 export interface AdminNode {
@@ -139,6 +140,9 @@ export class AdminCatalogStore {
 	error = $state.raw<string | null>(null);
 	/** Latest-wins guard for loadAll (see VmCreateStore for the pattern). */
 	#loadRequestId = 0;
+	/** `Date.now()` of the last completed load - `refreshIfStale()` uses it to
+	 * skip reloads fresher than the interval. */
+	lastLoadedAt = 0;
 
 	toggling = $state.raw<string | null>(null);
 	toggleError = $state.raw<string | null>(null);
@@ -430,6 +434,7 @@ export class AdminCatalogStore {
 			this.storages = storages;
 			this.bridges = bridges;
 			this.isos = isos;
+			this.lastLoadedAt = Date.now();
 		} catch (err) {
 			if (requestId === this.#loadRequestId) {
 				this.error = err instanceof ApiRequestError ? err.message : m['admin.catalog.loadError']();
@@ -437,6 +442,18 @@ export class AdminCatalogStore {
 		} finally {
 			if (requestId === this.#loadRequestId) this.loading = false;
 		}
+	}
+
+	/** Reloads when the last completed load is older than `minIntervalMs` -
+	 * the visibility/poll hook calls this instead of loading on every tick.
+	 * The loader defaults to `loadAll`; the templates page passes its own
+	 * since templates are a separate, slower fetch. */
+	async refreshIfStale(
+		loader: () => Promise<void> = () => this.loadAll(),
+		minIntervalMs: number = STALE_REFRESH_MS
+	): Promise<void> {
+		if (Date.now() - this.lastLoadedAt <= minIntervalMs) return;
+		await loader();
 	}
 
 	setCluster(value: string): void {
@@ -458,6 +475,7 @@ export class AdminCatalogStore {
 		this.error = null;
 		try {
 			this.templates = await get<AdminTemplate[]>(`/api/v1/admin/templates?cluster=${encodeURIComponent(this.cluster)}`);
+			this.lastLoadedAt = Date.now();
 		} catch (err) {
 			this.error = err instanceof ApiRequestError ? err.message : m['admin.catalog.loadError']();
 		} finally {

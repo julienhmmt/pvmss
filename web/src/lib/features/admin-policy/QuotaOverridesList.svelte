@@ -16,7 +16,7 @@
 	let { overrides, error }: Props = $props();
 </script>
 
-<div class="mt-5 border-t border-border pt-4" data-testid="quota-overrides">
+<div class="border-t border-border px-6 pb-5 pt-4" data-testid="quota-overrides">
 	<h3 class="text-sm font-medium text-foreground">{m['policy.overrides.title']()}</h3>
 	<p class="mt-1 text-xs text-muted-foreground">{m['policy.overrides.description']()}</p>
 

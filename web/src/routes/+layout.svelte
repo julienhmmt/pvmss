@@ -242,7 +242,7 @@
 			{m['chrome.skipToContent']()}
 		</a>
 		<div class="flex min-h-screen">
-			<div class="sticky top-0 hidden h-screen min-[900px]:flex">
+			<div class="sticky top-0 hidden h-dvh min-[900px]:flex">
 				<Sidebar />
 			</div>
 
@@ -251,7 +251,7 @@
 				id="app-sidebar-drawer"
 				onclose={() => chrome.closeSidebar()}
 				aria-label={m['chrome.sidebar.ariaLabel']()}
-				class="drawer-slide-in-left fixed left-0 top-0 m-0 h-full w-[260px] max-w-full border-0 p-0 min-[900px]:hidden"
+				class="drawer-slide-in-left fixed left-0 top-0 m-0 h-dvh max-h-none w-[260px] max-w-full border-0 p-0 min-[900px]:hidden"
 			>
 				<Sidebar />
 			</dialog>
