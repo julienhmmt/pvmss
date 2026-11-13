@@ -19,6 +19,8 @@ IdP -> /api/v1/auth/oidc/callback   -> Proxmox /access/openid/login   -> PVMSS s
    Issuer URL = the IdP issuer, client ID/secret from step 1, username claim
    (e.g. `preferred_username`), Autocreate on. The Proxmox nodes must reach
    the issuer URL themselves. Note the realm id (e.g. `zitadel`).
+   The username claim is exact (`preferred_username`, underscore) and cannot
+   be changed afterwards: delete and re-add the realm to fix it.
 3. **PVMSS**: Admin > Clusters > edit the cluster > **SSO realm** = the realm
    id. Empty disables SSO for that cluster. `/login` then shows
    "Continue with SSO" for that cluster.
@@ -51,6 +53,17 @@ rewrites `Host` must send `X-Forwarded-Host`, or the IdP rejects the redirect.
 - Failed callbacks count toward the login failure limiter; a cancel at the
   IdP does not. Code, state and ticket are never logged.
 - Failures land on `/login?oidc=error&reason=<code>`.
+
+## Troubleshooting
+
+`/login?oidc=error&reason=oidc_rejected` means Proxmox refused the login. It
+answers a generic 401 on purpose; the reason is only in the node's log:
+`journalctl -u pvedaemon | grep -i openid`.
+
+- `Invalid audiences: <id> is not a trusted audience`: the IdP adds an
+  audience beside the client ID (Zitadel adds its project ID). Trust it:
+  `pveum realm modify <realm> --audiences <id>`.
+- A missing-claim error: the username claim is misspelled (see step 2).
 
 ## Limits
 
