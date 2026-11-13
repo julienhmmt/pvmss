@@ -45,7 +45,8 @@ test.describe('T11 admin catalog', () => {
 		await nodeLink.click();
 		await expect(page).toHaveURL(/\/admin\/nodes\/default\/pve-node-01$/);
 		await expect(page.getByTestId('admin-node-details')).toBeVisible();
-		await expect(page.getByRole('heading', { name: 'PCI hardware' })).toBeVisible();
+		await page.getByRole('tab', { name: 'Hardware' }).click();
+		await expect(page.locator('[data-testid="node-pci-disclosure"] summary')).toContainText('PCI hardware');
 	});
 
 	test('discovers and approves a node, storage, bridge, and ISO (US1, SC-001/002/007)', async ({ page }) => {

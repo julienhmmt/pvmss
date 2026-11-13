@@ -217,7 +217,7 @@ test.describe('T04 VM list', () => {
 		await expect(page).toHaveURL(/\/vms\/default\/\d+$/);
 	});
 
-	test('the console is one click away from a running machine, in a new tab', async ({ page, context }) => {
+	test('the console is one click away from a running machine', async ({ page }) => {
 		await signInAlice(page.request);
 		await page.goto('/vms?cluster=default');
 
@@ -226,7 +226,7 @@ test.describe('T04 VM list', () => {
 
 		const consoleLink = page.getByTestId('vm-console-open');
 		await expect(consoleLink).toBeVisible();
-		const [popup] = await Promise.all([context.waitForEvent('page'), consoleLink.click()]);
-		await popup.waitForURL('/vms/default/*/console');
+		await consoleLink.click();
+		await expect(page).toHaveURL(/\/vms\/default\/100\/console$/);
 	});
 });

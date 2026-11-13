@@ -53,7 +53,7 @@ export default defineConfig({
 			// The suite performs far more logins per minute than the per-IP
 			// default of 10, so raise every limiter ceiling for the test server.
 			PVMSS_RATE_LIMIT_MAX: '100000',
-			// Short guard so nodes.spec.ts can exercise "wait it out, click again - 
+			// Short guard so nodes.spec.ts can exercise "wait it out, try again - 
 			// it works" (quickstart.md step 6) without a multi-second sleep.
 			PVMSS_INVENTORY_MANUAL_REFRESH_MIN_INTERVAL: '2s',
 			// bcrypt hash of "pvmss-e2e-admin" (bcrypt.MinCost) - admin-catalog.spec.ts
