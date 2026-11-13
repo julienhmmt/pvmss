@@ -12,7 +12,6 @@ test.describe('T09 VM snapshots', () => {
 		await signInAlice(page.request);
 		const name = `snapshot-e2e-${Date.now()}`;
 		await page.goto('/vms/default/102');
-		await page.getByTestId('vm-tab-configuration').click();
 		await page.getByTestId('vm-tab-snapshots').click();
 		await expect(page.getByTestId('snapshot-counter')).toHaveText('0/5');
 

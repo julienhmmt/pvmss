@@ -73,17 +73,17 @@
 	interface Props {
 		onDelete?: () => void;
 		hideDelete?: boolean;
-		/** Icon-only, and only the actions that apply to the current status (console header). */
+		/** Console header: a lead icon button plus the overflow menu. */
 		compact?: boolean;
-		/** Icon-only secondary actions for the detail header, beside its own start/shutdown button. */
-		quick?: boolean;
+		/** Detail header only: opens the SeaBIOS retrofit confirmation (admin). */
+		onRetrofit?: (() => void) | undefined;
 	}
 
-	let { onDelete = () => {}, hideDelete = false, compact = false, quick = false }: Props = $props();
+	let { onDelete = () => {}, hideDelete = false, compact = false, onRetrofit }: Props = $props();
 
 	/** The forceful action awaiting confirmation, if any. */
 	let pending = $state<VmAction | null>(null);
-	/** Clone dialog visibility (Duplicate button). */
+	/** Clone dialog visibility (Duplicate menu item). */
 	let cloneOpen = $state(false);
 	const confirmation = $derived(pending === null ? null : (CONFIRMATIONS[pending] ?? null));
 	const vmName = $derived(store.entity?.name ?? '');
@@ -96,9 +96,8 @@
 	// state-appropriate action carries a fill: `primary` (start, resume) in the
 	// accent, the forceful `stop` and `reset` in the destructive red so cutting
 	// power can never be mistaken for a graceful shutdown. The rest stay on the
-	// neutral bordered shape, and every inapplicable action falls back to that
-	// same shape so a disabled fill never sits in the bar pretending to be a
-	// live control. The two destructive ones also confirm first (CONFIRMATIONS).
+	// neutral bordered shape. The two destructive ones also confirm first
+	// (CONFIRMATIONS).
 	const BUTTON_VARIANT: Record<ActionDef['variant'], 'primary' | 'secondary' | 'destructive'> = {
 		primary: 'primary',
 		danger: 'destructive',
@@ -132,22 +131,7 @@
 	}
 </script>
 
-{#if quick}
-	<!-- Test ids differ from the full bar, which stays mounted in the Configuration tab. -->
-	{#each ACTIONS.filter((action) => isApplicable(action) && action.kind !== 'start' && action.kind !== 'shutdown') as action (action.kind)}
-		<Button
-			size="icon"
-			variant={BUTTON_VARIANT[action.variant]}
-			disabled={store.actionInFlight}
-			onclick={() => requestAction(action.kind)}
-			data-testid="vm-quick-{action.kind}"
-			title={action.label()}
-			label={action.label()}
-		>
-			<action.icon class="h-4 w-4" />
-		</Button>
-	{/each}
-{:else if compact}
+{#if compact}
 	<!-- Space-constrained bar: the first applicable action keeps a visible
 	     icon button, the rest (and Delete) fold into the overflow menu. -->
 	{@const applicableActions = ACTIONS.filter(isApplicable)}
@@ -195,53 +179,45 @@
 		{/if}
 	</div>
 {:else}
-	<div class="flex flex-wrap items-center gap-2" data-testid="vm-action-bar">
-		{#each ACTIONS as action (action.kind)}
-			{@const applicable = isApplicable(action)}
-			<Button
-				size="sm"
-				variant={applicable ? BUTTON_VARIANT[action.variant] : 'secondary'}
-				disabled={store.actionInFlight || !applicable}
-				onclick={() => requestAction(action.kind)}
-				data-testid="vm-action-{action.kind}"
-				title={action.label()}
-				label={action.label()}
-			>
-				<action.icon class="h-4 w-4" />
-				{action.label()}
-			</Button>
-		{/each}
-
-		{#if store.entity !== null}
-			<Button
-				size="sm"
-				variant="secondary"
-				disabled={store.actionInFlight}
-				onclick={() => (cloneOpen = true)}
-				data-testid="vm-action-clone"
-				title={m['vms.clone.button']()}
-				label={m['vms.clone.button']()}
-			>
-				{m['vms.clone.button']()}
-			</Button>
-		{/if}
-
-		{#if !hideDelete}
-			<Button
-				size="sm"
-				variant="destructive"
-				class="ml-auto"
-				disabled={store.deleteInFlight}
-				onclick={onDelete}
-				data-testid="vm-action-delete"
-				title={m['vms.action.delete']()}
-				label={m['vms.action.delete']()}
-			>
-				<TrashIcon class="h-4 w-4" />
-				{m['vms.action.delete']()}
-			</Button>
-		{/if}
-	</div>
+	<!-- Detail header: the page renders the state-appropriate primary power
+	     button itself (start / shutdown); every other applicable action folds
+	     into this single overflow menu with Duplicate and Delete. -->
+	{@const menuActions = ACTIONS.filter((action) => isApplicable(action) && action.kind !== 'start' && action.kind !== 'shutdown')}
+	<Menu
+		size="md"
+		label={m['vms.action.more']()}
+		testId="vm-action-menu"
+		items={[
+			...menuActions.map((action) => ({
+				label: action.label(),
+				icon: action.icon,
+				destructive: action.variant === 'danger',
+				disabled: store.actionInFlight,
+				onclick: () => requestAction(action.kind),
+				testId: `vm-menu-${action.kind}`
+			})),
+			...(store.entity !== null ? [{
+				label: m['vms.clone.button'](),
+				disabled: store.actionInFlight,
+				onclick: () => { cloneOpen = true; },
+				testId: 'vm-menu-clone'
+			}] : []),
+			...(onRetrofit === undefined ? [] : [{
+				label: m['vms.detail.retrofitSeabios'](),
+				disabled: store.retrofitInFlight,
+				onclick: onRetrofit,
+				testId: 'vm-menu-retrofit'
+			}]),
+			...(hideDelete ? [] : [{
+				label: m['vms.action.delete'](),
+				icon: TrashIcon,
+				destructive: true,
+				disabled: store.deleteInFlight,
+				onclick: onDelete,
+				testId: 'vm-menu-delete'
+			}])
+		]}
+	/>
 {/if}
 
 {#if confirmation}
@@ -258,16 +234,19 @@
 	/>
 {/if}
 
-{#if store.entity !== null && !compact && !quick}
+{#if store.entity !== null && !compact}
 	<CloneVmDialog bind:open={cloneOpen} cluster={store.entity.cluster} vmid={store.entity.vmid} sourceName={store.entity.name} />
 {/if}
 
-{#if store.actionError && !quick}
-	<Alert data-testid="vm-action-error" class="mt-2">{store.actionError}</Alert>
-{/if}
-
-{#if store.actionInFlight && store.entity && !quick}
-	<p role="status" aria-live="polite" class="sr-only" data-testid="vm-action-aria">
-		{m['vms.detail.statusChanged']({ name: store.entity.name, status: store.entity.status })}
-	</p>
+<!-- In header mode the page owns these (rendered once below the header); the
+     compact console bar has no page to delegate to, so it keeps its own. -->
+{#if compact}
+	{#if store.actionError}
+		<Alert data-testid="vm-action-error" class="mt-2">{store.actionError}</Alert>
+	{/if}
+	{#if store.actionInFlight && store.entity}
+		<p role="status" aria-live="polite" class="sr-only" data-testid="vm-action-aria">
+			{m['vms.detail.statusChanged']({ name: store.entity.name, status: store.entity.status })}
+		</p>
+	{/if}
 {/if}

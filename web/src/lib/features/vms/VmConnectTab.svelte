@@ -1,17 +1,17 @@
 <script lang="ts">
 	/**
-	 * VmConnectTab - the default detail tab (DESIGN.md §6.3, "Connect"). It
-	 * answers "how do I get in?": an SSH command built from the address the
-	 * guest agent reports, or an honest "not available yet"; the real VNC
-	 * console as the in-browser alternative; and the allocated resources.
-	 * An address is never guessed and the SSH section only renders when the
-	 * machine is running with a reported address (DESIGN.md §7).
+	 * VmConnectTab - the connect section of the detail Overview tab (DESIGN.md
+	 * §6.3). It answers "how do I get in?": an SSH command built from the
+	 * address the guest agent reports, or an honest "not available yet", and
+	 * the browser console as the in-browser alternative. An address is never
+	 * guessed and the SSH section only renders when the machine is running
+	 * with a reported address (DESIGN.md §7). A stopped machine gets a single
+	 * compact card with the Start button.
 	 */
 	import { resolve } from '$app/paths';
 	import { getVmDetailContext } from './detail.svelte';
 	import { canConnect, type MachineDisplayStatus } from './display-status';
 	import { connectState, isWindowsOs, primaryAddress, sshCommand, sshHost } from './connection';
-	import { compactBytes } from './machine-row';
 	import { get } from '#lib/shared/api/client.js';
 	import Button from '#lib/shared/ui/Button.svelte';
 	import ButtonLink from '#lib/shared/ui/ButtonLink.svelte';
@@ -21,9 +21,11 @@
 
 	interface Props {
 		status: MachineDisplayStatus;
+		/** Starts the machine from the stopped card (wired to the page's power flow). */
+		onStart?: () => void;
 	}
 
-	let { status }: Props = $props();
+	let { status, onStart }: Props = $props();
 
 	const store = getVmDetailContext();
 
@@ -56,25 +58,38 @@
 </script>
 
 {#if store.entity}
-	{@const entity = store.entity}
-	<div class="grid gap-5 {connect === 'installing' ? '' : 'min-[900px]:grid-cols-[minmax(0,1fr)_260px]'}">
+	{#if connect === 'installing'}
 		<Card pad="lg" aria-labelledby="connect-ssh-title" data-testid="vm-connect-ssh">
 			<p class="text-2xs font-semibold uppercase tracking-[0.08em] text-muted-foreground-subtle">{m['vms.detail.connect.eyebrow']()}</p>
-			{#if connect === 'installing'}
-				<h2 id="connect-ssh-title" class="mt-1 text-lg font-semibold" data-testid="vm-installing">{m['vms.detail.connect.installingTitle']()}</h2>
-				<p class="mt-1 text-sm text-muted-foreground">{m['vms.detail.connect.installingBody']()}</p>
-				<div class="mt-4 flex flex-wrap items-center gap-3">
-					<ButtonLink href={consoleHref} variant="primary" target="_blank" rel="noopener noreferrer" data-testid="vm-console-open">
-						{m['vms.detail.connect.consoleOpen']()}
-					</ButtonLink>
-					<Button variant="secondary" loading={store.cdromInFlight} onclick={() => void store.setCdrom('disconnect')} data-testid="vm-eject-iso">
-						{m['vms.detail.connect.ejectIso']()}
-					</Button>
+			<h2 id="connect-ssh-title" class="mt-1 text-lg font-semibold" data-testid="vm-installing">{m['vms.detail.connect.installingTitle']()}</h2>
+			<p class="mt-1 text-sm text-muted-foreground">{m['vms.detail.connect.installingBody']()}</p>
+			<div class="mt-4 flex flex-wrap items-center gap-3">
+				<ButtonLink href={consoleHref} variant="primary" data-testid="vm-console-open">
+					{m['vms.detail.connect.consoleOpen']()}
+				</ButtonLink>
+				<Button variant="secondary" loading={store.cdromInFlight} onclick={() => void store.setCdrom('disconnect')} data-testid="vm-eject-iso">
+					{m['vms.detail.connect.ejectIso']()}
+				</Button>
+			</div>
+			{#if store.writeError}<p class="mt-2 text-xs text-destructive" role="alert">{store.writeError}</p>{/if}
+		</Card>
+	{:else if running}
+		<Card pad="lg" aria-labelledby="connect-ssh-title" data-testid="vm-connect-ssh">
+			<div class="flex flex-wrap items-start justify-between gap-3">
+				<div class="min-w-0">
+					<p class="text-2xs font-semibold uppercase tracking-[0.08em] text-muted-foreground-subtle">{m['vms.detail.connect.eyebrow']()}</p>
+					{#if connectable && address}
+						<h2 id="connect-ssh-title" class="mt-1 text-lg font-semibold" data-testid={windows ? 'vm-rdp' : undefined}>{windows ? m['vms.detail.connect.rdpTitle']() : m['vms.detail.connect.title']()}</h2>
+					{:else}
+						<h2 id="connect-ssh-title" class="mt-1 text-lg font-semibold" data-testid="vm-address-unavailable">{m['vms.detail.connect.addressUnavailableTitle']()}</h2>
+					{/if}
 				</div>
-				{#if store.writeError}<p class="mt-2 text-xs text-destructive" role="alert">{store.writeError}</p>{/if}
-			{:else if connectable && address}
+				<ButtonLink href={consoleHref} variant="secondary" size="sm" data-testid="vm-console-open">
+					{m['vms.detail.connect.consoleOpen']()}
+				</ButtonLink>
+			</div>
+			{#if connectable && address}
 				{#if windows}
-					<h2 id="connect-ssh-title" class="mt-1 text-lg font-semibold" data-testid="vm-rdp">{m['vms.detail.connect.rdpTitle']()}</h2>
 					<p class="mt-1 text-sm text-muted-foreground">{m['vms.detail.connect.rdpBody']()}</p>
 					<div class="mt-4 flex items-center gap-2 rounded-lg border border-border bg-muted/50 py-1.5 pl-3 pr-1.5">
 						<code class="min-w-0 flex-1 overflow-x-auto whitespace-nowrap font-mono text-sm" data-testid="vm-rdp-address">
@@ -99,36 +114,34 @@
 					</dl>
 					<p class="mt-5 border-t border-border pt-4 text-xs text-muted-foreground">{m['vms.detail.connect.rdpHelpNote']()}</p>
 				{:else}
-				<h2 id="connect-ssh-title" class="mt-1 text-lg font-semibold">{m['vms.detail.connect.title']()}</h2>
-				<p class="mt-1 text-sm text-muted-foreground">{m['vms.detail.connect.body']()}</p>
-				<div class="mt-4 flex items-center gap-2 rounded-lg border border-border bg-muted/50 py-1.5 pl-3 pr-1.5">
-					<code class="min-w-0 flex-1 overflow-x-auto whitespace-nowrap font-mono text-sm" data-testid="vm-ssh-command">
-						<span class="select-none text-muted-foreground-subtle" aria-hidden="true">$&nbsp;</span>{#if sshUser === null}ssh <span class="rounded bg-primary/10 px-1 italic text-primary" data-testid="vm-ssh-user-placeholder">{userPlaceholder}</span>@{sshHost(address.address)}{:else}{command}{/if}
-					</code>
-					<CopyButton value={command} />
-				</div>
-				<p class="mt-2 text-xs text-muted-foreground">
-					{m['vms.detail.connect.addressNote']()}
-					{#if sshUser === null}{m['vms.detail.connect.userUnknown']({ placeholder: userPlaceholder })}{/if}
-				</p>
-				<dl class="mt-5 grid gap-x-6 gap-y-3 text-sm sm:grid-cols-3">
-					<div>
-						<dt class="text-xs text-muted-foreground">{m['vms.detail.connect.factUser']()}</dt>
-						<dd class="mt-0.5 font-mono">{sshUser ?? m['vms.detail.connect.factUserUnknown']()}</dd>
+					<p class="mt-1 text-sm text-muted-foreground">{m['vms.detail.connect.body']()}</p>
+					<div class="mt-4 flex items-center gap-2 rounded-lg border border-border bg-muted/50 py-1.5 pl-3 pr-1.5">
+						<code class="min-w-0 flex-1 overflow-x-auto whitespace-nowrap font-mono text-sm" data-testid="vm-ssh-command">
+							<span class="select-none text-muted-foreground-subtle" aria-hidden="true">$&nbsp;</span>{#if sshUser === null}ssh <span class="rounded bg-primary/10 px-1 italic text-primary" data-testid="vm-ssh-user-placeholder">{userPlaceholder}</span>@{sshHost(address.address)}{:else}{command}{/if}
+						</code>
+						<CopyButton value={command} />
 					</div>
-					<div>
-						<dt class="text-xs text-muted-foreground">{m['vms.detail.connect.factAddress']()}</dt>
-						<dd class="mt-0.5 font-mono" data-testid="vm-ssh-address">{address.address}</dd>
-					</div>
-					<div>
-						<dt class="text-xs text-muted-foreground">{m['vms.detail.connect.factNetwork']()}</dt>
-						<dd class="mt-0.5 font-mono">{address.bridge}</dd>
-					</div>
-				</dl>
-				<p class="mt-5 border-t border-border pt-4 text-xs text-muted-foreground">{m['vms.detail.connect.helpNote']()}</p>
+					<p class="mt-2 text-xs text-muted-foreground">
+						{m['vms.detail.connect.addressNote']()}
+						{#if sshUser === null}{m['vms.detail.connect.userUnknown']({ placeholder: userPlaceholder })}{/if}
+					</p>
+					<dl class="mt-5 grid gap-x-6 gap-y-3 text-sm sm:grid-cols-3">
+						<div>
+							<dt class="text-xs text-muted-foreground">{m['vms.detail.connect.factUser']()}</dt>
+							<dd class="mt-0.5 font-mono">{sshUser ?? m['vms.detail.connect.factUserUnknown']()}</dd>
+						</div>
+						<div>
+							<dt class="text-xs text-muted-foreground">{m['vms.detail.connect.factAddress']()}</dt>
+							<dd class="mt-0.5 font-mono" data-testid="vm-ssh-address">{address.address}</dd>
+						</div>
+						<div>
+							<dt class="text-xs text-muted-foreground">{m['vms.detail.connect.factNetwork']()}</dt>
+							<dd class="mt-0.5 font-mono">{address.bridge}</dd>
+						</div>
+					</dl>
+					<p class="mt-5 border-t border-border pt-4 text-xs text-muted-foreground">{m['vms.detail.connect.helpNote']()}</p>
 				{/if}
-			{:else if running}
-				<h2 id="connect-ssh-title" class="mt-1 text-lg font-semibold" data-testid="vm-address-unavailable">{m['vms.detail.connect.addressUnavailableTitle']()}</h2>
+			{:else}
 				<p class="mt-1 text-sm text-muted-foreground">{m['vms.detail.connect.addressUnavailableBody']()}</p>
 				{#if connect === 'agentDisabled'}
 					<p class="mt-2 text-xs text-muted-foreground">{m['vms.detail.connect.agentDisabled']()}</p>
@@ -137,44 +150,28 @@
 				{:else}
 					<p class="mt-2 text-xs text-muted-foreground">{m['vms.detail.connect.networkPending']()}</p>
 				{/if}
-			{:else}
-				<h2 id="connect-ssh-title" class="mt-1 text-lg font-semibold" data-testid="vm-ssh-unavailable">{windows ? m['vms.detail.connect.rdpNotRunningTitle']() : m['vms.detail.connect.notRunningTitle']()}</h2>
-				<p class="mt-1 text-sm text-muted-foreground">{m['vms.detail.connect.notRunningBody']()}</p>
 			{/if}
 		</Card>
-
-		{#if connect !== 'installing'}
-		<div class="flex flex-col gap-3 rounded-xl border border-border bg-muted/40 p-5">
-			<h2 id="connect-console-title" class="text-sm font-semibold">{m['vms.detail.connect.consoleTitle']()}</h2>
-			<p class="text-sm text-muted-foreground">{m['vms.detail.connect.consoleBody']()}</p>
-			{#if running}
-				<ButtonLink href={consoleHref} variant="primary" block target="_blank" rel="noopener noreferrer" data-testid="vm-console-open">
-					{m['vms.detail.connect.consoleOpen']()}
-				</ButtonLink>
-			{:else}
-				<span
-					class="inline-flex h-10 w-full cursor-not-allowed items-center justify-center rounded-[var(--radius-control)] border border-border bg-card text-sm font-semibold text-muted-foreground opacity-50"
-					aria-disabled="true"
-					data-testid="vm-console-disabled"
-				>
-					{m['vms.detail.connect.consoleOpen']()}
-				</span>
-			{/if}
-			<p class="text-xs text-muted-foreground">{m['vms.detail.connect.consoleHint']()}</p>
-		</div>
-		{/if}
-	</div>
-
-	<ul class="mt-5 grid gap-3 sm:grid-cols-3" aria-label={m['vms.detail.resource.caption']()} data-testid="vm-resource-strip">
-		{#each [
-			{ key: 'cpu', label: m['vms.detail.resource.cpu'](), value: String(entity.cpuCores) },
-			{ key: 'memory', label: m['vms.detail.resource.memory'](), value: compactBytes(entity.memoryTotal) },
-			{ key: 'storage', label: m['vms.detail.resource.storage'](), value: compactBytes(entity.diskTotal) }
-		] as resource (resource.key)}
-			<li class="flex flex-col gap-0.5 rounded-xl border border-border bg-card px-4 py-3" data-testid="vm-stat-{resource.key}">
-				<span class="text-xs text-muted-foreground">{resource.label}</span>
-				<span class="font-mono text-lg font-semibold tabular-nums">{resource.value}</span>
-			</li>
-		{/each}
-	</ul>
+	{:else}
+		<!-- Stopped (or still provisioning): a single compact row - the
+		     not-running message and the inline Start button. -->
+		<Card pad="lg" aria-labelledby="connect-ssh-title" data-testid="vm-connect-ssh">
+			<div class="flex flex-wrap items-center justify-between gap-4">
+				<div class="min-w-0">
+					<h2 id="connect-ssh-title" class="text-lg font-semibold" data-testid="vm-ssh-unavailable">{windows ? m['vms.detail.connect.rdpNotRunningTitle']() : m['vms.detail.connect.notRunningTitle']()}</h2>
+					<p class="mt-1 text-sm text-muted-foreground">{m['vms.detail.connect.notRunningBody']()}</p>
+				</div>
+				{#if onStart}
+					<Button
+						loading={store.actionInFlight && store.inFlightActionKind === 'start'}
+						disabled={store.actionInFlight || status === 'provisioning'}
+						onclick={onStart}
+						data-testid="vm-connect-start"
+					>
+						{m['vms.detail.power.start']()}
+					</Button>
+				{/if}
+			</div>
+		</Card>
+	{/if}
 {/if}

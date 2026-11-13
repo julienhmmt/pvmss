@@ -19,7 +19,7 @@ carries, so build every approved template with the sign-in users will need:
 - in the template's **Cloud-Init** tab in Proxmox, set the user and either an
   SSH public key or a password, or bake an account into the image itself;
 - install and enable `qemu-guest-agent`, so the VM reports its address and
-  the **General information** tab can show the SSH command.
+  the **Overview** tab can show the SSH command.
 
 Every VM cloned from one template shares that sign-in. Hand it to your users,
 or keep one template per team. ISO installs are unaffected: users create

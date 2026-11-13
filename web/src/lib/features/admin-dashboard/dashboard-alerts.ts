@@ -52,7 +52,7 @@ export function alertHref(alert: DashboardAlert): string {
 		case 'quota_requests_pending':
 			return resolve('/admin/quota-requests');
 		case 'snapshot_schedule_failed':
-			return withQuery(resolve('/vms/[cluster]/[vmid]', { cluster: clusterKey, vmid: alert.subject ?? '' }), { tab: 'configuration', sub: 'snapshots' });
+			return withQuery(resolve('/vms/[cluster]/[vmid]', { cluster: clusterKey, vmid: alert.subject ?? '' }), { tab: 'snapshots' });
 	}
 }
 

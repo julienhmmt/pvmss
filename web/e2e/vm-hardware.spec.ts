@@ -16,7 +16,6 @@ test.describe("T07 VM hardware (disks, CD-ROM, network, sockets/cores/RAM/tags)"
     // web-02 (VMID 101, node pve-node-01) - stopped, owned by alice, has a
     // pre-seeded boot disk scsi0 and a second disk scsi1.
     await page.goto("/vms/default/101");
-    await page.getByTestId("vm-tab-configuration").click();
     await page.getByTestId("vm-tab-disks").click();
 
     // The boot disk cell renders the key and a separate "boot" pill.
@@ -76,7 +75,6 @@ test.describe("T07 VM hardware (disks, CD-ROM, network, sockets/cores/RAM/tags)"
 
     await signInAlice(page.request);
     await page.goto("/vms/default/101");
-    await page.getByTestId("vm-tab-configuration").click();
     await page.getByTestId("vm-tab-network").click();
 
     await expect(page.getByTestId("vm-nic-0")).toContainText("vmbr0");
@@ -89,7 +87,6 @@ test.describe("T07 VM hardware (disks, CD-ROM, network, sockets/cores/RAM/tags)"
     await expect(page.getByTestId("vm-nic-0")).toContainText("vmbr1");
 
     await page.reload();
-    await page.getByTestId("vm-tab-configuration").click();
     await page.getByTestId("vm-tab-network").click();
     await expect(page.getByTestId("vm-nic-0")).toContainText("vmbr1");
   });

@@ -26,7 +26,7 @@ describe('dashboard alerts', () => {
 
 	it('links a failed snapshot schedule to its VM', () => {
 		const failed = alert('snapshot_schedule_failed', { subject: '101', cluster: 'East Campus', clusterKey: 'east' });
-		expect(alertHref(failed)).toBe('/vms/east/101?tab=configuration&sub=snapshots');
+		expect(alertHref(failed)).toBe('/vms/east/101?tab=snapshots');
 		expect(alertMessage(failed)).toContain('101');
 	});
 

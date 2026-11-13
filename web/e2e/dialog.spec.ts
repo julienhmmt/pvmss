@@ -6,10 +6,12 @@ test('a dialog is a real modal: no background scroll, Escape closes, focus retur
 	await page.request.post('/api/v1/auth/login', { data: { username: 'alice', password: 'pvmss-alice', cluster: 'default' } });
 	await page.setViewportSize({ width: 1280, height: 600 });
 	await page.goto('/vms/default/100');
-	await page.getByTestId('vm-tab-configuration').click();
-
-	const trigger = page.getByTestId('vm-action-delete');
+	// The delete entry lives in the header overflow menu. Selecting a menu
+	// item returns focus to the menu trigger before the dialog opens, so the
+	// trigger is also where focus lands back after Escape.
+	const trigger = page.getByTestId('vm-action-menu');
 	await trigger.click();
+	await page.getByTestId('vm-menu-delete').click();
 	const dialog = page.getByRole('dialog');
 	await expect(dialog).toBeVisible();
 	// Native modal: top layer, so nothing outside it is in the accessibility tree.

@@ -35,7 +35,7 @@ PVMSS n'ajoute ni clé SSH ni mot de passe à votre VM :
 
 - **Template** - le système embarque les accès que votre équipe a intégrés au
   template (une clé SSH ou un mot de passe). Demandez-les à votre
-  administrateur si vous ne les avez pas. L'onglet **Informations générales**
+  administrateur si vous ne les avez pas. L'onglet **Vue d'ensemble**
   de la VM affiche la commande SSH dès que la machine signale son adresse.
 - **ISO** - vous installez le système vous-même depuis la console du
   navigateur et choisissez votre compte pendant l'installation.
