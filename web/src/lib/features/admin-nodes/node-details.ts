@@ -4,7 +4,7 @@
 
 export type NodeTab = 'health' | 'workloads' | 'hardware';
 
-const NODE_TABS: readonly NodeTab[] = ['workloads', 'hardware'];
+const NODE_TABS: ReadonlySet<NodeTab> = new Set(['workloads', 'hardware']);
 
 /** Maps the ?tab= query value to a tab; absent or unknown values land on health. */
 export function parseNodeTab(raw: string | null): NodeTab {
@@ -14,7 +14,7 @@ export function parseNodeTab(raw: string | null): NodeTab {
 
 /** Serializes a tab back to the query value; the default tab keeps URLs clean. */
 export function nodeTabParam(tab: NodeTab): string | null {
-	return NODE_TABS.includes(tab) ? tab : null;
+	return NODE_TABS.has(tab) ? tab : null;
 }
 
 const STATUS_ORDER: readonly string[] = ['running', 'stopped', 'paused'];

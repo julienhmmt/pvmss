@@ -15,7 +15,7 @@ function guardFormula(value: string): string {
 function escapeCell(value: string): string {
 	const guarded = guardFormula(value);
 	if (!/[",\n\r]/.test(guarded)) return guarded;
-	return `"${guarded.replace(/"/g, '""')}"`;
+	return `"${guarded.replaceAll('"', '""')}"`;
 }
 
 /** Builds the per-VM activity CSV: one header row, then timestamp, actor,
@@ -43,7 +43,7 @@ export function buildUserActivityCsv(
 	return [USER_CSV_HEADER, ...rows].join('\r\n') + '\r\n';
 }
 
-const dateStamp = (now: Date): string => now.toISOString().slice(0, 10).replace(/-/g, '');
+const dateStamp = (now: Date): string => now.toISOString().slice(0, 10).replaceAll('-', '');
 
 /** The download name, e.g. `vm-100-activity-20260115.csv`. */
 export function activityCsvFilename(vmid: number, now: Date = new Date()): string {
@@ -61,6 +61,6 @@ export function downloadCsv(csv: string, filename: string): void {
 	anchor.download = filename;
 	document.body.appendChild(anchor);
 	anchor.click();
-	document.body.removeChild(anchor);
+	anchor.remove();
 	URL.revokeObjectURL(url);
 }

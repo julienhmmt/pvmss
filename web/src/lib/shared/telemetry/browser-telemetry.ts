@@ -201,13 +201,20 @@ function randomHex(byteLength: number): string {
 	return Array.from(bytes, (b) => b.toString(16).padStart(2, '0')).join('');
 }
 
+/** The URL string behind a fetch input: plain string, URL, or Request. */
+function requestUrl(input: RequestInfo | URL): string {
+	if (typeof input === 'string') return input;
+	if (input instanceof URL) return input.href;
+	return input.url;
+}
+
 /** Adds a W3C traceparent to same-origin /api/ calls so the server span joins
  *  the page-view trace as a child of the pageview span. Other origins and
  *  non-API paths are passed through untouched. */
 function wrapFetchWithTraceparent(traceparent: string): void {
 	const original = globalThis.fetch;
 	globalThis.fetch = (input: RequestInfo | URL, init?: RequestInit): Promise<Response> => {
-		const raw = typeof input === 'string' ? input : input instanceof URL ? input.href : input.url;
+		const raw = requestUrl(input);
 		if (!isSameOriginAPIPath(raw)) return original(input, init);
 		const headers = new Headers(input instanceof Request ? input.headers : undefined);
 		new Headers(init?.headers).forEach((value, key) => headers.set(key, value));

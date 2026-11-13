@@ -68,12 +68,16 @@ export function isValidClusterName(name: string): boolean {
 }
 
 /** Turns the cluster's reported display name into a suggested identifier:
- * lowercase, non [a-z0-9] runs collapse into a single dash, edges trimmed. */
+ * lowercase, non [a-z0-9] runs collapse into a single dash, edges trimmed.
+ * The split/filter/join trims edge dashes in one linear pass - no edge-trim
+ * regex (S5852). */
 export function suggestClusterName(displayName: string): string {
 	return displayName
 		.toLowerCase()
 		.replace(/[^a-z0-9]+/g, '-')
-		.replace(/^-+|-+$/g, '');
+		.split('-')
+		.filter(Boolean)
+		.join('-');
 }
 
 /** The wizard's current step, derived from the server-reported status and the

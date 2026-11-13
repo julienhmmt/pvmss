@@ -9,7 +9,7 @@ import type { AdminCluster, ClusterTestResult } from './clusters.svelte.js';
 
 export type ClusterTab = 'status' | 'infrastructure' | 'connection';
 
-const CLUSTER_TABS: readonly ClusterTab[] = ['infrastructure', 'connection'];
+const CLUSTER_TABS: ReadonlySet<ClusterTab> = new Set(['infrastructure', 'connection']);
 
 /** Maps the ?tab= query value to a tab; absent or unknown values land on status. */
 export function parseClusterTab(raw: string | null): ClusterTab {
@@ -19,7 +19,7 @@ export function parseClusterTab(raw: string | null): ClusterTab {
 
 /** Serializes a tab back to the query value; the default tab keeps URLs clean. */
 export function clusterTabParam(tab: ClusterTab): string | null {
-	return CLUSTER_TABS.includes(tab) ? tab : null;
+	return CLUSTER_TABS.has(tab) ? tab : null;
 }
 
 /** The cluster's slice of the dashboard, computed from its index only. */
