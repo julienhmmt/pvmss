@@ -13,9 +13,11 @@
 		position?: 'top' | 'bottom';
 		/** Non-interactive content (an info icon): the wrapper is the focusable trigger. */
 		children?: Snippet;
+		/** Children is itself interactive (a button): the wrapper is not tabbable so the child stays the single tab stop; focusin/out still drive the tooltip. */
+		interactive?: boolean;
 	}
 
-	let { text, position = 'top', children }: Props = $props();
+	let { text, position = 'top', children, interactive = false }: Props = $props();
 
 	const SHOW_DELAY_MS = 200;
 	const TRIGGER_GAP = 8;
@@ -66,13 +68,13 @@
 <span
 	bind:this={triggerEl}
 	data-tooltip-trigger
-	class="inline-flex cursor-default rounded-full pv-focus"
-	tabindex="0"
+	class="inline-flex rounded-full {interactive ? '' : 'cursor-default pv-focus'}"
+	tabindex={interactive ? undefined : 0}
 	aria-describedby={visible ? tooltipId : undefined}
 	onpointerenter={show}
 	onpointerleave={hide}
-	onfocus={show}
-	onblur={hide}
+	onfocusin={show}
+	onfocusout={hide}
 >
 	{#if children}{@render children()}{/if}
 </span>

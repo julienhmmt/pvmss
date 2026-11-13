@@ -3,6 +3,7 @@ package httpapi_test
 import (
 	"encoding/json"
 	"net/http"
+	"path/filepath"
 	"pvmss/server/internal/httpapi"
 	"strings"
 	"testing"
@@ -111,6 +112,68 @@ func TestAdminAppInfo_Sc006_HashNotInResponseBody(t *testing.T) {
 			if !f.Redacted || f.Value != nil {
 				t.Errorf("ADMIN_PASSWORD_HASH = %+v, want redacted=true value=nil", f)
 			}
+		}
+	}
+}
+
+// TestAdminAppInfo_Reveal_ReturnsSecretValues - GET /admin/appinfo?reveal=1
+// returns the real secret values while keeping redacted=true so the UI
+// still masks them by default.
+//
+//nolint:paralleltest // serial: shared env
+func TestAdminAppInfo_Reveal_ReturnsSecretValues(t *testing.T) {
+	hash := "$2a$10$N9qo8uLOickgx2ZMRZoMy.MrqK0aVzJqDOKU3FqZwM9FqZwM9FqZwM9"
+	// config.Load must succeed for the handler to see real values, so the
+	// full required env is set here (unlike the redaction tests, which only
+	// need the fallback zero config).
+	t.Setenv("PVMSS_PORT", "50001")
+	t.Setenv("PVMSS_DB_PATH", filepath.Join(t.TempDir(), "pvmss.db"))
+	t.Setenv("LOG_LEVEL", "info")
+	t.Setenv("LOG_FORMAT", "json")
+	t.Setenv("LOG_OUTPUT", "stdout")
+	t.Setenv("PVMSS_CLUSTER_SOURCE", "fake")
+	t.Setenv("ADMIN_PASSWORD_HASH", hash)
+	t.Setenv("SESSION_SECRET", strings.Repeat("s", 32))
+
+	ops, auth, _ := newAdminOpsHandler(t)
+	cookie := adminCookie(t, auth)
+
+	rec := opsGet(t, ops, auth, cookie, "/api/v1/admin/appinfo?reveal=1")
+	if rec.Code != http.StatusOK {
+		t.Fatalf("status = %d: %s", rec.Code, rec.Body.String())
+	}
+
+	var info appInfoDTO
+	if err := json.Unmarshal(rec.Body.Bytes(), &info); err != nil {
+		t.Fatalf("decode: %v", err)
+	}
+
+	found := false
+	for _, f := range info.Config {
+		if f.Name != "ADMIN_PASSWORD_HASH" {
+			continue
+		}
+		found = true
+		if !f.Redacted {
+			t.Error("ADMIN_PASSWORD_HASH redacted = false, want true")
+		}
+		if f.Value == nil || *f.Value != hash {
+			t.Errorf("ADMIN_PASSWORD_HASH value = %v, want the configured hash", f.Value)
+		}
+	}
+	if !found {
+		t.Error("ADMIN_PASSWORD_HASH field missing from response")
+	}
+
+	// An unset secret (no PROXMOX_API_TOKEN_VALUE in this env) still
+	// serializes its value as "" under reveal so the UI can show "unset"
+	// rather than a dead mask.
+	for _, f := range info.Config {
+		if f.Name != "PROXMOX_API_TOKEN_VALUE" {
+			continue
+		}
+		if f.Value == nil || *f.Value != "" {
+			t.Errorf("PROXMOX_API_TOKEN_VALUE value = %v, want empty string (unset secret)", f.Value)
 		}
 	}
 }

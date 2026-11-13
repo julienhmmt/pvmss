@@ -453,7 +453,9 @@ type appInfoDTO struct {
 }
 
 // ServeAppInfo handles GET /api/v1/admin/appinfo.
-func (h *AdminOps) ServeAppInfo(w http.ResponseWriter, _ *http.Request) {
+// ?reveal=1 returns the real secret values - still admin-only, but the
+// default response keeps them out entirely (SC-006).
+func (h *AdminOps) ServeAppInfo(w http.ResponseWriter, r *http.Request) {
 	// The Configuration is loaded fresh from the environment so the admin
 	// sees the current effective config, not a stale snapshot.
 	cfg, err := config.Load()
@@ -463,7 +465,14 @@ func (h *AdminOps) ServeAppInfo(w http.ResponseWriter, _ *http.Request) {
 		cfg = config.Configuration{}
 	}
 
-	configDTOs := buildConfigFieldDTOs(cfg.Redacted())
+	fields := cfg.Redacted()
+	reveal, _ := strconv.ParseBool(r.URL.Query().Get("reveal"))
+	if reveal {
+		fields = cfg.Unredacted()
+		logctx.From(r.Context()).Info("admin revealed app info secrets")
+	}
+
+	configDTOs := buildConfigFieldDTOs(fields, reveal)
 	clusters := h.buildClusterHealthDTOs()
 
 	writeAdminJSON(w, http.StatusOK, appInfoDTO{
@@ -474,12 +483,14 @@ func (h *AdminOps) ServeAppInfo(w http.ResponseWriter, _ *http.Request) {
 }
 
 // buildConfigFieldDTOs maps the redacted config fields to their DTO form.
-// Redacted fields leave Value nil so they serialize as JSON null.
-func buildConfigFieldDTOs(fields []config.Field) []configFieldDTO {
+// Redacted fields leave Value nil so they serialize as JSON null; on the
+// ?reveal path they carry the real value - possibly an empty string when
+// the variable is unset, so the UI can tell "unset" apart from "hidden".
+func buildConfigFieldDTOs(fields []config.Field, reveal bool) []configFieldDTO {
 	dtos := make([]configFieldDTO, 0, len(fields))
 	for _, f := range fields {
 		dto := configFieldDTO{Name: f.Name, Redacted: f.Redacted}
-		if !f.Redacted {
+		if !f.Redacted || reveal {
 			dto.Value = &f.Value
 		}
 		dtos = append(dtos, dto)
