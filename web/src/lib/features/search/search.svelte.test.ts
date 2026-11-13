@@ -282,3 +282,52 @@ describe('SearchStore cluster & status filters', () => {
 		expect(store.hasMore).toBe(false);
 	});
 });
+
+describe('SearchStore sorting', () => {
+	beforeEach(() => {
+		vi.useFakeTimers();
+	});
+
+	afterEach(() => {
+		vi.unstubAllGlobals();
+		vi.useRealTimers();
+	});
+
+	it('sends the new sort to the API and syncs the URL', async () => {
+		const fetchMock = vi.fn().mockResolvedValue(jsonResponse(200, oneVmResult));
+		vi.stubGlobal('fetch', fetchMock);
+		const navigated: string[] = [];
+		const store = new SearchStore({ initialQuery: '?q=web', navigate: (qs) => navigated.push(qs) });
+
+		store.setSort('vmid');
+		await vi.advanceTimersByTimeAsync(0);
+
+		expect(fetchMock).toHaveBeenLastCalledWith(expect.stringContaining('sortBy=vmid&sortDir=asc'), expect.anything());
+		expect(navigated.at(-1)).toBe('q=web&sortBy=vmid');
+
+		store.setSort('vmid');
+		await vi.advanceTimersByTimeAsync(0);
+
+		expect(fetchMock).toHaveBeenLastCalledWith(expect.stringContaining('sortBy=vmid&sortDir=desc'), expect.anything());
+		expect(navigated.at(-1)).toBe('q=web&sortBy=vmid&sortDir=desc');
+	});
+
+	it('reads sort params from the initial URL and ignores invalid values', () => {
+		const store = new SearchStore({ initialQuery: '?q=web&sortBy=vmid&sortDir=desc' });
+		expect(store.sortBy).toBe('vmid');
+		expect(store.sortDir).toBe('desc');
+
+		const fallback = new SearchStore({ initialQuery: '?q=web&sortBy=bogus&sortDir=sideways' });
+		expect(fallback.sortBy).toBe('name');
+		expect(fallback.sortDir).toBe('asc');
+	});
+
+	it('restores sort params when navigating back', () => {
+		vi.stubGlobal('fetch', vi.fn().mockResolvedValue(jsonResponse(200, oneVmResult)));
+		const store = new SearchStore({ navigate: () => {} });
+		store.setSort('vmid');
+		store.restoreQuery('?q=web&sortBy=status&sortDir=desc');
+		expect(store.sortBy).toBe('status');
+		expect(store.sortDir).toBe('desc');
+	});
+});
