@@ -207,7 +207,7 @@
 					<div>
 						<dt class="text-xs text-muted-foreground">{m['admin.pools.username']()}</dt>
 						<dd class="mt-1 break-all font-mono">{detail.username}</dd>
-						{#if detail.managed}
+						{#if detail.managed && !detail.sso}
 							<dd class="mt-2">
 								<Button
 									size="sm"

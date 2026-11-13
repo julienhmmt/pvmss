@@ -256,7 +256,7 @@ cluster ; **Rescan** force une nouvelle lecture.
 ## Limitations connues
 
 - PVMSS cible les clusters Proxmox VE 9.x et plus récents (et les nœuds autonomes) ; PVE 8 et antérieurs ne sont pas pris en charge à cause des changements de rôles et permissions de PVE 9.
-- Les comptes Proxmox ne peuvent se connecter que via les realms `pve` et `pam` ; la connexion aux realms OIDC n'est pas encore prise en charge. Utilisez en attendant un administrateur local ou un compte `pve`/`pam`.
+- Les comptes Proxmox se connectent par mot de passe sur les realms `pve` et `pam`, ou par SSO quand le cluster a un realm SSO (**Admin > Clusters**, modifier le cluster). Un utilisateur SSO reçoit automatiquement un pool à sa première connexion : restreignez l'accès au client côté fournisseur d'identité. Pour révoquer un utilisateur SSO, désactivez-le dans Proxmox ou chez le fournisseur d'identité.
 - Les comptes sont provisionnés via `/admin/pools` côté Proxmox.
 - Les administrateurs peuvent migrer une VM à la fois depuis **Infrastructure > Nœuds**. La HA, la migration entre clusters et l'orchestration des sauvegardes se font directement dans Proxmox.
 - Les administrateurs ne peuvent pas créer de VM via le portail (ils n'ont pas de pool) ; ils les créent directement dans Proxmox.

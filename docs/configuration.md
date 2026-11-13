@@ -63,8 +63,8 @@ startup level; admins can change it at runtime (Admin > Settings).
 **Administrator sign-in.** There are two paths. A Proxmox user is an
 administrator when their ACL grants `Permissions.Modify` on `/` (the
 `Administrator` or `PVMSS_Admin` role; the built-in `PVEAdmin` role lacks
-it); only the `pve` and `pam` realms are
-supported, OIDC is not. PVMSS local administrators are independent of any
+it); password sign-in takes the `pve` and `pam`
+realms, and a Proxmox OpenID realm signs in through SSO (`docs/oidc.md`). PVMSS local administrators are independent of any
 cluster. `ADMIN_PASSWORD_HASH` seeds the immutable bootstrap owner (`admin`,
 provider `bootstrap`); DB-backed accounts (`local_accounts`, capped by
 `PVMSS_MAX_LOCAL_ADMINS`) are created and managed by that owner under Admin >

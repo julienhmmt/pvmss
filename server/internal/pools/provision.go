@@ -19,6 +19,7 @@ var (
 	ErrForbidden     = errors.New("forbidden")
 	ErrNotFound      = errors.New("pool not found")
 	ErrNotManaged    = errors.New("pool not managed by PVMSS")
+	ErrSSOPool       = errors.New("pool belongs to an SSO user")
 	ErrInvalidName   = errors.New("invalid pool name")
 	ErrAlreadyExists = errors.New("pool already exists")
 	ErrMembersRemain = errors.New("pool still has members")

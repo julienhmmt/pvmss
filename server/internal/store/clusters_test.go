@@ -582,3 +582,32 @@ func TestSessions_DeleteAccountSessions(t *testing.T) {
 		}
 	}
 }
+
+func TestClusters_OIDCRealmSetReadClear(t *testing.T) {
+	t.Parallel()
+
+	st := openClusterStore(t)
+	ctx := context.Background()
+	row := store.ClusterRow{Name: "sso", URL: "https://sso.example.invalid/api2/json", TokenID: testClusterTokenID, TokenSecret: testClusterTokenSecret}
+	if err := st.CreateCluster(ctx, row); err != nil {
+		t.Fatalf("CreateCluster: %v", err)
+	}
+	if got, _ := st.GetCluster(ctx, "sso"); got.OIDCRealm != "" {
+		t.Fatalf("new cluster realm = %q, want empty", got.OIDCRealm)
+	}
+	if err := st.SetClusterOIDCRealm(ctx, "sso", "zitadel"); err != nil {
+		t.Fatalf("SetClusterOIDCRealm: %v", err)
+	}
+	if got, _ := st.GetCluster(ctx, "sso"); got.OIDCRealm != "zitadel" {
+		t.Fatalf("realm = %q, want zitadel", got.OIDCRealm)
+	}
+	if err := st.SetClusterOIDCRealm(ctx, "sso", ""); err != nil {
+		t.Fatalf("clear: %v", err)
+	}
+	if rows, _ := st.ListClusters(ctx); rows[0].OIDCRealm != "" {
+		t.Fatalf("cleared realm = %q", rows[0].OIDCRealm)
+	}
+	if err := st.SetClusterOIDCRealm(ctx, "missing", "x"); err == nil {
+		t.Fatal("unknown cluster: want error")
+	}
+}

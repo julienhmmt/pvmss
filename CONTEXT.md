@@ -11,9 +11,20 @@ A Proxmox VE user whose ACL grants `Permissions.Modify` on `/` - any role
 carrying it (the dedicated `PVMSS_Admin` role, `Administrator`, or a custom
 one; the built-in `PVEAdmin` role lacks it). PVMSS reads that
 privilege once, at login, with the user's own ticket and stores it as
-`Identity.IsAdmin` for the session. Only the `pve` and `pam` realms can sign
-in; OIDC realms are unsupported.
+`Identity.IsAdmin` for the session. Password sign-in takes the `pve` and `pam`
+realms; an OIDC realm signs in through SSO (see **OIDC realm**).
 _Avoid_: superuser, root admin, PVE admin (ambiguous with the PVEAdmin role)
+
+**OIDC realm**:
+A Proxmox OpenID Connect realm, recorded per cluster as `oidc_realm`. PVMSS
+drives it for SSO; Proxmox verifies the IdP and issues the ticket. Empty means
+no SSO for that cluster. A non-admin SSO user with no pool gets a managed pool
+at first login (`pvmss-<username slug>`, `PVMSSUser` granted to that user).
+_Avoid_: IdP (the realm points at an IdP, it is not one)
+
+**Handshake state**:
+The signed, one-shot `pvmss_oidc` cookie that ties an SSO start to its
+callback: cluster, Proxmox's `state`, the `next` path, expiry.
 
 **Local administrator**:
 A PVMSS administrator whose credentials live in `/data/pvmss.db`

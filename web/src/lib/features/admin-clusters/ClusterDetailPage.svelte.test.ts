@@ -11,6 +11,7 @@ function jsonResponse(body: unknown): Response {
 const cluster: AdminCluster = {
 	name: 'east',
 	displayName: 'East Campus',
+	oidcRealm: '',
 	url: 'https://east.invalid:8006/api2/json',
 	tlsInsecureSkipVerify: true,
 	tokenId: 'pvmss@pve!service',

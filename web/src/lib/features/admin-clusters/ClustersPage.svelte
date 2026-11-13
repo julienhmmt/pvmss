@@ -54,6 +54,7 @@
 				? await store.create(input)
 				: await store.update(editing.name, {
 						displayName: input.displayName ?? '',
+						oidcRealm: input.oidcRealm ?? '',
 						url: input.url,
 						tlsInsecureSkipVerify: input.tlsInsecureSkipVerify,
 						tokenId: input.tokenId,

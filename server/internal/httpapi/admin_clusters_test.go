@@ -713,6 +713,7 @@ func TestAdminClusters_SnippetSettingsValidation(t *testing.T) {
 type adminClusterDTOForTest struct {
 	Name                  string  `json:"name"`
 	DisplayName           string  `json:"displayName"`
+	OIDCRealm             string  `json:"oidcRealm"`
 	URL                   string  `json:"url"`
 	TLSInsecureSkipVerify bool    `json:"tlsInsecureSkipVerify"`
 	TokenSet              bool    `json:"tokenSet"`
@@ -732,5 +733,36 @@ func assertClusterErrorBody(t *testing.T, response *httptest.ResponseRecorder, w
 	}
 	if body.Code != wantCode {
 		t.Fatalf("error code = %q, want %q (body: %s)", body.Code, wantCode, response.Body.String())
+	}
+}
+
+//nolint:paralleltest // serial: shared fake cluster dataset
+func TestAdminClusters_UpdateOIDCRealm(t *testing.T) {
+	fixture := newAdminClusterFixture(t)
+	cookie := adminClusterCookie(t, fixture.auth)
+	update := func(realm string) *httptest.ResponseRecorder {
+		body := `{"oidcRealm":"` + realm + `","url":"https://pve-b4.example.com:8006/api2/json","tokenId":"pvmss@pve!service","tokenSecret":"s"}`
+
+		return adminClusterRequest(t, fixture, cookie, clusterRequestSpec{Method: fixture.handler.ServeUpdate, HTTPMethod: http.MethodPut, Path: "/api/v1/admin/clusters/" + crossSecondaryCluster, Name: crossSecondaryCluster, Body: body})
+	}
+
+	for _, bad := range []string{"Bad", "a b", "-x", strings.Repeat("a", 33)} {
+		if response := update(bad); response.Code != http.StatusBadRequest || !strings.Contains(response.Body.String(), "invalid_request") {
+			t.Fatalf("realm %q: status = %d body %s, want 400 invalid_request", bad, response.Code, response.Body.String())
+		}
+	}
+
+	for _, want := range []string{"zitadel", ""} {
+		response := update(want)
+		if response.Code != http.StatusOK {
+			t.Fatalf("realm %q: status = %d: %s", want, response.Code, response.Body.String())
+		}
+		var updated adminClusterDTOForTest
+		if err := json.Unmarshal(response.Body.Bytes(), &updated); err != nil {
+			t.Fatalf("decode: %v", err)
+		}
+		if updated.OIDCRealm != want {
+			t.Fatalf("oidcRealm = %q, want %q", updated.OIDCRealm, want)
+		}
 	}
 }

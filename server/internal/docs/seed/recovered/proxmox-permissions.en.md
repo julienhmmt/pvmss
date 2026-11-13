@@ -74,8 +74,10 @@ a PVMSS administrator. Keep `-propagate 1` so the grant covers the
 whole tree. The check runs once per session, so an ACL added after a user
 signed in requires a new sign-in.
 
-Only the `pve` and `pam` realms are supported. Accounts from an OIDC realm are
-refused with `realm_unsupported`; OIDC sign-in is future work. PVMSS local
+Password sign-in takes the `pve` and `pam` realms. Accounts from a Proxmox
+OpenID Connect realm sign in with **Continue with SSO** once an administrator
+has set the cluster's SSO realm; on a first SSO sign-in PVMSS creates the
+user's pool and grants `PVMSSUser` on it. PVMSS local
 administrators (managed in **Admin > Settings > Accounts**) need no Proxmox
 account and no Proxmox permission at all.
 

@@ -91,6 +91,55 @@ services:
       victorialogs-certs:
         condition: service_completed_successfully
 
+  # --- Test IdP (profile oidc, not started by default) ----------------------
+  # Zitadel for the Proxmox OpenID realm (issue #159). Proxmox nodes call the
+  # issuer themselves, so ZITADEL_DOMAIN must be a name/IP the PVE nodes AND the
+  # browser both reach (e.g. this machine's LAN IP); Zitadel rejects any other
+  # Host. Issuer: http://<ZITADEL_DOMAIN>:8080. Console: /ui/console, first
+  # admin zitadel-admin@zitadel.localhost / Password1! . Dev only.
+  zitadel-db:
+    image: postgres:17.10-alpine
+    profiles: [oidc]
+    container_name: pvmss-zitadel-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: zitadel
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -d zitadel -U postgres"]
+      interval: 5s
+      retries: 20
+    volumes:
+      - zitadel_db_data:/var/lib/postgresql/data
+
+  zitadel:
+    image: ghcr.io/zitadel/zitadel:v4.20.2
+    profiles: [oidc]
+    container_name: pvmss-zitadel
+    restart: unless-stopped
+    command: start-from-init --masterkey MasterkeyNeedsToHave32Characters
+    environment:
+      ZITADEL_PORT: 8080
+      ZITADEL_TLS_ENABLED: "false"
+      ZITADEL_EXTERNALDOMAIN: ${ZITADEL_DOMAIN:-localhost}
+      ZITADEL_EXTERNALPORT: 8080
+      ZITADEL_EXTERNALSECURE: "false"
+      ZITADEL_DATABASE_POSTGRES_DSN: postgresql://postgres:postgres@zitadel-db:5432/zitadel?sslmode=disable
+      ZITADEL_FIRSTINSTANCE_ORG_HUMAN_PASSWORDCHANGEREQUIRED: "false"
+      # Built-in (v1) login UI: no separate zitadel-login container needed.
+      ZITADEL_DEFAULTINSTANCE_FEATURES_LOGINV2_REQUIRED: "false"
+    ports:
+      - "8080:8080"
+    healthcheck:
+      test: ["CMD", "/app/zitadel", "ready"]
+      interval: 10s
+      retries: 12
+      start_period: 20s
+    depends_on:
+      zitadel-db:
+        condition: service_healthy
+
   # --- Reverse proxies in front of pvmss-dev (one port each) ---------------
   # Mutual TLS on both hops: browser -> proxy needs dev/proxies/certs/client.p12
   # (password pvmss), proxy -> pvmss-dev uses proxy-client.pem. Trust ca.crt
@@ -198,3 +247,4 @@ volumes:
   proxy_npm_data: {}
   proxy_npm_letsencrypt: {}
   victorialogs_data: {}
+  zitadel_db_data: {}

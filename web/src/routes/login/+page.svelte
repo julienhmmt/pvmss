@@ -2,11 +2,13 @@
 	import { onMount, tick } from 'svelte';
 	import Alert from '#lib/shared/ui/Alert.svelte';
 	import BrandPanel from '#lib/shared/ui/BrandPanel.svelte';
-	import { LoginForm } from '#lib/features/auth/login.svelte.js';
+	import { page } from '$app/state';
+	import { LoginForm, oidcErrorMessage } from '#lib/features/auth/login.svelte.js';
 	import { getSessionContext } from '#lib/features/auth/session.svelte.js';
 	import ClusterSelector from '#lib/shared/ui/ClusterSelector.svelte';
 	import Card from '#lib/shared/ui/Card.svelte';
 	import Button from '#lib/shared/ui/Button.svelte';
+	import ButtonLink from '#lib/shared/ui/ButtonLink.svelte';
 	import FormField from '#lib/shared/ui/FormField.svelte';
 	import Select from '#lib/shared/ui/Select.svelte';
 	import TextField from '#lib/shared/ui/TextField.svelte';
@@ -25,7 +27,13 @@
 	});
 	onMount(() => {
 		void form.loadClusters();
+		// The SSO callback lands here on failure: /login?oidc=error&reason=<code>.
+		if (page.url.searchParams.get('oidc') === 'error') {
+			form.error = oidcErrorMessage(page.url.searchParams.get('reason'));
+			void tick().then(() => document.getElementById(ERROR_ID)?.focus());
+		}
 	});
+	const ssoUrl = $derived(form.provider === 'pve' && !form.pveDisabled ? form.ssoUrl(page.url.searchParams.get('next')) : null);
 
 	const ERROR_ID = 'login-error';
 	let formEl: HTMLFormElement | null = $state(null);
@@ -184,6 +192,10 @@
 						{form.loading ? m['login.signingIn']() : m['login.signIn']()}
 					</Button>
 				</form>
+				{#if ssoUrl}
+					<p class="text-center text-xs text-muted-foreground">{m['login.sso.or']()}</p>
+					<ButtonLink href={ssoUrl} variant="secondary" block data-sveltekit-reload data-testid="login-sso">{m['login.sso.button']()}</ButtonLink>
+				{/if}
 			</Card>
 		</div>
 	</div>

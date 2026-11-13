@@ -244,7 +244,7 @@ only and never rewrites VM tags on the cluster. The report is cached for
 ## Known limitations
 
 - PVMSS targets Proxmox VE 9.x and newer (and standalone nodes); PVE 8 and earlier are not supported due to the role and permission changes in PVE 9.
-- Proxmox accounts can sign in only through the `pve` and `pam` realms; OIDC realm sign-in is not supported yet. Use a local administrator or a `pve`/`pam` account meanwhile.
+- Proxmox accounts sign in with a password on the `pve` and `pam` realms, or through SSO when the cluster has an SSO realm (**Admin > Clusters**, edit the cluster). A first-time SSO user gets a pool automatically, so restrict who may use the client at the identity provider. To revoke an SSO user, disable it in Proxmox or at the identity provider.
 - User accounts are provisioned through `/admin/pools` on the Proxmox side.
 - Administrators can migrate one VM at a time from **Infrastructure > Nodes**. HA, cross-cluster migration and backup orchestration are performed directly in Proxmox.
 - Administrators cannot create VMs through the portal (they own no pool); they create them directly in Proxmox.

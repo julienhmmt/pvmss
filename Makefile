@@ -36,7 +36,7 @@ GOLANGCI_LINT   := go run github.com/golangci/golangci-lint/v2/cmd/golangci-lint
 PVMSS_TAG ?= latest
 
 .PHONY: help proxy-e2e dev dev-logs build docker-build helm-package helm-upgrade \
-        up up-siem down restart logs clean \
+        up up-siem up-oidc down restart logs clean \
         qualif \
         buildkit-start buildkit-stop buildkit-status \
         server-lint server-fmt server-vet server-test server-go-update \
@@ -95,8 +95,11 @@ up: ## Start the dev environment (pvmss-dev behind the dev proxies) in the backg
 up-siem: ## Start dev + the VictoriaLogs SIEM receiver (TLS syslog 6514, UI http://127.0.0.1:9428/select/vmui)
 	PVMSS_SYSLOG_ADDR=victorialogs:6514 PVMSS_SYSLOG_TLS_CA_FILE=/syslog-tls/ca.crt $(COMPOSE_DEV) --profile siem up -d
 
-down: ## Stop and remove the dev containers (including the siem profile)
-	$(COMPOSE_DEV) --profile siem down
+up-oidc: ## Start dev + the Zitadel test IdP on :8080 (set ZITADEL_DOMAIN to an IP Proxmox reaches)
+	$(COMPOSE_DEV) --profile oidc up -d
+
+down: ## Stop and remove the dev containers (including the siem and oidc profiles)
+	$(COMPOSE_DEV) --profile siem --profile oidc down
 
 restart: down up ## Restart the dev containers (down then up)
 

@@ -23,6 +23,9 @@ func ResetManagedPassword(ctx context.Context, actor auth.Identity, client clust
 	if err := requireManaged(ctx, registry, clusterName, name); err != nil {
 		return GeneratedCredentials{}, err
 	}
+	if err := refuseSSOPool(ctx, registry, clusterName, name); err != nil {
+		return GeneratedCredentials{}, err
+	}
 	if password == "" {
 		generated, err := generatePassword()
 		if err != nil {
@@ -47,4 +50,22 @@ func ResetManagedPassword(ctx context.Context, actor auth.Identity, client clust
 		return GeneratedCredentials{}, &ProvisionError{Step: "ACL", Err: err}
 	}
 	return GeneratedCredentials{PoolName: name, Username: username, Password: password}, nil
+}
+
+// refuseSSOPool stops a reset on an SSO pool: it would create a local @pve
+// user with access to the SSO user's pool.
+func refuseSSOPool(ctx context.Context, registry *store.Store, clusterName, name string) error {
+	if registry == nil || clusterName == "" {
+		return nil
+	}
+	managed, err := registry.ManagedPools(ctx, clusterName)
+	if err != nil {
+		return err
+	}
+	for _, entry := range managed {
+		if entry.Name == name && entry.SSOUser != "" {
+			return ErrSSOPool
+		}
+	}
+	return nil
 }

@@ -12,6 +12,8 @@ type ManagedPool struct {
 	Cluster   string
 	Name      string
 	CreatedAt string
+	// SSOUser is the realm user an SSO pool was granted to; "" otherwise.
+	SSOUser string
 }
 
 // RegisterManagedPool records that PVMSS created the named pool on the cluster.
@@ -21,6 +23,16 @@ func (s *Store) RegisterManagedPool(ctx context.Context, cluster, name string) e
 		`INSERT INTO managed_pools (cluster, name, created_at) VALUES (?, ?, ?)
 		 ON CONFLICT(cluster, name) DO UPDATE SET created_at = excluded.created_at`,
 		[]any{cluster, name, time.Now().UTC().Format(time.RFC3339)},
+	)
+}
+
+// RegisterSSOPool records a managed pool created at a first SSO login, with
+// the realm user that owns it (it has no @pve user and no password).
+func (s *Store) RegisterSSOPool(ctx context.Context, cluster, name, user string) error {
+	return execWrite(ctx, s.db,
+		`INSERT INTO managed_pools (cluster, name, created_at, sso_user) VALUES (?, ?, ?, ?)
+		 ON CONFLICT(cluster, name) DO UPDATE SET created_at = excluded.created_at, sso_user = excluded.sso_user`,
+		[]any{cluster, name, time.Now().UTC().Format(time.RFC3339), user},
 	)
 }
 
@@ -80,7 +92,7 @@ func (s *Store) IsPoolManaged(ctx context.Context, cluster, name string) (bool, 
 // ManagedPools returns all managed pool names for the cluster.
 func (s *Store) ManagedPools(ctx context.Context, cluster string) ([]ManagedPool, error) {
 	rows, err := s.db.QueryContext(ctx,
-		`SELECT cluster, name, created_at FROM managed_pools WHERE cluster = ? ORDER BY name`,
+		`SELECT cluster, name, created_at, sso_user FROM managed_pools WHERE cluster = ? ORDER BY name`,
 		cluster)
 	if err != nil {
 		return nil, fmt.Errorf("query managed pools: %w", err)
@@ -91,7 +103,7 @@ func (s *Store) ManagedPools(ctx context.Context, cluster string) ([]ManagedPool
 
 	for rows.Next() {
 		var row ManagedPool
-		if err := rows.Scan(&row.Cluster, &row.Name, &row.CreatedAt); err != nil {
+		if err := rows.Scan(&row.Cluster, &row.Name, &row.CreatedAt, &row.SSOUser); err != nil {
 			return nil, fmt.Errorf("scan managed pool: %w", err)
 		}
 

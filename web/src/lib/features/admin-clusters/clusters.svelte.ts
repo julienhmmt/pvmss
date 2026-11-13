@@ -25,6 +25,7 @@ export interface ClusterTlsInput {
 export interface AdminCluster {
 	name: string;
 	displayName: string;
+	oidcRealm: string;
 	url: string;
 	tlsInsecureSkipVerify: boolean;
 	tokenId: string;
@@ -42,6 +43,7 @@ export interface AdminCluster {
 export interface ClusterInput {
 	name: string;
 	displayName?: string;
+	oidcRealm?: string;
 	url: string;
 	tlsInsecureSkipVerify: boolean;
 	tokenId: string;

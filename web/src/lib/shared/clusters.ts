@@ -3,6 +3,8 @@ import { get } from '#lib/shared/api/client.js';
 export interface ClusterOption {
 	name: string;
 	displayName: string;
+	/** Proxmox OpenID realm for SSO; absent or empty = no SSO. */
+	oidcRealm?: string;
 }
 
 const ADMIN_CLUSTER_STORAGE_KEY = 'pvmss.adminCluster';

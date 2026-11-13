@@ -53,7 +53,7 @@ type loginRequest struct {
 	Password string `json:"password"`
 	Cluster  string `json:"cluster"`
 	// Realm selects the Proxmox authentication realm when Username carries no
-	// "@realm" suffix. Only pve and pam are supported; OIDC is not.
+	// "@realm" suffix. Only pve and pam are offered; OIDC uses the SSO flow.
 	Realm string `json:"realm"`
 }
 
@@ -531,6 +531,8 @@ func (h *Auth) ChangePassword(w http.ResponseWriter, r *http.Request) {
 		h.changeLocalPassword(w, r, identity, request)
 	case auth.ProviderPVE:
 		h.changeClusterPassword(w, r, identity, request)
+	case auth.ProviderOIDC:
+		writeAuthError(w, http.StatusBadRequest, "provider_unsupported", "the password of an SSO account is managed by its identity provider")
 	}
 }
 
@@ -677,6 +679,7 @@ func (h *Auth) loginClient(name string) (cluster.Client, string, error) {
 type authClusterDTO struct {
 	Name        string `json:"name"`
 	DisplayName string `json:"displayName"`
+	OIDCRealm   string `json:"oidcRealm"`
 }
 
 // ServeClusters exposes the non-secret cluster choices needed before login.
@@ -697,7 +700,7 @@ func (h *Auth) ServeClusters(w http.ResponseWriter, r *http.Request) {
 	}
 	result := make([]authClusterDTO, 0, len(rows))
 	for _, row := range rows {
-		result = append(result, authClusterDTO{Name: row.Name, DisplayName: row.DisplayName})
+		result = append(result, authClusterDTO{Name: row.Name, DisplayName: row.DisplayName, OIDCRealm: row.OIDCRealm})
 	}
 	writeAuthJSON(w, http.StatusOK, result)
 }
@@ -743,8 +746,8 @@ func authenticatePVE(ctx context.Context, client cluster.Client, username, passw
 // username wins and must not contradict the separately selected realm. A bare
 // username gets the selected realm, defaulting to pve. Only the picker's pve
 // and pam values are validated here: a realm typed explicitly is forwarded to
-// Proxmox untouched, so LDAP/AD users keep working. OIDC realms are not
-// offered (and Proxmox OIDC uses a browser redirect, not a password ticket).
+// Proxmox untouched, so LDAP/AD users keep working. OIDC realms sign in
+// through the SSO redirect instead (auth_oidc.go), never with a password.
 func normalizePVEUsername(username, realm string) (string, error) {
 	realm = strings.ToLower(strings.TrimSpace(realm))
 
