@@ -42,6 +42,30 @@ describe('installBrowserTelemetry', () => {
 		expect(headers.get('traceparent')).toMatch(/^00-[0-9a-f]{32}-[0-9a-f]{16}-01$/);
 	});
 
+	it('traces API calls made with URL and Request inputs', async () => {
+		const fetchMock = stubbedFetch(true);
+		const mod = await freshModule();
+		await mod.installBrowserTelemetry();
+
+		await globalThis.fetch(new URL('/api/v1/vms', globalThis.location.origin));
+		await globalThis.fetch(new Request(`${globalThis.location.origin}/api/v1/vms`));
+
+		for (const call of fetchMock.mock.calls.slice(-2)) {
+			const headers = (call[1] as RequestInit | undefined)?.headers as Headers;
+			expect(headers.get('traceparent')).toMatch(/^00-[0-9a-f]{32}-[0-9a-f]{16}-01$/);
+		}
+	});
+
+	it('passes through inputs whose URL cannot be parsed', async () => {
+		const fetchMock = stubbedFetch(true);
+		const mod = await freshModule();
+		await mod.installBrowserTelemetry();
+
+		await globalThis.fetch('http://[::1');
+
+		expect((fetchMock.mock.calls.at(-1)?.[1] as RequestInit | undefined)?.headers).toBeUndefined();
+	});
+
 	it('leaves non-API and cross-origin calls untouched', async () => {
 		const fetchMock = stubbedFetch(true);
 		const mod = await freshModule();
