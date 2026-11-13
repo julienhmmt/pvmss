@@ -113,7 +113,7 @@ func (h *Auth) OIDCCallback(w http.ResponseWriter, r *http.Request) {
 		result.Pool, err = pools.EnsureForSSO(r.Context(), client, h.clusterStore, clusterName, result.Username)
 		if err != nil {
 			logctx.FromOr(r.Context(), h.log).WarnContext(r.Context(), "sso pool provisioning failed", "component", "httpapi", "event", "auth", "cluster", clusterName, "user", result.Username, "error", err)
-			} else {
+		} else {
 			h.recordSSOPool(r, clusterName, result.Username, result.Pool)
 		}
 	}
