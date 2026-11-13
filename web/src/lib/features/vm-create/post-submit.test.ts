@@ -4,6 +4,7 @@ import { TaskTrayStore } from '#lib/features/tasks/tasks.svelte.js';
 import { TaskOutcomeLedger } from '#lib/features/tasks/task-outcome-ledger.svelte.js';
 import { ToastRegion } from '#lib/shared/ui/toast.svelte.js';
 import type { VmCreateAccepted } from './create.svelte';
+import { isRecentlyDeletedVm, markVmDeleted } from '#lib/features/vms/recently-deleted.js';
 
 
 function accepted(): VmCreateAccepted {
@@ -33,5 +34,11 @@ describe('handleAccepted', () => {
 
 		expect(trackSpy).toHaveBeenCalledTimes(1);
 		expect(infoSpy).toHaveBeenCalled();
+	});
+
+	it('un-hides a reused VMID that this tab just deleted', async () => {
+		markVmDeleted('default', 101);
+		await handleAccepted(accepted(), deps());
+		expect(isRecentlyDeletedVm('default', 101)).toBe(false);
 	});
 });

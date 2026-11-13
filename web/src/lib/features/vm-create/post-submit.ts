@@ -5,6 +5,7 @@ import type { TaskTrayStore } from '#lib/features/tasks/tasks.svelte.js';
 import type { TaskOutcomeLedger } from '#lib/features/tasks/task-outcome-ledger.svelte.js';
 import type { ToastRegion } from '#lib/shared/ui/toast.svelte.js';
 import type { VmCreateAccepted } from './create.svelte';
+import { unmarkVmDeleted } from '#lib/features/vms/recently-deleted.js';
 
 /** Dependencies the post-submit helper needs from its caller. Grouped so
  *  the signature stays stable as new side-effects are added. */
@@ -28,6 +29,7 @@ export interface PostSubmitDeps {
  * breaking the no-duplicate safety for the detailed path.
  */
 export async function handleAccepted(accepted: VmCreateAccepted, deps: PostSubmitDeps): Promise<void> {
+	unmarkVmDeleted(accepted.cluster, accepted.vmid);
 	deps.tray.track({
 		upid: accepted.upid,
 		kind: 'vm_create',
