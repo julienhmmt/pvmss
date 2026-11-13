@@ -33,6 +33,7 @@ func TestSweep_IndexErrorSkipsCluster(t *testing.T) {
 
 	st := bulkTestStore(t)
 	enableLeases(t, st, 30)
+
 	if got := vm.SweepExpiredLeases(context.Background(), customLeaseDeps(st, errBoom, nil), time.Now().UTC()); got != 0 {
 		t.Fatalf("deleted = %d, want 0 on index failure", got)
 	}
@@ -43,6 +44,7 @@ func TestSweep_WriterErrorSkipsCluster(t *testing.T) {
 
 	st := bulkTestStore(t)
 	enableLeases(t, st, 30)
+
 	if got := vm.SweepExpiredLeases(context.Background(), customLeaseDeps(st, nil, errBoom), time.Now().UTC()); got != 0 {
 		t.Fatalf("deleted = %d, want 0 on writer failure", got)
 	}
@@ -52,6 +54,7 @@ func TestSweep_WriterErrorSkipsCluster(t *testing.T) {
 func TestSweep_PolicyReadErrorSkipsCluster(t *testing.T) {
 	st := bulkTestStore(t)
 	idx := buildResolveIndex(t)
+
 	if err := st.Close(); err != nil {
 		t.Fatalf("Close: %v", err)
 	}
@@ -84,7 +87,6 @@ func TestSweep_NoPolicyRowSkipsCluster(t *testing.T) {
 type configFailWriter struct {
 	cluster.Fake
 	failIdentity bool
-	noReader     bool
 }
 
 func (w configFailWriter) SnapshotConfig(ctx context.Context, node string, vmid int, name string) (map[string]string, error) {
@@ -109,6 +111,7 @@ func TestSweep_IdentityReadFailureKeepsLease(t *testing.T) {
 	if got := vm.SweepExpiredLeases(context.Background(), leaseSweepDeps(st, idx, writer, nil), now); got != 0 {
 		t.Fatalf("deleted = %d, want 0 on identity read failure", got)
 	}
+
 	if !leaseExists(t, st, 101) {
 		t.Fatal("a failed identity read must keep the lease row")
 	}
@@ -122,10 +125,12 @@ func TestSweep_IdentityMismatchDropsLease(t *testing.T) {
 	enableLeases(t, st, 30)
 
 	now := time.Now().UTC()
+
 	machine, ok := idx.Lookup(testClusterName, 101)
 	if !ok {
 		t.Fatal("Lookup: VM 101 missing from index")
 	}
+
 	stale := store.VMLease{Cluster: testClusterName, VMID: 101, ExpiresAt: now.Add(-leaseDayDuration), Pool: machine.Pool, Identity: "999-recycled"}
 	if err := st.SetVMLease(context.Background(), stale); err != nil {
 		t.Fatalf("SetVMLease: %v", err)
@@ -134,9 +139,11 @@ func TestSweep_IdentityMismatchDropsLease(t *testing.T) {
 	if got := vm.SweepExpiredLeases(context.Background(), leaseSweepDeps(st, idx, fake, nil), now); got != 0 {
 		t.Fatalf("deleted = %d, want 0 on identity mismatch", got)
 	}
+
 	if leaseExists(t, st, 101) {
 		t.Fatal("an identity mismatch must drop the lease row without deleting the VM")
 	}
+
 	if !vmPresent(t, fake, 101) {
 		t.Fatal("the VM must survive an identity mismatch")
 	}
@@ -150,10 +157,12 @@ func TestSweep_EmptyIdentityKeepsLease(t *testing.T) {
 	enableLeases(t, st, 30)
 
 	now := time.Now().UTC()
+
 	machine, ok := idx.Lookup(testClusterName, 101)
 	if !ok {
 		t.Fatal("Lookup: VM 101 missing from index")
 	}
+
 	stale := store.VMLease{Cluster: testClusterName, VMID: 101, ExpiresAt: now.Add(-leaseDayDuration), Pool: machine.Pool}
 	if err := st.SetVMLease(context.Background(), stale); err != nil {
 		t.Fatalf("SetVMLease: %v", err)
@@ -162,6 +171,7 @@ func TestSweep_EmptyIdentityKeepsLease(t *testing.T) {
 	if got := vm.SweepExpiredLeases(context.Background(), leaseSweepDeps(st, idx, fake, nil), now); got != 0 {
 		t.Fatalf("deleted = %d, want 0 on empty identity", got)
 	}
+
 	if !leaseExists(t, st, 101) {
 		t.Fatal("an unknown identity must keep the lease row")
 	}
@@ -181,9 +191,11 @@ func TestSweep_DeleteFailureKeepsLease(t *testing.T) {
 	if got := vm.SweepExpiredLeases(context.Background(), leaseSweepDeps(st, idx, writer, nil), now); got != 0 {
 		t.Fatalf("deleted = %d, want 0 on delete failure", got)
 	}
+
 	if !leaseExists(t, st, 101) {
 		t.Fatal("a failed delete must keep the lease row for the next sweep")
 	}
+
 	if !vmPresent(t, fake, 101) {
 		t.Fatal("a failed delete must leave the VM")
 	}
