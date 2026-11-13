@@ -9,6 +9,7 @@ import (
 	"pvmss/server/internal/auth"
 	"pvmss/server/internal/cluster"
 	"pvmss/server/internal/logctx"
+	"pvmss/server/internal/pools"
 	"pvmss/server/internal/telemetry"
 	"strconv"
 	"strings"
@@ -106,6 +107,14 @@ func (h *Auth) OIDCCallback(w http.ResponseWriter, r *http.Request) {
 	}
 
 	h.pveFailures.reset(failKey)
+
+	// First SSO login: the realm just created the Proxmox user with no pool.
+	if !result.IsAdmin && result.Pool == "" {
+		result.Pool, err = pools.EnsureForSSO(r.Context(), client, h.clusterStore, clusterName, result.Username)
+		if err != nil {
+			logctx.FromOr(r.Context(), h.log).WarnContext(r.Context(), "sso pool provisioning failed", "component", "httpapi", "event", "auth", "cluster", clusterName, "user", result.Username, "error", err)
+		}
+	}
 
 	identity := auth.Identity{Username: result.Username, DisplayName: userDisplayName(result.Username), Pool: result.Pool, IsAdmin: result.IsAdmin, Cluster: clusterName, ClusterDisplayName: h.clusterDisplayName(r, clusterName), Provider: auth.ProviderOIDC}
 	if err := h.sessions.SetCookie(r.Context(), w, identity); err != nil {
