@@ -6,8 +6,10 @@
 	 *   closed set of views inside a card - it reads as a switch.
 	 * - `folder`: file-folder tabs attached to the panel below. Right for
 	 *   page-level section navigation (VM detail, admin settings): the
-	 *   active tab wears the card surface and covers the rail, so it reads
-	 *   as the open folder.
+	 *   active tab wears the tinted active fill (same as the sidebar's
+	 *   current item) and covers the rail, so it reads as the open folder.
+	 *   Pair with `.pv-tabpanel` on the tabpanel below: it pulls the first
+	 *   card 1px under the rail so the tab and the card share one edge.
 	 *
 	 * Keyboard behaviour is the same in both: arrow keys move the selection,
 	 * Home/End jump to the first/last tab, only the active tab is in the tab
@@ -95,8 +97,8 @@
 		if (look === 'folder') {
 			return `relative -mb-px inline-flex h-11 shrink-0 cursor-pointer items-center gap-1.5 rounded-t-xl border px-4 text-sm whitespace-nowrap transition-colors ${focusRing} ${
 				selected
-					? 'border-border border-t-2 border-t-primary border-b-transparent bg-card font-semibold text-foreground'
-					: 'border-transparent font-medium text-muted-foreground hover:bg-muted/60 hover:text-foreground'
+					? 'z-10 border-border border-b-transparent bg-sidebar-accent font-semibold text-sidebar-accent-foreground'
+					: 'border-transparent font-medium text-muted-foreground hover:bg-sidebar-accent/50 hover:text-foreground'
 			}`;
 		}
 		return `inline-flex min-h-10 cursor-pointer items-center gap-1.5 rounded-[var(--radius-control)] px-3 py-2 text-sm font-medium transition-colors ${focusRing} ${

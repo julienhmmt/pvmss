@@ -77,23 +77,23 @@
 
 <PageHeader title={m['admin.settings.heading']()} eyebrow={m['chrome.adminNav.system']()} />
 
-<Tabs tabs={SETTINGS_TABS} look="folder" class="mb-4" bind:active={() => activeTab, selectTab} />
+<Tabs tabs={SETTINGS_TABS} look="folder" bind:active={() => activeTab, selectTab} />
 
 {#if activeTab === 'audit'}
-	<div id="panel-audit" role="tabpanel" aria-labelledby="tab-audit">
+	<div id="panel-audit" role="tabpanel" aria-labelledby="tab-audit" class="pv-tabpanel">
 		<AuditLogPanel />
 	</div>
 {:else if activeTab === 'logging'}
-	<div id="panel-logging" role="tabpanel" aria-labelledby="tab-logging" class="space-y-6">
+	<div id="panel-logging" role="tabpanel" aria-labelledby="tab-logging" class="pv-tabpanel space-y-6">
 		<LogLevelPanel />
 		<AuditRetentionPanel />
 	</div>
 {:else if activeTab === 'accounts'}
-	<div id="panel-accounts" role="tabpanel" aria-labelledby="tab-accounts">
+	<div id="panel-accounts" role="tabpanel" aria-labelledby="tab-accounts" class="pv-tabpanel">
 		<AccountsPanel />
 	</div>
 {:else}
-	<div id="panel-database" role="tabpanel" aria-labelledby="tab-database" class="space-y-6">
+	<div id="panel-database" role="tabpanel" aria-labelledby="tab-database" class="pv-tabpanel space-y-6">
 		<ExportPanel />
 		<ImportPanel />
 	</div>

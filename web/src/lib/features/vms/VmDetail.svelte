@@ -399,7 +399,7 @@
 
 	<Tabs {tabs} look="folder" bind:active={() => activeTab, selectTab} />
 
-	<div id="panel-overview" role="tabpanel" aria-labelledby="tab-overview" hidden={activeTab !== 'overview'} class="mt-4">
+	<div id="panel-overview" role="tabpanel" aria-labelledby="tab-overview" hidden={activeTab !== 'overview'} class="pv-tabpanel">
 		<div class="grid content-start gap-5 lg:grid-cols-[minmax(0,1fr)_300px]">
 			<div class="grid content-start gap-5">
 				<VmConnectTab {status} onStart={() => void power('start')} />
@@ -512,25 +512,25 @@
 		</div>
 	</div>
 
-	<div id="panel-disks" role="tabpanel" aria-labelledby="tab-disks" hidden={activeTab !== 'disks'} class="mt-4">
+	<div id="panel-disks" role="tabpanel" aria-labelledby="tab-disks" hidden={activeTab !== 'disks'} class="pv-tabpanel">
 		<VmDisksTab />
 	</div>
 
-	<div id="panel-network" role="tabpanel" aria-labelledby="tab-network" hidden={activeTab !== 'network'} class="mt-4">
+	<div id="panel-network" role="tabpanel" aria-labelledby="tab-network" hidden={activeTab !== 'network'} class="pv-tabpanel">
 		<VmNetworkTab />
 	</div>
 
-	<div id="panel-hardware" role="tabpanel" aria-labelledby="tab-hardware" hidden={activeTab !== 'hardware'} class="mt-4">
+	<div id="panel-hardware" role="tabpanel" aria-labelledby="tab-hardware" hidden={activeTab !== 'hardware'} class="pv-tabpanel">
 		<VmHardwareTab />
 	</div>
 
-	<div id="panel-snapshots" role="tabpanel" aria-labelledby="tab-snapshots" hidden={activeTab !== 'snapshots'} class="mt-4">
+	<div id="panel-snapshots" role="tabpanel" aria-labelledby="tab-snapshots" hidden={activeTab !== 'snapshots'} class="pv-tabpanel">
 		{#if activeTab === 'snapshots'}
 			<VmSnapshotsTab />
 		{/if}
 	</div>
 
-	<div id="panel-activity" role="tabpanel" aria-labelledby="tab-activity" hidden={activeTab !== 'activity'} class="mt-4">
+	<div id="panel-activity" role="tabpanel" aria-labelledby="tab-activity" hidden={activeTab !== 'activity'} class="pv-tabpanel">
 		{#if activeTab === 'activity'}
 			<VmActivityTab />
 		{/if}

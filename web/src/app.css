@@ -426,6 +426,22 @@
       0 0 0 2px var(--background),
       0 0 0 4px var(--ring);
   }
+
+}
+
+/* Body of a folder tab set (Tabs.svelte `look="folder"`): the panel sits
+   flush under the tab rail, pulled up 1px so the first card's top border
+   merges into the rail line. The selected tab covers that line and reads
+   as the open folder. The card edge under the rail loses its top rounding -
+   a rounded corner would leave a crescent of page background between rail
+   and card. Unlayered (like .pv-table): the radius reset must beat the
+   rounded-xl/rounded-lg utilities, which a @layer components rule cannot. */
+.pv-tabpanel {
+  margin-top: -1px;
+}
+.pv-tabpanel :is(.rounded-xl, .rounded-lg):is(:first-child, :first-of-type) {
+  border-top-left-radius: 0;
+  border-top-right-radius: 0;
 }
 
 /* Offset the fixed sidebar below the navbar */
