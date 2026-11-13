@@ -306,6 +306,12 @@ const schemaV6 = `
 ALTER TABLE clusters ADD COLUMN oidc_realm TEXT NOT NULL DEFAULT '';
 `
 
+// schemaV7 marks a managed pool created at a first SSO login with the realm
+// user it was granted to; empty for pools with a local @pve user.
+const schemaV7 = `
+ALTER TABLE managed_pools ADD COLUMN sso_user TEXT NOT NULL DEFAULT '';
+`
+
 // Migration is a single schema version and its forward-only DDL.
 type Migration struct {
 	Version int
@@ -325,4 +331,5 @@ var Migrations = []Migration{
 	{Version: 4, DDL: schemaV4},
 	{Version: 5, DDL: schemaV5},
 	{Version: 6, DDL: schemaV6},
+	{Version: 7, DDL: schemaV7},
 }

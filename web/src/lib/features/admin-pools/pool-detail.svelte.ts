@@ -44,6 +44,8 @@ export interface PoolDetail {
 	comment: string;
 	cluster: string;
 	managed: boolean;
+	/** Created at a first SSO login: no password to reset. */
+	sso?: boolean;
 	createdAt?: string;
 	quota: { used: number; allowed: number };
 	vms: PoolMemberVM[];

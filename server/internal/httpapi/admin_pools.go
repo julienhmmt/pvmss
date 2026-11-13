@@ -201,6 +201,7 @@ func (h *AdminPools) ServeDetail(w http.ResponseWriter, r *http.Request) {
 		Comment:   detail.Comment,
 		Cluster:   clusterName,
 		Managed:   detail.Managed,
+		SSO:       detail.SSO,
 		CreatedAt: detail.CreatedAt,
 		Quota:     poolQuotaDTO{Used: quota.Used, Allowed: quota.Allowed},
 		VMs:       poolMembers(detail.Members),
@@ -392,6 +393,8 @@ func (h *AdminPools) writeResetPasswordError(w http.ResponseWriter, name string,
 		writeAdminError(w, http.StatusNotFound, "not_found", fmt.Sprintf(msgPoolNotFound, name))
 	case errors.Is(err, pools.ErrNotManaged):
 		writeAdminError(w, http.StatusConflict, "not_managed", fmt.Sprintf("pool %q is not managed by PVMSS", name))
+	case errors.Is(err, pools.ErrSSOPool):
+		writeAdminError(w, http.StatusConflict, "sso_pool", fmt.Sprintf("pool %q belongs to an SSO user; its password is managed by the identity provider", name))
 	default:
 		// Cluster-side failures arrive wrapped as ProvisionError and map to a
 		// bad gateway; anything else (store read, password generation) is a
@@ -523,6 +526,7 @@ type poolDetailDTO struct {
 	Comment   string          `json:"comment"`
 	Cluster   string          `json:"cluster"`
 	Managed   bool            `json:"managed"`
+	SSO       bool            `json:"sso"`
 	CreatedAt string          `json:"createdAt,omitempty"`
 	Quota     poolQuotaDTO    `json:"quota"`
 	VMs       []poolMemberDTO `json:"vms"`

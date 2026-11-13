@@ -73,7 +73,7 @@ func EnsureForSSO(ctx context.Context, client cluster.Client, recorder *store.St
 	}
 
 	if recorder != nil && clusterName != "" {
-		if err := recorder.RegisterManagedPool(ctx, clusterName, name); err != nil {
+		if err := recorder.RegisterSSOPool(ctx, clusterName, name, username); err != nil {
 			slog.Default().ErrorContext(ctx, "managed pool registration failed", "cluster", clusterName, "pool", name, "error", err)
 		}
 	}

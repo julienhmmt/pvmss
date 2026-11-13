@@ -10,8 +10,7 @@ Former limitations promoted to tracked work. Delivered 2026-11-04, except:
 - **OIDC realm sign-in** - delivered 2026-11-13 (GitHub #159, `docs/oidc.md`).
   Left open: logout is local only; SSO behind a multi-node cluster URL is
   unverified; first-login pool provisioning is serialized per process only
-  (`shortcut:` in `server/internal/pools/sso.go`); "Reset password" in
-  Admin > Pools is still offered on SSO pools.
+  (`shortcut:` in `server/internal/pools/sso.go`).
 
 ## Accepted limitations (decided 2026-10-04, amended 2026-11-02)
 

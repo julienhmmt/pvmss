@@ -47,8 +47,8 @@ IdP -> /api/v1/auth/oidc/callback   -> Proxmox /access/openid/login   -> PVMSS s
 - To revoke a user, disable it in Proxmox or at the IdP. Removing only the
   pool ACL is not a revocation: the next login provisions a new pool.
 - Deleting the pool in Admin > Pools leaves the Proxmox user; its next login
-  provisions a fresh pool. "Reset password" on an SSO pool would create a
-  local `@pve` user for it: do not use it there.
+  provisions a fresh pool. An SSO pool has no password: Admin > Pools shows
+  the realm user and no "Reset password" (the API answers `sso_pool`).
 - A user unknown to Proxmox with Autocreate off is refused by Proxmox.
 - SSO users have no PVMSS password form; the IdP owns the password.
 

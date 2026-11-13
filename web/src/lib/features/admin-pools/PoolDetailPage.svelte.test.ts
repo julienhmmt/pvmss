@@ -156,6 +156,12 @@ describe('PoolDetailPage', () => {
 		document.body.innerHTML = '';
 	});
 
+	it('hides password reset on an SSO pool', () => {
+		mount(PoolDetailPage, buildProps(detail({ sso: true, username: 'jane@zitadel' })));
+		expect(document.querySelector('[data-testid="pool-reset-open"]')).toBeNull();
+		document.body.innerHTML = '';
+	});
+
 	it('opens the reset dialog and forwards the generated-mode reset', async () => {
 		const onResetPassword = vi.fn(() =>
 			Promise.resolve({ username: 'pvmss-alice@pve', password: 'gen-1' })

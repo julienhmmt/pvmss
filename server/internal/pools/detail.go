@@ -21,6 +21,9 @@ type PoolDetail struct {
 	// Managed reports whether PVMSS provisioned the pool; unmanaged pools are
 	// still returned so the page can show them read-only.
 	Managed bool
+	// SSO reports a pool created at a first SSO login: Username is then the
+	// realm user, and there is no password to reset.
+	SSO bool
 	// CreatedAt is the RFC3339 managed-pool registration time, "" when
 	// unmanaged or when no store is wired.
 	CreatedAt string
@@ -86,6 +89,10 @@ func (detail *PoolDetail) markManaged(ctx context.Context, checker *store.Store,
 		if entry.Name == detail.Name {
 			detail.Managed = true
 			detail.CreatedAt = entry.CreatedAt
+			if entry.SSOUser != "" {
+				detail.SSO = true
+				detail.Username = entry.SSOUser
+			}
 			break
 		}
 	}

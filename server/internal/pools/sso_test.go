@@ -1,10 +1,12 @@
-//nolint:paralleltest // tests share the fake cluster state
+//nolint:paralleltest,goconst // tests share the fake cluster state and fixed names
 package pools_test
 
 import (
 	"context"
 	"errors"
+	"pvmss/server/internal/auth"
 	"pvmss/server/internal/cluster"
+	"pvmss/server/internal/inventory"
 	"pvmss/server/internal/pools"
 	"strings"
 	"testing"
@@ -86,5 +88,43 @@ func TestEnsureForSSO_NeverGrantsOnExistingPool(t *testing.T) {
 		if call.Action == "set_acl" {
 			t.Fatalf("granted on an existing pool: %+v", call)
 		}
+	}
+}
+
+// An SSO pool has no @pve user: the detail names the realm user and a
+// password reset is refused before any cluster write.
+func TestSSOPool_DetailNamesUserAndResetRefused(t *testing.T) {
+	cluster.ResetFake()
+	t.Cleanup(cluster.ResetFake)
+
+	client := cluster.Fake{}
+	ctx := context.Background()
+	st := openAuditStore(t)
+
+	pool, err := pools.EnsureForSSO(ctx, client, st, "default", "jane@zitadel")
+	if err != nil {
+		t.Fatalf("EnsureForSSO: %v", err)
+	}
+
+	projection := inventory.NewProjectionFromIndex(&inventory.Index{ByPool: map[string][]cluster.VM{}})
+
+	detail, err := pools.Detail(ctx, client, projection, st, "default", pool)
+	if err != nil {
+		t.Fatalf("Detail: %v", err)
+	}
+
+	if !detail.Managed || !detail.SSO || detail.Username != "jane@zitadel" {
+		t.Fatalf("detail = %+v, want managed SSO pool of jane@zitadel", detail)
+	}
+
+	cluster.ClearFakeCalls()
+
+	admin := auth.Identity{Username: "admin", IsAdmin: true}
+	if _, err := pools.ResetManagedPassword(ctx, admin, client, st, "default", pool, ""); !errors.Is(err, pools.ErrSSOPool) {
+		t.Fatalf("reset err = %v, want ErrSSOPool", err)
+	}
+
+	if calls := cluster.FakeCalls(); len(calls) != 0 {
+		t.Fatalf("reset touched the cluster: %+v", calls)
 	}
 }
