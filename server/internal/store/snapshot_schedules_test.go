@@ -113,3 +113,39 @@ func TestSnapshotScheduleListAndDelete(t *testing.T) {
 		t.Fatalf("delete of absent row must not error: %v", err)
 	}
 }
+
+// ClearSnapshotScheduleFailure wipes the failure fields a
+// MarkSnapshotScheduleFailure set - the sweeper calls it after a manual
+// retry succeeds so the dashboard stops showing the old failure.
+func TestSnapshotScheduleFailureClearedExplicitly(t *testing.T) {
+	t.Parallel()
+
+	ctx := context.Background()
+	st := newScheduleStore(t)
+
+	if err := st.UpsertSnapshotSchedule(ctx, testStoreCluster, 100, "tenants", "daily", 3); err != nil {
+		t.Fatalf("upsert: %v", err)
+	}
+
+	if err := st.MarkSnapshotScheduleFailure(ctx, testStoreCluster, 100, "task failed", time.Now()); err != nil {
+		t.Fatalf("mark failure: %v", err)
+	}
+
+	schedule, found, err := st.GetSnapshotSchedule(ctx, testStoreCluster, 100)
+	if err != nil || !found || schedule.LastFailure != "task failed" {
+		t.Fatalf("after mark: %+v found=%v err=%v, want failure recorded", schedule, found, err)
+	}
+
+	if err := st.ClearSnapshotScheduleFailure(ctx, testStoreCluster, 100); err != nil {
+		t.Fatalf("clear failure: %v", err)
+	}
+
+	schedule, found, err = st.GetSnapshotSchedule(ctx, testStoreCluster, 100)
+	if err != nil || !found {
+		t.Fatalf("after clear: found=%v err=%v", found, err)
+	}
+
+	if schedule.LastFailure != "" || !schedule.LastFailureAt.IsZero() {
+		t.Fatalf("after clear: %+v, want empty failure fields", schedule)
+	}
+}

@@ -413,3 +413,26 @@ func TestSyslog_UnreachableReceiverNeverBlocks(t *testing.T) {
 		t.Fatal("drop warning missing from stdout")
 	}
 }
+
+// Group and empty attrs flatten into dotted keys; an empty group key adds
+// nothing to the path, and a bare empty attr is dropped.
+//
+//nolint:paralleltest // serial: shared logger fixtures
+func TestSyslog_GroupedAndEmptyAttrs(t *testing.T) {
+	cert, caPath := syslogTestCert(t)
+	rcv := startSyslogReceiver(t, cert)
+	logger, _, _ := newSyslogLogger(t, rcv, caPath, "info")
+
+	logger.WithGroup("outer").LogAttrs(context.Background(), slog.LevelInfo, "grouped",
+		slog.Group("inner", slog.String("k", "v")),
+		slog.Group("", slog.String("flat", "f")),
+		slog.Attr{},
+	)
+
+	line := recvLine(t, rcv.lines)
+	for _, sub := range []string{`outer.inner.k="v"`, `outer.flat="f"`} {
+		if !strings.Contains(line, sub) {
+			t.Fatalf("line = %q, want it to contain %q", line, sub)
+		}
+	}
+}

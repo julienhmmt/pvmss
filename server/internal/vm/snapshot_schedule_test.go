@@ -134,6 +134,8 @@ type sweepStore struct {
 	marked    []time.Time
 	deleted   []int
 	actions   []string
+	listErr   error
+	deleteErr error
 }
 
 func (s *sweepStore) UpsertSnapshotSchedule(context.Context, string, int, string, string, int) error {
@@ -141,13 +143,16 @@ func (s *sweepStore) UpsertSnapshotSchedule(context.Context, string, int, string
 }
 
 func (s *sweepStore) DeleteSnapshotSchedule(_ context.Context, _ string, vmid int) error {
+	if s.deleteErr != nil {
+		return s.deleteErr
+	}
 	s.deleted = append(s.deleted, vmid)
 
 	return nil
 }
 
 func (s *sweepStore) ListSnapshotSchedules(context.Context) ([]store.SnapshotSchedule, error) {
-	return s.schedules, nil
+	return s.schedules, s.listErr
 }
 
 func (s *sweepStore) MarkSnapshotScheduleFailure(_ context.Context, _ string, _ int, failure string, _ time.Time) error {
@@ -187,15 +192,23 @@ type sweepClient struct {
 	// failDelete names snapshots whose delete task finishes in error; a
 	// name is removed from the list only when its delete succeeds.
 	failDelete map[string]bool
+	statusErr  error
+	failRelist bool
 	created    []string
 	deleted    []string
 }
 
 func (c *sweepClient) VMStatus(context.Context, string, int) (cluster.VMLiveStatus, error) {
-	return cluster.VMLiveStatus{Lock: c.lock}, nil
+	return cluster.VMLiveStatus{Lock: c.lock}, c.statusErr
 }
 
+// ListSnapshots fails on the call after a create when failRelist is set, so a
+// test can exercise the prune-deferred path.
 func (c *sweepClient) ListSnapshots(context.Context, string, int) ([]cluster.VMSnapshot, error) {
+	if c.failRelist && len(c.created) > 0 {
+		return nil, errBoom
+	}
+
 	return append([]cluster.VMSnapshot(nil), c.snapshots...), c.listErr
 }
 
@@ -256,9 +269,13 @@ type sweepIndexes struct {
 	fresh    bool
 	pool     string
 	untagged bool
+	err      error
 }
 
 func (i sweepIndexes) Index(string) (*inventory.Index, error) {
+	if i.err != nil {
+		return nil, i.err
+	}
 	tags := []string{testPvmssTag}
 	if i.untagged {
 		tags = nil
@@ -274,10 +291,13 @@ func (i sweepIndexes) Index(string) (*inventory.Index, error) {
 
 func (i sweepIndexes) IsIndexFresh(string) bool { return i.fresh }
 
-type sweepPolicy struct{ max int }
+type sweepPolicy struct {
+	max int
+	err error
+}
 
 func (p sweepPolicy) Gabarit(context.Context, string) (policy.Gabarit, error) {
-	return policy.Gabarit{MaxSnapshots: p.max}, nil
+	return policy.Gabarit{MaxSnapshots: p.max}, p.err
 }
 
 type sweepCase struct {
@@ -289,6 +309,8 @@ type sweepCase struct {
 	max       int
 	vmPool    string
 	untagged  bool
+	indexErr  error
+	policyErr error
 }
 
 func runSweep(t *testing.T, c sweepCase) (*sweepStore, *sweepClient) {
@@ -318,9 +340,9 @@ func sweepPass(st *sweepStore, client *sweepClient, c sweepCase) {
 
 	vm.SweepSnapshots(context.Background(), vm.SweepDependencies{
 		Store:   st,
-		Indexes: sweepIndexes{vmids: vmids, fresh: c.fresh, pool: c.vmPool, untagged: c.untagged},
+		Indexes: sweepIndexes{vmids: vmids, fresh: c.fresh, pool: c.vmPool, untagged: c.untagged, err: c.indexErr},
 		Clients: sweepClients{client: client, err: c.clientErr},
-		Policy:  sweepPolicy{max: maxSnapshots},
+		Policy:  sweepPolicy{max: maxSnapshots, err: c.policyErr},
 		Log:     slog.New(slog.DiscardHandler),
 		Now:     func() time.Time { return sweepNow },
 	})

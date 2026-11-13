@@ -1572,3 +1572,28 @@ func TestFake_RelaySerial(t *testing.T) {
 		t.Errorf("RelaySerial = %v", err)
 	}
 }
+
+//nolint:paralleltest // serial: shared fake fixtures
+func TestFake_UpdatePoolCommentAndSetUserPassword(t *testing.T) {
+	cluster.ResetFake()
+	t.Cleanup(cluster.ResetFake)
+
+	fake := cluster.Fake{}
+	ctx := context.Background()
+
+	if err := fake.UpdatePoolComment(ctx, cluster.FakePoolShared, "rotated comment"); err != nil {
+		t.Fatalf("UpdatePoolComment: %v", err)
+	}
+
+	if err := fake.UpdatePoolComment(ctx, "no-such-pool", "x"); !errors.Is(err, cluster.ErrNotFound) {
+		t.Fatalf("UpdatePoolComment missing = %v, want ErrNotFound", err)
+	}
+
+	if err := fake.SetUserPassword(ctx, cluster.FakeUserAlice, "new-pw"); err != nil {
+		t.Fatalf("SetUserPassword: %v", err)
+	}
+
+	if err := fake.SetUserPassword(ctx, "ghost@pve", "pw"); !errors.Is(err, cluster.ErrNotFound) {
+		t.Fatalf("SetUserPassword missing = %v, want ErrNotFound", err)
+	}
+}

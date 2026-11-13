@@ -439,3 +439,39 @@ func TestSetupCreateAdmin_RejectsBadInput(t *testing.T) {
 		}
 	}
 }
+
+func TestSetupCreateAdmin_RejectsNonPost(t *testing.T) {
+	t.Parallel()
+
+	handler := httpapi.NewSetup(newSetupStore(t), false, slog.Default())
+	request := httptest.NewRequestWithContext(context.Background(), http.MethodGet, "/api/v1/setup/admin", nil)
+	response := httptest.NewRecorder()
+	handler.ServeCreateAdmin(response, request)
+
+	if response.Code != http.StatusMethodNotAllowed {
+		t.Fatalf("GET status = %d, want 405", response.Code)
+	}
+}
+
+func TestSetupCreateAdmin_BodyValidation(t *testing.T) {
+	t.Parallel()
+
+	for _, testCase := range []struct {
+		name string
+		body string
+	}{
+		{"bad json", `{`},
+		{"bad username", `{"username":"NO WAY","password":"correct horse battery"}`},
+		{"weak password", `{"username":"owner","password":"short"}`},
+	} {
+		t.Run(testCase.name, func(t *testing.T) {
+			t.Parallel()
+			handler := httpapi.NewSetup(newSetupStore(t), false, slog.Default())
+
+			code, body := createSetupAdmin(t, handler, testCase.body)
+			if code != http.StatusBadRequest || body["code"] == "" {
+				t.Fatalf("status = %d body = %v, want 400 with an error code", code, body)
+			}
+		})
+	}
+}

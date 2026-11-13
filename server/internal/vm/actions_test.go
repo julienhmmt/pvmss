@@ -894,3 +894,45 @@ func TestClearDescription_RemovesIt(t *testing.T) {
 		t.Errorf("description = %q (%v), want empty", entity.Description, err)
 	}
 }
+
+// flakyDeleteWriter reports ErrVMRunning for the first failures Delete calls,
+// then delegates to the fake - the stand-in for a VM whose force-stop takes a
+// moment to register.
+type flakyDeleteWriter struct {
+	cluster.Fake
+	failures int
+}
+
+func (w *flakyDeleteWriter) Delete(ctx context.Context, node string, vmid int) error {
+	if w.failures > 0 {
+		w.failures--
+
+		return cluster.ErrVMRunning
+	}
+
+	return w.Fake.Delete(ctx, node, vmid)
+}
+
+//nolint:paralleltest // serial: shared fake VM fixture
+func TestDelete_ForceRetriesWhileVMStillRunning(t *testing.T) {
+	fake := actionsIndex(t)
+	idx := buildResolveIndex(t)
+
+	writer := &flakyDeleteWriter{failures: 2}
+
+	err := vm.Delete(context.Background(), vm.WriteDeps{Index: idx, Actor: aliceIdentity(), ClusterName: testClusterName, VMID: 100, Writer: writer, Audit: noopAudit{}, Refresher: noopRefresher{}, Force: true})
+	if err != nil {
+		t.Fatalf("Delete with retry: %v", err)
+	}
+
+	snap, err := fake.Snapshot(context.Background())
+	if err != nil {
+		t.Fatalf("Snapshot: %v", err)
+	}
+
+	for _, v := range snap.VMs {
+		if v.VMID == 100 {
+			t.Errorf("VM 100 still present after retrying delete")
+		}
+	}
+}
