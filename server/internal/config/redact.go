@@ -38,6 +38,7 @@ func (c Configuration) Redacted() []Field {
 			fields[i].Value = ""
 		}
 	}
+
 	return fields
 }
 

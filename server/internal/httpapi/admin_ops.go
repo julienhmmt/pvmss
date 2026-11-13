@@ -469,7 +469,7 @@ func (h *AdminOps) ServeAppInfo(w http.ResponseWriter, r *http.Request) {
 	reveal, _ := strconv.ParseBool(r.URL.Query().Get("reveal"))
 	if reveal {
 		fields = cfg.Unredacted()
-		logctx.From(r.Context()).Info("admin revealed app info secrets")
+		logctx.FromOr(r.Context(), h.log).InfoContext(r.Context(), "admin revealed app info secrets", "component", "httpapi")
 	}
 
 	configDTOs := buildConfigFieldDTOs(fields, reveal)
