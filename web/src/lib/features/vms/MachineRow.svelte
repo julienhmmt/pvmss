@@ -112,8 +112,6 @@
 						variant="secondary"
 						size="sm"
 						href={consoleHref(machine)}
-						target="_blank"
-						rel="noopener noreferrer"
 						aria-label={m['vms.list.actionConsoleFor']({ name: machine.name })}
 						data-testid="vm-row-console"
 					>
