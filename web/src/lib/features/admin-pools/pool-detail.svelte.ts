@@ -1,6 +1,7 @@
 import { del, get, patch, put, ApiRequestError } from '#lib/shared/api/client.js';
 import { fetchClusterOptions } from '#lib/shared/clusters.js';
 import { getContext, setContext } from 'svelte';
+import { STALE_REFRESH_MS } from '#lib/shared/visibility-refresh.js';
 import { m } from '#lib/paraglide/messages.js';
 import {
 	fetchQuotaOverrides,
@@ -85,6 +86,16 @@ export class PoolDetailStore {
 	resetting = $state.raw(false);
 	resetError = $state.raw<string | null>(null);
 	cluster = $state('');
+	/** `Date.now()` of the last completed load - `refreshIfStale()` uses it to
+	 * skip reloads fresher than the interval. */
+	lastLoadedAt = 0;
+
+	/** Reloads when the last completed load is older than `minIntervalMs` -
+	 * the visibility/poll hook calls this instead of loading on every tick. */
+	async refreshIfStale(minIntervalMs: number = STALE_REFRESH_MS): Promise<void> {
+		if (Date.now() - this.lastLoadedAt <= minIntervalMs) return;
+		await this.refresh();
+	}
 
 	/** Loads the named pool. The cluster comes from the list page's
 	 *  ?cluster= hint; without one the first available cluster is used. */
@@ -104,7 +115,10 @@ export class PoolDetailStore {
 		} finally {
 			this.loading = false;
 		}
-		if (this.detail) await this.loadOverride(this.detail.name, cluster);
+		if (this.detail) {
+			this.lastLoadedAt = Date.now();
+			await this.loadOverride(this.detail.name, cluster);
+		}
 	}
 
 	/** Reads the pool's override; a failure is shown on its own so the page still renders. */

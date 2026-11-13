@@ -4,6 +4,7 @@
 	import { replaceState } from '$app/navigation';
 	import PoolsPage from '#lib/features/admin-pools/PoolsPage.svelte';
 	import { setAdminPoolsContext } from '#lib/features/admin-pools/pools.svelte.js';
+	import { onVisibleRefresh } from '#lib/shared/visibility-refresh.js';
 
 	const store = setAdminPoolsContext();
 	const startCreating = page.url.searchParams.has('create');
@@ -15,6 +16,7 @@
 		// One-shot: Back from a pool page must not reopen the dialog.
 		if (startCreating) replaceState(page.url.pathname, page.state);
 		void store.load();
+		return onVisibleRefresh(() => void store.refreshIfStale());
 	});
 </script>
 

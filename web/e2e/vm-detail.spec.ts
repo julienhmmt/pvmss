@@ -41,7 +41,7 @@ test.describe('T05 VM detail & actions (closes S01)', () => {
 		await expect(page.getByTestId('vm-details')).toContainText('2 vCPU');
 		// Connection-first: the Overview tab is the default and shows the SSH
 		// command built from the address the guest agent reports.
-		await expect(page.getByTestId('vm-tab-overview')).toHaveAttribute('aria-selected', 'true');
+		await expect(page.getByTestId('tab-overview')).toHaveAttribute('aria-selected', 'true');
 		await expect(page.getByTestId('vm-ssh-command')).toContainText('@10.10.100.10');
 	});
 

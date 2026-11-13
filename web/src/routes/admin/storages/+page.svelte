@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { onMount } from 'svelte';
+	import { onMount, onDestroy } from 'svelte';
 	import { page } from '$app/state';
 	import { setAdminCatalogContext } from '#lib/features/admin-catalog/admin-catalog.svelte.js';
 	import CatalogListStates from '#lib/features/admin-catalog/CatalogListStates.svelte';
@@ -13,11 +13,13 @@
 	import { createPagination } from '#lib/shared/ui/list-pager.svelte.js';
 	import TableCard from '#lib/shared/ui/TableCard.svelte';
 	import { getToastContext } from '#lib/shared/ui/toast.svelte.js';
+	import { onVisibleRefresh } from '#lib/shared/visibility-refresh.js';
 	import { m } from '#lib/paraglide/messages.js';
 
 	const store = setAdminCatalogContext();
 	const toast = getToastContext();
 	const pager = createPagination('storages', () => store.filteredStorages);
+	let offVisible: (() => void) | undefined;
 
 	onMount(() => {
 		// Deep links from dashboard alerts carry ?cluster= and ?search= hints;
@@ -30,7 +32,9 @@
 		}
 		if (searchHint) store.storageSearch = searchHint;
 		void store.loadAll();
+		offVisible = onVisibleRefresh(() => void store.refreshIfStale());
 	});
+	onDestroy(() => offVisible?.());
 
 	async function handleToggle(name: string, node: string, enabled: boolean): Promise<void> {
 		try {

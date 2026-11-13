@@ -44,7 +44,9 @@ const store = {
 	loading: false,
 	error: null,
 	errorCode: null,
-	load: async (): Promise<void> => {}
+	lastLoadedAt: 0,
+	load: async (): Promise<void> => {},
+	refreshIfStale: async (): Promise<void> => {}
 };
 
 beforeEach(() => {

@@ -2,6 +2,8 @@
 	import { resolve } from '$app/paths';
 	import { page } from '$app/state';
 	import { afterNavigate, goto, pushState } from '$app/navigation';
+	import { onMount } from 'svelte';
+	import { onVisibleRefresh, STALE_REFRESH_MS } from '#lib/shared/visibility-refresh.js';
 	import { ApiRequestError } from '#lib/shared/api/client.js';
 	import { formatBytes, usagePercent } from '#lib/shared/format-bytes.js';
 	import { formatDate, formatDateTime } from '#lib/shared/format-date.js';
@@ -42,6 +44,7 @@
 	const TONE_BG = { success: 'bg-success', warning: 'bg-warning', destructive: 'bg-destructive' } as const;
 
 	let detail = $state.raw<ClusterDetail | null>(null);
+	let lastLoadedAt = 0;
 	let loading = $state.raw(true);
 	let error = $state.raw<string | null>(null);
 	let announce = $state.raw<string | null>(null);
@@ -86,11 +89,18 @@
 		void load(name);
 	});
 
+	onMount(() =>
+		onVisibleRefresh(() => {
+			if (Date.now() - lastLoadedAt > STALE_REFRESH_MS) void load(name);
+		})
+	);
+
 	async function load(target: string): Promise<void> {
 		loading = true;
 		error = null;
 		try {
 			detail = await fetchClusterDetail(target);
+			lastLoadedAt = Date.now();
 		} catch (err: unknown) {
 			detail = null;
 			error =
@@ -113,6 +123,7 @@
 				tlsAnnouncement(label, result) ??
 				m['admin.clusters.tested']({ name: label, status: result.status });
 			detail = await fetchClusterDetail(name);
+			lastLoadedAt = Date.now();
 		} catch (err: unknown) {
 			announce = err instanceof ApiRequestError ? err.message : m['admin.clusters.operationFailed']();
 		} finally {
@@ -135,6 +146,7 @@
 			formOpen = false;
 			announce = store.announce;
 			detail = await fetchClusterDetail(name).catch(() => detail);
+			lastLoadedAt = Date.now();
 		}
 	}
 

@@ -1,5 +1,6 @@
 import { get, ApiRequestError } from '#lib/shared/api/client.js';
 import { setContext, getContext } from 'svelte';
+import { STALE_REFRESH_MS } from '#lib/shared/visibility-refresh.js';
 import { m } from '#lib/paraglide/messages.js';
 import type { DashboardAlert } from './dashboard-alerts';
 
@@ -71,6 +72,16 @@ export class DashboardStore {
 	loading = $state.raw(false);
 	error = $state.raw<string | null>(null);
 	errorCode = $state.raw<string | null>(null);
+	/** `Date.now()` of the last completed load - `refreshIfStale()` uses it to
+	 * skip reloads fresher than the interval. */
+	lastLoadedAt = 0;
+
+	/** Reloads when the last completed load is older than `minIntervalMs` -
+	 * the visibility/poll hook calls this instead of loading on every tick. */
+	async refreshIfStale(minIntervalMs: number = STALE_REFRESH_MS): Promise<void> {
+		if (Date.now() - this.lastLoadedAt <= minIntervalMs) return;
+		await this.load();
+	}
 
 	async load(): Promise<void> {
 		this.loading = true;
@@ -79,6 +90,7 @@ export class DashboardStore {
 
 		try {
 			this.summary = await get<DashboardSummary>('/api/v1/admin/dashboard');
+			this.lastLoadedAt = Date.now();
 		} catch (err) {
 			if (err instanceof ApiRequestError) {
 				this.error = err.message;

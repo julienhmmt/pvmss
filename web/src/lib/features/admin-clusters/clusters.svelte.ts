@@ -1,5 +1,6 @@
 import { get, post, put, del, ApiRequestError } from '#lib/shared/api/client.js';
 import { getSavedAdminCluster, saveAdminCluster } from '#lib/shared/clusters.js';
+import { STALE_REFRESH_MS } from '#lib/shared/visibility-refresh.js';
 import { m } from '#lib/paraglide/messages.js';
 
 export interface ClusterTlsInfo {
@@ -105,12 +106,23 @@ export class AdminClustersStore {
 	error = $state.raw<string | null>(null);
 	announce = $state.raw<string | null>(null);
 	busy = $state.raw<string | null>(null);
+	/** `Date.now()` of the last completed load - `refreshIfStale()` uses it to
+	 * skip reloads fresher than the interval. */
+	lastLoadedAt = 0;
+
+	/** Reloads when the last completed load is older than `minIntervalMs` -
+	 * the visibility/poll hook calls this instead of loading on every tick. */
+	async refreshIfStale(minIntervalMs: number = STALE_REFRESH_MS): Promise<void> {
+		if (Date.now() - this.lastLoadedAt <= minIntervalMs) return;
+		await this.load();
+	}
 
 	async load(): Promise<void> {
 		this.loading = true;
 		this.error = null;
 		try {
 			this.clusters = await get<AdminCluster[]>('/api/v1/admin/clusters');
+			this.lastLoadedAt = Date.now();
 		} catch (error: unknown) {
 			this.error = error instanceof ApiRequestError ? error.message : m['admin.clusters.loadError']();
 		} finally {

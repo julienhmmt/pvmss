@@ -122,7 +122,7 @@
 			class={tabClass(selected)}
 			onclick={() => selectTab(tab.id)}
 			onkeydown={(event) => handleKeydown(event, index)}
-			data-testid={`vm-tab-${tab.id}`}
+			data-testid={`tab-${tab.id}`}
 		>
 			{#if tab.icon}
 				{@const Icon = tab.icon}

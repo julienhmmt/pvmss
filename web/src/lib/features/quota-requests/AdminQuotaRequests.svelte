@@ -6,6 +6,7 @@
 	 * that lost a race to another admin (409) reloads the list.
 	 */
 	import { onMount } from 'svelte';
+	import { onVisibleRefresh, STALE_REFRESH_MS } from '#lib/shared/visibility-refresh.js';
 	import Button from '#lib/shared/ui/Button.svelte';
 	import ConfirmDialog from '#lib/shared/ui/ConfirmDialog.svelte';
 	import EmptyState from '#lib/shared/ui/EmptyState.svelte';
@@ -28,12 +29,14 @@
 	let overrides = $state<Record<number, string>>({});
 	/** A decision waiting for the admin's confirmation; null when no dialog is open. */
 	let pendingDecision = $state<{ request: QuotaRequest; approve: boolean } | null>(null);
+	let lastLoadedAt = 0;
 
 	async function load(): Promise<void> {
 		loading = true;
 		loadError = null;
 		try {
 			requests = await fetchAdminQuotaRequests('pending');
+			lastLoadedAt = Date.now();
 		} catch (failure: unknown) {
 			loadError = failure instanceof ApiRequestError ? failure.message : m['admin.quotaRequests.loadError']();
 		} finally {
@@ -41,7 +44,12 @@
 		}
 	}
 
-	onMount(() => void load());
+	onMount(() => {
+		void load();
+		return onVisibleRefresh(() => {
+			if (Date.now() - lastLoadedAt > STALE_REFRESH_MS) void load();
+		});
+	});
 
 	function quotaLabel(value: number): string {
 		return value === -1 ? m['admin.quotaRequests.unlimited']() : String(value);

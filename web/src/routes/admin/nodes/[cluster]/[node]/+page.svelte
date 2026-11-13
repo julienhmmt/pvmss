@@ -24,6 +24,7 @@
 		type NodeTab
 	} from '#lib/features/admin-nodes/node-details.js';
 	import { m } from '#lib/paraglide/messages.js';
+	import { onVisibleRefresh, STALE_REFRESH_MS } from '#lib/shared/visibility-refresh.js';
 	import { formatDateTime } from '#lib/shared/format-date.js';
 	import Pagination from '#lib/shared/ui/Pagination.svelte';
 	import { createPagination } from '#lib/shared/ui/list-pager.svelte.js';
@@ -39,6 +40,7 @@
 	let error = $state<string | null>(null);
 	let requestedRoute: string = '';
 	let requestId: number = 0;
+	let lastLoadedAt: number = 0;
 
 	const ifacePager = createPagination('node-interfaces', () => netInterfaces);
 	const vmsPager = createPagination('node-vms', () => detail?.inventory.vms ?? []);
@@ -186,6 +188,9 @@
 
 	onMount(() => {
 		void loadNode(clusterKey, nodeName);
+		return onVisibleRefresh(() => {
+			if (Date.now() - lastLoadedAt > STALE_REFRESH_MS) void loadNode(clusterKey, nodeName);
+		});
 	});
 
 	async function loadNode(cluster: string, node: string): Promise<void> {
@@ -207,7 +212,10 @@
 		try {
 			const path: string = `/api/v1/admin/nodes/${encodeURIComponent(cluster)}/${encodeURIComponent(node)}`;
 			const response: NodeDetails = await get<NodeDetails>(path);
-			if (currentRequest === requestId) detail = response;
+			if (currentRequest === requestId) {
+				detail = response;
+				lastLoadedAt = Date.now();
+			}
 		} catch {
 			if (currentRequest === requestId) error = m['admin.nodeDetails.loadError']();
 		} finally {
