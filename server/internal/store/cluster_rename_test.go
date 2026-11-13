@@ -57,6 +57,44 @@ func countClusterRows(t *testing.T, st *store.Store, table, clusterName string) 
 	return count
 }
 
+// seedClusterScopedRows writes one row keyed by clusterName into every
+// cluster-scoped table so the rename has something to move everywhere.
+func seedClusterScopedRows(t *testing.T, st *store.Store, clusterName string) {
+	t.Helper()
+	for _, table := range store.ClusterScopedTables() {
+		if table == tableVMLimits {
+			// CreateCluster seeds the policy row; assert it is really there.
+			if got := countClusterRows(t, st, table, clusterName); got != 1 {
+				t.Fatalf("%s: seeded rows under %q = %d, want 1", table, clusterName, got)
+			}
+			continue
+		}
+		statement, ok := clusterScopedSeeds[table]
+		if !ok {
+			t.Fatalf("no seed statement for cluster-keyed table %s", table)
+		}
+		if _, err := st.DB().ExecContext(context.Background(), statement, clusterName); err != nil {
+			t.Fatalf("seed %s: %v", table, err)
+		}
+	}
+}
+
+// assertClusterRowsMoved checks every cluster-scoped table holds exactly one
+// row under newName and nothing left under oldName.
+func assertClusterRowsMoved(t *testing.T, st *store.Store, oldName, newName string) {
+	t.Helper()
+	for _, table := range store.ClusterScopedTables() {
+		t.Run(table, func(t *testing.T) {
+			if got := countClusterRows(t, st, table, oldName); got != 0 {
+				t.Errorf("%s: rows under %q = %d, want 0", table, oldName, got)
+			}
+			if got := countClusterRows(t, st, table, newName); got != 1 {
+				t.Errorf("%s: rows under %q = %d, want 1", table, newName, got)
+			}
+		})
+	}
+}
+
 // TestRenameCluster_MovesEveryClusterKeyedRow - every table in the
 // clusterScopedTables list must move its rows in the rename transaction; a
 // table forgotten in that list fails here. The clusters row itself moves too.
@@ -67,23 +105,7 @@ func TestRenameCluster_MovesEveryClusterKeyedRow(t *testing.T) {
 	ctx := context.Background()
 	const oldName, newName = "rename-old", "rename-new"
 	createTestCluster(t, st, oldName)
-
-	for _, table := range store.ClusterScopedTables() {
-		statement, ok := clusterScopedSeeds[table]
-		if table == tableVMLimits {
-			// CreateCluster seeds the policy row; assert it is really there.
-			if got := countClusterRows(t, st, table, oldName); got != 1 {
-				t.Fatalf("%s: seeded rows under %q = %d, want 1", table, oldName, got)
-			}
-			continue
-		}
-		if !ok {
-			t.Fatalf("no seed statement for cluster-keyed table %s", table)
-		}
-		if _, err := st.DB().ExecContext(ctx, statement, oldName); err != nil {
-			t.Fatalf("seed %s: %v", table, err)
-		}
-	}
+	seedClusterScopedRows(t, st, oldName)
 
 	if err := st.RenameCluster(ctx, oldName, newName); err != nil {
 		t.Fatalf("RenameCluster: %v", err)
@@ -100,16 +122,7 @@ func TestRenameCluster_MovesEveryClusterKeyedRow(t *testing.T) {
 		t.Fatalf("renamed TokenSecret = %q, want %q", renamed.TokenSecret, testClusterTokenSecret)
 	}
 
-	for _, table := range store.ClusterScopedTables() {
-		t.Run(table, func(t *testing.T) {
-			if got := countClusterRows(t, st, table, oldName); got != 0 {
-				t.Errorf("%s: rows under %q = %d, want 0", table, oldName, got)
-			}
-			if got := countClusterRows(t, st, table, newName); got != 1 {
-				t.Errorf("%s: rows under %q = %d, want 1", table, newName, got)
-			}
-		})
-	}
+	assertClusterRowsMoved(t, st, oldName, newName)
 }
 
 // TestRenameCluster_AuditHistoryFollowsNewID - the rename rewrites

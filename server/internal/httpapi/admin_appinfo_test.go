@@ -32,6 +32,22 @@ type publicVersionDTO struct {
 	Version string `json:"version"`
 }
 
+// findConfigField returns the appinfo config field named name, failing the
+// test when it is absent.
+func findConfigField(t *testing.T, info appInfoDTO, name string) configFieldDTO {
+	t.Helper()
+
+	for _, f := range info.Config {
+		if f.Name == name {
+			return f
+		}
+	}
+
+	t.Fatalf("config field %s missing from response", name)
+
+	return configFieldDTO{}
+}
+
 // TestAdminAppInfo_AsAdmin_ReturnsVersionAndConfig - GET /admin/appinfo
 // as admin returns version, config fields with AdminPasswordHash redacted,
 // and per-cluster health.
@@ -146,39 +162,22 @@ func TestAdminAppInfo_Reveal_ReturnsSecretValues(t *testing.T) {
 		t.Fatalf("decode: %v", err)
 	}
 
-	found := false
+	hashField := findConfigField(t, info, "ADMIN_PASSWORD_HASH")
 
-	for _, f := range info.Config {
-		if f.Name != "ADMIN_PASSWORD_HASH" {
-			continue
-		}
-
-		found = true
-
-		if !f.Redacted {
-			t.Error("ADMIN_PASSWORD_HASH redacted = false, want true")
-		}
-
-		if f.Value == nil || *f.Value != hash {
-			t.Errorf("ADMIN_PASSWORD_HASH value = %v, want the configured hash", f.Value)
-		}
+	if !hashField.Redacted {
+		t.Error("ADMIN_PASSWORD_HASH redacted = false, want true")
 	}
 
-	if !found {
-		t.Error("ADMIN_PASSWORD_HASH field missing from response")
+	if hashField.Value == nil || *hashField.Value != hash {
+		t.Errorf("ADMIN_PASSWORD_HASH value = %v, want the configured hash", hashField.Value)
 	}
 
 	// An unset secret (no PROXMOX_API_TOKEN_VALUE in this env) still
 	// serializes its value as "" under reveal so the UI can show "unset"
 	// rather than a dead mask.
-	for _, f := range info.Config {
-		if f.Name != "PROXMOX_API_TOKEN_VALUE" {
-			continue
-		}
-
-		if f.Value == nil || *f.Value != "" {
-			t.Errorf("PROXMOX_API_TOKEN_VALUE value = %v, want empty string (unset secret)", f.Value)
-		}
+	tokenField := findConfigField(t, info, "PROXMOX_API_TOKEN_VALUE")
+	if tokenField.Value == nil || *tokenField.Value != "" {
+		t.Errorf("PROXMOX_API_TOKEN_VALUE value = %v, want empty string (unset secret)", tokenField.Value)
 	}
 }
 
