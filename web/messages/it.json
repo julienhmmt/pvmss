@@ -200,6 +200,7 @@
 	"policy.description": "Imposta i limiti di dimensione delle VM e la quota del pool gestiti dal server.",
 	"policy.gabarit": "Limiti di dimensione VM",
 	"policy.quota": "Quota del pool",
+	"policy.quotaDescription": "Limite predefinito del numero di VM per pool. Gli override qui sotto lo sostituiscono.",
 	"policy.maxSockets": "Socket massimi",
 	"policy.maxCores": "Core massimi",
 	"policy.maxDisk": "Disco massimo per VM (GB)",

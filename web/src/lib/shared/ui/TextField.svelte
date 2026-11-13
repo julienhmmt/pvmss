@@ -33,13 +33,13 @@
 		required?: boolean;
 		disabled?: boolean;
 		readonly?: boolean;
-		placeholder?: string;
+		placeholder?: string | undefined;
 		autocomplete?: HTMLInputAttributes['autocomplete'];
 		name?: string;
 		inputmode?: InputMode;
-		min?: number;
-		max?: number;
-		step?: number;
+		min?: number | undefined;
+		max?: number | undefined;
+		step?: number | undefined;
 		pattern?: string;
 		maxLength?: number;
 		/** Leading icon snippet (e.g. user, lock). */

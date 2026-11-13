@@ -200,6 +200,7 @@
 	"policy.description": "Set the server-enforced VM size limits and pool quota.",
 	"policy.gabarit": "VM size limits",
 	"policy.quota": "Pool quota",
+	"policy.quotaDescription": "Default cap on the number of VMs per pool. Pool overrides below replace it.",
 	"policy.maxSockets": "Maximum sockets",
 	"policy.maxCores": "Maximum cores",
 	"policy.maxDisk": "Maximum disk per VM (GB)",

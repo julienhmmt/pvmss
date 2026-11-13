@@ -200,6 +200,7 @@
 	"policy.description": "Définissez le gabarit VM et le quota du pool contrôlés par le serveur.",
 	"policy.gabarit": "Gabarit VM",
 	"policy.quota": "Quota du pool",
+	"policy.quotaDescription": "Plafond par défaut du nombre de VM par pool. Les surcharges ci-dessous le remplacent.",
 	"policy.maxSockets": "Nombre maximal de sockets",
 	"policy.maxCores": "Nombre maximal de cœurs",
 	"policy.maxDisk": "Disque maximal par VM (Go)",

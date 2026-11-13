@@ -200,6 +200,7 @@
 	"policy.description": "Legen Sie das serverseitige VM-Größenlimit und das Pool-Kontingent fest.",
 	"policy.gabarit": "VM-Größenlimit",
 	"policy.quota": "Pool-Kontingent",
+	"policy.quotaDescription": "Standard-Obergrenze für die Anzahl der VMs pro Pool. Pool-Außerkraftsetzungen unten ersetzen sie.",
 	"policy.maxSockets": "Maximale Sockets",
 	"policy.maxCores": "Maximale Kerne",
 	"policy.maxDisk": "Maximale Festplatte pro VM (GB)",
