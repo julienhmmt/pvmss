@@ -246,6 +246,7 @@ func TestAdminClusters_NonAdminReturns403(t *testing.T) {
 		body       string
 	}{
 		{testOpList, fixture.handler.ServeList, http.MethodGet, adminClustersPath, "", ""},
+		{"detail", fixture.handler.ServeClusterDetail, http.MethodGet, adminClustersSecondaryPath, crossSecondaryCluster, ""},
 		{testOpCreate, fixture.handler.ServeCreate, http.MethodPost, adminClustersPath, "", `{"name":"tertiary","url":"https://pve-d.example.com:8006/api2/json","tokenId":"pvmss@pve!service","tokenSecret":"s"}`},
 		{testOpUpdate, fixture.handler.ServeUpdate, http.MethodPut, adminClustersSecondaryPath, crossSecondaryCluster, `{"url":"https://pve-b.example.com:8006/api2/json","tokenId":"pvmss@pve!service"}`},
 		{"rename", fixture.handler.ServeRename, http.MethodPut, adminClustersSecondaryPath + "/rename", crossSecondaryCluster, `{"newName":"secondary-renamed"}`},
@@ -708,6 +709,145 @@ func TestAdminClusters_SnippetSettingsValidation(t *testing.T) {
 			}
 		})
 	}
+}
+
+type clusterDetailForTest struct {
+	Name      string `json:"name"`
+	TokenSet  bool   `json:"tokenSet"`
+	Inventory struct {
+		Stale       bool   `json:"stale"`
+		RefreshedAt string `json:"refreshedAt"`
+		Nodes       []struct {
+			Name           string `json:"name"`
+			Status         string `json:"status"`
+			VMCount        int    `json:"vmCount"`
+			VMRunningCount int    `json:"vmRunningCount"`
+		} `json:"nodes"`
+		Alerts []struct {
+			Kind       string `json:"kind"`
+			Severity   string `json:"severity"`
+			ClusterKey string `json:"clusterKey"`
+		} `json:"alerts"`
+		VMCount int `json:"vmCount"`
+	} `json:"inventory"`
+}
+
+// serveClusterDetail runs GET /{name} and decodes the detail response.
+func serveClusterDetail(t *testing.T, fixture adminClusterFixture, name string) (*httptest.ResponseRecorder, clusterDetailForTest) {
+	t.Helper()
+	cookie := adminClusterCookie(t, fixture.auth)
+	response := adminClusterRequest(t, fixture, cookie, clusterRequestSpec{
+		Method:     fixture.handler.ServeClusterDetail,
+		HTTPMethod: http.MethodGet,
+		Path:       adminClustersPath + "/" + name,
+		Name:       name,
+	})
+	var detail clusterDetailForTest
+	if response.Code == http.StatusOK {
+		if err := json.Unmarshal(response.Body.Bytes(), &detail); err != nil {
+			t.Fatalf("decode: %v", err)
+		}
+	}
+	return response, detail
+}
+
+// TestAdminClusters_ClusterDetail - GET /{name} answers the cluster DTO plus
+// freshness markers: a warm index reports stale=false with a refresh time.
+
+//nolint:paralleltest // HTTP fixture shares fake cluster state
+func TestAdminClusters_ClusterDetail(t *testing.T) {
+	fixture := newAdminClusterFixture(t)
+	response, detail := serveClusterDetail(t, fixture, auditTestCluster)
+	if response.Code != http.StatusOK {
+		t.Fatalf("status = %d, want 200: %s", response.Code, response.Body.String())
+	}
+	if detail.Name != auditTestCluster {
+		t.Fatalf("name = %q, want %q", detail.Name, auditTestCluster)
+	}
+	if !detail.TokenSet {
+		t.Fatal("tokenSet = false, want true")
+	}
+	if detail.Inventory.Stale {
+		t.Fatal("inventory.stale = true, want false for a warm index")
+	}
+	if detail.Inventory.RefreshedAt == "" {
+		t.Fatal("inventory.refreshedAt empty")
+	}
+	idx, err := fixture.inventory.Index(auditTestCluster)
+	if err != nil {
+		t.Fatalf("Index: %v", err)
+	}
+	if detail.Inventory.VMCount != len(idx.ByVMID) {
+		t.Fatalf("vmCount = %d, want %d indexed VMs", detail.Inventory.VMCount, len(idx.ByVMID))
+	}
+}
+
+// TestAdminClusters_ClusterDetailInventory - every indexed node is listed
+// (the dashboard hides zero-VM nodes, this endpoint must not) and alerts are
+// scoped to the requested cluster.
+
+//nolint:paralleltest // HTTP fixture shares fake cluster state
+func TestAdminClusters_ClusterDetailInventory(t *testing.T) {
+	fixture := newAdminClusterFixture(t)
+	response, detail := serveClusterDetail(t, fixture, auditTestCluster)
+	if response.Code != http.StatusOK {
+		t.Fatalf("status = %d, want 200: %s", response.Code, response.Body.String())
+	}
+	idx, err := fixture.inventory.Index(auditTestCluster)
+	if err != nil {
+		t.Fatalf("Index: %v", err)
+	}
+	if len(detail.Inventory.Nodes) != len(idx.Nodes) {
+		t.Fatalf("nodes = %d, want all %d indexed nodes", len(detail.Inventory.Nodes), len(idx.Nodes))
+	}
+	names := map[string]bool{}
+	for _, node := range detail.Inventory.Nodes {
+		names[node.Name] = true
+	}
+	for _, node := range idx.Nodes {
+		if !names[node.Name] {
+			t.Errorf("indexed node %q missing from inventory.nodes", node.Name)
+		}
+	}
+	for _, alert := range detail.Inventory.Alerts {
+		if alert.ClusterKey != auditTestCluster {
+			t.Fatalf("alert %+v leaks cluster %q into the %q detail", alert, alert.ClusterKey, auditTestCluster)
+		}
+	}
+}
+
+//nolint:paralleltest // HTTP fixture shares fake cluster state
+func TestAdminClusters_ClusterDetailStaleIndex(t *testing.T) {
+	fixture := newAdminClusterFixture(t)
+	response, detail := serveClusterDetail(t, fixture, "offline-demo")
+	if response.Code != http.StatusOK {
+		t.Fatalf("status = %d, want 200: %s", response.Code, response.Body.String())
+	}
+	if !detail.Inventory.Stale {
+		t.Fatal("inventory.stale = false, want true for a cluster without a fresh index")
+	}
+	unreachable := false
+	for _, alert := range detail.Inventory.Alerts {
+		if alert.Kind == "cluster_unreachable" && alert.Severity == "critical" {
+			unreachable = true
+		}
+	}
+	if !unreachable {
+		t.Fatalf("alerts = %+v, want a critical cluster_unreachable", detail.Inventory.Alerts)
+	}
+	if len(detail.Inventory.Nodes) != 0 {
+		t.Fatalf("nodes = %d, want none for a never-refreshed index", len(detail.Inventory.Nodes))
+	}
+}
+
+//nolint:paralleltest // HTTP fixture shares fake cluster state
+func TestAdminClusters_ClusterDetailNotFound(t *testing.T) {
+	fixture := newAdminClusterFixture(t)
+	response, _ := serveClusterDetail(t, fixture, "missing")
+	if response.Code != http.StatusNotFound {
+		t.Fatalf("status = %d, want 404: %s", response.Code, response.Body.String())
+	}
+	assertClusterErrorBody(t, response, "not_found")
 }
 
 type adminClusterDTOForTest struct {

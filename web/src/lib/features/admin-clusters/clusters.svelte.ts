@@ -86,7 +86,7 @@ export function statusHint(status: AdminCluster['lastTestStatus']): string | nul
 	return null;
 }
 
-function tlsAnnouncement(name: string, result: ClusterTestResult | null): string | null {
+export function tlsAnnouncement(name: string, result: ClusterTestResult | null): string | null {
 	switch (result?.tlsStatus) {
 		case 'verified':
 			return m['admin.clusters.tlsTestVerified']({ name });

@@ -10,7 +10,7 @@ const alert = (kind: DashboardAlert['kind'], extra: Partial<DashboardAlert> = {}
 
 describe('dashboard alerts', () => {
 	it('sends each alert to the page where it is fixed', () => {
-		expect(alertHref(alert('cluster_unreachable'))).toBe('/admin/clusters');
+		expect(alertHref(alert('cluster_unreachable'))).toBe('/admin/clusters/east?tab=connection');
 		// clusterKey wins over the display label when the server sends both.
 		expect(alertHref(alert('node_offline', { subject: 'n1', cluster: 'East Campus', clusterKey: 'east' }))).toBe('/admin/nodes/east/n1?from=dashboard');
 		expect(alertHref(alert('node_offline_disabled', { subject: 'n1' }))).toBe('/admin/nodes/east/n1?from=dashboard');

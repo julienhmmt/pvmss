@@ -44,7 +44,7 @@ export function alertHref(alert: DashboardAlert): string {
 		case 'node_memory':
 			return withQuery(resolve('/admin/nodes/[cluster]/[node]', { cluster: clusterKey, node: alert.subject ?? '' }), { from: 'dashboard' });
 		case 'cluster_unreachable':
-			return resolve('/admin/clusters');
+			return withQuery(resolve('/admin/clusters/[name]', { name: clusterKey }), { tab: 'connection' });
 		case 'storage_full':
 			return withQuery(resolve('/admin/storages'), { cluster: clusterKey, search: alert.subject ?? '' });
 		case 'pool_at_quota':
