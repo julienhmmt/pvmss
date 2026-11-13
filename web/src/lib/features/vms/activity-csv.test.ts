@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { activityCsvFilename, buildActivityCsv } from './activity-csv';
+import { activityCsvFilename, buildActivityCsv, buildUserActivityCsv, userActivityCsvFilename } from './activity-csv';
 import type { VmAuditEntry } from './detail.svelte';
 
 function entry(overrides: Partial<VmAuditEntry>): VmAuditEntry {
@@ -54,5 +54,18 @@ describe('activityCsvFilename', () => {
 	it('formats vm-<vmid>-activity-<YYYYMMDD>.csv', () => {
 		const name = activityCsvFilename(100, new Date('2026-01-15T12:30:00Z'));
 		expect(name).toBe('vm-100-activity-20260115.csv');
+	});
+});
+
+describe('buildUserActivityCsv', () => {
+	it('adds the machine columns and escapes the name', () => {
+		const csv = buildUserActivityCsv(
+			[{ id: 'default:1', cluster: 'default', vmid: 100, machineName: '=web', actor: 'alice', action: 'vm.start', timestamp: '2026-01-01T00:00:00Z' }],
+			label
+		);
+		expect(csv).toBe(
+			"timestamp,cluster,vmid,machine,actor,action,label\r\n2026-01-01T00:00:00Z,default,100,'=web,alice,vm.start,label:vm.start\r\n"
+		);
+		expect(userActivityCsvFilename(new Date('2026-01-15T12:30:00Z'))).toBe('activity-20260115.csv');
 	});
 });

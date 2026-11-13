@@ -6,7 +6,7 @@
 	import { m } from '#lib/paraglide/messages.js';
 	import { formatDateTime } from '#lib/shared/format-date.js';
 	import { ApiRequestError } from '#lib/shared/api/client.js';
-	import { activityCsvFilename, buildActivityCsv } from './activity-csv';
+	import { activityCsvFilename, buildActivityCsv, downloadCsv } from './activity-csv';
 	import Alert from '#lib/shared/ui/Alert.svelte';
 	import Button from '#lib/shared/ui/Button.svelte';
 	import Card from '#lib/shared/ui/Card.svelte';
@@ -78,17 +78,6 @@
 	function toggleEntry(entry: VmAuditEntry, checked: boolean): void {
 		if (checked) selected.set(entry.id, entry);
 		else selected.delete(entry.id);
-	}
-
-	function downloadCsv(csv: string, filename: string): void {
-		const url = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8' }));
-		const anchor = document.createElement('a');
-		anchor.href = url;
-		anchor.download = filename;
-		document.body.appendChild(anchor);
-		anchor.click();
-		document.body.removeChild(anchor);
-		URL.revokeObjectURL(url);
 	}
 
 	async function exportCsv(): Promise<void> {
