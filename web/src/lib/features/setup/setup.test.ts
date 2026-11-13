@@ -138,7 +138,7 @@ describe('setup API calls', () => {
 		const [path, init] = (fetchMock.mock.calls[0] ?? []) as [string, RequestInit | undefined];
 		expect(path).toBe('/api/v1/setup/admin');
 		expect(init?.method).toBe('POST');
-		expect(JSON.parse(String(init?.body))).toEqual({ username: 'admin', password: 'pw' });
+		expect(JSON.parse(init?.body as string)).toEqual({ username: 'admin', password: 'pw' });
 	});
 
 	it('adminLogin omits the username when blank', async () => {
@@ -149,7 +149,7 @@ describe('setup API calls', () => {
 
 		const [path, init] = (fetchMock.mock.calls[0] ?? []) as [string, RequestInit | undefined];
 		expect(path).toBe('/api/v1/auth/admin-login');
-		expect(JSON.parse(String(init?.body))).toEqual({ password: 'pw' });
+		expect(JSON.parse(init?.body as string)).toEqual({ password: 'pw' });
 	});
 
 	it('adminLogin sends the trimmed username', async () => {
@@ -159,7 +159,7 @@ describe('setup API calls', () => {
 		await adminLogin('  bob  ', 'pw');
 
 		const [, init] = (fetchMock.mock.calls[0] ?? []) as [string, RequestInit | undefined];
-		expect(JSON.parse(String(init?.body))).toEqual({ username: 'bob', password: 'pw' });
+		expect(JSON.parse(init?.body as string)).toEqual({ username: 'bob', password: 'pw' });
 	});
 
 	it('probeCluster POSTs the connection settings', async () => {
@@ -173,7 +173,7 @@ describe('setup API calls', () => {
 		const [path, init] = (fetchMock.mock.calls[0] ?? []) as [string, RequestInit | undefined];
 		expect(path).toBe('/api/v1/admin/clusters/probe');
 		expect(init?.method).toBe('POST');
-		expect(JSON.parse(String(init?.body))).toEqual(connection);
+		expect(JSON.parse(init?.body as string)).toEqual(connection);
 	});
 
 	it('createSetupCluster POSTs the cluster input', async () => {
@@ -188,6 +188,6 @@ describe('setup API calls', () => {
 		const [path, init] = (fetchMock.mock.calls[0] ?? []) as [string, RequestInit | undefined];
 		expect(path).toBe('/api/v1/admin/clusters');
 		expect(init?.method).toBe('POST');
-		expect(JSON.parse(String(init?.body))).toEqual(input);
+		expect(JSON.parse(init?.body as string)).toEqual(input);
 	});
 });

@@ -36,6 +36,6 @@ describe('cloneVm', () => {
 		const [path, init] = (fetchMock.mock.calls[0] ?? []) as [string, RequestInit | undefined];
 		expect(path).toBe('/api/v1/vms/my%20cluster/100/clone');
 		expect(init?.method).toBe('POST');
-		expect(JSON.parse(String(init?.body))).toEqual({ name: 'web-01-copy' });
+		expect(JSON.parse(init?.body as string)).toEqual({ name: 'web-01-copy' });
 	});
 });
