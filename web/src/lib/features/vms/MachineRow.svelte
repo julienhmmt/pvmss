@@ -64,7 +64,7 @@
 				aria-label={m['vms.list.selectRow']({ name: machine.name })}
 			/>
 		{/if}
-		<div class="grid min-w-0 flex-1 grid-cols-[minmax(0,1fr)_auto] items-center gap-x-4 gap-y-2 min-[700px]:grid-cols-[minmax(0,1fr)_11rem_8.5rem_9rem]">
+		<div class="grid min-w-0 flex-1 grid-cols-[minmax(0,1fr)_auto] items-center gap-x-4 gap-y-2 min-[700px]:grid-cols-[minmax(0,1fr)_11rem_9rem_12.5rem]">
 			<div class="flex min-w-0 items-center gap-3">
 				<span class="max-[369px]:hidden"><OsMark ostype={machine.ostype} /></span>
 				<div class="min-w-0 flex-1">
@@ -86,11 +86,11 @@
 							</span>
 						{/if}
 					</div>
-					{#if visibleTags(machine).length > 0}
-						<p class="truncate text-xs text-muted-foreground">
-							{visibleTags(machine).join(' · ')}
-						</p>
-					{/if}
+					<!-- Same subtitle as the admin "All machines" table: VMID
+					     first, visible tags after. -->
+					<p class="truncate font-mono text-xs tabular-nums text-muted-foreground-subtle">
+						VM {machine.vmid}{#if visibleTags(machine).length > 0}&nbsp;· {visibleTags(machine).join(' · ')}{/if}
+					</p>
 					<!-- The wide resources column hides below 700px; this compact
 					     line keeps size on the row where the list has to answer
 					     "which machine is it / is it big enough" on a phone. -->
@@ -99,9 +99,8 @@
 					</p>
 				</div>
 			</div>
-			<p class="text-xs leading-5 text-muted-foreground max-[699px]:hidden">
-				<span class="whitespace-nowrap font-mono tabular-nums">{m['vms.list.resourcesCompute']({ cpu: machine.cpuCores, memory: compactBytes(machine.memoryTotal) })}</span>
-				<span class="block font-mono tabular-nums text-muted-foreground-subtle">VM {machine.vmid}</span>
+			<p class="whitespace-nowrap font-mono text-xs tabular-nums text-muted-foreground max-[699px]:hidden">
+				{m['vms.list.resourcesCompute']({ cpu: machine.cpuCores, memory: compactBytes(machine.memoryTotal) })}
 			</p>
 			<div class="max-[699px]:order-3">
 				<MachineStatusPill {status} pending={busy || status === 'provisioning'} />
