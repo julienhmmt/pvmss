@@ -11,6 +11,8 @@
 	import ResetIcon from '#lib/shared/ui/icons/ResetIcon.svelte';
 	import PauseIcon from '#lib/shared/ui/icons/PauseIcon.svelte';
 	import TrashIcon from '#lib/shared/ui/icons/TrashIcon.svelte';
+	import CloneIcon from '#lib/shared/ui/icons/CloneIcon.svelte';
+	import CpuIcon from '#lib/shared/ui/icons/CpuIcon.svelte';
 	import type { Component } from 'svelte';
 	import Button from '#lib/shared/ui/Button.svelte';
 	import Menu from '#lib/shared/ui/Menu.svelte';
@@ -198,12 +200,14 @@
 			})),
 			...(store.entity !== null ? [{
 				label: m['vms.clone.button'](),
+				icon: CloneIcon,
 				disabled: store.actionInFlight,
 				onclick: () => { cloneOpen = true; },
 				testId: 'vm-menu-clone'
 			}] : []),
 			...(onRetrofit === undefined ? [] : [{
 				label: m['vms.detail.retrofitSeabios'](),
+				icon: CpuIcon,
 				disabled: store.retrofitInFlight,
 				onclick: onRetrofit,
 				testId: 'vm-menu-retrofit'
