@@ -266,7 +266,7 @@ lint: server-lint web-lint ## Lint server/ (Go) and web/ (SvelteKit)
 # SonarQube local analysis
 # =============================================================================
 
-SONAR_HOME ?= $(HOME)/git/gh/sonarqube
+SONAR_HOME ?= $(HOME)/sonarqube
 
 sonar-up: ## Start the shared SonarQube server (http://localhost:9000)
 	@$(MAKE) -C $(SONAR_HOME) up
