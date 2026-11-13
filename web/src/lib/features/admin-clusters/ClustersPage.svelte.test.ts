@@ -59,6 +59,21 @@ describe('ClustersPage remove confirmation', () => {
 		expect(store.clusters).toHaveLength(0);
 	});
 
+	it('keeps the SSO realm when saving an edited cluster', async () => {
+		const store = new AdminClustersStore();
+		store.clusters = [{ ...cluster, oidcRealm: 'zitadel' }];
+		const updateSpy = vi.spyOn(store, 'update').mockResolvedValue(true);
+		mount(ClustersPage, { target: document.body, props: { store } });
+		await tick();
+
+		document.querySelector<HTMLButtonElement>('button[aria-label="Edit secondary"]')!.click();
+		await tick();
+		document.querySelector<HTMLFormElement>('form')!.requestSubmit();
+		await tick();
+
+		expect(updateSpy).toHaveBeenCalledWith('secondary', expect.objectContaining({ oidcRealm: 'zitadel' }));
+	});
+
 	it('closing the dialog leaves the cluster in place', async () => {
 		const store = new AdminClustersStore();
 		store.clusters = [cluster];

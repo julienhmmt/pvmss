@@ -96,7 +96,7 @@ services:
   # issuer themselves, so ZITADEL_DOMAIN must be a name/IP the PVE nodes AND the
   # browser both reach (e.g. this machine's LAN IP); Zitadel rejects any other
   # Host. Issuer: http://<ZITADEL_DOMAIN>:8080. Console: /ui/console, first
-  # admin zitadel-admin@zitadel.<ZITADEL_DOMAIN> / Password1! . Dev only.
+  # admin zitadel-admin@zitadel.localhost / Password1! . Dev only.
   zitadel-db:
     image: postgres:17.10-alpine
     profiles: [oidc]

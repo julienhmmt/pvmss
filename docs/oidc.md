@@ -64,6 +64,6 @@ rewrites `Host` must send `X-Forwarded-Host`, or the IdP rejects the redirect.
 
 `ZITADEL_DOMAIN=<LAN IP> make up-oidc` starts Zitadel on
 `http://<LAN IP>:8080` (console `/ui/console`, admin
-`zitadel-admin@zitadel.<LAN IP>` / `Password1!`). Use the nginx dev proxy
+`zitadel-admin@zitadel.localhost` / `Password1!`). Use the nginx dev proxy
 (`https://localhost:50001`): the haproxy one rewrites `Host`. With
 `PVMSS_CLUSTER_SOURCE=fake` the realm is simulated and needs no IdP.
