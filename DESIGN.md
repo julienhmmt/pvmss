@@ -499,6 +499,14 @@ prepared options" control.
 - **Header:** Sticky, 3.5rem height, translucent. Contains: menu button
   (mobile), docs link, activity button with badge, language switcher, theme
   toggle.
+- **Tabs:** `Tabs.svelte` - `segmented` for a small closed set of views
+  inside a card, `folder` for page-level section navigation (VM detail,
+  admin node detail). Folder panels carry `.pv-tabpanel`, which pulls the
+  panel 1px under the rail and squares the first rounded child's top
+  corners, so the active tab and its card read as one surface. The rail and
+  its panels must stay direct siblings in an unspaced container: a `space-y-*`
+  on the shared parent out-specifies the -1px pull and reopens the gap. Give
+  banners or alerts above the rail their own margin (`mb-4`) instead.
 
 ### Tables
 

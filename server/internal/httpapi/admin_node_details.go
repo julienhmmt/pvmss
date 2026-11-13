@@ -12,14 +12,12 @@ import (
 )
 
 type nodeDetailDTO struct {
-	ClusterKey string                  `json:"clusterKey"`
-	Cluster    string                  `json:"cluster"`
-	Name       string                  `json:"name"`
-	Health     nodeHealthDTO           `json:"health"`
-	Network    nodeNetworkSectionDTO   `json:"network"`
-	PCI        nodePCISectionDTO       `json:"pci"`
-	Containers nodeContainerSectionDTO `json:"containers"`
-	Inventory  nodeInventoryDTO        `json:"inventory"`
+	ClusterKey string                `json:"clusterKey"`
+	Cluster    string                `json:"cluster"`
+	Name       string                `json:"name"`
+	Health     nodeHealthDTO         `json:"health"`
+	Network    nodeNetworkSectionDTO `json:"network"`
+	Inventory  nodeInventoryDTO      `json:"inventory"`
 }
 
 type nodeHealthDTO struct {
@@ -36,11 +34,6 @@ type nodeNetworkSectionDTO struct {
 type nodePCISectionDTO struct {
 	Available bool                `json:"available"`
 	Devices   []cluster.PCIDevice `json:"devices"`
-}
-
-type nodeContainerSectionDTO struct {
-	Available  bool                   `json:"available"`
-	Containers []cluster.LXCContainer `json:"containers"`
 }
 
 type nodeInventoryDTO struct {
@@ -72,10 +65,8 @@ type nodeReadResult[T any] struct {
 }
 
 type nodeLiveReads struct {
-	health     nodeReadResult[cluster.NodeHealth]
-	network    nodeReadResult[[]cluster.NodeNetworkInterface]
-	pci        nodeReadResult[[]cluster.PCIDevice]
-	containers nodeReadResult[[]cluster.LXCContainer]
+	health  nodeReadResult[cluster.NodeHealth]
+	network nodeReadResult[[]cluster.NodeNetworkInterface]
 }
 
 // ServeNodeDetails handles GET /api/v1/admin/nodes/{cluster}/{name}.
@@ -98,9 +89,34 @@ func (h *AdminCatalog) ServeNodeDetails(w http.ResponseWriter, r *http.Request) 
 	writeAdminJSON(w, http.StatusOK, nodeDetailDTO{
 		ClusterKey: clusterKey, Cluster: h.clusterDisplayName(r.Context(), clusterKey), Name: node.Name,
 		Health: nodeHealthSection(node, reads.health), Network: nodeNetworkSection(reads.network),
-		PCI: nodePCISection(reads.pci), Containers: nodeContainerSection(reads.containers),
 		Inventory: nodeInventory(index, node.Name),
 	})
+}
+
+// ServeNodePCI handles GET /api/v1/admin/nodes/{cluster}/{name}/pci.
+func (h *AdminCatalog) ServeNodePCI(w http.ResponseWriter, r *http.Request) {
+	clusterKey, client, ok := h.nodeDetailClient(w, r)
+	if !ok {
+		return
+	}
+	index, ok := h.nodeDetailIndex(w, clusterKey)
+	if !ok {
+		return
+	}
+	node, ok := findInventoryNode(index.Nodes, r.PathValue("name"))
+	if !ok {
+		writeAdminError(w, http.StatusNotFound, "not_found", nodeNotFoundMsg(r.PathValue("name")))
+		return
+	}
+	var result nodeReadResult[[]cluster.PCIDevice]
+	reader, isReader := client.(cluster.NodeDetailsReader)
+	if !isReader {
+		result.err = cluster.ErrNotImplemented
+	} else {
+		result.value, result.err = reader.ReadNodePCI(r.Context(), node.Name)
+	}
+	h.logNodeDetailError("PCI", clusterKey, node.Name, result.err)
+	writeAdminJSON(w, http.StatusOK, nodePCISection(result))
 }
 
 func (h *AdminCatalog) nodeDetailClient(w http.ResponseWriter, r *http.Request) (string, cluster.Client, bool) {
@@ -155,18 +171,14 @@ func readNodeLiveSections(ctx context.Context, client cluster.Client, node strin
 	reader, ok := client.(cluster.NodeDetailsReader)
 	if !ok {
 		return nodeLiveReads{
-			health:     nodeReadResult[cluster.NodeHealth]{err: cluster.ErrNotImplemented},
-			network:    nodeReadResult[[]cluster.NodeNetworkInterface]{err: cluster.ErrNotImplemented},
-			pci:        nodeReadResult[[]cluster.PCIDevice]{err: cluster.ErrNotImplemented},
-			containers: nodeReadResult[[]cluster.LXCContainer]{err: cluster.ErrNotImplemented},
+			health:  nodeReadResult[cluster.NodeHealth]{err: cluster.ErrNotImplemented},
+			network: nodeReadResult[[]cluster.NodeNetworkInterface]{err: cluster.ErrNotImplemented},
 		}
 	}
 	var result nodeLiveReads
 	var wait sync.WaitGroup
 	startNodeRead(&wait, func() (cluster.NodeHealth, error) { return reader.ReadNodeHealth(ctx, node) }, &result.health)
 	startNodeRead(&wait, func() ([]cluster.NodeNetworkInterface, error) { return reader.ReadNodeNetwork(ctx, node) }, &result.network)
-	startNodeRead(&wait, func() ([]cluster.PCIDevice, error) { return reader.ReadNodePCI(ctx, node) }, &result.pci)
-	startNodeRead(&wait, func() ([]cluster.LXCContainer, error) { return reader.ListNodeContainers(ctx, node) }, &result.containers)
 	wait.Wait()
 	return result
 }
@@ -180,8 +192,6 @@ func startNodeRead[T any](wait *sync.WaitGroup, read func() (T, error), result *
 func (h *AdminCatalog) logNodeDetailErrors(clusterKey, node string, reads nodeLiveReads) {
 	h.logNodeDetailError("health", clusterKey, node, reads.health.err)
 	h.logNodeDetailError("network", clusterKey, node, reads.network.err)
-	h.logNodeDetailError("PCI", clusterKey, node, reads.pci.err)
-	h.logNodeDetailError("containers", clusterKey, node, reads.containers.err)
 }
 
 func (h *AdminCatalog) logNodeDetailError(section, clusterKey, node string, err error) {
@@ -213,10 +223,6 @@ func nodeNetworkSection(result nodeReadResult[[]cluster.NodeNetworkInterface]) n
 
 func nodePCISection(result nodeReadResult[[]cluster.PCIDevice]) nodePCISectionDTO {
 	return nodePCISectionDTO{Available: result.err == nil, Devices: append([]cluster.PCIDevice{}, result.value...)}
-}
-
-func nodeContainerSection(result nodeReadResult[[]cluster.LXCContainer]) nodeContainerSectionDTO {
-	return nodeContainerSectionDTO{Available: result.err == nil, Containers: append([]cluster.LXCContainer{}, result.value...)}
 }
 
 func nodeInventory(index *inventory.Index, node string) nodeInventoryDTO {

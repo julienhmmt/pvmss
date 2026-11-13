@@ -67,14 +67,3 @@ func (fake Fake) ReadNodePCI(_ context.Context, name string) ([]PCIDevice, error
 		DeviceID: "0x1572", DeviceName: "Ethernet Controller", IOMMUGroup: 14,
 	}}, nil
 }
-
-// ListNodeContainers returns a fake LXC container for an online node.
-func (fake Fake) ListNodeContainers(_ context.Context, name string) ([]LXCContainer, error) {
-	if _, err := fake.onlineDetailsNode(name); err != nil {
-		return nil, err
-	}
-	return []LXCContainer{{
-		VMID: 9001, Name: "demo-container", Status: "running", CPUCount: 2, CPUUsage: 0.08,
-		MemoryTotal: 2147483648, MemoryUsed: 536870912, DiskTotal: 8589934592, DiskUsed: 2147483648,
-	}}, nil
-}

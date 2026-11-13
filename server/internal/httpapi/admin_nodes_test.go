@@ -14,6 +14,7 @@ import (
 	"pvmss/server/internal/inventory"
 	"pvmss/server/internal/store"
 	"pvmss/server/internal/testfixture"
+	"strings"
 	"testing"
 
 	"golang.org/x/crypto/bcrypt"
@@ -99,18 +100,6 @@ func TestAdminNodeDetails_AsAdmin_ReturnsSelectedNode(t *testing.T) {
 				CIDR string `json:"cidr"`
 			} `json:"interfaces"`
 		} `json:"network"`
-		PCI struct {
-			Available bool `json:"available"`
-			Devices   []struct {
-				DeviceName string `json:"deviceName"`
-			} `json:"devices"`
-		} `json:"pci"`
-		Containers struct {
-			Available  bool `json:"available"`
-			Containers []struct {
-				Name string `json:"name"`
-			} `json:"containers"`
-		} `json:"containers"`
 		Inventory struct {
 			VMs      []json.RawMessage `json:"vms"`
 			Storages []json.RawMessage `json:"storages"`
@@ -128,11 +117,8 @@ func TestAdminNodeDetails_AsAdmin_ReturnsSelectedNode(t *testing.T) {
 	if !detail.Network.Available || len(detail.Network.Interfaces) == 0 || detail.Network.Interfaces[0].CIDR == "" {
 		t.Fatalf("network = %+v", detail.Network)
 	}
-	if !detail.PCI.Available || len(detail.PCI.Devices) == 0 || detail.PCI.Devices[0].DeviceName == "" {
-		t.Fatalf("PCI = %+v", detail.PCI)
-	}
-	if !detail.Containers.Available || len(detail.Containers.Containers) == 0 {
-		t.Fatalf("containers = %+v", detail.Containers)
+	if strings.Contains(rec.Body.String(), `"pci"`) || strings.Contains(rec.Body.String(), `"containers"`) {
+		t.Fatalf("payload still carries removed sections: %s", rec.Body.String())
 	}
 	if len(detail.Inventory.VMs) == 0 || len(detail.Inventory.Storages) == 0 {
 		t.Fatalf("inventory = %+v", detail.Inventory)
@@ -163,9 +149,6 @@ func TestAdminNodeDetails_PartialFailureKeepsCachedSections(t *testing.T) {
 		Network struct {
 			Available bool `json:"available"`
 		} `json:"network"`
-		PCI struct {
-			Available bool `json:"available"`
-		} `json:"pci"`
 		Inventory struct {
 			VMs []json.RawMessage `json:"vms"`
 		} `json:"inventory"`
@@ -173,7 +156,7 @@ func TestAdminNodeDetails_PartialFailureKeepsCachedSections(t *testing.T) {
 	if err := json.Unmarshal(rec.Body.Bytes(), &detail); err != nil {
 		t.Fatalf("decode node details: %v", err)
 	}
-	if !detail.Health.Stale || detail.Health.MemoryTotal == 0 || detail.Network.Available || !detail.PCI.Available || len(detail.Inventory.VMs) == 0 {
+	if !detail.Health.Stale || detail.Health.MemoryTotal == 0 || detail.Network.Available || len(detail.Inventory.VMs) == 0 {
 		t.Fatalf("partial detail = %+v", detail)
 	}
 }
@@ -205,6 +188,7 @@ type nodeDetailFailureClient struct {
 	cluster.Fake
 	failHealth  bool
 	failNetwork bool
+	failPCI     bool
 }
 
 func (client nodeDetailFailureClient) ReadNodeHealth(ctx context.Context, node string) (cluster.NodeHealth, error) {
@@ -219,6 +203,83 @@ func (client nodeDetailFailureClient) ReadNodeNetwork(ctx context.Context, node 
 		return nil, cluster.ErrUnreachable
 	}
 	return client.Fake.ReadNodeNetwork(ctx, node)
+}
+
+func (client nodeDetailFailureClient) ReadNodePCI(ctx context.Context, node string) ([]cluster.PCIDevice, error) {
+	if client.failPCI {
+		return nil, cluster.ErrUnreachable
+	}
+	return client.Fake.ReadNodePCI(ctx, node)
+}
+
+//nolint:paralleltest // serial: shared fake dataset and database fixture
+func TestAdminNodePCI_AsAdmin_ReturnsDevices(t *testing.T) {
+	handler, authHandler, _ := newAdminHandler(t)
+	cookie := adminCookie(t, authHandler)
+	rec := adminGet(t, handler, authHandler, cookie, "/api/v1/admin/nodes/"+auditTestCluster+"/pve-node-01/pci")
+	if rec.Code != http.StatusOK {
+		t.Fatalf("status = %d, want %d: %s", rec.Code, http.StatusOK, rec.Body.String())
+	}
+	var section struct {
+		Available bool `json:"available"`
+		Devices   []struct {
+			DeviceName string `json:"deviceName"`
+		} `json:"devices"`
+	}
+	if err := json.Unmarshal(rec.Body.Bytes(), &section); err != nil {
+		t.Fatalf("decode node pci: %v", err)
+	}
+	if !section.Available || len(section.Devices) == 0 || section.Devices[0].DeviceName == "" {
+		t.Fatalf("pci = %+v", section)
+	}
+}
+
+//nolint:paralleltest // serial: shared fake dataset and database fixture
+func TestAdminNodePCI_ReadFailureReportsUnavailable(t *testing.T) {
+	t.Cleanup(cluster.ResetFake)
+	authHandler := newAuthHandler(t)
+	st := newAdminStore(t)
+	fake := cluster.Fake{}
+	snapshot, _ := fake.Snapshot(context.Background())
+	index := inventory.BuildIndex(snapshot)
+	projection := inventory.NewProjectionFromIndex(&index)
+	client := nodeDetailFailureClient{Fake: fake, failPCI: true}
+	handler := httpapi.NewAdminCatalogWithRegistry(authHandler, st, singleClientProvider(client), projection, slog.New(slog.DiscardHandler))
+	cookie := adminCookie(t, authHandler)
+	rec := adminGet(t, handler, authHandler, cookie, "/api/v1/admin/nodes/"+auditTestCluster+"/pve-node-01/pci")
+	if rec.Code != http.StatusOK {
+		t.Fatalf("status = %d, want %d: %s", rec.Code, http.StatusOK, rec.Body.String())
+	}
+	var section struct {
+		Available bool              `json:"available"`
+		Devices   []json.RawMessage `json:"devices"`
+	}
+	if err := json.Unmarshal(rec.Body.Bytes(), &section); err != nil {
+		t.Fatalf("decode node pci: %v", err)
+	}
+	if section.Available || len(section.Devices) != 0 {
+		t.Fatalf("pci = %+v", section)
+	}
+}
+
+//nolint:paralleltest // serial: shared fake dataset and database fixture
+func TestAdminNodePCI_AsNonAdmin_Returns403(t *testing.T) {
+	handler, authHandler, _ := newAdminHandler(t)
+	aliceCookie := loginCookie(t, authHandler, `{"username":"alice","password":"pvmss-alice"}`)
+	rec := adminGet(t, handler, authHandler, aliceCookie, "/api/v1/admin/nodes/"+auditTestCluster+"/pve-node-01/pci")
+	if rec.Code != http.StatusForbidden {
+		t.Fatalf("status = %d, want %d", rec.Code, http.StatusForbidden)
+	}
+}
+
+//nolint:paralleltest // serial: shared fake dataset and database fixture
+func TestAdminNodePCI_UnknownNodeReturns404(t *testing.T) {
+	handler, authHandler, _ := newAdminHandler(t)
+	cookie := adminCookie(t, authHandler)
+	rec := adminGet(t, handler, authHandler, cookie, "/api/v1/admin/nodes/"+auditTestCluster+"/no-such-node/pci")
+	if rec.Code != http.StatusNotFound {
+		t.Fatalf("status = %d, want %d", rec.Code, http.StatusNotFound)
+	}
 }
 
 // TestAdminNodes_ToggleUnapprovedNode - POST /admin/nodes/toggle on the

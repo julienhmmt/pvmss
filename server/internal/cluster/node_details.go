@@ -56,23 +56,9 @@ type PCIDevice struct {
 	MediatedDevice bool   `json:"mediatedDevice"`
 }
 
-// LXCContainer is a read-only summary of a container hosted by a node.
-type LXCContainer struct {
-	VMID        int     `json:"vmid"`
-	Name        string  `json:"name"`
-	Status      string  `json:"status"`
-	CPUCount    int     `json:"cpuCount"`
-	CPUUsage    float64 `json:"cpuUsage"`
-	MemoryTotal int64   `json:"memoryTotalBytes"`
-	MemoryUsed  int64   `json:"memoryUsedBytes"`
-	DiskTotal   int64   `json:"diskTotalBytes"`
-	DiskUsed    int64   `json:"diskUsedBytes"`
-}
-
 // NodeDetailsReader reads live sections on the administrator's node detail page.
 type NodeDetailsReader interface {
 	ReadNodeHealth(ctx context.Context, node string) (NodeHealth, error)
 	ReadNodeNetwork(ctx context.Context, node string) ([]NodeNetworkInterface, error)
 	ReadNodePCI(ctx context.Context, node string) ([]PCIDevice, error)
-	ListNodeContainers(ctx context.Context, node string) ([]LXCContainer, error)
 }
