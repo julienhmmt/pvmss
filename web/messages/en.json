@@ -1650,6 +1650,22 @@
 	"admin.dashboard.quickActions": "Quick actions",
 	"admin.dashboard.storageAll": "View all ({count})",
 	"admin.dashboard.createUser": "Create a user",
+	"admin.dashboard.quotaRequestsHint": "Allowance increases asked for by users",
+	"admin.dashboard.quotaRequestsPending": [
+		{
+			"declarations": [
+				"input count",
+				"local countPlural = count: plural"
+			],
+			"selectors": [
+				"countPlural"
+			],
+			"match": {
+				"countPlural=one": "{count} request awaiting a decision",
+				"countPlural=other": "{count} requests awaiting a decision"
+			}
+		}
+	],
 	"admin.dashboard.vmOther": "Other",
 	"admin.dashboard.attentionTitle": "Needs attention",
 	"admin.dashboard.allClear": "Nothing to report. Every cluster, node and datastore is within limits.",

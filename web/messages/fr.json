@@ -1650,6 +1650,22 @@
 	"admin.dashboard.quickActions": "Actions rapides",
 	"admin.dashboard.storageAll": "Tout voir ({count})",
 	"admin.dashboard.createUser": "Créer un utilisateur",
+	"admin.dashboard.quotaRequestsHint": "Hausses d'allocation demandées par les utilisateurs",
+	"admin.dashboard.quotaRequestsPending": [
+		{
+			"declarations": [
+				"input count",
+				"local countPlural = count: plural"
+			],
+			"selectors": [
+				"countPlural"
+			],
+			"match": {
+				"countPlural=one": "{count} demande en attente de décision",
+				"countPlural=other": "{count} demandes en attente de décision"
+			}
+		}
+	],
 	"admin.dashboard.vmOther": "Autres",
 	"admin.dashboard.attentionTitle": "À traiter",
 	"admin.dashboard.allClear": "Rien à signaler. Clusters, nœuds et stockages sont dans les limites.",

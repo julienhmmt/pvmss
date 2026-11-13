@@ -1650,6 +1650,22 @@
 	"admin.dashboard.quickActions": "Schnellaktionen",
 	"admin.dashboard.storageAll": "Alle anzeigen ({count})",
 	"admin.dashboard.createUser": "Benutzer erstellen",
+	"admin.dashboard.quotaRequestsHint": "Von Nutzern angefragte Erhöhungen der Zuteilung",
+	"admin.dashboard.quotaRequestsPending": [
+		{
+			"declarations": [
+				"input count",
+				"local countPlural = count: plural"
+			],
+			"selectors": [
+				"countPlural"
+			],
+			"match": {
+				"countPlural=one": "{count} Anfrage wartet auf eine Entscheidung",
+				"countPlural=other": "{count} Anfragen warten auf eine Entscheidung"
+			}
+		}
+	],
 	"admin.dashboard.vmOther": "Sonstige",
 	"admin.dashboard.attentionTitle": "Erfordert Aufmerksamkeit",
 	"admin.dashboard.allClear": "Nichts zu melden. Alle Cluster, Knoten und Datenspeicher liegen innerhalb der Limits.",

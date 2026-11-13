@@ -9,6 +9,7 @@
 	import Button from '#lib/shared/ui/Button.svelte';
 	import ButtonLink from '#lib/shared/ui/ButtonLink.svelte';
 	import UserIcon from '#lib/shared/ui/icons/UserIcon.svelte';
+	import FeatureQuotasIcon from '#lib/shared/ui/icons/FeatureQuotasIcon.svelte';
 	import Card from '#lib/shared/ui/Card.svelte';
 	import Skeleton from '#lib/shared/ui/Skeleton.svelte';
 	import EmptyState from '#lib/shared/ui/EmptyState.svelte';
@@ -47,6 +48,13 @@
 	// each card linking to its full page.
 	const STORAGE_LIMIT = 5;
 	const RECENT_LIMIT = 5;
+
+	// Pending quota requests ride in the alerts, one row per cluster.
+	const pendingQuotaCount = $derived(
+		(store.summary?.alerts ?? [])
+			.filter((alert) => alert.kind === 'quota_requests_pending')
+			.reduce((total, alert) => total + (alert.used ?? 0), 0)
+	);
 
 	// Two clusters can both have a "local" on "pve-node-01": name the cluster then.
 	const storagesSpanClusters = $derived(new Set((store.summary?.storages ?? []).map((s) => s.cluster)).size > 1);
@@ -96,6 +104,21 @@
 			<span class="flex min-w-0 flex-col">
 				<span class="text-sm font-semibold text-foreground">{m['admin.dashboard.createUser']()}</span>
 				<span class="text-xs text-muted-foreground">{m['admin.dashboard.createUserHint']()}</span>
+			</span>
+		</a>
+		<a
+			href={resolve('/admin/quota-requests')}
+			class="col-span-2 flex min-h-24 items-center gap-3 rounded-xl border border-border bg-card p-4 transition-colors duration-150 hover:border-muted-foreground-subtle hover:shadow-raised md:col-span-1 pv-focus"
+			data-testid="dashboard-quota-requests"
+		>
+			<span class="grid h-10 w-10 shrink-0 place-items-center rounded-lg {pendingQuotaCount > 0 ? 'bg-warning-soft text-warning-soft-foreground' : 'bg-muted text-muted-foreground'}">
+				<FeatureQuotasIcon class="h-5 w-5" />
+			</span>
+			<span class="flex min-w-0 flex-col">
+				<span class="text-sm font-semibold text-foreground">{m['admin.quotaRequests.title']()}</span>
+				<span class="text-xs {pendingQuotaCount > 0 ? 'font-medium text-foreground' : 'text-muted-foreground'}">
+					{pendingQuotaCount > 0 ? m['admin.dashboard.quotaRequestsPending']({ count: pendingQuotaCount }) : m['admin.dashboard.quotaRequestsHint']()}
+				</span>
 			</span>
 		</a>
 	</div>

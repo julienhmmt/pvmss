@@ -1650,6 +1650,22 @@
 	"admin.dashboard.quickActions": "Azioni rapide",
 	"admin.dashboard.storageAll": "Vedi tutto ({count})",
 	"admin.dashboard.createUser": "Crea un utente",
+	"admin.dashboard.quotaRequestsHint": "Aumenti di quota richiesti dagli utenti",
+	"admin.dashboard.quotaRequestsPending": [
+		{
+			"declarations": [
+				"input count",
+				"local countPlural = count: plural"
+			],
+			"selectors": [
+				"countPlural"
+			],
+			"match": {
+				"countPlural=one": "{count} richiesta in attesa di decisione",
+				"countPlural=other": "{count} richieste in attesa di decisione"
+			}
+		}
+	],
 	"admin.dashboard.vmOther": "Altro",
 	"admin.dashboard.attentionTitle": "Richiede attenzione",
 	"admin.dashboard.allClear": "Niente da segnalare. Ogni cluster, nodo e datastore è entro i limiti.",
