@@ -263,7 +263,7 @@
 			     "Sort by" control. The select-mode left padding mirrors the
 			     row's checkbox (1rem box + 0.75rem gap inside px-4). -->
 			<div
-				class="grid grid-cols-[minmax(0,1fr)_11rem_9rem_12.5rem] items-center gap-4 border-b border-border bg-muted/60 px-4 py-2 text-2xs font-semibold uppercase tracking-[0.04em] text-muted-foreground max-[699px]:hidden {selectMode
+				class="grid grid-cols-[minmax(0,1fr)_11rem_9rem_12.5rem] items-center gap-4 border-b border-border bg-muted/60 px-4 py-2 text-2xs font-semibold uppercase tracking-[0.04em] text-muted-foreground max-[1079px]:hidden {selectMode
 					? 'pl-11'
 					: ''}"
 			>
