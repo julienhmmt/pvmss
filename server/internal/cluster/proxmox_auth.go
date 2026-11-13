@@ -126,7 +126,13 @@ func proxmoxHasPermission(ctx context.Context, rest proxmoxRESTClient, path, pri
 func proxmoxOwnedPool(ctx context.Context, rest proxmoxRESTClient, username string) (string, error) {
 	candidate, ok := strings.CutSuffix(username, "@pve")
 	if !ok {
-		return proxmoxACLPool(ctx, rest, username), nil
+		// Password sign-in keeps working without a pool when the lookup fails.
+		pool, err := proxmoxACLPool(ctx, rest, username)
+		if err != nil {
+			logctx.From(ctx).WarnContext(ctx, "pool acl lookup failed", "error", err)
+		}
+
+		return pool, nil
 	}
 
 	pools, err := proxmoxListPools(ctx, rest)
@@ -150,13 +156,12 @@ const managedPoolPrefix = "pvmss-"
 // PVMSS pool its own user ACL grants, the exact shape SetPoolACL writes:
 // type user, poolRoleName, path /pool/pvmss-*. Inherited and group grants are
 // ignored on purpose, so a broad role never anchors a user to someone else's
-// pool. Several matches keep the first by name. Any failure yields no pool
-// (the login still succeeds) and is logged.
-func proxmoxACLPool(ctx context.Context, rest proxmoxRESTClient, username string) string {
+// pool. Several matches keep the first by name. No match is "", nil; a failed
+// lookup is an error so a caller never mistakes it for "has no pool".
+func proxmoxACLPool(ctx context.Context, rest proxmoxRESTClient, username string) (string, error) {
 	raw, err := rest.do(ctx, http.MethodGet, "/access/acl", nil)
 	if err != nil {
-		logctx.From(ctx).WarnContext(ctx, "pool acl lookup failed", "error", err)
-		return ""
+		return "", fmt.Errorf("pool acl lookup: %w", err)
 	}
 
 	var rows []struct {
@@ -166,8 +171,7 @@ func proxmoxACLPool(ctx context.Context, rest proxmoxRESTClient, username string
 		RoleID string `json:"roleid"`
 	}
 	if err := decodeData(raw, &rows); err != nil {
-		logctx.From(ctx).WarnContext(ctx, "pool acl decode failed", "error", err)
-		return ""
+		return "", fmt.Errorf("pool acl decode: %w", err)
 	}
 
 	var matches []string
@@ -180,7 +184,7 @@ func proxmoxACLPool(ctx context.Context, rest proxmoxRESTClient, username string
 	}
 
 	if len(matches) == 0 {
-		return ""
+		return "", nil
 	}
 
 	slices.Sort(matches)
@@ -189,7 +193,7 @@ func proxmoxACLPool(ctx context.Context, rest proxmoxRESTClient, username string
 		logctx.From(ctx).WarnContext(ctx, "pool multiple matches", "pools", matches)
 	}
 
-	return matches[0]
+	return matches[0], nil
 }
 
 // ChangePassword implements Client by re-authenticating as username with

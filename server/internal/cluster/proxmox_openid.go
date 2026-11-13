@@ -61,7 +61,11 @@ func (p Proxmox) OpenIDLogin(ctx context.Context, code, state, redirectURL strin
 
 	var pool string
 	if !isAdmin {
-		pool = proxmoxACLPool(ctx, rest, login.Username)
+		// A failed lookup fails the login: "no pool" makes the caller create one.
+		pool, err = proxmoxACLPool(ctx, rest, login.Username)
+		if err != nil {
+			return Identity{}, err
+		}
 	}
 
 	return Identity{Username: login.Username, Pool: pool, IsAdmin: isAdmin}, nil

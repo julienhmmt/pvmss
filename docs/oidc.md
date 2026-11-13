@@ -36,11 +36,15 @@ IdP -> /api/v1/auth/oidc/callback   -> Proxmox /access/openid/login   -> PVMSS s
   `Permissions.Modify` on those pool paths (it already writes them).
 - **First login**: a non-admin with no pool gets one at once, no admin step:
   PVMSS creates the managed pool `pvmss-<username slug>` and grants the user
-  `PVMSSUser` on it. A taken name gets a hash suffix instead, never a grant
-  on an existing pool. So every account the IdP lets into this client can
+  `PVMSSUser` on it. A taken name gets a hash suffix instead; PVMSS only
+  grants on a pool that very login created, never on an existing one. So every account the IdP lets into this client can
   create VMs within the default quota: restrict who may use the client at
   the IdP. If provisioning fails the user is signed in with no pool (logged
   at `warn`) and the next login retries.
+- If the pool lookup itself fails (`GET /access/acl`), the SSO login is
+  refused rather than treated as "no pool".
+- To revoke a user, disable it in Proxmox or at the IdP. Removing only the
+  pool ACL is not a revocation: the next login provisions a new pool.
 - Deleting the pool in Admin > Pools leaves the Proxmox user; its next login
   provisions a fresh pool. "Reset password" on an SSO pool would create a
   local `@pve` user for it: do not use it there.
