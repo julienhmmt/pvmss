@@ -91,9 +91,8 @@
 										{m['vms.disks.resize']()}
 									</Button>
 									<Button
-										variant="outline"
+										variant="destructive"
 										size="sm"
-										class="border-destructive/30 text-destructive hover:border-destructive/50 hover:bg-destructive/10 hover:text-destructive"
 										disabled={store.diskInFlight || disk.isBoot}
 										onclick={() => openDelete(disk)}
 										data-testid={`vm-disk-delete-open-${disk.key}`}

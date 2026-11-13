@@ -101,8 +101,7 @@
 			{m['vms.disks.disconnect']()}
 		</Button>
 		<Button
-			variant="outline"
-			class="border-destructive/30 text-destructive hover:border-destructive/50 hover:bg-destructive/10 hover:text-destructive"
+			variant="destructive"
 			disabled={store.cdromInFlight || occupied}
 			onclick={() => (removeConfirmOpen = true)}
 			data-testid="vm-cdrom-remove"
