@@ -1990,6 +1990,7 @@
 	"vms.detail.connect.notRunningTitle": "SSH ist gerade nicht verfügbar",
 	"vms.detail.connect.notRunningBody": "Starten Sie zuerst die Maschine. Verbindungsdetails erscheinen, sobald sie läuft.",
 	"vms.detail.connect.consoleOpen": "Konsole öffnen",
+	"vms.detail.consoleNeedsRunning": "Starten Sie die Maschine, um ihre Konsole zu öffnen",
 	"vms.detail.connect.installingTitle": "Installation läuft",
 	"vms.detail.connect.installingBody": "Diese Maschine startet vom ISO. Schließen Sie die Installation in der Konsole ab und werfen Sie dann das ISO aus.",
 	"vms.detail.connect.ejectIso": "ISO auswerfen",

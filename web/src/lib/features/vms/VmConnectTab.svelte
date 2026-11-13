@@ -8,13 +8,11 @@
 	 * with a reported address (DESIGN.md §7). A stopped machine gets a single
 	 * compact card with the Start button.
 	 */
-	import { resolve } from '$app/paths';
 	import { getVmDetailContext } from './detail.svelte';
 	import { canConnect, type MachineDisplayStatus } from './display-status';
 	import { connectState, isWindowsOs, primaryAddress, sshCommand, sshHost } from './connection';
 	import { get } from '#lib/shared/api/client.js';
 	import Button from '#lib/shared/ui/Button.svelte';
-	import ButtonLink from '#lib/shared/ui/ButtonLink.svelte';
 	import Card from '#lib/shared/ui/Card.svelte';
 	import CopyButton from '#lib/shared/ui/CopyButton.svelte';
 	import { m } from '#lib/paraglide/messages.js';
@@ -53,7 +51,6 @@
 
 	const userPlaceholder = $derived(`<${m['vms.detail.connect.userPlaceholder']()}>`);
 	const command = $derived(address ? sshCommand(sshUser ?? userPlaceholder, address.address) : '');
-	const consoleHref = $derived(resolve('/vms/[cluster]/[vmid]/console', { cluster: store.cluster, vmid: String(store.vmid) }));
 	const running = $derived(store.entity?.status === 'running');
 </script>
 
@@ -64,9 +61,6 @@
 			<h2 id="connect-ssh-title" class="mt-1 text-lg font-semibold" data-testid="vm-installing">{m['vms.detail.connect.installingTitle']()}</h2>
 			<p class="mt-1 text-sm text-muted-foreground">{m['vms.detail.connect.installingBody']()}</p>
 			<div class="mt-4 flex flex-wrap items-center gap-3">
-				<ButtonLink href={consoleHref} variant="primary" data-testid="vm-console-open">
-					{m['vms.detail.connect.consoleOpen']()}
-				</ButtonLink>
 				<Button variant="secondary" loading={store.cdromInFlight} onclick={() => void store.setCdrom('disconnect')} data-testid="vm-eject-iso">
 					{m['vms.detail.connect.ejectIso']()}
 				</Button>
@@ -84,9 +78,6 @@
 						<h2 id="connect-ssh-title" class="mt-1 text-lg font-semibold" data-testid="vm-address-unavailable">{m['vms.detail.connect.addressUnavailableTitle']()}</h2>
 					{/if}
 				</div>
-				<ButtonLink href={consoleHref} variant="secondary" size="sm" data-testid="vm-console-open">
-					{m['vms.detail.connect.consoleOpen']()}
-				</ButtonLink>
 			</div>
 			{#if connectable && address}
 				{#if windows}

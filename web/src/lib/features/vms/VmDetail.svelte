@@ -30,6 +30,7 @@
 	import Card from '#lib/shared/ui/Card.svelte';
 	import Pill from '#lib/shared/ui/Pill.svelte';
 	import OsMark from '#lib/shared/ui/OsMark.svelte';
+	import MonitorIcon from '#lib/shared/ui/icons/MonitorIcon.svelte';
 	import ConfirmDialog from '#lib/shared/ui/ConfirmDialog.svelte';
 	import Textarea from '#lib/shared/ui/Textarea.svelte';
 	import { getSessionContext } from '#lib/features/auth/session.svelte.js';
@@ -314,6 +315,20 @@
 				{#if entity.lock}
 					<span data-testid="vm-lock-badge">
 						<Pill tone="warn" size="md" dot={false} label={m['vms.lock.badge']({ lock: entity.lock })} />
+					</span>
+				{/if}
+				{#if entity.status === 'running'}
+					<ButtonLink href={resolve('/vms/[cluster]/[vmid]/console', { cluster: store.cluster, vmid: String(store.vmid) })} variant="primary" data-testid="vm-console-open">
+						{#snippet icon()}<MonitorIcon class="h-4 w-4" />{/snippet}
+						{m['vms.detail.connect.consoleOpen']()}
+					</ButtonLink>
+				{:else}
+					<span title={m['vms.detail.consoleNeedsRunning']()}>
+						<Button variant="primary" disabled aria-describedby="vm-console-hint" data-testid="vm-console-disabled">
+							<MonitorIcon class="h-4 w-4" />
+							{m['vms.detail.connect.consoleOpen']()}
+						</Button>
+						<span id="vm-console-hint" class="sr-only">{m['vms.detail.consoleNeedsRunning']()}</span>
 					</span>
 				{/if}
 				{#if entity.status === 'running'}
