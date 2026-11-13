@@ -51,3 +51,8 @@ export function markVmDeleted(cluster: string, vmid: number): void {
 export function isRecentlyDeletedVm(cluster: string, vmid: number): boolean {
 	return readEntries().some((e) => e.key === `${cluster}:${vmid}`);
 }
+
+/** A freshly created VM can reuse a just-freed VMID: stop hiding it. */
+export function unmarkVmDeleted(cluster: string, vmid: number): void {
+	writeEntries(readEntries().filter((e) => e.key !== `${cluster}:${vmid}`));
+}
