@@ -1374,7 +1374,21 @@
 	"admin.recovery.emptyHelp": "No unmanaged pvmss-* pools, stray pvmss-tagged VMs, or unknown tags were detected on this cluster.",
 	"admin.recovery.poolsHeading": "Pools from a previous install",
 	"admin.recovery.poolsHelp": "pvmss-* pools found on the cluster that this instance does not manage. Adopting marks them managed again - nothing changes cluster-side.",
-	"admin.recovery.vmCount": "{count} VMs",
+	"admin.recovery.vmCount": [
+		{
+			"declarations": [
+				"input count",
+				"local countPlural = count: plural"
+			],
+			"selectors": [
+				"countPlural"
+			],
+			"match": {
+				"countPlural=one": "{count} VM",
+				"countPlural=other": "{count} VMs"
+			}
+		}
+	],
 	"admin.recovery.members": "Members",
 	"admin.recovery.looseHeading": "Tagged VMs outside managed pools",
 	"admin.recovery.looseHelp": "These VMs carry the pvmss tag but sit outside any pvmss-* pool. They are already visible; nothing is registered for them.",

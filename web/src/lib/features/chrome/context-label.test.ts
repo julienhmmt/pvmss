@@ -35,6 +35,10 @@ describe('contextLabel', () => {
 		['/admin/policy/nodes', 'Administration', 'Node capacity'],
 		['/admin/appinfo', 'Administration', 'App Info'],
 		['/admin/settings', 'Administration', 'Settings'],
+		['/admin/vms', 'Administration', 'All machines'],
+		['/admin/vms/default/102', 'Administration', 'All machines'],
+		['/admin/quota-requests', 'Administration', 'Quota requests'],
+		['/admin/recovery', 'Administration', 'Recovery'],
 		['/admin/unknown', 'Administration', ''],
 		['/somewhere', 'Workspace', '']
 	])('%s -> %s / %s', (path, section, screen) => {

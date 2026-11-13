@@ -48,6 +48,8 @@
 	const STORAGE_LIMIT = 5;
 	const RECENT_LIMIT = 5;
 
+	// Two clusters can both have a "local" on "pve-node-01": name the cluster then.
+	const storagesSpanClusters = $derived(new Set((store.summary?.storages ?? []).map((s) => s.cluster)).size > 1);
 	const busiestStorages = $derived([...(store.summary?.storages ?? [])].sort((a, b) => b.percent - a.percent).slice(0, STORAGE_LIMIT));
 
 	// Shown in clear, not behind a hover: an admin reads the split at a glance.
@@ -221,7 +223,7 @@
 								<div class="flex items-baseline justify-between gap-3 text-sm">
 									<span class="min-w-0 truncate">
 										<span class="font-mono font-semibold">{storage.name}</span>
-										<span class="ml-2 text-xs text-muted-foreground">{storage.shared ? m['admin.dashboard.storageShared']() : storage.node}</span>
+										<span class="ml-2 text-xs text-muted-foreground">{storage.shared ? m['admin.dashboard.storageShared']() : storage.node}{#if storagesSpanClusters}&nbsp;· {storage.cluster}{/if}</span>
 									</span>
 									<span class="shrink-0 text-xs text-muted-foreground tabular-nums">
 										<span class="hidden sm:inline">{m['admin.dashboard.storageFree']({ free: formatBytes(Math.max(0, storage.totalBytes - storage.usedBytes)), total: formatBytes(storage.totalBytes) })}</span>
@@ -252,7 +254,7 @@
 								</time>
 								<span class="min-w-0 truncate text-xs font-semibold" title={activityMessage(change.action)}>{activityMessage(change.action)}</span>
 								<span class="min-w-0 flex-1 truncate text-muted-foreground">
-									{change.actor}{#if change.vmid !== null} · VM {change.vmid}{:else if change.targetType} · {auditTarget(change.targetType, change.targetId)}{/if}
+									{change.actor}{#if change.vmid !== null}&nbsp;· VM {change.vmid}{:else if change.targetType}&nbsp;· {auditTarget(change.targetType, change.targetId)}{/if}
 								</span>
 							</li>
 						{/each}

@@ -148,7 +148,7 @@
 					<ul class="divide-y divide-border">
 						{#each storages as storage (`${storage.node ?? ''}/${storage.name}`)}
 							<li class="flex flex-wrap items-center justify-between gap-2 px-5 py-3 text-sm">
-								<span><span class="font-mono font-semibold">{storage.name}</span><span class="ml-2 text-xs text-muted-foreground">{storage.type}{#if storage.shared} · {m['admin.nodeDetails.shared']()}{:else if storage.node} · {storage.node}{/if}</span></span>
+								<span><span class="font-mono font-semibold">{storage.name}</span><span class="ml-2 text-xs text-muted-foreground">{storage.type}{#if storage.shared}&nbsp;· {m['admin.nodeDetails.shared']()}{:else if storage.node}&nbsp;· {storage.node}{/if}</span></span>
 								<span class="font-mono text-xs tabular-nums">{formatBytes(storage.usedBytes)} / {formatBytes(storage.totalBytes)} ({usagePercent(storage.usedBytes, storage.totalBytes)}%)</span>
 							</li>
 						{/each}

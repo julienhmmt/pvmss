@@ -496,6 +496,7 @@
   .pv-responsive-table td::before,
   .pv-responsive-table th::before {
     content: attr(data-label);
+    font-family: var(--font-sans);
     font-weight: 500;
     color: var(--muted-foreground);
     text-align: left;

@@ -380,7 +380,7 @@
 					{#each storagePager.rows as storage (`${storage.name}/${storage.type}`)}
 						{@const percent = usagePercent(storage.usedBytes, storage.totalBytes)}
 						<li class="space-y-2 px-5 py-3">
-							<div class="flex flex-wrap items-center justify-between gap-2 text-sm"><span><span class="font-mono font-semibold">{storage.name}</span><span class="ml-2 text-xs text-muted-foreground">{storage.type}{#if storage.shared} · {m['admin.nodeDetails.shared']()}{/if}</span></span><span class="font-mono text-xs tabular-nums">{percent}%</span></div>
+							<div class="flex flex-wrap items-center justify-between gap-2 text-sm"><span><span class="font-mono font-semibold">{storage.name}</span><span class="ml-2 text-xs text-muted-foreground">{storage.type}{#if storage.shared}&nbsp;· {m['admin.nodeDetails.shared']()}{/if}</span></span><span class="font-mono text-xs tabular-nums">{percent}%</span></div>
 							{@render usageMeter(m['admin.nodeDetails.storageTitle'](), `${formatBytes(storage.usedBytes)} / ${formatBytes(storage.totalBytes)}`, percent)}
 						</li>
 					{/each}

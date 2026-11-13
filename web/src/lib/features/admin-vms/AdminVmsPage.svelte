@@ -293,8 +293,7 @@
 										{/if}
 									</div>
 									<p class="truncate font-mono text-xs tabular-nums text-muted-foreground-subtle">
-										VM {machine.vmid}{#if visibleTags(machine).length > 0}
-											· {visibleTags(machine).join(' · ')}{/if}
+										VM {machine.vmid}{#if visibleTags(machine).length > 0}&nbsp;· {visibleTags(machine).join(' · ')}{/if}
 									</p>
 								</div>
 							</div>
@@ -303,11 +302,11 @@
 							{#if machine.pool === ''}
 								<span class="text-xs text-muted-foreground-subtle">{m['admin.vms.unpooled']()}</span>
 							{:else}
-								<span class="font-mono text-xs">{machine.pool}</span>
+								<span class="whitespace-nowrap font-mono text-xs">{machine.pool}</span>
 							{/if}
 						</td>
 						<td data-label={m['vms.list.columnNode']()}>
-							<span class="font-mono text-xs">{machine.node}</span>
+							<span class="whitespace-nowrap font-mono text-xs">{machine.node}</span>
 						</td>
 						<td data-label={m['vms.list.columnStatus']()}>
 							<MachineStatusPill {status} pending={inFlight || status === 'provisioning'} />

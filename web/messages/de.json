@@ -1374,7 +1374,21 @@
 	"admin.recovery.emptyHelp": "Keine nicht verwalteten pvmss-*-Pools, keine verstreuten pvmss-markierten VMs und keine unbekannten Tags auf diesem Cluster gefunden.",
 	"admin.recovery.poolsHeading": "Pools aus einer früheren Installation",
 	"admin.recovery.poolsHelp": "pvmss-*-Pools auf dem Cluster, die diese Instanz nicht verwaltet. Die Übernahme markiert sie wieder als verwaltet - clusterseitig ändert sich nichts.",
-	"admin.recovery.vmCount": "{count} VMs",
+	"admin.recovery.vmCount": [
+		{
+			"declarations": [
+				"input count",
+				"local countPlural = count: plural"
+			],
+			"selectors": [
+				"countPlural"
+			],
+			"match": {
+				"countPlural=one": "{count} VM",
+				"countPlural=other": "{count} VMs"
+			}
+		}
+	],
 	"admin.recovery.members": "Mitglieder",
 	"admin.recovery.looseHeading": "Markierte VMs außerhalb verwalteter Pools",
 	"admin.recovery.looseHelp": "Diese VMs tragen das pvmss-Tag, liegen aber in keinem pvmss-*-Pool. Sie sind bereits sichtbar; für sie wird nichts registriert.",

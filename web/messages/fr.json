@@ -20,7 +20,7 @@
 	"nav.theme.system": "Système",
 	"banner.info.demo": "Vous consultez un jeu de données de démonstration.",
 	"banner.degraded.clusters": "Certains clusters sont actuellement injoignables.",
-	"banner.degraded.clustersDetail": "{unreachable} cluster(s) sur {total} injoignable(s)",
+	"banner.degraded.clustersDetail": "Injoignables : {unreachable} sur {total}",
 	"banner.degraded.ownCluster": "Votre cluster est actuellement injoignable.",
 	"banner.unhealthy.service": "Le service est dégradé.",
 	"banner.unknown.poll": "Impossible de joindre le service pour vérifier son état.",
@@ -1374,7 +1374,21 @@
 	"admin.recovery.emptyHelp": "Aucun pool pvmss-* non géré, aucune VM taguée pvmss hors pool et aucun tag inconnu détecté sur ce cluster.",
 	"admin.recovery.poolsHeading": "Pools d'une installation précédente",
 	"admin.recovery.poolsHelp": "Pools pvmss-* présents sur le cluster que cette instance ne gère pas. L'adoption les marque à nouveau comme gérés - rien ne change côté cluster.",
-	"admin.recovery.vmCount": "{count} VMs",
+	"admin.recovery.vmCount": [
+		{
+			"declarations": [
+				"input count",
+				"local countPlural = count: plural"
+			],
+			"selectors": [
+				"countPlural"
+			],
+			"match": {
+				"countPlural=one": "{count} VM",
+				"countPlural=other": "{count} VMs"
+			}
+		}
+	],
 	"admin.recovery.members": "Membres",
 	"admin.recovery.looseHeading": "VMs taguées hors des pools gérés",
 	"admin.recovery.looseHelp": "Ces VM portent le tag pvmss mais se trouvent hors de tout pool pvmss-*. Elles sont déjà visibles ; rien n'est enregistré pour elles.",

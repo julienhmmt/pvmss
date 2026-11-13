@@ -1374,7 +1374,21 @@
 	"admin.recovery.emptyHelp": "Nessun pool pvmss-* non gestito, nessuna VM con tag pvmss fuori dai pool e nessun tag sconosciuto rilevato su questo cluster.",
 	"admin.recovery.poolsHeading": "Pool di un'installazione precedente",
 	"admin.recovery.poolsHelp": "Pool pvmss-* presenti sul cluster che questa istanza non gestisce. L'adozione li contrassegna di nuovo come gestiti - nulla cambia lato cluster.",
-	"admin.recovery.vmCount": "{count} VM",
+	"admin.recovery.vmCount": [
+		{
+			"declarations": [
+				"input count",
+				"local countPlural = count: plural"
+			],
+			"selectors": [
+				"countPlural"
+			],
+			"match": {
+				"countPlural=one": "{count} VM",
+				"countPlural=other": "{count} VM"
+			}
+		}
+	],
 	"admin.recovery.members": "Membri",
 	"admin.recovery.looseHeading": "VM con tag fuori dai pool gestiti",
 	"admin.recovery.looseHelp": "Queste VM portano il tag pvmss ma si trovano fuori da qualsiasi pool pvmss-*. Sono già visibili; non viene registrato nulla per loro.",
