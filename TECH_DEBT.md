@@ -5,12 +5,13 @@ look and what deciding it would take. Not a backlog of new features.
 
 ## Reopened and funded (decided 2026-11-02)
 
-Former limitations promoted to tracked work. All but one delivered
-2026-11-04:
+Former limitations promoted to tracked work. Delivered 2026-11-04, except:
 
-- **OIDC realm sign-in** - still open; full spec + tickets already written:
-  `.scratch/oidc-login/` (GitHub #159). Browser-redirect flow through the
-  Proxmox OIDC realm; Proxmox stays the identity source.
+- **OIDC realm sign-in** - delivered 2026-11-13 (GitHub #159, `docs/oidc.md`).
+  Left open: logout is local only; SSO behind a multi-node cluster URL is
+  unverified; first-login pool provisioning is serialized per process only
+  (`shortcut:` in `server/internal/pools/sso.go`); "Reset password" in
+  Admin > Pools is still offered on SSO pools.
 
 ## Accepted limitations (decided 2026-10-04, amended 2026-11-02)
 

@@ -40,7 +40,8 @@ IdP -> /api/v1/auth/oidc/callback   -> Proxmox /access/openid/login   -> PVMSS s
   grants on a pool that very login created, never on an existing one. So every account the IdP lets into this client can
   create VMs within the default quota: restrict who may use the client at
   the IdP. If provisioning fails the user is signed in with no pool (logged
-  at `warn`) and the next login retries.
+  at `warn`) and the next login retries. The creation is audited as
+  `auth.sso_pool_create`.
 - If the pool lookup itself fails (`GET /access/acl`), the SSO login is
   refused rather than treated as "no pool".
 - To revoke a user, disable it in Proxmox or at the IdP. Removing only the
@@ -77,6 +78,9 @@ answers a generic 401 on purpose; the reason is only in the node's log:
   audience beside the client ID (Zitadel adds its project ID). Trust it:
   `pveum realm modify <realm> --audiences <id>`.
 - A missing-claim error: the username claim is misspelled (see step 2).
+- Always signed in as the same IdP account: the IdP reuses its browser
+  session. `pveum realm modify <realm> --prompt select_account` shows the
+  account picker on every login.
 
 ## Limits
 

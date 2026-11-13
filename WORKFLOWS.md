@@ -68,7 +68,7 @@ Rules for the fields:
 | **API**         | `GET /api/v1/auth/clusters` (`oidcRealm`) → `GET /api/v1/auth/oidc/start?cluster=&next=` → `GET /api/v1/auth/oidc/callback?code=&state=`                                                                                           |
 | **Steps**       | 1. Pick the cluster. 2. Click "Continue with SSO". 3. Sign in at the IdP. 4. Proxmox exchanges the code; PVMSS opens a session (`provider=oidc`), creating the user's pool on a first login, and sends the user to `next`. Details: `docs/oidc.md`.                            |
 | **States**      | Failures return to `/login?oidc=error&reason=<code>` with a translated, focused error; `/profile` shows "Single sign-on" and no password form                                                                                      |
-| **Safety nets** | Same per-IP login budget; signed, one-shot, 10-minute Lax handshake cookie checked against the echoed `state`; `next` limited to in-app paths; failed callbacks hit the login failure limiter, IdP cancels do not; logout is local |
+| **Safety nets** | Same per-IP login budget; signed, one-shot, 10-minute Lax handshake cookie checked against the echoed `state`; `next` limited to in-app paths; failed callbacks hit the login failure limiter, IdP cancels do not; a first-login pool is only granted when that login created it; a failed pool lookup refuses the login; logout is local |
 
 ### Sign in as admin
 

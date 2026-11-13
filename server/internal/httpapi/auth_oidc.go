@@ -113,6 +113,8 @@ func (h *Auth) OIDCCallback(w http.ResponseWriter, r *http.Request) {
 		result.Pool, err = pools.EnsureForSSO(r.Context(), client, h.clusterStore, clusterName, result.Username)
 		if err != nil {
 			logctx.FromOr(r.Context(), h.log).WarnContext(r.Context(), "sso pool provisioning failed", "component", "httpapi", "event", "auth", "cluster", clusterName, "user", result.Username, "error", err)
+			} else {
+			h.recordSSOPool(r, clusterName, result.Username, result.Pool)
 		}
 	}
 
@@ -222,6 +224,18 @@ func (h *Auth) recordOIDCLogin(r *http.Request, identity auth.Identity) {
 	detail, _ := json.Marshal(map[string]any{auditKeySummary: "signed in with SSO", auditKeyChanges: []any{map[string]any{"provider": string(auth.ProviderOIDC), "cluster": identity.Cluster}}})
 	if err := h.clusterStore.RecordAdminAction(r.Context(), identity.Username, "auth.login_oidc", "auth", identity.Username, string(detail), clientIP(r, h.trustedProxyHops)); err != nil {
 		logctx.FromOr(r.Context(), h.log).WarnContext(r.Context(), "oidc login audit failed", "component", "httpapi", "error", err)
+	}
+}
+
+// recordSSOPool audits the pool PVMSS created by itself at a first SSO login.
+func (h *Auth) recordSSOPool(r *http.Request, clusterName, username, pool string) {
+	if h.clusterStore == nil {
+		return
+	}
+
+	detail, _ := json.Marshal(map[string]any{auditKeySummary: "created pool " + pool + " at first SSO login", auditKeyChanges: []any{map[string]any{auditKeyName: pool, "cluster": clusterName, "user": username}}})
+	if err := h.clusterStore.RecordAdminAction(r.Context(), username, "auth.sso_pool_create", "pool", pool, string(detail), clientIP(r, h.trustedProxyHops)); err != nil {
+		logctx.FromOr(r.Context(), h.log).WarnContext(r.Context(), "sso pool audit failed", "component", "httpapi", "error", err)
 	}
 }
 

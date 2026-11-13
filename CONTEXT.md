@@ -18,7 +18,8 @@ _Avoid_: superuser, root admin, PVE admin (ambiguous with the PVEAdmin role)
 **OIDC realm**:
 A Proxmox OpenID Connect realm, recorded per cluster as `oidc_realm`. PVMSS
 drives it for SSO; Proxmox verifies the IdP and issues the ticket. Empty means
-no SSO for that cluster.
+no SSO for that cluster. A non-admin SSO user with no pool gets a managed pool
+at first login (`pvmss-<username slug>`, `PVMSSUser` granted to that user).
 _Avoid_: IdP (the realm points at an IdP, it is not one)
 
 **Handshake state**:

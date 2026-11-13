@@ -80,8 +80,10 @@ fait pas d'un compte un administrateur PVMSS. Conservez `-propagate 1` pour que
 l'autorisation couvre toute l'arborescence. La vérification a lieu une fois par
 session : une ACL ajoutée après la connexion exige une nouvelle connexion.
 
-Seuls les realms `pve` et `pam` sont pris en charge. Un compte d'un realm OIDC
-est refusé avec `realm_unsupported` ; la connexion OIDC est un travail futur.
+La connexion par mot de passe accepte les realms `pve` et `pam`. Un compte d'un
+realm OpenID Connect Proxmox se connecte avec **Continuer avec SSO** une fois
+le realm SSO du cluster renseigné par un administrateur ; à la première
+connexion SSO, PVMSS crée le pool de l'utilisateur et lui accorde `PVMSSUser`.
 Les administrateurs locaux PVMSS (gérés dans **Admin > Paramètres > Comptes**)
 n'ont besoin ni de compte ni de permission Proxmox.
 
