@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { getDashboardContext, type NodeSummary } from './dashboard.svelte';
-	import { usageTone } from './dashboard-alerts';
+	import { usageTone, withQuery } from './dashboard-alerts';
 	import DashboardAttention from './DashboardAttention.svelte';
 	import { goto } from '$app/navigation';
 	import { resolve } from '$app/paths';
@@ -246,7 +246,7 @@
 								<div class="flex items-baseline justify-between gap-3 text-sm">
 									<span class="min-w-0 truncate">
 										<span class="font-mono font-semibold">{storage.name}</span>
-										<span class="ml-2 text-xs text-muted-foreground">{storage.shared ? m['admin.dashboard.storageShared']() : storage.node}{#if storagesSpanClusters}&nbsp;· {storage.cluster}{/if}</span>
+										<span class="ml-2 text-xs text-muted-foreground">{storage.shared ? m['admin.dashboard.storageShared']() : storage.node}{#if storagesSpanClusters}&nbsp;· <a class="hover:text-foreground hover:underline pv-focus" href={withQuery(resolve('/admin/clusters/[name]', { name: storage.cluster }), { tab: 'infrastructure' })}>{storage.cluster}</a>{/if}</span>
 									</span>
 									<span class="shrink-0 text-xs text-muted-foreground tabular-nums">
 										<span class="hidden sm:inline">{m['admin.dashboard.storageFree']({ free: formatBytes(Math.max(0, storage.totalBytes - storage.usedBytes)), total: formatBytes(storage.totalBytes) })}</span>
