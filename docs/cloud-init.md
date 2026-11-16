@@ -26,18 +26,13 @@ Kept on purpose:
   tab reads the SSH user from the live cloud-init config.
 - `GetCloudInitConfig`, the domain read behind that route.
 - The `cloudinit` package's slug helper.
-- The `profile_ssh_keys` table: the profile SSH-key surface was deleted in
-  the follow-up removal (`GET/POST/DELETE /api/v1/profile/ssh-keys`, its
-  store, handlers, `/profile` section and i18n keys, plus the `cloudinit`
-  package's SSH-key validation helpers). The table is kept, unused, because
-  migrations are forward-only; it holds no data PVMSS still needs.
+
 Also gone since 2026-11-04:
 
 - The `vm_cloudinit_snippets` and `vm_cloudinit_documents` tables and the
   VM-delete warning they fed. The tables tracked `pvmss-*.yml` files a
   pre-removal deployment could have left on the nodes; fresh databases no
-  longer create them and existing ones keep them inert (the no-drop
-  precedent, like `profile_ssh_keys`). Nothing is tracked any more: remove
+  longer create them and existing ones keep them inert. Nothing is tracked any more: remove
   any leftover `pvmss-*.yml` files by hand on the nodes; PVMSS never creates
   new ones.
 

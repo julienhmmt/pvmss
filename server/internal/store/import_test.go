@@ -77,7 +77,6 @@ func buildCraftedDB(t *testing.T, path string, rowsByTable map[string][]string) 
 		"vm_limits":         `CREATE TABLE vm_limits (cluster TEXT PRIMARY KEY, max_sockets INTEGER NOT NULL, max_cores INTEGER NOT NULL, max_memory_mb INTEGER NOT NULL, max_disk_per_vm_gb INTEGER NOT NULL, max_network_cards INTEGER NOT NULL, max_snapshots INTEGER NOT NULL, max_vm_per_user INTEGER NOT NULL, isolation_vlan_tag INTEGER NOT NULL DEFAULT 0)`,
 		"node_limits":       `CREATE TABLE node_limits (cluster TEXT NOT NULL, node TEXT NOT NULL, max_vms INTEGER NOT NULL, max_vcpus INTEGER NOT NULL, max_ram_gb INTEGER NOT NULL, max_disk_gb INTEGER NOT NULL, PRIMARY KEY (cluster, node))`,
 		"managed_pools":     `CREATE TABLE managed_pools (cluster TEXT NOT NULL, name TEXT NOT NULL, created_at TEXT NOT NULL, PRIMARY KEY (cluster, name))`,
-		"profile_ssh_keys":  `CREATE TABLE profile_ssh_keys (id TEXT PRIMARY KEY, cluster TEXT NOT NULL, username TEXT NOT NULL, label TEXT NOT NULL, public_key TEXT NOT NULL, created_at TEXT NOT NULL)`,
 		tblAuditLog:         `CREATE TABLE audit_log (id INTEGER PRIMARY KEY AUTOINCREMENT, actor TEXT NOT NULL, cluster TEXT NOT NULL, vmid INTEGER NOT NULL, action TEXT NOT NULL, timestamp TEXT NOT NULL)`,
 		tblSessions:         `CREATE TABLE sessions (token_hash BLOB PRIMARY KEY, username TEXT NOT NULL, is_admin INTEGER NOT NULL, expires_at TEXT NOT NULL, created_at TEXT NOT NULL, pool TEXT NOT NULL DEFAULT '')`,
 		tblAPITokens:        `CREATE TABLE api_tokens (id TEXT PRIMARY KEY, token_hash BLOB NOT NULL UNIQUE, username TEXT NOT NULL, is_admin INTEGER NOT NULL, scope TEXT NOT NULL, label TEXT NOT NULL, expires_at TEXT, created_at TEXT NOT NULL, last_used_at TEXT, pool TEXT NOT NULL DEFAULT '')`,
@@ -660,8 +659,7 @@ func TestConfirmImport_RestoresLaterConfigTables(t *testing.T) {
 	ctx := context.Background()
 
 	rows := map[string][]string{
-		"managed_pools":    {`('default','pool-a','t')`},
-		"profile_ssh_keys": {`('k1','default','alice@pve','laptop','ssh-ed25519 AAAA','t')`},
+		"managed_pools": {`('default','pool-a','t')`},
 	}
 	craftedPath := filepath.Join(t.TempDir(), "later.db")
 	buildCraftedDB(t, craftedPath, rows)

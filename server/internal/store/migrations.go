@@ -3,7 +3,7 @@ package store
 
 // schemaV1 is the v0.4 baseline: the full schema in its final form. The
 // incremental chain accumulated during development (37 versions before the
-// first tag, 8 more after) was collapsed because no v0.4 database exists in
+// first tag, 16 more after) was collapsed because no v0.4 database exists in
 // the field to upgrade. Databases created by development builds carry
 // schema_migrations versions that are absent from this list; RunMigrations
 // rejects them with a clear error instead of silently skipping the baseline.
@@ -62,7 +62,11 @@ CREATE TABLE clusters (
 	tls_ca_pem               TEXT NOT NULL DEFAULT '',
 	tls_node_fingerprints    TEXT NOT NULL DEFAULT '',
 	tls_client_cert_pem      TEXT NOT NULL DEFAULT '',
-	tls_client_key_ciphertext BLOB
+	tls_client_key_ciphertext BLOB,
+	-- Proxmox OpenID realm PVMSS drives for SSO sign-in; empty disables SSO.
+	oidc_realm               TEXT NOT NULL DEFAULT '',
+	-- 0 stops users creating or cloning VMs on this cluster.
+	vm_creation_enabled      INTEGER NOT NULL DEFAULT 1
 );
 
 CREATE TABLE catalog_nodes (
@@ -123,6 +127,10 @@ CREATE TABLE catalog_profiles (
 	bus       TEXT NOT NULL,
 	enabled   BOOLEAN NOT NULL DEFAULT 1,
 	sockets   INTEGER NOT NULL DEFAULT 1,
+	-- Admin-authored description shown on the create-VM size step.
+	description TEXT NOT NULL DEFAULT '',
+	-- Admin-chosen display order; ties fall back to id order.
+	position  INTEGER NOT NULL DEFAULT 0,
 	PRIMARY KEY (cluster, id)
 );
 
@@ -157,6 +165,9 @@ CREATE TABLE managed_pools (
 	cluster    TEXT NOT NULL,
 	name       TEXT NOT NULL,
 	created_at TEXT NOT NULL,
+	-- Realm user the pool was granted to at a first SSO login; empty for
+	-- pools with a local @pve user.
+	sso_user   TEXT NOT NULL DEFAULT '',
 	PRIMARY KEY (cluster, name)
 );
 
@@ -192,17 +203,6 @@ CREATE TABLE audit_config (
 	retention_days INTEGER NOT NULL
 );
 INSERT INTO audit_config (id, retention_days) VALUES (1, 365);
-
-CREATE TABLE profile_ssh_keys (
-	id         TEXT PRIMARY KEY,
-	cluster    TEXT NOT NULL,
-	username   TEXT NOT NULL,
-	label      TEXT NOT NULL,
-	public_key TEXT NOT NULL,
-	created_at TEXT NOT NULL,
-	UNIQUE (cluster, username, label),
-	UNIQUE (cluster, username, public_key)
-);
 
 -- DB-backed PVMSS local administrator accounts. The bootstrap administrator
 -- (env ADMIN_PASSWORD_HASH) stays outside the table: it is the immutable
@@ -262,13 +262,14 @@ CREATE TABLE vm_snapshot_schedules (
 	retain      INTEGER NOT NULL,
 	pool        TEXT NOT NULL DEFAULT '',
 	last_run_at TEXT NOT NULL DEFAULT '',
+	-- Why the latest automatic attempt failed; empty after a success.
+	last_failure    TEXT NOT NULL DEFAULT '',
+	last_failure_at TEXT NOT NULL DEFAULT '',
 	PRIMARY KEY (cluster, vmid)
 );
-`
 
-// schemaV2 adds per-pool VM allowances. A row replaces the cluster-wide
-// vm_limits.max_vm_per_user for its pool; absent row = the cluster default.
-const schemaV2 = `
+-- Per-pool VM allowance replacing vm_limits.max_vm_per_user for its pool;
+-- absent row = the cluster default.
 CREATE TABLE pool_quota_overrides (
 	cluster    TEXT NOT NULL,
 	pool       TEXT NOT NULL,
@@ -277,51 +278,10 @@ CREATE TABLE pool_quota_overrides (
 	updated_at TEXT NOT NULL,
 	PRIMARY KEY (cluster, pool)
 );
-`
 
-// schemaV3 adds the admin-authored profile description shown on the create-VM
-// size step. Existing rows backfill to the empty string.
-const schemaV3 = `
-ALTER TABLE catalog_profiles ADD COLUMN description TEXT NOT NULL DEFAULT '';
-`
-
-// schemaV4 records why the latest scheduled snapshot attempt failed, so the VM
-// page can show it. Both stay empty after a successful run.
-const schemaV4 = `
-ALTER TABLE vm_snapshot_schedules ADD COLUMN last_failure TEXT NOT NULL DEFAULT '';
-ALTER TABLE vm_snapshot_schedules ADD COLUMN last_failure_at TEXT NOT NULL DEFAULT '';
-`
-
-// schemaV5 indexes audit_log for the time-ordered listing and the per-VM and
-// per-target lookups. Without them each page scans the whole retention window.
-const schemaV5 = `
-CREATE INDEX IF NOT EXISTS audit_log_time ON audit_log (timestamp DESC, id DESC);
-CREATE INDEX IF NOT EXISTS audit_log_vm ON audit_log (cluster, vmid, action, id);
-CREATE INDEX IF NOT EXISTS audit_log_target ON audit_log (target_type, target_id);
-`
-
-// schemaV6 adds the per-cluster Proxmox OpenID realm PVMSS drives for SSO
-// sign-in (issue #159). Empty disables SSO for that cluster.
-const schemaV6 = `
-ALTER TABLE clusters ADD COLUMN oidc_realm TEXT NOT NULL DEFAULT '';
-`
-
-// schemaV7 marks a managed pool created at a first SSO login with the realm
-// user it was granted to; empty for pools with a local @pve user.
-const schemaV7 = `
-ALTER TABLE managed_pools ADD COLUMN sso_user TEXT NOT NULL DEFAULT '';
-`
-
-// schemaV8 adds the admin-chosen display order of VM profiles, per cluster.
-// Existing rows share position 0 and fall back to id order.
-const schemaV8 = `
-ALTER TABLE catalog_profiles ADD COLUMN position INTEGER NOT NULL DEFAULT 0;
-`
-
-// schemaV9 lets an admin stop users creating or cloning VMs on a cluster.
-// Existing clusters stay open.
-const schemaV9 = `
-ALTER TABLE clusters ADD COLUMN vm_creation_enabled INTEGER NOT NULL DEFAULT 1;
+CREATE INDEX audit_log_time ON audit_log (timestamp DESC, id DESC);
+CREATE INDEX audit_log_vm ON audit_log (cluster, vmid, action, id);
+CREATE INDEX audit_log_target ON audit_log (target_type, target_id);
 `
 
 // Migration is a single schema version and its forward-only DDL.
@@ -330,20 +290,8 @@ type Migration struct {
 	DDL     string
 }
 
-// The profile_ssh_keys table in schemaV1 is kept with no reader or writer: the
-// profile SSH-key surface was removed, and migrations are forward-only with no
-// drop precedent, so the table stays. Do not drop it in place.
-
 // Migrations is the ordered list of schema migrations.
 // Versions must be consecutive integers starting at 1.
 var Migrations = []Migration{
 	{Version: 1, DDL: schemaV1},
-	{Version: 2, DDL: schemaV2},
-	{Version: 3, DDL: schemaV3},
-	{Version: 4, DDL: schemaV4},
-	{Version: 5, DDL: schemaV5},
-	{Version: 6, DDL: schemaV6},
-	{Version: 7, DDL: schemaV7},
-	{Version: 8, DDL: schemaV8},
-	{Version: 9, DDL: schemaV9},
 }

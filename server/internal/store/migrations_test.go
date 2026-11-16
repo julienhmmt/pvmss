@@ -303,10 +303,10 @@ var baselineTables = []string{
 	"vm_limits",
 	"node_limits",
 	"audit_config",
-	"profile_ssh_keys",
 	"quota_requests",
 	"vm_leases",
 	"vm_snapshot_schedules",
+	"pool_quota_overrides",
 }
 
 //nolint:paralleltest // serial: shared database fixture
@@ -345,36 +345,5 @@ func TestMigrations_BaselineCreatesFinalSchema(t *testing.T) {
 		if got != want {
 			t.Errorf("%s rows = %d, want %d", table, got, want)
 		}
-	}
-}
-
-// TestRunMigrations_V2ToV3_ExistingProfilesGetEmptyDescription upgrades a v2
-// database with the real migration chain and checks the pre-existing profile
-// row reads an empty description.
-//
-//nolint:paralleltest // serial: shared database fixture
-func TestRunMigrations_V2ToV3_ExistingProfilesGetEmptyDescription(t *testing.T) {
-	db := openTestDB(t)
-	ctx := context.Background()
-
-	if err := store.RunMigrations(ctx, db, store.Migrations[:2]); err != nil {
-		t.Fatalf("RunMigrations to v2: %v", err)
-	}
-
-	if _, err := db.ExecContext(ctx, `INSERT INTO catalog_profiles (cluster, id, label, cpu_cores, memory_mb, disk_gb, bus) VALUES ('default', 'small', 'Small', 1, 2048, 20, 'scsi')`); err != nil {
-		t.Fatalf("insert v2 profile: %v", err)
-	}
-
-	if err := store.RunMigrations(ctx, db, store.Migrations); err != nil {
-		t.Fatalf("RunMigrations to v3: %v", err)
-	}
-
-	var description string
-	if err := db.QueryRowContext(ctx, `SELECT description FROM catalog_profiles WHERE id = 'small'`).Scan(&description); err != nil {
-		t.Fatalf("query description: %v", err)
-	}
-
-	if description != "" {
-		t.Fatalf("description = %q, want empty", description)
 	}
 }

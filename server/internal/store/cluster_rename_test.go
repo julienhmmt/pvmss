@@ -13,10 +13,9 @@ import (
 // Table names that already appear as literals in other store tests must come
 // from constants here or goconst counts the package over its limit.
 const (
-	tableManagedPools   = "managed_pools"
-	tableProfileSSHKeys = "profile_ssh_keys"
-	tableVMLimits       = "vm_limits"
-	renameSrcCluster    = "rename-src"
+	tableManagedPools = "managed_pools"
+	tableVMLimits     = "vm_limits"
+	renameSrcCluster  = "rename-src"
 )
 
 // clusterScopedSeeds writes one minimal row per cluster-keyed table under the
@@ -33,7 +32,6 @@ var clusterScopedSeeds = map[string]string{
 	"catalog_tags":          `INSERT INTO catalog_tags (cluster, name, color, created_at) VALUES (?, 'env', '#aabbcc', '2026-01-01T00:00:00Z')`,
 	tableManagedPools:       `INSERT INTO managed_pools (cluster, name, created_at) VALUES (?, 'team-a', '2026-01-01T00:00:00Z')`,
 	"node_limits":           `INSERT INTO node_limits (cluster, node, max_vms, max_vcpus, max_ram_gb, max_disk_gb) VALUES (?, 'node-a', 10, 8, 64, 500)`,
-	tableProfileSSHKeys:     `INSERT INTO profile_ssh_keys (id, cluster, username, label, public_key, created_at) VALUES ('key-1', ?, 'alice@pve', 'laptop', 'ssh-ed25519 AAAA', '2026-01-01T00:00:00Z')`,
 	"quota_requests":        `INSERT INTO quota_requests (requester, cluster, pool, current_quota, requested_quota, reason, status, created_at) VALUES ('alice@pve', ?, 'team-a', 1, 3, 'need more', 'pending', '2026-01-01T00:00:00Z')`,
 	"vm_leases":             `INSERT INTO vm_leases (cluster, vmid, expires_at) VALUES (?, 100, '2030-01-01T00:00:00Z')`,
 	"vm_snapshot_schedules": `INSERT INTO vm_snapshot_schedules (cluster, vmid, frequency, retain) VALUES (?, 100, 'daily', 2)`,

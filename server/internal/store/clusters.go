@@ -52,7 +52,6 @@ var clusterScopedTables = []string{
 	"managed_pools",
 	"vm_limits",
 	"node_limits",
-	"profile_ssh_keys",
 	"quota_requests",
 	"vm_leases",
 	"vm_snapshot_schedules",
