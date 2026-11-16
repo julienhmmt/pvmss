@@ -31,14 +31,14 @@ PVMSS is a web application (Go REST API + SvelteKit SPA) that drives every VM ac
 
 **For users**
 
-- Sign in with Proxmox credentials and see **My VMs**: live status, bulk power actions, a console in every row.
+- Sign in with Proxmox credentials or SSO (the cluster's Proxmox OpenID realm, see [docs/oidc.md](docs/oidc.md)) and see **My VMs**: live status, bulk power actions, a console in every row.
 - **Create a VM** from an approved ISO or a Proxmox template, with hardware profiles, auto-placement, multi-NIC, UEFI/TPM and curated tags.
 - **Operate a VM**: power actions, disks, NICs, CPU/RAM, snapshots (manual and scheduled), duplication, leases, metrics and activity log.
 - **Consoles**: noVNC and serial in the browser, proxied through PVMSS.
 
 **For administrators**
 
-- Several Proxmox clusters, an approved catalog (nodes, storages, ISOs, templates, bridges), hardware profiles and tags.
+- Several Proxmox clusters, with VM creation switchable on or off per cluster; an approved catalog (nodes, storages, ISOs, templates, bridges), tags, and hardware profiles that can be reordered and exported/imported as JSON across clusters.
 - Self-service users (Proxmox user + pool + ACL in one step), quotas, per-node capacity caps, quota requests.
 - Node-to-node migration, dashboard, audit log, database export/import, in-app documentation editor.
 
@@ -158,6 +158,7 @@ ISO installs are unaffected: users create their own account during installation,
 | Logs, JSON and SIEM syslog, Prometheus metrics, tracing      | [docs/observability.md](docs/observability.md) |
 | HTTPS, mutual TLS, reverse proxies, VM console WebSockets    | [docs/tls.md](docs/tls.md)                     |
 | Every feature, route by route                                | [docs/FEATURES.md](docs/FEATURES.md)           |
+| SSO through a Proxmox OpenID realm                           | [docs/oidc.md](docs/oidc.md)                   |
 | Development stack, tests, contributing                       | [CONTRIBUTING.md](CONTRIBUTING.md)             |
 
 **Upgrades within v0.4.x**: pull the new image tag and restart; configuration stays in the database. The in-app documentation pages are seeded once and never overwritten, so your edits survive upgrades.
@@ -178,7 +179,7 @@ There is no migration: v0.4 is a rewrite and imports nothing from v0.3. Deploy i
 - Only Proxmox VE 9.x and newer are supported.
 - Security hardening is ongoing; no formal penetration test yet.
 - No HA-managed VMs, no cross-cluster migration; SDN and firewall rules stay in Proxmox.
-- SSO goes through a Proxmox OpenID realm set per cluster (see `docs/oidc.md`); logout is local only.
+- SSO goes through a Proxmox OpenID realm set per cluster (see [docs/oidc.md](docs/oidc.md)); logout is local only.
 
 Feedback and contributions are welcome through issues or pull requests. Next versions: <https://github.com/julienhmmt/pvmss/projects?query=is%3Aopen>.
 
