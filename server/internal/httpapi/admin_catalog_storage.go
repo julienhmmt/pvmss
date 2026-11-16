@@ -26,8 +26,8 @@ type adminStorageDTO struct {
 func (h *AdminCatalog) ServeStorages(w http.ResponseWriter, r *http.Request) {
 	clusterName, clusterErr := ResolveClusterParam(r, h.clusters)
 	if clusterErr != nil {
-		code, message := clusterParamError(clusterErr)
-		writeAdminError(w, http.StatusBadRequest, code, message)
+		status, code, message := clusterParamError(clusterErr)
+		writeAdminError(w, status, code, message)
 		return
 	}
 
@@ -78,8 +78,8 @@ func (h *AdminCatalog) ServeStorageToggle(w http.ResponseWriter, r *http.Request
 
 	clusterName, clusterErr := ResolveClusterValue(req.Cluster, h.clusters)
 	if clusterErr != nil {
-		code, message := clusterParamError(clusterErr)
-		writeAdminError(w, http.StatusBadRequest, code, message)
+		status, code, message := clusterParamError(clusterErr)
+		writeAdminError(w, status, code, message)
 		return
 	}
 

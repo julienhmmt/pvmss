@@ -341,8 +341,8 @@ func (h *VMCreate) resolveCatalogClient(w http.ResponseWriter, r *http.Request, 
 
 	clusterName, err := ResolveClusterValue(requested, h.clients)
 	if err != nil {
-		code, message := clusterParamError(err)
-		h.writeCreateError(w, http.StatusBadRequest, code, message)
+		status, code, message := clusterParamError(err)
+		h.writeCreateError(w, status, code, message)
 
 		return "", nil, false
 	}

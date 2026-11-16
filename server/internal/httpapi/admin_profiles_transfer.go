@@ -57,8 +57,8 @@ func (h *AdminCatalog) ServeProfileReorder(w http.ResponseWriter, r *http.Reques
 
 	clusterName, clusterErr := ResolveClusterValue(req.Cluster, h.clusters)
 	if clusterErr != nil {
-		code, message := clusterParamError(clusterErr)
-		writeAdminError(w, http.StatusBadRequest, code, message)
+		status, code, message := clusterParamError(clusterErr)
+		writeAdminError(w, status, code, message)
 		return
 	}
 
@@ -88,8 +88,8 @@ func (h *AdminCatalog) ServeProfileImport(w http.ResponseWriter, r *http.Request
 	for _, c := range req.Clusters {
 		name, err := ResolveClusterValue(c, h.clusters)
 		if err != nil {
-			code, message := clusterParamError(err)
-			writeAdminError(w, http.StatusBadRequest, code, message)
+			status, code, message := clusterParamError(err)
+			writeAdminError(w, status, code, message)
 			return
 		}
 		clusters = append(clusters, name)
@@ -107,11 +107,6 @@ func (h *AdminCatalog) ServeProfileImport(w http.ResponseWriter, r *http.Request
 	}
 
 	outcomes, err := catalog.ImportProfiles(r.Context(), h.store, clusters, items, req.Overwrite)
-	if err != nil {
-		SetErrorMsg(w, "admin import profiles failed", err)
-		writeAdminError(w, http.StatusInternalServerError, "internal_error", msgInternalServerError)
-		return
-	}
 
 	dto := make([]profileImportOutcomeDTO, len(outcomes))
 	counts := map[string]int{}
@@ -120,9 +115,19 @@ func (h *AdminCatalog) ServeProfileImport(w http.ResponseWriter, r *http.Request
 		counts[o.Result]++
 	}
 
-	h.recordAdminAction(r, "admin.profiles.import", "profile", "",
-		fmt.Sprintf("imported profiles to %d cluster(s): %d created, %d updated, %d skipped, %d invalid",
-			len(clusters), counts[catalog.ImportCreated], counts[catalog.ImportUpdated], counts[catalog.ImportSkipped], counts[catalog.ImportInvalid]),
-		[]any{map[string]any{"clusters": clusters, "overwrite": req.Overwrite, "results": counts}})
+	// A mid-import failure still returns the outcomes already written: audit
+	// them so a partial import never lands silently.
+	if len(outcomes) > 0 {
+		h.recordAdminAction(r, "admin.profiles.import", "profile", "",
+			fmt.Sprintf("imported profiles to %d cluster(s): %d created, %d updated, %d skipped, %d invalid",
+				len(clusters), counts[catalog.ImportCreated], counts[catalog.ImportUpdated], counts[catalog.ImportSkipped], counts[catalog.ImportInvalid]),
+			[]any{map[string]any{"clusters": clusters, "overwrite": req.Overwrite, "results": counts}})
+	}
+	if err != nil {
+		SetErrorMsg(w, "admin import profiles failed", err)
+		writeAdminError(w, http.StatusInternalServerError, "internal_error", msgInternalServerError)
+		return
+	}
+
 	writeAdminJSON(w, http.StatusOK, dto)
 }

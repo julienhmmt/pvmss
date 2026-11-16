@@ -5,6 +5,7 @@ import (
 	"errors"
 	"net/http"
 	"pvmss/server/internal/cluster"
+	"slices"
 )
 
 // ErrClusterRequired indicates that an ambiguous multi-cluster request omitted its choice.
@@ -34,7 +35,10 @@ func resolveClusterValue(value string, lister ClusterLister) (string, error) {
 	}
 	names := lister.List()
 	if value != "" {
-		return value, nil
+		if slices.Contains(names, value) {
+			return value, nil
+		}
+		return "", cluster.ErrClusterNotFound
 	}
 	if len(names) == 1 {
 		return names[0], nil
@@ -45,12 +49,14 @@ func resolveClusterValue(value string, lister ClusterLister) (string, error) {
 	return "", ErrClusterRequired
 }
 
-func clusterParamError(err error) (string, string) {
+// clusterParamError maps a resolution failure to its response: an unknown
+// cluster name is a 404, a missing-but-required choice stays a 400.
+func clusterParamError(err error) (int, string, string) {
 	if errors.Is(err, ErrClusterRequired) {
-		return "cluster_required", "cluster parameter is required when multiple clusters are configured"
+		return http.StatusBadRequest, "cluster_required", "cluster parameter is required when multiple clusters are configured"
 	}
 	if errors.Is(err, cluster.ErrClusterNotFound) {
-		return "not_found", "cluster not found"
+		return http.StatusNotFound, "cluster_not_found", "cluster not found"
 	}
-	return codeInvalidRequest, "invalid cluster parameter"
+	return http.StatusBadRequest, codeInvalidRequest, "invalid cluster parameter"
 }

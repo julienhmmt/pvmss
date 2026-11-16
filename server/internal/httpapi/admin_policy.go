@@ -93,8 +93,8 @@ func (handler *AdminPolicy) ServePolicy(w http.ResponseWriter, r *http.Request) 
 
 	clusterName, clusterErr := ResolveClusterParam(r, handler.clusters)
 	if clusterErr != nil {
-		code, message := clusterParamError(clusterErr)
-		writeAdminError(w, http.StatusBadRequest, code, message)
+		status, code, message := clusterParamError(clusterErr)
+		writeAdminError(w, status, code, message)
 		return
 	}
 
@@ -122,8 +122,8 @@ func (handler *AdminPolicy) ServePolicyUpdate(w http.ResponseWriter, r *http.Req
 
 	clusterName, clusterErr := ResolveClusterValue(request.Cluster, handler.clusters)
 	if clusterErr != nil {
-		code, message := clusterParamError(clusterErr)
-		writeAdminError(w, http.StatusBadRequest, code, message)
+		status, code, message := clusterParamError(clusterErr)
+		writeAdminError(w, status, code, message)
 		return
 	}
 

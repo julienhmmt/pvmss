@@ -195,8 +195,8 @@ func (h *AdminRecovery) ServeScan(w http.ResponseWriter, r *http.Request) {
 	}
 	clusterName, clusterErr := ResolveClusterValue(req.Cluster, h.clients)
 	if clusterErr != nil {
-		code, message := clusterParamError(clusterErr)
-		writeAdminError(w, http.StatusBadRequest, code, message)
+		status, code, message := clusterParamError(clusterErr)
+		writeAdminError(w, status, code, message)
 		return
 	}
 	report, err := h.scan(w, r, clusterName)
@@ -222,8 +222,8 @@ func (h *AdminRecovery) ServeAdopt(w http.ResponseWriter, r *http.Request) {
 	}
 	clusterName, clusterErr := ResolveClusterValue(req.Cluster, h.clients)
 	if clusterErr != nil {
-		code, message := clusterParamError(clusterErr)
-		writeAdminError(w, http.StatusBadRequest, code, message)
+		status, code, message := clusterParamError(clusterErr)
+		writeAdminError(w, status, code, message)
 		return
 	}
 	client, projection, err := h.adoptionDeps(clusterName)
@@ -269,8 +269,8 @@ func (h *AdminRecovery) serveDismissal(w http.ResponseWriter, r *http.Request, h
 	}
 	clusterName, clusterErr := ResolveClusterValue(req.Cluster, h.clients)
 	if clusterErr != nil {
-		code, message := clusterParamError(clusterErr)
-		writeAdminError(w, http.StatusBadRequest, code, message)
+		status, code, message := clusterParamError(clusterErr)
+		writeAdminError(w, status, code, message)
 		return
 	}
 	if err := h.writeDismissals(r, clusterName, req, actor.Username, hide); err != nil {

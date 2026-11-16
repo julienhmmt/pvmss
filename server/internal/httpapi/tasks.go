@@ -127,8 +127,8 @@ func (h *Tasks) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 	clusterName, err := ResolveClusterParam(r, h.clients)
 	if err != nil {
-		code, message := clusterParamError(err)
-		h.writeTaskError(w, http.StatusBadRequest, code, message)
+		status, code, message := clusterParamError(err)
+		h.writeTaskError(w, status, code, message)
 
 		return
 	}

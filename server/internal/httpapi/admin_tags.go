@@ -33,8 +33,8 @@ type tagColorRequest struct {
 func (h *AdminCatalog) ServeTags(w http.ResponseWriter, r *http.Request) {
 	clusterName, clusterErr := ResolveClusterParam(r, h.clusters)
 	if clusterErr != nil {
-		code, message := clusterParamError(clusterErr)
-		writeAdminError(w, http.StatusBadRequest, code, message)
+		status, code, message := clusterParamError(clusterErr)
+		writeAdminError(w, status, code, message)
 		return
 	}
 
@@ -66,8 +66,8 @@ func (h *AdminCatalog) ServeTagCreate(w http.ResponseWriter, r *http.Request) {
 
 	clusterName, clusterErr := ResolveClusterValue(req.Cluster, h.clusters)
 	if clusterErr != nil {
-		code, message := clusterParamError(clusterErr)
-		writeAdminError(w, http.StatusBadRequest, code, message)
+		status, code, message := clusterParamError(clusterErr)
+		writeAdminError(w, status, code, message)
 		return
 	}
 
@@ -113,8 +113,8 @@ func (h *AdminCatalog) ServeTagColor(w http.ResponseWriter, r *http.Request) {
 
 	clusterName, clusterErr := ResolveClusterValue(req.Cluster, h.clusters)
 	if clusterErr != nil {
-		code, message := clusterParamError(clusterErr)
-		writeAdminError(w, http.StatusBadRequest, code, message)
+		status, code, message := clusterParamError(clusterErr)
+		writeAdminError(w, status, code, message)
 		return
 	}
 
@@ -161,8 +161,8 @@ func (h *AdminCatalog) ServeTagDelete(w http.ResponseWriter, r *http.Request) {
 
 	clusterName, clusterErr := ResolveClusterParam(r, h.clusters)
 	if clusterErr != nil {
-		code, message := clusterParamError(clusterErr)
-		writeAdminError(w, http.StatusBadRequest, code, message)
+		status, code, message := clusterParamError(clusterErr)
+		writeAdminError(w, status, code, message)
 		return
 	}
 

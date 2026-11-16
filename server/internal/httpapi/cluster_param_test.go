@@ -28,6 +28,7 @@ func TestResolveClusterParam(t *testing.T) {
 		{name: "sole cluster defaults", clusters: []string{auditTestCluster}, want: auditTestCluster},
 		{name: "multiple clusters require choice", clusters: []string{auditTestCluster, crossSecondaryCluster}, wantError: true},
 		{name: "explicit choice passes through", clusters: []string{auditTestCluster, crossSecondaryCluster}, query: "?cluster=" + crossSecondaryCluster, want: crossSecondaryCluster},
+		{name: "unknown cluster rejected", clusters: []string{auditTestCluster}, query: "?cluster=ghost", wantError: true},
 	}
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {

@@ -30,8 +30,8 @@ type createTarget struct {
 func (h *VMCreate) resolveCreateTarget(ctx context.Context, w http.ResponseWriter, requestedCluster string) (createTarget, bool) {
 	clusterName, err := ResolveClusterValue(requestedCluster, h.clients)
 	if err != nil {
-		code, message := clusterParamError(err)
-		h.writeCreateError(w, http.StatusBadRequest, code, message)
+		status, code, message := clusterParamError(err)
+		h.writeCreateError(w, status, code, message)
 
 		return createTarget{}, false
 	}
