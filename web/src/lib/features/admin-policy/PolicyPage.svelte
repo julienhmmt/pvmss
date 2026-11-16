@@ -1,6 +1,7 @@
 <script lang="ts">
 	import PolicyForm from './PolicyForm.svelte';
-	import type { AdminPolicy, AdminPolicyPatch } from './policy.svelte';
+	import PolicyImportDialog from './PolicyImportDialog.svelte';
+	import { buildPolicyExport, type AdminPolicy, type AdminPolicyPatch, type PolicyExportItem, type PolicyImportOutcome } from './policy.svelte';
 	import type { ClusterOption } from '#lib/shared/clusters.js';
 	import { m } from '#lib/paraglide/messages.js';
 	import PageHeader from '#lib/shared/ui/PageHeader.svelte';
@@ -26,6 +27,7 @@
 		onLoad: () => void;
 		onRetry: () => void;
 		onSave: (patch: AdminPolicyPatch) => void;
+		onImport: (clusters: string[], item: PolicyExportItem) => Promise<PolicyImportOutcome[] | null>;
 	}
 
 	let {
@@ -42,12 +44,35 @@
 		onClusterChange,
 		onLoad,
 		onRetry,
-		onSave
+		onSave,
+		onImport
 	}: Props = $props();
 
 	let dirty = $state(false);
 	let pendingCluster: string | null = $state(null);
 	let switchDialogOpen = $state(false);
+	let showImport = $state(false);
+	// The form captures the server snapshot when it mounts, so an import has to
+	// remount it to show the values it just wrote.
+	let formKey = $state(0);
+
+	function downloadExport(): void {
+		if (policy === null) return;
+		const url = URL.createObjectURL(new Blob([buildPolicyExport(policy)], { type: 'application/json' }));
+		const a = document.createElement('a');
+		a.href = url;
+		a.download = `pvmss-policy-${cluster || 'cluster'}.json`;
+		a.click();
+		// Revoke after the browser has taken the blob: Firefox cancels the
+		// download when the URL dies in the same tick.
+		setTimeout(() => URL.revokeObjectURL(url));
+	}
+
+	async function handleImport(clusters: string[], item: PolicyExportItem): Promise<PolicyImportOutcome[] | null> {
+		const outcomes = await onImport(clusters, item);
+		if (outcomes !== null) formKey++;
+		return outcomes;
+	}
 
 	function handleDirtyChange(value: boolean): void {
 		dirty = value;
@@ -87,6 +112,8 @@
 			onChange={handleClusterChange}
 			id="policy-cluster"
 		/>
+		<Button variant="secondary" disabled={policy === null} onclick={() => (showImport = true)}>{m['policy.import']()}</Button>
+		<Button variant="secondary" disabled={policy === null} onclick={downloadExport}>{m['policy.export']()}</Button>
 	{/snippet}
 </PageHeader>
 
@@ -108,19 +135,31 @@
 			<Button variant="secondary" onclick={onLoad}>{m['policy.retry']()}</Button>
 		</div>
 	{:else if policy !== null}
-		<PolicyForm
-			{policy}
-			{saving}
-			{saveError}
-			{onSave}
-			onDirtyChange={handleDirtyChange}
-		>
-			{#snippet quotaOverrides()}
-				<QuotaOverridesList {overrides} error={overridesError} />
-			{/snippet}
-		</PolicyForm>
+		{#key formKey}
+			<PolicyForm
+				{policy}
+				{saving}
+				{saveError}
+				{onSave}
+				onDirtyChange={handleDirtyChange}
+			>
+				{#snippet quotaOverrides()}
+					<QuotaOverridesList {overrides} error={overridesError} />
+				{/snippet}
+			</PolicyForm>
+		{/key}
 	{/if}
 </section>
+
+<PolicyImportDialog
+	bind:open={showImport}
+	{clusterOptions}
+	{cluster}
+	{saving}
+	{saveError}
+	onImport={handleImport}
+	onClose={() => (showImport = false)}
+/>
 
 <ConfirmDialog
 	open={switchDialogOpen}

@@ -32,4 +32,5 @@
 	sortBy={store.sortBy}
 	sortDir={store.sortDir}
 	onSort={(column) => store.setSort(column)}
+	onImport={(items, overwrite) => store.importNodes(items, overwrite)}
 />

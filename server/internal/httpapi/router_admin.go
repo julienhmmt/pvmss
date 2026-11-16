@@ -111,12 +111,24 @@ func registerAdminCatalogRoutes(mux *http.ServeMux, adminProtect adminRouteProte
 }
 
 // registerAdminPolicyRoutes wires the admin policy endpoints (gabarits,
-// quotas, node capacity). Admin-only.
+// quotas, node capacity, their imports). Admin-only.
 func registerAdminPolicyRoutes(mux *http.ServeMux, adminProtect adminRouteProtect, h *AdminPolicy) {
-	mux.Handle("GET /api/v1/admin/policy", adminProtect(http.MethodGet, http.HandlerFunc(h.ServePolicy)))
-	mux.Handle("PUT /api/v1/admin/policy", adminProtect(http.MethodPut, http.HandlerFunc(h.ServePolicyUpdate)))
-	mux.Handle("GET /api/v1/admin/policy/nodes", adminProtect(http.MethodGet, http.HandlerFunc(h.ServePolicyNodes)))
-	mux.Handle("PUT /api/v1/admin/policy/nodes/{node}", adminProtect(http.MethodPut, http.HandlerFunc(h.ServePolicyNodeUpdate)))
+	routes := []struct {
+		pattern string
+		method  string
+		handler http.HandlerFunc
+	}{
+		{"GET /api/v1/admin/policy", http.MethodGet, h.ServePolicy},
+		{"PUT /api/v1/admin/policy", http.MethodPut, h.ServePolicyUpdate},
+		{"POST /api/v1/admin/policy/import", http.MethodPost, h.ServePolicyImport},
+		{"GET /api/v1/admin/policy/nodes", http.MethodGet, h.ServePolicyNodes},
+		{"PUT /api/v1/admin/policy/nodes/{node}", http.MethodPut, h.ServePolicyNodeUpdate},
+		{"POST /api/v1/admin/policy/nodes/import", http.MethodPost, h.ServePolicyNodesImport},
+	}
+
+	for _, route := range routes {
+		mux.Handle(route.pattern, adminProtect(route.method, route.handler))
+	}
 }
 
 // registerAdminQuotaOverrideRoutes wires the per-pool quota override endpoints

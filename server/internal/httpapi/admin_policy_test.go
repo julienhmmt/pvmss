@@ -285,8 +285,10 @@ func policyMux(handler *httpapi.AdminPolicy, authHandler *httpapi.Auth) *http.Se
 	guard := authHandler.RequireAdmin
 	mux.Handle("GET /api/v1/admin/policy", guard(http.HandlerFunc(handler.ServePolicy)))
 	mux.Handle("PUT /api/v1/admin/policy", guard(http.HandlerFunc(handler.ServePolicyUpdate)))
+	mux.Handle("POST /api/v1/admin/policy/import", guard(http.HandlerFunc(handler.ServePolicyImport)))
 	mux.Handle("GET /api/v1/admin/policy/nodes", guard(http.HandlerFunc(handler.ServePolicyNodes)))
 	mux.Handle("PUT /api/v1/admin/policy/nodes/{node}", guard(http.HandlerFunc(handler.ServePolicyNodeUpdate)))
+	mux.Handle("POST /api/v1/admin/policy/nodes/import", guard(http.HandlerFunc(handler.ServePolicyNodesImport)))
 
 	return mux
 }

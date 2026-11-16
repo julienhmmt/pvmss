@@ -1,9 +1,18 @@
 <script lang="ts">
 	import CapacityCell from './CapacityCell.svelte';
 	import NodeCapacityForm from './NodeCapacityForm.svelte';
+	import NodeCapacityImportDialog from './NodeCapacityImportDialog.svelte';
 	import NodeLoadCell from './NodeLoadCell.svelte';
 	import { resolve } from '$app/paths';
-	import type { NodeCapacity, NodeCapacityPatch, NodeCapacitySortColumn } from './policyNodes.svelte';
+	import {
+		buildNodeCapacityExport,
+		cappedNodes,
+		type NodeCapacity,
+		type NodeCapacityExportItem,
+		type NodeCapacityImportOutcome,
+		type NodeCapacityPatch,
+		type NodeCapacitySortColumn
+	} from './policyNodes.svelte';
 	import type { ClusterOption } from '#lib/shared/clusters.js';
 	import type { NodeStatus } from '../cluster/nodes.svelte';
 	import { m } from '#lib/paraglide/messages.js';
@@ -43,6 +52,7 @@
 		sortBy: NodeCapacitySortColumn;
 		sortDir: 'asc' | 'desc';
 		onSort: (column: NodeCapacitySortColumn) => void;
+		onImport: (items: NodeCapacityExportItem[], overwrite: boolean) => Promise<NodeCapacityImportOutcome[] | null>;
 	}
 
 	let {
@@ -66,10 +76,28 @@
 		onRefresh,
 		sortBy,
 		sortDir,
-		onSort
+		onSort,
+		onImport
 	}: Props = $props();
 
 	let expanded = $state<string | null>(null);
+	let showImport = $state(false);
+
+	function downloadExport(): void {
+		const url = URL.createObjectURL(new Blob([buildNodeCapacityExport(cluster, nodes)], { type: 'application/json' }));
+		const a = document.createElement('a');
+		a.href = url;
+		a.download = `pvmss-node-capacity-${cluster || 'cluster'}.json`;
+		a.click();
+		setTimeout(() => URL.revokeObjectURL(url));
+	}
+
+	// The inline editor captures the caps when its row expands, so an import
+	// closes it before the reload.
+	async function handleImport(items: NodeCapacityExportItem[], overwrite: boolean): Promise<NodeCapacityImportOutcome[] | null> {
+		expanded = null;
+		return onImport(items, overwrite);
+	}
 
 	function toggleEditor(node: string): void {
 		expanded = expanded === node ? null : node;
@@ -112,8 +140,10 @@
 
 <PageHeader title={m['policy.nodeTitle']()} eyebrow={m['chrome.adminNav.policy']()} description={m['policy.nodeDescription']()} titleId="node-policy-title">
 	{#snippet actions()}
-		<div class="flex items-center gap-4">
+		<div class="flex flex-wrap items-center gap-4">
 			<ClusterSelector options={clusterOptions} value={cluster} onChange={onClusterChange} id="policy-nodes-cluster" />
+			<Button variant="secondary" size="sm" disabled={nodes.length === 0} onclick={() => (showImport = true)}>{m['policy.nodesImport']()}</Button>
+			<Button variant="secondary" size="sm" disabled={cappedNodes(nodes).length === 0} onclick={downloadExport}>{m['policy.nodesExport']()}</Button>
 			<div class="flex flex-col items-end gap-1">
 				<Button variant="secondary" size="sm" onclick={onRefresh} disabled={refreshing || refreshDisabled} label={refreshButtonLabel} data-testid="refresh-button">
 					{refreshButtonLabel}
@@ -224,3 +254,11 @@
 		</TableCard>
 	{/if}
 </section>
+
+<NodeCapacityImportDialog
+	bind:open={showImport}
+	{saving}
+	{saveError}
+	onImport={handleImport}
+	onClose={() => (showImport = false)}
+/>

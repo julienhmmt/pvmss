@@ -50,6 +50,61 @@ export interface AdminPolicyPatch {
 	quota?: Partial<Quota>;
 }
 
+/** Export file kind tag and version; bump the version on a breaking change. */
+export const POLICY_EXPORT_KIND = 'pvmss-policy';
+export const POLICY_EXPORT_VERSION = 1;
+
+/** One cluster's policy as it travels through an export file. */
+export interface PolicyExportItem {
+	gabarit: Gabarit;
+	quota: Quota;
+}
+
+export interface PolicyImportOutcome {
+	cluster: string;
+	result: 'updated' | 'unchanged' | 'invalid' | 'failed';
+	error?: string;
+}
+
+const GABARIT_FIELDS = [
+	'maxSockets',
+	'maxCores',
+	'maxMemoryMB',
+	'maxDiskPerVmGb',
+	'maxNetworkCards',
+	'maxSnapshots',
+	'isolationVlanTag',
+	'vmidMin',
+	'vmidMax',
+	'leaseDays'
+] as const;
+
+/** Serialises the loaded policy to the export file content. */
+export function buildPolicyExport(policy: AdminPolicy): string {
+	return JSON.stringify(
+		{ kind: POLICY_EXPORT_KIND, version: POLICY_EXPORT_VERSION, cluster: policy.cluster, gabarit: policy.gabarit, quota: policy.quota },
+		null,
+		2
+	);
+}
+
+/** Parses an export file. Every field must be present: a missing one would
+ *  silently uncap that dimension. Ranges are validated by the server. */
+export function parsePolicyExport(text: string): PolicyExportItem {
+	const data: unknown = JSON.parse(text);
+	if (typeof data !== 'object' || data === null) throw new Error(m['policy.importInvalidFile']());
+	const file = data as { kind?: unknown; version?: unknown; gabarit?: unknown; quota?: unknown };
+	if (file.kind !== POLICY_EXPORT_KIND || file.version !== POLICY_EXPORT_VERSION) throw new Error(m['policy.importInvalidFile']());
+	if (!hasNumbers(file.gabarit, GABARIT_FIELDS) || !hasNumbers(file.quota, ['maxVmPerUser'])) {
+		throw new Error(m['policy.importInvalidFile']());
+	}
+	return { gabarit: file.gabarit as Gabarit, quota: file.quota as Quota };
+}
+
+function hasNumbers(value: unknown, fields: readonly string[]): boolean {
+	return typeof value === 'object' && value !== null && fields.every((field) => Number.isInteger((value as Record<string, unknown>)[field]));
+}
+
 /** Manages server-owned global gabarit, quota, and YAML policy data. */
 export class AdminPolicyStore {
 	policy = $state.raw<AdminPolicy | null>(null);
@@ -134,6 +189,28 @@ export class AdminPolicyStore {
 		} catch (error: unknown) {
 			this.saveError = error instanceof ApiRequestError ? error.message : m['policy.saveError']();
 			throw error;
+		} finally {
+			this.saving = false;
+		}
+	}
+
+	/** Writes the exported policy to every target cluster and reloads the
+	 *  cluster on screen; the per-cluster report is returned for the dialog. */
+	async importPolicy(clusters: string[], item: PolicyExportItem): Promise<PolicyImportOutcome[] | null> {
+		this.saving = true;
+		this.saveError = null;
+		this.saved = false;
+		try {
+			const outcomes = await post<PolicyImportOutcome[]>('/api/v1/admin/policy/import', {
+				clusters,
+				gabarit: item.gabarit,
+				quota: item.quota
+			});
+			await this.load();
+			return outcomes;
+		} catch (error: unknown) {
+			this.saveError = error instanceof ApiRequestError ? error.message : m['policy.importError']();
+			return null;
 		} finally {
 			this.saving = false;
 		}

@@ -35,4 +35,5 @@
 	onRetry={() => void store.retryConnection()}
 	// The form's status line reports the outcome; a failure lands in store.saveError.
 	onSave={(patch) => void store.save(patch).catch(() => undefined)}
+	onImport={(clusters, item) => store.importPolicy(clusters, item)}
 />

@@ -1,5 +1,12 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { AdminPolicyNodesStore, translateNodeCapacityError, type NodeCapacity } from './policyNodes.svelte';
+import {
+	AdminPolicyNodesStore,
+	buildNodeCapacityExport,
+	NODE_CAPACITY_EXPORT_KIND,
+	parseNodeCapacityExport,
+	translateNodeCapacityError,
+	type NodeCapacity
+} from './policyNodes.svelte';
 
 function jsonResponse(status: number, body: unknown): Response {
 	return new Response(JSON.stringify(body), { status, headers: { 'Content-Type': 'application/json' } });
@@ -170,5 +177,61 @@ describe('AdminPolicyNodesStore', () => {
 			expect(translateNodeCapacityError('node_limit_above_capacity', 'something unexpected')).toBe('something unexpected');
 			expect(translateNodeCapacityError('other_code', "vcpu cap (3133) exceeds n's physical capacity (12)")).toBe("vcpu cap (3133) exceeds n's physical capacity (12)");
 		});
+	});
+});
+
+describe('node capacity export file', () => {
+	it('exports only the nodes carrying a cap', () => {
+		const nodes = [
+			fixture({ node: 'pve-node-01', maxVms: 4, maxVcpus: 8, maxRamGb: 16, maxDiskGb: 100 }),
+			fixture({ node: 'pve-node-02' })
+		];
+		const file = JSON.parse(buildNodeCapacityExport('pve', nodes)) as { kind: string; cluster: string; nodes: unknown[] };
+
+		expect(file.kind).toBe(NODE_CAPACITY_EXPORT_KIND);
+		expect(file.cluster).toBe('pve');
+		expect(file.nodes).toEqual([{ node: 'pve-node-01', maxVms: 4, maxVcpus: 8, maxRamGb: 16, maxDiskGb: 100 }]);
+	});
+
+	it('round-trips through parse', () => {
+		const capped = fixture({ node: 'pve-node-01', maxVms: 4, maxVcpus: 8, maxRamGb: 16, maxDiskGb: 100 });
+		expect(parseNodeCapacityExport(buildNodeCapacityExport('pve', [capped]))).toEqual([
+			{ node: 'pve-node-01', maxVms: 4, maxVcpus: 8, maxRamGb: 16, maxDiskGb: 100 }
+		]);
+	});
+
+	it('rejects a file with a missing cap', () => {
+		const file = JSON.parse(buildNodeCapacityExport('pve', [fixture({ node: 'pve-node-01', maxVms: 1 })])) as { nodes: Record<string, number>[] };
+		delete file.nodes[0]?.maxDiskGb;
+		expect(() => parseNodeCapacityExport(JSON.stringify(file))).toThrow();
+	});
+});
+
+describe('AdminPolicyNodesStore.importNodes', () => {
+	beforeEach(() => {
+		vi.restoreAllMocks();
+	});
+
+	it('posts the caps to the current cluster with the overwrite flag', async () => {
+		const outcomes = [{ node: 'pve-node-01', result: 'updated' }];
+		const nodes = [fixture({ node: 'pve-node-01', maxVms: 4 })];
+		const fetchMock = vi.fn().mockImplementation((url: string) => {
+			if (url === '/api/v1/admin/policy/nodes/import') return Promise.resolve(jsonResponse(200, outcomes));
+			if (url === '/api/v1/auth/clusters') return Promise.resolve(jsonResponse(200, [{ name: 'pve', displayName: 'pve' }]));
+			if (url.startsWith('/api/v1/admin/policy/nodes?')) return Promise.resolve(jsonResponse(200, { nodes, refreshedAt: '' }));
+			return Promise.resolve(jsonResponse(404, { code: 'not_found', message: `unexpected ${url}` }));
+		});
+		vi.stubGlobal('fetch', fetchMock);
+		const store = new AdminPolicyNodesStore();
+		store.cluster = 'pve';
+		const items = [{ node: 'pve-node-01', maxVms: 4, maxVcpus: 8, maxRamGb: 16, maxDiskGb: 100 }];
+
+		const result = await store.importNodes(items, true);
+
+		expect(result).toEqual(outcomes);
+		expect(store.nodes).toEqual(nodes);
+		const call = fetchMock.mock.calls.find(([url]) => url === '/api/v1/admin/policy/nodes/import');
+		const init = call?.[1] as RequestInit | undefined;
+		expect(JSON.parse(init?.body as string)).toEqual({ cluster: 'pve', overwrite: true, nodes: items });
 	});
 });

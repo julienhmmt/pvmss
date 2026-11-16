@@ -75,8 +75,11 @@ Users at their quota can file an increase request from the create page;
 pending requests lead the dashboard alerts and the sidebar count. Approving
 one writes an override for the requester's pool (optionally a different
 number), denying leaves the allowance unchanged. **Node capacity** caps how
-much of each node PVMSS may allocate. All of this is enforced server-side
-before any Proxmox call.
+much of each node PVMSS may allocate. Both pages export their settings to a
+JSON file and import one back: limits to one, several or all clusters, node
+capacity to the cluster on screen (nodes the cluster does not report are
+listed as not found). All of this is enforced server-side before any Proxmox
+call.
 
 ## Documentation
 
