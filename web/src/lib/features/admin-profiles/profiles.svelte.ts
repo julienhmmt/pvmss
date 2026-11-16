@@ -53,7 +53,22 @@ export function parseProfileExport(text: string): ProfileExportItem[] {
 		throw new Error(m['admin.profiles.importInvalidFile']());
 	}
 	const items = (data as { profiles: unknown[] }).profiles;
-	if (!items.every((p) => typeof p === 'object' && p !== null && typeof (p as { label?: unknown }).label === 'string')) {
+	// A wrong-typed field would fail the server's strict decode as a bare 400;
+	// check them here so the file error stays readable. Missing fields are
+	// left to the server's per-row validation.
+	const numbers = ['sockets', 'cpuCores', 'memoryMB', 'diskGB'];
+	const strings = ['id', 'bus', 'description'];
+	const valid = items.every((p) => {
+		if (typeof p !== 'object' || p === null) return false;
+		const item = p as Record<string, unknown>;
+		return (
+			typeof item.label === 'string' &&
+			numbers.every((f) => item[f] === undefined || Number.isInteger(item[f])) &&
+			strings.every((f) => item[f] === undefined || typeof item[f] === 'string') &&
+			(item.enabled === undefined || typeof item.enabled === 'boolean')
+		);
+	});
+	if (!valid) {
 		throw new Error(m['admin.profiles.importInvalidFile']());
 	}
 	return items as ProfileExportItem[];
