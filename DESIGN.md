@@ -15,9 +15,9 @@ colors:
   border: "#e8e4e0"
   border-subtle: "#f1eeeb"
   destructive: "oklch(57.7% 0.245 27.325deg)"
-  success: "oklch(64% 0.17 145deg)"
-  warning: "oklch(75% 0.16 75deg)"
-  info: "oklch(62% 0.17 245deg)"
+  success: "oklch(60% 0.13 150deg)"
+  warning: "oklch(78% 0.14 88deg)"
+  info: "oklch(58% 0.1 240deg)"
   sidebar: "#ffffff"
   background-dark: "oklch(17% 0.006 49deg)"
   card-dark: "oklch(21% 0.006 56deg)"
@@ -192,11 +192,11 @@ colors carry state, not decoration.
 
 - **Destructive** (`oklch(57.7% 0.245 27.325deg)`): Delete actions, error
   states, invalid fields.
-- **Success** (`oklch(64% 0.17 145deg)`): Positive confirmations, running status,
+- **Success** (`oklch(60% 0.13 150deg)`): Positive confirmations, running status,
   completed tasks.
-- **Warning** (`oklch(75% 0.16 75deg)`): Caution states, TLS insecure, capacity
+- **Warning** (`oklch(78% 0.14 88deg)`): Caution states, TLS insecure, capacity
   warnings.
-- **Info** (`oklch(62% 0.17 245deg)`): Informational toasts, info banners.
+- **Info** (`oklch(58% 0.1 240deg)`): Informational toasts, info banners.
 
 Each semantic color has a soft variant (background), soft-foreground, and
 soft-border for use in banners, badges, and soft-state surfaces.
