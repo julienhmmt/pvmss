@@ -38,6 +38,7 @@ var importableTables = []string{
 	"managed_pools",
 	"pool_quota_overrides",
 	"audit_config",
+	"recovery_dismissals",
 }
 
 // excludedImportTables is every live table an import never touches, with

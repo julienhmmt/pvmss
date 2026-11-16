@@ -8,6 +8,7 @@ import (
 	"pvmss/server/internal/pools"
 	"pvmss/server/internal/store"
 	"slices"
+	"strconv"
 	"strings"
 )
 
@@ -42,7 +43,7 @@ func Scan(ctx context.Context, lister PoolLister, projection *inventory.Projecti
 		return Report{}, err
 	}
 
-	report := Report{Pools: []OrphanPool{}, LooseVMs: []VMRef{}, Tags: []OrphanTag{}}
+	report := Report{Pools: []OrphanPool{}, LooseVMs: []VMRef{}, Tags: []OrphanTag{}, HiddenPools: []HiddenPool{}, HiddenLooseVMs: []HiddenLooseVM{}, HiddenTags: []HiddenTag{}}
 	tagCounts := map[string]int{}
 
 	report.Pools = orphanPools(poolList, index, managed, knownTags, tagCounts)
@@ -60,6 +61,17 @@ func Scan(ctx context.Context, lister PoolLister, projection *inventory.Projecti
 	slices.SortFunc(report.LooseVMs, func(a, b VMRef) int { return a.VMID - b.VMID })
 
 	report.Tags = orphanTags(tagCounts)
+
+	dismissed, err := st.RecoveryDismissals(ctx, clusterName)
+	if err != nil {
+		return Report{}, err
+	}
+
+	// Partition after tag counting: members of hidden pools still count -
+	// the tag list reflects what exists cluster-side.
+	report.Pools, report.HiddenPools = splitHiddenPools(report.Pools, dismissed)
+	report.LooseVMs, report.HiddenLooseVMs = splitHiddenLooseVMs(report.LooseVMs, dismissed)
+	report.Tags, report.HiddenTags = splitHiddenTags(report.Tags, dismissed)
 
 	return report, nil
 }
@@ -90,6 +102,60 @@ func orphanPools(poolList []cluster.Pool, index *inventory.Index, managed map[st
 	}
 
 	return orphans
+}
+
+// splitHiddenPools moves dismissed pools from the visible list to hidden
+// summaries. Both lists keep the input order (already name-sorted).
+func splitHiddenPools(pools []OrphanPool, dismissed map[store.RecoveryDismissal]struct{}) ([]OrphanPool, []HiddenPool) {
+	visible := []OrphanPool{}
+	hidden := []HiddenPool{}
+
+	for _, pool := range pools {
+		if _, ok := dismissed[store.RecoveryDismissal{Kind: store.RecoveryDismissalPool, Item: pool.Name}]; ok {
+			hidden = append(hidden, HiddenPool{Name: pool.Name, Comment: pool.Comment, MemberCount: len(pool.Members)})
+			continue
+		}
+
+		visible = append(visible, pool)
+	}
+
+	return visible, hidden
+}
+
+// splitHiddenLooseVMs moves dismissed loose VMs (matched by vmid) to the
+// hidden list.
+func splitHiddenLooseVMs(vms []VMRef, dismissed map[store.RecoveryDismissal]struct{}) ([]VMRef, []HiddenLooseVM) {
+	visible := []VMRef{}
+	hidden := []HiddenLooseVM{}
+
+	for _, machine := range vms {
+		if _, ok := dismissed[store.RecoveryDismissal{Kind: store.RecoveryDismissalVM, Item: strconv.Itoa(machine.VMID)}]; ok {
+			hidden = append(hidden, HiddenLooseVM{VMID: machine.VMID, Name: machine.Name})
+			continue
+		}
+
+		visible = append(visible, machine)
+	}
+
+	return visible, hidden
+}
+
+// splitHiddenTags moves dismissed tags to the hidden list; the suggested
+// color is kept so a hidden tag can still be adopted.
+func splitHiddenTags(tags []OrphanTag, dismissed map[store.RecoveryDismissal]struct{}) ([]OrphanTag, []HiddenTag) {
+	visible := []OrphanTag{}
+	hidden := []HiddenTag{}
+
+	for _, tag := range tags {
+		if _, ok := dismissed[store.RecoveryDismissal{Kind: store.RecoveryDismissalTag, Item: tag.Name}]; ok {
+			hidden = append(hidden, tag)
+			continue
+		}
+
+		visible = append(visible, tag)
+	}
+
+	return visible, hidden
 }
 
 // orphanTags builds the sorted tag list from the accumulated counts, giving

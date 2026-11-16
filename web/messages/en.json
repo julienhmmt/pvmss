@@ -1285,6 +1285,36 @@
 	"admin.recovery.rescan": "Rescan",
 	"admin.recovery.scanning": "Scanning…",
 	"admin.recovery.lastScan": "Last scan: {time}",
+	"admin.recovery.select": "Select",
+	"admin.recovery.selectItem": "Select {name}",
+	"admin.recovery.hideItem": "Hide {name}",
+	"admin.recovery.unhideItem": "Show {name} again",
+	"admin.recovery.hideSelected": "Hide selected",
+	"admin.recovery.hiding": "Hiding…",
+	"admin.recovery.hidden": "Resources hidden.",
+	"admin.recovery.unhidden": "Resources unhidden.",
+	"admin.recovery.hideError": "Failed to update hidden resources.",
+	"admin.recovery.nothingToHide": "Select at least one pool, tag or VM to hide.",
+	"admin.recovery.hiddenHeading": [
+		{
+			"declarations": [
+				"input count",
+				"local countPlural = count: plural"
+			],
+			"selectors": [
+				"countPlural"
+			],
+			"match": {
+				"countPlural=one": "Hidden ({count} item)",
+				"countPlural=other": "Hidden ({count} items)"
+			}
+		}
+	],
+	"admin.recovery.hiddenHelp": "Items you hid stay untouched on the cluster and are never adopted. Unhide to bring them back.",
+	"admin.recovery.adoptItem": "Adopt",
+	"admin.recovery.selectAll": "Select all",
+	"admin.recovery.filterPlaceholder": "Filter by name, comment or VM…",
+	"admin.recovery.noMatch": "No resources match \"{query}\".",
 	"admin.settings.title": "Admin Settings - PVMSS",
 	"admin.settings.heading": "Settings",
 	"admin.settings.tabAudit": "Audit log",
@@ -2215,6 +2245,9 @@
 	"activity.action.admin_db_export": "Database exported",
 	"activity.action.admin_db_import": "Database imported",
 	"activity.action.admin_db_import_rejected": "Database import refused",
+	"activity.action.admin_recovery_adopt": "Recovery items adopted",
+	"activity.action.admin_recovery_hide": "Recovery items hidden",
+	"activity.action.admin_recovery_unhide": "Recovery items unhidden",
 	"activity.action.auth_login_failed": "Sign-in failed",
 	"activity.action.auth_admin_denied": "Admin access refused",
 	"activity.action.auth_csrf_rejected": "Request refused (CSRF)",

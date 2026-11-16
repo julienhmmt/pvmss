@@ -13,6 +13,7 @@ import (
 	"pvmss/server/internal/logctx"
 	"pvmss/server/internal/pools"
 	"pvmss/server/internal/store"
+	"strconv"
 	"sync"
 	"time"
 )
@@ -88,20 +89,59 @@ type recoveryTagDTO struct {
 	Color   string `json:"color"`
 }
 
+// recoveryHiddenPoolDTO is the summary shape for a dismissed pool: no
+// member list, keeping the report small.
+type recoveryHiddenPoolDTO struct {
+	Name        string `json:"name"`
+	Comment     string `json:"comment"`
+	MemberCount int    `json:"memberCount"`
+}
+
+type recoveryHiddenTagDTO struct {
+	Name    string `json:"name"`
+	VMCount int    `json:"vmCount"`
+	Color   string `json:"color"`
+}
+
+type recoveryHiddenVMDTO struct {
+	VMID int    `json:"vmid"`
+	Name string `json:"name"`
+}
+
 // recoveryReportDTO is the stable JSON contract for
 // GET /api/v1/admin/recovery and POST /api/v1/admin/recovery/scan.
 type recoveryReportDTO struct {
-	Cluster   string             `json:"cluster"`
-	ScannedAt string             `json:"scannedAt"`
-	Pools     []recoveryPoolDTO  `json:"pools"`
-	LooseVMs  []recoveryVMRefDTO `json:"looseVMs"`
-	Tags      []recoveryTagDTO   `json:"tags"`
+	Cluster        string                  `json:"cluster"`
+	ScannedAt      string                  `json:"scannedAt"`
+	Pools          []recoveryPoolDTO       `json:"pools"`
+	LooseVMs       []recoveryVMRefDTO      `json:"looseVMs"`
+	Tags           []recoveryTagDTO        `json:"tags"`
+	HiddenPools    []recoveryHiddenPoolDTO `json:"hiddenPools"`
+	HiddenLooseVMs []recoveryHiddenVMDTO   `json:"hiddenLooseVMs"`
+	HiddenTags     []recoveryHiddenTagDTO  `json:"hiddenTags"`
 }
 
 type adoptRequest struct {
 	Cluster string   `json:"cluster"`
 	Pools   []string `json:"pools"`
 	Tags    []string `json:"tags"`
+}
+
+// hideRequest is the body shared by POST /admin/recovery/hide and /unhide:
+// the pools and tags by name plus the loose VMs by vmid to (un)dismiss.
+type hideRequest struct {
+	Cluster string   `json:"cluster"`
+	Pools   []string `json:"pools"`
+	Tags    []string `json:"tags"`
+	VMs     []int    `json:"vms"`
+}
+
+// dismissalResultDTO acknowledges a hide/unhide call with the per-kind item
+// counts applied.
+type dismissalResultDTO struct {
+	Pools int `json:"pools"`
+	Tags  int `json:"tags"`
+	VMs   int `json:"vms"`
 }
 
 type scanRequest struct {
@@ -203,6 +243,81 @@ func (h *AdminRecovery) ServeAdopt(w http.ResponseWriter, r *http.Request) {
 	writeAdminJSON(w, http.StatusOK, adoptResultDTO{Pools: result.Pools, Tags: adoptedTagDTOs(result.Tags)})
 }
 
+// ServeHide handles POST /api/v1/admin/recovery/hide: records the named
+// items as dismissed so future scans report them in the hidden section
+// instead of the adoptable lists. Unknown names are stored anyway - hiding
+// is a statement about a name, so a stale report cannot produce an error.
+func (h *AdminRecovery) ServeHide(w http.ResponseWriter, r *http.Request) {
+	h.serveDismissal(w, r, true)
+}
+
+// ServeUnhide handles POST /api/v1/admin/recovery/unhide: removes dismissal
+// rows so the items reappear in the adoptable report.
+func (h *AdminRecovery) ServeUnhide(w http.ResponseWriter, r *http.Request) {
+	h.serveDismissal(w, r, false)
+}
+
+func (h *AdminRecovery) serveDismissal(w http.ResponseWriter, r *http.Request, hide bool) {
+	actor, ok := h.adminActor(w, r)
+	if !ok {
+		return
+	}
+	var req hideRequest
+	if err := decodeJSON(w, r, &req); err != nil {
+		writeAdminError(w, http.StatusBadRequest, "invalid_request", msgInvalidRequestBody)
+		return
+	}
+	clusterName, clusterErr := ResolveClusterValue(req.Cluster, h.clients)
+	if clusterErr != nil {
+		code, message := clusterParamError(clusterErr)
+		writeAdminError(w, http.StatusBadRequest, code, message)
+		return
+	}
+	if err := h.writeDismissals(r, clusterName, req, actor.Username, hide); err != nil {
+		SetErrorMsg(w, "admin recovery dismissal failed", err)
+		writeAdminError(w, http.StatusInternalServerError, "internal_error", msgInternalServerError)
+		return
+	}
+	action, verb := "admin.recovery.unhide", "unhid"
+	if hide {
+		action, verb = "admin.recovery.hide", "hid"
+	}
+	h.recordAdminAction(r, action, "cluster", clusterName,
+		fmt.Sprintf("%s %d pool(s), %d tag(s) and %d vm(s) on cluster %s", verb, len(req.Pools), len(req.Tags), len(req.VMs), clusterName),
+		[]any{map[string]any{auditKeyCluster: clusterName, "pools": req.Pools, "tags": req.Tags, "vms": req.VMs}})
+	h.invalidateCache(clusterName)
+	writeAdminJSON(w, http.StatusOK, dismissalResultDTO{Pools: len(req.Pools), Tags: len(req.Tags), VMs: len(req.VMs)})
+}
+
+// writeDismissals applies the three per-kind batches of a hide/unhide
+// request; a failure mid-way leaves earlier batches applied (idempotent).
+func (h *AdminRecovery) writeDismissals(r *http.Request, clusterName string, req hideRequest, actor string, hide bool) error {
+	vmItems := make([]string, len(req.VMs))
+	for i, vmid := range req.VMs {
+		vmItems[i] = strconv.Itoa(vmid)
+	}
+	batches := []struct {
+		kind  string
+		items []string
+	}{
+		{store.RecoveryDismissalPool, req.Pools},
+		{store.RecoveryDismissalTag, req.Tags},
+		{store.RecoveryDismissalVM, vmItems},
+	}
+	for _, batch := range batches {
+		var err error
+		if hide {
+			err = h.store.DismissRecoveryItems(r.Context(), clusterName, batch.kind, batch.items, actor)
+		} else {
+			err = h.store.RestoreRecoveryItems(r.Context(), clusterName, batch.kind, batch.items)
+		}
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
 // cachedReport returns the cached report when it is still fresh, or forever
 // when nothing adoptable remains (empty means the one-shot recovery is done).
 func (h *AdminRecovery) cachedReport(clusterName string) (recoveryReportDTO, bool) {
@@ -212,13 +327,22 @@ func (h *AdminRecovery) cachedReport(clusterName string) (recoveryReportDTO, boo
 	if !ok {
 		return recoveryReportDTO{}, false
 	}
-	if len(entry.report.Pools) == 0 && len(entry.report.Tags) == 0 {
+	if reportIsDrained(entry.report) {
 		return entry.report, true
 	}
 	if time.Since(entry.at) < h.scanCooldown {
 		return entry.report, true
 	}
 	return recoveryReportDTO{}, false
+}
+
+// reportIsDrained means the recovery is fully triaged: nothing adoptable and
+// nothing hidden. Visible loose VMs do not count (nothing can be done with
+// them); hidden items do, so a report with hidden entries stays fresh and
+// keeps tracking their cluster-side presence within the cooldown.
+func reportIsDrained(report recoveryReportDTO) bool {
+	return len(report.Pools) == 0 && len(report.Tags) == 0 &&
+		len(report.HiddenPools) == 0 && len(report.HiddenTags) == 0 && len(report.HiddenLooseVMs) == 0
 }
 
 func (h *AdminRecovery) storeCachedReport(clusterName string, report recoveryReportDTO) {
@@ -282,12 +406,39 @@ func reportDTO(clusterName string, report adoption.Report) recoveryReportDTO {
 		poolDTOs[i] = recoveryPoolDTO{Name: pool.Name, Comment: pool.Comment, Members: vmRefDTOs(pool.Members)}
 	}
 	return recoveryReportDTO{
-		Cluster:   clusterName,
-		ScannedAt: time.Now().UTC().Format(time.RFC3339),
-		Pools:     poolDTOs,
-		LooseVMs:  vmRefDTOs(report.LooseVMs),
-		Tags:      orphanTagDTOs(report.Tags),
+		Cluster:        clusterName,
+		ScannedAt:      time.Now().UTC().Format(time.RFC3339),
+		Pools:          poolDTOs,
+		LooseVMs:       vmRefDTOs(report.LooseVMs),
+		Tags:           orphanTagDTOs(report.Tags),
+		HiddenPools:    hiddenPoolDTOs(report.HiddenPools),
+		HiddenLooseVMs: hiddenVMDTOs(report.HiddenLooseVMs),
+		HiddenTags:     hiddenTagDTOs(report.HiddenTags),
 	}
+}
+
+func hiddenPoolDTOs(pools []adoption.HiddenPool) []recoveryHiddenPoolDTO {
+	out := make([]recoveryHiddenPoolDTO, len(pools))
+	for i, pool := range pools {
+		out[i] = recoveryHiddenPoolDTO{Name: pool.Name, Comment: pool.Comment, MemberCount: pool.MemberCount}
+	}
+	return out
+}
+
+func hiddenVMDTOs(vms []adoption.HiddenLooseVM) []recoveryHiddenVMDTO {
+	out := make([]recoveryHiddenVMDTO, len(vms))
+	for i, machine := range vms {
+		out[i] = recoveryHiddenVMDTO{VMID: machine.VMID, Name: machine.Name}
+	}
+	return out
+}
+
+func hiddenTagDTOs(tags []adoption.HiddenTag) []recoveryHiddenTagDTO {
+	out := make([]recoveryHiddenTagDTO, len(tags))
+	for i, tag := range tags {
+		out[i] = recoveryHiddenTagDTO{Name: tag.Name, VMCount: tag.VMCount, Color: tag.Color}
+	}
+	return out
 }
 
 func vmRefDTOs(refs []adoption.VMRef) []recoveryVMRefDTO {

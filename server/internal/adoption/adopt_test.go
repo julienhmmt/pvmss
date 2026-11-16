@@ -117,3 +117,40 @@ func TestAdopt_Idempotent(t *testing.T) {
 		t.Fatalf("tags = %+v, want none - db was already adopted", result.Tags)
 	}
 }
+
+// TestAdopt_AdoptsHiddenItems: a dismissed pool or tag can be adopted
+// straight from the hidden section - the selection filters against both
+// partitions - and adoption clears the dismissal rows so the item would
+// resurface visibly if it ever became an orphan again.
+func TestAdopt_AdoptsHiddenItems(t *testing.T) {
+	ctx, lister, projection, st := adoptFixture(t)
+
+	if err := st.DismissRecoveryItems(ctx, "default", store.RecoveryDismissalPool, []string{alicePool}, "admin"); err != nil {
+		t.Fatalf("dismiss pool: %v", err)
+	}
+	if err := st.DismissRecoveryItems(ctx, "default", store.RecoveryDismissalTag, []string{"db"}, "admin"); err != nil {
+		t.Fatalf("dismiss tag: %v", err)
+	}
+
+	result, err := adoption.Adopt(ctx, lister, projection, st, "default", adoption.Selection{
+		Pools: []string{alicePool},
+		Tags:  []string{"db"},
+	})
+	if err != nil {
+		t.Fatalf("Adopt: %v", err)
+	}
+	if len(result.Pools) != 1 || result.Pools[0] != alicePool {
+		t.Fatalf("pools = %+v, want [pvmss-alice] adopted while hidden", result.Pools)
+	}
+	if len(result.Tags) != 1 || result.Tags[0].Name != "db" || result.Tags[0].Color == "" {
+		t.Fatalf("tags = %+v, want db adopted with its suggested color", result.Tags)
+	}
+
+	dismissed, err := st.RecoveryDismissals(ctx, "default")
+	if err != nil {
+		t.Fatalf("RecoveryDismissals: %v", err)
+	}
+	if len(dismissed) != 0 {
+		t.Fatalf("dismissals = %+v, want cleared by adoption", dismissed)
+	}
+}

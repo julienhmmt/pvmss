@@ -41,12 +41,32 @@ type recoveryTagDTO struct {
 	Color   string `json:"color"`
 }
 
+type recoveryHiddenPoolDTO struct {
+	Name        string `json:"name"`
+	Comment     string `json:"comment"`
+	MemberCount int    `json:"memberCount"`
+}
+
+type recoveryHiddenTagDTO struct {
+	Name    string `json:"name"`
+	VMCount int    `json:"vmCount"`
+	Color   string `json:"color"`
+}
+
+type recoveryHiddenVMDTO struct {
+	VMID int    `json:"vmid"`
+	Name string `json:"name"`
+}
+
 type recoveryReportDTO struct {
-	Cluster   string             `json:"cluster"`
-	ScannedAt string             `json:"scannedAt"`
-	Pools     []recoveryPoolDTO  `json:"pools"`
-	LooseVMs  []recoveryVMRefDTO `json:"looseVMs"`
-	Tags      []recoveryTagDTO   `json:"tags"`
+	Cluster        string                  `json:"cluster"`
+	ScannedAt      string                  `json:"scannedAt"`
+	Pools          []recoveryPoolDTO       `json:"pools"`
+	LooseVMs       []recoveryVMRefDTO      `json:"looseVMs"`
+	Tags           []recoveryTagDTO        `json:"tags"`
+	HiddenPools    []recoveryHiddenPoolDTO `json:"hiddenPools"`
+	HiddenLooseVMs []recoveryHiddenVMDTO   `json:"hiddenLooseVMs"`
+	HiddenTags     []recoveryHiddenTagDTO  `json:"hiddenTags"`
 }
 
 type recoveryAdoptResultDTO struct {
@@ -435,6 +455,133 @@ func TestAdminRecovery_AdoptUnknownCluster404(t *testing.T) {
 	rec := adminRecoveryRequest(t, handler.ServeAdopt, http.MethodPost, "/api/v1/admin/recovery", adminCookie(t, authHandler), `{"cluster":"bogus","pools":["pvmss-old"]}`)
 	if rec.Code != http.StatusNotFound {
 		t.Fatalf("status = %d, want 404", rec.Code)
+	}
+}
+
+// Hiding moves pools and tags out of the adoptable lists into the hidden
+// summaries; hidden pool members keep feeding tag counts.
+func TestAdminRecovery_HideMovesPoolsAndTagsToHidden(t *testing.T) {
+	handler, authHandler, _, _ := newAdminRecoveryHandler(t)
+	cookie := adminCookie(t, authHandler)
+
+	rec := adminRecoveryRequest(t, handler.ServeHide, http.MethodPost, "/api/v1/admin/recovery/hide", cookie,
+		`{"cluster":"default","pools":["pvmss-old"],"tags":["oldtag"]}`)
+	if rec.Code != http.StatusOK {
+		t.Fatalf("hide status = %d: %s", rec.Code, rec.Body.String())
+	}
+
+	report := getRecoveryReport(t, handler, cookie)
+	if len(report.Pools) != 0 || len(report.Tags) != 0 {
+		t.Fatalf("visible report = %+v, want pools and tags hidden", report)
+	}
+	if len(report.HiddenPools) != 1 || report.HiddenPools[0].Name != recoveryOldPool || report.HiddenPools[0].MemberCount != 2 || report.HiddenPools[0].Comment != "previous install" {
+		t.Fatalf("hiddenPools = %+v, want pvmss-old x2 members", report.HiddenPools)
+	}
+	if len(report.HiddenTags) != 1 || report.HiddenTags[0].Name != recoveryOldTag || report.HiddenTags[0].VMCount != 2 {
+		t.Fatalf("hiddenTags = %+v, want oldtag x2", report.HiddenTags)
+	}
+}
+
+// Hiding a loose VM (by vmid) moves it to the hidden VM list.
+func TestAdminRecovery_HideMovesVMsToHidden(t *testing.T) {
+	handler, authHandler, _, _ := newAdminRecoveryHandler(t)
+	cookie := adminCookie(t, authHandler)
+
+	rec := adminRecoveryRequest(t, handler.ServeHide, http.MethodPost, "/api/v1/admin/recovery/hide", cookie,
+		`{"cluster":"default","vms":[902]}`)
+	if rec.Code != http.StatusOK {
+		t.Fatalf("hide status = %d: %s", rec.Code, rec.Body.String())
+	}
+
+	report := getRecoveryReport(t, handler, cookie)
+	if len(report.LooseVMs) != 0 || len(report.HiddenLooseVMs) != 1 || report.HiddenLooseVMs[0].VMID != 902 || report.HiddenLooseVMs[0].Name != "solo-old" {
+		t.Fatalf("loose = %+v hidden = %+v, want 902 solo-old hidden", report.LooseVMs, report.HiddenLooseVMs)
+	}
+}
+
+// Unhide removes the dismissal: the next report shows the items adoptable
+// again, and restoring a non-dismissed item is a no-op.
+func TestAdminRecovery_UnhideRestoresItems(t *testing.T) {
+	handler, authHandler, _, _ := newAdminRecoveryHandler(t)
+	cookie := adminCookie(t, authHandler)
+
+	hide := adminRecoveryRequest(t, handler.ServeHide, http.MethodPost, "/api/v1/admin/recovery/hide", cookie,
+		`{"cluster":"default","pools":["pvmss-old"]}`)
+	if hide.Code != http.StatusOK {
+		t.Fatalf("hide status = %d: %s", hide.Code, hide.Body.String())
+	}
+	unhide := adminRecoveryRequest(t, handler.ServeUnhide, http.MethodPost, "/api/v1/admin/recovery/unhide", cookie,
+		`{"cluster":"default","pools":["pvmss-old","pvmss-never-hidden"],"vms":[902]}`)
+	if unhide.Code != http.StatusOK {
+		t.Fatalf("unhide status = %d: %s", unhide.Code, unhide.Body.String())
+	}
+
+	report := getRecoveryReport(t, handler, cookie)
+	if len(report.Pools) != 1 || report.Pools[0].Name != recoveryOldPool {
+		t.Fatalf("pools = %+v, want pvmss-old visible again", report.Pools)
+	}
+	if len(report.HiddenPools) != 0 || len(report.HiddenLooseVMs) != 0 {
+		t.Fatalf("hidden = %+v %+v, want none", report.HiddenPools, report.HiddenLooseVMs)
+	}
+}
+
+// Hiding a name absent from the current report stores it anyway: hiding is
+// a statement about a name, not a validation against the last scan.
+func TestAdminRecovery_HideUnknownNameStillStored(t *testing.T) {
+	handler, authHandler, _, _ := newAdminRecoveryHandler(t)
+	cookie := adminCookie(t, authHandler)
+
+	rec := adminRecoveryRequest(t, handler.ServeHide, http.MethodPost, "/api/v1/admin/recovery/hide", cookie,
+		`{"cluster":"default","pools":["pvmss-unknown"]}`)
+	if rec.Code != http.StatusOK {
+		t.Fatalf("hide status = %d: %s", rec.Code, rec.Body.String())
+	}
+}
+
+func TestAdminRecovery_HideBadJSON(t *testing.T) {
+	handler, authHandler, _, _ := newAdminRecoveryHandler(t)
+	rec := adminRecoveryRequest(t, handler.ServeHide, http.MethodPost, "/api/v1/admin/recovery/hide", adminCookie(t, authHandler), "{invalid")
+	if rec.Code != http.StatusBadRequest {
+		t.Fatalf("status = %d, want 400", rec.Code)
+	}
+}
+
+func TestAdminRecovery_HideClusterRequired(t *testing.T) {
+	deps, authHandler := newRecoveryDeps(t)
+	deps.Clients = vmCreateClientProvider{clients: map[string]cluster.Client{"a": cluster.Fake{}, "b": cluster.Fake{}}}
+	handler := httpapi.NewAdminRecovery(deps)
+
+	rec := adminRecoveryRequest(t, handler.ServeHide, http.MethodPost, "/api/v1/admin/recovery/hide", adminCookie(t, authHandler), `{"cluster":"","pools":["pvmss-old"]}`)
+	if rec.Code != http.StatusBadRequest {
+		t.Fatalf("status = %d, want 400", rec.Code)
+	}
+}
+
+func TestAdminRecovery_HideForbiddenForNonAdmin(t *testing.T) {
+	handler, authHandler, _, _ := newAdminRecoveryHandler(t)
+	rec := adminRecoveryRequest(t, handler.ServeHide, http.MethodPost, "/api/v1/admin/recovery/hide", aliceCookie(t, authHandler), `{"cluster":"default","pools":["pvmss-old"]}`)
+	if rec.Code != http.StatusForbidden {
+		t.Fatalf("status = %d, want 403", rec.Code)
+	}
+}
+
+// A report whose adoptables are all hidden is NOT pinned: the hidden
+// summaries keep tracking cluster-side presence. With an expired cooldown
+// the next GET rescans and the deleted pool leaves the hidden section.
+func TestAdminRecovery_AllHiddenReportIsNotPinned(t *testing.T) {
+	handler, authHandler, _, fakeClient := newAdminRecoveryHandler(t, time.Nanosecond)
+	cookie := adminCookie(t, authHandler)
+
+	if rec := adminRecoveryRequest(t, handler.ServeHide, http.MethodPost, "/api/v1/admin/recovery/hide", cookie,
+		`{"cluster":"default","pools":["pvmss-old"],"tags":["oldtag"],"vms":[902]}`); rec.Code != http.StatusOK {
+		t.Fatalf("hide status = %d: %s", rec.Code, rec.Body.String())
+	}
+	if err := fakeClient.DeletePool(context.Background(), recoveryOldPool); err != nil {
+		t.Fatalf("DeletePool: %v", err)
+	}
+	report := getRecoveryReport(t, handler, cookie)
+	if len(report.HiddenPools) != 0 {
+		t.Fatalf("hiddenPools after pool deletion = %+v, want none (report must rescan, not pin)", report.HiddenPools)
 	}
 }
 

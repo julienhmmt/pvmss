@@ -1285,6 +1285,36 @@
 	"admin.recovery.rescan": "Relancer l'analyse",
 	"admin.recovery.scanning": "Analyse…",
 	"admin.recovery.lastScan": "Dernière analyse : {time}",
+	"admin.recovery.select": "Sélectionner",
+	"admin.recovery.selectItem": "Sélectionner {name}",
+	"admin.recovery.hideItem": "Masquer {name}",
+	"admin.recovery.unhideItem": "Réafficher {name}",
+	"admin.recovery.hideSelected": "Masquer la sélection",
+	"admin.recovery.hiding": "Masquage…",
+	"admin.recovery.hidden": "Ressources masquées.",
+	"admin.recovery.unhidden": "Ressources réaffichées.",
+	"admin.recovery.hideError": "Échec de la mise à jour des ressources masquées.",
+	"admin.recovery.nothingToHide": "Sélectionnez au moins un pool, un tag ou une VM à masquer.",
+	"admin.recovery.hiddenHeading": [
+		{
+			"declarations": [
+				"input count",
+				"local countPlural = count: plural"
+			],
+			"selectors": [
+				"countPlural"
+			],
+			"match": {
+				"countPlural=one": "Élément masqué ({count})",
+				"countPlural=other": "Éléments masqués ({count})"
+			}
+		}
+	],
+	"admin.recovery.hiddenHelp": "Les éléments masqués restent intacts sur le cluster et ne sont jamais adoptés. Réaffichez-les pour les faire revenir.",
+	"admin.recovery.adoptItem": "Adopter",
+	"admin.recovery.selectAll": "Tout sélectionner",
+	"admin.recovery.filterPlaceholder": "Filtrer par nom, commentaire ou VM…",
+	"admin.recovery.noMatch": "Aucune ressource ne correspond à « {query} ».",
 	"admin.settings.title": "Paramètres administrateur - PVMSS",
 	"admin.settings.heading": "Paramètres",
 	"admin.settings.tabAudit": "Journal d'audit",
@@ -2215,6 +2245,9 @@
 	"activity.action.admin_db_export": "Base exportée",
 	"activity.action.admin_db_import": "Base importée",
 	"activity.action.admin_db_import_rejected": "Import de base refusé",
+	"activity.action.admin_recovery_adopt": "Éléments de récupération adoptés",
+	"activity.action.admin_recovery_hide": "Éléments de récupération masqués",
+	"activity.action.admin_recovery_unhide": "Éléments de récupération réaffichés",
 	"activity.action.auth_login_failed": "Échec de connexion",
 	"activity.action.auth_admin_denied": "Accès admin refusé",
 	"activity.action.auth_csrf_rejected": "Requête refusée (CSRF)",

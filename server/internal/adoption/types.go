@@ -34,13 +34,38 @@ type OrphanTag struct {
 	Color   string
 }
 
+// HiddenPool is a dismissed orphan pool reported as a summary only - the
+// member list stays in the visible shape so hidden entries keep the payload
+// small.
+type HiddenPool struct {
+	Name        string
+	Comment     string
+	MemberCount int
+}
+
+// HiddenTag is a dismissed orphan tag. It keeps the full OrphanTag shape -
+// the suggested color is needed so a hidden tag can still be adopted.
+type HiddenTag = OrphanTag
+
+// HiddenLooseVM is a dismissed loose VM: enough to name it in the hidden
+// list.
+type HiddenLooseVM struct {
+	VMID int
+	Name string
+}
+
 // Report is the read-only result of Scan: every orphan candidate for one
 // cluster. LooseVMs are pvmss-tagged VMs outside any pvmss-* pool - listed
-// for visibility only, nothing is re-registered for them.
+// for visibility only, nothing is re-registered for them. The Hidden*
+// slices carry the items the administrator dismissed via the recovery page;
+// they stay in the report so hidden items are never silently forgotten.
 type Report struct {
-	Pools    []OrphanPool
-	LooseVMs []VMRef
-	Tags     []OrphanTag
+	Pools          []OrphanPool
+	LooseVMs       []VMRef
+	Tags           []OrphanTag
+	HiddenPools    []HiddenPool
+	HiddenLooseVMs []HiddenLooseVM
+	HiddenTags     []HiddenTag
 }
 
 // Selection is the subset of the report the administrator chooses to adopt.

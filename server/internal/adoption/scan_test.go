@@ -15,11 +15,13 @@ import (
 )
 
 const (
-	alicePool = "pvmss-alice"
-	bobPool   = "pvmss-bob"
-	teamXPool = "team-x"
-	pvmssTag  = "pvmss"
-	web01Name = "web-01"
+	alicePool  = "pvmss-alice"
+	bobPool    = "pvmss-bob"
+	teamXPool  = "team-x"
+	pvmssTag   = "pvmss"
+	web01Name  = "web-01"
+	web02Name  = "web-02"
+	solo01Name = "solo-01"
 )
 
 // stubPoolLister reports a fixed pool list - the cluster-side truth Scan
@@ -74,7 +76,7 @@ func TestScan_OrphanPoolsWithMembers(t *testing.T) {
 	}}
 	projection := projectionOf(
 		cluster.VM{VMID: 100, Name: web01Name, Node: "n1", Status: cluster.VMRunning, Pool: alicePool, Tags: []string{pvmssTag}},
-		cluster.VM{VMID: 101, Name: "web-02", Node: "n1", Status: cluster.VMStopped, Pool: alicePool, Tags: []string{pvmssTag}},
+		cluster.VM{VMID: 101, Name: web02Name, Node: "n1", Status: cluster.VMStopped, Pool: alicePool, Tags: []string{pvmssTag}},
 		cluster.VM{VMID: 102, Name: "db-01", Node: "n2", Status: cluster.VMRunning, Pool: bobPool, Tags: []string{pvmssTag}},
 	)
 
@@ -104,7 +106,7 @@ func TestScan_LooseVMs(t *testing.T) {
 	lister := stubPoolLister{pools: []cluster.Pool{{Name: alicePool}}}
 	projection := projectionOf(
 		cluster.VM{VMID: 100, Name: web01Name, Node: "n1", Status: cluster.VMRunning, Pool: alicePool, Tags: []string{pvmssTag}},
-		cluster.VM{VMID: 110, Name: "solo-01", Node: "n2", Status: cluster.VMStopped, Tags: []string{pvmssTag}},
+		cluster.VM{VMID: 110, Name: solo01Name, Node: "n2", Status: cluster.VMStopped, Tags: []string{pvmssTag}},
 		cluster.VM{VMID: 111, Name: "team-01", Node: "n2", Status: cluster.VMRunning, Pool: teamXPool, Tags: []string{pvmssTag}},
 		cluster.VM{VMID: 112, Name: "plain-01", Node: "n2", Status: cluster.VMRunning, Pool: teamXPool},
 	)
@@ -134,8 +136,8 @@ func TestScan_OrphanTags(t *testing.T) {
 	lister := stubPoolLister{pools: []cluster.Pool{{Name: alicePool}}}
 	projection := projectionOf(
 		cluster.VM{VMID: 100, Name: web01Name, Node: "n1", Status: cluster.VMRunning, Pool: alicePool, Tags: []string{pvmssTag, "web", "db"}},
-		cluster.VM{VMID: 101, Name: "web-02", Node: "n1", Status: cluster.VMStopped, Pool: alicePool, Tags: []string{pvmssTag, "db"}},
-		cluster.VM{VMID: 110, Name: "solo-01", Node: "n2", Status: cluster.VMStopped, Tags: []string{pvmssTag, "db"}},
+		cluster.VM{VMID: 101, Name: web02Name, Node: "n1", Status: cluster.VMStopped, Pool: alicePool, Tags: []string{pvmssTag, "db"}},
+		cluster.VM{VMID: 110, Name: solo01Name, Node: "n2", Status: cluster.VMStopped, Tags: []string{pvmssTag, "db"}},
 	)
 
 	report, err := adoption.Scan(ctx, lister, projection, st, "default")
@@ -150,5 +152,110 @@ func TestScan_OrphanTags(t *testing.T) {
 	}
 	if report.Tags[0].Color == "" {
 		t.Fatal("tag color should suggest a palette value")
+	}
+}
+
+// TestScan_DismissedPoolMovesToHidden: a dismissed pool leaves the
+// adoptable list and lands in the hidden summary (name, comment, member
+// count only); its members still feed the orphan tag counts.
+func TestScan_DismissedPoolMovesToHidden(t *testing.T) {
+	ctx := context.Background()
+	st := newStore(t)
+
+	if err := st.DismissRecoveryItems(ctx, "default", store.RecoveryDismissalPool, []string{bobPool}, "admin"); err != nil {
+		t.Fatalf("dismiss pool: %v", err)
+	}
+
+	lister := stubPoolLister{pools: []cluster.Pool{{Name: alicePool, Comment: "keep"}, {Name: bobPool, Comment: "hidden"}}}
+	projection := projectionOf(
+		cluster.VM{VMID: 100, Name: web01Name, Node: "n1", Status: cluster.VMRunning, Pool: alicePool, Tags: []string{pvmssTag, "db"}},
+		cluster.VM{VMID: 102, Name: "db-01", Node: "n2", Status: cluster.VMRunning, Pool: bobPool, Tags: []string{pvmssTag, "db", "extra"}},
+	)
+
+	report, err := adoption.Scan(ctx, lister, projection, st, "default")
+	if err != nil {
+		t.Fatalf("Scan: %v", err)
+	}
+	if len(report.Pools) != 1 || report.Pools[0].Name != alicePool {
+		t.Fatalf("pools = %+v, want only pvmss-alice", report.Pools)
+	}
+	if len(report.HiddenPools) != 1 || report.HiddenPools[0].Name != bobPool || report.HiddenPools[0].MemberCount != 1 || report.HiddenPools[0].Comment != "hidden" {
+		t.Fatalf("hiddenPools = %+v, want pvmss-bob x1 member", report.HiddenPools)
+	}
+	// The hidden pool's member still counts toward "db" and "extra".
+	if len(report.Tags) != 2 {
+		t.Fatalf("tags = %+v, want db x2 and extra x1", report.Tags)
+	}
+}
+
+// TestScan_DismissedTagMovesToHidden: a dismissed tag keeps its live count
+// in the hidden list (suggested color preserved for later adoption) while
+// other orphan tags stay visible.
+func TestScan_DismissedTagMovesToHidden(t *testing.T) {
+	ctx := context.Background()
+	st := newStore(t)
+
+	if err := st.DismissRecoveryItems(ctx, "default", store.RecoveryDismissalTag, []string{"db"}, "admin"); err != nil {
+		t.Fatalf("dismiss tag: %v", err)
+	}
+
+	lister := stubPoolLister{pools: []cluster.Pool{{Name: alicePool}}}
+	projection := projectionOf(
+		cluster.VM{VMID: 100, Name: web01Name, Node: "n1", Status: cluster.VMRunning, Pool: alicePool, Tags: []string{pvmssTag, "db"}},
+		cluster.VM{VMID: 101, Name: web02Name, Node: "n1", Status: cluster.VMStopped, Pool: alicePool, Tags: []string{pvmssTag, "db", "extra"}},
+	)
+
+	report, err := adoption.Scan(ctx, lister, projection, st, "default")
+	if err != nil {
+		t.Fatalf("Scan: %v", err)
+	}
+	if len(report.Tags) != 1 || report.Tags[0].Name != "extra" || report.Tags[0].VMCount != 1 {
+		t.Fatalf("tags = %+v, want only extra x1", report.Tags)
+	}
+	if len(report.HiddenTags) != 1 || report.HiddenTags[0].Name != "db" || report.HiddenTags[0].VMCount != 2 {
+		t.Fatalf("hiddenTags = %+v, want db x2", report.HiddenTags)
+	}
+}
+
+// TestScan_DismissedLooseVMMovesToHidden: a dismissed loose VM (matched by
+// vmid) leaves the visible list and lands in the hidden summary.
+func TestScan_DismissedLooseVMMovesToHidden(t *testing.T) {
+	ctx := context.Background()
+	st := newStore(t)
+
+	if err := st.DismissRecoveryItems(ctx, "default", store.RecoveryDismissalVM, []string{"110"}, "admin"); err != nil {
+		t.Fatalf("dismiss vm: %v", err)
+	}
+
+	lister := stubPoolLister{pools: []cluster.Pool{{Name: alicePool}}}
+	projection := projectionOf(
+		cluster.VM{VMID: 110, Name: solo01Name, Node: "n2", Status: cluster.VMStopped, Tags: []string{pvmssTag}},
+		cluster.VM{VMID: 111, Name: "team-01", Node: "n2", Status: cluster.VMRunning, Pool: teamXPool, Tags: []string{pvmssTag}},
+	)
+
+	report, err := adoption.Scan(ctx, lister, projection, st, "default")
+	if err != nil {
+		t.Fatalf("Scan: %v", err)
+	}
+	if len(report.LooseVMs) != 1 || report.LooseVMs[0].VMID != 111 {
+		t.Fatalf("looseVMs = %+v, want only 111", report.LooseVMs)
+	}
+	if len(report.HiddenLooseVMs) != 1 || report.HiddenLooseVMs[0].VMID != 110 || report.HiddenLooseVMs[0].Name != solo01Name {
+		t.Fatalf("hiddenLooseVMs = %+v, want 110 solo-01", report.HiddenLooseVMs)
+	}
+}
+
+// TestScan_UndismissedReportHasEmptyHidden: without dismissals the hidden
+// arrays are empty (not nil) so the DTO always serializes them.
+func TestScan_UndismissedReportHasEmptyHidden(t *testing.T) {
+	lister := stubPoolLister{pools: []cluster.Pool{{Name: alicePool}}}
+	projection := projectionOf()
+
+	report, err := adoption.Scan(context.Background(), lister, projection, newStore(t), "default")
+	if err != nil {
+		t.Fatalf("Scan: %v", err)
+	}
+	if report.HiddenPools == nil || report.HiddenLooseVMs == nil || report.HiddenTags == nil {
+		t.Fatalf("hidden arrays must be non-nil: %+v", report)
 	}
 }
