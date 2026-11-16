@@ -1,6 +1,6 @@
 # Spec: admin onboarding checklist
 
-Status: draft, not implemented. Branch `cc/design-admin-onboarding-6eed18`.
+Status: accepted, not implemented. Branch `cc/design-admin-onboarding-6eed18`.
 
 ## Problem
 
@@ -39,7 +39,7 @@ code `onboarding` to avoid the confusion.
 ## Steps
 
 Evaluated per active cluster (`store.ListClusters`). A step is done for the
-dashboard when it is done on **at least one** cluster (see open question 1).
+dashboard when it is done on **at least one** cluster (decision 1).
 
 | # | Key | Required | Done when | Source | Link |
 |---|-----|----------|-----------|--------|------|
@@ -61,7 +61,7 @@ Notes:
 - Tags, docs, TLS, node capacity, lease length are deliberately left out:
   they have working defaults and would turn the card into the sidebar again.
 - If `VMCreationEnabled` is false on every cluster, steps 1-5 are moot; still
-  show them (admin probably wants creation on later), see open question 3.
+  show them (decision 3).
 
 Order is the dependency order (a template lives on an approved node and
 storage), so the first undone step is the "next" one and gets the primary
@@ -118,7 +118,8 @@ type onboardingDTO struct {
   follows `.devin/rules/ui-quality.md`.
 - `DashboardPage.svelte`: render it above `DashboardAttention` when
   `summary.onboarding` is present.
-- No dismiss button in v1 (open question 2).
+- No dismiss button (decision 2).
+- `/setup`: navigate to `/admin` after the cluster is registered (decision 5).
 
 ## Tests
 
@@ -134,19 +135,16 @@ type onboardingDTO struct {
 `WORKFLOWS.md` (First-run setup: what happens after step 5; Dashboard row),
 `docs/FEATURES.md` (`/admin`), `messages/*.json`.
 
-## Open questions
+## Decisions (were open questions, settled 2026-11-16)
 
-1. **Multi-cluster rule.** "Done on at least one cluster" hides gaps on a
-   second cluster added later. Alternative: per-cluster steps (a card per
-   unfinished cluster). Recommendation: any-cluster for v1; a newly added
-   cluster is the admin's deliberate action, not first-run.
-2. **Dismiss.** Should an admin who runs SSO-only, or who wants an empty
-   catalog, be able to hide the card? A dismiss needs persisted state (a
-   settings row), which the "derived only" goal avoids. Recommendation: no
-   dismiss until someone asks.
-3. **VM creation off.** If `VMCreationEnabled` is false everywhere, should
-   steps 1-5 be hidden or flagged "creation is off on all clusters"?
-4. **Users step and SSO.** Is an OIDC realm on the cluster enough, or should
-   it require a successful SSO sign-in (audit row) to count?
-5. **Should `/setup` redirect to `/admin`** (if it does not already) so the
-   card is the first thing seen after registering the cluster?
+1. **Multi-cluster rule:** a step is done when it is done on at least one
+   cluster. A cluster added later is a deliberate admin action, not first run.
+2. **Dismiss:** none. The card is purely derived; no settings row.
+3. **VM creation off everywhere:** keep showing steps 1-5 unchanged. The
+   admin likely turns creation on later; no special state.
+4. **Users step and SSO:** a non-empty `OIDCRealm` on the cluster counts as
+   done; no sign-in evidence required.
+5. **After `/setup`:** the setup flow sets no explicit destination today (no
+   `goto` in `features/setup/` or `routes/setup/`). Once the cluster is
+   registered, navigate to `/admin` so the card is the first thing seen.
+   Part of this ticket.
