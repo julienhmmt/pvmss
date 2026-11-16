@@ -10,6 +10,8 @@ export interface OnboardingStep {
 	count: number;
 	/** First cluster where the step is not done; absent once done. */
 	clusterKey?: string;
+	/** True when an admin marked the step done by hand - a bypass. */
+	manual?: boolean;
 }
 
 /** The admin page where the step is completed, pre-filtered on its cluster. */

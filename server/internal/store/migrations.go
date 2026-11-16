@@ -279,6 +279,14 @@ CREATE TABLE pool_quota_overrides (
 	PRIMARY KEY (cluster, pool)
 );
 
+-- Dashboard onboarding steps an admin marked done by hand, overriding the
+-- derived state.
+CREATE TABLE onboarding_done (
+	step      TEXT PRIMARY KEY,
+	marked_by TEXT NOT NULL DEFAULT '',
+	marked_at TEXT NOT NULL
+);
+
 CREATE INDEX audit_log_time ON audit_log (timestamp DESC, id DESC);
 CREATE INDEX audit_log_vm ON audit_log (cluster, vmid, action, id);
 CREATE INDEX audit_log_target ON audit_log (target_type, target_id);

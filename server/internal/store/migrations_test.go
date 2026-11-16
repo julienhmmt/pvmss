@@ -307,6 +307,7 @@ var baselineTables = []string{
 	"vm_leases",
 	"vm_snapshot_schedules",
 	"pool_quota_overrides",
+	"onboarding_done",
 }
 
 //nolint:paralleltest // serial: shared database fixture

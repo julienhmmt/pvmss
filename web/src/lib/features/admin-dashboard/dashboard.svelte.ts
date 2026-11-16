@@ -1,4 +1,4 @@
-import { get, ApiRequestError } from '#lib/shared/api/client.js';
+import { get, put, ApiRequestError } from '#lib/shared/api/client.js';
 import { setContext, getContext } from 'svelte';
 import { STALE_REFRESH_MS } from '#lib/shared/visibility-refresh.js';
 import { m } from '#lib/paraglide/messages.js';
@@ -84,6 +84,18 @@ export class DashboardStore {
 	async refreshIfStale(minIntervalMs: number = STALE_REFRESH_MS): Promise<void> {
 		if (Date.now() - this.lastLoadedAt <= minIntervalMs) return;
 		await this.load();
+	}
+
+	/** Persists manual "done" marks for onboarding steps (a bypass), then
+	 * applies the recomputed block without a full dashboard reload. */
+	async completeOnboarding(steps: string[]): Promise<void> {
+		const res = await put<{ onboarding: { steps: OnboardingStep[] } | null }>('/api/v1/admin/onboarding', { steps });
+		if (this.summary) {
+			const summary = { ...this.summary };
+			if (res.onboarding) summary.onboarding = res.onboarding;
+			else delete summary.onboarding;
+			this.summary = summary;
+		}
 	}
 
 	async load(): Promise<void> {

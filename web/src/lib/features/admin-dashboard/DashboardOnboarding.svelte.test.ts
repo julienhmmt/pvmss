@@ -28,7 +28,7 @@ describe('onboarding helpers', () => {
 
 describe('DashboardOnboarding', () => {
 	it('lists every step, counts only required ones and links undone steps', () => {
-		mount(DashboardOnboarding, { target: document.body, props: { steps } });
+		mount(DashboardOnboarding, { target: document.body, props: { steps, onMarkDone: () => Promise.resolve() } });
 
 		const rows = document.querySelectorAll('[data-testid="onboarding-step"]');
 		expect(rows).toHaveLength(4);
@@ -36,5 +36,31 @@ describe('DashboardOnboarding', () => {
 		expect(rows.item(1)?.querySelector('a')?.getAttribute('aria-current')).toBe('step');
 		expect(rows.item(2)?.querySelector('a')?.getAttribute('aria-current')).toBeNull();
 		expect(document.querySelector('[data-testid="onboarding-progress"]')?.textContent).toMatch(/1\D+3/);
+	});
+
+	it('marks one step done through its button', async () => {
+		const marked: string[][] = [];
+		mount(DashboardOnboarding, {
+			target: document.body,
+			props: { steps, onMarkDone: (keys: string[]) => { marked.push(keys); return Promise.resolve(); } }
+		});
+
+		const buttons = document.querySelectorAll('[data-testid="onboarding-mark-done"]');
+		expect(buttons).toHaveLength(3);
+		(buttons.item(0) as HTMLButtonElement).click();
+		await Promise.resolve();
+		expect(marked).toEqual([['storages']]);
+	});
+
+	it('marks every undone step through mark all done', async () => {
+		const marked: string[][] = [];
+		mount(DashboardOnboarding, {
+			target: document.body,
+			props: { steps, onMarkDone: (keys: string[]) => { marked.push(keys); return Promise.resolve(); } }
+		});
+
+		(document.querySelector('[data-testid="onboarding-mark-all"]') as HTMLButtonElement).click();
+		await Promise.resolve();
+		expect(marked).toEqual([['storages', 'profiles', 'policy']]);
 	});
 });

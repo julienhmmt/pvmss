@@ -156,7 +156,7 @@
 
 	<section class="space-y-6">
 		{#if summary.onboarding}
-			<DashboardOnboarding steps={summary.onboarding.steps} />
+			<DashboardOnboarding steps={summary.onboarding.steps} onMarkDone={(keys) => store.completeOnboarding(keys)} />
 		{/if}
 		<DashboardAttention alerts={summary.alerts} />
 

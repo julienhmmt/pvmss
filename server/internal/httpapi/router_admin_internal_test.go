@@ -58,6 +58,7 @@ func TestRegisterAdminRoutes_AllGroupsRegistered(t *testing.T) {
 		"GET /api/v1/admin/audit",
 		"GET /api/v1/admin/audit/export",
 		"GET /api/v1/admin/dashboard",
+		"PUT /api/v1/admin/onboarding",
 		"GET /api/v1/admin/db/export",
 		"POST /api/v1/admin/db/import",
 		"POST /api/v1/admin/db/import/confirm",

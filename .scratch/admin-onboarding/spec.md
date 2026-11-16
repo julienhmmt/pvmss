@@ -10,13 +10,19 @@ until nodes, a storage, a bridge, a template or ISO and a profile are
 approved, and nobody can sign in until a PVMSS user (pool) exists or SSO is
 configured. Today the admin finds these ~15 pages alone through the sidebar.
 
+> Amendment 2026-11-16: decision 2 was revisited. An admin can mark a step
+> done by hand (a bypass for steps the instance cannot satisfy), and a
+> "mark all done" action clears the card. Overrides persist in the
+> `onboarding_done` table via `PUT /api/v1/admin/onboarding`; the derived
+> `manual` flag on a step records the bypass.
+
 ## Recommendation
 
 Add a server-computed `onboarding` block to the existing
 `GET /api/v1/admin/dashboard` payload, and render it as a card at the top of
 `DashboardPage.svelte`, above the alerts. Every step is derived from real
-state; there is no tick-box and no new table. The card disappears once every
-required step is done.
+state; a manual override (amendment above) can mark it done anyway. The card
+disappears once every required step is done.
 
 Why the dashboard payload and not a new endpoint: the handler
 (`server/internal/httpapi/admin_dashboard.go`, `ServeDashboard`) already loops
@@ -118,7 +124,9 @@ type onboardingDTO struct {
   follows `.devin/rules/ui-quality.md`.
 - `DashboardPage.svelte`: render it above `DashboardAttention` when
   `summary.onboarding` is present.
-- No dismiss button (decision 2).
+- Per-step "mark done" and a card-level "mark all done" action (decision 2,
+  amended 2026-11-16): they persist a manual override, distinct from a real
+  completion, recorded in the audit log.
 - `/setup`: navigate to `/admin` after the cluster is registered (decision 5).
 
 ## Tests
@@ -139,7 +147,11 @@ type onboardingDTO struct {
 
 1. **Multi-cluster rule:** a step is done when it is done on at least one
    cluster. A cluster added later is a deliberate admin action, not first run.
-2. **Dismiss:** none. The card is purely derived; no settings row.
+2. **Dismiss:** none originally - the card was purely derived, no settings
+   row. Amended 2026-11-16: admins asked for a bypass, so steps can be
+   marked done by hand (`onboarding_done` table, `manual` flag on the DTO,
+   `admin.onboarding.complete` audit row). Still no free-form dismiss: the
+   action is "mark done", keeping the checklist semantics.
 3. **VM creation off everywhere:** keep showing steps 1-5 unchanged. The
    admin likely turns creation on later; no special state.
 4. **Users step and SSO:** a non-empty `OIDCRealm` on the cluster counts as

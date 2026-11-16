@@ -95,6 +95,7 @@ func opsMux(ops *httpapi.AdminOps, auth *httpapi.Auth) *http.ServeMux {
 	mux.Handle("GET /api/v1/admin/audit/prune-preview", guard(http.HandlerFunc(ops.ServeAuditPrunePreview)))
 	mux.Handle("GET /api/v1/admin/audit/export", guard(http.HandlerFunc(ops.ServeAuditExport)))
 	mux.Handle("GET /api/v1/admin/dashboard", guard(http.HandlerFunc(ops.ServeDashboard)))
+	mux.Handle("PUT /api/v1/admin/onboarding", guard(http.HandlerFunc(ops.ServeOnboardingDone)))
 	mux.Handle("GET /api/v1/admin/db/export", guard(http.HandlerFunc(ops.ServeDBExport)))
 	mux.Handle("POST /api/v1/admin/db/import", guard(http.HandlerFunc(ops.ServeDBImport)))
 	mux.Handle("POST /api/v1/admin/db/import/confirm", guard(http.HandlerFunc(ops.ServeDBImportConfirm)))
