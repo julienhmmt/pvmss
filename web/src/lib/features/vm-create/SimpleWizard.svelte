@@ -12,6 +12,7 @@
 	import TextField from '#lib/shared/ui/TextField.svelte';
 	import Select from '#lib/shared/ui/Select.svelte';
 	import TemplatePicker from './TemplatePicker.svelte';
+	import QuotaHint from './QuotaHint.svelte';
 
 	import Card from '#lib/shared/ui/Card.svelte';
 	import Checkbox from '#lib/shared/ui/Checkbox.svelte';
@@ -203,6 +204,7 @@
 		<p id="simple-wizard-help" class="sr-only">{m['vms.create.reviewRequest']()}</p>
 
 		<Card as="div" pad="lg" class="creation-form grid gap-8">
+			<QuotaHint {quota} />
 			<FormSection step={1} legend={m['vms.create.section.start']()} description={m['vms.create.section.startHelp']()}>
 				{#if sourceCards.length > 1}
 					<div class="grid gap-2" role="radiogroup" aria-label={m['vms.create.section.start']()}>

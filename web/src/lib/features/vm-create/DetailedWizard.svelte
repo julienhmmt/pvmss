@@ -2,6 +2,7 @@
 	import { tick } from 'svelte';
 	import { getVmCreateContext, gabaritCeiling } from './create.svelte';
 	import StepBase from './_steps/StepBase.svelte';
+	import QuotaHint from './QuotaHint.svelte';
 	import StepHardware from './_steps/StepHardware.svelte';
 	import StepDisk from './_steps/StepDisk.svelte';
 	import StepNetwork from './_steps/StepNetwork.svelte';
@@ -249,6 +250,7 @@
 
 		<div bind:this={stepContainer}>
 			{#if current === 'Base'}
+				<QuotaHint quota={form.catalog?.quota} />
 				<StepBase showErrors={stepAttempted.Base} />
 			{:else if current === 'Hardware'}
 				<StepHardware />

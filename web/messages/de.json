@@ -2436,5 +2436,6 @@
 	"vms.create.blocked.creationClosedTitle": "VM-Erstellung geschlossen",
 	"vms.create.blocked.creationClosedBody": "Ein Administrator hat die VM-Erstellung auf Ihrem Cluster deaktiviert. Ihre bestehenden Maschinen sind nicht betroffen.",
 	"chrome.sidebar.pinMachine": "{name} anheften",
-	"chrome.sidebar.unpinMachine": "{name} lösen"
+	"chrome.sidebar.unpinMachine": "{name} lösen",
+	"vms.create.quotaHint": "Das wird Maschine {next} von {allowed} in Ihrem Pool (danach noch {left} frei)."
 }
