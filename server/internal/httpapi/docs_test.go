@@ -379,7 +379,7 @@ func TestAdminDocs_CreateOversizedBody_Returns400(t *testing.T) {
 	docs, admin, auth := newDocsHandlers(t)
 	cookie := adminCookie(t, auth)
 
-	bodyMd := make([]byte, 3841)
+	bodyMd := make([]byte, 65281)
 	for i := range bodyMd {
 		bodyMd[i] = 'x'
 	}
@@ -399,7 +399,7 @@ func TestAdminDocs_UpdateOversizedBody_Returns400(t *testing.T) {
 	cookie := adminCookie(t, auth)
 	createDocViaAdmin(t, docs, admin, auth, cookie, `{"title":"Update me","lang":"en","category":"c","bodyMd":"# Hi","audience":"user"}`)
 
-	bodyMd := make([]byte, 3841)
+	bodyMd := make([]byte, 65281)
 	for i := range bodyMd {
 		bodyMd[i] = 'x'
 	}

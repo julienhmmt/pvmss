@@ -44,9 +44,12 @@ const (
 	msgDocDuplicatePage      = "a documentation page with this title already exists for this language"
 	msgDocSystemProtected    = "built-in documentation pages cannot be deleted"
 
-	// maxDocBody reserves 256 bytes of headroom for JSON overhead around a 4 KiB request.
-	maxDocBody        = 4*1024 - 256
-	msgDocBodyTooLong = "body exceeds the maximum length of 3840 characters"
+	// docRequestBodyLimit gives doc writes a 64 KiB request budget, well under
+	// the 256 KB store cap, while other JSON endpoints keep the 4 KiB default.
+	docRequestBodyLimit = 64 * 1024
+	// maxDocBody reserves 256 bytes of headroom for JSON overhead.
+	maxDocBody        = docRequestBodyLimit - 256
+	msgDocBodyTooLong = "body exceeds the maximum length of 65280 characters"
 )
 
 // docNotFoundMsg formats the not-found message for one page id, keeping the
@@ -124,7 +127,7 @@ func (h *AdminDocs) ServeDocsList(w http.ResponseWriter, r *http.Request) {
 // ServeDocCreate handles POST /api/v1/admin/docs.
 func (h *AdminDocs) ServeDocCreate(w http.ResponseWriter, r *http.Request) {
 	var req docCreateRequest
-	if err := decodeJSON(w, r, &req); err != nil {
+	if err := decodeJSONLimit(w, r, &req, docRequestBodyLimit); err != nil {
 		writeAdminError(w, http.StatusBadRequest, codeInvalidRequest, msgDocInvalidRequestBody)
 		return
 	}
@@ -165,7 +168,7 @@ func (h *AdminDocs) ServeDocUpdate(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var req docUpdateRequest
-	if err := decodeJSON(w, r, &req); err != nil {
+	if err := decodeJSONLimit(w, r, &req, docRequestBodyLimit); err != nil {
 		writeAdminError(w, http.StatusBadRequest, codeInvalidRequest, msgDocInvalidRequestBody)
 		return
 	}

@@ -58,7 +58,7 @@
 	}: Props = $props();
 
 	// Match server/internal/httpapi/admin_docs.go's maxDocBody (4 KiB - 256 bytes headroom).
-	const MAX_DOC_BODY = 4 * 1024 - 256;
+	const MAX_DOC_BODY = 64 * 1024 - 256;
 
 	const bodyOverLimit = $derived(bodyMd.length > MAX_DOC_BODY);
 	const bodyError = $derived(
