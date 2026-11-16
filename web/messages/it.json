@@ -2437,5 +2437,8 @@
 	"vms.create.blocked.creationClosedBody": "Un amministratore ha disattivato la creazione di VM sul tuo cluster. Le tue macchine esistenti non sono interessate.",
 	"chrome.sidebar.pinMachine": "Fissa {name}",
 	"chrome.sidebar.unpinMachine": "Rimuovi {name} dai fissati",
-	"vms.create.quotaHint": "Sarà la macchina {next} di {allowed} nel tuo pool (ne resteranno {left})."
+	"vms.create.quotaHint": "Sarà la macchina {next} di {allowed} nel tuo pool (ne resteranno {left}).",
+	"notifications.label": "Notifiche",
+	"notifications.labelUnread": "Notifiche, {count} non lette",
+	"notifications.empty": "Ancora niente di nuovo."
 }

@@ -18,10 +18,35 @@
 	import SearchIcon from '#lib/shared/ui/icons/SearchIcon.svelte';
 	import Logo from '#lib/shared/ui/Logo.svelte';
 	import { m } from '#lib/paraglide/messages.js';
+	import { afterNavigate } from '$app/navigation';
+	import { getSessionContext } from '#lib/features/auth/session.svelte.js';
+	import { fetchMyQuotaRequest } from '#lib/features/quota-requests/quota-requests.js';
+	import { NotificationsState, quotaNotification } from '#lib/features/notifications/notifications.svelte.js';
+	import NotificationBell from '#lib/features/notifications/NotificationBell.svelte';
 
 	const tray = getTaskTrayContext();
 	const chrome = getChromeContext();
 	const toast = getToastContext();
+	const session = getSessionContext();
+
+	// Pool users only: admins see pending work through the sidebar chips.
+	const notifications = $derived(
+		session.principal && !session.isAdmin ? new NotificationsState(session.principal.username) : null
+	);
+	async function checkQuotaDecision(): Promise<void> {
+		if (notifications === null) return;
+		try {
+			notifications.add(quotaNotification(await fetchMyQuotaRequest()));
+		} catch {
+			// Best effort: the bell simply shows nothing new.
+		}
+	}
+	// Cheap enough to re-ask on every navigation; it is how a decision reaches a user mid-session.
+	afterNavigate(() => void checkQuotaDecision());
+	// The first navigation can land before the session does.
+	$effect(() => {
+		if (notifications) void untrack(() => checkQuotaDecision());
+	});
 	const context = $derived(contextLabel(page.url.pathname));
 	// The palette shortcut as the user's keyboard writes it.
 	const paletteKeys = typeof navigator !== 'undefined' && /Mac|iPhone|iPad/.test(navigator.userAgent) ? '⌘K' : 'Ctrl K';
@@ -31,7 +56,11 @@
 		if (tray.toast !== null) {
 			if (dismissTimer !== null) clearTimeout(dismissTimer);
 			dismissTimer = setTimeout(() => tray.clearToast(), 5000);
-			untrack(() => toast.push({ variant: tray.toast!.kind, message: tray.toast!.message }));
+			const settled = tray.toast;
+			untrack(() => {
+				toast.push({ variant: settled.kind, message: settled.message });
+				notifications?.add({ id: crypto.randomUUID(), kind: settled.kind, message: settled.message, at: new Date().toISOString() });
+			});
 		}
 	});
 </script>
@@ -55,6 +84,9 @@
 	<Logo class="text-foreground" />
 
 	<div class="flex-1"></div>
+	{#if notifications}
+		<NotificationBell state={notifications} />
+	{/if}
 	<button
 		type="button"
 		class="inline-flex h-9 w-9 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-accent hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
@@ -78,6 +110,10 @@
 			<span class="truncate font-medium text-foreground" data-testid="context-screen">{context.screen}</span>
 		{/if}
 	</p>
+	<div class="flex items-center gap-2">
+	{#if notifications}
+		<NotificationBell state={notifications} />
+	{/if}
 	<button
 		type="button"
 		class="inline-flex h-9 items-center gap-2 rounded-lg border border-border px-3 text-sm text-muted-foreground transition-colors hover:bg-accent hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
@@ -88,4 +124,5 @@
 		{m['palette.open']()}
 		<kbd class="rounded border border-border bg-muted px-1.5 font-mono text-2xs">{paletteKeys}</kbd>
 	</button>
+	</div>
 </header>
