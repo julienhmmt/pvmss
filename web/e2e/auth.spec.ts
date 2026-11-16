@@ -128,6 +128,9 @@ test.describe('T02 authentication', () => {
 		await page.locator('button[type="submit"]').click();
 		await expect(page).toHaveURL(/\/vms$/);
 
+		// Let the landing page's own requests (list, notifications) settle, so the
+		// first 401 comes from the navigation below, not a request still in flight.
+		await page.waitForLoadState('networkidle');
 		// The server forgets the session; the next in-app call gets a 401.
 		await context.clearCookies();
 		await page.getByTestId('app-sidebar').getByRole('link', { name: /activity|activité/i }).first().click();

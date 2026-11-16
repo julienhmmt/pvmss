@@ -562,9 +562,9 @@
 	"vms.detail.retrofitSeabiosConfirm": "Umstellen und neu starten",
 	"vms.action.start": "Starten",
 	"vms.action.shutdown": "Herunterfahren",
-	"vms.action.stop": "Stoppen erzwingen",
+	"vms.action.stop": "Hart stoppen",
 	"vms.action.reboot": "Neu starten",
-	"vms.action.reset": "Zurücksetzen",
+	"vms.action.reset": "Reset",
 	"vms.action.delete": "Löschen…",
 	"vms.action.more": "Weitere Aktionen",
 	"vms.confirm.forceStop.title": "Stoppen von {name} erzwingen?",
@@ -1818,7 +1818,7 @@
 	"os.family.linux": "Linux",
 	"os.family.windows": "Windows",
 	"os.family.unknown": "Unbekanntes Betriebssystem",
-	"chrome.sidebar.workspaceLabel": "Persönlicher Arbeitsbereich",
+	"chrome.sidebar.workspaceLabel": "Mein Bereich",
 	"chrome.sidebar.navMyMachines": "Meine Maschinen",
 	"chrome.sidebar.navActivity": "Aktivität",
 	"chrome.sidebar.navNodes": "Knoten",
@@ -2447,6 +2447,12 @@
 	"admin.clusters.vmCreationOff": "VM-Erstellung auf {name} deaktiviert",
 	"vms.create.blocked.creationClosedTitle": "VM-Erstellung geschlossen",
 	"vms.create.blocked.creationClosedBody": "Ein Administrator hat die VM-Erstellung auf Ihrem Cluster deaktiviert. Ihre bestehenden Maschinen sind nicht betroffen.",
+	"chrome.sidebar.pinMachine": "{name} anheften",
+	"chrome.sidebar.unpinMachine": "{name} lösen",
+	"vms.create.quotaHint": "Das wird Maschine {next} von {allowed} in Ihrem Pool (danach noch {left} frei).",
+	"notifications.label": "Benachrichtigungen",
+	"notifications.labelUnread": "Benachrichtigungen, {count} ungelesen",
+	"notifications.empty": "Noch nichts Neues.",
 	"vms.list.firstRun.allowance": [
 		{
 			"declarations": [

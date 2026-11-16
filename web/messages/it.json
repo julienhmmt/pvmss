@@ -564,7 +564,7 @@
 	"vms.action.shutdown": "Spegni",
 	"vms.action.stop": "Forza arresto",
 	"vms.action.reboot": "Riavvia",
-	"vms.action.reset": "Reimposta",
+	"vms.action.reset": "Reset",
 	"vms.action.delete": "Elimina…",
 	"vms.action.more": "Altre azioni",
 	"vms.confirm.forceStop.title": "Forzare l'arresto di {name}?",
@@ -1818,8 +1818,8 @@
 	"os.family.linux": "Linux",
 	"os.family.windows": "Windows",
 	"os.family.unknown": "Sistema operativo sconosciuto",
-	"chrome.sidebar.workspaceLabel": "Spazio di lavoro personale",
-	"chrome.sidebar.navMyMachines": "Le mie macchine",
+	"chrome.sidebar.workspaceLabel": "Area personale",
+	"chrome.sidebar.navMyMachines": "Le mie VM",
 	"chrome.sidebar.navActivity": "Attività",
 	"chrome.sidebar.navNodes": "Nodi",
 	"chrome.sidebar.navHelp": "Aiuto e guide",
@@ -2447,6 +2447,12 @@
 	"admin.clusters.vmCreationOff": "Creazione VM disabilitata su {name}",
 	"vms.create.blocked.creationClosedTitle": "Creazione VM chiusa",
 	"vms.create.blocked.creationClosedBody": "Un amministratore ha disattivato la creazione di VM sul tuo cluster. Le tue macchine esistenti non sono interessate.",
+	"chrome.sidebar.pinMachine": "Fissa {name}",
+	"chrome.sidebar.unpinMachine": "Rimuovi {name} dai fissati",
+	"vms.create.quotaHint": "Sarà la macchina {next} di {allowed} nel tuo pool (ne resteranno {left}).",
+	"notifications.label": "Notifiche",
+	"notifications.labelUnread": "Notifiche, {count} non lette",
+	"notifications.empty": "Ancora niente di nuovo.",
 	"vms.list.firstRun.allowance": [
 		{
 			"declarations": [

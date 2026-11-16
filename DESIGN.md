@@ -15,9 +15,9 @@ colors:
   border: "#e8e4e0"
   border-subtle: "#f1eeeb"
   destructive: "oklch(57.7% 0.245 27.325deg)"
-  success: "oklch(64% 0.17 145deg)"
-  warning: "oklch(75% 0.16 75deg)"
-  info: "oklch(62% 0.17 245deg)"
+  success: "oklch(60% 0.13 150deg)"
+  warning: "oklch(78% 0.14 88deg)"
+  info: "oklch(58% 0.1 240deg)"
   sidebar: "#ffffff"
   background-dark: "oklch(17% 0.006 49deg)"
   card-dark: "oklch(21% 0.006 56deg)"
@@ -53,11 +53,11 @@ typography:
     fontWeight: 400
     lineHeight: "1.25rem"
 rounded:
-  sm: "0.25rem"
-  md: "0.3rem"
-  lg: "0.375rem"
-  control: "0.25rem"
-  xl: "0.5rem"
+  sm: "0.375rem"
+  md: "0.4rem"
+  lg: "0.5rem"
+  control: "0.375rem"
+  xl: "0.75rem"
 spacing:
   content-max: "100rem"
   content-reading: "60rem"
@@ -142,7 +142,7 @@ get a usable machine.
 - Single orange accent (oklch 56% 0.16 51deg) used sparingly
 - OKLCH color space for all semantic colors with soft background variants
 - Archivo Variable as the sole typeface (headings, body, labels, data)
-- 6px base radius (0.375rem) with 4px control radius (0.25rem)
+- 8px base radius (0.5rem) with 6px control radius (0.375rem)
 - Two-layer soft card shadows, not hard drop shadows
 - Responsive tables that collapse to stacked cards on mobile
 - Reduced-motion support on all animations
@@ -192,11 +192,11 @@ colors carry state, not decoration.
 
 - **Destructive** (`oklch(57.7% 0.245 27.325deg)`): Delete actions, error
   states, invalid fields.
-- **Success** (`oklch(64% 0.17 145deg)`): Positive confirmations, running status,
+- **Success** (`oklch(60% 0.13 150deg)`): Positive confirmations, running status,
   completed tasks.
-- **Warning** (`oklch(75% 0.16 75deg)`): Caution states, TLS insecure, capacity
+- **Warning** (`oklch(78% 0.14 88deg)`): Caution states, TLS insecure, capacity
   warnings.
-- **Info** (`oklch(62% 0.17 245deg)`): Informational toasts, info banners.
+- **Info** (`oklch(58% 0.1 240deg)`): Informational toasts, info banners.
 
 Each semantic color has a soft variant (background), soft-foreground, and
 soft-border for use in banners, badges, and soft-state surfaces.
@@ -401,10 +401,10 @@ nav items.
 
 Two radius values carry the whole system, and the split is deliberate:
 
-- **Cards, tiles, and panels** use the base radius (0.375rem, `--radius` /
+- **Cards, tiles, and panels** use the base radius (0.5rem, `--radius` /
   `rounded.lg`).
 - **Every interactive control** - button, input, select, icon button, tab,
-  radio card - uses the single control radius (0.25rem, `--radius-control` /
+  radio card - uses the single control radius (0.375rem, `--radius-control` /
   `rounded.control`). A button next to a field then reads as one control set
   rather than two different materials.
 
@@ -412,13 +412,13 @@ Nothing in between: there is no "small card" radius and no pill-radius button
 (the status pill is the one intentional full-radius exception). Borders are
 always 1px and always warm (`--border`, or `--border-subtle` for internal
 hairlines); there are no thick borders and no colored side-stripes. The
-`--radius-sm` (0.25rem) and `--radius-xl` (0.5rem) steps exist in the token
+`--radius-sm` (0.375rem) and `--radius-xl` (0.75rem) steps exist in the token
 layer but are not used by the current component set - do not reach for them
 without a reason.
 
 ### Shape Rules
 
-**The Two-Radius Rule.** Cards get 0.375rem, controls get 0.25rem. Introducing
+**The Two-Radius Rule.** Cards get 0.5rem, controls get 0.375rem. Introducing
 a third radius for a one-off is drift.
 
 ## Components

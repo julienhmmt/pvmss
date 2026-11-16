@@ -6,7 +6,7 @@
 
 :root {
   /* Layer B - PVMSS App mockup (specs/002-design-import/contracts/visual-language.md).
-     Warm paper ground, white surfaces, orange accent, 6px radius, two mute steps. */
+     Warm paper ground, white surfaces, orange accent, 8px radius, two mute steps. */
   --background: #f7f6f4;
   --foreground: #1c1a19;
   --card: #ffffff;
@@ -47,21 +47,21 @@
   --destructive-soft: oklch(96% 0.03 27.325deg);
   --destructive-soft-foreground: oklch(40% 0.18 27.325deg);
   --destructive-soft-border: oklch(85% 0.07 27.325deg);
-  --success: oklch(64% 0.17 145deg);
+  --success: oklch(60% 0.13 150deg);
   --success-foreground: oklch(98.5% 0.001 106.423deg);
-  --success-soft: oklch(96% 0.04 145deg);
-  --success-soft-foreground: oklch(40% 0.13 145deg);
-  --success-soft-border: oklch(82% 0.1 145deg);
-  --warning: oklch(75% 0.16 75deg);
+  --success-soft: oklch(95.5% 0.035 145deg);
+  --success-soft-foreground: oklch(40% 0.1 150deg);
+  --success-soft-border: oklch(84% 0.07 148deg);
+  --warning: oklch(78% 0.14 88deg);
   --warning-foreground: oklch(20% 0.05 75deg);
-  --warning-soft: oklch(96% 0.04 85deg);
-  --warning-soft-foreground: oklch(40% 0.12 65deg);
-  --warning-soft-border: oklch(85% 0.1 80deg);
-  --info: oklch(62% 0.17 245deg);
+  --warning-soft: oklch(96% 0.045 92deg);
+  --warning-soft-foreground: oklch(42% 0.1 80deg);
+  --warning-soft-border: oklch(86% 0.09 90deg);
+  --info: oklch(58% 0.1 240deg);
   --info-foreground: oklch(98.5% 0.001 106.423deg);
-  --info-soft: oklch(96% 0.04 245deg);
-  --info-soft-foreground: oklch(40% 0.14 245deg);
-  --info-soft-border: oklch(85% 0.08 245deg);
+  --info-soft: oklch(96% 0.025 240deg);
+  --info-soft-foreground: oklch(40% 0.09 240deg);
+  --info-soft-border: oklch(86% 0.05 240deg);
   --border: #e8e4e0;
   --border-subtle: #f1eeeb;
   --input: #e8e4e0;
@@ -71,7 +71,7 @@
   --chart-3: oklch(66.6% 0.179 58.318deg);
   --chart-4: oklch(55.5% 0.163 48.998deg);
   --chart-5: oklch(47.3% 0.137 46.201deg);
-  --radius: 0.375rem;
+  --radius: 0.5rem;
   --sidebar: #ffffff;
   --sidebar-foreground: #1c1a19;
   --sidebar-primary: oklch(56% 0.16 51deg);
@@ -94,7 +94,7 @@
   --navbar-height: 3.5rem;
   /* Single control radius. Every interactive control (button, input, select,
      icon button, tab) uses this; cards use --radius. Two values, no drift. */
-  --radius-control: 0.25rem;
+  --radius-control: 0.375rem;
   /* Elevation ramp. Warm-tinted, three steps only: rest / raised / overlay. */
   --elev-rest:
     0 1px 2px oklch(28% 0.01 56deg / 0.04),
@@ -151,17 +151,17 @@
   --destructive-soft: oklch(28% 0.07 27.325deg);
   --destructive-soft-foreground: oklch(85% 0.12 22deg);
   --destructive-soft-border: oklch(40% 0.13 27.325deg);
-  --success: oklch(72% 0.17 145deg);
+  --success: oklch(70% 0.13 150deg);
   --success-foreground: oklch(15% 0.04 145deg);
   --success-soft: oklch(28% 0.06 145deg);
   --success-soft-foreground: oklch(85% 0.13 145deg);
   --success-soft-border: oklch(40% 0.1 145deg);
-  --warning: oklch(80% 0.16 75deg);
+  --warning: oklch(82% 0.13 88deg);
   --warning-foreground: oklch(20% 0.05 75deg);
   --warning-soft: oklch(28% 0.06 75deg);
   --warning-soft-foreground: oklch(85% 0.13 80deg);
   --warning-soft-border: oklch(40% 0.1 75deg);
-  --info: oklch(70% 0.16 245deg);
+  --info: oklch(70% 0.1 240deg);
   --info-foreground: oklch(15% 0.05 245deg);
   --info-soft: oklch(28% 0.06 245deg);
   --info-soft-foreground: oklch(85% 0.12 245deg);
@@ -253,10 +253,10 @@
   --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
   --color-sidebar-border: var(--sidebar-border);
   --color-sidebar-ring: var(--sidebar-ring);
-  --radius-sm: 0.25rem;
+  --radius-sm: 0.375rem;
   --radius-md: calc(var(--radius) * 0.8);
   --radius-lg: var(--radius);
-  --radius-xl: 0.5rem;
+  --radius-xl: 0.75rem;
   --radius-2xl: calc(var(--radius) * 1.8);
   --radius-3xl: calc(var(--radius) * 2.2);
   --radius-4xl: calc(var(--radius) * 2.6);
@@ -311,7 +311,7 @@
 
 /* Shared form-control base. One source of truth for input styling so every
    form (wizard, admin dialogs, login) shares one vocabulary with the Button
-   primitive: same radius (0.25rem), same focus ring, same disabled state,
+   primitive: same radius (0.375rem), same focus ring, same disabled state,
    same invalid state. Apply via the .pv-input class on <input>, <select>,
    and <textarea>. The focus ring mirrors Button's focus-visible:ring-2
    ring-ring ring-offset-2 ring-offset-background.
@@ -528,6 +528,18 @@
   }
 
   .pv-responsive-table td[data-nolabel="true"]::before {
+    content: none;
+  }
+
+  .pv-responsive-table td[data-mobile-hidden] {
+    display: none;
+  }
+
+  .pv-responsive-table td[data-card-head] {
+    justify-content: flex-start;
+  }
+
+  .pv-responsive-table td[data-card-head]::before {
     content: none;
   }
 }

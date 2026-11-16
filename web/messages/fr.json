@@ -2447,6 +2447,12 @@
 	"admin.clusters.vmCreationOff": "Création de VM désactivée sur {name}",
 	"vms.create.blocked.creationClosedTitle": "Création de VM fermée",
 	"vms.create.blocked.creationClosedBody": "Un administrateur a désactivé la création de VM sur votre cluster. Vos machines existantes ne sont pas concernées.",
+	"chrome.sidebar.pinMachine": "Épingler {name}",
+	"chrome.sidebar.unpinMachine": "Désépingler {name}",
+	"vms.create.quotaHint": "Ce sera la machine {next} sur {allowed} de votre pool (il en restera {left}).",
+	"notifications.label": "Notifications",
+	"notifications.labelUnread": "Notifications, {count} non lues",
+	"notifications.empty": "Rien de nouveau pour l'instant.",
 	"vms.list.firstRun.allowance": [
 		{
 			"declarations": [

@@ -2447,6 +2447,12 @@
 	"admin.clusters.vmCreationOff": "VM creation disabled on {name}",
 	"vms.create.blocked.creationClosedTitle": "VM creation is closed",
 	"vms.create.blocked.creationClosedBody": "An administrator has turned off VM creation on your cluster. Your existing machines are not affected.",
+	"chrome.sidebar.pinMachine": "Pin {name}",
+	"chrome.sidebar.unpinMachine": "Unpin {name}",
+	"vms.create.quotaHint": "This will be machine {next} of {allowed} in your pool ({left} left after it).",
+	"notifications.label": "Notifications",
+	"notifications.labelUnread": "Notifications, {count} unread",
+	"notifications.empty": "Nothing new yet.",
 	"vms.list.firstRun.allowance": [
 		{
 			"declarations": [

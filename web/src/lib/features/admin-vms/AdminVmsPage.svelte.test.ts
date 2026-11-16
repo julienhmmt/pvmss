@@ -109,6 +109,8 @@ describe('AdminVmsPage', () => {
 		vi.mocked(getVmListContext).mockReturnValue(store);
 
 		mount(AdminVmsPage, { target: document.body });
+		(document.querySelector('[data-testid="admin-vm-more"]') as HTMLButtonElement).click();
+		await tick();
 		(document.querySelector('[data-testid="admin-vm-stop"]') as HTMLButtonElement).click();
 		await tick();
 

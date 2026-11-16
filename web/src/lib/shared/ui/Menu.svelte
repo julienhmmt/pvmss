@@ -13,6 +13,8 @@
 
 	export interface MenuItem {
 		label: string;
+		/** Stable key when labels can repeat; defaults to the label. */
+		id?: string;
 		onclick: () => void;
 		/** Tinted destructive entry (delete-style actions). */
 		destructive?: boolean;
@@ -30,9 +32,11 @@
 		trigger?: Snippet;
 		/** `md` matches the default Button height (detail headers). */
 		size?: 'sm' | 'md';
+		/** Fired each time the menu opens. */
+		onOpen?: () => void;
 	}
 
-	let { label, items, testId, trigger, size = 'sm' }: Props = $props();
+	let { label, items, testId, trigger, size = 'sm', onOpen }: Props = $props();
 
 	const TRIGGER_GAP = 4;
 	const VIEWPORT_MARGIN = 8;
@@ -49,6 +53,7 @@
 
 	async function openMenu(focusLast = false): Promise<void> {
 		open = true;
+		onOpen?.();
 		await tick();
 		if (!triggerEl || !menuEl) return;
 		const rect = triggerEl.getBoundingClientRect();
@@ -104,6 +109,13 @@
 		enabled[target]?.focus();
 	}
 
+	// Mounted on <body>: an ancestor with a filter or backdrop-filter (the
+	// blurred header) would otherwise become the fixed popup's containing block.
+	function portal(node: HTMLElement): () => void {
+		document.body.appendChild(node);
+		return () => node.remove();
+	}
+
 	function handleOutsidePointer(event: PointerEvent): void {
 		const target = event.target as Node;
 		if (!open || menuEl?.contains(target) || triggerEl?.contains(target)) return;
@@ -126,7 +138,7 @@
 	data-testid={testId}
 	onclick={() => (open ? close() : void openMenu())}
 	onkeydown={handleTriggerKeydown}
-	class="inline-flex {size === 'md' ? 'h-10 w-10' : 'h-8 w-8'} shrink-0 items-center justify-center rounded-[var(--radius-control)] border border-muted-foreground-subtle/50 bg-card text-foreground transition-colors pv-focus hover:border-muted-foreground-subtle hover:bg-muted"
+	class="relative inline-flex {size === 'md' ? 'h-10 w-10' : 'h-8 w-8'} shrink-0 items-center justify-center rounded-[var(--radius-control)] border border-muted-foreground-subtle/50 bg-card text-foreground transition-colors pv-focus hover:border-muted-foreground-subtle hover:bg-muted"
 >
 	{#if trigger}
 		{@render trigger()}
@@ -138,6 +150,7 @@
 {#if open}
 	<div
 		bind:this={menuEl}
+		{@attach portal}
 		role="menu"
 		tabindex="-1"
 		aria-label={label}
@@ -145,7 +158,7 @@
 		class="fixed z-[9999] min-w-40 rounded-lg border border-border bg-card p-1 text-card-foreground shadow-overlay"
 		style="left: {left}px; top: {top}px;"
 	>
-		{#each items as item (item.label)}
+		{#each items as item (item.id ?? item.label)}
 			<button
 				type="button"
 				role="menuitem"
