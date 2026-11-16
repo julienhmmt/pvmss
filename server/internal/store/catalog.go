@@ -137,10 +137,10 @@ func (s *Store) CatalogISOs(ctx context.Context, cluster string) ([]CatalogISO, 
 	)
 }
 
-// CatalogProfiles returns the VM profiles for a cluster, ordered by admin position, then id.
+// CatalogProfiles returns the VM profiles for a cluster, ordered by id.
 func (s *Store) CatalogProfiles(ctx context.Context, cluster string) ([]CatalogProfile, error) {
 	return queryCatalog(ctx, s.db, "catalog profiles",
-		`SELECT cluster, id, label, sockets, cpu_cores, memory_mb, disk_gb, bus, description FROM catalog_profiles WHERE cluster = ? AND enabled = 1 ORDER BY position, id`,
+		`SELECT cluster, id, label, sockets, cpu_cores, memory_mb, disk_gb, bus, description FROM catalog_profiles WHERE cluster = ? AND enabled = 1 ORDER BY id`,
 		[]any{cluster},
 		func(rows *sql.Rows) (CatalogProfile, error) {
 			var p CatalogProfile

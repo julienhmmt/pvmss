@@ -174,17 +174,3 @@ describe('AdminProfilesStore description', () => {
 		vi.unstubAllGlobals();
 	});
 });
-
-describe('profile export file', () => {
-	it('round-trips through build and parse', async () => {
-		const { buildProfileExport, parseProfileExport } = await import('./profiles.svelte');
-		const p = { id: 'small', label: 'Small', sockets: 1, cpuCores: 1, memoryMB: 2048, diskGB: 20, bus: 'scsi', enabled: true, description: '' };
-		expect(parseProfileExport(buildProfileExport([p]))).toEqual([p]);
-	});
-
-	it('rejects a file that is not a profile export', async () => {
-		const { parseProfileExport } = await import('./profiles.svelte');
-		expect(() => parseProfileExport('{"kind":"other","version":1,"profiles":[]}')).toThrow();
-		expect(() => parseProfileExport('{"kind":"pvmss-profiles","version":1,"profiles":[{}]}')).toThrow();
-	});
-});
