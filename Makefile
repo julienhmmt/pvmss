@@ -232,9 +232,9 @@ web-install: ## Install web/ bun dependencies (SvelteKit)
 	cd $(WEB_DIR) && bun install --frozen-lockfile
 	@echo "$(GREEN)✓ Web dependencies installed$(NC)"
 
-web-deps-update: ## Update all Bun dependencies in web/ to latest versions
+web-deps-update: ## Update Bun dependencies in web/ (respects semver ranges)
 	@echo "$(BLUE)Updating Bun dependencies in $(WEB_DIR)/...$(NC)"
-	cd $(WEB_DIR) && bun update --latest
+	cd $(WEB_DIR) && bun update
 	@echo "$(GREEN)Web dependencies updated$(NC)"
 
 web-lint: ## Run eslint on web/ (SvelteKit + TypeScript)
