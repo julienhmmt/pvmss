@@ -83,11 +83,13 @@
 	let expanded = $state<string | null>(null);
 	let showImport = $state(false);
 
-	function downloadExport(): void {
-		const url = URL.createObjectURL(new Blob([buildNodeCapacityExport(cluster, nodes)], { type: 'application/json' }));
+	// suffix names a single-node export: the header button exports every
+	// capped node, a row button exports only its own.
+	function downloadExport(items: NodeCapacity[], suffix = ''): void {
+		const url = URL.createObjectURL(new Blob([buildNodeCapacityExport(cluster, items)], { type: 'application/json' }));
 		const a = document.createElement('a');
 		a.href = url;
-		a.download = `pvmss-node-capacity-${cluster || 'cluster'}.json`;
+		a.download = `pvmss-node-capacity-${cluster || 'cluster'}${suffix}.json`;
 		a.click();
 		setTimeout(() => URL.revokeObjectURL(url));
 	}
@@ -143,7 +145,7 @@
 		<div class="flex flex-wrap items-center gap-4">
 			<ClusterSelector options={clusterOptions} value={cluster} onChange={onClusterChange} id="policy-nodes-cluster" />
 			<Button variant="secondary" size="sm" disabled={nodes.length === 0} onclick={() => (showImport = true)}>{m['policy.nodesImport']()}</Button>
-			<Button variant="secondary" size="sm" disabled={cappedNodes(nodes).length === 0} onclick={downloadExport}>{m['policy.nodesExport']()}</Button>
+			<Button variant="secondary" size="sm" disabled={cappedNodes(nodes).length === 0} onclick={() => downloadExport(nodes)}>{m['policy.nodesExport']()}</Button>
 			<div class="flex flex-col items-end gap-1">
 				<Button variant="secondary" size="sm" onclick={onRefresh} disabled={refreshing || refreshDisabled} label={refreshButtonLabel} data-testid="refresh-button">
 					{refreshButtonLabel}
@@ -215,16 +217,27 @@
 							<td data-label={m['policy.colDisk']()}><CapacityCell used={node.usedDiskGb} cap={node.maxDiskGb} unit="GB" /></td>
 							<td data-label={m['policy.realLoad']()}><NodeLoadCell {node} /></td>
 							<td data-label={m['policy.actions']()} class="text-right">
-								<Button
-									class="whitespace-nowrap"
-									variant="secondary"
-									size="sm"
-									label={`${isOpen ? m['policy.closeEdit']() : m['policy.edit']()} ${node.node}`}
-									aria-expanded={isOpen}
-									onclick={() => toggleEditor(node.node)}
-								>
-									{isOpen ? m['policy.closeEdit']() : m['policy.edit']()}
-								</Button>
+								<div class="flex items-center justify-end gap-2">
+									<Button
+										variant="secondary"
+										size="sm"
+										label={`${m['policy.nodesExport']()} ${node.node}`}
+										disabled={cappedNodes([node]).length === 0}
+										onclick={() => downloadExport([node], `-${node.node}`)}
+									>
+										{m['policy.nodesExport']()}
+									</Button>
+									<Button
+										class="whitespace-nowrap"
+										variant="secondary"
+										size="sm"
+										label={`${isOpen ? m['policy.closeEdit']() : m['policy.edit']()} ${node.node}`}
+										aria-expanded={isOpen}
+										onclick={() => toggleEditor(node.node)}
+									>
+										{isOpen ? m['policy.closeEdit']() : m['policy.edit']()}
+									</Button>
+								</div>
 							</td>
 						</tr>
 						{#if isOpen}
