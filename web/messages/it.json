@@ -2446,5 +2446,41 @@
 	"admin.clusters.vmCreationOn": "Creazione VM abilitata su {name}",
 	"admin.clusters.vmCreationOff": "Creazione VM disabilitata su {name}",
 	"vms.create.blocked.creationClosedTitle": "Creazione VM chiusa",
-	"vms.create.blocked.creationClosedBody": "Un amministratore ha disattivato la creazione di VM sul tuo cluster. Le tue macchine esistenti non sono interessate."
+	"vms.create.blocked.creationClosedBody": "Un amministratore ha disattivato la creazione di VM sul tuo cluster. Le tue macchine esistenti non sono interessate.",
+	"vms.list.firstRun.allowance": [
+		{
+			"declarations": [
+				"input allowed",
+				"local allowedPlural = allowed: plural"
+			],
+			"selectors": [
+				"allowedPlural"
+			],
+			"match": {
+				"allowedPlural=one": "Puoi avere fino a {allowed} macchina.",
+				"allowedPlural=other": "Puoi avere fino a {allowed} macchine."
+			}
+		}
+	],
+	"vms.list.firstRun.allowanceOn": [
+		{
+			"declarations": [
+				"input allowed",
+				"local allowedPlural = allowed: plural",
+				"input cluster"
+			],
+			"selectors": [
+				"allowedPlural"
+			],
+			"match": {
+				"allowedPlural=one": "Puoi avere fino a {allowed} macchina su {cluster}.",
+				"allowedPlural=other": "Puoi avere fino a {allowed} macchine su {cluster}."
+			}
+		}
+	],
+	"vms.list.firstRun.unlimited": "Il tuo spazio non ha limiti di macchine.",
+	"vms.list.firstRun.unlimitedOn": "Il tuo spazio non ha limiti di macchine su {cluster}.",
+	"vms.list.firstRun.guide": "Leggi la guida introduttiva",
+	"vms.list.firstRun.zeroTitle": "Il tuo spazio è pronto.",
+	"vms.list.firstRun.zeroBody": "Il tuo amministratore non ti ha ancora assegnato macchine. Richiedile: la decisione apparirà qui."
 }

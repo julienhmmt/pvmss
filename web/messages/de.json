@@ -2446,5 +2446,41 @@
 	"admin.clusters.vmCreationOn": "VM-Erstellung auf {name} aktiviert",
 	"admin.clusters.vmCreationOff": "VM-Erstellung auf {name} deaktiviert",
 	"vms.create.blocked.creationClosedTitle": "VM-Erstellung geschlossen",
-	"vms.create.blocked.creationClosedBody": "Ein Administrator hat die VM-Erstellung auf Ihrem Cluster deaktiviert. Ihre bestehenden Maschinen sind nicht betroffen."
+	"vms.create.blocked.creationClosedBody": "Ein Administrator hat die VM-Erstellung auf Ihrem Cluster deaktiviert. Ihre bestehenden Maschinen sind nicht betroffen.",
+	"vms.list.firstRun.allowance": [
+		{
+			"declarations": [
+				"input allowed",
+				"local allowedPlural = allowed: plural"
+			],
+			"selectors": [
+				"allowedPlural"
+			],
+			"match": {
+				"allowedPlural=one": "Sie können bis zu {allowed} Maschine betreiben.",
+				"allowedPlural=other": "Sie können bis zu {allowed} Maschinen betreiben."
+			}
+		}
+	],
+	"vms.list.firstRun.allowanceOn": [
+		{
+			"declarations": [
+				"input allowed",
+				"local allowedPlural = allowed: plural",
+				"input cluster"
+			],
+			"selectors": [
+				"allowedPlural"
+			],
+			"match": {
+				"allowedPlural=one": "Sie können auf {cluster} bis zu {allowed} Maschine betreiben.",
+				"allowedPlural=other": "Sie können auf {cluster} bis zu {allowed} Maschinen betreiben."
+			}
+		}
+	],
+	"vms.list.firstRun.unlimited": "Ihr Arbeitsbereich hat kein Maschinenlimit.",
+	"vms.list.firstRun.unlimitedOn": "Ihr Arbeitsbereich hat auf {cluster} kein Maschinenlimit.",
+	"vms.list.firstRun.guide": "Einstiegsanleitung lesen",
+	"vms.list.firstRun.zeroTitle": "Ihr Arbeitsbereich ist bereit.",
+	"vms.list.firstRun.zeroBody": "Ihr Administrator hat Ihnen noch keine Maschinen zugeteilt. Fordern Sie welche an; die Entscheidung erscheint hier."
 }
