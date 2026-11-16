@@ -50,6 +50,7 @@ type recoveryHiddenPoolDTO struct {
 type recoveryHiddenTagDTO struct {
 	Name    string `json:"name"`
 	VMCount int    `json:"vmCount"`
+	Color   string `json:"color"`
 }
 
 type recoveryHiddenVMDTO struct {

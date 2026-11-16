@@ -102,6 +102,7 @@
 		onAdoptHidden
 	}: Props = $props();
 
+	const hasAdoptables = $derived(pools.length > 0 || tags.length > 0);
 	const visibleCount = $derived(pools.length + tags.length + looseVMs.length);
 	const hiddenCount = $derived(
 		(report?.hiddenPools.length ?? 0) + (report?.hiddenTags.length ?? 0) + (report?.hiddenLooseVMs.length ?? 0)
@@ -176,6 +177,7 @@
 									type="button"
 									class="mt-0.5 shrink-0 rounded text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-none focus-visible:text-foreground"
 									aria-label={m['admin.recovery.hideItem']({ name: pool.name })}
+									disabled={busy}
 									onclick={() => onHide({ pools: [pool.name] })}
 								>
 									<EyeOffIcon class="h-4 w-4" />
@@ -251,6 +253,7 @@
 										type="button"
 										class="rounded text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-none focus-visible:text-foreground"
 										aria-label={m['admin.recovery.hideItem']({ name: vm.name })}
+										disabled={busy}
 										onclick={() => onHide({ vms: [vm.vmid] })}
 									>
 										<EyeOffIcon class="h-4 w-4" />
@@ -282,6 +285,7 @@
 								type="button"
 								class="ml-auto shrink-0 rounded text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-none focus-visible:text-foreground"
 								aria-label={m['admin.recovery.hideItem']({ name: tag.name })}
+								disabled={busy}
 								onclick={() => onHide({ tags: [tag.name] })}
 							>
 								<EyeOffIcon class="h-4 w-4" />
@@ -305,9 +309,11 @@
 				<Button variant="secondary" onclick={onHideSelected} disabled={busy}>
 					{hiding ? m['admin.recovery.hiding']() : m['admin.recovery.hideSelected']()}
 				</Button>
-				<Button onclick={onAdopt} disabled={busy}>
-					{adopting ? m['admin.recovery.adopting']() : m['admin.recovery.adopt']()}
-				</Button>
+				{#if hasAdoptables}
+					<Button onclick={onAdopt} disabled={busy}>
+						{adopting ? m['admin.recovery.adopting']() : m['admin.recovery.adopt']()}
+					</Button>
+				{/if}
 			</div>
 		{/if}
 
@@ -334,6 +340,7 @@
 									type="button"
 									class="rounded text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-none focus-visible:text-foreground"
 									aria-label={m['admin.recovery.unhideItem']({ name: pool.name })}
+									disabled={busy}
 									onclick={() => onUnhide({ pools: [pool.name] })}
 								>
 									<EyeIcon class="h-4 w-4" />
@@ -343,7 +350,8 @@
 					{/each}
 					{#each report.hiddenTags as tag (tag.name)}
 						<li class="flex items-center justify-between gap-3 px-5 py-3">
-							<div class="min-w-0">
+							<div class="flex min-w-0 items-center gap-2">
+								<span class="h-3.5 w-3.5 shrink-0 rounded-full border border-border" style="background-color: {tag.color}"></span>
 								<span class="font-mono font-medium">{tag.name}</span>
 								<span class="ml-2 text-xs text-muted-foreground">{m['admin.recovery.vmCount']({ count: tag.vmCount })}</span>
 							</div>
@@ -355,6 +363,7 @@
 									type="button"
 									class="rounded text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-none focus-visible:text-foreground"
 									aria-label={m['admin.recovery.unhideItem']({ name: tag.name })}
+									disabled={busy}
 									onclick={() => onUnhide({ tags: [tag.name] })}
 								>
 									<EyeIcon class="h-4 w-4" />
@@ -372,6 +381,7 @@
 								type="button"
 								class="shrink-0 rounded text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-none focus-visible:text-foreground"
 								aria-label={m['admin.recovery.unhideItem']({ name: vm.name })}
+								disabled={busy}
 								onclick={() => onUnhide({ vms: [vm.vmid] })}
 							>
 								<EyeIcon class="h-4 w-4" />

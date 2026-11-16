@@ -100,6 +100,7 @@ type recoveryHiddenPoolDTO struct {
 type recoveryHiddenTagDTO struct {
 	Name    string `json:"name"`
 	VMCount int    `json:"vmCount"`
+	Color   string `json:"color"`
 }
 
 type recoveryHiddenVMDTO struct {
@@ -435,7 +436,7 @@ func hiddenVMDTOs(vms []adoption.HiddenLooseVM) []recoveryHiddenVMDTO {
 func hiddenTagDTOs(tags []adoption.HiddenTag) []recoveryHiddenTagDTO {
 	out := make([]recoveryHiddenTagDTO, len(tags))
 	for i, tag := range tags {
-		out[i] = recoveryHiddenTagDTO{Name: tag.Name, VMCount: tag.VMCount}
+		out[i] = recoveryHiddenTagDTO{Name: tag.Name, VMCount: tag.VMCount, Color: tag.Color}
 	}
 	return out
 }

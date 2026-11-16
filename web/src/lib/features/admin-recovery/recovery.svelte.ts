@@ -40,6 +40,7 @@ export interface RecoveryHiddenPool {
 export interface RecoveryHiddenTag {
 	name: string;
 	vmCount: number;
+	color: string;
 }
 
 export interface RecoveryHiddenVM {
@@ -72,6 +73,18 @@ interface AdoptResult {
 
 function matchesNeedle(needle: string, value: string): boolean {
 	return value.toLowerCase().includes(needle);
+}
+
+function reportIsEmpty(report: RecoveryReport): boolean {
+	return (
+		report.pools.length +
+			report.tags.length +
+			report.looseVMs.length +
+			report.hiddenPools.length +
+			report.hiddenTags.length +
+			report.hiddenLooseVMs.length ===
+		0
+	);
 }
 
 const ADMIN_RECOVERY_CONTEXT_KEY = Symbol('admin-recovery');
@@ -193,6 +206,9 @@ export class RecoveryStore {
 		this.selectedVMs.clear();
 		for (const pool of this.report?.pools ?? []) this.selectedPools.add(pool.name);
 		for (const tag of this.report?.tags ?? []) this.selectedTags.add(tag.name);
+		// A drained report leaves nothing to filter: drop a stale query so
+		// the page shows the empty state, not "no match".
+		if (this.report !== null && reportIsEmpty(this.report)) this.search = '';
 	}
 
 	togglePool(name: string): void {

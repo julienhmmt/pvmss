@@ -28,7 +28,7 @@ const hiddenReport: RecoveryReport = {
 	...report,
 	hiddenPools: [{ name: 'pvmss-hidden', comment: 'dismissed', memberCount: 3 }],
 	hiddenLooseVMs: [{ vmid: 910, name: 'ghost' }],
-	hiddenTags: [{ name: 'ignored', vmCount: 4 }]
+	hiddenTags: [{ name: 'ignored', vmCount: 4, color: '#f59e0b' }]
 };
 
 const emptyReport: RecoveryReport = {
