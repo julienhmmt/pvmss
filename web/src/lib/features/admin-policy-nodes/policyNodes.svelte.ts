@@ -43,14 +43,24 @@ export interface NodeCapacityPatch {
 	maxDiskGb: number;
 }
 
-/** Export file kind tag and version; bump the version on a breaking change. */
+/** Export file kind tag and versions: 1 carries one cluster's nodes, 2 a
+ *  clusters[] bundle where each section names its target cluster. */
 export const NODE_CAPACITY_EXPORT_KIND = 'pvmss-node-capacity';
 export const NODE_CAPACITY_EXPORT_VERSION = 1;
+export const NODE_CAPACITY_MULTI_EXPORT_VERSION = 2;
 
 /** One node's caps as they travel through an export file. */
 export type NodeCapacityExportItem = NodeCapacityPatch & { node: string };
 
+/** One cluster section of an export file. cluster is null for v1 files: they
+ *  carry a source label only and import into the cluster on screen. */
+export interface NodeCapacityExportSection {
+	cluster: string | null;
+	nodes: NodeCapacityExportItem[];
+}
+
 export interface NodeCapacityImportOutcome {
+	cluster: string;
 	node: string;
 	result: 'updated' | 'unchanged' | 'skipped' | 'not_found' | 'invalid' | 'failed';
 	error?: string;
@@ -61,28 +71,51 @@ export function cappedNodes(nodes: NodeCapacity[]): NodeCapacity[] {
 	return nodes.filter((node) => node.maxVms !== 0 || node.maxVcpus !== 0 || node.maxRamGb !== 0 || node.maxDiskGb !== 0);
 }
 
-/** Serialises the cluster's configured caps to the export file content. */
-export function buildNodeCapacityExport(cluster: string, nodes: NodeCapacity[]): string {
-	const items: NodeCapacityExportItem[] = cappedNodes(nodes).map((node) => ({
+function exportItems(nodes: NodeCapacity[]): NodeCapacityExportItem[] {
+	return cappedNodes(nodes).map((node) => ({
 		node: node.node,
 		maxVms: node.maxVms,
 		maxVcpus: node.maxVcpus,
 		maxRamGb: node.maxRamGb,
 		maxDiskGb: node.maxDiskGb
 	}));
-	return JSON.stringify({ kind: NODE_CAPACITY_EXPORT_KIND, version: NODE_CAPACITY_EXPORT_VERSION, cluster, nodes: items }, null, 2);
 }
 
-/** Parses an export file. Every cap must be present: a missing one would
- *  silently uncap that dimension. Ranges are validated by the server. */
-export function parseNodeCapacityExport(text: string): NodeCapacityExportItem[] {
+/** Serialises the cluster's configured caps to the export file content. */
+export function buildNodeCapacityExport(cluster: string, nodes: NodeCapacity[]): string {
+	return JSON.stringify({ kind: NODE_CAPACITY_EXPORT_KIND, version: NODE_CAPACITY_EXPORT_VERSION, cluster, nodes: exportItems(nodes) }, null, 2);
+}
+
+/** Serialises every cluster's configured caps to one export file; each
+ *  section names the cluster its nodes are written back to on import. */
+export function buildAllClustersNodeCapacityExport(sections: NodeCapacityExportSection[]): string {
+	return JSON.stringify({ kind: NODE_CAPACITY_EXPORT_KIND, version: NODE_CAPACITY_MULTI_EXPORT_VERSION, clusters: sections }, null, 2);
+}
+
+/** Parses an export file (v1 single-cluster or v2 multi-cluster) into import
+ *  sections. Every cap must be present: a missing one would silently uncap
+ *  that dimension. Ranges are validated by the server. */
+export function parseNodeCapacityExport(text: string): NodeCapacityExportSection[] {
 	const data: unknown = JSON.parse(text);
 	if (typeof data !== 'object' || data === null) throw new Error(m['policy.nodesImportInvalidFile']());
-	const file = data as { kind?: unknown; version?: unknown; nodes?: unknown };
-	if (file.kind !== NODE_CAPACITY_EXPORT_KIND || file.version !== NODE_CAPACITY_EXPORT_VERSION || !Array.isArray(file.nodes)) {
-		throw new Error(m['policy.nodesImportInvalidFile']());
+	const file = data as { kind?: unknown; version?: unknown; nodes?: unknown; clusters?: unknown };
+	if (file.kind !== NODE_CAPACITY_EXPORT_KIND) throw new Error(m['policy.nodesImportInvalidFile']());
+	if (file.version === NODE_CAPACITY_EXPORT_VERSION && Array.isArray(file.nodes)) {
+		return [{ cluster: null, nodes: parseItems(file.nodes) }];
 	}
-	const items = file.nodes as unknown[];
+	if (file.version === NODE_CAPACITY_MULTI_EXPORT_VERSION && Array.isArray(file.clusters)) {
+		return file.clusters.map((section) => {
+			const entry = section as { cluster?: unknown; nodes?: unknown };
+			if (typeof entry !== 'object' || entry === null || typeof entry.cluster !== 'string' || !Array.isArray(entry.nodes)) {
+				throw new Error(m['policy.nodesImportInvalidFile']());
+			}
+			return { cluster: entry.cluster, nodes: parseItems(entry.nodes) };
+		});
+	}
+	throw new Error(m['policy.nodesImportInvalidFile']());
+}
+
+function parseItems(items: unknown[]): NodeCapacityExportItem[] {
 	const fields = ['maxVms', 'maxVcpus', 'maxRamGb', 'maxDiskGb'];
 	const complete = items.every(
 		(item) =>
@@ -201,26 +234,53 @@ export class AdminPolicyNodesStore {
 		this.saveErrorCode = null;
 	}
 
-	/** Writes exported caps to the cluster on screen and reloads it; the
-	 *  per-node report is returned for the dialog. */
-	async importNodes(items: NodeCapacityExportItem[], overwrite: boolean): Promise<NodeCapacityImportOutcome[] | null> {
+	/** Writes exported caps cluster section by cluster section (a v1 section
+	 *  targets the cluster on screen) and reloads; the per-node report is
+	 *  returned for the dialog. A refused section reports its nodes as failed
+	 *  instead of stopping the others. */
+	async importNodes(sections: NodeCapacityExportSection[], overwrite: boolean): Promise<NodeCapacityImportOutcome[] | null> {
 		this.saving = true;
 		this.saveError = null;
 		this.saveErrorCode = null;
+		const all: NodeCapacityImportOutcome[] = [];
 		try {
-			const outcomes = await post<NodeCapacityImportOutcome[]>('/api/v1/admin/policy/nodes/import', {
-				cluster: this.cluster,
-				overwrite,
-				nodes: items
-			});
+			for (const section of sections) {
+				if (section.nodes.length === 0) continue;
+				const target = section.cluster ?? this.cluster;
+				try {
+					const outcomes = await post<Array<Omit<NodeCapacityImportOutcome, 'cluster'>>>('/api/v1/admin/policy/nodes/import', {
+						cluster: target,
+						overwrite,
+						nodes: section.nodes
+					});
+					all.push(...outcomes.map((outcome) => ({ ...outcome, cluster: target })));
+				} catch (error: unknown) {
+					this.saveErrorCode = error instanceof ApiRequestError ? error.code : null;
+					const message = error instanceof ApiRequestError ? error.message : m['policy.nodesImportError']();
+					all.push(...section.nodes.map((item) => ({ cluster: target, node: item.node, result: 'failed' as const, error: message })));
+				}
+			}
 			await this.load();
-			return outcomes;
-		} catch (error: unknown) {
-			this.saveErrorCode = error instanceof ApiRequestError ? error.code : null;
-			this.saveError = error instanceof ApiRequestError ? error.message : m['policy.nodesImportError']();
-			return null;
+			return all;
 		} finally {
 			this.saving = false;
+		}
+	}
+
+	/** Reads the configured caps of every cluster for a multi-cluster export
+	 *  file; returns null and records the error when one cluster cannot be
+	 *  read rather than writing a silently incomplete bundle. */
+	async exportAllClusterCaps(): Promise<NodeCapacityExportSection[] | null> {
+		try {
+			const sections: NodeCapacityExportSection[] = [];
+			for (const option of this.clusterOptions) {
+				const response = await get<NodeCapacityListResponse>(`/api/v1/admin/policy/nodes?cluster=${encodeURIComponent(option.name)}`);
+				sections.push({ cluster: option.name, nodes: exportItems(response.nodes) });
+			}
+			return sections;
+		} catch (error: unknown) {
+			this.saveError = error instanceof ApiRequestError ? error.message : m['policy.nodesExportError']();
+			return null;
 		}
 	}
 

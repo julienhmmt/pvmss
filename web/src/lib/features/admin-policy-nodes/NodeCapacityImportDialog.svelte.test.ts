@@ -53,8 +53,13 @@ describe('NodeCapacityImportDialog', () => {
 
 		expect(onImport).toHaveBeenCalledWith(
 			[
-				{ node: 'pve-node-01', maxVms: 4, maxVcpus: 8, maxRamGb: 16, maxDiskGb: 100 },
-				{ node: 'pve-node-02', maxVms: 2, maxVcpus: 4, maxRamGb: 8, maxDiskGb: 50 }
+				{
+					cluster: null,
+					nodes: [
+						{ node: 'pve-node-01', maxVms: 4, maxVcpus: 8, maxRamGb: 16, maxDiskGb: 100 },
+						{ node: 'pve-node-02', maxVms: 2, maxVcpus: 4, maxRamGb: 8, maxDiskGb: 50 }
+					]
+				}
 			],
 			true
 		);

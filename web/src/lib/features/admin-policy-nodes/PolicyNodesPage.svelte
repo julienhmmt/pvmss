@@ -5,10 +5,11 @@
 	import NodeLoadCell from './NodeLoadCell.svelte';
 	import { resolve } from '$app/paths';
 	import {
+		buildAllClustersNodeCapacityExport,
 		buildNodeCapacityExport,
 		cappedNodes,
 		type NodeCapacity,
-		type NodeCapacityExportItem,
+		type NodeCapacityExportSection,
 		type NodeCapacityImportOutcome,
 		type NodeCapacityPatch,
 		type NodeCapacitySortColumn
@@ -52,7 +53,8 @@
 		sortBy: NodeCapacitySortColumn;
 		sortDir: 'asc' | 'desc';
 		onSort: (column: NodeCapacitySortColumn) => void;
-		onImport: (items: NodeCapacityExportItem[], overwrite: boolean) => Promise<NodeCapacityImportOutcome[] | null>;
+		onImport: (sections: NodeCapacityExportSection[], overwrite: boolean) => Promise<NodeCapacityImportOutcome[] | null>;
+		onExportAll: () => Promise<NodeCapacityExportSection[] | null>;
 	}
 
 	let {
@@ -77,11 +79,13 @@
 		sortBy,
 		sortDir,
 		onSort,
-		onImport
+		onImport,
+		onExportAll
 	}: Props = $props();
 
 	let expanded = $state<string | null>(null);
 	let showImport = $state(false);
+	let exportingAll = $state(false);
 
 	// suffix names a single-node export: the header button exports every
 	// capped node, a row button exports only its own.
@@ -94,11 +98,27 @@
 		setTimeout(() => URL.revokeObjectURL(url));
 	}
 
+	async function downloadExportAll(): Promise<void> {
+		exportingAll = true;
+		try {
+			const sections = await onExportAll();
+			if (sections === null) return;
+			const url = URL.createObjectURL(new Blob([buildAllClustersNodeCapacityExport(sections)], { type: 'application/json' }));
+			const a = document.createElement('a');
+			a.href = url;
+			a.download = 'pvmss-node-capacity-all-clusters.json';
+			a.click();
+			setTimeout(() => URL.revokeObjectURL(url));
+		} finally {
+			exportingAll = false;
+		}
+	}
+
 	// The inline editor captures the caps when its row expands, so an import
 	// closes it before the reload.
-	async function handleImport(items: NodeCapacityExportItem[], overwrite: boolean): Promise<NodeCapacityImportOutcome[] | null> {
+	async function handleImport(sections: NodeCapacityExportSection[], overwrite: boolean): Promise<NodeCapacityImportOutcome[] | null> {
 		expanded = null;
-		return onImport(items, overwrite);
+		return onImport(sections, overwrite);
 	}
 
 	function toggleEditor(node: string): void {
@@ -146,6 +166,7 @@
 			<ClusterSelector options={clusterOptions} value={cluster} onChange={onClusterChange} id="policy-nodes-cluster" />
 			<Button variant="secondary" size="sm" disabled={nodes.length === 0} onclick={() => (showImport = true)}>{m['policy.nodesImport']()}</Button>
 			<Button variant="secondary" size="sm" disabled={cappedNodes(nodes).length === 0} onclick={() => downloadExport(nodes)}>{m['policy.nodesExport']()}</Button>
+			<Button variant="secondary" size="sm" disabled={exportingAll || clusterOptions.length === 0} onclick={() => void downloadExportAll()}>{m['policy.nodesExportAll']()}</Button>
 			<div class="flex flex-col items-end gap-1">
 				<Button variant="secondary" size="sm" onclick={onRefresh} disabled={refreshing || refreshDisabled} label={refreshButtonLabel} data-testid="refresh-button">
 					{refreshButtonLabel}
@@ -175,6 +196,7 @@
 		<div class="space-y-3" role="alert"><p class="text-destructive">{error}</p><Button variant="secondary" onclick={onLoad}>{m['policy.retry']()}</Button></div>
 	{:else}
 		{#if refreshError}<Alert class="mb-4">{refreshError}</Alert>{/if}
+		{#if saveError}<Alert class="mb-4">{saveError}</Alert>{/if}
 		<TableCard>
 			<table class="pv-table pv-responsive-table">
 				<caption class="sr-only">{m['policy.nodeTitle']()}</caption>

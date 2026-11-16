@@ -32,5 +32,6 @@
 	sortBy={store.sortBy}
 	sortDir={store.sortDir}
 	onSort={(column) => store.setSort(column)}
-	onImport={(items, overwrite) => store.importNodes(items, overwrite)}
+	onImport={(sections, overwrite) => store.importNodes(sections, overwrite)}
+	onExportAll={() => store.exportAllClusterCaps()}
 />

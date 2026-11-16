@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import {
 	AdminPolicyNodesStore,
+	buildAllClustersNodeCapacityExport,
 	buildNodeCapacityExport,
 	NODE_CAPACITY_EXPORT_KIND,
 	parseNodeCapacityExport,
@@ -193,11 +194,19 @@ describe('node capacity export file', () => {
 		expect(file.nodes).toEqual([{ node: 'pve-node-01', maxVms: 4, maxVcpus: 8, maxRamGb: 16, maxDiskGb: 100 }]);
 	});
 
-	it('round-trips through parse', () => {
+	it('round-trips through parse as a single unnamed section', () => {
 		const capped = fixture({ node: 'pve-node-01', maxVms: 4, maxVcpus: 8, maxRamGb: 16, maxDiskGb: 100 });
 		expect(parseNodeCapacityExport(buildNodeCapacityExport('pve', [capped]))).toEqual([
-			{ node: 'pve-node-01', maxVms: 4, maxVcpus: 8, maxRamGb: 16, maxDiskGb: 100 }
+			{ cluster: null, nodes: [{ node: 'pve-node-01', maxVms: 4, maxVcpus: 8, maxRamGb: 16, maxDiskGb: 100 }] }
 		]);
+	});
+
+	it('round-trips a multi-cluster bundle with per-cluster sections', () => {
+		const sections = [
+			{ cluster: 'pve-a', nodes: [{ node: 'pve-node-01', maxVms: 4, maxVcpus: 8, maxRamGb: 16, maxDiskGb: 100 }] },
+			{ cluster: 'pve-b', nodes: [{ node: 'pve-node-02', maxVms: 2, maxVcpus: 4, maxRamGb: 8, maxDiskGb: 50 }] }
+		];
+		expect(parseNodeCapacityExport(buildAllClustersNodeCapacityExport(sections))).toEqual(sections);
 	});
 
 	it('rejects a file with a missing cap', () => {
@@ -226,12 +235,42 @@ describe('AdminPolicyNodesStore.importNodes', () => {
 		store.cluster = 'pve';
 		const items = [{ node: 'pve-node-01', maxVms: 4, maxVcpus: 8, maxRamGb: 16, maxDiskGb: 100 }];
 
-		const result = await store.importNodes(items, true);
+		const result = await store.importNodes([{ cluster: null, nodes: items }], true);
 
-		expect(result).toEqual(outcomes);
+		expect(result).toEqual(outcomes.map((outcome) => ({ ...outcome, cluster: 'pve' })));
 		expect(store.nodes).toEqual(nodes);
 		const call = fetchMock.mock.calls.find(([url]) => url === '/api/v1/admin/policy/nodes/import');
 		const init = call?.[1] as RequestInit | undefined;
 		expect(JSON.parse(init?.body as string)).toEqual({ cluster: 'pve', overwrite: true, nodes: items });
+	});
+
+	it('posts each named section to its own cluster', async () => {
+		const calls: Array<{ cluster: string; nodes: unknown }> = [];
+		const nodes = [fixture({ node: 'pve-node-01', maxVms: 4 })];
+		const fetchMock = vi.fn().mockImplementation((url: string, init?: RequestInit) => {
+			if (url === '/api/v1/admin/policy/nodes/import') {
+				const body = JSON.parse(init?.body as string) as { cluster: string; nodes: unknown };
+				calls.push(body);
+				return Promise.resolve(jsonResponse(200, [{ node: 'n', result: 'updated' }]));
+			}
+			if (url === '/api/v1/auth/clusters') return Promise.resolve(jsonResponse(200, [{ name: 'pve', displayName: 'pve' }]));
+			if (url.startsWith('/api/v1/admin/policy/nodes?')) return Promise.resolve(jsonResponse(200, { nodes, refreshedAt: '' }));
+			return Promise.resolve(jsonResponse(404, { code: 'not_found', message: `unexpected ${url}` }));
+		});
+		vi.stubGlobal('fetch', fetchMock);
+		const store = new AdminPolicyNodesStore();
+		store.cluster = 'pve';
+		const caps = { maxVms: 1, maxVcpus: 1, maxRamGb: 1, maxDiskGb: 1 };
+
+		const result = await store.importNodes(
+			[
+				{ cluster: 'pve-a', nodes: [{ node: 'n-a', ...caps }] },
+				{ cluster: 'pve-b', nodes: [{ node: 'n-b', ...caps }] }
+			],
+			false
+		);
+
+		expect(calls.map((call) => call.cluster)).toEqual(['pve-a', 'pve-b']);
+		expect(result?.map((outcome) => outcome.cluster)).toEqual(['pve-a', 'pve-b']);
 	});
 });

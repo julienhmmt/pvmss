@@ -2,7 +2,7 @@
 	import { SvelteSet } from 'svelte/reactivity';
 	import {
 		parseNodeCapacityExport,
-		type NodeCapacityExportItem,
+		type NodeCapacityExportSection,
 		type NodeCapacityImportOutcome
 	} from './policyNodes.svelte';
 	import Alert from '#lib/shared/ui/Alert.svelte';
@@ -14,23 +14,25 @@
 		open: boolean;
 		saving: boolean;
 		saveError: string | null;
-		onImport: (items: NodeCapacityExportItem[], overwrite: boolean) => Promise<NodeCapacityImportOutcome[] | null>;
+		onImport: (sections: NodeCapacityExportSection[], overwrite: boolean) => Promise<NodeCapacityImportOutcome[] | null>;
 		onClose: () => void;
 	}
 
 	let { open = $bindable(), saving, saveError, onImport, onClose }: Props = $props();
 
-	let items = $state.raw<NodeCapacityExportItem[]>([]);
+	let sections = $state.raw<NodeCapacityExportSection[]>([]);
 	let fileError = $state<string | null>(null);
 	let selectedFileName = $state('');
 	let pastedJson = $state('');
 	let overwrite = $state(false);
 	let outcomes = $state.raw<NodeCapacityImportOutcome[] | null>(null);
-	const chosenItems = new SvelteSet<number>();
+	// Row keys are "sectionIndex:itemIndex" so a multi-cluster file keeps its
+	// sections distinct even when two clusters name a node the same.
+	const chosenItems = new SvelteSet<string>();
 
 	$effect(() => {
 		if (!open) return;
-		items = [];
+		sections = [];
 		fileError = null;
 		selectedFileName = '';
 		pastedJson = '';
@@ -41,12 +43,12 @@
 
 	function loadFromText(text: string): void {
 		fileError = null;
-		items = [];
+		sections = [];
 		chosenItems.clear();
 		if (!text.trim()) return;
 		try {
-			items = parseNodeCapacityExport(text);
-			items.forEach((_, i) => chosenItems.add(i));
+			sections = parseNodeCapacityExport(text);
+			sections.forEach((section, s) => section.nodes.forEach((_, i) => chosenItems.add(`${s}:${i}`)));
 		} catch (err) {
 			fileError = err instanceof SyntaxError || !(err instanceof Error) ? m['policy.nodesImportInvalidFile']() : err.message;
 		}
@@ -66,13 +68,16 @@
 		loadFromText(pastedJson);
 	}
 
-	function toggle(index: number): void {
+	function toggle(index: string): void {
 		if (chosenItems.has(index)) chosenItems.delete(index);
 		else chosenItems.add(index);
 	}
 
 	async function submit(): Promise<void> {
-		outcomes = await onImport(items.filter((_, i) => chosenItems.has(i)), overwrite);
+		const chosen = sections
+			.map((section, s) => ({ cluster: section.cluster, nodes: section.nodes.filter((_, i) => chosenItems.has(`${s}:${i}`)) }))
+			.filter((section) => section.nodes.length > 0);
+		outcomes = await onImport(chosen, overwrite);
 	}
 
 	const resultLabel: Record<NodeCapacityImportOutcome['result'], () => string> = {
@@ -84,6 +89,8 @@
 		failed: m['policy.importResultFailed']
 	};
 
+	const totalNodes = $derived(sections.reduce((count, section) => count + section.nodes.length, 0));
+	const outcomeClusters = $derived(new Set((outcomes ?? []).map((outcome) => outcome.cluster)));
 	const canSubmit = $derived(!saving && chosenItems.size > 0);
 </script>
 
@@ -93,10 +100,11 @@
 		<p class="mb-3 text-sm">{m['policy.nodesImportDone']()}</p>
 		<table class="pv-table mb-4">
 			<caption class="sr-only">{m['policy.nodesImportTitle']()}</caption>
-			<thead><tr><th>{m['policy.nodesImportNode']()}</th><th>{m['policy.importResult']()}</th></tr></thead>
+			<thead><tr>{#if outcomeClusters.size > 1}<th>{m['policy.importCluster']()}</th>{/if}<th>{m['policy.nodesImportNode']()}</th><th>{m['policy.importResult']()}</th></tr></thead>
 			<tbody>
 				{#each outcomes as o, i (i)}
 					<tr>
+						{#if outcomeClusters.size > 1}<td>{o.cluster}</td>{/if}
 						<td>{o.node}</td>
 						<td>{resultLabel[o.result]()}{o.error ? ` - ${o.error}` : ''}</td>
 					</tr>
@@ -137,21 +145,26 @@
 				></textarea>
 			</div>
 
-			{#if items.length > 0}
+			{#if totalNodes > 0}
 				<fieldset>
 					<legend class="mb-2 text-sm font-medium">{m['policy.nodesImportNodes']({ count: chosenItems.size })}</legend>
 					<p class="mb-2 text-sm text-muted-foreground">{m['policy.nodesImportIntro']()}</p>
 					<ul class="max-h-60 space-y-1 overflow-y-auto">
-						{#each items as item, i (i)}
-							<li>
-								<label class="flex items-center gap-2 text-sm">
-									<input type="checkbox" checked={chosenItems.has(i)} onchange={() => toggle(i)} />
-									<span>{item.node}</span>
-									<span class="text-xs text-muted-foreground">
-										{item.maxVms} VM, {item.maxVcpus} vCPU, {item.maxRamGb} GB RAM, {item.maxDiskGb} GB
-									</span>
-								</label>
-							</li>
+						{#each sections as section, s (s)}
+							{#if sections.length > 1}
+								<li class="pt-2 text-sm font-medium">{m['policy.importCluster']()}: {section.cluster}</li>
+							{/if}
+							{#each section.nodes as item, i (i)}
+								<li>
+									<label class="flex items-center gap-2 text-sm">
+										<input type="checkbox" checked={chosenItems.has(`${s}:${i}`)} onchange={() => toggle(`${s}:${i}`)} />
+										<span>{item.node}</span>
+										<span class="text-xs text-muted-foreground">
+											{item.maxVms} VM, {item.maxVcpus} vCPU, {item.maxRamGb} GB RAM, {item.maxDiskGb} GB
+										</span>
+									</label>
+								</li>
+							{/each}
 						{/each}
 					</ul>
 				</fieldset>

@@ -84,8 +84,8 @@ latérale. En approuver une écrit une surcharge pour le pool du demandeur
 nœuds** plafonne ce que PVMSS peut allouer sur chaque nœud. Les deux pages
 exportent leurs réglages dans un fichier JSON et le réimportent : les limites
 vers un, plusieurs ou tous les clusters, la capacité des nœuds vers le
-cluster affiché (les nœuds que le cluster ne connaît pas sont signalés comme
-introuvables). Tout cela est appliqué côté serveur avant tout appel à Proxmox.
+cluster affiché ou tous les clusters en un seul fichier (les nœuds que le
+cluster ne connaît pas sont signalés comme introuvables). Tout cela est appliqué côté serveur avant tout appel à Proxmox.
 
 ## Documentation
 
