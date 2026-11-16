@@ -3,6 +3,7 @@ import { setContext, getContext } from 'svelte';
 import { STALE_REFRESH_MS } from '#lib/shared/visibility-refresh.js';
 import { m } from '#lib/paraglide/messages.js';
 import type { DashboardAlert } from './dashboard-alerts';
+import type { OnboardingStep } from './onboarding';
 
 export interface NodeSummary {
 	clusterKey: string;
@@ -60,6 +61,8 @@ export interface DashboardSummary {
 	recentChanges: DashboardChange[];
 	version: string;
 	refreshedAt: string;
+	/** First-run setup steps; absent once every required step is done. */
+	onboarding?: { steps: OnboardingStep[] };
 }
 
 /**
