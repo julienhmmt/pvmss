@@ -530,6 +530,18 @@
   .pv-responsive-table td[data-nolabel="true"]::before {
     content: none;
   }
+
+  .pv-responsive-table td[data-mobile-hidden] {
+    display: none;
+  }
+
+  .pv-responsive-table td[data-card-head] {
+    justify-content: flex-start;
+  }
+
+  .pv-responsive-table td[data-card-head]::before {
+    content: none;
+  }
 }
 
 /* Layer B - subtle micro-interaction animations. All durations stay at or

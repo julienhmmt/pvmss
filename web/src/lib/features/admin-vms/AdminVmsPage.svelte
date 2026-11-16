@@ -268,10 +268,10 @@
 					{@const status = statusOf(machine)}
 					{@const inFlight = busy(machine)}
 					<tr class="relative" data-testid="admin-vm-row" data-status={status}>
-						<td data-label={m['vms.list.columnMachine']()}>
-							<div class="flex min-w-0 items-center gap-3">
+						<td data-card-head data-label={m['vms.list.columnMachine']()}>
+							<div class="flex min-w-0 flex-1 items-center gap-3 text-left">
 								<span class="max-[369px]:hidden"><OsMark ostype={machine.ostype} /></span>
-								<div class="min-w-0">
+								<div class="min-w-0 flex-1">
 									<div class="flex min-w-0 items-center gap-2">
 										<a
 											href={detailHref(machine)}
@@ -295,23 +295,27 @@
 									<p class="truncate font-mono text-xs tabular-nums text-muted-foreground-subtle">
 										VM {machine.vmid}{#if visibleTags(machine).length > 0}&nbsp;· {visibleTags(machine).join(' · ')}{/if}
 									</p>
+									<!-- Mobile cards: pool, node and size on one line instead of three labelled rows. -->
+									<p class="font-mono text-xs tabular-nums text-muted-foreground-subtle sm:hidden" data-testid="admin-vm-mobile-meta">
+										{machine.pool || m['admin.vms.unpooled']()} · {machine.node} · {m['vms.list.resourcesCompute']({ cpu: machine.cpuCores, memory: compactBytes(machine.memoryTotal) })}
+									</p>
 								</div>
 							</div>
 						</td>
-						<td data-label={m['vms.list.columnPool']()} data-testid="admin-vm-pool">
+						<td data-mobile-hidden data-label={m['vms.list.columnPool']()} data-testid="admin-vm-pool">
 							{#if machine.pool === ''}
 								<span class="text-xs text-muted-foreground-subtle">{m['admin.vms.unpooled']()}</span>
 							{:else}
 								<span class="whitespace-nowrap font-mono text-xs">{machine.pool}</span>
 							{/if}
 						</td>
-						<td data-label={m['vms.list.columnNode']()}>
+						<td data-mobile-hidden data-label={m['vms.list.columnNode']()}>
 							<span class="whitespace-nowrap font-mono text-xs">{machine.node}</span>
 						</td>
 						<td data-label={m['vms.list.columnStatus']()}>
 							<MachineStatusPill {status} pending={inFlight || status === 'provisioning'} />
 						</td>
-						<td data-label={m['vms.list.columnResources']()}>
+						<td data-mobile-hidden data-label={m['vms.list.columnResources']()}>
 							<span class="whitespace-nowrap font-mono text-xs tabular-nums">
 								{m['vms.list.resourcesCompute']({
 									cpu: machine.cpuCores,
@@ -345,9 +349,11 @@
 										{m['vms.action.start']()}
 									</Button>
 								{:else}
+									<!-- Outline, not solid red: one per running row would flood the list; the confirm dialog carries the red. -->
 									<Button
-										variant="destructive"
+										variant="secondary"
 										size="sm"
+										class="text-destructive!"
 										disabled={inFlight}
 										aria-label={m['admin.vms.actionStopFor']({ name: machine.name })}
 										onclick={() => request(machine, 'stop')}

@@ -77,15 +77,15 @@
 
 <PageHeader title={m['admin.dashboard.title']()}>
 	{#snippet actions()}
-		<div class="flex flex-col items-end gap-1">
-			<Button variant="secondary" size="sm" loading={store.loading} onclick={() => void store.load()}>
-				{m['common.refresh']()}
-			</Button>
+		<div class="flex items-center gap-3">
 			{#if store.summary}
 				<p class="text-xs text-muted-foreground" data-testid="dashboard-refreshed-at">
 					{m['admin.dashboard.refreshed']()} <time datetime={store.summary.refreshedAt}>{formatTime(store.summary.refreshedAt)}</time>
 				</p>
 			{/if}
+			<Button variant="secondary" size="sm" loading={store.loading} onclick={() => void store.load()}>
+				{m['common.refresh']()}
+			</Button>
 		</div>
 	{/snippet}
 </PageHeader>
@@ -230,7 +230,7 @@
 			</div>
 		{/if}
 
-		<div class="grid grid-cols-1 gap-6 xl:grid-cols-2">
+		<div class="grid grid-cols-1 gap-6 items-start xl:grid-cols-2">
 			<Card pad="none" title={m['admin.dashboard.storageTitle']()}>
 				{#snippet actions()}
 					<a href={resolve('/admin/storages')} class="text-xs font-medium text-primary hover:underline pv-focus">
