@@ -2432,5 +2432,7 @@
 	"admin.clusters.vmCreation": "VM-Erstellung",
 	"admin.clusters.vmCreationLabel": "VM-Erstellung auf {name} erlauben",
 	"admin.clusters.vmCreationOn": "VM-Erstellung auf {name} aktiviert",
-	"admin.clusters.vmCreationOff": "VM-Erstellung auf {name} deaktiviert"
+	"admin.clusters.vmCreationOff": "VM-Erstellung auf {name} deaktiviert",
+	"vms.create.blocked.creationClosedTitle": "VM-Erstellung geschlossen",
+	"vms.create.blocked.creationClosedBody": "Ein Administrator hat die VM-Erstellung auf Ihrem Cluster deaktiviert. Ihre bestehenden Maschinen sind nicht betroffen."
 }

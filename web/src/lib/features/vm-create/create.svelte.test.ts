@@ -445,3 +445,21 @@ describe('VmCreateStore.loadClusters', () => {
 		expect(store.cluster).toBe('open');
 	});
 });
+
+describe('VmCreateStore.creationClosed', () => {
+	afterEach(() => vi.unstubAllGlobals());
+
+	it('is set when every reachable cluster is closed, and not when none exist', async () => {
+		const respond = (body: unknown) => vi.fn().mockResolvedValue(new Response(JSON.stringify(body), { status: 200, headers: { 'Content-Type': 'application/json' } }));
+
+		vi.stubGlobal('fetch', respond([{ name: 'a', displayName: 'A', vmCreationEnabled: false }]));
+		const closed = new VmCreateStore();
+		await closed.loadClusters({ isAdmin: false, cluster: 'a' });
+		expect(closed.creationClosed).toBe(true);
+
+		vi.stubGlobal('fetch', respond([]));
+		const empty = new VmCreateStore();
+		await empty.loadClusters({ isAdmin: false, cluster: '' });
+		expect(empty.creationClosed).toBe(false);
+	});
+});

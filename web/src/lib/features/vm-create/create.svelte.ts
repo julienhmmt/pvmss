@@ -364,6 +364,8 @@ export class VmCreateStore {
 	submitting = $state.raw(false);
 	submitError = $state.raw<string | null>(null);
 	clusterOptions = $state.raw<ClusterOption[]>([]);
+	/** True when the user has clusters but an admin closed VM creation on all of them. */
+	creationClosed = $state(false);
 	cluster = $state.raw('');
 	/** Latest-wins guards: a slow response for a previously selected cluster
 	 *  must not overwrite the state of the cluster selected since. */
@@ -425,7 +427,9 @@ export class VmCreateStore {
 	 *  deployment has more than one cluster - the catalog needs one to target). */
 	async loadClusters(principal: { isAdmin: boolean; cluster: string } | null = null): Promise<void> {
 		try {
-			this.clusterOptions = pinnedClusterOptions(await fetchClusterOptions(), principal).filter((option) => option.vmCreationEnabled !== false);
+			const reachable = pinnedClusterOptions(await fetchClusterOptions(), principal);
+			this.clusterOptions = reachable.filter((option) => option.vmCreationEnabled !== false);
+			this.creationClosed = reachable.length > 0 && this.clusterOptions.length === 0;
 		} catch {
 			this.clusterOptions = [];
 		}

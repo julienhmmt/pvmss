@@ -2432,5 +2432,7 @@
 	"admin.clusters.vmCreation": "Creazione VM",
 	"admin.clusters.vmCreationLabel": "Consenti la creazione di VM su {name}",
 	"admin.clusters.vmCreationOn": "Creazione VM abilitata su {name}",
-	"admin.clusters.vmCreationOff": "Creazione VM disabilitata su {name}"
+	"admin.clusters.vmCreationOff": "Creazione VM disabilitata su {name}",
+	"vms.create.blocked.creationClosedTitle": "Creazione VM chiusa",
+	"vms.create.blocked.creationClosedBody": "Un amministratore ha disattivato la creazione di VM sul tuo cluster. Le tue macchine esistenti non sono interessate."
 }
