@@ -1680,6 +1680,18 @@
 	"admin.dashboard.vmOther": "Autres",
 	"admin.dashboard.attentionTitle": "À traiter",
 	"admin.dashboard.allClear": "Rien à signaler. Clusters, nœuds et stockages sont dans les limites.",
+	"admin.dashboard.onboarding.title": "Terminer la configuration de PVMSS",
+	"admin.dashboard.onboarding.progress": "{done} sur {total} terminées",
+	"admin.dashboard.onboarding.optional": "Facultatif",
+	"admin.dashboard.onboarding.done": "Terminé",
+	"admin.dashboard.onboarding.next": "Suivant",
+	"admin.dashboard.onboarding.step.nodes": "Approuver au moins un nœud",
+	"admin.dashboard.onboarding.step.storages": "Approuver un stockage pour les disques",
+	"admin.dashboard.onboarding.step.bridges": "Approuver un pont réseau",
+	"admin.dashboard.onboarding.step.images": "Approuver un modèle ou une ISO",
+	"admin.dashboard.onboarding.step.profiles": "Créer un profil matériel",
+	"admin.dashboard.onboarding.step.users": "Créer un utilisateur PVMSS ou activer le SSO",
+	"admin.dashboard.onboarding.step.policy": "Vérifier les quotas et limites",
 	"admin.dashboard.alert.snapshotScheduleFailed": "Les instantanés automatiques échouent sur la VM {subject}",
 	"admin.dashboard.alert.clusterUnreachable": "Le cluster {cluster} est injoignable",
 	"admin.dashboard.alert.nodeOffline": "Le nœud {subject} est hors ligne",
@@ -2440,5 +2452,41 @@
 	"vms.create.quotaHint": "Ce sera la machine {next} sur {allowed} de votre pool (il en restera {left}).",
 	"notifications.label": "Notifications",
 	"notifications.labelUnread": "Notifications, {count} non lues",
-	"notifications.empty": "Rien de nouveau pour l'instant."
+	"notifications.empty": "Rien de nouveau pour l'instant.",
+	"vms.list.firstRun.allowance": [
+		{
+			"declarations": [
+				"input allowed",
+				"local allowedPlural = allowed: plural"
+			],
+			"selectors": [
+				"allowedPlural"
+			],
+			"match": {
+				"allowedPlural=one": "Vous pouvez avoir jusqu'à {allowed} machine.",
+				"allowedPlural=other": "Vous pouvez avoir jusqu'à {allowed} machines."
+			}
+		}
+	],
+	"vms.list.firstRun.allowanceOn": [
+		{
+			"declarations": [
+				"input allowed",
+				"local allowedPlural = allowed: plural",
+				"input cluster"
+			],
+			"selectors": [
+				"allowedPlural"
+			],
+			"match": {
+				"allowedPlural=one": "Vous pouvez avoir jusqu'à {allowed} machine sur {cluster}.",
+				"allowedPlural=other": "Vous pouvez avoir jusqu'à {allowed} machines sur {cluster}."
+			}
+		}
+	],
+	"vms.list.firstRun.unlimited": "Votre espace n'a pas de limite de machines.",
+	"vms.list.firstRun.unlimitedOn": "Votre espace n'a pas de limite de machines sur {cluster}.",
+	"vms.list.firstRun.guide": "Lire le guide de démarrage",
+	"vms.list.firstRun.zeroTitle": "Votre espace est prêt.",
+	"vms.list.firstRun.zeroBody": "Votre administrateur ne vous a encore attribué aucune machine. Faites une demande : la décision s'affichera ici."
 }

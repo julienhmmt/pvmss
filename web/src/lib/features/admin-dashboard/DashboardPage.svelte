@@ -2,6 +2,7 @@
 	import { getDashboardContext, type NodeSummary } from './dashboard.svelte';
 	import { usageTone, withQuery } from './dashboard-alerts';
 	import DashboardAttention from './DashboardAttention.svelte';
+	import DashboardOnboarding from './DashboardOnboarding.svelte';
 	import { goto } from '$app/navigation';
 	import { resolve } from '$app/paths';
 	import Alert from '#lib/shared/ui/Alert.svelte';
@@ -154,6 +155,9 @@
 	<div role="status" aria-live="polite" class="sr-only">{m['admin.dashboard.loaded']()}</div>
 
 	<section class="space-y-6">
+		{#if summary.onboarding}
+			<DashboardOnboarding steps={summary.onboarding.steps} />
+		{/if}
 		<DashboardAttention alerts={summary.alerts} />
 
 		<Card pad="none">

@@ -207,7 +207,8 @@
 		if (status.required && !isSetupPage) {
 			void goto(resolvePath('/setup'), { replaceState: true });
 		} else if (!status.required && !status.needsAdmin && isSetupPage) {
-			void goto(resolvePath('/'), { replaceState: true });
+			// Admins land on the dashboard, where the onboarding checklist picks up.
+			void goto(resolvePath(session.principal?.isAdmin ? '/admin' : '/'), { replaceState: true });
 		}
 	});
 

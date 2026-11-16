@@ -1680,6 +1680,18 @@
 	"admin.dashboard.vmOther": "Sonstige",
 	"admin.dashboard.attentionTitle": "Erfordert Aufmerksamkeit",
 	"admin.dashboard.allClear": "Nichts zu melden. Alle Cluster, Knoten und Datenspeicher liegen innerhalb der Limits.",
+	"admin.dashboard.onboarding.title": "PVMSS-Einrichtung abschließen",
+	"admin.dashboard.onboarding.progress": "{done} von {total} erledigt",
+	"admin.dashboard.onboarding.optional": "Optional",
+	"admin.dashboard.onboarding.done": "Erledigt",
+	"admin.dashboard.onboarding.next": "Weiter",
+	"admin.dashboard.onboarding.step.nodes": "Mindestens einen Knoten freigeben",
+	"admin.dashboard.onboarding.step.storages": "Einen Speicher für VM-Disks freigeben",
+	"admin.dashboard.onboarding.step.bridges": "Eine Netzwerkbrücke freigeben",
+	"admin.dashboard.onboarding.step.images": "Eine Vorlage oder ein ISO freigeben",
+	"admin.dashboard.onboarding.step.profiles": "Ein Hardwareprofil anlegen",
+	"admin.dashboard.onboarding.step.users": "Einen PVMSS-Benutzer anlegen oder SSO aktivieren",
+	"admin.dashboard.onboarding.step.policy": "Quoten und Limits prüfen",
 	"admin.dashboard.alert.snapshotScheduleFailed": "Automatische Snapshots schlagen auf VM {subject} fehl",
 	"admin.dashboard.alert.clusterUnreachable": "Cluster {cluster} ist nicht erreichbar",
 	"admin.dashboard.alert.nodeOffline": "Knoten {subject} ist offline",
@@ -2440,5 +2452,41 @@
 	"vms.create.quotaHint": "Das wird Maschine {next} von {allowed} in Ihrem Pool (danach noch {left} frei).",
 	"notifications.label": "Benachrichtigungen",
 	"notifications.labelUnread": "Benachrichtigungen, {count} ungelesen",
-	"notifications.empty": "Noch nichts Neues."
+	"notifications.empty": "Noch nichts Neues.",
+	"vms.list.firstRun.allowance": [
+		{
+			"declarations": [
+				"input allowed",
+				"local allowedPlural = allowed: plural"
+			],
+			"selectors": [
+				"allowedPlural"
+			],
+			"match": {
+				"allowedPlural=one": "Sie können bis zu {allowed} Maschine betreiben.",
+				"allowedPlural=other": "Sie können bis zu {allowed} Maschinen betreiben."
+			}
+		}
+	],
+	"vms.list.firstRun.allowanceOn": [
+		{
+			"declarations": [
+				"input allowed",
+				"local allowedPlural = allowed: plural",
+				"input cluster"
+			],
+			"selectors": [
+				"allowedPlural"
+			],
+			"match": {
+				"allowedPlural=one": "Sie können auf {cluster} bis zu {allowed} Maschine betreiben.",
+				"allowedPlural=other": "Sie können auf {cluster} bis zu {allowed} Maschinen betreiben."
+			}
+		}
+	],
+	"vms.list.firstRun.unlimited": "Ihr Arbeitsbereich hat kein Maschinenlimit.",
+	"vms.list.firstRun.unlimitedOn": "Ihr Arbeitsbereich hat auf {cluster} kein Maschinenlimit.",
+	"vms.list.firstRun.guide": "Einstiegsanleitung lesen",
+	"vms.list.firstRun.zeroTitle": "Ihr Arbeitsbereich ist bereit.",
+	"vms.list.firstRun.zeroBody": "Ihr Administrator hat Ihnen noch keine Maschinen zugeteilt. Fordern Sie welche an; die Entscheidung erscheint hier."
 }

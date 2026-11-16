@@ -27,6 +27,8 @@
 	import ButtonLink from '#lib/shared/ui/ButtonLink.svelte';
 	import Card from '#lib/shared/ui/Card.svelte';
 	import Select from '#lib/shared/ui/Select.svelte';
+	import FirstRunCard from './FirstRunCard.svelte';
+	import QuotaRequestPanel from '#lib/features/quota-requests/QuotaRequestPanel.svelte';
 	import AllowanceMeter from '#lib/shared/ui/AllowanceMeter.svelte';
 	import Skeleton from '#lib/shared/ui/Skeleton.svelte';
 	import ChevronDownIcon from '#lib/shared/ui/icons/ChevronDownIcon.svelte';
@@ -179,10 +181,13 @@
 	});
 </script>
 
-{#if quotaFull}
+{#if quotaFull && !firstVisit}
 	<Alert tone="warning" role="status" class="mb-5" data-testid="vm-quota-full">
 		<p class="font-medium">{m['vms.list.quotaFullTitle']()}</p>
 		<p class="mt-0.5">{m['vms.list.quotaFullBody']()}</p>
+		{#if quota && !session.isAdmin}
+			<div class="mt-3"><QuotaRequestPanel currentQuota={quota.allowed} /></div>
+		{/if}
 	</Alert>
 {/if}
 
@@ -207,25 +212,7 @@
 		<p class="max-w-md text-sm text-muted-foreground">{m['vms.list.provisioningBody']()}</p>
 	</Card>
 {:else if firstVisit}
-	<Card as="div" pad="none" class="flex flex-col items-center gap-4 px-6 py-14 text-center" data-testid="vm-empty-owned">
-		<div class="relative" aria-hidden="true">
-			<span class="flex h-16 w-16 items-center justify-center rounded-lg border border-border bg-muted text-muted-foreground">
-				<svg viewBox="0 0 24 24" class="h-7 w-7" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">
-					<rect x="2" y="3" width="20" height="14" rx="2" />
-					<line x1="8" y1="21" x2="16" y2="21" />
-					<line x1="12" y1="17" x2="12" y2="21" />
-				</svg>
-			</span>
-			<span class="absolute -right-2 -top-2 flex h-6 w-6 items-center justify-center rounded-full bg-primary-solid text-sm font-semibold text-primary-foreground">+</span>
-		</div>
-		<div class="max-w-md">
-			<p class="text-lg font-semibold text-foreground">{session.isAdmin ? m['vms.list.emptyFirstAdminTitle']() : m['vms.list.emptyFirstTitle']()}</p>
-			<p class="mt-1.5 text-sm text-muted-foreground">{session.isAdmin ? m['vms.list.emptyFirstAdminBody']() : m['vms.list.emptyFirstBody']()}</p>
-		</div>
-		{#if !session.isAdmin}
-			<ButtonLink href={resolve('/vms/create')} data-testid="vm-empty-create">{m['vms.list.emptyFirstAction']()}</ButtonLink>
-		{/if}
-	</Card>
+	<FirstRunCard quota={quota ?? undefined} />
 {:else}
 	<Card pad="none" class="machine-collection overflow-hidden" aria-label={m['vms.list.caption']()}>
 		<MachineListToolbar

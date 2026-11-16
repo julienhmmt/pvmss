@@ -1680,6 +1680,18 @@
 	"admin.dashboard.vmOther": "Other",
 	"admin.dashboard.attentionTitle": "Needs attention",
 	"admin.dashboard.allClear": "Nothing to report. Every cluster, node and datastore is within limits.",
+	"admin.dashboard.onboarding.title": "Finish setting up PVMSS",
+	"admin.dashboard.onboarding.progress": "{done} of {total} done",
+	"admin.dashboard.onboarding.optional": "Optional",
+	"admin.dashboard.onboarding.done": "Done",
+	"admin.dashboard.onboarding.next": "Next",
+	"admin.dashboard.onboarding.step.nodes": "Approve at least one node",
+	"admin.dashboard.onboarding.step.storages": "Approve a storage for VM disks",
+	"admin.dashboard.onboarding.step.bridges": "Approve a network bridge",
+	"admin.dashboard.onboarding.step.images": "Approve a template or an ISO",
+	"admin.dashboard.onboarding.step.profiles": "Create a hardware profile",
+	"admin.dashboard.onboarding.step.users": "Create a PVMSS user or turn on SSO",
+	"admin.dashboard.onboarding.step.policy": "Review quotas and limits",
 	"admin.dashboard.alert.snapshotScheduleFailed": "Automatic snapshots are failing on VM {subject}",
 	"admin.dashboard.alert.clusterUnreachable": "Cluster {cluster} is unreachable",
 	"admin.dashboard.alert.nodeOffline": "Node {subject} is offline",
@@ -2440,5 +2452,41 @@
 	"vms.create.quotaHint": "This will be machine {next} of {allowed} in your pool ({left} left after it).",
 	"notifications.label": "Notifications",
 	"notifications.labelUnread": "Notifications, {count} unread",
-	"notifications.empty": "Nothing new yet."
+	"notifications.empty": "Nothing new yet.",
+	"vms.list.firstRun.allowance": [
+		{
+			"declarations": [
+				"input allowed",
+				"local allowedPlural = allowed: plural"
+			],
+			"selectors": [
+				"allowedPlural"
+			],
+			"match": {
+				"allowedPlural=one": "You can run up to {allowed} machine.",
+				"allowedPlural=other": "You can run up to {allowed} machines."
+			}
+		}
+	],
+	"vms.list.firstRun.allowanceOn": [
+		{
+			"declarations": [
+				"input allowed",
+				"local allowedPlural = allowed: plural",
+				"input cluster"
+			],
+			"selectors": [
+				"allowedPlural"
+			],
+			"match": {
+				"allowedPlural=one": "You can run up to {allowed} machine on {cluster}.",
+				"allowedPlural=other": "You can run up to {allowed} machines on {cluster}."
+			}
+		}
+	],
+	"vms.list.firstRun.unlimited": "There is no machine limit on your workspace.",
+	"vms.list.firstRun.unlimitedOn": "There is no machine limit on your workspace on {cluster}.",
+	"vms.list.firstRun.guide": "Read the getting-started guide",
+	"vms.list.firstRun.zeroTitle": "Your workspace is ready.",
+	"vms.list.firstRun.zeroBody": "Your administrator has not given you any machines yet. Ask for some, and the decision will show here."
 }
