@@ -2434,5 +2434,7 @@
 	"admin.clusters.vmCreationOn": "VM creation enabled on {name}",
 	"admin.clusters.vmCreationOff": "VM creation disabled on {name}",
 	"vms.create.blocked.creationClosedTitle": "VM creation is closed",
-	"vms.create.blocked.creationClosedBody": "An administrator has turned off VM creation on your cluster. Your existing machines are not affected."
+	"vms.create.blocked.creationClosedBody": "An administrator has turned off VM creation on your cluster. Your existing machines are not affected.",
+	"chrome.sidebar.pinMachine": "Pin {name}",
+	"chrome.sidebar.unpinMachine": "Unpin {name}"
 }

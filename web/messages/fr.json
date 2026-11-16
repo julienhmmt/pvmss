@@ -2434,5 +2434,7 @@
 	"admin.clusters.vmCreationOn": "Création de VM activée sur {name}",
 	"admin.clusters.vmCreationOff": "Création de VM désactivée sur {name}",
 	"vms.create.blocked.creationClosedTitle": "Création de VM fermée",
-	"vms.create.blocked.creationClosedBody": "Un administrateur a désactivé la création de VM sur votre cluster. Vos machines existantes ne sont pas concernées."
+	"vms.create.blocked.creationClosedBody": "Un administrateur a désactivé la création de VM sur votre cluster. Vos machines existantes ne sont pas concernées.",
+	"chrome.sidebar.pinMachine": "Épingler {name}",
+	"chrome.sidebar.unpinMachine": "Désépingler {name}"
 }

@@ -31,6 +31,7 @@
 	import Logo from '#lib/shared/ui/Logo.svelte';
 	import LanguageSwitcher from './LanguageSwitcher.svelte';
 	import ThemeToggle from './ThemeToggle.svelte';
+	import { orderPinnedFirst, pinKey, readPins, togglePin } from './pinned-vms';
 
 	const session = getSessionContext();
 	const chrome = getChromeContext();
@@ -88,10 +89,29 @@
 	let machinesLoading = $state.raw(false);
 	let machinesLoaded = $state.raw(false);
 
+	// Pinned machines stay in the drawer even when it is closed, and lead it when open.
+	const pinUser = $derived(session.principal?.username ?? '');
+	let pins = $state.raw<ReadonlySet<string>>(new Set());
+	const DRAWER_LIMIT = 8;
+	const drawerVms = $derived(
+		machinesOpen
+			? orderPinnedFirst(machinesVms, pins, DRAWER_LIMIT)
+			: machinesVms.filter((vm) => pins.has(pinKey(vm)))
+	);
+	function onTogglePin(vm: VmListItem): void {
+		pins = togglePin(pinUser, pins, pinKey(vm));
+	}
+	onMount(() => {
+		if (session.isAdmin || pinUser === '') return;
+		pins = readPins(pinUser);
+		if (pins.size > 0) void loadMachines();
+	});
+
 	async function loadMachines(): Promise<void> {
 		machinesLoading = true;
 		try {
-			const result = await get<VmListResult>('/api/v1/vms?pageSize=8&sortBy=name');
+			// shortcut: pinned machines are found in the first 50 by name; add an ids filter if pools grow past that.
+			const result = await get<VmListResult>(`/api/v1/vms?pageSize=${pins.size > 0 ? 50 : DRAWER_LIMIT}&sortBy=name`);
 			machinesVms = result.items;
 			machineCount = result.total; // same total: no separate count request
 			machinesLoaded = true;
@@ -279,16 +299,17 @@
 							</button>
 						{/if}
 					</div>
-					{#if isMachines && machinesOpen}
+					{#if isMachines && (machinesOpen || drawerVms.length > 0)}
 						<ul id="sidebar-machines-drawer" class="ml-5 flex flex-col gap-0.5 border-l border-sidebar-border py-1 pl-2">
-							{#if machinesLoading}
+							{#if machinesLoading && drawerVms.length === 0}
 								<li class="px-2.5 py-1.5 text-xs text-muted-foreground-subtle">{m['common.loading']()}</li>
-							{:else if machinesVms.length === 0}
+							{:else if drawerVms.length === 0}
 								<li class="px-2.5 py-1.5 text-xs text-muted-foreground-subtle">{m['chrome.sidebar.machinesEmpty']()}</li>
 							{:else}
-								{#each machinesVms as vm (vm.vmid + vm.cluster)}
+								{#each drawerVms as vm (vm.vmid + vm.cluster)}
 									{@const href = resolve('/vms/[cluster]/[vmid]', { cluster: vm.cluster, vmid: String(vm.vmid) })}
-									<li>
+									{@const pinned = pins.has(pinKey(vm))}
+									<li class="group/pin relative">
 										<a
 											{href}
 											aria-current={isActive(href, true) ? 'page' : undefined}
@@ -305,8 +326,23 @@
 														: 'bg-muted-foreground-subtle'}"
 												aria-hidden="true"
 											></span>
-											<span class="truncate">{vm.name}</span>
+											<span class="truncate pr-6">{vm.name}</span>
 										</a>
+										<button
+											type="button"
+											aria-pressed={pinned}
+											aria-label={pinned ? m['chrome.sidebar.unpinMachine']({ name: vm.name }) : m['chrome.sidebar.pinMachine']({ name: vm.name })}
+											title={pinned ? m['chrome.sidebar.unpinMachine']({ name: vm.name }) : m['chrome.sidebar.pinMachine']({ name: vm.name })}
+											class="absolute top-1/2 right-1 -translate-y-1/2 rounded p-1 focus-visible:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring {pinned
+												? 'text-primary'
+												: 'text-muted-foreground-subtle opacity-0 group-hover/pin:opacity-100 hover:text-foreground'}"
+											onclick={() => onTogglePin(vm)}
+											data-testid="sidebar-pin"
+										>
+											<svg viewBox="0 0 24 24" class="h-3.5 w-3.5" fill={pinned ? 'currentColor' : 'none'} stroke="currentColor" stroke-width="2" stroke-linejoin="round" aria-hidden="true">
+												<polygon points="12 2 15.1 8.3 22 9.3 17 14.1 18.2 21 12 17.8 5.8 21 7 14.1 2 9.3 8.9 8.3 12 2" />
+											</svg>
+										</button>
 									</li>
 								{/each}
 							{/if}
