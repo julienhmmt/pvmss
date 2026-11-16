@@ -115,8 +115,8 @@ func (h *DocsAPIHandler) ServeDoc(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Disabled pages are never served to the public, even if the id is known.
-	if !page.Enabled {
+	// Disabled pages are hidden from non-admins; admins read them to preview drafts.
+	if !page.Enabled && !h.callerIsAdmin(r) {
 		_ = writeError(w, http.StatusNotFound, "documentation page \""+id+"\" not found")
 		return
 	}

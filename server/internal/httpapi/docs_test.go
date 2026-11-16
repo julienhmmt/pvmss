@@ -241,6 +241,34 @@ func TestDocs_GetDoc_AdminAudienceGating(t *testing.T) {
 	}
 }
 
+// TestDocs_GetDoc_DisabledPage_AdminOnly - an admin previews a disabled user
+// doc; everyone else gets 404.
+//
+//nolint:paralleltest // serial: shared database fixture
+func TestDocs_GetDoc_DisabledPage_AdminOnly(t *testing.T) {
+	docs, admin, auth := newDocsHandlers(t)
+	cookie := adminCookie(t, auth)
+	createDocViaAdmin(t, docs, admin, auth, cookie, `{"title":"Draft","lang":"en","category":"x","bodyMd":"hi","audience":"user"}`)
+
+	rec := docsServe(t, docs, admin, auth, docsRequest(http.MethodPost, "/api/v1/admin/docs/draft/en/toggle", cookie, `{"enabled":false}`))
+	if rec.Code != http.StatusOK {
+		t.Fatalf("toggle status = %d: %s", rec.Code, rec.Body.String())
+	}
+
+	alice := loginCookie(t, auth, `{"username":"alice","password":"pvmss-alice"}`)
+	for name, c := range map[string]*http.Cookie{"anon": nil, "user": alice} {
+		rec = docsServe(t, docs, admin, auth, docsRequest(http.MethodGet, "/api/v1/docs/draft", c, ""))
+		if rec.Code != http.StatusNotFound {
+			t.Fatalf("%s disabled doc status = %d, want 404", name, rec.Code)
+		}
+	}
+
+	rec = docsServe(t, docs, admin, auth, docsRequest(http.MethodGet, "/api/v1/docs/draft", cookie, ""))
+	if rec.Code != http.StatusOK {
+		t.Fatalf("admin disabled doc status = %d: %s", rec.Code, rec.Body.String())
+	}
+}
+
 // TestDocs_GetDoc_DropsLeadingTitleHeading - the page chrome owns the only h1,
 // so a body that opens by repeating the title does not render it twice.
 //
