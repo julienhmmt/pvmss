@@ -161,12 +161,12 @@ colors carry state, not decoration.
   the original 66% lightness so accent text clears AA on the paper ground
   (4.56:1); at 66% it sat at 3.09:1.
 - **Blaze Orange Solid** (`oklch(56% 0.16 51deg)`): the fill under a label -
-  primary buttons, active tabs, step badges. Deliberately *not* the same token
+  primary buttons, active tabs, step badges. Deliberately _not_ the same token
   as the accent, because the two roles want opposite things in dark mode: a fill
   needs to be dark enough for a white label (>=4.5:1), an accent needs to be
   light enough to read against a near-black ground. One token cannot be both, so
   this one is fixed across themes and the accent moves instead.
-- **Blaze Orange Dark** (`oklch(72% 0.17 44deg)`): the dark mode *accent* only -
+- **Blaze Orange Dark** (`oklch(72% 0.17 44deg)`): the dark mode _accent_ only -
   lifted for contrast against the dark ground (7.21:1). The solid fill stays
   `oklch(56% 0.16 51deg)` in dark mode, so a primary button is the same button
   in both themes, still reading as a control at 3.59:1 against a dark card.
@@ -204,7 +204,7 @@ soft-border for use in banners, badges, and soft-state surfaces.
 ### Dark Mode
 
 Warm near-black ground (`oklch(17% 0.006 49deg)`), lifted card surfaces
-(`oklch(21% 0.006 56deg)`), and a lifted orange *accent*. Never use pure black
+(`oklch(21% 0.006 56deg)`), and a lifted orange _accent_. Never use pure black
 (#000) or cool gray for dark mode backgrounds.
 
 Only the accent is lifted. The solid fill (Blaze Orange Solid) is the same
@@ -605,7 +605,7 @@ finer: there is no Ubuntu-vs-Debian anchor to be had, and the tile says
 unknown → muted. The glyph differs per family, so the family is never carried
 by colour alone.
 
-An earlier version showed two letters of the machine's *name* on a hash-derived
+An earlier version showed two letters of the machine's _name_ on a hash-derived
 tone. It looked like a recognition anchor and encoded nothing; do not
 reintroduce a name-derived mark.
 
@@ -969,7 +969,7 @@ can reach `/about` from the footer, so `/about` must stand on its own.
    the machine list (sample rows, one booting on a loop).
 2. **How it works** - three numbered steps joined by a connector that draws on
    scroll.
-3. **Capabilities as a server rack** - each capability is a *blade* (rack
+3. **Capabilities as a server rack** - each capability is a _blade_ (rack
    ear with screws and a `U1`..`U8` label, a status LED) that slides into its
    slot on scroll. On wide screens a sticky rack overview lights the matching
    module and counts "n/8 modules online".

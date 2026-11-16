@@ -223,7 +223,7 @@ so it must not add fields: a new attribute reaches stdout and the SIEM together.
   `/to-spec` -> `/to-tickets` -> `/implement` (which drives `/tdd` and
   `/code-review` per ticket). Do not also run generic planner / tdd-guide /
   code-reviewer agents on top. Use `/diagnosing-bugs` for bug reports.
-- **Skills** live in `.devin/skills/` (golang-*, svelte-code-writer,
+- **Skills** live in `.devin/skills/` (golang-\*, svelte-code-writer,
   tailwind-design-system, typescript-advanced-types, todo-planning, ...).
   Invoke the matching one at the start of matching work, e.g.
   `svelte-code-writer` for any `.svelte` file.
@@ -236,7 +236,7 @@ so it must not add fields: a new attribute reaches stdout and the SIEM together.
   the `admin_*.go` handlers in `server/internal/httpapi/`, which must return
   the complete payload the admin UI needs.
 - English for code and docs. UI translations: EN, FR, DE, IT (in-app docs: EN + FR).
-- **No em-dash (U+2014)** in authored source or docs; use ` - `. Generated
+- **No em-dash (U+2014)** in authored source or docs; use `-`. Generated
   trees (node_modules, paraglide, build, .svelte-kit) are exempt.
 
 ## Agent Memory
