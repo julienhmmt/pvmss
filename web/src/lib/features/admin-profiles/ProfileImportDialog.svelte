@@ -21,6 +21,8 @@
 
 	let items = $state.raw<ProfileExportItem[]>([]);
 	let fileError = $state<string | null>(null);
+	let selectedFileName = $state('');
+	let pastedJson = $state('');
 	let overwrite = $state(false);
 	let outcomes = $state.raw<ProfileImportOutcome[] | null>(null);
 	const chosenItems = new SvelteSet<number>();
@@ -31,6 +33,8 @@
 		if (!open) return;
 		items = [];
 		fileError = null;
+		selectedFileName = '';
+		pastedJson = '';
 		overwrite = false;
 		outcomes = null;
 		chosenItems.clear();
@@ -38,18 +42,31 @@
 		if (cluster) targetClusters.add(cluster);
 	});
 
-	async function readFile(e: Event & { currentTarget: HTMLInputElement }): Promise<void> {
-		const file = e.currentTarget.files?.[0];
+	function loadFromText(text: string): void {
 		fileError = null;
 		items = [];
 		chosenItems.clear();
-		if (!file) return;
+		if (!text.trim()) return;
 		try {
-			items = parseProfileExport(await file.text());
+			items = parseProfileExport(text);
 			items.forEach((_, i) => chosenItems.add(i));
 		} catch (err) {
 			fileError = err instanceof SyntaxError || !(err instanceof Error) ? m['admin.profiles.importInvalidFile']() : err.message;
 		}
+	}
+
+	async function onFileChange(e: Event & { currentTarget: HTMLInputElement }): Promise<void> {
+		const file = e.currentTarget.files?.[0];
+		if (!file) return;
+		selectedFileName = file.name;
+		pastedJson = '';
+		loadFromText(await file.text());
+	}
+
+	function onPasteInput(e: Event & { currentTarget: HTMLTextAreaElement }): void {
+		pastedJson = e.currentTarget.value;
+		selectedFileName = '';
+		loadFromText(pastedJson);
 	}
 
 	function toggle<T>(set: SvelteSet<T>, value: T): void {
@@ -97,10 +114,34 @@
 		<form onsubmit={(e) => { e.preventDefault(); void submit(); }} class="space-y-4">
 			{#if saveError}<Alert>{saveError}</Alert>{/if}
 			{#if fileError}<Alert>{fileError}</Alert>{/if}
-			<label class="block text-sm font-medium">
-				{m['admin.profiles.importFile']()}
-				<input type="file" accept="application/json,.json" class="mt-1 block w-full text-sm" onchange={readFile} />
-			</label>
+			<div class="text-sm font-medium">{m['admin.profiles.importFile']()}</div>
+			<div class="mt-1 flex flex-wrap items-center gap-3">
+				<label class="inline-flex cursor-pointer items-center rounded-md bg-primary-solid px-4 py-2 text-sm font-medium text-primary-foreground focus-within:ring-2 focus-within:ring-ring hover:opacity-90">
+					{m['admin.profiles.importChooseFile']()}
+					<input
+						type="file"
+						accept="application/json,.json"
+						class="sr-only"
+						onchange={onFileChange}
+						data-testid="profile-import-file"
+					/>
+				</label>
+				<span class="text-sm text-muted-foreground">{selectedFileName || m['admin.profiles.importNoFileChosen']()}</span>
+			</div>
+
+			<div>
+				<label for="profile-import-json" class="block text-sm font-medium">{m['admin.profiles.importPaste']()}</label>
+				<textarea
+					id="profile-import-json"
+					class="pv-input mt-1"
+					rows="4"
+					spellcheck="false"
+					placeholder={'{ "kind": "pvmss-profiles", "version": 1, "profiles": [] }'}
+					value={pastedJson}
+					oninput={onPasteInput}
+					data-testid="profile-import-json"
+				></textarea>
+			</div>
 
 			{#if items.length > 0}
 				<fieldset>
