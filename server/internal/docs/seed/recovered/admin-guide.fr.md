@@ -30,7 +30,7 @@ injoignable, nœud hors ligne, CPU/RAM élevés, stockage presque plein, pools
 le nombre de VM par état, la version en cours et l'heure du dernier
 rafraîchissement d'inventaire.
 
-## Informations de l'application (App Info)
+## Informations de l'application (App info)
 
 `/admin/appinfo` est une vue en lecture seule de l'instance :
 

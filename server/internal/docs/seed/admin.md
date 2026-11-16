@@ -91,7 +91,7 @@ or `admin` (admin-only).
 
 ## System
 
-The **App Info** page shows the running version, environment, and cluster
+The **App info** page shows the running version, environment, and cluster
 status. **Settings** holds the audit log (with retention and prune preview),
 the owner-only **Accounts** tab for local administrators, and the database
 export / two-phase import. Resetting, disabling or deleting an account

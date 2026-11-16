@@ -32,7 +32,7 @@ describe('contextLabel', () => {
 		['/admin/tags', 'Administration', 'Tags'],
 		['/admin/policy', 'Administration', 'Limits'],
 		['/admin/policy/nodes', 'Administration', 'Node capacity'],
-		['/admin/appinfo', 'Administration', 'App Info'],
+		['/admin/appinfo', 'Administration', 'App info'],
 		['/admin/settings', 'Administration', 'Settings'],
 		['/admin/vms', 'Administration', 'All machines'],
 		['/admin/vms/default/102', 'Administration', 'All machines'],

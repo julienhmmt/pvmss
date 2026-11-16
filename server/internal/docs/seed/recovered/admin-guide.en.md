@@ -27,7 +27,7 @@ cluster, offline node, hot CPU/RAM, nearly full storage, pools at quota,
 pending quota requests), node status and load, VM counts by state,
 the running version, and the time of the last inventory refresh.
 
-## Application information (App Info)
+## Application information (App info)
 
 `/admin/appinfo` is a read-only overview of the running instance:
 

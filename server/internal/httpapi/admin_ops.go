@@ -469,7 +469,7 @@ func (h *AdminOps) ServeAppInfo(w http.ResponseWriter, r *http.Request) {
 	reveal, _ := strconv.ParseBool(r.URL.Query().Get("reveal"))
 	if reveal {
 		fields = cfg.Unredacted()
-		logctx.FromOr(r.Context(), h.log).InfoContext(r.Context(), "admin revealed app info secrets", "component", "httpapi")
+		logctx.FromOr(r.Context(), h.log).InfoContext(r.Context(), "admin revealed App info secrets", "component", "httpapi")
 	}
 
 	configDTOs := buildConfigFieldDTOs(fields, reveal)
@@ -500,7 +500,7 @@ func buildConfigFieldDTOs(fields []config.Field, reveal bool) []configFieldDTO {
 
 // buildClusterHealthDTOs builds the per-cluster health view. When the
 // freshness checker behind /health is wired, each cluster reports its own
-// refresh state with the same stale rule as the status banner, so App Info
+// refresh state with the same stale rule as the status banner, so App info
 // never calls a cluster healthy that the banner calls unreachable.
 func (h *AdminOps) buildClusterHealthDTOs() []clusterHealthDTO {
 	if h.auth != nil && h.auth.freshness != nil {
