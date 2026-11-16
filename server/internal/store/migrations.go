@@ -312,6 +312,12 @@ const schemaV7 = `
 ALTER TABLE managed_pools ADD COLUMN sso_user TEXT NOT NULL DEFAULT '';
 `
 
+// schemaV8 adds the admin-chosen display order of VM profiles, per cluster.
+// Existing rows share position 0 and fall back to id order.
+const schemaV8 = `
+ALTER TABLE catalog_profiles ADD COLUMN position INTEGER NOT NULL DEFAULT 0;
+`
+
 // Migration is a single schema version and its forward-only DDL.
 type Migration struct {
 	Version int
@@ -332,4 +338,5 @@ var Migrations = []Migration{
 	{Version: 5, DDL: schemaV5},
 	{Version: 6, DDL: schemaV6},
 	{Version: 7, DDL: schemaV7},
+	{Version: 8, DDL: schemaV8},
 }
