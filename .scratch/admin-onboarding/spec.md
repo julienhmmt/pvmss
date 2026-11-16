@@ -49,7 +49,7 @@ dashboard when it is done on **at least one** cluster (decision 1).
 | 4 | `images` | yes | >= 1 template **or** >= 1 ISO | `catalog.Templates` / `.ISOs` | `/admin/templates?cluster=` (ISO link in the hint) |
 | 5 | `profiles` | yes | >= 1 profile | `catalog.Profiles` | `/admin/profiles` |
 | 6 | `users` | yes | >= 1 managed pool, or the cluster has an OIDC realm | `store.ManagedPools` / `ClusterRow.OIDCRealm` | `/admin/pools?cluster=` |
-| 7 | `policy` | no | a `vm_limits` row exists (admin saved policy once) | `store.PolicyRow` (`sql.ErrNoRows` = not done) | `/admin/policy?cluster=` |
+| 7 | `policy` | no | an `admin.policy.update` audit row exists for the cluster (a `vm_limits` row is seeded at cluster creation, so it cannot tell) | `store.ListAuditLog` | `/admin/policy?cluster=` |
 
 Notes:
 - Step 4 merges templates and ISOs: either is enough to create a VM. Two

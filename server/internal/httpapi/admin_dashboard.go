@@ -122,6 +122,7 @@ type dashboardDTO struct {
 	RecentChanges       []auditEntryDTO       `json:"recentChanges"`
 	Version             string                `json:"version"`
 	RefreshedAt         string                `json:"refreshedAt"`
+	Onboarding          *onboardingDTO        `json:"onboarding,omitempty"`
 }
 
 // ServeDashboard handles GET /api/v1/admin/dashboard.
@@ -145,6 +146,7 @@ func (h *AdminOps) ServeDashboard(w http.ResponseWriter, r *http.Request) {
 		Storages:      []dashboardStorageDTO{},
 		RecentChanges: h.recentChanges(r.Context()),
 		Version:       h.version,
+		Onboarding:    onboardingSummary(r.Context(), h.store, h.log),
 	}
 
 	var newest time.Time
