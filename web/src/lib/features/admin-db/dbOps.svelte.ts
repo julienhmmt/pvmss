@@ -68,7 +68,7 @@ export class DbOpsStore {
 			document.body.appendChild(a);
 			a.click();
 			document.body.removeChild(a);
-			URL.revokeObjectURL(url);
+			setTimeout(() => URL.revokeObjectURL(url));
 		} catch (err) {
 			this.exportError = err instanceof Error ? err.message : m['admin.db.exportError']();
 		} finally {

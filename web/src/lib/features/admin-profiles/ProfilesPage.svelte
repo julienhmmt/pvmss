@@ -113,7 +113,7 @@
 		a.href = url;
 		a.download = `pvmss-profiles-${cluster || 'cluster'}.json`;
 		a.click();
-		URL.revokeObjectURL(url);
+		setTimeout(() => URL.revokeObjectURL(url));
 	}
 
 	const allSelected = $derived(profiles.length > 0 && selected.size === profiles.length);
