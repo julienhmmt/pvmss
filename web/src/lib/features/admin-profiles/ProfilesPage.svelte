@@ -1,5 +1,6 @@
 <script lang="ts">
-	import { vcpuTotal, type AdminProfile } from './profiles.svelte';
+	import { vcpuTotal, type AdminProfile, type ProfileExportItem, type ProfileImportOutcome, type ProfileSortColumn } from './profiles.svelte';
+	import ProfileImportDialog from './ProfileImportDialog.svelte';
 	import type { ClusterOption } from '#lib/shared/clusters.js';
 	import Alert from '#lib/shared/ui/Alert.svelte';
 	import PageHeader from '#lib/shared/ui/PageHeader.svelte';
@@ -20,8 +21,6 @@
 	import Select from '#lib/shared/ui/Select.svelte';
 	import TableHeader from '#lib/shared/ui/TableHeader.svelte';
 	import { m } from '#lib/paraglide/messages.js';
-
-	type ProfileSortColumn = 'id' | 'label' | 'cpuCores' | 'memoryMB' | 'diskGB';
 
 	interface Props {
 		profiles: AdminProfile[];
@@ -49,6 +48,13 @@
 		onDelete: (id: string) => void;
 		onToggle: (id: string, enabled: boolean) => void;
 		onClearSaveError: () => void;
+		selected: ReadonlySet<string>;
+		onToggleSelect: (id: string) => void;
+		onToggleSelectAll: () => void;
+		canReorder: boolean;
+		onMove: (id: string, delta: -1 | 1) => void;
+		exportContent: () => string;
+		onImport: (clusters: string[], overwrite: boolean, items: ProfileExportItem[]) => Promise<ProfileImportOutcome[] | null>;
 	}
 
 	let {
@@ -76,10 +82,29 @@
 		onUpdate,
 		onDelete,
 		onToggle,
-		onClearSaveError
+		onClearSaveError,
+		selected,
+		onToggleSelect,
+		onToggleSelectAll,
+		canReorder,
+		onMove,
+		exportContent,
+		onImport
 	}: Props = $props();
 
 	let showForm = $state(false);
+	let showImport = $state(false);
+
+	function downloadExport(): void {
+		const url = URL.createObjectURL(new Blob([exportContent()], { type: 'application/json' }));
+		const a = document.createElement('a');
+		a.href = url;
+		a.download = `pvmss-profiles-${cluster || 'cluster'}.json`;
+		a.click();
+		URL.revokeObjectURL(url);
+	}
+
+	const allSelected = $derived(profiles.length > 0 && selected.size === profiles.length);
 	let editingId = $state<string | null>(null);
 	let pendingDelete = $state<AdminProfile | null>(null);
 	let label = $state('');
@@ -131,7 +156,7 @@
 	}
 
 	const filtersActive = $derived(
-		search !== '' || busFilter !== '' || enabledFilter !== 'all' || sortBy !== 'label' || sortDir !== 'asc'
+		search !== '' || busFilter !== '' || enabledFilter !== 'all' || sortBy !== 'position' || sortDir !== 'asc'
 	);
 </script>
 
@@ -142,13 +167,17 @@
 <PageHeader title={m['admin.profiles.title']()} eyebrow={m['chrome.adminNav.provisioning']()}>
 	{#snippet actions()}
 		<ClusterSelector options={clusterOptions} value={cluster} onChange={onClusterChange} id="profiles-cluster" />
+		<Button variant="secondary" onclick={() => { onClearSaveError(); showImport = true; }}>{m['admin.profiles.import']()}</Button>
+		<Button variant="secondary" disabled={profiles.length === 0} onclick={downloadExport}>
+			{selected.size > 0 ? m['admin.profiles.exportSelected']({ count: selected.size }) : m['admin.profiles.exportAll']()}
+		</Button>
 		<Button onclick={openCreate}>{m['admin.profiles.newProfile']()}</Button>
 	{/snippet}
 </PageHeader>
 
 {#if loading}
 	<div role="status" aria-live="polite" class="sr-only">{m['common.loading']()}</div>
-	<TableSkeleton columns={8} />
+	<TableSkeleton columns={10} />
 {:else if error}
 	<Alert>{error}</Alert>
 {:else}
@@ -205,6 +234,10 @@
 				<caption class="sr-only">{m['admin.profiles.title']()}</caption>
 				<thead>
 					<tr>
+						<th class="w-8">
+							<input type="checkbox" aria-label={m['admin.profiles.selectAll']()} checked={allSelected} onchange={onToggleSelectAll} />
+						</th>
+						<TableHeader text={m['admin.profiles.order']()} tooltip={m['admin.profiles.tooltip.order']()} column="position" activeColumn={sortBy} {sortDir} {onSort} />
 						<TableHeader text={m['admin.profiles.id']()} tooltip={m['admin.profiles.tooltip.id']()} column="id" activeColumn={sortBy} {sortDir} {onSort} />
 						<TableHeader text={m['admin.profiles.labelField']()} tooltip={m['admin.profiles.tooltip.id']()} column="label" activeColumn={sortBy} {sortDir} {onSort} />
 						<TableHeader text={m['admin.profiles.vcpu']()} tooltip={m['admin.profiles.tooltip.vcpu']()} column="cpuCores" activeColumn={sortBy} {sortDir} {onSort} />
@@ -217,7 +250,20 @@
 				</thead>
 				<tbody>
 					{#each pager.rows as profile (profile.id)}
+						{@const index = profiles.findIndex((p) => p.id === profile.id)}
 						<tr class="group transition-colors hover:bg-muted/40">
+							<td data-label={m['admin.profiles.select']()}>
+								<input type="checkbox" aria-label={m['admin.profiles.selectLabel']({ label: profile.label })} checked={selected.has(profile.id)} onchange={() => onToggleSelect(profile.id)} />
+							</td>
+							<td data-label={m['admin.profiles.order']()}>
+								<span class="inline-flex items-center gap-1">
+									<span class="w-5 text-xs text-muted-foreground tabular-nums">{index + 1}</span>
+									{#if canReorder}
+										<Button variant="secondary" size="sm" label={m['admin.profiles.moveUp']({ label: profile.label })} disabled={index === 0} onclick={() => onMove(profile.id, -1)}>↑</Button>
+										<Button variant="secondary" size="sm" label={m['admin.profiles.moveDown']({ label: profile.label })} disabled={index === profiles.length - 1} onclick={() => onMove(profile.id, 1)}>↓</Button>
+									{/if}
+								</span>
+							</td>
 							<td class="font-mono text-xs" data-label={m['admin.profiles.id']()}>{profile.id}</td>
 							<td data-label={m['admin.profiles.labelField']()}>
 								{profile.label}
@@ -249,7 +295,7 @@
 							</td>
 						</tr>
 					{:else}
-						<tr><td colspan={8} class="p-0">
+						<tr><td colspan={10} class="p-0">
 							<EmptyState title={m['admin.profiles.noFilterMatches']()} />
 						</td></tr>
 					{/each}
@@ -337,4 +383,14 @@
 	testId="profile-delete-confirm"
 	onConfirm={() => { if (pendingDelete) { onDelete(pendingDelete.id); pendingDelete = null; } }}
 	onClose={() => (pendingDelete = null)}
+/>
+
+<ProfileImportDialog
+	bind:open={showImport}
+	{clusterOptions}
+	{cluster}
+	{saving}
+	{saveError}
+	{onImport}
+	onClose={() => (showImport = false)}
 />

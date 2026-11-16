@@ -256,7 +256,7 @@ func TestDocs_GetDoc_DisabledPage_AdminOnly(t *testing.T) {
 	}
 
 	alice := loginCookie(t, auth, `{"username":"alice","password":"pvmss-alice"}`)
-	for name, c := range map[string]*http.Cookie{"anon": nil, "user": alice} {
+	for name, c := range map[string]*http.Cookie{"anon": nil, "alice": alice} {
 		rec = docsServe(t, docs, admin, auth, docsRequest(http.MethodGet, "/api/v1/docs/draft", c, ""))
 		if rec.Code != http.StatusNotFound {
 			t.Fatalf("%s disabled doc status = %d, want 404", name, rec.Code)

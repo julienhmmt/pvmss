@@ -130,10 +130,10 @@ func (s *Store) CatalogISOsEnabled(ctx context.Context, cluster string) ([]Catal
 }
 
 // CatalogProfilesEnabled returns all catalog_profiles rows (including disabled)
-// with their full fields, ordered by id.
+// with their full fields, ordered by admin position, then id.
 func (s *Store) CatalogProfilesEnabled(ctx context.Context, cluster string) ([]CatalogProfileEnabled, error) {
 	return queryCatalog(ctx, s.db, "catalog profiles enabled",
-		`SELECT id, label, sockets, cpu_cores, memory_mb, disk_gb, bus, enabled, description FROM catalog_profiles WHERE cluster = ? ORDER BY id`,
+		`SELECT id, label, sockets, cpu_cores, memory_mb, disk_gb, bus, enabled, description FROM catalog_profiles WHERE cluster = ? ORDER BY position, id`,
 		[]any{cluster},
 		func(rows *sql.Rows) (CatalogProfileEnabled, error) {
 			var p CatalogProfileEnabled
@@ -329,9 +329,10 @@ type ProfileValues struct {
 // INSERT).
 func (s *Store) InsertProfile(ctx context.Context, cluster, id string, values ProfileValues) error {
 	return execInsertOne(ctx, s.db,
-		`INSERT INTO catalog_profiles (cluster, id, label, sockets, cpu_cores, memory_mb, disk_gb, bus, description, enabled) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 1)
+		`INSERT INTO catalog_profiles (cluster, id, label, sockets, cpu_cores, memory_mb, disk_gb, bus, description, enabled, position)
+		 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 1, (SELECT COALESCE(MAX(position), 0) + 1 FROM catalog_profiles WHERE cluster = ?))
 		 ON CONFLICT(cluster, id) DO NOTHING`,
-		[]any{cluster, id, values.Label, values.Sockets, values.CPUCores, values.MemoryMB, values.DiskGB, values.Bus, values.Description},
+		[]any{cluster, id, values.Label, values.Sockets, values.CPUCores, values.MemoryMB, values.DiskGB, values.Bus, values.Description, cluster},
 	)
 }
 
@@ -470,6 +471,32 @@ func execUpdateOne(ctx context.Context, db *sql.DB, query string, args []any) er
 
 	if affected == 0 {
 		return sql.ErrNoRows
+	}
+
+	return nil
+}
+
+// ReorderProfiles sets each listed profile's position to its index in ids,
+// in one transaction. Ids not in the cluster are ignored; unlisted profiles
+// keep their position.
+func (s *Store) ReorderProfiles(ctx context.Context, cluster string, ids []string) error {
+	tx, err := s.db.BeginTx(ctx, nil)
+	if err != nil {
+		return fmt.Errorf("begin reorder profiles: %w", err)
+	}
+
+	defer func() { _ = tx.Rollback() }()
+
+	for i, id := range ids {
+		if _, err := tx.ExecContext(ctx,
+			`UPDATE catalog_profiles SET position = ? WHERE cluster = ? AND id = ?`,
+			i+1, cluster, id); err != nil {
+			return fmt.Errorf("reorder profile: %w", err)
+		}
+	}
+
+	if err := tx.Commit(); err != nil {
+		return fmt.Errorf("commit reorder profiles: %w", err)
 	}
 
 	return nil

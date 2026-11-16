@@ -22,6 +22,43 @@ export interface AdminProfile {
 }
 
 /** vCPU total a VM gets from this profile: sockets x cores (sockets default to 1). */
+/** Export file kind tag and version; bump the version on a breaking change. */
+export const PROFILE_EXPORT_KIND = 'pvmss-profiles';
+export const PROFILE_EXPORT_VERSION = 1;
+
+export type ProfileExportItem = Omit<AdminProfile, 'id'> & { id?: string };
+
+export interface ProfileImportOutcome {
+	cluster: string;
+	id: string;
+	label: string;
+	result: 'created' | 'updated' | 'skipped' | 'invalid';
+	error?: string;
+}
+
+/** Serialises profiles (in the given order) to the export file content. */
+export function buildProfileExport(profiles: AdminProfile[]): string {
+	return JSON.stringify({ kind: PROFILE_EXPORT_KIND, version: PROFILE_EXPORT_VERSION, profiles }, null, 2);
+}
+
+/** Parses an export file. Field values are validated by the server on import. */
+export function parseProfileExport(text: string): ProfileExportItem[] {
+	const data: unknown = JSON.parse(text);
+	if (
+		typeof data !== 'object' || data === null ||
+		(data as { kind?: unknown }).kind !== PROFILE_EXPORT_KIND ||
+		(data as { version?: unknown }).version !== PROFILE_EXPORT_VERSION ||
+		!Array.isArray((data as { profiles?: unknown }).profiles)
+	) {
+		throw new Error(m['admin.profiles.importInvalidFile']());
+	}
+	const items = (data as { profiles: unknown[] }).profiles;
+	if (!items.every((p) => typeof p === 'object' && p !== null && typeof (p as { label?: unknown }).label === 'string')) {
+		throw new Error(m['admin.profiles.importInvalidFile']());
+	}
+	return items as ProfileExportItem[];
+}
+
 export function vcpuTotal(p: Pick<AdminProfile, 'sockets' | 'cpuCores'>): number {
 	return (p.sockets ?? 1) * p.cpuCores;
 }
@@ -42,7 +79,7 @@ export class AdminProfilesStore {
 	search = $state('');
 	busFilter = $state('');
 	enabledFilter: 'all' | 'enabled' | 'disabled' = $state('all');
-	sortBy: 'id' | 'label' | 'cpuCores' | 'memoryMB' | 'diskGB' = $state('label');
+	sortBy: ProfileSortColumn = $state('position');
 	sortDir: 'asc' | 'desc' = $state('asc');
 
 	filteredProfiles = $derived(
@@ -66,7 +103,15 @@ export class AdminProfilesStore {
 	/** Latest-wins guard for load: a cluster switch must not show the previous cluster's profiles. */
 	#loadRequestId = 0;
 
-	setSort(column: 'id' | 'label' | 'cpuCores' | 'memoryMB' | 'diskGB'): void {
+	/** Ids checked for export, scoped to the loaded cluster. */
+	selected = new SvelteSet<string>();
+
+	/** Reordering only makes sense on the unfiltered list in stored order. */
+	canReorder = $derived(
+		this.sortBy === 'position' && this.sortDir === 'asc' && !this.search && !this.busFilter && this.enabledFilter === 'all'
+	);
+
+	setSort(column: ProfileSortColumn): void {
 		if (this.sortBy === column) {
 			this.sortDir = this.sortDir === 'asc' ? 'desc' : 'asc';
 		} else {
@@ -79,7 +124,7 @@ export class AdminProfilesStore {
 		this.search = '';
 		this.busFilter = '';
 		this.enabledFilter = 'all';
-		this.sortBy = 'label';
+		this.sortBy = 'position';
 		this.sortDir = 'asc';
 	}
 
@@ -111,7 +156,10 @@ export class AdminProfilesStore {
 		this.error = null;
 		try {
 			const profiles = await get<AdminProfile[]>(`/api/v1/admin/profiles?cluster=${encodeURIComponent(this.cluster)}`);
-			if (requestId === this.#loadRequestId) this.profiles = profiles;
+			if (requestId === this.#loadRequestId) {
+				this.profiles = profiles;
+				this.selected.clear();
+			}
 		} catch (err) {
 			if (requestId === this.#loadRequestId) {
 				this.error = err instanceof ApiRequestError ? err.message : m['admin.profiles.loadError']();
@@ -178,14 +226,65 @@ export class AdminProfilesStore {
 			throw err;
 		}
 	}
+
+	/** Moves a profile one step up (-1) or down (+1) and saves the new order;
+	 *  the user-side picker follows the same order. Reverts on failure. */
+	async move(id: string, delta: -1 | 1): Promise<void> {
+		const from = this.profiles.findIndex((p) => p.id === id);
+		const to = from + delta;
+		if (from < 0 || to < 0 || to >= this.profiles.length) return;
+		const previous = this.profiles;
+		const next = [...previous];
+		next.splice(to, 0, ...next.splice(from, 1));
+		this.profiles = next;
+		this.saveError = null;
+		try {
+			await put<{ status: string }>('/api/v1/admin/profiles/order', {
+				cluster: this.cluster,
+				ids: next.map((p) => p.id)
+			});
+		} catch (err) {
+			this.profiles = previous;
+			this.saveError = err instanceof ApiRequestError ? err.message : m['admin.profiles.reorderError']();
+		}
+	}
+
+	/** Selected profiles (or all when none is selected), in stored order. */
+	exportContent(): string {
+		const chosen = this.selected.size > 0 ? this.profiles.filter((p) => this.selected.has(p.id)) : this.profiles;
+		return buildProfileExport(chosen);
+	}
+
+	async importProfiles(clusters: string[], overwrite: boolean, profiles: ProfileExportItem[]): Promise<ProfileImportOutcome[] | null> {
+		this.saving = true;
+		this.saveError = null;
+		try {
+			const outcomes = await post<ProfileImportOutcome[]>('/api/v1/admin/profiles/import', {
+				clusters,
+				overwrite,
+				profiles: profiles.map(({ label, sockets, cpuCores, memoryMB, diskGB, bus, enabled, description }) => ({
+					label, sockets, cpuCores, memoryMB, diskGB, bus, enabled, description
+				}))
+			});
+			await this.load();
+			return outcomes;
+		} catch (err) {
+			this.saveError = err instanceof ApiRequestError ? err.message : m['admin.profiles.importError']();
+			return null;
+		} finally {
+			this.saving = false;
+		}
+	}
 }
 
-type ProfileSortColumn = 'id' | 'label' | 'cpuCores' | 'memoryMB' | 'diskGB';
+export type ProfileSortColumn = 'position' | 'id' | 'label' | 'cpuCores' | 'memoryMB' | 'diskGB';
 
 function sortProfiles(profiles: AdminProfile[], sortBy: ProfileSortColumn, dir: 'asc' | 'desc'): AdminProfile[] {
 	const sorted = [...profiles].sort((a, b) => {
 		let cmp = 0;
 		switch (sortBy) {
+			case 'position':
+				return 0; // the server returns profiles in stored order; sort is stable
 			case 'id':
 				cmp = a.id.localeCompare(b.id);
 				break;

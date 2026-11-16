@@ -36,4 +36,11 @@
 	onDelete={(id) => void store.remove(id)}
 	onToggle={(id, enabled) => void store.toggle(id, enabled)}
 	onClearSaveError={() => (store.saveError = null)}
+	selected={store.selected}
+	onToggleSelect={(id) => (store.selected.has(id) ? store.selected.delete(id) : store.selected.add(id))}
+	onToggleSelectAll={() => (store.selected.size === store.profiles.length ? store.selected.clear() : store.profiles.forEach((p) => store.selected.add(p.id)))}
+	canReorder={store.canReorder}
+	onMove={(id, delta) => void store.move(id, delta)}
+	exportContent={() => store.exportContent()}
+	onImport={(clusters, overwrite, items) => store.importProfiles(clusters, overwrite, items)}
 />
