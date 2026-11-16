@@ -2428,5 +2428,9 @@
 	"admin.profiles.importResultCreated": "Creato",
 	"admin.profiles.importResultUpdated": "Aggiornato",
 	"admin.profiles.importResultSkipped": "Ignorato (esiste già)",
-	"admin.profiles.importResultInvalid": "Non valido"
+	"admin.profiles.importResultInvalid": "Non valido",
+	"admin.clusters.vmCreation": "Creazione VM",
+	"admin.clusters.vmCreationLabel": "Consenti la creazione di VM su {name}",
+	"admin.clusters.vmCreationOn": "Creazione VM abilitata su {name}",
+	"admin.clusters.vmCreationOff": "Creazione VM disabilitata su {name}"
 }

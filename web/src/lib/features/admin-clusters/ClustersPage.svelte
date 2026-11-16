@@ -8,6 +8,7 @@
 	import ButtonLink from '#lib/shared/ui/ButtonLink.svelte';
 	import ConfirmDialog from '#lib/shared/ui/ConfirmDialog.svelte';
 	import EmptyState from '#lib/shared/ui/EmptyState.svelte';
+	import Switch from '#lib/shared/ui/Switch.svelte';
 	import Pill from '#lib/shared/ui/Pill.svelte';
 	import TableCard from '#lib/shared/ui/TableCard.svelte';
 	import Pagination from '#lib/shared/ui/Pagination.svelte';
@@ -81,7 +82,7 @@
 	{#if store.error}<Alert class="mb-4">{store.error}</Alert>{/if}
 	{#if store.loading}
 		<div role="status" aria-live="polite" class="sr-only">{m['admin.clusters.loading']()}</div>
-		<TableSkeleton columns={8} />
+		<TableSkeleton columns={6} />
 	{:else if store.clusters.length === 0}
 		<EmptyState title={m['admin.clusters.empty']()}>
 			{#snippet actions()}
@@ -98,6 +99,7 @@
 						<th scope="col" class="font-medium">{m['common.status']()}</th>
 						<th scope="col" class="font-medium">{m['admin.clusters.version']()}</th>
 						<th scope="col" class="font-medium">{m['admin.clusters.nodesVms']()}</th>
+						<th scope="col" class="font-medium">{m['admin.clusters.vmCreation']()}</th>
 						<th scope="col" class="font-medium">{m['common.actions']()}</th>
 					</tr>
 				</thead>
@@ -120,6 +122,9 @@
 							<td class="text-muted-foreground" data-label={m['admin.clusters.version']()}>{cluster.proxmoxVersion ?? ' - '}</td>
 							<td data-label={m['admin.clusters.nodesVms']()}>{cluster.nodeCount} / {cluster.vmCount}</td>
 
+							<td data-label={m['admin.clusters.vmCreation']()}>
+								<Switch label={m['admin.clusters.vmCreationLabel']({ name: cluster.displayName || cluster.name })} checked={cluster.vmCreationEnabled} disabled={store.busy !== null} onToggle={() => void store.setVMCreation(cluster.name, !cluster.vmCreationEnabled)} />
+							</td>
 							<td data-label={m['common.actions']()}>
 								<div class="flex flex-wrap gap-2">
 									<ButtonLink variant="secondary" size="sm" href={resolve('/admin/clusters/[name]', { name: cluster.name })} label={m['admin.clusters.detailsLabel']({ name: cluster.name })}>{m['admin.clusters.details']()}</ButtonLink>

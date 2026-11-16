@@ -143,3 +143,30 @@ func TestVMCreate_ClientCapabilityGates(t *testing.T) {
 		})
 	}
 }
+
+// TestVMCreate_RefusedWhenClusterCreationDisabled - an admin-closed cluster
+// answers 403 before any client call.
+func TestVMCreate_RefusedWhenClusterCreationDisabled(t *testing.T) {
+	t.Parallel()
+
+	authHandler := newAuthHandler(t)
+	st := newSetupStore(t)
+	testfixture.SeedDemoFixtures(t, st)
+
+	//nolint:gosec // test fixture credential
+	if err := st.CreateCluster(t.Context(), store.ClusterRow{Name: "default", URL: "https://pve.example.com:8006", TokenID: "pvmss@pve!svc", TokenSecret: "s"}); err != nil {
+		t.Fatalf("CreateCluster: %v", err)
+	}
+
+	if err := st.SetClusterVMCreation(t.Context(), "default", false); err != nil {
+		t.Fatalf("SetClusterVMCreation: %v", err)
+	}
+
+	clients := vmCreateClientProvider{clients: map[string]cluster.Client{"default": creatorWriterClient{}}}
+	handler := httpapi.NewVMCreateWithRegistry(authHandler, st, clients, cluster.Fake{}, slog.New(slog.DiscardHandler), testPolicyService(st, nil))
+
+	response := postVMCreate(t, handler, `{"cluster":"default","name":"x"}`, aliceCookie(t, authHandler))
+	if response.Code != http.StatusForbidden {
+		t.Fatalf("status = %d, want 403 vm_creation_disabled: %s", response.Code, response.Body.String())
+	}
+}

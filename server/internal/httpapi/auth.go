@@ -680,6 +680,8 @@ type authClusterDTO struct {
 	Name        string `json:"name"`
 	DisplayName string `json:"displayName"`
 	OIDCRealm   string `json:"oidcRealm"`
+	// VMCreationEnabled lets the create form hide closed clusters.
+	VMCreationEnabled bool `json:"vmCreationEnabled"`
 }
 
 // ServeClusters exposes the non-secret cluster choices needed before login.
@@ -700,7 +702,7 @@ func (h *Auth) ServeClusters(w http.ResponseWriter, r *http.Request) {
 	}
 	result := make([]authClusterDTO, 0, len(rows))
 	for _, row := range rows {
-		result = append(result, authClusterDTO{Name: row.Name, DisplayName: row.DisplayName, OIDCRealm: row.OIDCRealm})
+		result = append(result, authClusterDTO{Name: row.Name, DisplayName: row.DisplayName, OIDCRealm: row.OIDCRealm, VMCreationEnabled: row.VMCreationEnabled})
 	}
 	writeAuthJSON(w, http.StatusOK, result)
 }

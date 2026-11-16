@@ -16,6 +16,7 @@ const cluster: AdminCluster = {
 	tlsInsecureSkipVerify: false,
 	tokenId: 'pvmss@pve!service',
 	tokenSet: true,
+	vmCreationEnabled: true,
 	removedAt: null,
 	lastTestStatus: 'ok',
 	lastTestAt: null,
@@ -57,6 +58,20 @@ describe('ClustersPage remove confirmation', () => {
 
 		expect(removeSpy).toHaveBeenCalledWith('secondary');
 		expect(store.clusters).toHaveLength(0);
+	});
+
+	it('toggles VM creation from the cluster list', async () => {
+		const store = new AdminClustersStore();
+		store.clusters = [cluster];
+		const toggleSpy = vi.spyOn(store, 'setVMCreation').mockResolvedValue(true);
+		mount(ClustersPage, { target: document.body, props: { store } });
+		await tick();
+
+		const toggle = document.querySelector<HTMLButtonElement>('button[role="switch"][aria-label="Allow VM creation on prod-pve"]');
+		expect(toggle?.getAttribute('aria-checked')).toBe('true');
+		toggle!.click();
+
+		expect(toggleSpy).toHaveBeenCalledWith('secondary', false);
 	});
 
 	it('keeps the SSO realm when saving an edited cluster', async () => {

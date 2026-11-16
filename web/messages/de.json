@@ -2428,5 +2428,9 @@
 	"admin.profiles.importResultCreated": "Erstellt",
 	"admin.profiles.importResultUpdated": "Aktualisiert",
 	"admin.profiles.importResultSkipped": "Übersprungen (existiert bereits)",
-	"admin.profiles.importResultInvalid": "Ungültig"
+	"admin.profiles.importResultInvalid": "Ungültig",
+	"admin.clusters.vmCreation": "VM-Erstellung",
+	"admin.clusters.vmCreationLabel": "VM-Erstellung auf {name} erlauben",
+	"admin.clusters.vmCreationOn": "VM-Erstellung auf {name} aktiviert",
+	"admin.clusters.vmCreationOff": "VM-Erstellung auf {name} deaktiviert"
 }

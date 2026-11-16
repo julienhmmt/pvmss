@@ -318,6 +318,12 @@ const schemaV8 = `
 ALTER TABLE catalog_profiles ADD COLUMN position INTEGER NOT NULL DEFAULT 0;
 `
 
+// schemaV9 lets an admin stop users creating or cloning VMs on a cluster.
+// Existing clusters stay open.
+const schemaV9 = `
+ALTER TABLE clusters ADD COLUMN vm_creation_enabled INTEGER NOT NULL DEFAULT 1;
+`
+
 // Migration is a single schema version and its forward-only DDL.
 type Migration struct {
 	Version int
@@ -339,4 +345,5 @@ var Migrations = []Migration{
 	{Version: 6, DDL: schemaV6},
 	{Version: 7, DDL: schemaV7},
 	{Version: 8, DDL: schemaV8},
+	{Version: 9, DDL: schemaV9},
 }

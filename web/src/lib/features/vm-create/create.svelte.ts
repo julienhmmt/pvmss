@@ -425,7 +425,7 @@ export class VmCreateStore {
 	 *  deployment has more than one cluster - the catalog needs one to target). */
 	async loadClusters(principal: { isAdmin: boolean; cluster: string } | null = null): Promise<void> {
 		try {
-			this.clusterOptions = pinnedClusterOptions(await fetchClusterOptions(), principal);
+			this.clusterOptions = pinnedClusterOptions(await fetchClusterOptions(), principal).filter((option) => option.vmCreationEnabled !== false);
 		} catch {
 			this.clusterOptions = [];
 		}
