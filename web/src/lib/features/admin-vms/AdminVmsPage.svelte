@@ -23,6 +23,7 @@
 	import Alert from '#lib/shared/ui/Alert.svelte';
 	import Button from '#lib/shared/ui/Button.svelte';
 	import ButtonLink from '#lib/shared/ui/ButtonLink.svelte';
+	import Menu from '#lib/shared/ui/Menu.svelte';
 	import ConfirmDialog from '#lib/shared/ui/ConfirmDialog.svelte';
 	import EmptyState from '#lib/shared/ui/EmptyState.svelte';
 	import OsMark from '#lib/shared/ui/OsMark.svelte';
@@ -349,28 +350,26 @@
 										{m['vms.action.start']()}
 									</Button>
 								{:else}
-									<!-- Outline, not solid red: one per running row would flood the list; the confirm dialog carries the red. -->
-									<Button
-										variant="secondary"
-										size="sm"
-										class="text-destructive!"
-										disabled={inFlight}
-										aria-label={m['admin.vms.actionStopFor']({ name: machine.name })}
-										onclick={() => request(machine, 'stop')}
-										data-testid="admin-vm-stop"
-									>
-										{m['vms.action.stop']()}
-									</Button>
-									<Button
-										variant="secondary"
-										size="sm"
-										disabled={inFlight}
-										aria-label={m['admin.vms.actionResetFor']({ name: machine.name })}
-										onclick={() => request(machine, 'reset')}
-										data-testid="admin-vm-reset"
-									>
-										{m['vms.action.reset']()}
-									</Button>
+									<!-- Force stop and reset live in a menu: two buttons per running row crowded the table and wrapped in DE/IT. -->
+									<Menu
+										label={m['vms.action.more']()}
+										testId="admin-vm-more"
+										items={[
+											{
+												label: m['vms.action.stop'](),
+												destructive: true,
+												disabled: inFlight,
+												onclick: () => request(machine, 'stop'),
+												testId: 'admin-vm-stop'
+											},
+											{
+												label: m['vms.action.reset'](),
+												disabled: inFlight,
+												onclick: () => request(machine, 'reset'),
+												testId: 'admin-vm-reset'
+											}
+										]}
+									/>
 								{/if}
 								<ButtonLink
 									variant="ghost"
