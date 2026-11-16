@@ -97,6 +97,8 @@ func registerAdminCatalogRoutes(mux *http.ServeMux, adminProtect adminRouteProte
 	mux.Handle("DELETE /api/v1/admin/templates/{cluster}/{vmid}", adminProtect(http.MethodDelete, http.HandlerFunc(h.ServeTemplateDelete)))
 	mux.Handle("GET /api/v1/admin/profiles", adminProtect(http.MethodGet, http.HandlerFunc(h.ServeProfiles)))
 	mux.Handle("POST /api/v1/admin/profiles", adminProtect(http.MethodPost, http.HandlerFunc(h.ServeProfileCreate)))
+	mux.Handle("PUT /api/v1/admin/profiles/order", adminProtect(http.MethodPut, http.HandlerFunc(h.ServeProfileReorder)))
+	mux.Handle("POST /api/v1/admin/profiles/import", adminProtect(http.MethodPost, http.HandlerFunc(h.ServeProfileImport)))
 	mux.Handle("PUT /api/v1/admin/profiles/{id}", adminProtect(http.MethodPut, http.HandlerFunc(h.ServeProfileUpdate)))
 	mux.Handle("DELETE /api/v1/admin/profiles/{id}", adminProtect(http.MethodDelete, http.HandlerFunc(h.ServeProfileDelete)))
 	mux.Handle("POST /api/v1/admin/profiles/{id}/toggle", adminProtect(http.MethodPost, http.HandlerFunc(h.ServeProfileToggle)))
