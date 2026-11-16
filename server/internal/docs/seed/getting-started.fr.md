@@ -7,7 +7,9 @@ créer une.
 ## Se connecter
 
 Choisissez votre cluster et utilisez vos identifiants Proxmox sur la
-[page de connexion](/login). Si le cluster sélectionné est injoignable, le
+[page de connexion](/login), ou cliquez sur « Continuer avec le SSO » quand le
+cluster propose l'authentification unique. Si le cluster sélectionné est
+injoignable, le
 formulaire l'indique - réessayez plus tard ou choisissez un autre cluster.
 
 ## Retrouver ses VM

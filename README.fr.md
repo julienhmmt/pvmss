@@ -31,14 +31,14 @@ PVMSS est une application web (API REST Go + SPA SvelteKit) qui passe par l'API 
 
 **Pour les utilisateurs**
 
-- Connexion avec ses identifiants Proxmox, puis **Mes VM** : statut en direct, actions d'alimentation groupées, une console sur chaque ligne.
+- Connexion avec ses identifiants Proxmox ou en SSO (le realm OpenID Proxmox du cluster, voir [docs/oidc.md](docs/oidc.md)), puis **Mes VM** : statut en direct, actions d'alimentation groupées, une console sur chaque ligne.
 - **Création de VM** depuis une ISO approuvée ou un template Proxmox, avec profils matériels, placement automatique, multi-NIC, UEFI/TPM et tags curés.
 - **Exploitation d'une VM** : alimentation, disques, cartes réseau, CPU/RAM, snapshots (manuels et planifiés), duplication, baux, métriques et journal d'activité.
 - **Consoles** : noVNC et série dans le navigateur, relayées par PVMSS.
 
 **Pour les administrateurs**
 
-- Plusieurs clusters Proxmox, un catalogue approuvé (nœuds, stockages, ISO, templates, bridges), profils matériels et tags.
+- Plusieurs clusters Proxmox, avec la création de VM activable ou non par cluster ; un catalogue approuvé (nœuds, stockages, ISO, templates, bridges), des tags, et des profils matériels réordonnables et exportables/importables en JSON entre clusters.
 - Utilisateurs libre-service (utilisateur Proxmox + pool + ACL en une étape), quotas, plafonds de capacité par nœud, demandes de quota.
 - Migration entre nœuds, tableau de bord, journal d'audit, export/import de la base, éditeur de documentation intégrée.
 
@@ -173,7 +173,7 @@ Il n'y a pas de migration : la v0.4 est une réécriture et n'importe rien de la
 - Seul Proxmox VE 9.x et plus récent est pris en charge.
 - Le durcissement de la sécurité se poursuit ; pas encore de test d'intrusion formel.
 - Pas de VM gérées par HA, pas de migration entre clusters ; SDN et règles de pare-feu restent dans Proxmox.
-- Les realms OIDC de Proxmox ne peuvent pas se connecter (seuls `pve` et `pam`) ; les administrateurs locaux PVMSS restent disponibles.
+- Le SSO passe par un realm OpenID Proxmox configuré par cluster (voir [docs/oidc.md](docs/oidc.md)) ; la déconnexion est locale uniquement.
 
 Retours et contributions bienvenus via issues ou pull requests. Prochaines versions : <https://github.com/julienhmmt/pvmss/projects?query=is%3Aopen>.
 

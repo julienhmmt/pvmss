@@ -6,7 +6,7 @@ hébergées sur Proxmox VE, sans passer par l'interface Proxmox.
 
 ## Démarrage rapide
 
-1. **Connectez-vous** sur la [page de connexion](/login) : choisissez votre cluster puis saisissez les identifiants fournis par votre administrateur.
+1. **Connectez-vous** sur la [page de connexion](/login) : choisissez votre cluster puis saisissez les identifiants fournis par votre administrateur - ou cliquez sur « Continuer avec le SSO » quand le cluster propose l'authentification unique.
 2. **Retrouvez vos VM** sur la page Mes VM ; recherchez par nom, VMID ou tag.
 3. **Créez une VM** avec le bouton « Créer une VM », puis renseignez les paramètres.
 4. **Ouvrez la console** une fois la VM créée et démarrée, via le client noVNC ou série intégré.
@@ -166,7 +166,7 @@ applique côté serveur avant tout appel à Proxmox.
 
 ## Astuces
 
-- Changez votre mot de passe depuis la page **Profil**.
+- Changez votre mot de passe depuis la page **Profil** (les comptes SSO n'ont pas de mot de passe PVMSS - il est géré par le fournisseur d'identité).
 - Utilisez la page de recherche pour retrouver une machine rapidement, sans faire défiler la liste.
 - Mettez en favori des listes filtrées et des pages de détail de VM.
 - L'application suit la langue de votre navigateur, et vous pouvez choisir une autre langue sur votre page **Profil** - français, anglais, allemand et italien sont disponibles.

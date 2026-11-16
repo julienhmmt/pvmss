@@ -37,6 +37,7 @@ exists, backend not implemented).
 | Activity: operations in progress + merged recent audit of my machines                                                                                                  | `/activity`         | `GET /api/v1/vms`, `GET /api/v1/vms/{cluster}/{vmid}/audit` | ✅     |
 | Account: identity, sign-in source, appearance, language, password change                                                                                               | `/profile`          | `POST /api/v1/auth/password`                                | ✅     |
 | Just-deleted VM hidden until inventory catches up                                                                                                                      | `/vms`              | client side                                                 | ✅     |
+| Pinned machines sort first in the sidebar machine drawer (pins stored per browser)                                                                                     | all signed-in pages | client side                                                 | ✅     |
 | Ownership enforced server-side (`vm.Resolve()`), not by the list filter                                                                                                | -                   | every VM route                                              | ✅     |
 
 ## 3. Create a VM

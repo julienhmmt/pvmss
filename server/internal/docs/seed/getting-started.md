@@ -5,7 +5,8 @@ This guide covers logging in, finding your VMs and creating a new one.
 
 ## Logging in
 
-Pick your cluster and use your Proxmox credentials on the [login page](/login).
+Pick your cluster and use your Proxmox credentials on the [login page](/login),
+or click "Continue with SSO" when the cluster offers single sign-on.
 If the selected cluster is unreachable, the form says so - try again later or
 pick another cluster.
 
