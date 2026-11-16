@@ -3,6 +3,7 @@ package adoption
 import (
 	"context"
 	"errors"
+	"fmt"
 	"pvmss/server/internal/catalog"
 	"pvmss/server/internal/inventory"
 	"pvmss/server/internal/store"
@@ -19,15 +20,7 @@ func Adopt(ctx context.Context, lister PoolLister, projection *inventory.Project
 		return Result{}, err
 	}
 
-	orphanPools := make(map[string]struct{}, len(report.Pools))
-	for _, pool := range report.Pools {
-		orphanPools[pool.Name] = struct{}{}
-	}
-
-	suggestedColors := make(map[string]string, len(report.Tags))
-	for _, tag := range report.Tags {
-		suggestedColors[tag.Name] = tag.Color
-	}
+	orphanPools, suggestedColors := orphanLookup(report)
 
 	result := Result{Pools: []string{}, Tags: []AdoptedTag{}}
 
@@ -56,5 +49,49 @@ func Adopt(ctx context.Context, lister PoolLister, projection *inventory.Project
 		result.Tags = append(result.Tags, AdoptedTag{Name: name, Color: color})
 	}
 
+	if err := clearAdoptedDismissals(ctx, st, clusterName, sel); err != nil {
+		return Result{}, err
+	}
+
 	return result, nil
+}
+
+// orphanLookup indexes the report for selection filtering. Hidden items
+// stay adoptable - the admin can adopt them straight from the hidden
+// section - so both partitions feed the lookup maps.
+func orphanLookup(report Report) (map[string]struct{}, map[string]string) {
+	orphanPools := make(map[string]struct{}, len(report.Pools)+len(report.HiddenPools))
+	for _, pool := range report.Pools {
+		orphanPools[pool.Name] = struct{}{}
+	}
+
+	for _, pool := range report.HiddenPools {
+		orphanPools[pool.Name] = struct{}{}
+	}
+
+	suggestedColors := make(map[string]string, len(report.Tags)+len(report.HiddenTags))
+	for _, tag := range report.Tags {
+		suggestedColors[tag.Name] = tag.Color
+	}
+
+	for _, tag := range report.HiddenTags {
+		suggestedColors[tag.Name] = tag.Color
+	}
+
+	return orphanPools, suggestedColors
+}
+
+// clearAdoptedDismissals drops dismissal rows for the adopted items: the
+// triage decision is spent, so a pool or tag that becomes an orphan again
+// later resurfaces in the visible report instead of staying hidden.
+func clearAdoptedDismissals(ctx context.Context, st *store.Store, clusterName string, sel Selection) error {
+	if err := st.RestoreRecoveryItems(ctx, clusterName, store.RecoveryDismissalPool, sel.Pools); err != nil {
+		return fmt.Errorf("restore adopted pools: %w", err)
+	}
+
+	if err := st.RestoreRecoveryItems(ctx, clusterName, store.RecoveryDismissalTag, sel.Tags); err != nil {
+		return fmt.Errorf("restore adopted tags: %w", err)
+	}
+
+	return nil
 }

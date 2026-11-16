@@ -234,6 +234,16 @@ sont recréés - l'adoption n'écrit que des lignes locales et ne retouche jamai
 les tags des VM sur le cluster. Le rapport est mis en cache 5 minutes par
 cluster ; **Rescan** force une nouvelle lecture.
 
+Les éléments que vous décidez de laisser tels quels peuvent être **masqués** :
+icône en forme d'œil sur une ligne, ou cochez des lignes puis **Masquer la
+sélection**. Les pools, tags et VM masqués rejoignent une section repliée en
+bas du rapport où ils peuvent être réaffichés ou adoptés plus tard - le
+masquage ne change rien côté cluster et est partagé avec les autres
+administrateurs. Une zone de filtre restreint les trois listes à la fois (les
+pools correspondent aussi sur le nom des VM membres), et la case « tout
+sélectionner » de chaque liste ne couvre que les lignes filtrées, ce qui
+permet de trier en masse un grand nombre de reliquats.
+
 ## Paramètres, audit et maintenance
 
 `/admin/settings` expose les commandes d'exploitation :

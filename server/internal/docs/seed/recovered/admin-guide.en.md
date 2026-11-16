@@ -222,6 +222,15 @@ pools are re-marked managed and tags recreated - adoption writes local rows
 only and never rewrites VM tags on the cluster. The report is cached for
 5 minutes per cluster; **Rescan** forces a fresh read.
 
+Items you decide to leave alone can be **hidden** instead: use the eye icon on
+a row, or check rows and use **Hide selected**. Hidden pools, tags and VMs
+move to a collapsed section at the bottom of the report where they can be
+unhidden or adopted later - hiding never changes anything cluster-side and is
+shared with the other administrators. A filter box narrows all three lists at
+once (pools also match on member VM names), and each list's select-all
+checkbox covers the filtered rows, so a large leftover set can be triaged in
+bulk.
+
 ## Settings, audit, and maintenance
 
 `/admin/settings` exposes operational controls:

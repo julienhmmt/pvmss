@@ -1285,6 +1285,36 @@
 	"admin.recovery.rescan": "Nuova scansione",
 	"admin.recovery.scanning": "Scansione…",
 	"admin.recovery.lastScan": "Ultima scansione: {time}",
+	"admin.recovery.select": "Seleziona",
+	"admin.recovery.selectItem": "Seleziona {name}",
+	"admin.recovery.hideItem": "Nascondi {name}",
+	"admin.recovery.unhideItem": "Mostra di nuovo {name}",
+	"admin.recovery.hideSelected": "Nascondi selezionati",
+	"admin.recovery.hiding": "Nascondimento…",
+	"admin.recovery.hidden": "Risorse nascoste.",
+	"admin.recovery.unhidden": "Risorse mostrate di nuovo.",
+	"admin.recovery.hideError": "Impossibile aggiornare le risorse nascoste.",
+	"admin.recovery.nothingToHide": "Seleziona almeno un pool, un tag o una VM da nascondere.",
+	"admin.recovery.hiddenHeading": [
+		{
+			"declarations": [
+				"input count",
+				"local countPlural = count: plural"
+			],
+			"selectors": [
+				"countPlural"
+			],
+			"match": {
+				"countPlural=one": "Nascosto ({count} elemento)",
+				"countPlural=other": "Nascosti ({count} elementi)"
+			}
+		}
+	],
+	"admin.recovery.hiddenHelp": "Gli elementi nascosti restano invariati sul cluster e non vengono mai adottati. Mostrali di nuovo per ripristinarli.",
+	"admin.recovery.adoptItem": "Adotta",
+	"admin.recovery.selectAll": "Seleziona tutto",
+	"admin.recovery.filterPlaceholder": "Filtra per nome, commento o VM…",
+	"admin.recovery.noMatch": "Nessuna risorsa corrisponde a \"{query}\".",
 	"admin.settings.title": "Impostazioni di amministrazione - PVMSS",
 	"admin.settings.heading": "Impostazioni",
 	"admin.settings.tabAudit": "Registro di audit",

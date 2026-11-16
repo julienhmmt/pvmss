@@ -1285,6 +1285,36 @@
 	"admin.recovery.rescan": "Erneut scannen",
 	"admin.recovery.scanning": "Scanne…",
 	"admin.recovery.lastScan": "Letzter Scan: {time}",
+	"admin.recovery.select": "Auswählen",
+	"admin.recovery.selectItem": "{name} auswählen",
+	"admin.recovery.hideItem": "{name} ausblenden",
+	"admin.recovery.unhideItem": "{name} wieder einblenden",
+	"admin.recovery.hideSelected": "Auswahl ausblenden",
+	"admin.recovery.hiding": "Wird ausgeblendet…",
+	"admin.recovery.hidden": "Ressourcen ausgeblendet.",
+	"admin.recovery.unhidden": "Ressourcen wieder eingeblendet.",
+	"admin.recovery.hideError": "Ausgeblendete Ressourcen konnten nicht aktualisiert werden.",
+	"admin.recovery.nothingToHide": "Wählen Sie mindestens einen Pool, ein Tag oder eine VM zum Ausblenden aus.",
+	"admin.recovery.hiddenHeading": [
+		{
+			"declarations": [
+				"input count",
+				"local countPlural = count: plural"
+			],
+			"selectors": [
+				"countPlural"
+			],
+			"match": {
+				"countPlural=one": "Ausgeblendet ({count} Element)",
+				"countPlural=other": "Ausgeblendet ({count} Elemente)"
+			}
+		}
+	],
+	"admin.recovery.hiddenHelp": "Ausgeblendete Elemente bleiben auf dem Cluster unverändert und werden nie adoptiert. Blenden Sie sie wieder ein, um sie zurückzuholen.",
+	"admin.recovery.adoptItem": "Adoptieren",
+	"admin.recovery.selectAll": "Alle auswählen",
+	"admin.recovery.filterPlaceholder": "Nach Name, Kommentar oder VM filtern…",
+	"admin.recovery.noMatch": "Keine Ressourcen entsprechen „{query}“.",
 	"admin.settings.title": "Admin-Einstellungen - PVMSS",
 	"admin.settings.heading": "Einstellungen",
 	"admin.settings.tabAudit": "Audit-Protokoll",

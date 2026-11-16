@@ -287,6 +287,20 @@ CREATE TABLE onboarding_done (
 	marked_at TEXT NOT NULL
 );
 
+-- Recovery leftovers an administrator dismissed: hidden from the adoption
+-- report so rescans do not resurface them, but kept on record so the page
+-- can list and restore them. item is the pool/tag name, or the vmid as
+-- text when kind = 'vm'.
+CREATE TABLE recovery_dismissals (
+	cluster      TEXT NOT NULL,
+	kind         TEXT NOT NULL,
+	item         TEXT NOT NULL,
+	dismissed_by TEXT NOT NULL,
+	dismissed_at TEXT NOT NULL,
+	PRIMARY KEY (cluster, kind, item),
+	CHECK (kind IN ('pool','tag','vm'))
+);
+
 CREATE INDEX audit_log_time ON audit_log (timestamp DESC, id DESC);
 CREATE INDEX audit_log_vm ON audit_log (cluster, vmid, action, id);
 CREATE INDEX audit_log_target ON audit_log (target_type, target_id);
