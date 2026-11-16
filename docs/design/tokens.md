@@ -62,7 +62,7 @@ Layer B spec, this list is what actually ships. Current truth: `web/src/app.css`
 and `DESIGN.md`.
 
 - `--primary` (light): `oklch(56% 0.16 51deg)`, deepened from `oklch(66% 0.185
-  44deg)` so white labels and accent text clear AA. A separate
+44deg)` so white labels and accent text clear AA. A separate
   `--primary-solid` (same value) carries label-bearing fills; in dark mode
   `--primary` lifts to `oklch(72% 0.17 44deg)` while `--primary-solid` stays.
 - `--muted-foreground-subtle`: `#766f6a` light / `oklch(62% 0.012 56deg)` dark

@@ -5,7 +5,7 @@ cluster**. It is not an OIDC client itself: Proxmox talks to the identity
 provider (IdP), verifies the ID token and issues the ticket. PVMSS only relays
 the authorization code. Identity, ACLs and the admin flag stay in Proxmox.
 
-```
+```text
 browser -> /api/v1/auth/oidc/start  -> Proxmox /access/openid/auth-url -> IdP
 IdP -> /api/v1/auth/oidc/callback   -> Proxmox /access/openid/login   -> PVMSS session
 ```

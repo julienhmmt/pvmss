@@ -30,28 +30,28 @@ first cluster there. A partial set still fails startup.
 
 **Optional:**
 
-| Variable                                      | Default                                                         |
-| --------------------------------------------- | --------------------------------------------------------------- |
-| `PVMSS_HOST`                                  | `127.0.0.1` (image sets `0.0.0.0`)                              |
-| `PVMSS_WEB_DIR`                               | relative to the executable                                      |
+| Variable                                      | Default                                                                                          |
+| --------------------------------------------- | ------------------------------------------------------------------------------------------------ |
+| `PVMSS_HOST`                                  | `127.0.0.1` (image sets `0.0.0.0`)                                                               |
+| `PVMSS_WEB_DIR`                               | relative to the executable                                                                       |
 | `ADMIN_PASSWORD_HASH`                         | empty; if set, must be `$2...`; the example hash from the shipped examples is refused at startup |
-| `PVMSS_COOKIE_SECURE`                         | `true`                                                          |
-| `PVMSS_INVENTORY_REFRESH_INTERVAL`            | `30s`                                                           |
-| `PVMSS_INVENTORY_MANUAL_REFRESH_MIN_INTERVAL` | `5s`                                                            |
-| `PVMSS_INVENTORY_REFRESH_TIMEOUT`             | `25s`                                                           |
-| `PVMSS_MAX_LIST_PAGE_SIZE`                    | `100`                                                           |
-| `PVMSS_MAX_LOCAL_ADMINS`                      | `5` (range 1-50; excludes the bootstrap admin)                  |
-| `PVMSS_DB_RESET_ON_INCOMPATIBLE`              | `false` (dev compose: `true`; old DB is renamed, never deleted) |
-| `PVMSS_TRUSTED_PROXY_HOPS`                    | `0`                                                             |
-| `PVMSS_RATE_LIMIT_MAX`                        | `0` (built-in ceilings; positive raises them, used by e2e)      |
-| `PVMSS_METRICS_PORT`                          | empty (off); a port != `PVMSS_PORT` enables `GET /metrics`      |
-| `PVMSS_TLS_CERT_FILE` / `PVMSS_TLS_KEY_FILE`  | empty (plain HTTP); both set = HTTPS listener                   |
-| `PVMSS_TLS_CLIENT_CA_FILE`                    | empty; set = mutual TLS (advised, `docs/tls.md`)                |
-| `PVMSS_TLS_CLIENT_AUTH`                       | `require` (or `optional`); needs the client CA                  |
-| `PVMSS_SYSLOG_ADDR`                           | `host:port` of the SIEM receiver (RFC 5425 TLS). Empty: off.    |
-| `PVMSS_SYSLOG_TLS_CA_FILE`                    | PEM CA for the receiver certificate; empty uses system roots.   |
-| `PVMSS_SYSLOG_TLS_CERT_FILE`                  | Client cert for mutual TLS; needs `PVMSS_SYSLOG_TLS_KEY_FILE`.  |
-| `PVMSS_SYSLOG_TLS_KEY_FILE`                   | Client key for mutual TLS; needs `PVMSS_SYSLOG_TLS_CERT_FILE`.  |
+| `PVMSS_COOKIE_SECURE`                         | `true`                                                                                           |
+| `PVMSS_INVENTORY_REFRESH_INTERVAL`            | `30s`                                                                                            |
+| `PVMSS_INVENTORY_MANUAL_REFRESH_MIN_INTERVAL` | `5s`                                                                                             |
+| `PVMSS_INVENTORY_REFRESH_TIMEOUT`             | `25s`                                                                                            |
+| `PVMSS_MAX_LIST_PAGE_SIZE`                    | `100`                                                                                            |
+| `PVMSS_MAX_LOCAL_ADMINS`                      | `5` (range 1-50; excludes the bootstrap admin)                                                   |
+| `PVMSS_DB_RESET_ON_INCOMPATIBLE`              | `false` (dev compose: `true`; old DB is renamed, never deleted)                                  |
+| `PVMSS_TRUSTED_PROXY_HOPS`                    | `0`                                                                                              |
+| `PVMSS_RATE_LIMIT_MAX`                        | `0` (built-in ceilings; positive raises them, used by e2e)                                       |
+| `PVMSS_METRICS_PORT`                          | empty (off); a port != `PVMSS_PORT` enables `GET /metrics`                                       |
+| `PVMSS_TLS_CERT_FILE` / `PVMSS_TLS_KEY_FILE`  | empty (plain HTTP); both set = HTTPS listener                                                    |
+| `PVMSS_TLS_CLIENT_CA_FILE`                    | empty; set = mutual TLS (advised, `docs/tls.md`)                                                 |
+| `PVMSS_TLS_CLIENT_AUTH`                       | `require` (or `optional`); needs the client CA                                                   |
+| `PVMSS_SYSLOG_ADDR`                           | `host:port` of the SIEM receiver (RFC 5425 TLS). Empty: off.                                     |
+| `PVMSS_SYSLOG_TLS_CA_FILE`                    | PEM CA for the receiver certificate; empty uses system roots.                                    |
+| `PVMSS_SYSLOG_TLS_CERT_FILE`                  | Client cert for mutual TLS; needs `PVMSS_SYSLOG_TLS_KEY_FILE`.                                   |
+| `PVMSS_SYSLOG_TLS_KEY_FILE`                   | Client key for mutual TLS; needs `PVMSS_SYSLOG_TLS_CERT_FILE`.                                   |
 
 Tracing/OTLP use the standard `OTEL_*` variables read by the SDK (see
 `docs/observability.md`). Setting a trace endpoint also turns on browser
