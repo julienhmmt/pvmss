@@ -2434,5 +2434,41 @@
 	"admin.clusters.vmCreationOn": "Création de VM activée sur {name}",
 	"admin.clusters.vmCreationOff": "Création de VM désactivée sur {name}",
 	"vms.create.blocked.creationClosedTitle": "Création de VM fermée",
-	"vms.create.blocked.creationClosedBody": "Un administrateur a désactivé la création de VM sur votre cluster. Vos machines existantes ne sont pas concernées."
+	"vms.create.blocked.creationClosedBody": "Un administrateur a désactivé la création de VM sur votre cluster. Vos machines existantes ne sont pas concernées.",
+	"vms.list.firstRun.allowance": [
+		{
+			"declarations": [
+				"input allowed",
+				"local allowedPlural = allowed: plural"
+			],
+			"selectors": [
+				"allowedPlural"
+			],
+			"match": {
+				"allowedPlural=one": "Vous pouvez avoir jusqu'à {allowed} machine.",
+				"allowedPlural=other": "Vous pouvez avoir jusqu'à {allowed} machines."
+			}
+		}
+	],
+	"vms.list.firstRun.allowanceOn": [
+		{
+			"declarations": [
+				"input allowed",
+				"local allowedPlural = allowed: plural",
+				"input cluster"
+			],
+			"selectors": [
+				"allowedPlural"
+			],
+			"match": {
+				"allowedPlural=one": "Vous pouvez avoir jusqu'à {allowed} machine sur {cluster}.",
+				"allowedPlural=other": "Vous pouvez avoir jusqu'à {allowed} machines sur {cluster}."
+			}
+		}
+	],
+	"vms.list.firstRun.unlimited": "Votre espace n'a pas de limite de machines.",
+	"vms.list.firstRun.unlimitedOn": "Votre espace n'a pas de limite de machines sur {cluster}.",
+	"vms.list.firstRun.guide": "Lire le guide de démarrage",
+	"vms.list.firstRun.zeroTitle": "Votre espace est prêt.",
+	"vms.list.firstRun.zeroBody": "Votre administrateur ne vous a encore attribué aucune machine. Faites une demande : la décision s'affichera ici."
 }

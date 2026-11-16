@@ -2434,5 +2434,41 @@
 	"admin.clusters.vmCreationOn": "VM creation enabled on {name}",
 	"admin.clusters.vmCreationOff": "VM creation disabled on {name}",
 	"vms.create.blocked.creationClosedTitle": "VM creation is closed",
-	"vms.create.blocked.creationClosedBody": "An administrator has turned off VM creation on your cluster. Your existing machines are not affected."
+	"vms.create.blocked.creationClosedBody": "An administrator has turned off VM creation on your cluster. Your existing machines are not affected.",
+	"vms.list.firstRun.allowance": [
+		{
+			"declarations": [
+				"input allowed",
+				"local allowedPlural = allowed: plural"
+			],
+			"selectors": [
+				"allowedPlural"
+			],
+			"match": {
+				"allowedPlural=one": "You can run up to {allowed} machine.",
+				"allowedPlural=other": "You can run up to {allowed} machines."
+			}
+		}
+	],
+	"vms.list.firstRun.allowanceOn": [
+		{
+			"declarations": [
+				"input allowed",
+				"local allowedPlural = allowed: plural",
+				"input cluster"
+			],
+			"selectors": [
+				"allowedPlural"
+			],
+			"match": {
+				"allowedPlural=one": "You can run up to {allowed} machine on {cluster}.",
+				"allowedPlural=other": "You can run up to {allowed} machines on {cluster}."
+			}
+		}
+	],
+	"vms.list.firstRun.unlimited": "There is no machine limit on your workspace.",
+	"vms.list.firstRun.unlimitedOn": "There is no machine limit on your workspace on {cluster}.",
+	"vms.list.firstRun.guide": "Read the getting-started guide",
+	"vms.list.firstRun.zeroTitle": "Your workspace is ready.",
+	"vms.list.firstRun.zeroBody": "Your administrator has not given you any machines yet. Ask for some, and the decision will show here."
 }
