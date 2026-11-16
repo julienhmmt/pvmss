@@ -266,7 +266,7 @@ func (h *VMCreate) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	target, ok := h.resolveCreateTarget(w, clusterName)
+	target, ok := h.resolveCreateTarget(r.Context(), w, clusterName)
 	if !ok {
 		return
 	}

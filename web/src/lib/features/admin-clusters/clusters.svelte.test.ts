@@ -12,6 +12,7 @@ const cluster = {
 	tlsInsecureSkipVerify: false,
 	tokenId: 'pvmss@pve!service',
 	tokenSet: true,
+	vmCreationEnabled: true,
 	removedAt: null,
 	lastTestStatus: 'ok' as const,
 	lastTestAt: null,

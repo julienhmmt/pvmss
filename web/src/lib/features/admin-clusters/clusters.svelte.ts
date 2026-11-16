@@ -31,6 +31,7 @@ export interface AdminCluster {
 	tlsInsecureSkipVerify: boolean;
 	tokenId: string;
 	tokenSet: boolean;
+	vmCreationEnabled: boolean;
 	removedAt: string | null;
 	lastTestStatus: 'ok' | 'unreachable' | 'error' | null;
 	lastTestAt: string | null;
@@ -154,6 +155,14 @@ export class AdminClustersStore {
 				saveAdminCluster(newName);
 			}
 			this.announce = m['admin.clusters.renamed']({ from: name, to: newName });
+		});
+	}
+
+	async setVMCreation(name: string, enabled: boolean): Promise<boolean> {
+		return this.run(`vm-creation:${name}`, async () => {
+			const updated = await put<AdminCluster>(`/api/v1/admin/clusters/${encodeURIComponent(name)}/vm-creation`, { enabled });
+			this.clusters = this.clusters.map((cluster) => (cluster.name === name ? updated : cluster));
+			this.announce = enabled ? m['admin.clusters.vmCreationOn']({ name }) : m['admin.clusters.vmCreationOff']({ name });
 		});
 	}
 

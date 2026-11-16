@@ -24,6 +24,7 @@
 
 	onMount(() => {
 		void form.loadClusters(session.principal).then(() => {
+			if (form.creationClosed) return;
 			void form.loadCatalog();
 			void form.loadExistingMachines();
 		});
@@ -73,7 +74,15 @@
 			</Card>
 		{/if}
 
-		{#if unavailable}
+		{#if form.creationClosed}
+			<Card as="div" pad="none">
+				<EmptyState title={m['vms.create.blocked.creationClosedTitle']()} description={m['vms.create.blocked.creationClosedBody']()} dataTestid="vm-create-closed">
+					{#snippet actions()}
+						<ButtonLink href={resolve('/vms')} variant="secondary">{m['vms.create.back']()}</ButtonLink>
+					{/snippet}
+				</EmptyState>
+			</Card>
+		{:else if unavailable}
 			<Card as="div" pad="none">
 				<EmptyState title={m['vms.create.blocked.unavailableTitle']()} description={m['vms.create.blocked.unavailableBody']()} tone="error" dataTestid="vm-create-unavailable">
 					{#snippet actions()}

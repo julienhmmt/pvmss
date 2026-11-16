@@ -58,6 +58,7 @@ type adminClusterDTO struct {
 	NodeCount             int     `json:"nodeCount"`
 	VMCount               int     `json:"vmCount"`
 	TLS                   tlsDTO  `json:"tls"`
+	VMCreationEnabled     bool    `json:"vmCreationEnabled"`
 }
 
 type createClusterRequest struct {
@@ -404,6 +405,36 @@ func (handler *AdminClusters) ServeRename(w http.ResponseWriter, r *http.Request
 	writeAdminJSON(w, http.StatusOK, handler.clusterDTO(stored))
 }
 
+// ServeVMCreation handles PUT /api/v1/admin/clusters/{name}/vm-creation:
+// opens or closes VM creation and clone on a cluster for users.
+func (handler *AdminClusters) ServeVMCreation(w http.ResponseWriter, r *http.Request) {
+	var request struct {
+		Enabled *bool `json:"enabled"`
+	}
+	if err := decodeJSON(w, r, &request); err != nil || request.Enabled == nil {
+		writeAdminError(w, http.StatusBadRequest, "invalid_request", msgInvalidClusterRequest)
+		return
+	}
+	name := r.PathValue("name")
+	if err := handler.store.SetClusterVMCreation(r.Context(), name, *request.Enabled); err != nil {
+		handler.writeStoreFailure(w, err)
+		return
+	}
+	stored, err := handler.store.GetCluster(r.Context(), name)
+	if err != nil {
+		handler.writeFailure(w, err)
+		return
+	}
+	state := "disabled"
+	if *request.Enabled {
+		state = "enabled"
+	}
+	handler.recordAdminAction(r, "admin.clusters.vm_creation", "cluster", name,
+		"vm creation "+state+" on cluster "+name,
+		[]any{map[string]any{"enabled": *request.Enabled}})
+	writeAdminJSON(w, http.StatusOK, handler.clusterDTO(stored))
+}
+
 // secretKeptSafely refuses an update that keeps the stored token secret while
 // changing the endpoint it is sent to: pointing a cluster elsewhere, or
 // dropping TLS verification, must re-enter the secret. It writes the error
@@ -665,7 +696,7 @@ func (handler *AdminClusters) clusterDTO(row store.ClusterRow) adminClusterDTO {
 		TokenSet: row.TokenSecret != "", RemovedAt: formatTime(row.RemovedAt),
 		LastTestStatus: lastTestStatus, LastTestAt: lastTestAt, LastTestMessage: lastTestMessage,
 		ProxmoxVersion: optionalValue(version), NodeCount: nodeCount, VMCount: vmCount,
-		TLS: toTLSDTO(row.TLS),
+		TLS: toTLSDTO(row.TLS), VMCreationEnabled: row.VMCreationEnabled,
 	}
 }
 

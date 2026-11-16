@@ -16,6 +16,7 @@ const detail: ClusterDetail = {
 	tlsInsecureSkipVerify: true,
 	tokenId: 'pvmss@pve!service',
 	tokenSet: true,
+	vmCreationEnabled: true,
 	removedAt: null,
 	lastTestStatus: 'unreachable',
 	lastTestAt: '2026-10-20T10:00:00Z',

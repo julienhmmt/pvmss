@@ -427,3 +427,39 @@ describe('VmCreateStore cluster switch (stale responses)', () => {
 		expect(store.buildRequest().cluster).toBe('B');
 	});
 });
+
+describe('VmCreateStore.loadClusters', () => {
+	afterEach(() => vi.unstubAllGlobals());
+
+	it('hides clusters where the admin closed VM creation', async () => {
+		const clusters = [
+			{ name: 'open', displayName: 'Open', vmCreationEnabled: true },
+			{ name: 'closed', displayName: 'Closed', vmCreationEnabled: false }
+		];
+		vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response(JSON.stringify(clusters), { status: 200, headers: { 'Content-Type': 'application/json' } })));
+		const store = new VmCreateStore();
+
+		await store.loadClusters({ isAdmin: true, cluster: '' });
+
+		expect(store.clusterOptions.map((option) => option.name)).toEqual(['open']);
+		expect(store.cluster).toBe('open');
+	});
+});
+
+describe('VmCreateStore.creationClosed', () => {
+	afterEach(() => vi.unstubAllGlobals());
+
+	it('is set when every reachable cluster is closed, and not when none exist', async () => {
+		const respond = (body: unknown) => vi.fn().mockResolvedValue(new Response(JSON.stringify(body), { status: 200, headers: { 'Content-Type': 'application/json' } }));
+
+		vi.stubGlobal('fetch', respond([{ name: 'a', displayName: 'A', vmCreationEnabled: false }]));
+		const closed = new VmCreateStore();
+		await closed.loadClusters({ isAdmin: false, cluster: 'a' });
+		expect(closed.creationClosed).toBe(true);
+
+		vi.stubGlobal('fetch', respond([]));
+		const empty = new VmCreateStore();
+		await empty.loadClusters({ isAdmin: false, cluster: '' });
+		expect(empty.creationClosed).toBe(false);
+	});
+});

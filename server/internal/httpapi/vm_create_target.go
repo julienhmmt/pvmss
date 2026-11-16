@@ -1,6 +1,8 @@
 package httpapi
 
 import (
+	"context"
+	"database/sql"
 	"encoding/json"
 	"errors"
 	"net/http"
@@ -25,12 +27,16 @@ type createTarget struct {
 // creation ran through the default cluster's client regardless of which
 // cluster the request named. The HardwareUpdater is needed for post-clone
 // configuration.
-func (h *VMCreate) resolveCreateTarget(w http.ResponseWriter, requestedCluster string) (createTarget, bool) {
+func (h *VMCreate) resolveCreateTarget(ctx context.Context, w http.ResponseWriter, requestedCluster string) (createTarget, bool) {
 	clusterName, err := ResolveClusterValue(requestedCluster, h.clients)
 	if err != nil {
 		code, message := clusterParamError(err)
 		h.writeCreateError(w, http.StatusBadRequest, code, message)
 
+		return createTarget{}, false
+	}
+
+	if !h.creationOpen(ctx, w, clusterName) {
 		return createTarget{}, false
 	}
 
@@ -67,6 +73,32 @@ func (h *VMCreate) resolveCreateTarget(w http.ResponseWriter, requestedCluster s
 	freeSpace := vm.FreeSpaceChecker(client)
 
 	return createTarget{clusterName: clusterName, creator: creator, writer: writer, freeSpace: freeSpace}, true
+}
+
+// creationOpen refuses create and clone on a cluster the admin closed.
+func (h *VMCreate) creationOpen(ctx context.Context, w http.ResponseWriter, clusterName string) bool {
+	if h.store == nil {
+		return true
+	}
+
+	row, err := h.store.GetCluster(ctx, clusterName)
+	if errors.Is(err, sql.ErrNoRows) {
+		return true // env-seeded or fake clusters with no row stay open
+	}
+
+	if err != nil {
+		SetError(w, err)
+		h.writeCreateError(w, http.StatusInternalServerError, "internal_error", msgInternalServerError)
+
+		return false
+	}
+
+	if !row.VMCreationEnabled {
+		h.writeCreateError(w, http.StatusForbidden, "vm_creation_disabled", "vm creation is disabled on this cluster")
+		return false
+	}
+
+	return true
 }
 
 func (h *VMCreate) clientFor(clusterName string) (cluster.Client, error) {

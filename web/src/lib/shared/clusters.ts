@@ -5,6 +5,8 @@ export interface ClusterOption {
 	displayName: string;
 	/** Proxmox OpenID realm for SSO; absent or empty = no SSO. */
 	oidcRealm?: string;
+	/** False when the admin closed VM creation (and clone) on this cluster. */
+	vmCreationEnabled?: boolean;
 }
 
 const ADMIN_CLUSTER_STORAGE_KEY = 'pvmss.adminCluster';

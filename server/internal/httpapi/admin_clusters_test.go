@@ -906,3 +906,28 @@ func TestAdminClusters_UpdateOIDCRealm(t *testing.T) {
 		}
 	}
 }
+
+//nolint:paralleltest // HTTP fixture shares fake cluster state
+func TestAdminClusters_VMCreationToggle(t *testing.T) {
+	fixture := newAdminClusterFixture(t)
+	cookie := adminClusterCookie(t, fixture.auth)
+
+	toggle := func(name, body string) *httptest.ResponseRecorder {
+		return adminClusterRequest(t, fixture, cookie, clusterRequestSpec{Method: fixture.handler.ServeVMCreation, HTTPMethod: http.MethodPut, Path: "/api/v1/admin/clusters/" + name + "/vm-creation", Name: name, Body: body})
+	}
+
+	if response := toggle(crossSecondaryCluster, `{}`); response.Code != http.StatusBadRequest {
+		t.Fatalf("missing enabled status = %d, want 400", response.Code)
+	}
+	if response := toggle("nonexistent", `{"enabled":false}`); response.Code != http.StatusNotFound {
+		t.Fatalf("unknown cluster status = %d, want 404: %s", response.Code, response.Body.String())
+	}
+	response := toggle(crossSecondaryCluster, `{"enabled":false}`)
+	if response.Code != http.StatusOK || !strings.Contains(response.Body.String(), `"vmCreationEnabled":false`) {
+		t.Fatalf("disable status = %d body = %s", response.Code, response.Body.String())
+	}
+	row, err := fixture.store.GetCluster(t.Context(), crossSecondaryCluster)
+	if err != nil || row.VMCreationEnabled {
+		t.Fatalf("stored row = %+v, err = %v; want creation disabled", row, err)
+	}
+}

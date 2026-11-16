@@ -2428,5 +2428,11 @@
 	"admin.profiles.importResultCreated": "Created",
 	"admin.profiles.importResultUpdated": "Updated",
 	"admin.profiles.importResultSkipped": "Skipped (already exists)",
-	"admin.profiles.importResultInvalid": "Invalid"
+	"admin.profiles.importResultInvalid": "Invalid",
+	"admin.clusters.vmCreation": "VM creation",
+	"admin.clusters.vmCreationLabel": "Allow VM creation on {name}",
+	"admin.clusters.vmCreationOn": "VM creation enabled on {name}",
+	"admin.clusters.vmCreationOff": "VM creation disabled on {name}",
+	"vms.create.blocked.creationClosedTitle": "VM creation is closed",
+	"vms.create.blocked.creationClosedBody": "An administrator has turned off VM creation on your cluster. Your existing machines are not affected."
 }
