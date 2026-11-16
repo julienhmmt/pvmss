@@ -1,5 +1,14 @@
 <script lang="ts">
-	import { vcpuTotal, type AdminProfile, type ProfileExportItem, type ProfileImportOutcome, type ProfileSortColumn } from './profiles.svelte';
+	import {
+		buildProfileDraftJson,
+		parseProfileDraftJson,
+		vcpuTotal,
+		type AdminProfile,
+		type ProfileDraft,
+		type ProfileExportItem,
+		type ProfileImportOutcome,
+		type ProfileSortColumn
+	} from './profiles.svelte';
 	import ProfileImportDialog from './ProfileImportDialog.svelte';
 	import type { ClusterOption } from '#lib/shared/clusters.js';
 	import Alert from '#lib/shared/ui/Alert.svelte';
@@ -94,6 +103,9 @@
 
 	let showForm = $state(false);
 	let showImport = $state(false);
+	let expert = $state(false);
+	let expertJson = $state('');
+	let expertError = $state<string | null>(null);
 
 	function downloadExport(): void {
 		const url = URL.createObjectURL(new Blob([exportContent()], { type: 'application/json' }));
@@ -115,6 +127,20 @@
 	let bus = $state('scsi');
 	let description = $state('');
 
+	function currentDraft(): ProfileDraft {
+		return { label, sockets, cpuCores, memoryMB, diskGB, bus, description };
+	}
+
+	function applyDraft(draft: ProfileDraft): void {
+		label = draft.label;
+		sockets = draft.sockets;
+		cpuCores = draft.cpuCores;
+		memoryMB = draft.memoryMB;
+		diskGB = draft.diskGB;
+		bus = draft.bus;
+		description = draft.description;
+	}
+
 	function openCreate(): void {
 		editingId = null;
 		label = '';
@@ -124,21 +150,48 @@
 		diskGB = 20;
 		bus = 'scsi';
 		description = '';
+		expert = false;
+		expertJson = '';
+		expertError = null;
 		onClearSaveError();
 		showForm = true;
 	}
 
 	function openEdit(profile: AdminProfile): void {
 		editingId = profile.id;
-		label = profile.label;
-		sockets = profile.sockets ?? 1;
-		cpuCores = profile.cpuCores;
-		memoryMB = profile.memoryMB;
-		diskGB = profile.diskGB;
-		bus = profile.bus;
-		description = profile.description ?? '';
+		applyDraft({
+			label: profile.label,
+			sockets: profile.sockets ?? 1,
+			cpuCores: profile.cpuCores,
+			memoryMB: profile.memoryMB,
+			diskGB: profile.diskGB,
+			bus: profile.bus,
+			description: profile.description ?? ''
+		});
+		expert = false;
+		expertJson = '';
+		expertError = null;
 		onClearSaveError();
 		showForm = true;
+	}
+
+	function toggleExpert(): void {
+		if (expert) {
+			// Leaving expert mode is always allowed, even when the editor holds
+			// invalid JSON. The JSON is only validated on submit; the form
+			// values kept while the editor was open are restored as-is.
+			expert = false;
+			expertError = null;
+			return;
+		}
+		expertJson = buildProfileDraftJson(currentDraft());
+		expertError = null;
+		expert = true;
+	}
+
+	function onExpertInput(e: Event & { currentTarget: HTMLTextAreaElement }): void {
+		expertJson = e.currentTarget.value;
+		expertError = null;
 	}
 
 	function closeForm(): void {
@@ -147,6 +200,15 @@
 	}
 
 	async function submitForm(): Promise<void> {
+		if (expert) {
+			try {
+				applyDraft(parseProfileDraftJson(expertJson));
+			} catch (err) {
+				expertError = err instanceof Error ? err.message : String(err);
+				return;
+			}
+		}
+		expertError = null;
 		// A failed save keeps the dialog open with the draft intact and the
 		// store's saveError rendered inside it.
 		const succeeded = editingId
@@ -315,11 +377,32 @@
 {/if}
 
 <Dialog bind:open={showForm} size="lg" labelledBy="profile-form-title" onClose={closeForm}>
-	<h2 id="profile-form-title" class="mb-4 text-lg font-medium">{editingId ? m['admin.profiles.editProfile']() : m['admin.profiles.newProfileForm']()}</h2>
+	<div class="mb-4 flex items-center justify-between gap-3">
+		<h2 id="profile-form-title" class="text-lg font-medium">{editingId ? m['admin.profiles.editProfile']() : m['admin.profiles.newProfileForm']()}</h2>
+		<Button variant="secondary" size="sm" onclick={toggleExpert}>
+			{expert ? m['admin.profiles.simpleMode']() : m['admin.profiles.expertMode']()}
+		</Button>
+	</div>
 	<form onsubmit={(e) => { e.preventDefault(); void submitForm(); }} class="space-y-4">
 		{#if saveError}
 			<Alert>{saveError}</Alert>
 		{/if}
+		{#if expert}
+			<p class="text-sm text-muted-foreground">{m['admin.profiles.expertHint']()}</p>
+			{#if expertError}
+				<Alert>{expertError}</Alert>
+			{/if}
+			<label for="profile-expert-json" class="block text-sm font-medium">{m['admin.profiles.expertMode']()}</label>
+			<textarea
+				id="profile-expert-json"
+				class="pv-input font-mono text-xs"
+				rows="14"
+				spellcheck="false"
+				value={expertJson}
+				oninput={onExpertInput}
+				data-testid="profile-expert-json"
+			></textarea>
+		{:else}
 		<FormField label={m['admin.profiles.labelField']()} required>
 			{#snippet children({ id, describedBy, invalid })}
 				<TextField {id} {describedBy} {invalid} bind:value={label} required />
@@ -364,6 +447,7 @@
 				<Textarea {id} {describedBy} {invalid} bind:value={description} rows={3} />
 			{/snippet}
 		</FormField>
+		{/if}
 		<div class="flex justify-end gap-2 pt-2">
 			<Button variant="secondary" onclick={closeForm}>{m['common.cancel']()}</Button>
 			<Button type="submit" disabled={saving}>

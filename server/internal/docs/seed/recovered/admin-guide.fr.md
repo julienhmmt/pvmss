@@ -143,7 +143,7 @@ Les groupes **Ressources** et **Provisionnement** du menu admin contrôlent ce q
 - **ISO** (`/admin/isos`) - approuver les images ISO de démarrage.
 - **Templates de VM** (`/admin/templates`) - approuver les templates Proxmox clonables, avec surcharges optionnelles par template. Un clone reste sur le nœud du template ; l'assistant prévient quand le stockage cible impose une copie complète. Un clone garde les accès du template : PVMSS n'en ajoute aucun.
 - **Bridges** (`/admin/bridges`) - approuver les bridges réseau (VMBR) pour les cartes réseau. Les bridges Open vSwitch ne sont pas listés.
-- **Profils** (`/admin/profiles`) - définir des profils matériels pré-approuvés (sockets, cœurs, mémoire, disque, bus).
+- **Profils** (`/admin/profiles`) - définir des profils matériels pré-approuvés (sockets, cœurs, mémoire, disque, bus). La fenêtre de création ou d'édition propose un bouton **mode expert** qui remplace le formulaire par un éditeur JSON validé pour un seul profil ; les noms de champs correspondent au fichier d'export et l'activation reste dans la liste.
 - **Tags** (`/admin/tags`) - gérer les étiquettes attachables aux VM, chacune avec une couleur. Un tag est immuable une fois créé (seule sa couleur change) ; le tag `pvmss` est réservé et ne peut pas être supprimé.
 
 ### Approbations obsolètes

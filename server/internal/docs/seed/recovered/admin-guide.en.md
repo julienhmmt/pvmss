@@ -135,7 +135,7 @@ The **Resources** and **Provisioning** groups of the admin nav control what VM c
 - **ISOs** (`/admin/isos`) - approve the ISO images users may boot from.
 - **VM templates** (`/admin/templates`) - approve the Proxmox templates users may clone, with optional per-template overrides. A clone stays on the template's node; the wizard warns when the target storage forces a full copy. A clone keeps the template's sign-in: PVMSS adds none.
 - **Bridges** (`/admin/bridges`) - approve the network bridges (VMBR) available for VM network cards. Open vSwitch bridges are not listed.
-- **Profiles** (`/admin/profiles`) - define pre-approved hardware profiles (sockets, cores, memory, disk, bus), so users can pick a known-good shape instead of free-typing values.
+- **Profiles** (`/admin/profiles`) - define pre-approved hardware profiles (sockets, cores, memory, disk, bus), so users can pick a known-good shape instead of free-typing values. The create/edit dialog has an **Expert mode** button that swaps the form for a validated JSON editor holding one profile; field names match the export file and enable/disable stays in the list.
 - **Tags** (`/admin/tags`) - manage the labels users can attach to VMs, with a color each. A tag is immutable once created (only its color changes); the `pvmss` tag is reserved and cannot be deleted.
 
 ### Stale approvals

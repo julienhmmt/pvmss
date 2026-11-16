@@ -34,6 +34,11 @@ automatically; toggle the enabled switch to control what users see. When a
 resource disappears from Proxmox, its stale approval is flagged so you can
 remove it.
 
+In the profile create/edit dialog, **Expert mode** swaps the form for a JSON
+editor holding one profile. Field names match the export file (`label`,
+`sockets`, `cpuCores`, `memoryMB`, `diskGB`, `bus`, `description`); the editor
+checks the PVMSS rules before saving. Enable/disable stays in the profile list.
+
 ## Migrating a VM
 
 On **Infrastructure > Nodes**, open a node: every PVMSS-managed VM has a

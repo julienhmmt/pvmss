@@ -37,6 +37,12 @@ référencer. Le groupe **Provisionnement** gère les profils VM et les tags. Le
 disparaît de Proxmox, son approbation obsolète est signalée pour que vous
 puissiez la retirer.
 
+Dans la fenêtre de création ou d'édition d'un profil, le **mode expert**
+remplace le formulaire par un éditeur JSON contenant un seul profil. Les noms
+de champs correspondent au fichier d'export (`label`, `sockets`, `cpuCores`,
+`memoryMB`, `diskGB`, `bus`, `description`) ; l'éditeur vérifie les règles PVMSS
+avant l'enregistrement. L'activation reste dans la liste des profils.
+
 ## Migrer une VM
 
 Dans **Infrastructure > Nœuds**, ouvrez un nœud : chaque VM gérée par PVMSS a

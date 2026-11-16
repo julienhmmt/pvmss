@@ -63,6 +63,101 @@ export function vcpuTotal(p: Pick<AdminProfile, 'sockets' | 'cpuCores'>): number
 	return (p.sockets ?? 1) * p.cpuCores;
 }
 
+/** Editable fields of one profile, independent of its stored id/enabled state. */
+export interface ProfileDraft {
+	label: string;
+	sockets: number;
+	cpuCores: number;
+	memoryMB: number;
+	diskGB: number;
+	bus: string;
+	description: string;
+}
+
+/** Buses offered by the form and accepted by the expert JSON editor. */
+export const PROFILE_BUSES = ['scsi', 'virtio', 'sata', 'ide'] as const;
+
+/** Same cap as the server's normalizeProfileDescription (counted in runes). */
+const maxProfileDescriptionRunes = 500;
+const draftFields = ['label', 'sockets', 'cpuCores', 'memoryMB', 'diskGB', 'bus', 'description'] as const;
+
+/** JSON shown in the expert editor, seeded with the values currently in the form. */
+export function buildProfileDraftJson(draft: ProfileDraft): string {
+	return JSON.stringify(draft, null, 2);
+}
+
+/**
+ * Parse one profile from the expert editor. Field names match the export
+ * format; validation mirrors the server's validateProfileFields and
+ * description rules so mistakes are caught before a request is sent.
+ */
+export function parseProfileDraftJson(text: string): ProfileDraft {
+	let data: unknown;
+	try {
+		data = JSON.parse(text);
+	} catch (err) {
+		const detail = err instanceof Error ? err.message : String(err);
+		throw new Error(m['admin.profiles.expert.invalidJson']({ detail }), { cause: err });
+	}
+
+	if (typeof data !== 'object' || data === null || Array.isArray(data)) {
+		throw new Error(m['admin.profiles.expert.notObject']());
+	}
+
+	const raw = data as Record<string, unknown>;
+	for (const key of Object.keys(raw)) {
+		if (!(draftFields as readonly string[]).includes(key)) {
+			throw new Error(m['admin.profiles.expert.unknownField']({ field: key }));
+		}
+	}
+	for (const key of draftFields) {
+		if (key !== 'description' && !(key in raw)) {
+			throw new Error(m['admin.profiles.expert.missingField']({ field: key }));
+		}
+	}
+
+	const stringField = (key: 'label' | 'bus' | 'description'): string => {
+		const value = raw[key] ?? '';
+		if (typeof value !== 'string') {
+			throw new Error(m['admin.profiles.expert.fieldString']({ field: key }));
+		}
+		return value;
+	};
+	const intField = (key: 'sockets' | 'cpuCores' | 'memoryMB' | 'diskGB', min: number): number => {
+		const value = raw[key];
+		if (typeof value !== 'number' || !Number.isInteger(value)) {
+			throw new Error(m['admin.profiles.expert.fieldInteger']({ field: key }));
+		}
+		if (value < min) {
+			throw new Error(m['admin.profiles.expert.fieldMin']({ field: key, min }));
+		}
+		return value;
+	};
+
+	const label = stringField('label').trim();
+	if (!label) throw new Error(m['admin.profiles.expert.labelRequired']());
+
+	const bus = stringField('bus');
+	if (!(PROFILE_BUSES as readonly string[]).includes(bus)) {
+		throw new Error(m['admin.profiles.expert.busInvalid']());
+	}
+
+	const description = stringField('description').trim();
+	if ([...description].length > maxProfileDescriptionRunes) {
+		throw new Error(m['admin.profiles.expert.descriptionTooLong']());
+	}
+
+	return {
+		label,
+		sockets: intField('sockets', 1),
+		cpuCores: intField('cpuCores', 1),
+		memoryMB: intField('memoryMB', 128),
+		diskGB: intField('diskGB', 1),
+		bus,
+		description
+	};
+}
+
 /**
  * AdminProfilesStore manages the CRUD state for VM profiles. API responses are
  * $state.raw - they are API data, not form edits.
