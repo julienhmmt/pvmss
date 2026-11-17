@@ -1,25 +1,15 @@
 <script lang="ts">
-	// Proxmox pve-tag charset; the HTML pattern uses the v flag, where - must be escaped.
-	const TAG_NAME_PATTERN = String.raw`[a-z0-9_][a-z0-9_+.\-]{0,49}`;
 	import type { AdminTag } from './tags.svelte';
 	import type { ClusterOption } from '#lib/shared/clusters.js';
 	import Alert from '#lib/shared/ui/Alert.svelte';
 	import PageHeader from '#lib/shared/ui/PageHeader.svelte';
 	import ClusterSelector from '#lib/shared/ui/ClusterSelector.svelte';
 	import Button from '#lib/shared/ui/Button.svelte';
-	import Pagination from '#lib/shared/ui/Pagination.svelte';
-	import { createPagination } from '#lib/shared/ui/list-pager.svelte.js';
-	import TableCard from '#lib/shared/ui/TableCard.svelte';
-	import TableSkeleton from '#lib/shared/ui/TableSkeleton.svelte';
-	import EmptyState from '#lib/shared/ui/EmptyState.svelte';
-	import ConfirmDialog from '#lib/shared/ui/ConfirmDialog.svelte';
-	import Dialog from '#lib/shared/ui/Dialog.svelte';
-	import FormField from '#lib/shared/ui/FormField.svelte';
 	import TextField from '#lib/shared/ui/TextField.svelte';
 	import Select from '#lib/shared/ui/Select.svelte';
-	import ColorPicker from '#lib/shared/ui/ColorPicker.svelte';
-	import TagVMsDialog from './TagVMsDialog.svelte';
-	import TableHeader from '#lib/shared/ui/TableHeader.svelte';
+	import TableSkeleton from '#lib/shared/ui/TableSkeleton.svelte';
+	import EmptyState from '#lib/shared/ui/EmptyState.svelte';
+	import TagDrawer from './TagDrawer.svelte';
 	import { m } from '#lib/paraglide/messages.js';
 
 	type TagSortColumn = 'name' | 'vmCount';
@@ -35,20 +25,16 @@
 		cluster: string;
 		onClusterChange: (value: string) => void;
 		search: string;
-		protectedFilter: 'all' | 'protected' | 'unprotected';
 		sortBy: TagSortColumn;
 		sortDir: 'asc' | 'desc';
 		onSearchChange: (value: string) => void;
-		onProtectedFilterChange: (value: 'all' | 'protected' | 'unprotected') => void;
 		onSort: (column: TagSortColumn) => void;
 		onResetFilters: () => void;
 		onCreate: (name: string, color: string) => Promise<boolean>;
-		onUpdateColor: (name: string, color: string) => void;
-		onDelete: (name: string) => void;
+		onUpdateColor: (name: string, color: string) => Promise<boolean>;
+		onDelete: (name: string) => Promise<boolean>;
 		onClearSaveError: () => void;
 	}
-
-	const pager = createPagination('tags', () => filteredTags);
 
 	let {
 		tags,
@@ -61,11 +47,9 @@
 		cluster,
 		onClusterChange,
 		search,
-		protectedFilter,
 		sortBy,
 		sortDir,
 		onSearchChange,
-		onProtectedFilterChange,
 		onSort,
 		onResetFilters,
 		onCreate,
@@ -74,48 +58,24 @@
 		onClearSaveError
 	}: Props = $props();
 
-	let showForm = $state(false);
-	let newName = $state('');
-	let newColor = $state('#4f46e5');
-	let editingTag = $state<string | null>(null);
-	let editColor = $state('');
-	let pendingDelete = $state<AdminTag | null>(null);
-	let viewingTag = $state<string | null>(null);
+	let drawerTarget = $state<AdminTag | 'new' | null>(null);
 
-	function openCreate(): void {
-		newName = '';
-		newColor = '#4f46e5';
+	function openDrawer(target: AdminTag | 'new'): void {
 		onClearSaveError();
-		showForm = true;
+		drawerTarget = target;
 	}
 
-	function closeForm(): void {
-		showForm = false;
+	function closeDrawer(): void {
+		drawerTarget = null;
 		onClearSaveError();
 	}
 
-	async function submitCreate(): Promise<void> {
-		// A failed save keeps the dialog open with the draft intact and the
-		// store's saveError rendered inside it.
-		const succeeded = await onCreate(newName, newColor);
-		if (succeeded) showForm = false;
-	}
+	const groups = $derived([
+		{ id: 'system', title: m['admin.tags.groupSystem'](), items: filteredTags.filter((t) => t.protected) },
+		{ id: 'custom', title: m['admin.tags.groupCustom'](), items: filteredTags.filter((t) => !t.protected) }
+	]);
 
-	function startEdit(tag: AdminTag): void {
-		editingTag = tag.name;
-		editColor = tag.color;
-	}
-
-	function saveEdit(): void {
-		if (editingTag) {
-			onUpdateColor(editingTag, editColor);
-		}
-		editingTag = null;
-	}
-
-	const filtersActive = $derived(
-		search !== '' || protectedFilter !== 'all' || sortBy !== 'name' || sortDir !== 'asc'
-	);
+	const filtersActive = $derived(search !== '' || sortBy !== 'name' || sortDir !== 'asc');
 </script>
 
 <svelte:head>
@@ -125,7 +85,7 @@
 <PageHeader title={m['admin.tags.title']()} eyebrow={m['chrome.adminNav.provisioning']()}>
 	{#snippet actions()}
 		<ClusterSelector options={clusterOptions} value={cluster} onChange={onClusterChange} id="tags-cluster" />
-		<Button onclick={openCreate}>{m['admin.tags.newTag']()}</Button>
+		<Button onclick={() => openDrawer('new')}>{m['admin.tags.newTag']()}</Button>
 	{/snippet}
 </PageHeader>
 
@@ -134,157 +94,87 @@
 	<TableSkeleton columns={4} />
 {:else if error}
 	<Alert>{error}</Alert>
+{:else if tags.length === 0}
+	<EmptyState title={m['admin.tags.noTags']()}>
+		{#snippet actions()}
+			<Button onclick={() => openDrawer('new')}>{m['admin.tags.newTag']()}</Button>
+		{/snippet}
+	</EmptyState>
 {:else}
-	{#if saveError && !showForm}
-		<Alert class="mb-4">{saveError}</Alert>
-	{/if}
+	<div class="mb-6 flex flex-wrap items-center gap-3">
+		<TextField
+			type="search"
+			placeholder={m['admin.tags.searchPlaceholder']()}
+			aria-label={m['admin.tags.searchPlaceholder']()}
+			value={search}
+			oninput={(e: Event & { currentTarget: HTMLInputElement }) => onSearchChange(e.currentTarget.value)}
+			class="w-full sm:w-56"
+		/>
+		<Select
+			aria-label={m['admin.tags.sortLabel']()}
+			value={sortBy}
+			onchange={(e: Event & { currentTarget: HTMLSelectElement }) => onSort(e.currentTarget.value as TagSortColumn)}
+			options={[
+				{ value: 'name', label: m['common.name']() },
+				{ value: 'vmCount', label: m['common.vms']() }
+			]}
+			class="w-full sm:w-36"
+		/>
+		<Button
+			variant="secondary"
+			size="sm"
+			label={m['admin.tags.toggleSortDir']()}
+			onclick={() => onSort(sortBy)}
+		>{sortDir === 'asc' ? '↑' : '↓'}</Button>
+		<span class="ml-auto text-sm text-muted-foreground" data-testid="tags-count">
+			{m['admin.tags.resultCount']({ count: filteredTags.length })}
+		</span>
+		{#if filtersActive}
+			<Button variant="secondary" size="sm" onclick={onResetFilters}>{m['admin.tags.resetFilters']()}</Button>
+		{/if}
+	</div>
 
-	{#if tags.length > 0}
-		<TableCard>
-			{#snippet toolbar()}
-				<TextField
-					type="search"
-					placeholder={m['admin.tags.searchPlaceholder']()}
-					aria-label={m['admin.tags.searchPlaceholder']()}
-					value={search}
-					oninput={(e: Event & { currentTarget: HTMLInputElement }) => onSearchChange(e.currentTarget.value)}
-					class="w-full sm:w-48"
-				/>
-				<Select
-					aria-label={m['admin.tags.filterProtectionLabel']()}
-					value={protectedFilter}
-					onchange={(e: Event & { currentTarget: HTMLSelectElement }) => onProtectedFilterChange(e.currentTarget.value as 'all' | 'protected' | 'unprotected')}
-					options={[
-						{ value: 'all', label: m['admin.tags.filterProtected']() },
-						{ value: 'protected', label: m['admin.tags.filterProtectedOnly']() },
-						{ value: 'unprotected', label: m['admin.tags.filterUnprotectedOnly']() }
-					]}
-					class="w-full sm:w-44"
-				/>
-				<span class="ml-auto text-sm text-muted-foreground" data-testid="tags-count">
-					{m['admin.tags.resultCount']({ count: filteredTags.length })}
-				</span>
-				{#if filtersActive}
-					<Button
-						variant="secondary"
-						size="sm"
-						onclick={onResetFilters}
-					>
-						{m['admin.tags.resetFilters']()}
-					</Button>
-				{/if}
-			{/snippet}
-			<table class="pv-table pv-responsive-table">
-				<caption class="sr-only">{m['admin.tags.title']()}</caption>
-				<thead>
-					<tr>
-						<TableHeader text={m['common.name']()} tooltip={m['admin.tags.tooltip.color']()} column="name" activeColumn={sortBy} {sortDir} {onSort} />
-						<TableHeader text={m['admin.tags.color']()} tooltip={m['admin.tags.tooltip.color']()} />
-						<TableHeader text={m['common.vms']()} tooltip={m['admin.tags.tooltip.vmCount']()} column="vmCount" activeColumn={sortBy} {sortDir} {onSort} />
-						<th class="font-medium">{m['common.actions']()}</th>
-					</tr>
-				</thead>
-				<tbody>
-					{#each pager.rows as tag (tag.name)}
-						<tr class="group transition-colors hover:bg-muted/40">
-							<td class="font-mono" data-label={m['common.name']()}>
-								<button
-									type="button"
-									class="pv-focus text-left underline-offset-2 hover:text-primary hover:underline"
-									aria-label={m['admin.tags.viewVMsLabel']({ name: tag.name })}
-									onclick={() => (viewingTag = tag.name)}
-								>{tag.name}</button>
-								{#if tag.protected}
-									<span class="ml-2 rounded bg-muted px-1.5 py-0.5 text-xs text-muted-foreground">{m['admin.tags.protected']()}</span>
-								{/if}
-							</td>
-							<td data-label={m['admin.tags.color']()}>
-								{#if editingTag === tag.name}
-									<div class="flex items-center gap-2">
-										<ColorPicker bind:value={editColor} class="h-8 w-12 p-1" />
-										<Button size="sm" onclick={saveEdit}>{m['common.save']()}</Button>
-										<Button variant="secondary" size="sm" onclick={() => (editingTag = null)}>{m['common.cancel']()}</Button>
-									</div>
-								{:else}
-									<div class="flex items-center gap-2">
-										<span class="inline-block h-4 w-4 rounded-full border" style="background: {tag.color}"></span>
-										<span class="font-mono text-xs">{tag.color}</span>
-										<Button variant="secondary" size="sm" label={m['admin.tags.editColorLabel']({ name: tag.name })} onclick={() => startEdit(tag)}>{m['common.edit']()}</Button>
-									</div>
-								{/if}
-							</td>
-							<td data-label={m['common.vms']()}>{tag.vmCount}</td>
-							<td data-label={m['common.actions']()}>
-								{#if !tag.protected}
-									<Button variant="destructive" size="sm" label={m['admin.tags.deleteLabel']({ name: tag.name })} onclick={() => (pendingDelete = tag)}>{m['common.delete']()}</Button>
-								{:else}
-									<span class="text-xs text-muted-foreground"> - </span>
-								{/if}
-							</td>
-						</tr>
-					{:else}
-						<tr><td colspan={4} class="p-0">
-							<EmptyState title={m['admin.tags.noFilterMatches']()} />
-						</td></tr>
+	{#each groups as group (group.id)}
+		<section class="mb-8" aria-labelledby="tags-group-{group.id}" data-testid="tags-group-{group.id}">
+			<h2 id="tags-group-{group.id}" class="mb-3 text-xs font-medium uppercase tracking-wider text-muted-foreground">
+				{group.title} <span class="ml-1">{group.items.length}</span>
+			</h2>
+			{#if group.items.length === 0}
+				<p class="text-sm text-muted-foreground">{m['admin.tags.noFilterMatches']()}</p>
+			{:else}
+				<ul class="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+					{#each group.items as tag (tag.name)}
+						<li>
+							<button
+								type="button"
+								class="pv-focus flex w-full items-center justify-between gap-3 rounded-xl border border-border bg-card p-4 text-left transition-colors hover:border-primary/60 hover:bg-muted/40"
+								aria-label={m['admin.tags.openTagLabel']({ name: tag.name })}
+								onclick={() => openDrawer(tag)}
+							>
+								<span class="min-w-0 space-y-2">
+									<span class="block truncate rounded-full px-3 py-1 font-mono text-sm text-white" style="background: {tag.color}">{tag.name}</span>
+									<span class="block font-mono text-xs text-muted-foreground">{tag.color}</span>
+								</span>
+								<span class="shrink-0 text-right">
+									<span class="block text-lg font-medium tabular-nums">{tag.vmCount}</span>
+									<span class="block text-xs text-muted-foreground">{m['common.vms']()}</span>
+								</span>
+							</button>
+						</li>
 					{/each}
-				</tbody>
-			</table>
-			{#snippet footer()}
-				<Pagination {pager} />
-			{/snippet}
-		</TableCard>
-	{:else}
-		<EmptyState title={m['admin.tags.noTags']()}>
-			{#snippet actions()}
-				<Button onclick={openCreate}>{m['admin.tags.newTag']()}</Button>
-			{/snippet}
-		</EmptyState>
-	{/if}
+				</ul>
+			{/if}
+		</section>
+	{/each}
 {/if}
 
-<Dialog bind:open={showForm} size="sm" labelledBy="tag-form-title" onClose={closeForm}>
-	<h2 id="tag-form-title" class="mb-4 text-lg font-medium">{m['admin.tags.newTagForm']()}</h2>
-	<form onsubmit={(e) => { e.preventDefault(); void submitCreate(); }} class="space-y-4">
-		{#if saveError}
-			<Alert>{saveError}</Alert>
-		{/if}
-		<FormField label={m['admin.tags.nameField']()} required>
-			{#snippet children({ id, describedBy, invalid })}
-				<TextField
-					{id}
-					{describedBy}
-					{invalid}
-					type="text"
-					pattern={TAG_NAME_PATTERN}
-					bind:value={newName}
-					required
-				/>
-			{/snippet}
-		</FormField>
-		<FormField label={m['admin.tags.colorField']()} required>
-			{#snippet children({ id, describedBy, invalid })}
-				<ColorPicker {id} {describedBy} {invalid} bind:value={newColor} class="h-10 w-full" required />
-			{/snippet}
-		</FormField>
-		<div class="flex justify-end gap-2 pt-2">
-			<Button variant="secondary" onclick={closeForm}>{m['common.cancel']()}</Button>
-			<Button type="submit" disabled={saving}>
-				{saving ? m['common.creating']() : m['common.create']()}
-			</Button>
-		</div>
-	</form>
-</Dialog>
-
-<TagVMsDialog tag={viewingTag} {cluster} onClose={() => (viewingTag = null)} />
-
-<ConfirmDialog
-	open={pendingDelete !== null}
-	title={m['admin.tags.deleteTitle']({ name: pendingDelete?.name ?? '' })}
-	message={m['admin.tags.deleteConfirm']()}
-	confirmLabel={m['common.deletePermanently']()}
-	cancelLabel={m['common.cancel']()}
-	confirming={saving}
-	testId="tag-delete-confirm"
-	onConfirm={() => { if (pendingDelete) { onDelete(pendingDelete.name); pendingDelete = null; } }}
-	onClose={() => (pendingDelete = null)}
+<TagDrawer
+	target={drawerTarget}
+	{cluster}
+	{saving}
+	{saveError}
+	{onCreate}
+	{onUpdateColor}
+	{onDelete}
+	onClose={closeDrawer}
 />

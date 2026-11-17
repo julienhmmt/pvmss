@@ -23,22 +23,6 @@ describe('AdminTagsStore filteredTags', () => {
 		expect(store.filteredTags[0]?.name).toBe('team-web');
 	});
 
-	it('filters by protected state', () => {
-		const store = new AdminTagsStore();
-		store.tags = testTags;
-		store.protectedFilter = 'protected';
-		expect(store.filteredTags.length).toBe(1);
-		expect(store.filteredTags[0]?.protected).toBe(true);
-	});
-
-	it('filters by unprotected state', () => {
-		const store = new AdminTagsStore();
-		store.tags = testTags;
-		store.protectedFilter = 'unprotected';
-		expect(store.filteredTags.length).toBe(2);
-		expect(store.filteredTags.every((t) => !t.protected)).toBe(true);
-	});
-
 	it('sorts by name ascending then descending', () => {
 		const store = new AdminTagsStore();
 		store.tags = testTags;
@@ -61,7 +45,6 @@ describe('AdminTagsStore filteredTags', () => {
 		const store = new AdminTagsStore();
 		store.tags = testTags;
 		store.search = 'team';
-		store.protectedFilter = 'protected';
 		store.resetFilters();
 		expect(store.filteredTags.length).toBe(3);
 	});

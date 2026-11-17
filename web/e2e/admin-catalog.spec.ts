@@ -198,34 +198,36 @@ test.describe('T11 admin catalog', () => {
 
 		await page.goto('/admin/tags');
 
-		// pvmss is seeded, protected, and has no Delete control.
-		const pvmssRow = page.locator('tr', { hasText: 'pvmss' });
-		await expect(pvmssRow.getByText('protected')).toBeVisible();
-		await expect(pvmssRow.getByRole('button', { name: 'Delete' })).toHaveCount(0);
+		// pvmss is seeded in the System group; its drawer has no Delete control.
+		await page.getByTestId('tags-group-system').getByRole('button', { name: 'Open tag pvmss' }).click();
+		await expect(page.getByTestId('tag-protected-note')).toBeVisible();
+		await expect(page.getByTestId('tag-danger-zone')).toHaveCount(0);
+		await page.getByRole('button', { name: 'Cancel' }).click();
 		const deletePvmss = await page.request.delete('/api/v1/admin/tags/pvmss?cluster=default', {
 			headers: await csrfHeaders(page.request)
 		});
 		expect(deletePvmss.status()).toBe(403);
 
-		// Create a tag: VM count starts at 0.
-		await page.getByRole('button', { name: 'New tag' }).click();
+		// Create a tag in the drawer: VM count starts at 0.
+		await page.getByRole('button', { name: 'New tag' }).first().click();
 		await page.getByLabel(/Name/).fill('e2eteam');
 		await page.getByRole('button', { name: 'Create' }).click();
 
-		const tagRow = page.locator('tr', { hasText: 'e2eteam' });
-		await expect(tagRow).toBeVisible();
-		await expect(tagRow.locator('td').nth(2)).toHaveText('0');
+		const card = page.getByRole('button', { name: 'Open tag e2eteam' });
+		await expect(card).toBeVisible();
+		await expect(card).toContainText('0');
 
-		// Edit its color inline.
-		await tagRow.getByRole('button', { name: 'Edit' }).click();
-		await tagRow.locator('input[type="color"]').fill('#00ff00');
-		await tagRow.getByRole('button', { name: 'Save' }).click();
-		await expect(tagRow.getByText('#00ff00')).toBeVisible();
+		// Recolor with the hex field.
+		await card.click();
+		await page.getByLabel('Hex color').fill('#00ff00');
+		await page.getByRole('button', { name: 'Save' }).click();
+		await expect(card).toContainText('#00ff00');
 
-		// Delete it - succeeds, unlike pvmss. The delete asks for confirmation.
-		await tagRow.getByRole('button', { name: 'Delete' }).click();
-		await page.getByTestId('tag-delete-confirm').click();
-		await expect(page.locator('tr', { hasText: 'e2eteam' })).toHaveCount(0);
+		// Delete it - succeeds, unlike pvmss, once the name is typed.
+		await card.click();
+		await page.getByLabel('Type e2eteam to confirm').fill('e2eteam');
+		await page.getByTestId('tag-danger-zone').getByRole('button', { name: 'Delete e2eteam' }).click();
+		await expect(page.getByRole('button', { name: 'Open tag e2eteam' })).toHaveCount(0);
 	});
 
 	test('approves a VM template from the admin page and a user sees it in the create wizard', async ({

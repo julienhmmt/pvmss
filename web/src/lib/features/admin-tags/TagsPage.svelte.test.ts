@@ -17,16 +17,14 @@ interface PageProps {
 	cluster: string;
 	onClusterChange: (value: string) => void;
 	search: string;
-	protectedFilter: 'all' | 'protected' | 'unprotected';
 	sortBy: 'name' | 'vmCount';
 	sortDir: 'asc' | 'desc';
 	onSearchChange: (value: string) => void;
-	onProtectedFilterChange: (value: 'all' | 'protected' | 'unprotected') => void;
 	onSort: (column: 'name' | 'vmCount') => void;
 	onResetFilters: () => void;
 	onCreate: (name: string, color: string) => Promise<boolean>;
-	onUpdateColor: (name: string, color: string) => void;
-	onDelete: (name: string) => void;
+	onUpdateColor: (name: string, color: string) => Promise<boolean>;
+	onDelete: (name: string) => Promise<boolean>;
 	onClearSaveError: () => void;
 }
 
@@ -42,16 +40,14 @@ function baseProps(overrides: Partial<PageProps> = {}): PageProps {
 		cluster: 'default',
 		onClusterChange: vi.fn(),
 		search: '',
-		protectedFilter: 'all',
 		sortBy: 'name',
 		sortDir: 'asc',
 		onSearchChange: vi.fn(),
-		onProtectedFilterChange: vi.fn(),
 		onSort: vi.fn(),
 		onResetFilters: vi.fn(),
 		onCreate: vi.fn().mockResolvedValue(true),
-		onUpdateColor: vi.fn(),
-		onDelete: vi.fn(),
+		onUpdateColor: vi.fn().mockResolvedValue(true),
+		onDelete: vi.fn().mockResolvedValue(true),
 		onClearSaveError: vi.fn(),
 		...overrides
 	};
@@ -67,9 +63,78 @@ function openCreateDialog(): void {
 
 function submitDialogForm(): void {
 	const form = document.querySelector<HTMLFormElement>('dialog form');
+	const nameInput = form?.querySelector<HTMLInputElement>('input[type="text"]');
+	if (nameInput && !nameInput.value) {
+		nameInput.value = 'team-new';
+		nameInput.dispatchEvent(new Event('input', { bubbles: true }));
+	}
 	expect(form).not.toBeNull();
 	form!.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }));
 }
+
+vi.mock('./tag-vms', () => ({ fetchTagVMs: vi.fn().mockResolvedValue([]) }));
+
+const pvmss: AdminTag = { name: 'pvmss', color: '#4f46e5', vmCount: 2, protected: true };
+
+function clickCard(name: string): void {
+	document.querySelector<HTMLButtonElement>(`button[aria-label="Open tag ${name}"]`)!.click();
+}
+
+describe('TagsPage groups and drawer', () => {
+	beforeAll(() => setLocale('en', { reload: false }));
+	afterEach(() => {
+		document.body.innerHTML = '';
+	});
+
+	it('splits protected tags into the System group', async () => {
+		mount(TagsPage, { target: document.body, props: baseProps({ tags: [tag, pvmss], filteredTags: [tag, pvmss] }) });
+		await tick();
+		expect(document.querySelector('[data-testid="tags-group-system"]')?.textContent).toContain('pvmss');
+		expect(document.querySelector('[data-testid="tags-group-custom"]')?.textContent).toContain('team-web');
+		expect(document.querySelector('[data-testid="tags-group-custom"]')?.textContent).not.toContain('pvmss');
+	});
+
+	it('gates delete behind typing the tag name', async () => {
+		const onDelete = vi.fn().mockResolvedValue(true);
+		mount(TagsPage, { target: document.body, props: baseProps({ onDelete }) });
+		await tick();
+		clickCard('team-web');
+		await tick();
+		const zone = document.querySelector('[data-testid="tag-danger-zone"]')!;
+		const button = zone.querySelector<HTMLButtonElement>('button')!;
+		expect(button.disabled).toBe(true);
+		const input = zone.querySelector<HTMLInputElement>('input')!;
+		input.value = 'team-web';
+		input.dispatchEvent(new Event('input', { bubbles: true }));
+		await tick();
+		expect(button.disabled).toBe(false);
+		button.click();
+		await tick();
+		expect(onDelete).toHaveBeenCalledWith('team-web');
+	});
+
+	it('shows the protected note instead of delete for pvmss', async () => {
+		mount(TagsPage, { target: document.body, props: baseProps({ tags: [pvmss], filteredTags: [pvmss] }) });
+		await tick();
+		clickCard('pvmss');
+		await tick();
+		expect(document.querySelector('[data-testid="tag-protected-note"]')).not.toBeNull();
+		expect(document.querySelector('[data-testid="tag-danger-zone"]')).toBeNull();
+	});
+
+	it('saves a preset color for an existing tag', async () => {
+		const onUpdateColor = vi.fn().mockResolvedValue(true);
+		mount(TagsPage, { target: document.body, props: baseProps({ onUpdateColor }) });
+		await tick();
+		clickCard('team-web');
+		await tick();
+		document.querySelector<HTMLButtonElement>('button[aria-label="#ef4444"]')!.click();
+		await tick();
+		submitDialogForm();
+		await tick();
+		expect(onUpdateColor).toHaveBeenCalledWith('team-web', '#ef4444');
+	});
+});
 
 describe('TagsPage create dialog', () => {
 	beforeAll(() => setLocale('en', { reload: false }));
