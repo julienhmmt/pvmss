@@ -27,6 +27,8 @@
 	let outcomes = $state.raw<ProfileImportOutcome[] | null>(null);
 	const chosenItems = new SvelteSet<number>();
 	const targetClusters = new SvelteSet<string>();
+	// Target ID per row, so a profile can be imported under another ID.
+	let targetIds = $state<string[]>([]);
 
 	// Each opening starts clean, targeting the cluster shown on the page.
 	$effect(() => {
@@ -38,6 +40,7 @@
 		overwrite = false;
 		outcomes = null;
 		chosenItems.clear();
+		targetIds = [];
 		targetClusters.clear();
 		if (cluster) targetClusters.add(cluster);
 	});
@@ -50,6 +53,7 @@
 		try {
 			items = parseProfileExport(text);
 			items.forEach((_, i) => chosenItems.add(i));
+			targetIds = items.map((item) => item.id ?? '');
 		} catch (err) {
 			fileError = err instanceof SyntaxError || !(err instanceof Error) ? m['admin.profiles.importInvalidFile']() : err.message;
 		}
@@ -75,7 +79,12 @@
 	}
 
 	async function submit(): Promise<void> {
-		const chosen = items.filter((_, i) => chosenItems.has(i));
+		const chosen = items
+			.map((item, i) => {
+				const id = targetIds[i]?.trim();
+				return id ? { ...item, id } : item;
+			})
+			.filter((_, i) => chosenItems.has(i));
 		// Keep the cluster selector's order so the report reads predictably.
 		const clusters = clusterOptions.map((c) => c.name).filter((n) => targetClusters.has(n));
 		outcomes = await onImport(clusters, overwrite, chosen);
@@ -153,6 +162,10 @@
 									<input type="checkbox" checked={chosenItems.has(i)} onchange={() => toggle(chosenItems, i)} />
 									<span>{item.label}</span>
 									<span class="text-xs text-muted-foreground">{vcpuTotal(item)} vCPU, {item.memoryMB} MB, {item.diskGB} GB</span>
+								</label>
+								<label class="ml-6 mt-1 flex items-center gap-2 text-xs text-muted-foreground">
+									{m['admin.profiles.importAsId']()}
+									<input class="pv-input w-40 py-1" bind:value={targetIds[i]} data-testid="profile-import-id" />
 								</label>
 							</li>
 						{/each}

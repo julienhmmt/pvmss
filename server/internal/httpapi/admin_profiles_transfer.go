@@ -100,7 +100,7 @@ func (h *AdminCatalog) ServeProfileImport(w http.ResponseWriter, r *http.Request
 		items[i] = catalog.ImportItem{
 			Spec: catalog.ProfileSpec{
 				Label: p.Label, Sockets: p.Sockets, CPUCores: p.CPUCores, MemoryMB: p.MemoryMB,
-				DiskGB: p.DiskGB, Bus: p.Bus, Description: p.Description,
+				DiskGB: p.DiskGB, Bus: p.Bus, Description: p.Description, NewID: p.ID,
 			},
 			Enabled: p.Enabled == nil || *p.Enabled,
 		}

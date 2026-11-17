@@ -303,6 +303,7 @@
 
 <NodeCapacityImportDialog
 	bind:open={showImport}
+	nodeNames={nodes.map((n) => n.node)}
 	{saving}
 	{saveError}
 	onImport={handleImport}

@@ -116,11 +116,11 @@ type ProfileSpec struct {
 	Bus         string
 	Description string
 	// NewID renames the profile on update when set and different from the
-	// current id. Ignored by CreateProfile.
+	// current id. On create it replaces the id derived from the label.
 	NewID string
 }
 
-// CreateProfile derives a slug from the label, validates the fields, rejects
+// CreateProfile uses spec.NewID or derives a slug from the label, validates the fields, rejects
 // slug collisions with ErrDuplicateProfile (409), and inserts the new row.
 // The new profile is enabled by default.
 func CreateProfile(ctx context.Context, st *store.Store, cluster string, spec ProfileSpec) (AdminProfile, error) {
@@ -142,7 +142,10 @@ func CreateProfile(ctx context.Context, st *store.Store, cluster string, spec Pr
 		return AdminProfile{}, err
 	}
 
-	id := DeriveProfileID(label)
+	id, err := createProfileID(label, spec.NewID)
+	if err != nil {
+		return AdminProfile{}, err
+	}
 
 	exists, err := st.ProfileExists(ctx, cluster, id)
 	if err != nil {
@@ -233,6 +236,20 @@ func UpdateProfile(ctx context.Context, st *store.Store, cluster, id string, spe
 // resolveNewProfileID returns the id the profile keeps after an update: the
 // current one when requested is empty or unchanged, else requested once it is
 // a valid slug not used by another profile of the cluster.
+// createProfileID returns requested when set and well-formed, else the label slug.
+func createProfileID(label, requested string) (string, error) {
+	requested = strings.TrimSpace(requested)
+	if requested == "" {
+		return DeriveProfileID(label), nil
+	}
+
+	if DeriveProfileID(requested) != requested {
+		return "", fmt.Errorf("%w: id must be lowercase letters, digits and hyphens", ErrInvalidProfile)
+	}
+
+	return requested, nil
+}
+
 func resolveNewProfileID(ctx context.Context, st *store.Store, cluster, current, requested string) (string, error) {
 	requested = strings.TrimSpace(requested)
 	if requested == "" || requested == current {

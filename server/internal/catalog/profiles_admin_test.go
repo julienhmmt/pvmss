@@ -181,6 +181,7 @@ func TestUpdateProfile_RenameID(t *testing.T) {
 	}
 
 	spec.NewID = "tiny"
+
 	renamed, err := catalog.UpdateProfile(ctx, st, "default", testProfileID, spec)
 	if err != nil {
 		t.Fatalf("rename: %v", err)

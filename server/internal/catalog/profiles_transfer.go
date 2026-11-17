@@ -57,7 +57,11 @@ func ImportProfiles(ctx context.Context, st *store.Store, clusters []string, ite
 }
 
 func importOne(ctx context.Context, st *store.Store, cluster string, item ImportItem, overwrite bool) (ImportOutcome, error) {
-	id := DeriveProfileID(item.Spec.Label)
+	id, err := createProfileID(item.Spec.Label, item.Spec.NewID)
+	if err != nil {
+		return invalidOrFail(ImportOutcome{Cluster: cluster, ID: item.Spec.NewID, Label: item.Spec.Label}, err)
+	}
+
 	outcome := ImportOutcome{Cluster: cluster, ID: id, Label: item.Spec.Label}
 
 	profile, err := CreateProfile(ctx, st, cluster, item.Spec)
@@ -70,7 +74,10 @@ func importOne(ctx context.Context, st *store.Store, cluster string, item Import
 
 		return outcome, nil
 	case errors.Is(err, ErrDuplicateProfile):
-		profile, err = UpdateProfile(ctx, st, cluster, id, item.Spec)
+		spec := item.Spec
+		spec.NewID = "" // id already chosen; do not rename on overwrite
+
+		profile, err = UpdateProfile(ctx, st, cluster, id, spec)
 		if err != nil {
 			return invalidOrFail(outcome, err)
 		}

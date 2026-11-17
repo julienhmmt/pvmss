@@ -104,3 +104,32 @@ func TestImportProfiles_Outcomes(t *testing.T) {
 		t.Error("small should be overwritten to 3 cores")
 	}
 }
+
+func TestImportProfiles_UsesRequestedID(t *testing.T) {
+	t.Parallel()
+
+	st := openAdminStore(t)
+	ctx := context.Background()
+	spec := catalog.ProfileSpec{Label: "Imported", CPUCores: 1, MemoryMB: 512, DiskGB: 5, Bus: testProfileBus}
+
+	cases := []struct {
+		newID, wantID, wantResult string
+	}{
+		{"custom-id", "custom-id", catalog.ImportCreated},
+		{"", "imported", catalog.ImportCreated},
+		{"Bad ID", "Bad ID", catalog.ImportInvalid},
+	}
+	for _, tc := range cases {
+		s := spec
+		s.NewID = tc.newID
+
+		out, err := catalog.ImportProfiles(ctx, st, []string{"default"}, []catalog.ImportItem{{Spec: s, Enabled: true}}, false)
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		if out[0].ID != tc.wantID || out[0].Result != tc.wantResult {
+			t.Fatalf("newID %q: got %s/%s, want %s/%s", tc.newID, out[0].ID, out[0].Result, tc.wantID, tc.wantResult)
+		}
+	}
+}

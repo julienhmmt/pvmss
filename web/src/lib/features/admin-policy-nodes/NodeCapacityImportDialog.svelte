@@ -16,9 +16,11 @@
 		saveError: string | null;
 		onImport: (sections: NodeCapacityExportSection[], overwrite: boolean) => Promise<NodeCapacityImportOutcome[] | null>;
 		onClose: () => void;
+		/** Nodes of the cluster on screen, suggested as import targets. */
+		nodeNames?: string[];
 	}
 
-	let { open = $bindable(), saving, saveError, onImport, onClose }: Props = $props();
+	let { open = $bindable(), nodeNames = [], saving, saveError, onImport, onClose }: Props = $props();
 
 	let sections = $state.raw<NodeCapacityExportSection[]>([]);
 	let fileError = $state<string | null>(null);
@@ -29,6 +31,8 @@
 	// Row keys are "sectionIndex:itemIndex" so a multi-cluster file keeps its
 	// sections distinct even when two clusters name a node the same.
 	const chosenItems = new SvelteSet<string>();
+	// Target node per row key, so caps exported from one node can land on another.
+	let targets = $state<Record<string, string>>({});
 
 	$effect(() => {
 		if (!open) return;
@@ -39,16 +43,25 @@
 		overwrite = false;
 		outcomes = null;
 		chosenItems.clear();
+		targets = {};
 	});
 
 	function loadFromText(text: string): void {
 		fileError = null;
 		sections = [];
 		chosenItems.clear();
+		targets = {};
 		if (!text.trim()) return;
 		try {
 			sections = parseNodeCapacityExport(text);
-			sections.forEach((section, s) => section.nodes.forEach((_, i) => chosenItems.add(`${s}:${i}`)));
+			const next: Record<string, string> = {};
+			sections.forEach((section, s) =>
+				section.nodes.forEach((item, i) => {
+					chosenItems.add(`${s}:${i}`);
+					next[`${s}:${i}`] = item.node;
+				})
+			);
+			targets = next;
 		} catch (err) {
 			fileError = err instanceof SyntaxError || !(err instanceof Error) ? m['policy.nodesImportInvalidFile']() : err.message;
 		}
@@ -75,7 +88,9 @@
 
 	async function submit(): Promise<void> {
 		const chosen = sections
-			.map((section, s) => ({ cluster: section.cluster, nodes: section.nodes.filter((_, i) => chosenItems.has(`${s}:${i}`)) }))
+			.map((section, s) => ({ cluster: section.cluster, nodes: section.nodes
+					.map((item, i) => ({ ...item, node: targets[`${s}:${i}`]?.trim() || item.node }))
+					.filter((_, i) => chosenItems.has(`${s}:${i}`)) }))
 			.filter((section) => section.nodes.length > 0);
 		outcomes = await onImport(chosen, overwrite);
 	}
@@ -159,6 +174,14 @@
 									<label class="flex items-center gap-2 text-sm">
 										<input type="checkbox" checked={chosenItems.has(`${s}:${i}`)} onchange={() => toggle(`${s}:${i}`)} />
 										<span>{item.node}</span>
+										<span aria-hidden="true">&rarr;</span>
+										<input
+											class="pv-input w-36 py-1"
+											list="node-capacity-import-targets"
+											aria-label={m['policy.nodesImportTarget']({ node: item.node })}
+											bind:value={targets[`${s}:${i}`]}
+											data-testid="node-import-target"
+										/>
 										<span class="text-xs text-muted-foreground">
 											{item.maxVms} VM, {item.maxVcpus} vCPU, {item.maxRamGb} GB RAM, {item.maxDiskGb} GB
 										</span>
@@ -167,6 +190,9 @@
 							{/each}
 						{/each}
 					</ul>
+					<datalist id="node-capacity-import-targets">
+						{#each nodeNames as name (name)}<option value={name}></option>{/each}
+					</datalist>
 				</fieldset>
 
 				<label class="flex items-center gap-2 text-sm">

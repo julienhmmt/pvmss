@@ -66,6 +66,28 @@ describe('NodeCapacityImportDialog', () => {
 		void unmount(component);
 	});
 
+	it('imports a node\'s caps onto another node', async () => {
+		const { component, onImport } = render();
+		await tick();
+		const textarea = document.querySelector<HTMLTextAreaElement>('[data-testid="node-capacity-import-json"]')!;
+		textarea.value = exportJson;
+		textarea.dispatchEvent(new Event('input', { bubbles: true }));
+		await tick();
+
+		const target = document.querySelector<HTMLInputElement>('[data-testid="node-import-target"]')!;
+		expect(target.value).toBe('pve-node-01');
+		target.value = 'pve2';
+		target.dispatchEvent(new Event('input', { bubbles: true }));
+		await tick();
+
+		document.querySelector<HTMLFormElement>('dialog form')!.requestSubmit();
+		await tick();
+		await tick();
+
+		expect(onImport.mock.calls[0]?.[0][0].nodes[0]).toEqual({ node: 'pve2', maxVms: 4, maxVcpus: 8, maxRamGb: 16, maxDiskGb: 100 });
+		void unmount(component);
+	});
+
 	it('reports a file that is not a node capacity export', async () => {
 		const { component, onImport } = render();
 		await tick();
