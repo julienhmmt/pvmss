@@ -143,7 +143,7 @@ empty states. The classes live in
 `app.css` as `pv-cinematic-*`; motion stops under `prefers-reduced-motion`.
 
 **Application direction (chosen concept: "Calm workspace"):** the signed-in app
-is a single, quiet workspace - a fixed sidebar, a slim context header, and one
+is a single, quiet workspace - a fixed sidebar, a slim top bar (search, notifications), and one
 roomy content column. The machine list is the landing page, not a metrics
 dashboard. Creation is a single-page form with a live summary rail. The machine
 detail page is connection-first: state, SSH, and the browser console lead;
@@ -301,14 +301,14 @@ chosen concept ("Calm workspace") fixes three structural decisions:
    narrow viewports.
 2. **The machine list is the landing page.** No metrics dashboard, no hero
    tiles; the heading may use the light cinematic echo, never metrics. A signed-in user lands on their machines and acts from there.
-3. **One roomy content column.** A slim context header names the current
+3. **One roomy content column.** The page header (`PageHeader`) names the current
    location; below it, the content column holds one task at a time.
 
 ### Layout grid
 
 ```text
 ┌─────────┬──────────────────────────────────────────┐
-│         │ context header  (slim, breadcrumb-style) │
+│         │ top bar  (slim: bell + search only)      │
 │ sidebar ├──────────────────────────────────────────┤
 │  236px  │                                          │
 │ fixed   │ main content  (max 100rem, centered)      │

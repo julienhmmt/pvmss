@@ -2,14 +2,11 @@
 	/**
 	 * AppHeader - two render modes in one component:
 	 *  - below 900px, the bar that opens the sidebar drawer (menu + brand);
-	 *  - from 900px, the slim context header (DESIGN.md §5): "Workspace /
-	 *    <current screen>" on the left, a private-workspace marker on the
-	 *    right. It is a breadcrumb-style line, never a second <h1>.
+	 *  - from 900px, a slim bar holding the bell and the palette button; the
+	 *    page's own cinematic PageHeader names the screen, so no breadcrumb.
 	 * The task-tray toast mirroring effect lives here because AppHeader is
 	 * mounted on every viewport.
 	 */
-	import { page } from '$app/state';
-	import { contextLabel } from './context-label';
 	import { untrack } from 'svelte';
 	import { getTaskTrayContext } from '#lib/features/tasks/tasks.svelte.js';
 	import { getToastContext } from '#lib/shared/ui/toast.svelte.js';
@@ -47,7 +44,6 @@
 	$effect(() => {
 		if (notifications) void untrack(() => checkQuotaDecision());
 	});
-	const context = $derived(contextLabel(page.url.pathname));
 	// The palette shortcut as the user's keyboard writes it.
 	const paletteKeys = typeof navigator !== 'undefined' && /Mac|iPhone|iPad/.test(navigator.userAgent) ? '⌘K' : 'Ctrl K';
 
@@ -99,17 +95,10 @@
 </header>
 
 <header
-	class="sticky top-0 z-30 hidden h-[66px] items-center justify-between gap-4 border-b border-border/60 bg-background px-11 min-[900px]:flex"
+	class="sticky top-0 z-30 hidden h-[66px] items-center justify-end gap-4 border-b border-border/60 bg-background px-11 min-[900px]:flex"
 	aria-label={m['chrome.context.ariaLabel']()}
 	data-testid="context-header"
 >
-	<p class="flex min-w-0 items-center gap-2 text-sm">
-		<span class="text-muted-foreground">{context.section}</span>
-		{#if context.screen}
-			<span class="text-muted-foreground-subtle" aria-hidden="true">/</span>
-			<span class="truncate font-medium text-foreground" data-testid="context-screen">{context.screen}</span>
-		{/if}
-	</p>
 	<div class="flex items-center gap-2">
 	{#if notifications}
 		<NotificationBell state={notifications} />
