@@ -255,7 +255,7 @@
 	<Alert data-testid="vm-detail-error">{store.error}</Alert>
 {:else if store.entity}
 	{@const entity = store.entity}
-	<header class="relative isolate mb-4 overflow-hidden rounded-xl border border-border bg-card px-5 py-6 min-[700px]:px-7 min-[700px]:py-8" data-testid="vm-detail-header">
+	<header class="relative isolate mb-4 overflow-hidden rounded-xl border border-border bg-card px-5 py-4 min-[700px]:px-7 min-[700px]:py-5" data-testid="vm-detail-header">
 		<CinematicBackdrop />
 		<ButtonLink href={backHref} variant="secondary" size="sm" class="mb-4" data-testid="page-back-link">
 			{#snippet icon()}
