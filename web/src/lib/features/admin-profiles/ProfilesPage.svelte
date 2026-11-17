@@ -335,7 +335,10 @@
 									<span class="block max-w-xs truncate text-xs text-muted-foreground" title={profile.description}>{profile.description}</span>
 								{/if}
 							</td>
-							<td data-label={m['admin.profiles.vcpu']()}>{vcpuTotal(profile)}</td>
+							<td data-label={m['admin.profiles.vcpu']()}>
+								{vcpuTotal(profile)}
+								<span class="block text-xs text-muted-foreground">{m['admin.profiles.sockets']()}: {profile.sockets ?? 1} · {m['admin.profiles.vcpuCores']()}: {profile.cpuCores}</span>
+							</td>
 							<td data-label={m['common.memory']()}>{profile.memoryMB} MB</td>
 							<td data-label={m['admin.profiles.disk']()}>{profile.diskGB} GB</td>
 							<td data-label={m['admin.profiles.bus']()}>{profile.bus}</td>
