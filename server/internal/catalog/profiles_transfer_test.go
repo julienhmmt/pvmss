@@ -13,7 +13,7 @@ func TestReorderProfiles_AdminAndUserOrder(t *testing.T) {
 	st := openAdminStore(t)
 	ctx := context.Background()
 
-	want := []string{"medium", "large", testProfileID}
+	want := []string{mediumProfileID, "large", testProfileID}
 	if err := catalog.ReorderProfiles(ctx, st, "default", want); err != nil {
 		t.Fatalf("ReorderProfiles: %v", err)
 	}

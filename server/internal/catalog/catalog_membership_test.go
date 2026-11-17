@@ -161,16 +161,16 @@ func TestFindProfile_FoundAndNotFound(t *testing.T) {
 
 	profiles := []catalog.Profile{
 		{ID: "small", Label: "Small", CPUCores: 1, MemoryMB: 2048, DiskGB: 20, Bus: "scsi"},
-		{ID: "medium", Label: "Medium", CPUCores: 2, MemoryMB: 4096, DiskGB: 40, Bus: "scsi"},
+		{ID: mediumProfileID, Label: "Medium", CPUCores: 2, MemoryMB: 4096, DiskGB: 40, Bus: "scsi"},
 	}
 
-	got, err := catalog.FindProfile(profiles, "medium")
+	got, err := catalog.FindProfile(profiles, mediumProfileID)
 	if err != nil {
 		t.Fatalf("FindProfile medium: %v", err)
 	}
 
-	if got.ID != "medium" {
-		t.Errorf("FindProfile medium: got ID %q, want %q", got.ID, "medium")
+	if got.ID != mediumProfileID {
+		t.Errorf("FindProfile medium: got ID %q, want %q", got.ID, mediumProfileID)
 	}
 
 	if got.CPUCores != 2 {

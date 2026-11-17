@@ -14,6 +14,7 @@ const (
 	testProfileBus   = "scsi"
 	testProfileLabel = "Test"
 	testProfileID    = "small"
+	mediumProfileID  = "medium"
 )
 
 // TestDeriveProfileID checks slug derivation from labels.
@@ -175,7 +176,7 @@ func TestUpdateProfile_RenameID(t *testing.T) {
 		t.Fatalf("invalid id: err = %v, want ErrInvalidProfile", err)
 	}
 
-	spec.NewID = "medium"
+	spec.NewID = mediumProfileID
 	if _, err := catalog.UpdateProfile(ctx, st, "default", testProfileID, spec); !errors.Is(err, catalog.ErrDuplicateProfile) {
 		t.Fatalf("taken id: err = %v, want ErrDuplicateProfile", err)
 	}
