@@ -7,6 +7,7 @@ import (
 	"log/slog"
 	"net/http"
 	"net/url"
+	"slices"
 	"strings"
 )
 
@@ -22,22 +23,16 @@ func (p Proxmox) ListBridges(ctx context.Context) ([]Bridge, error) {
 		return nil, err
 	}
 
-	var bridges []Bridge
+	online := slices.DeleteFunc(nodes, func(node proxmoxNodeRow) bool { return !proxmoxNodeOnline(node.Status) })
 
-	for _, node := range nodes {
-		if !proxmoxNodeOnline(node.Status) {
-			continue
-		}
-
-		nodeBridges, err := proxmoxListNodeBridges(ctx, rest, node.Name)
-		if err != nil {
-			return nil, err
-		}
-
-		bridges = append(bridges, nodeBridges...)
+	perNode, err := fanOut(ctx, online, func(ctx context.Context, node proxmoxNodeRow) ([]Bridge, error) {
+		return proxmoxListNodeBridges(ctx, rest, node.Name)
+	})
+	if err != nil {
+		return nil, err
 	}
 
-	return bridges, nil
+	return slices.Concat(perNode...), nil
 }
 
 // proxmoxListNodeBridges fetches and decodes one node's network interfaces,
@@ -94,26 +89,21 @@ func (p Proxmox) ListISOs(ctx context.Context) ([]ISOImage, error) {
 		return nil, fmt.Errorf("decode storages: %w", err)
 	}
 
-	var isos []ISOImage
+	available := slices.DeleteFunc(rows, func(row proxmoxResourceRow) bool { return !proxmoxStorageAvailable(row.Status) })
 
-	for _, row := range rows {
-		if !proxmoxStorageAvailable(row.Status) {
-			continue
-		}
-
+	perStorage, err := fanOut(ctx, available, func(ctx context.Context, row proxmoxResourceRow) ([]ISOImage, error) {
 		found, err := proxmoxListContent(ctx, rest, row.Node, row.Storage, "iso")
-		if err != nil {
-			if isNodeUnavailable(err) {
-				continue
-			}
-
+		if err != nil && !isNodeUnavailable(err) {
 			return nil, fmt.Errorf("list iso content on %q/%q: %w", row.Node, row.Storage, err)
 		}
 
-		isos = append(isos, found...)
+		return found, nil
+	})
+	if err != nil {
+		return nil, err
 	}
 
-	return isos, nil
+	return slices.Concat(perStorage...), nil
 }
 
 // ListCloudImages implements Client, enumerating cloud images on every

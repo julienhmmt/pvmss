@@ -103,7 +103,7 @@ func (service *Policy) snapshotFor(ctx context.Context, clusterName string) (clu
 		return cluster.Snapshot{}, false, nil
 	}
 
-	snapshot, err := source.Snapshot(ctx)
+	snapshot, err := cluster.ReadTopology(ctx, source)
 	if err != nil {
 		return cluster.Snapshot{}, true, fmt.Errorf("discover nodes: %w", err)
 	}

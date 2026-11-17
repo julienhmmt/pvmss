@@ -70,7 +70,7 @@ func (h *VMCreate) loadCatalogData(ctx context.Context, client cluster.Client, c
 // loadClusterDiscovery fills the live-discovery half of the catalog: the
 // storage snapshot, bridges, ISOs, and cloud images the cluster reports.
 func loadClusterDiscovery(ctx context.Context, client cluster.Client, data *catalogData) error {
-	snap, err := client.Snapshot(ctx)
+	snap, err := cluster.ReadTopology(ctx, client)
 	if err != nil {
 		return fmt.Errorf("storage discovery: %w", err)
 	}

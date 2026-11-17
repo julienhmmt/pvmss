@@ -10,7 +10,7 @@ import (
 // name. A discovery error is returned verbatim so the caller can distinguish
 // "not present" (404) from "cluster unreachable" (5xx).
 func nodeDiscovered(ctx context.Context, client cluster.Client, name string) (bool, error) {
-	snap, err := client.Snapshot(ctx)
+	snap, err := cluster.ReadTopology(ctx, client)
 	if err != nil {
 		return false, err
 	}

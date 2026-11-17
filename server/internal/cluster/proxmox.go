@@ -120,6 +120,36 @@ const proxmoxStorageType = "storage"
 func (p Proxmox) Snapshot(ctx context.Context) (Snapshot, error) {
 	rest := p.rest()
 
+	snap, err := proxmoxResources(ctx, rest)
+	if err != nil {
+		return Snapshot{}, err
+	}
+
+	version, err := proxmoxVersion(ctx, rest)
+	if err != nil {
+		return Snapshot{}, err
+	}
+
+	snap.ProxmoxVersion = version
+
+	vms, err := hydrateVMs(ctx, rest, snap.VMs)
+	if err != nil {
+		return Snapshot{}, err
+	}
+
+	snap.VMs = vms
+
+	return snap, nil
+}
+
+// Topology implements TopologyReader: the single /cluster/resources call of
+// Snapshot, without VM hydration or the version read.
+func (p Proxmox) Topology(ctx context.Context) (Snapshot, error) {
+	return proxmoxResources(ctx, p.rest())
+}
+
+// proxmoxResources reads /cluster/resources into an unhydrated Snapshot.
+func proxmoxResources(ctx context.Context, rest proxmoxRESTClient) (Snapshot, error) {
 	raw, err := rest.do(ctx, http.MethodGet, proxmoxClusterResourcesPath, nil)
 	if err != nil {
 		return Snapshot{}, err
@@ -130,12 +160,7 @@ func (p Proxmox) Snapshot(ctx context.Context) (Snapshot, error) {
 		return Snapshot{}, fmt.Errorf("decode cluster resources: %w", err)
 	}
 
-	version, err := proxmoxVersion(ctx, rest)
-	if err != nil {
-		return Snapshot{}, err
-	}
-
-	snap := Snapshot{ProxmoxVersion: version}
+	var snap Snapshot
 
 	for _, row := range rows {
 		switch row.Type {
@@ -147,13 +172,6 @@ func (p Proxmox) Snapshot(ctx context.Context) (Snapshot, error) {
 			snap.Storages = append(snap.Storages, proxmoxStorageFromRow(row))
 		}
 	}
-
-	vms, err := hydrateVMs(ctx, rest, snap.VMs)
-	if err != nil {
-		return Snapshot{}, err
-	}
-
-	snap.VMs = vms
 
 	return snap, nil
 }

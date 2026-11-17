@@ -98,7 +98,7 @@ type TemplateApproval struct {
 // node that no longer exists), a disabled orphan is surfaced with Missing=true
 // so the admin can remove it.
 func AdminListNodes(ctx context.Context, st *store.Store, client cluster.Client, clusterName string) ([]NodeApproval, error) {
-	snap, err := client.Snapshot(ctx)
+	snap, err := cluster.ReadTopology(ctx, client)
 	if err != nil {
 		return nil, err
 	}
@@ -161,7 +161,7 @@ func AdminListNodes(ctx context.Context, st *store.Store, client cluster.Client,
 // some nodes is extended to the nodes that have no approval row yet (nodes
 // added later). Orphan approvals are handled as in AdminListNodes.
 func AdminListStorages(ctx context.Context, st *store.Store, client cluster.Client, clusterName string) ([]StorageApproval, error) {
-	snap, err := client.Snapshot(ctx)
+	snap, err := cluster.ReadTopology(ctx, client)
 	if err != nil {
 		return nil, err
 	}

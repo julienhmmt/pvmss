@@ -31,7 +31,7 @@ func SetNodeEnabled(ctx context.Context, st *store.Store, client cluster.Client,
 // node is ignored and every node that reports it is written. See
 // SetNodeEnabled for the discovery-error contract.
 func SetStorageEnabled(ctx context.Context, st *store.Store, client cluster.Client, clusterName, name, node string, enabled bool) error {
-	snap, err := client.Snapshot(ctx)
+	snap, err := cluster.ReadTopology(ctx, client)
 	if err != nil {
 		return err
 	}
