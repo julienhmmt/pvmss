@@ -63,3 +63,13 @@ func TestFanOut_KeepsOrderAndReturnsError(t *testing.T) {
 		t.Fatalf("err = %v, want boom", err)
 	}
 }
+
+func TestProxmoxStorageMayHold(t *testing.T) {
+	t.Parallel()
+
+	for list, want := range map[string]bool{"": true, "iso": true, "images,iso,vztmpl": true, "images,rootdir": false, "isos": false} {
+		if got := proxmoxStorageMayHold(list, "iso"); got != want {
+			t.Errorf("proxmoxStorageMayHold(%q) = %v, want %v", list, got, want)
+		}
+	}
+}

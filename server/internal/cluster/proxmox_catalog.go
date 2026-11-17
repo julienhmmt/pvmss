@@ -89,7 +89,9 @@ func (p Proxmox) ListISOs(ctx context.Context) ([]ISOImage, error) {
 		return nil, fmt.Errorf("decode storages: %w", err)
 	}
 
-	available := slices.DeleteFunc(rows, func(row proxmoxResourceRow) bool { return !proxmoxStorageAvailable(row.Status) })
+	available := slices.DeleteFunc(rows, func(row proxmoxResourceRow) bool {
+		return !proxmoxStorageAvailable(row.Status) || !proxmoxStorageMayHold(row.Content, "iso")
+	})
 
 	perStorage, err := fanOut(ctx, available, func(ctx context.Context, row proxmoxResourceRow) ([]ISOImage, error) {
 		found, err := proxmoxListContent(ctx, rest, row.Node, row.Storage, "iso")
@@ -113,6 +115,13 @@ func (p Proxmox) ListISOs(ctx context.Context) ([]ISOImage, error) {
 // skipped). .img files are vtype 'iso' and rejected, and absolute filesystem
 // paths are root@pam-only. Node scoping matches ListISOs: one row per
 // (node, storage) pairing.
+// proxmoxStorageMayHold reports whether a storage's content list (e.g.
+// "images,iso,rootdir") allows the given type. An empty list is unknown, so
+// it is listed rather than skipped.
+func proxmoxStorageMayHold(contentList, content string) bool {
+	return contentList == "" || slices.Contains(strings.Split(contentList, ","), content)
+}
+
 // proxmoxListContent lists files of a given content type on a storage. The
 // content parameter is "iso" or "import". For iso content, volids are
 // <storage>:iso/<file>; for import content, <storage>:import/<file>.
