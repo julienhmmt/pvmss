@@ -133,6 +133,7 @@
 		'/docs',
 		'/profile',
 		'/login',
+		'/admin/login',
 		'/admin/clusters',
 		'/admin/settings',
 		'/admin/appinfo',
@@ -195,7 +196,7 @@
 
 	const signedIn = $derived(session.principal !== null);
 	const hasRouteError = $derived(page.error !== null);
-	const isLoginPage = $derived(page.route.id === '/login');
+	const isLoginPage = $derived(page.route.id === '/login' || page.route.id === '/admin/login');
 	const isSetupPage = $derived(page.route.id === '/setup');
 
 	// First-run guard: while the instance reports setup required, every page
@@ -212,8 +213,8 @@
 		}
 	});
 
-	// A signed-in user never sees the sign-in form: /login sends them to a safe
-	// `next` or their home. This also completes a fresh sign-in.
+	// A signed-in user never sees either sign-in form: the page sends them to
+	// a safe `next` or their home. This also completes a fresh sign-in.
 	$effect(() => {
 		const principal = session.principal;
 		if (principal === null || !isLoginPage) return;

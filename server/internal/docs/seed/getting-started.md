@@ -8,7 +8,10 @@ This guide covers logging in, finding your VMs and creating a new one.
 Pick your cluster and use your Proxmox credentials on the [login page](/login),
 or click "Continue with SSO" when the cluster offers single sign-on.
 If the selected cluster is unreachable, the form says so - try again later or
-pick another cluster.
+pick another cluster. The realm defaults to `pve`; open **Advanced sign-in
+options** only if your administrator gave you a different realm. Local
+administrators use **Administrator sign in** to open the dedicated
+[admin login page](/admin/login).
 
 ## Finding your VMs
 

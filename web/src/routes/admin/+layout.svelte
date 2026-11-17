@@ -6,7 +6,6 @@
 	 * the real gate; this is UX only.
 	 */
 	import type { Snippet } from 'svelte';
-	import { onMount } from 'svelte';
 	import { goto } from '$app/navigation';
 	import { resolve } from '$app/paths';
 	import { page } from '$app/state';
@@ -17,10 +16,12 @@
 	let { children }: { children: Snippet } = $props();
 
 	const session = getSessionContext();
+	const isAdminLogin = $derived(page.route.id === '/admin/login');
 
 	let checked = $state(false);
+	let guarding = $state(false);
 
-	onMount(async () => {
+	async function guard(): Promise<void> {
 		if (session.principal === null) {
 			await session.load();
 		}
@@ -32,10 +33,20 @@
 		} else if (!session.isAdmin) {
 			await goto(resolve('/'));
 		}
+	}
+
+	// An $effect, not onMount: /admin/login mounts this layout unchecked, and the
+	// post-sign-in navigation to /admin reuses the same instance.
+	$effect(() => {
+		if (isAdminLogin || checked || guarding) return;
+		guarding = true;
+		void guard().finally(() => (guarding = false));
 	});
 </script>
 
-{#if checked && session.isAdmin}
+{#if isAdminLogin}
+	{@render children()}
+{:else if checked && session.isAdmin}
 	<div class="w-full py-2">
 		{@render children()}
 	</div>

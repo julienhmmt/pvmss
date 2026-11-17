@@ -16,10 +16,17 @@ async function signInAdmin(page: Page): Promise<void> {
 	expect(response.status()).toBe(200);
 }
 
+const PUBLIC_ROUTES = ['/login', '/admin/login'];
 const USER_ROUTES = ['/vms', '/vms/default/100', '/vms/create'];
 const ADMIN_ROUTES = ['/admin', '/admin/vms', '/admin/nodes', '/admin/templates', '/admin/profiles', '/admin/tags', '/admin/policy', '/admin/clusters'];
 
-const ROUTES = [
+interface RouteScenario {
+	path: string;
+	signIn?: (page: Page) => Promise<void>;
+}
+
+const ROUTES: RouteScenario[] = [
+	...PUBLIC_ROUTES.map((path) => ({ path })),
 	...USER_ROUTES.map((path) => ({ path, signIn: signInAlice })),
 	...ADMIN_ROUTES.map((path) => ({ path, signIn: signInAdmin }))
 ];
@@ -28,7 +35,7 @@ for (const colorScheme of ['light', 'dark'] as const) {
 	for (const route of ROUTES) {
 		test(`${route.path} has no WCAG A/AA violations in ${colorScheme}`, async ({ page }) => {
 			await page.emulateMedia({ colorScheme });
-			await route.signIn(page);
+			if (route.signIn) await route.signIn(page);
 			await page.goto(route.path);
 			await expect(page.locator('main h1')).toBeVisible({ timeout: 10_000 });
 			await page.waitForLoadState('networkidle');

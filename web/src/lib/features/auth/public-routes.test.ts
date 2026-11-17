@@ -5,6 +5,7 @@ describe('isPublicPath', () => {
 	it('returns true for exact public paths', () => {
 		expect(isPublicPath('/')).toBe(true);
 		expect(isPublicPath('/login')).toBe(true);
+		expect(isPublicPath('/admin/login')).toBe(true);
 		expect(isPublicPath('/setup')).toBe(true);
 	});
 
@@ -32,7 +33,7 @@ describe('safeNext', () => {
 	});
 
 	it('rejects missing, external and self-referencing targets', () => {
-		for (const raw of [null, '', 'vms', '//evil.example', '//[::1', '/\\evil.example', '/\t/evil.example', 'https://evil.example/', '/login', '/login?next=/vms']) {
+		for (const raw of [null, '', 'vms', '//evil.example', '//[::1', '/\\evil.example', '/\t/evil.example', 'https://evil.example/', '/login', '/login?next=/vms', '/admin/login']) {
 			expect(safeNext(raw)).toBeNull();
 		}
 	});

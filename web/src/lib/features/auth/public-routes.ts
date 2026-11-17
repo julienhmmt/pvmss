@@ -1,5 +1,5 @@
 /** Public paths that do not require an authenticated session. */
-const PUBLIC_PATHS: ReadonlySet<string> = new Set(['/', '/login', '/setup']);
+const PUBLIC_PATHS: ReadonlySet<string> = new Set(['/', '/login', '/admin/login', '/setup']);
 
 /** Public path prefixes (e.g. documentation, about). */
 const PUBLIC_PREFIXES: readonly string[] = ['/docs', '/about'];
@@ -13,7 +13,7 @@ export function isPublicPath(path: string): boolean {
 const NEXT_BASE = 'https://pvmss.invalid';
 
 /** The in-app path to return to after sign-in, or null when `raw` is missing,
- *  leaves the app (`//host`, `/\host`, a scheme) or points back at /login.
+ *  leaves the app (`//host`, `/\host`, a scheme) or points back at a sign-in page.
  *  Parsing with URL catches what a browser would also resolve off-site. */
 export function safeNext(raw: string | null): string | null {
 	if (!raw?.startsWith('/')) return null;
@@ -23,7 +23,7 @@ export function safeNext(raw: string | null): string | null {
 	} catch {
 		return null;
 	}
-	if (url.origin !== NEXT_BASE || url.pathname === '/login') return null;
+	if (url.origin !== NEXT_BASE || url.pathname === '/login' || url.pathname === '/admin/login') return null;
 	return url.pathname + url.search + url.hash;
 }
 

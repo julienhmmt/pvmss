@@ -7,6 +7,11 @@ test.describe('T02 authentication', () => {
 		// US3: the sign-in route has no signed-in sidebar landmark.
 		await expect(page.getByRole('complementary')).toHaveCount(0);
 		await expect(page.getByTestId('app-sidebar')).toHaveCount(0);
+		const realm = page.getByLabel('Realm');
+		await expect(realm).toBeHidden();
+		await page.getByText('Advanced sign-in options').click();
+		await expect(realm).toBeVisible();
+		await page.getByText('Advanced sign-in options').click();
 
 		await page.locator('input[autocomplete="username"]').fill('alice');
 		await page.locator('input[autocomplete="current-password"]').fill('pvmss-alice');
@@ -31,10 +36,15 @@ test.describe('T02 authentication', () => {
 
 	test('redirects the local administrator to the admin dashboard', async ({ page }) => {
 		await page.goto('/login');
-		await page.getByRole('tab', { name: /administrat/i }).click();
+		await expect(page.getByRole('tab')).toHaveCount(0);
+		await page.getByTestId('admin-login-link').click();
+		await expect(page).toHaveURL(/\/admin\/login$/);
 		await page.locator('input[autocomplete="current-password"]').fill('pvmss-e2e-admin');
 		await page.locator('button[type="submit"]').click();
 		await expect(page).toHaveURL(/\/admin$/);
+		// The admin layout is reused across /admin/login -> /admin: the guard must
+		// re-run and render real content, not stall on its loading message.
+		await expect(page.getByTestId('dashboard-vm-status')).toBeVisible();
 	});
 
 	test('signs in as the Proxmox cluster administrator (PVEAdmin) and lands on /admin', async ({ page }) => {
@@ -72,8 +82,7 @@ test.describe('T02 authentication', () => {
 
 		try {
 			await context.clearCookies();
-			await page.goto('/login');
-			await page.getByRole('tab', { name: /administrat/i }).click();
+			await page.goto('/admin/login');
 			await page.locator('input[autocomplete="username"]').fill('e2e-ops');
 			await page.locator('input[autocomplete="current-password"]').fill('e2e-ops-password');
 			await page.locator('button[type="submit"]').click();

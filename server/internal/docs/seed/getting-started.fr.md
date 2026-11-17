@@ -9,8 +9,11 @@ créer une.
 Choisissez votre cluster et utilisez vos identifiants Proxmox sur la
 [page de connexion](/login), ou cliquez sur « Continuer avec le SSO » quand le
 cluster propose l'authentification unique. Si le cluster sélectionné est
-injoignable, le
-formulaire l'indique - réessayez plus tard ou choisissez un autre cluster.
+injoignable, le formulaire l'indique - réessayez plus tard ou choisissez un
+autre cluster. Le realm par défaut est `pve` ; ouvrez **Options de connexion
+avancées** uniquement si votre administrateur vous a indiqué un autre realm.
+Les administrateurs locaux utilisent **Connexion administrateur** pour ouvrir
+la [page de connexion admin dédiée](/admin/login).
 
 ## Retrouver ses VM
 

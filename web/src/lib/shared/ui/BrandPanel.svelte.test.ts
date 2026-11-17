@@ -11,6 +11,13 @@ describe('BrandPanel', () => {
 		mount(BrandPanel, { target: document.body });
 
 		expect(document.body.textContent).toContain('Proxmox VM Self-Service (PVMSS)');
+		expect(document.body.querySelector('[data-testid="auth-machine-scene"]')).not.toBeNull();
+	});
+
+	it('uses the same auth scene for administrator sign-in', () => {
+		mount(BrandPanel, { target: document.body, props: { mode: 'admin' } });
+
+		expect(document.body.querySelector('[data-testid="auth-machine-scene"]')).not.toBeNull();
 	});
 
 	it('renders warning content in warning mode', () => {
