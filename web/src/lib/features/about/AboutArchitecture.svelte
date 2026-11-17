@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { m } from '#lib/paraglide/messages.js';
 	import { reveal } from '#lib/shared/reveal.js';
+	import CinematicBackdrop from '#lib/shared/ui/CinematicBackdrop.svelte';
 
 	const facts = [1, 2, 3, 4, 5].map((n) => () => (m[`about.architecture.fact.${n}` as keyof typeof m] as () => string)());
 </script>
@@ -27,17 +28,18 @@
 
 <section class="mx-auto w-full max-w-6xl py-14" aria-labelledby="about-architecture-heading">
 	<div class="mx-auto max-w-2xl text-center" {@attach reveal()}>
-		<h2 id="about-architecture-heading" class="text-3xl font-semibold tracking-tight">{m['about.architecture.heading']()}</h2>
+		<h2 id="about-architecture-heading" class="text-4xl font-semibold tracking-[-0.04em]">{m['about.architecture.heading']()}</h2>
 		<p class="mt-3 text-muted-foreground">{m['about.architecture.description']()}</p>
 	</div>
-	<div class="pv-dot-grid mt-10 rounded-2xl border border-border bg-muted/40 px-6 py-10 sm:px-10" {@attach reveal()}>
+	<div class="relative isolate mt-10 overflow-hidden rounded-3xl border border-border bg-card px-6 py-14 sm:px-12" {@attach reveal()}>
+		<CinematicBackdrop />
 		<div class="flex flex-col items-center justify-center md:flex-row">
 			{@render node(m['about.architecture.browser'](), m['about.architecture.browserDetail'](), false)}
 			{@render connector('0s')}
 			<div class="relative w-full max-w-64 md:w-auto md:flex-1">
-				<div class="rounded-xl border border-primary/40 bg-card p-5 text-center shadow-[0_0_0_6px] shadow-primary/10">
-					<p class="font-semibold tracking-tight text-primary">{m['about.architecture.server']()}</p>
-					<p class="mt-1 text-sm text-muted-foreground">{m['about.architecture.serverDetail']()}</p>
+				<div class="rounded-2xl bg-primary-solid p-6 text-center text-primary-foreground shadow-[0_0_0_8px] shadow-primary/15">
+					<p class="text-lg font-semibold tracking-tight">{m['about.architecture.server']()}</p>
+					<p class="mt-1 text-sm text-primary-foreground/80">{m['about.architecture.serverDetail']()}</p>
 				</div>
 			</div>
 			{@render connector('1.4s')}

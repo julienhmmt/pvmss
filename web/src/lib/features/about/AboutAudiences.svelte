@@ -14,7 +14,7 @@
 </script>
 
 <section class="mx-auto w-full max-w-6xl py-14" aria-labelledby="about-audience-heading">
-	<h2 id="about-audience-heading" class="text-center text-3xl font-semibold tracking-tight" {@attach reveal()}>
+	<h2 id="about-audience-heading" class="text-center text-4xl font-semibold tracking-[-0.04em] text-balance" {@attach reveal()}>
 		{m['about.audience.heading']()}
 	</h2>
 	<div class="mt-10 grid gap-5 lg:grid-cols-2" data-testid="about-audience-grid">

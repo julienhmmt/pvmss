@@ -16,6 +16,10 @@
 		lg: 'h-8',
 		xl: 'h-16'
 	};
+
+	// 3x3 cluster grid; the accent cell (right edge, middle row) is the user's slice.
+	const STEPS = [0, 36, 72];
+	const cells = STEPS.flatMap((y) => STEPS.map((x) => ({ x, y, slice: x === 72 && y === 36 })));
 </script>
 
 <span class="inline-flex items-center gap-2 {className}" aria-label={m['chrome.sidebar.brand']()}>
@@ -23,46 +27,21 @@
 		role="img"
 		aria-hidden={showText}
 		aria-label={showText ? undefined : m['chrome.sidebar.brand']()}
-		viewBox="0 0 64 96"
+		viewBox="0 0 100 100"
 		class="{sizeClass[size]} w-auto"
 		xmlns="http://www.w3.org/2000/svg"
 	>
-		<defs>
-			{#if variant === 'color'}
-				<linearGradient id="logo-gradient" x1="0" y1="0" x2="1" y2="1">
-					<stop offset="0" stop-color="#FF8A33" />
-					<stop offset="1" stop-color="#C25E00" />
-				</linearGradient>
-			{/if}
-		</defs>
-		<g transform="translate(0,16)">
+		{#each cells as cell (`${cell.x}-${cell.y}`)}
 			<rect
-				x="4"
-				y="44"
-				width="56"
-				height="12"
-				rx="4"
-				fill={variant === 'color' ? 'url(#logo-gradient)' : 'currentColor'}
-				opacity="0.45"
+				x={cell.x}
+				y={cell.y}
+				width="28"
+				height="28"
+				rx="6"
+				class={cell.slice && variant === 'color' ? 'fill-primary' : 'fill-current'}
+				opacity={!cell.slice && variant === 'mono' ? 0.45 : undefined}
 			/>
-			<rect
-				x="4"
-				y="28"
-				width="56"
-				height="12"
-				rx="4"
-				fill={variant === 'color' ? 'url(#logo-gradient)' : 'currentColor'}
-				opacity="0.72"
-			/>
-			<rect
-				x="4"
-				y="12"
-				width="56"
-				height="12"
-				rx="4"
-				fill={variant === 'color' ? 'url(#logo-gradient)' : 'currentColor'}
-			/>
-		</g>
+		{/each}
 	</svg>
 	{#if showText}
 		<span class="font-bold tracking-tight">{m['chrome.sidebar.brand']()}</span>
