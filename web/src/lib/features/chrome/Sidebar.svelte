@@ -231,16 +231,6 @@
 			<Logo />
 			{#if chrome.notifications}<NotificationBell state={chrome.notifications} />{/if}
 		</div>
-		<button
-			type="button"
-			class="mt-1 inline-flex h-9 items-center gap-2 rounded-lg border border-sidebar-border bg-background/60 px-2.5 text-sm text-muted-foreground transition-colors hover:bg-accent hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-			onclick={() => chrome.openPalette()}
-			data-testid="palette-open"
-		>
-			<SearchIcon class="h-4 w-4 shrink-0" />
-			<span class="min-w-0 flex-1 truncate text-left">{m['chrome.sidebar.navSearch']()}</span>
-			<kbd class="rounded border border-border bg-muted px-1.5 font-mono text-2xs">{paletteKeys}</kbd>
-		</button>
 		{#if session.principal?.clusterDisplayName || session.principal?.cluster}
 			{@const clusterName = session.principal.clusterDisplayName || session.principal.cluster}
 			<p class="mx-2 flex min-w-0 items-center gap-1.5 text-xs text-muted-foreground" title={clusterName} data-testid="sidebar-cluster">
@@ -253,6 +243,16 @@
 				<span class="truncate">{clusterName}</span>
 			</p>
 		{/if}
+		<button
+			type="button"
+			class="mt-3 inline-flex h-9 items-center gap-2 rounded-lg border border-sidebar-border bg-background/60 px-2.5 text-sm text-muted-foreground transition-colors hover:bg-accent hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+			onclick={() => chrome.openPalette()}
+			data-testid="palette-open"
+		>
+			<SearchIcon class="h-4 w-4 shrink-0" />
+			<span class="min-w-0 flex-1 truncate text-left">{m['chrome.sidebar.navSearch']()}</span>
+			<kbd class="rounded border border-border bg-muted px-1.5 font-mono text-2xs">{paletteKeys}</kbd>
+		</button>
 	</div>
 
 	<div class="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto px-3 py-4">

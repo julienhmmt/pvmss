@@ -29,7 +29,7 @@
 	);
 </script>
 
-<Menu {label} {items} size="md" testId="notification-bell" onOpen={() => state.markSeen()}>
+<Menu {label} {items} size="sm" testId="notification-bell" onOpen={() => state.markSeen()}>
 	{#snippet trigger()}
 		<BellIcon class="h-4 w-4" />
 		{#if state.unread > 0}
