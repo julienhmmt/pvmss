@@ -40,6 +40,7 @@
 
 <section class="mx-auto w-full max-w-reading">
 	<PageHeader
+		cinematic
 		eyebrow={m['account.eyebrow']()}
 		title={m['account.heading']()}
 		focusTarget
