@@ -15,7 +15,12 @@ import (
 // in Proxmox - there is no cluster-wide listing - so this enumerates nodes
 // first, then each node's /network, keeping every node's own view (including
 // duplicate bridge names across nodes, e.g. vmbr0 on every node).
+// Results are reused for discoveryTTL.
 func (p Proxmox) ListBridges(ctx context.Context) ([]Bridge, error) {
+	return bridgeCache.get(p.cacheKey(), func() ([]Bridge, error) { return p.listBridges(ctx) })
+}
+
+func (p Proxmox) listBridges(ctx context.Context) ([]Bridge, error) {
 	rest := p.rest()
 
 	nodes, err := proxmoxNodes(ctx, rest)
@@ -33,6 +38,12 @@ func (p Proxmox) ListBridges(ctx context.Context) ([]Bridge, error) {
 	}
 
 	return slices.Concat(perNode...), nil
+}
+
+// cacheKey identifies one cluster connection for the discovery caches: the
+// same URL under another token may see different resources.
+func (p Proxmox) cacheKey() string {
+	return p.BaseURL + "|" + p.APITokenName
 }
 
 // proxmoxListNodeBridges fetches and decodes one node's network interfaces,
@@ -76,7 +87,12 @@ func proxmoxListNodeBridges(ctx context.Context, rest proxmoxRESTClient, node st
 // ListISOs implements Client, enumerating ISO content on every storage that
 // offers it. Node scoping matches ListBridges: one row per (node, storage)
 // pairing Proxmox itself reports, not deduplicated across nodes.
+// Results are reused for discoveryTTL.
 func (p Proxmox) ListISOs(ctx context.Context) ([]ISOImage, error) {
+	return isoCache.get(p.cacheKey(), func() ([]ISOImage, error) { return p.listISOs(ctx) })
+}
+
+func (p Proxmox) listISOs(ctx context.Context) ([]ISOImage, error) {
 	rest := p.rest()
 
 	raw, err := rest.do(ctx, http.MethodGet, proxmoxClusterResourcesPath, url.Values{proxmoxResourceTypeParam: {proxmoxStorageType}})
