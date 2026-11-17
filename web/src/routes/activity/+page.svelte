@@ -90,6 +90,7 @@
 
 <section class="w-full">
 	<PageHeader
+		cinematic
 		eyebrow={m['activity.eyebrow']()}
 		title={m['activity.heading']()}
 		description={m['activity.description']()}
