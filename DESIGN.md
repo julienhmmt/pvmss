@@ -122,11 +122,23 @@ fields - but decoration is not.
 This system explicitly rejects generic SaaS aesthetics: no indigo gradients, no
 glassmorphism, no hero-metric templates, no identical card grids. It also rejects
 cluttered enterprise dashboards with excessive panels and gauges. Inside the
-workspace, the warmth comes from the palette and microcopy, not from
-illustrations or animation. The two public pages (home and about) are the one
-exception: they tell the product's story to someone who has not signed in yet,
-and may use scroll-in motion and small product illustrations (see **6.7 Public
-pages**).
+workspace, the warmth comes mostly from the palette and microcopy. The two
+public pages (home and about) tell the product's story to someone who has not
+signed in yet, and may use scroll-in motion and small product illustrations
+(see **6.7 Public pages**). The login's cinematic brand surface is the other,
+narrower exception (see **Cinematic surface** below).
+
+**Cinematic surface.** The sign-in brand panel (`BrandPanel`: orange
+`primary-solid`, radial glow, masked dot grid, a line-art scene with slow
+packet / float / pulse motion) carries the product's threshold moments. Use it
+in full on screens a user meets before or outside the workspace: `/login`,
+`/admin/login`, `/setup`, error and 404 pages. Inside the workspace it appears
+only as a light echo (`CinematicBackdrop`: the same glow and dot grid toned
+down on a normal card, so every control keeps its usual tokens), and only on
+landing headers (`PageHeader cinematic`: `/vms`, `/admin`), the first-run
+empty state, and the provisioning card (`CinematicFlow`). Never on dense
+working pages, tables, forms or the other empty states. The classes live in
+`app.css` as `pv-cinematic-*`; motion stops under `prefers-reduced-motion`.
 
 **Application direction (chosen concept: "Calm workspace"):** the signed-in app
 is a single, quiet workspace - a fixed sidebar, a slim context header, and one
@@ -286,7 +298,7 @@ chosen concept ("Calm workspace") fixes three structural decisions:
    collapses into a hamburger on desktop; it reflows to a top bar only on
    narrow viewports.
 2. **The machine list is the landing page.** No metrics dashboard, no hero
-   tiles. A signed-in user lands on their machines and acts from there.
+   tiles; the heading may use the light cinematic echo, never metrics. A signed-in user lands on their machines and acts from there.
 3. **One roomy content column.** A slim context header names the current
    location; below it, the content column holds one task at a time.
 
@@ -695,7 +707,7 @@ The signed-in landing page. A readable list, not a metrics grid.
 
 **Heading:** eyebrow "YOUR WORKSPACE", title "My machines", description "A place
 for your projects. Everything you need, nothing you don't." Primary action:
-"Create a machine" (orange, plus icon).
+"Create a machine" (orange, plus icon). The heading uses `PageHeader cinematic`.
 
 **Body, in priority order:**
 

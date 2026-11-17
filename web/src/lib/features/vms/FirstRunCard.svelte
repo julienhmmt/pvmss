@@ -11,6 +11,7 @@
 	import { get } from '#lib/shared/api/client.js';
 	import { fetchClusterOptions } from '#lib/shared/clusters.js';
 	import Card from '#lib/shared/ui/Card.svelte';
+	import CinematicBackdrop from '#lib/shared/ui/CinematicBackdrop.svelte';
 	import ButtonLink from '#lib/shared/ui/ButtonLink.svelte';
 	import AllowanceMeter from '#lib/shared/ui/AllowanceMeter.svelte';
 	import QuotaRequestPanel from '#lib/features/quota-requests/QuotaRequestPanel.svelte';
@@ -55,7 +56,8 @@
 	}
 </script>
 
-<Card as="div" pad="none" class="flex flex-col items-center gap-4 px-6 py-14 text-center" data-testid="vm-empty-owned">
+<Card as="div" pad="none" class="relative flex flex-col items-center gap-4 overflow-hidden px-6 py-14 text-center isolate" data-testid="vm-empty-owned">
+	<CinematicBackdrop />
 	<div class="relative" aria-hidden="true">
 		<span class="flex h-16 w-16 items-center justify-center rounded-lg border border-border bg-muted text-muted-foreground">
 			<svg viewBox="0 0 24 24" class="h-7 w-7" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">

@@ -26,6 +26,8 @@
 	import Button from '#lib/shared/ui/Button.svelte';
 	import ButtonLink from '#lib/shared/ui/ButtonLink.svelte';
 	import Card from '#lib/shared/ui/Card.svelte';
+	import CinematicBackdrop from '#lib/shared/ui/CinematicBackdrop.svelte';
+	import CinematicFlow from '#lib/shared/ui/CinematicFlow.svelte';
 	import Select from '#lib/shared/ui/Select.svelte';
 	import FirstRunCard from './FirstRunCard.svelte';
 	import QuotaRequestPanel from '#lib/features/quota-requests/QuotaRequestPanel.svelte';
@@ -205,7 +207,9 @@
 		</EmptyState>
 	</Card>
 {:else if provisioningOnly}
-	<Card as="div" pad="none" class="flex flex-col items-center gap-2 px-6 py-14 text-center" data-testid="vm-empty-provisioning" role="status">
+	<Card as="div" pad="none" class="relative flex flex-col items-center gap-2 overflow-hidden px-6 py-14 text-center isolate" data-testid="vm-empty-provisioning" role="status">
+		<CinematicBackdrop />
+		<div class="mb-3 flex w-full justify-center"><CinematicFlow /></div>
 		{#each creating as task (task.upid)}
 			<p class="text-lg font-semibold text-foreground">{m['vms.list.provisioningTitle']({ name: task.name })}</p>
 		{/each}

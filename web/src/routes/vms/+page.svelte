@@ -72,8 +72,10 @@
 <section class="w-full">
 	<PageHeader
 		title={m['vms.list.calmHeading']()}
+		eyebrow={m['vms.list.eyebrow']()}
+		description={m['vms.list.description']()}
 		focusTarget
-		divider={false}
+		cinematic
 	>
 		{#snippet actions()}
 			<div class="flex flex-wrap items-center gap-2">

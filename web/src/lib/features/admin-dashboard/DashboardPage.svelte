@@ -76,7 +76,7 @@
 	</div>
 {/snippet}
 
-<PageHeader title={m['admin.dashboard.title']()}>
+<PageHeader title={m['admin.dashboard.title']()} eyebrow={m['login.adminEyebrow']()} description={m['admin.dashboard.description']()} cinematic>
 	{#snippet actions()}
 		<div class="flex items-center gap-3">
 			{#if store.summary}

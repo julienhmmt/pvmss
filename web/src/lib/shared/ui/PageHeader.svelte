@@ -15,6 +15,7 @@
 	 */
 	import type { Snippet } from 'svelte';
 	import ButtonLink from './ButtonLink.svelte';
+	import CinematicBackdrop from './CinematicBackdrop.svelte';
 
 	interface Props {
 		/** The page title, rendered as the single <h1>. */
@@ -39,14 +40,23 @@
 		 *  custom `titleId`, tabindex -1, DESIGN.md §9). On by default so every
 		 *  page using PageHeader announces itself on client-side navigation. */
 		focusTarget?: boolean;
+		/** Login-style glow and dot texture behind the header. Landing pages only. */
+		cinematic?: boolean;
 	}
 
-	let { title, eyebrow, description, titleId, actions, divider = true, back, titleMeta, focusTarget = true }: Props = $props();
+	let { title, eyebrow, description, titleId, actions, divider = true, back, titleMeta, focusTarget = true, cinematic = false }: Props = $props();
 </script>
 
-<div class="mb-6 {divider ? 'border-b border-border pb-5' : ''}">
+<div
+	class="mb-6 {cinematic
+		? 'relative isolate overflow-hidden rounded-xl border border-border bg-card px-5 py-6 min-[700px]:px-7 min-[700px]:py-8'
+		: divider
+			? 'border-b border-border pb-5'
+			: ''}"
+>
+	{#if cinematic}<CinematicBackdrop />{/if}
 	{#if back}
-		<div class="mb-4 flex flex-wrap items-center justify-between gap-x-4 gap-y-2">
+		<div class="relative mb-4 flex flex-wrap items-center justify-between gap-x-4 gap-y-2">
 			<ButtonLink href={back.href} variant="secondary" size="sm" data-testid="page-back-link">
 				{#snippet icon()}
 					<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="h-3.5 w-3.5" aria-hidden="true">
@@ -60,15 +70,15 @@
 			{/if}
 		</div>
 	{/if}
-	<div class="flex flex-wrap items-end justify-between gap-x-4 gap-y-3">
+	<div class="relative flex flex-wrap items-end justify-between gap-x-4 gap-y-3">
 		<div class="min-w-0">
 			{#if eyebrow}
-				<p class="mb-1 text-2xs font-semibold uppercase tracking-[0.08em] text-muted-foreground-subtle">
+				<p class="mb-1 text-2xs font-semibold uppercase {cinematic ? 'tracking-[0.16em] text-primary' : 'tracking-[0.08em] text-muted-foreground-subtle'}">
 					{eyebrow}
 				</p>
 			{/if}
 			{#if focusTarget}
-				<h1 id={titleId ?? 'page-heading'} tabindex="-1" class="flex flex-wrap items-center gap-x-3 gap-y-1.5 text-2xl font-semibold tracking-tight text-balance focus:outline-none">
+				<h1 id={titleId ?? 'page-heading'} tabindex="-1" class="flex flex-wrap items-center gap-x-3 gap-y-1.5 {cinematic ? 'text-3xl tracking-[-0.035em]' : 'text-2xl tracking-tight'} font-semibold text-balance focus:outline-none">
 					{title}
 					{#if titleMeta}{@render titleMeta()}{/if}
 				</h1>
