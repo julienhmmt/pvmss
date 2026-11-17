@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { tagTextColor } from './tag-colors';
 	import type { AdminTag } from './tags.svelte';
 	import type { ClusterOption } from '#lib/shared/clusters.js';
 	import Alert from '#lib/shared/ui/Alert.svelte';
@@ -152,7 +153,7 @@
 								onclick={() => openDrawer(tag)}
 							>
 								<span class="min-w-0 space-y-2">
-									<span class="block truncate rounded-full px-3 py-1 font-mono text-sm text-white" style="background: {tag.color}">{tag.name}</span>
+									<span class="block truncate rounded-full px-3 py-1 font-mono text-sm" style="background: {tag.color}; color: {tagTextColor(tag.color)}">{tag.name}</span>
 									<span class="block font-mono text-xs text-muted-foreground">{tag.color}</span>
 								</span>
 								<span class="shrink-0 text-right">

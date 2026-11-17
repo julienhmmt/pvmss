@@ -10,7 +10,7 @@
 	import { m } from '#lib/paraglide/messages.js';
 	import type { AdminTag } from './tags.svelte';
 	import { fetchTagVMs, type TagVM } from './tag-vms';
-	import { TAG_COLOR_PRESETS, HEX_COLOR } from './tag-colors';
+	import { TAG_COLOR_PRESETS, HEX_COLOR, tagTextColor } from './tag-colors';
 
 	// Proxmox pve-tag charset; the HTML pattern uses the v flag, where - must be escaped.
 	const TAG_NAME_PATTERN = String.raw`[a-z0-9_][a-z0-9_+.\-]{0,49}`;
@@ -98,8 +98,8 @@
 
 		<div class="flex items-center justify-center rounded-lg border border-border bg-muted/40 py-6" data-testid="tag-preview">
 			<span
-				class="rounded-full px-3 py-1 font-mono text-sm text-white"
-				style="background: {colorValid ? color : 'transparent'}"
+				class="rounded-full px-3 py-1 font-mono text-sm"
+				style="background: {colorValid ? color : 'transparent'}; color: {colorValid ? tagTextColor(color) : 'inherit'}"
 			>{name || m['admin.tags.previewPlaceholder']()}</span>
 		</div>
 

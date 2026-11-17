@@ -66,7 +66,7 @@
 </script>
 
 <header
-	class="sticky top-0 z-30 flex h-14 items-center gap-2 border-b border-border bg-background/80 px-5 backdrop-blur-md min-[900px]:hidden"
+	class="sticky top-0 z-30 flex h-14 items-center gap-2 border-b border-border bg-background px-5 min-[900px]:hidden"
 	aria-label={m['chrome.header.ariaLabel']()}
 >
 	<button
@@ -99,7 +99,7 @@
 </header>
 
 <header
-	class="sticky top-0 z-30 hidden h-[66px] items-center justify-between gap-4 border-b border-border/60 bg-background/80 px-11 backdrop-blur-md min-[900px]:flex"
+	class="sticky top-0 z-30 hidden h-[66px] items-center justify-between gap-4 border-b border-border/60 bg-background px-11 min-[900px]:flex"
 	aria-label={m['chrome.context.ariaLabel']()}
 	data-testid="context-header"
 >

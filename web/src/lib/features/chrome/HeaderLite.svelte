@@ -15,7 +15,7 @@
 </script>
 
 <header
-	class="sticky top-0 z-30 flex h-14 items-center gap-2 border-b border-border bg-background/80 px-2 backdrop-blur-md sm:px-5"
+	class="sticky top-0 z-30 flex h-14 items-center gap-2 border-b border-border bg-background px-2 sm:px-5"
 	aria-label={m['chrome.header.ariaLabel']()}
 >
 	<a
