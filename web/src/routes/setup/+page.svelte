@@ -1,5 +1,6 @@
 <script lang="ts">
 	import Alert from '#lib/shared/ui/Alert.svelte';
+	import BrandPanel from '#lib/shared/ui/BrandPanel.svelte';
 	import Button from '#lib/shared/ui/Button.svelte';
 	import Card from '#lib/shared/ui/Card.svelte';
 	import Checkbox from '#lib/shared/ui/Checkbox.svelte';
@@ -154,8 +155,10 @@
 	<title>{m['setup.title']()}</title>
 </svelte:head>
 
-<div class="flex w-full flex-1 flex-col items-center justify-center">
-	<div class="w-full max-w-md">
+<div class="grid w-full flex-1 grid-cols-1 bg-background lg:grid-cols-2">
+	<BrandPanel mode="setup" />
+	<div class="flex flex-col justify-center px-6 py-10 sm:px-12 sm:py-14 lg:px-16 xl:px-24">
+	<div class="mx-auto w-full max-w-md">
 		<Card pad="lg" class="flex flex-col gap-4">
 			{#if step === 'loading' || step === 'done'}
 				<div>
@@ -305,4 +308,5 @@
 			{/if}
 		</Card>
 	</div>
+</div>
 </div>

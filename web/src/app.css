@@ -320,6 +320,49 @@
    source order - same-specificity plain CSS here would otherwise clobber
    them since this block loads after Tailwind's utilities. */
 @layer components {
+  /* Cinematic brand surface (login, admin login, setup, error). */
+  .pv-cinematic-glow {
+    background:
+      radial-gradient(circle at 18% 16%, oklch(72% 0.17 44deg / 0.35), transparent 52%),
+      radial-gradient(circle at 82% 76%, oklch(76% 0.16 75deg / 0.18), transparent 50%);
+  }
+  .pv-cinematic-grid {
+    opacity: 0.16;
+    background-image: radial-gradient(currentColor 0.65px, transparent 0.65px);
+    background-size: 20px 20px;
+    mask-image: linear-gradient(to bottom, transparent, oklch(0% 0 0 / 0.7) 32%, transparent 92%);
+  }
+  .pv-cinematic-flow {
+    stroke-dasharray: 3 12;
+    animation: pv-cinematic-flow 4s linear infinite;
+  }
+  .pv-cinematic-float {
+    animation: pv-cinematic-float 6s ease-in-out infinite;
+  }
+  .pv-cinematic-pulse,
+  .pv-cinematic-dot {
+    transform-box: fill-box;
+    transform-origin: center;
+    animation: pv-cinematic-pulse-kf 2.8s ease-in-out infinite;
+  }
+  @keyframes pv-cinematic-flow {
+    to { stroke-dashoffset: -60; }
+  }
+  @keyframes pv-cinematic-float {
+    50% { transform: translateY(-4px); }
+  }
+  @keyframes pv-cinematic-pulse-kf {
+    50% { opacity: 0.35; transform: scale(0.78); }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .pv-cinematic-flow,
+    .pv-cinematic-float,
+    .pv-cinematic-pulse,
+    .pv-cinematic-dot {
+      animation: none;
+    }
+  }
+
   /* One focus recipe for the whole app: a 2px ring separated from the control
      by a 2px background gap. Every interactive element uses `.pv-focus` (or
      the Tailwind equivalent it mirrors) so focus never looks hand-rolled.

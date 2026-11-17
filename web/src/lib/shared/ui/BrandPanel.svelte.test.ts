@@ -31,5 +31,13 @@ describe('BrandPanel', () => {
 
 		expect(document.body.textContent).toContain('Proxmox VM Self-Service (PVMSS)');
 		expect(document.body.querySelector('ul')).toBeNull();
+		expect(document.body.querySelector('[data-testid="error-scene"]')).not.toBeNull();
+		expect(document.body.querySelector('[data-testid="auth-machine-scene"]')).toBeNull();
+	});
+
+	it('uses the auth scene with setup copy in setup mode', () => {
+		mount(BrandPanel, { target: document.body, props: { mode: 'setup' } });
+
+		expect(document.body.querySelector('[data-testid="auth-machine-scene"]')).not.toBeNull();
 	});
 });
