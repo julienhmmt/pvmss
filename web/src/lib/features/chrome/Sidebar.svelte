@@ -33,7 +33,6 @@
 	import NotificationBell from '#lib/features/notifications/NotificationBell.svelte';
 	import LanguageSwitcher from './LanguageSwitcher.svelte';
 	import ThemeToggle from './ThemeToggle.svelte';
-	import MotionToggle from './MotionToggle.svelte';
 	import { orderPinnedFirst, pinKey, readPins, togglePin } from './pinned-vms';
 
 	const session = getSessionContext();
@@ -448,9 +447,9 @@
 				{m['chrome.header.docs']()}
 			</a>
 		{/if}
-		<div class="flex items-center justify-between gap-1" role="group" aria-label={m['chrome.sidebar.preferences']()}>
+		<div class="flex items-center justify-between gap-2 px-1" role="group" aria-label={m['chrome.sidebar.preferences']()}>
 			<LanguageSwitcher />
-			<ThemeToggle><MotionToggle bare /></ThemeToggle>
+			<ThemeToggle />
 		</div>
 
 		{#if session.principal}

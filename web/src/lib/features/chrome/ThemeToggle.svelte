@@ -1,5 +1,5 @@
 <script lang="ts">
-	import type { Component, Snippet } from 'svelte';
+	import type { Component } from 'svelte';
 	import { getThemeContext, type ThemePreference } from './theme.svelte';
 	import { m } from '#lib/paraglide/messages.js';
 	import SunIcon from '#lib/shared/ui/icons/SunIcon.svelte';
@@ -14,8 +14,6 @@
 		{ value: 'system', icon: MonitorIcon, name: () => m['nav.theme.system']() }
 	];
 
-	/** Extra display controls sharing the pill (the sidebar's MotionToggle), after a divider. */
-	let { children }: { children?: Snippet } = $props();
 	const theme = getThemeContext();
 </script>
 
@@ -27,15 +25,11 @@
 			aria-label={option.name()}
 			title={option.name()}
 			onclick={() => theme.set(option.value)}
-			class="inline-flex h-7 w-7 items-center justify-center rounded-md transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring {theme.preference === option.value
+			class="inline-flex h-7 w-8 items-center justify-center rounded-md transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring {theme.preference === option.value
 				? 'bg-muted text-foreground'
 				: 'text-muted-foreground hover:text-foreground'}"
 		>
 			<option.icon class="h-4 w-4" />
 		</button>
 	{/each}
-	{#if children}
-		<span class="mx-0.5 h-4 w-px bg-border" aria-hidden="true"></span>
-		{@render children()}
-	{/if}
 </div>

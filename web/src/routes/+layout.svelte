@@ -23,6 +23,7 @@
 	import AppHeader from '#lib/features/chrome/AppHeader.svelte';
 	import HeaderLite from '#lib/features/chrome/HeaderLite.svelte';
 	import StatusBanner from '#lib/features/chrome/StatusBanner.svelte';
+	import MotionToggle from '#lib/features/chrome/MotionToggle.svelte';
 	import ShortcutsDialog from '#lib/features/chrome/ShortcutsDialog.svelte';
 	import CommandPalette from '#lib/features/chrome/CommandPalette.svelte';
 	import Toaster from '#lib/shared/ui/Toaster.svelte';
@@ -279,6 +280,7 @@
 						{#if version}<span class="font-mono"> · {version}</span>{/if}
 					</p>
 					<div class="flex items-center gap-4">
+						<MotionToggle />
 						<a href={resolvePath('/about')} class="hover:text-foreground hover:underline">{m['chrome.footer.about']()}</a>
 						<a href={GITHUB_URL} target="_blank" rel="noopener noreferrer" class="hover:text-foreground hover:underline">
 							{m['chrome.footer.github']()}<span aria-hidden="true"> ↗</span><span class="sr-only"> {m['chrome.footer.externalLink']()}</span>
@@ -319,6 +321,7 @@
 			<footer class="border-t border-border py-3 text-center text-xs text-muted-foreground-subtle">
 				{#if version}PVMSS {version}{/if}
 				<div class="mt-1 flex items-center justify-center gap-4">
+					<MotionToggle />
 					<a href={resolvePath('/about')} class="hover:text-foreground hover:underline">{m['chrome.footer.about']()}</a>
 					<a href={GITHUB_URL} target="_blank" rel="noopener noreferrer" class="hover:text-foreground hover:underline">
 						{m['chrome.footer.github']()}<span aria-hidden="true"> ↗</span><span class="sr-only"> {m['chrome.footer.externalLink']()}</span>
