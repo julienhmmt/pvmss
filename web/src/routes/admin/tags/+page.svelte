@@ -21,15 +21,13 @@
 	cluster={store.cluster}
 	onClusterChange={(v) => store.setCluster(v)}
 	search={store.search}
-	protectedFilter={store.protectedFilter}
 	sortBy={store.sortBy}
 	sortDir={store.sortDir}
 	onSearchChange={(v) => (store.search = v)}
-	onProtectedFilterChange={(v) => (store.protectedFilter = v)}
 	onSort={(column) => store.setSort(column)}
 	onResetFilters={() => store.resetFilters()}
 	onCreate={(name, color) => store.create(name, color)}
-	onUpdateColor={(name, color) => void store.updateColor(name, color)}
-	onDelete={(name) => void store.remove(name)}
+	onUpdateColor={(name, color) => store.updateColor(name, color)}
+	onDelete={(name) => store.remove(name)}
 	onClearSaveError={() => (store.saveError = null)}
 />

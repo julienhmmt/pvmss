@@ -23,6 +23,8 @@
 		labelledBy: string;
 		onClose: () => void;
 		size?: DialogSize;
+		/** 'side' renders a full-height drawer on the right (full width on phones). */
+		placement?: 'center' | 'side';
 		/** Pinned action row below the scrolling body. */
 		footer?: Snippet;
 		children: Snippet;
@@ -33,6 +35,7 @@
 		labelledBy,
 		onClose,
 		size = 'md',
+		placement = 'center',
 		footer,
 		children
 	}: Props = $props();
@@ -73,7 +76,9 @@
 	<!-- The dialog element fills the viewport transparently: a click that lands
 	     on it (not on the panel) is a backdrop click. -->
 	<dialog
-		class="pv-dialog m-0 flex h-full max-h-none w-full max-w-none items-center justify-center overflow-y-auto bg-transparent p-4"
+		class="pv-dialog m-0 flex h-full max-h-none w-full max-w-none overflow-y-auto bg-transparent {placement === 'side'
+			? 'items-stretch justify-end p-0 sm:p-2'
+			: 'items-center justify-center p-4'}"
 		aria-labelledby={labelledBy}
 		onclick={(event) => {
 			if (event.target === event.currentTarget) onClose();
@@ -86,9 +91,9 @@
 		use:showModal
 	>
 		<div
-			class="dialog-fade-in flex max-h-[calc(100svh-2rem)] w-full {sizeClasses[
-				size
-			]} flex-col overflow-hidden rounded-xl border border-border bg-card text-card-foreground shadow-overlay"
+			class="dialog-fade-in flex w-full {sizeClasses[size]} {placement === 'side'
+				? 'h-full max-h-none sm:rounded-xl'
+				: 'max-h-[calc(100svh-2rem)] rounded-xl'} flex-col overflow-hidden border border-border bg-card text-card-foreground shadow-overlay"
 			tabindex="-1"
 			use:focusTrap
 		>

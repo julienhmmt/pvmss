@@ -31,7 +31,6 @@ export class AdminTagsStore {
 	#loadRequestId = 0;
 
 	search = $state('');
-	protectedFilter: 'all' | 'protected' | 'unprotected' = $state('all');
 	sortBy: 'name' | 'vmCount' = $state('name');
 	sortDir: 'asc' | 'desc' = $state('asc');
 
@@ -39,8 +38,6 @@ export class AdminTagsStore {
 		sortTags(
 			this.tags.filter((t) => {
 				if (this.search && !t.name.toLowerCase().includes(this.search.toLowerCase())) return false;
-				if (this.protectedFilter === 'protected' && !t.protected) return false;
-				if (this.protectedFilter === 'unprotected' && t.protected) return false;
 				return true;
 			}),
 			this.sortBy,
@@ -59,7 +56,6 @@ export class AdminTagsStore {
 
 	resetFilters(): void {
 		this.search = '';
-		this.protectedFilter = 'all';
 		this.sortBy = 'name';
 		this.sortDir = 'asc';
 	}
@@ -119,27 +115,35 @@ export class AdminTagsStore {
 		}
 	}
 
-	async updateColor(name: string, color: string): Promise<void> {
+	async updateColor(name: string, color: string): Promise<boolean> {
+		this.saving = true;
 		this.saveError = null;
 		try {
 			const updated = await put<AdminTag>(`/api/v1/admin/tags/${name}/color`, {
 				cluster: this.cluster, color
 			});
 			this.tags = this.tags.map((t) => (t.name === name ? { ...updated, vmCount: t.vmCount } : t));
+			return true;
 		} catch (err) {
 			this.saveError = err instanceof ApiRequestError ? err.message : m['admin.tags.updateColorError']();
-			throw err;
+			return false;
+		} finally {
+			this.saving = false;
 		}
 	}
 
-	async remove(name: string): Promise<void> {
+	async remove(name: string): Promise<boolean> {
+		this.saving = true;
 		this.saveError = null;
 		try {
 			await del<{ status: string }>(`/api/v1/admin/tags/${name}?cluster=${encodeURIComponent(this.cluster)}`);
 			this.tags = this.tags.filter((t) => t.name !== name);
+			return true;
 		} catch (err) {
 			this.saveError = err instanceof ApiRequestError ? err.message : m['admin.tags.deleteError']();
-			throw err;
+			return false;
+		} finally {
+			this.saving = false;
 		}
 	}
 }
