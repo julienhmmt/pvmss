@@ -161,6 +161,40 @@ func TestUpdateProfile_Success(t *testing.T) {
 	}
 }
 
+// TestUpdateProfile_RenameID - NewID renames the profile; invalid or taken
+// ids are refused.
+func TestUpdateProfile_RenameID(t *testing.T) {
+	t.Parallel()
+
+	st := openAdminStore(t)
+	ctx := context.Background()
+	spec := catalog.ProfileSpec{Label: testProfileLabel, CPUCores: 1, MemoryMB: 2048, DiskGB: 20, Bus: testProfileBus}
+
+	spec.NewID = "Bad ID"
+	if _, err := catalog.UpdateProfile(ctx, st, "default", testProfileID, spec); !errors.Is(err, catalog.ErrInvalidProfile) {
+		t.Fatalf("invalid id: err = %v, want ErrInvalidProfile", err)
+	}
+
+	spec.NewID = "medium"
+	if _, err := catalog.UpdateProfile(ctx, st, "default", testProfileID, spec); !errors.Is(err, catalog.ErrDuplicateProfile) {
+		t.Fatalf("taken id: err = %v, want ErrDuplicateProfile", err)
+	}
+
+	spec.NewID = "tiny"
+	renamed, err := catalog.UpdateProfile(ctx, st, "default", testProfileID, spec)
+	if err != nil {
+		t.Fatalf("rename: %v", err)
+	}
+
+	if renamed.ID != "tiny" {
+		t.Errorf("renamed.ID = %q, want tiny", renamed.ID)
+	}
+
+	if exists, _ := st.ProfileExists(ctx, "default", testProfileID); exists {
+		t.Errorf("old id %q still exists", testProfileID)
+	}
+}
+
 // TestDeleteProfile_NotFound - deleting a non-existent profile returns
 // ErrProfileNotFound.
 func TestDeleteProfile_NotFound(t *testing.T) {

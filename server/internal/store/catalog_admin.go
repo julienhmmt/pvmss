@@ -339,10 +339,10 @@ func (s *Store) InsertProfile(ctx context.Context, cluster, id string, values Pr
 // UpdateProfile updates an existing profile's values. Returns sql.ErrNoRows if
 // the profile does not exist (guards against a delete between the catalog
 // layer's existence check and this UPDATE).
-func (s *Store) UpdateProfile(ctx context.Context, cluster, id string, values ProfileValues) error {
+func (s *Store) UpdateProfile(ctx context.Context, cluster, id, newID string, values ProfileValues) error {
 	return execUpdateOne(ctx, s.db,
-		`UPDATE catalog_profiles SET label = ?, sockets = ?, cpu_cores = ?, memory_mb = ?, disk_gb = ?, bus = ?, description = ? WHERE cluster = ? AND id = ?`,
-		[]any{values.Label, values.Sockets, values.CPUCores, values.MemoryMB, values.DiskGB, values.Bus, values.Description, cluster, id},
+		`UPDATE catalog_profiles SET id = ?, label = ?, sockets = ?, cpu_cores = ?, memory_mb = ?, disk_gb = ?, bus = ?, description = ? WHERE cluster = ? AND id = ?`,
+		[]any{newID, values.Label, values.Sockets, values.CPUCores, values.MemoryMB, values.DiskGB, values.Bus, values.Description, cluster, id},
 	)
 }
 

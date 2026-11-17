@@ -99,7 +99,7 @@ describe('ProfilesPage description field', () => {
 		document.querySelector<HTMLFormElement>('dialog form')!.requestSubmit();
 		await tick();
 
-		expect(handlers.onUpdate).toHaveBeenCalledWith('small', 'Small', 1, 2048, 20, 'scsi', 1, '');
+		expect(handlers.onUpdate).toHaveBeenCalledWith('small', 'Small', 1, 2048, 20, 'scsi', 1, '', 'small');
 		void unmount(component);
 	});
 });

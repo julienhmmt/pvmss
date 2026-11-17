@@ -117,7 +117,7 @@ describe('ProfilesPage expert mode', () => {
 		await tick();
 		await tick();
 
-		expect(onUpdate).toHaveBeenCalledWith('small', 'Small', 1, 2048, 20, 'scsi', 1, '');
+		expect(onUpdate).toHaveBeenCalledWith('small', 'Small', 1, 2048, 20, 'scsi', 1, '', 'small');
 		void unmount(component);
 	});
 
@@ -155,7 +155,7 @@ describe('ProfilesPage expert mode', () => {
 
 		expect(document.querySelector('[data-testid="profile-expert-json"]')).toBeNull();
 		expect(document.querySelector('dialog')?.textContent).not.toMatch(/missing field/i);
-		expect(document.querySelector<HTMLInputElement>('dialog input[required]')?.value).toBe('Small');
+		expect(document.querySelector<HTMLInputElement>('dialog input[required]:not([pattern])')?.value).toBe('Small');
 		void unmount(component);
 	});
 });

@@ -115,6 +115,9 @@ type ProfileSpec struct {
 	DiskGB      int
 	Bus         string
 	Description string
+	// NewID renames the profile on update when set and different from the
+	// current id. Ignored by CreateProfile.
+	NewID string
 }
 
 // CreateProfile derives a slug from the label, validates the fields, rejects
@@ -195,7 +198,12 @@ func UpdateProfile(ctx context.Context, st *store.Store, cluster, id string, spe
 		return AdminProfile{}, ErrProfileNotFound
 	}
 
-	if err := st.UpdateProfile(ctx, cluster, id, store.ProfileValues{Label: label, Sockets: spec.Sockets, CPUCores: spec.CPUCores, MemoryMB: spec.MemoryMB, DiskGB: spec.DiskGB, Bus: spec.Bus, Description: description}); err != nil {
+	newID, err := resolveNewProfileID(ctx, st, cluster, id, spec.NewID)
+	if err != nil {
+		return AdminProfile{}, err
+	}
+
+	if err := st.UpdateProfile(ctx, cluster, id, newID, store.ProfileValues{Label: label, Sockets: spec.Sockets, CPUCores: spec.CPUCores, MemoryMB: spec.MemoryMB, DiskGB: spec.DiskGB, Bus: spec.Bus, Description: description}); err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return AdminProfile{}, ErrProfileNotFound
 		}
@@ -210,7 +218,7 @@ func UpdateProfile(ctx context.Context, st *store.Store, cluster, id string, spe
 	}
 
 	for _, r := range rows {
-		if r.ID == id {
+		if r.ID == newID {
 			return AdminProfile{
 				ID: r.ID, Label: r.Label, Sockets: r.Sockets, CPUCores: r.CPUCores,
 				MemoryMB: r.MemoryMB, DiskGB: r.DiskGB, Bus: r.Bus, Enabled: r.Enabled,
@@ -220,6 +228,31 @@ func UpdateProfile(ctx context.Context, st *store.Store, cluster, id string, spe
 	}
 
 	return AdminProfile{}, ErrProfileNotFound
+}
+
+// resolveNewProfileID returns the id the profile keeps after an update: the
+// current one when requested is empty or unchanged, else requested once it is
+// a valid slug not used by another profile of the cluster.
+func resolveNewProfileID(ctx context.Context, st *store.Store, cluster, current, requested string) (string, error) {
+	requested = strings.TrimSpace(requested)
+	if requested == "" || requested == current {
+		return current, nil
+	}
+
+	if DeriveProfileID(requested) != requested {
+		return "", fmt.Errorf("%w: id must be lowercase letters, digits and hyphens", ErrInvalidProfile)
+	}
+
+	taken, err := st.ProfileExists(ctx, cluster, requested)
+	if err != nil {
+		return "", err
+	}
+
+	if taken {
+		return "", ErrDuplicateProfile
+	}
+
+	return requested, nil
 }
 
 // DeleteProfile removes a profile row. Returns ErrProfileNotFound if the id

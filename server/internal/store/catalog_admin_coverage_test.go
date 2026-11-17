@@ -399,7 +399,7 @@ func TestUpdateProfile_SuccessAndNotFound(t *testing.T) {
 	}
 
 	updated := store.ProfileValues{Label: "Updated", CPUCores: 8, MemoryMB: 16384, DiskGB: 80, Bus: "virtio"}
-	if err := st.UpdateProfile(ctx, catalogTestCluster, "update-test", updated); err != nil {
+	if err := st.UpdateProfile(ctx, catalogTestCluster, "update-test", "update-test", updated); err != nil {
 		t.Fatalf("UpdateProfile: %v", err)
 	}
 
@@ -429,7 +429,7 @@ func TestUpdateProfile_SuccessAndNotFound(t *testing.T) {
 		t.Errorf("Bus = %q, want virtio", p.Bus)
 	}
 
-	if err := st.UpdateProfile(ctx, catalogTestCluster, "nonexistent", updated); !errors.Is(err, sql.ErrNoRows) {
+	if err := st.UpdateProfile(ctx, catalogTestCluster, "nonexistent", "nonexistent", updated); !errors.Is(err, sql.ErrNoRows) {
 		t.Fatalf("UpdateProfile(nonexistent) error = %v, want sql.ErrNoRows", err)
 	}
 }
@@ -983,7 +983,7 @@ func TestProfileDescription_RoundTripAndClear(t *testing.T) {
 	assertProfileDescription(t, st, "Light web workloads")
 
 	values.Description = ""
-	if err := st.UpdateProfile(ctx, catalogTestCluster, "small", values); err != nil {
+	if err := st.UpdateProfile(ctx, catalogTestCluster, "small", "small", values); err != nil {
 		t.Fatalf("UpdateProfile clear: %v", err)
 	}
 

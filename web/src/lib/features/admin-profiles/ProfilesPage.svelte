@@ -53,7 +53,7 @@
 		onSort: (column: ProfileSortColumn) => void;
 		onResetFilters: () => void;
 		onCreate: (label: string, cpuCores: number, memoryMB: number, diskGB: number, bus: string, sockets: number, description: string) => Promise<boolean>;
-		onUpdate: (id: string, label: string, cpuCores: number, memoryMB: number, diskGB: number, bus: string, sockets: number, description: string) => Promise<boolean>;
+		onUpdate: (id: string, label: string, cpuCores: number, memoryMB: number, diskGB: number, bus: string, sockets: number, description: string, newId: string) => Promise<boolean>;
 		onDelete: (id: string) => void;
 		onToggle: (id: string, enabled: boolean) => void;
 		onClearSaveError: () => void;
@@ -120,6 +120,7 @@
 	let editingId = $state<string | null>(null);
 	let pendingDelete = $state<AdminProfile | null>(null);
 	let label = $state('');
+	let profileId = $state('');
 	let sockets = $state(1);
 	let cpuCores = $state(1);
 	let memoryMB = $state(2048);
@@ -159,6 +160,7 @@
 
 	function openEdit(profile: AdminProfile): void {
 		editingId = profile.id;
+		profileId = profile.id;
 		applyDraft({
 			label: profile.label,
 			sockets: profile.sockets ?? 1,
@@ -212,7 +214,7 @@
 		// A failed save keeps the dialog open with the draft intact and the
 		// store's saveError rendered inside it.
 		const succeeded = editingId
-			? await onUpdate(editingId, label, cpuCores, memoryMB, diskGB, bus, sockets, description)
+			? await onUpdate(editingId, label, cpuCores, memoryMB, diskGB, bus, sockets, description, profileId.trim())
 			: await onCreate(label, cpuCores, memoryMB, diskGB, bus, sockets, description);
 		if (succeeded) showForm = false;
 	}
@@ -403,6 +405,13 @@
 				data-testid="profile-expert-json"
 			></textarea>
 		{:else}
+		{#if editingId}
+			<FormField label={m['admin.profiles.id']()} hint={m['admin.profiles.tooltip.id']()} required>
+				{#snippet children({ id, describedBy, invalid })}
+					<TextField {id} {describedBy} {invalid} bind:value={profileId} required pattern="[a-z0-9]+(-[a-z0-9]+)*" />
+				{/snippet}
+			</FormField>
+		{/if}
 		<FormField label={m['admin.profiles.labelField']()} required>
 			{#snippet children({ id, describedBy, invalid })}
 				<TextField {id} {describedBy} {invalid} bind:value={label} required />

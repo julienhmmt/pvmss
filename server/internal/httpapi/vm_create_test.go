@@ -384,7 +384,7 @@ func TestVMCreateCatalog_ExposesProfileDescription(t *testing.T) {
 	seedStaleStorageApprovals(t, st)
 
 	values := store.ProfileValues{Label: "Small", Sockets: 1, CPUCores: 1, MemoryMB: 2048, DiskGB: 20, Bus: "scsi", Description: "Light web workloads"}
-	if err := st.UpdateProfile(context.Background(), auditTestCluster, "small", values); err != nil {
+	if err := st.UpdateProfile(context.Background(), auditTestCluster, "small", "small", values); err != nil {
 		t.Fatalf("UpdateProfile: %v", err)
 	}
 
@@ -679,7 +679,7 @@ func TestVMCreateCatalog_ProfileDescriptionHTML(t *testing.T) {
 	hostile := "**bold** <script>alert(1)</script> [x](javascript:alert(1))"
 	values := store.ProfileValues{Label: "Small", Sockets: 1, CPUCores: 1, MemoryMB: 2048, DiskGB: 20, Bus: "scsi", Description: hostile}
 
-	if err := st.UpdateProfile(context.Background(), auditTestCluster, "small", values); err != nil {
+	if err := st.UpdateProfile(context.Background(), auditTestCluster, "small", "small", values); err != nil {
 		t.Fatalf("UpdateProfile: %v", err)
 	}
 

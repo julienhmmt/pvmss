@@ -32,7 +32,7 @@
 	onSort={(column) => store.setSort(column)}
 	onResetFilters={() => store.resetFilters()}
 	onCreate={(label, cpuCores, memoryMB, diskGB, bus, sockets, description) => store.create(label, cpuCores, memoryMB, diskGB, bus, sockets, description)}
-	onUpdate={(id, label, cpuCores, memoryMB, diskGB, bus, sockets, description) => store.update(id, label, cpuCores, memoryMB, diskGB, bus, sockets, description)}
+	onUpdate={(id, label, cpuCores, memoryMB, diskGB, bus, sockets, description, newId) => store.update(id, label, cpuCores, memoryMB, diskGB, bus, sockets, description, newId)}
 	onDelete={(id) => void store.remove(id)}
 	onToggle={(id, enabled) => void store.toggle(id, enabled)}
 	onClearSaveError={() => (store.saveError = null)}

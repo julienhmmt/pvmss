@@ -35,6 +35,7 @@ type profileCreateRequest struct {
 
 type profileUpdateRequest struct {
 	Cluster     string `json:"cluster"`
+	ID          string `json:"id,omitempty"`
 	Label       string `json:"label"`
 	Sockets     int    `json:"sockets"`
 	CPUCores    int    `json:"cpuCores"`
@@ -145,9 +146,14 @@ func (h *AdminCatalog) ServeProfileUpdate(w http.ResponseWriter, r *http.Request
 		return
 	}
 
-	profile, err := catalog.UpdateProfile(r.Context(), h.store, clusterName, id, catalog.ProfileSpec{Label: req.Label, Sockets: req.Sockets, CPUCores: req.CPUCores, MemoryMB: req.MemoryMB, DiskGB: req.DiskGB, Bus: req.Bus, Description: req.Description})
+	profile, err := catalog.UpdateProfile(r.Context(), h.store, clusterName, id, catalog.ProfileSpec{Label: req.Label, Sockets: req.Sockets, CPUCores: req.CPUCores, MemoryMB: req.MemoryMB, DiskGB: req.DiskGB, Bus: req.Bus, Description: req.Description, NewID: req.ID})
 	if errors.Is(err, catalog.ErrProfileNotFound) {
 		writeAdminError(w, http.StatusNotFound, "not_found", "profile \""+id+"\" not found")
+		return
+	}
+
+	if errors.Is(err, catalog.ErrDuplicateProfile) {
+		writeAdminError(w, http.StatusConflict, "duplicate_profile", "a profile with this id already exists")
 		return
 	}
 
@@ -164,8 +170,8 @@ func (h *AdminCatalog) ServeProfileUpdate(w http.ResponseWriter, r *http.Request
 	}
 
 	h.recordAdminAction(r, "admin.profiles.update", "profile", id,
-		fmt.Sprintf("updated profile %s (%s) on cluster %s", profile.Label, id, clusterName),
-		[]any{map[string]any{auditKeyCluster: clusterName, "id": id, auditKeyLabel: profile.Label, "sockets": profile.Sockets, "cpuCores": profile.CPUCores, "memoryMB": profile.MemoryMB, "diskGB": profile.DiskGB, "bus": profile.Bus, auditKeyEnabled: profile.Enabled, "description": profile.Description}})
+		fmt.Sprintf("updated profile %s (%s) on cluster %s", profile.Label, profile.ID, clusterName),
+		[]any{map[string]any{auditKeyCluster: clusterName, "id": profile.ID, "previousId": id, auditKeyLabel: profile.Label, "sockets": profile.Sockets, "cpuCores": profile.CPUCores, "memoryMB": profile.MemoryMB, "diskGB": profile.DiskGB, "bus": profile.Bus, auditKeyEnabled: profile.Enabled, "description": profile.Description}})
 	writeAdminJSON(w, http.StatusOK, adminProfileDTO{
 		ID: profile.ID, Label: profile.Label, Sockets: profile.Sockets, CPUCores: profile.CPUCores,
 		MemoryMB: profile.MemoryMB, DiskGB: profile.DiskGB, Bus: profile.Bus, Enabled: profile.Enabled,
