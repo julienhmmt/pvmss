@@ -20,6 +20,8 @@ import (
 // rel="noopener noreferrer"; internal destinations (anchors like "#section",
 // relative paths, or mailto) are left untouched.
 func renderMarkdownToHTML(md string) string {
+	// NUL is the renderInline placeholder delimiter; input must not forge one.
+	md = strings.ReplaceAll(md, "\x00", "")
 	r := &mdRenderer{lines: strings.Split(strings.ReplaceAll(md, "\r\n", "\n"), "\n")}
 	return r.render()
 }
@@ -378,7 +380,9 @@ func safeURL(dest string) (safe, external bool) {
 		// Reject protocol-relative references like //example.com because the
 		// browser resolves them against the current scheme and they are not
 		// relative paths.
-		if u.Host != "" {
+		// Browsers also read "///host" and "/\host" as protocol-relative.
+		p := strings.ReplaceAll(strings.TrimSpace(dest), `\`, "/")
+		if u.Host != "" || strings.HasPrefix(p, "//") {
 			return false, false
 		}
 

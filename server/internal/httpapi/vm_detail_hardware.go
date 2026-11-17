@@ -1,7 +1,6 @@
 package httpapi
 
 import (
-	"encoding/json"
 	"net/http"
 	"pvmss/server/internal/vm"
 	"time"
@@ -145,7 +144,7 @@ func (h *VMDetail) handleRetrofitSeaBIOS(w http.ResponseWriter, r *http.Request)
 	}
 
 	if r.ContentLength > 0 {
-		if err := json.NewDecoder(r.Body).Decode(&request); err != nil {
+		if err := decodeJSON(w, r, &request); err != nil {
 			h.writeDetailError(w, http.StatusBadRequest, "invalid_request", "invalid request body")
 			return
 		}
