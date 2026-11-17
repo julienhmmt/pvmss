@@ -27,6 +27,7 @@
 	import { resolve } from '$app/paths';
 	import Button from '#lib/shared/ui/Button.svelte';
 	import ButtonLink from '#lib/shared/ui/ButtonLink.svelte';
+	import CinematicBackdrop from '#lib/shared/ui/CinematicBackdrop.svelte';
 	import Card from '#lib/shared/ui/Card.svelte';
 	import Pill from '#lib/shared/ui/Pill.svelte';
 	import OsMark from '#lib/shared/ui/OsMark.svelte';
@@ -254,7 +255,8 @@
 	<Alert data-testid="vm-detail-error">{store.error}</Alert>
 {:else if store.entity}
 	{@const entity = store.entity}
-	<header class="mb-4" data-testid="vm-detail-header">
+	<header class="relative isolate mb-4 overflow-hidden rounded-xl border border-border bg-card px-5 py-6 min-[700px]:px-7 min-[700px]:py-8" data-testid="vm-detail-header">
+		<CinematicBackdrop />
 		<ButtonLink href={backHref} variant="secondary" size="sm" class="mb-4" data-testid="page-back-link">
 			{#snippet icon()}
 				<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="h-3.5 w-3.5" aria-hidden="true">
