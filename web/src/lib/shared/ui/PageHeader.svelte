@@ -49,7 +49,7 @@
 
 <div
 	class="mb-6 {cinematic
-		? 'relative isolate overflow-hidden rounded-xl border border-border bg-card px-5 py-6 min-[700px]:px-7 min-[700px]:py-8'
+		? 'relative isolate overflow-hidden rounded-xl border border-border bg-card px-5 py-4 min-[700px]:px-7 min-[700px]:py-5'
 		: divider
 			? 'border-b border-border pb-5'
 			: ''}"
