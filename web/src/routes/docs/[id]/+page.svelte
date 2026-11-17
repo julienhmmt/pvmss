@@ -65,6 +65,7 @@
 
 <section class="w-full max-w-reading">
 	<PageHeader
+		cinematic
 		title={doc ? doc.title : m['docs.title']()}
 		eyebrow={m['help.eyebrow']()}
 		back={{ href: resolve('/docs'), label: m['docs.back']() }}

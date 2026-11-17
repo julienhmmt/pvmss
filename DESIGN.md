@@ -98,7 +98,7 @@ components:
   card:
     backgroundColor: "{colors.card}"
     textColor: "{colors.foreground}"
-    rounded: "{rounded.lg}"
+    rounded: "{rounded.xl}"
     padding: "1.25rem"
 ---
 
@@ -156,7 +156,7 @@ get a usable machine.
 - Single orange accent (oklch 56% 0.16 51deg) used sparingly
 - OKLCH color space for all semantic colors with soft background variants
 - Archivo Variable as the sole typeface (headings, body, labels, data)
-- 8px base radius (0.5rem) with 6px control radius (0.375rem)
+- 12px surface radius (0.75rem) with 6px control radius (0.375rem)
 - Two-layer soft card shadows, not hard drop shadows
 - Responsive tables that collapse to stacked cards on mobile
 - Reduced-motion support on all animations
@@ -415,25 +415,28 @@ nav items.
 
 Two radius values carry the whole system, and the split is deliberate:
 
-- **Cards, tiles, and panels** use the base radius (0.5rem, `--radius` /
-  `rounded.lg`).
+- **Cards and panels** use the surface radius (0.75rem, `--radius-xl` /
+  `rounded-xl`) - `Card`, `PageHeader`, `Dialog`, `TableCard`, `Alert`,
+  toasts and menus all share it.
 - **Every interactive control** - button, input, select, icon button, tab,
-  radio card - uses the single control radius (0.375rem, `--radius-control` /
-  `rounded.control`). A button next to a field then reads as one control set
-  rather than two different materials.
+  radio card, chip - uses the single control radius (0.375rem,
+  `--radius-control` / `rounded.control`). A button next to a field then
+  reads as one control set rather than two different materials.
 
-Nothing in between: there is no "small card" radius and no pill-radius button
-(the status pill is the one intentional full-radius exception). Borders are
-always 1px and always warm (`--border`, or `--border-subtle` for internal
-hairlines); there are no thick borders and no colored side-stripes. The
-`--radius-sm` (0.375rem) and `--radius-xl` (0.75rem) steps exist in the token
-layer but are not used by the current component set - do not reach for them
-without a reason.
+Elements nested inside a surface keep smaller radii - `rounded-lg` for
+bordered inner panels and icon tiles, `rounded-md` for code blocks - so a
+nested corner never matches its parent. Full radius (`rounded-full`) is
+reserved for non-rectangular shapes: status dots, meters, tag chips. There
+is no pill-radius button. Borders are always 1px and always warm
+(`--border`, or `--border-subtle` for internal hairlines); there are no
+thick borders and no colored side-stripes. The remaining `--radius-*` steps
+exist in the token layer for legacy Tailwind scale names only - do not
+reach for them without a reason.
 
 ### Shape Rules
 
-**The Two-Radius Rule.** Cards get 0.5rem, controls get 0.375rem. Introducing
-a third radius for a one-off is drift.
+**The Two-Radius Rule.** Surfaces get 0.75rem, controls get 0.375rem.
+Introducing a third radius for a one-off is drift.
 
 ## Components
 
@@ -442,7 +445,7 @@ the feedback, and every variant maps to intent rather than to colour.
 
 ### Buttons
 
-- **Shape:** `--radius-control` (0.25rem) - the same radius as inputs, so a
+- **Shape:** `--radius-control` (0.375rem) - the same radius as inputs, so a
   button next to a field reads as one control set. inline-flex, items-center,
   gap-2, fixed heights (sm 2rem / md 2.5rem / lg 2.75rem, plus square `icon`
   and `icon-sm` sizes) so a row of mixed controls aligns without hand-tuning.
@@ -472,7 +475,7 @@ component in two semantics - which one a call site needs is a semantics decision
 
 ### Inputs / Fields
 
-- **Style:** 1px solid warm border, warm paper background, 0.25rem radius,
+- **Style:** 1px solid warm border, warm paper background, 0.375rem radius,
   0.5rem 0.75rem padding. Applied via `.pv-input` class.
 - **Focus:** Border shifts to ring color, 2px box-shadow ring offset by 2px
   background. Matches Button focus ring.
@@ -498,7 +501,7 @@ prepared options" control.
 
 ### Cards / Containers
 
-- **Corner Style:** Radius lg (0.375rem)
+- **Corner Style:** Radius xl (0.75rem)
 - **Background:** Card White (#ffffff) in light, `oklch(21% 0.006 56deg)` in dark
 - **Shadow Strategy:** `.shadow-card` - two-layer soft, warm-tinted
 - **Border:** 1px solid warm border

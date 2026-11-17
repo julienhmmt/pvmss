@@ -6,7 +6,7 @@
 
 :root {
   /* Layer B - PVMSS App mockup (specs/002-design-import/contracts/visual-language.md).
-     Warm paper ground, white surfaces, orange accent, 8px radius, two mute steps. */
+     Warm paper ground, white surfaces, orange accent, 12px surface radius, two mute steps. */
   --background: #f7f6f4;
   --foreground: #1c1a19;
   --card: #ffffff;
