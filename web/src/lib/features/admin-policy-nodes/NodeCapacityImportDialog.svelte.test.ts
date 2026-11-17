@@ -18,7 +18,7 @@ function render() {
 	const onClose = vi.fn();
 	const component = mount(NodeCapacityImportDialog, {
 		target: document.body,
-		props: { open: true, saving: false, saveError: null, onImport, onClose }
+		props: { open: true, nodeNames: ['pve-node-01', 'pve2'], saving: false, saveError: null, onImport, onClose }
 	});
 	return { component, onImport, onClose };
 }
@@ -74,17 +74,21 @@ describe('NodeCapacityImportDialog', () => {
 		textarea.dispatchEvent(new Event('input', { bubbles: true }));
 		await tick();
 
-		const target = document.querySelector<HTMLInputElement>('[data-testid="node-import-target"]')!;
+		expect(document.querySelector('[data-testid="node-import-target"]')).toBeNull();
+		document.querySelector<HTMLInputElement>('[data-testid="node-import-retarget"]')!.click();
+		await tick();
+
+		const target = document.querySelector<HTMLSelectElement>('[data-testid="node-import-target"]')!;
 		expect(target.value).toBe('pve-node-01');
-		target.value = 'pve2';
-		target.dispatchEvent(new Event('input', { bubbles: true }));
+		target.querySelector<HTMLOptionElement>('option[value="pve2"]')!.selected = true;
+		target.dispatchEvent(new Event('change', { bubbles: true }));
 		await tick();
 
 		document.querySelector<HTMLFormElement>('dialog form')!.requestSubmit();
 		await tick();
 		await tick();
 
-		expect(onImport.mock.calls[0]?.[0][0].nodes[0]).toEqual({ node: 'pve2', maxVms: 4, maxVcpus: 8, maxRamGb: 16, maxDiskGb: 100 });
+		expect(onImport).toHaveBeenCalledWith([{ cluster: null, nodes: [{ node: 'pve2', maxVms: 4, maxVcpus: 8, maxRamGb: 16, maxDiskGb: 100 }, { node: 'pve-node-02', maxVms: 2, maxVcpus: 4, maxRamGb: 8, maxDiskGb: 50 }] }], false);
 		void unmount(component);
 	});
 

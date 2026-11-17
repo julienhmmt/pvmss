@@ -29,6 +29,7 @@
 	const targetClusters = new SvelteSet<string>();
 	// Target ID per row, so a profile can be imported under another ID.
 	let targetIds = $state<string[]>([]);
+	let retarget = $state(false);
 
 	// Each opening starts clean, targeting the cluster shown on the page.
 	$effect(() => {
@@ -41,6 +42,7 @@
 		outcomes = null;
 		chosenItems.clear();
 		targetIds = [];
+		retarget = false;
 		targetClusters.clear();
 		if (cluster) targetClusters.add(cluster);
 	});
@@ -63,8 +65,9 @@
 		const file = e.currentTarget.files?.[0];
 		if (!file) return;
 		selectedFileName = file.name;
-		pastedJson = '';
-		loadFromText(await file.text());
+		// Show the file's content so the admin sees what is imported.
+		pastedJson = await file.text();
+		loadFromText(pastedJson);
 	}
 
 	function onPasteInput(e: Event & { currentTarget: HTMLTextAreaElement }): void {
@@ -81,7 +84,7 @@
 	async function submit(): Promise<void> {
 		const chosen = items
 			.map((item, i) => {
-				const id = targetIds[i]?.trim();
+				const id = retarget ? targetIds[i]?.trim() : '';
 				return id ? { ...item, id } : item;
 			})
 			.filter((_, i) => chosenItems.has(i));
@@ -163,14 +166,33 @@
 									<span>{item.label}</span>
 									<span class="text-xs text-muted-foreground">{vcpuTotal(item)} vCPU, {item.memoryMB} MB, {item.diskGB} GB</span>
 								</label>
-								<label class="ml-6 mt-1 flex items-center gap-2 text-xs text-muted-foreground">
-									{m['admin.profiles.importAsId']()}
-									<input class="pv-input w-40 py-1" bind:value={targetIds[i]} data-testid="profile-import-id" />
-								</label>
 							</li>
 						{/each}
 					</ul>
 				</fieldset>
+
+				<label class="flex items-center gap-2 text-sm">
+					<input type="checkbox" bind:checked={retarget} data-testid="profile-import-retarget" />
+					<span>{m['admin.profiles.importRetarget']()}</span>
+				</label>
+				{#if retarget}
+					<ul class="ml-6 space-y-1">
+						{#each items as item, i (i)}
+							<li>
+								<label class="flex items-center gap-2 text-sm">
+									<span class="min-w-32">{item.label}</span>
+									<span aria-hidden="true">&rarr;</span>
+									<input
+										class="pv-input w-48 py-1"
+										aria-label={m['admin.profiles.importAsId']()}
+										bind:value={targetIds[i]}
+										data-testid="profile-import-id"
+									/>
+								</label>
+							</li>
+						{/each}
+					</ul>
+				{/if}
 
 				<fieldset>
 					<legend class="mb-2 text-sm font-medium">{m['admin.profiles.importTargets']()}</legend>

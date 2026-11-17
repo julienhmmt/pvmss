@@ -33,6 +33,7 @@
 	const chosenItems = new SvelteSet<string>();
 	// Target node per row key, so caps exported from one node can land on another.
 	let targets = $state<Record<string, string>>({});
+	let retarget = $state(false);
 
 	$effect(() => {
 		if (!open) return;
@@ -44,6 +45,7 @@
 		outcomes = null;
 		chosenItems.clear();
 		targets = {};
+		retarget = false;
 	});
 
 	function loadFromText(text: string): void {
@@ -71,8 +73,9 @@
 		const file = e.currentTarget.files?.[0];
 		if (!file) return;
 		selectedFileName = file.name;
-		pastedJson = '';
-		loadFromText(await file.text());
+		// Show the file's content so the admin sees what is imported.
+		pastedJson = await file.text();
+		loadFromText(pastedJson);
 	}
 
 	function onPasteInput(e: Event & { currentTarget: HTMLTextAreaElement }): void {
@@ -89,7 +92,7 @@
 	async function submit(): Promise<void> {
 		const chosen = sections
 			.map((section, s) => ({ cluster: section.cluster, nodes: section.nodes
-					.map((item, i) => ({ ...item, node: targets[`${s}:${i}`]?.trim() || item.node }))
+					.map((item, i) => ({ ...item, node: (retarget && targets[`${s}:${i}`]) || item.node }))
 					.filter((_, i) => chosenItems.has(`${s}:${i}`)) }))
 			.filter((section) => section.nodes.length > 0);
 		outcomes = await onImport(chosen, overwrite);
@@ -174,14 +177,6 @@
 									<label class="flex items-center gap-2 text-sm">
 										<input type="checkbox" checked={chosenItems.has(`${s}:${i}`)} onchange={() => toggle(`${s}:${i}`)} />
 										<span>{item.node}</span>
-										<span aria-hidden="true">&rarr;</span>
-										<input
-											class="pv-input w-36 py-1"
-											list="node-capacity-import-targets"
-											aria-label={m['policy.nodesImportTarget']({ node: item.node })}
-											bind:value={targets[`${s}:${i}`]}
-											data-testid="node-import-target"
-										/>
 										<span class="text-xs text-muted-foreground">
 											{item.maxVms} VM, {item.maxVcpus} vCPU, {item.maxRamGb} GB RAM, {item.maxDiskGb} GB
 										</span>
@@ -190,10 +185,37 @@
 							{/each}
 						{/each}
 					</ul>
-					<datalist id="node-capacity-import-targets">
-						{#each nodeNames as name (name)}<option value={name}></option>{/each}
-					</datalist>
 				</fieldset>
+
+				<label class="flex items-center gap-2 text-sm">
+					<input type="checkbox" bind:checked={retarget} data-testid="node-import-retarget" />
+					<span>{m['policy.nodesImportRetarget']()}</span>
+				</label>
+				{#if retarget}
+					<ul class="ml-6 space-y-1">
+						{#each sections as section, s (s)}
+							{#each section.nodes as item, i (i)}
+								<li>
+									<label class="flex items-center gap-2 text-sm">
+										<span class="min-w-32">{item.node}</span>
+										<span aria-hidden="true">&rarr;</span>
+										<select
+											class="pv-input w-48 py-1"
+											aria-label={m['policy.nodesImportTarget']()}
+											value={targets[`${s}:${i}`]}
+											onchange={(e) => (targets = { ...targets, [`${s}:${i}`]: e.currentTarget.value })}
+											data-testid="node-import-target"
+										>
+											{#each nodeNames.includes(item.node) ? nodeNames : [item.node, ...nodeNames] as name (name)}
+												<option value={name}>{name}</option>
+											{/each}
+										</select>
+									</label>
+								</li>
+							{/each}
+						{/each}
+					</ul>
+				{/if}
 
 				<label class="flex items-center gap-2 text-sm">
 					<input type="checkbox" bind:checked={overwrite} data-testid="node-import-overwrite" />
