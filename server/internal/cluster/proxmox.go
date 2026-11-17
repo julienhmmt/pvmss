@@ -119,6 +119,19 @@ const proxmoxStorageType = "storage"
 // VM, and storage summary (uptime included), then one /qemu/{vmid}/config
 // call per VM to hydrate what the summary omits (see hydrateVM).
 func (p Proxmox) Snapshot(ctx context.Context) (Snapshot, error) {
+	return p.SnapshotFrom(ctx, Snapshot{})
+}
+
+// SnapshotFrom implements IncrementalSnapshotter. A VM whose resources row is
+// unchanged since prev (same ResourceDigest: node, status, name, tags, pool,
+// CPU, memory, disk, template) keeps prev's config hydration and takes only
+// its uptime from the new row; every other VM is hydrated. prev's
+// ProxmoxVersion is reused when set. An empty prev is a full Snapshot.
+//
+// Config edits invisible in the row (NICs, CD-ROM, description, boot order,
+// agent flag) made outside PVMSS are picked up by the caller's next full
+// Snapshot; PVMSS's own writes always trigger one.
+func (p Proxmox) SnapshotFrom(ctx context.Context, prev Snapshot) (Snapshot, error) {
 	rest := p.rest()
 
 	snap, err := proxmoxResources(ctx, rest)
@@ -126,14 +139,14 @@ func (p Proxmox) Snapshot(ctx context.Context) (Snapshot, error) {
 		return Snapshot{}, err
 	}
 
-	version, err := proxmoxVersion(ctx, rest)
-	if err != nil {
-		return Snapshot{}, err
+	snap.ProxmoxVersion = prev.ProxmoxVersion
+	if snap.ProxmoxVersion == "" {
+		if snap.ProxmoxVersion, err = proxmoxVersion(ctx, rest); err != nil {
+			return Snapshot{}, err
+		}
 	}
 
-	snap.ProxmoxVersion = version
-
-	vms, err := hydrateVMs(ctx, rest, snap.VMs)
+	vms, err := hydrateChangedVMs(ctx, rest, snap.VMs, prev.VMs)
 	if err != nil {
 		return Snapshot{}, err
 	}
@@ -141,6 +154,54 @@ func (p Proxmox) Snapshot(ctx context.Context) (Snapshot, error) {
 	snap.VMs = vms
 
 	return snap, nil
+}
+
+// hydrateChangedVMs hydrates the VMs whose digest differs from prev and
+// reuses prev's hydration (with the new row's uptime) for the rest, keeping
+// the order of vms. A VM gone before its config read is dropped.
+func hydrateChangedVMs(ctx context.Context, rest proxmoxRESTClient, vms, prev []VM) ([]VM, error) {
+	prevByID := make(map[int]VM, len(prev))
+	for _, vm := range prev {
+		prevByID[vm.VMID] = vm
+	}
+
+	reused := make([]bool, len(vms))
+
+	var stale []VM
+
+	for i, vm := range vms {
+		old, ok := prevByID[vm.VMID]
+		if !ok || old.ResourceDigest != vm.ResourceDigest {
+			stale = append(stale, vm)
+
+			continue
+		}
+
+		old.Uptime = vm.Uptime
+		vms[i], reused[i] = old, true
+	}
+
+	hydrated, err := hydrateVMs(ctx, rest, stale)
+	if err != nil {
+		return nil, err
+	}
+
+	fresh := make(map[int]VM, len(hydrated))
+	for _, vm := range hydrated {
+		fresh[vm.VMID] = vm
+	}
+
+	out := make([]VM, 0, len(vms))
+
+	for i, vm := range vms {
+		if reused[i] {
+			out = append(out, vm)
+		} else if h, ok := fresh[vm.VMID]; ok {
+			out = append(out, h)
+		}
+	}
+
+	return out, nil
 }
 
 // Topology implements TopologyReader: the single /cluster/resources call of
@@ -321,6 +382,8 @@ func proxmoxVMFromRow(row proxmoxResourceRow) VM {
 		CPUCores:    int(row.MaxCPU),
 		MemoryTotal: row.MaxMem,
 		Uptime:      time.Duration(row.Uptime) * time.Second,
+		ResourceDigest: fmt.Sprintf("%s|%s|%s|%s|%s|%g|%d|%d|%d",
+			row.Node, row.Status, row.Name, row.Tags, row.Pool, row.MaxCPU, row.MaxMem, row.MaxDisk, row.Template),
 	}
 }
 

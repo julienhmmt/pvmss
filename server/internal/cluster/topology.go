@@ -13,6 +13,14 @@ type TopologyReader interface {
 	Topology(ctx context.Context) (Snapshot, error)
 }
 
+// IncrementalSnapshotter is an optional Client capability: a Snapshot that
+// reuses prev's per-VM detail for VMs unchanged since prev. The inventory
+// worker uses it for its periodic cycle only; writes still take a full
+// Snapshot.
+type IncrementalSnapshotter interface {
+	SnapshotFrom(ctx context.Context, prev Snapshot) (Snapshot, error)
+}
+
 // ReadTopology returns the cluster's nodes and storages, using Topology when
 // the source offers it and a full Snapshot otherwise.
 func ReadTopology(ctx context.Context, source interface {

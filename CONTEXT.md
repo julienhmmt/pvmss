@@ -86,8 +86,11 @@ _Avoid_: login type, source
 **Projection**:
 The cached inventory snapshot stored in SQLite, refreshed by the background
 inventory worker every 30s and by the per-cluster refresher after write
-actions. Source for list views and bulk reads - never the source of truth for
-an in-flight lifecycle transition.
+actions. The 30s cycle is incremental: it re-reads a VM's config only when its
+`/cluster/resources` row changed, with a full re-read every 5 minutes (so a
+NIC, CD-ROM or description edit made in the Proxmox UI can take that long to
+show). Refreshes after a write are always full. Source for list views and bulk
+reads - never the source of truth for an in-flight lifecycle transition.
 _Avoid_: cache, inventory state, DB state
 
 **Live status**:

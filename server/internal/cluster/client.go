@@ -348,6 +348,10 @@ type VM struct {
 	//  Uptime is how long the guest has been running. Zero when Status!= running
 	// (uptimeSeconds absent when not running).
 	Uptime time.Duration
+	// ResourceDigest fingerprints the /cluster/resources row the VM was built
+	// from (Proxmox only). SnapshotFrom reuses the previous config hydration
+	// while it is unchanged.
+	ResourceDigest string `json:"-"`
 	// Description is the free-text note editable via PATCH. Empty by
 	// default in the fake dataset.
 	Description string

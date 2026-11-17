@@ -47,6 +47,12 @@ type Worker struct {
 	downSince    time.Time
 	lastReminder time.Time
 
+	// Incremental state, also only touched inside refreshCycle: the last
+	// successful snapshot and when the last full one started. last is zeroed
+	// on failure so the next cycle is full.
+	last     cluster.Snapshot
+	lastFull time.Time
+
 	mu       sync.Mutex
 	inFlight *inFlightRefresh
 }
@@ -62,9 +68,15 @@ func WithClock(now func() time.Time) Option {
 
 type inFlightRefresh struct {
 	done chan struct{}
+	full bool
 	at   time.Time
 	err  error
 }
+
+// fullResyncInterval bounds how stale per-VM config may get on the periodic
+// cycle: edits made outside PVMSS that do not show in /cluster/resources
+// (NICs, CD-ROM, description, boot order) appear within this delay.
+const fullResyncInterval = 5 * time.Minute
 
 // Option configures a Worker. Pass to NewWorker to override defaults.
 type Option func(*Worker)
@@ -103,7 +115,7 @@ func NewWorker(client cluster.Client, projection *Projection, interval time.Dura
 // single site that touches the cluster client during a refresh. The client
 // call is bounded by the worker's timeout so a hung upstream cannot block
 // the singleflight lock indefinitely.
-func (w *Worker) refreshCycle(ctx context.Context) (time.Time, error) {
+func (w *Worker) refreshCycle(ctx context.Context, full bool) (time.Time, error) {
 	ctx, cancel := context.WithTimeout(ctx, w.timeout)
 	defer cancel()
 
@@ -115,8 +127,12 @@ func (w *Worker) refreshCycle(ctx context.Context) (time.Time, error) {
 
 	started := w.now()
 
-	snap, err := w.client.Snapshot(ctx)
+	span.SetAttributes(attribute.Bool("full", full))
+
+	snap, err := w.snapshot(ctx, full)
 	if err != nil {
+		w.last, w.lastFull = cluster.Snapshot{}, time.Time{}
+
 		span.SetStatus(codes.Error, "refresh failed")
 
 		// A deadline exceeded from the worker's own timeout is still a cluster
@@ -132,6 +148,11 @@ func (w *Worker) refreshCycle(ctx context.Context) (time.Time, error) {
 		return time.Time{}, err
 	}
 
+	w.last = snap
+	if full {
+		w.lastFull = started
+	}
+
 	idx := BuildIndexForCluster(w.cluster, snap)
 	idx.RefreshedAt = time.Now()
 	w.projection.store(&idx)
@@ -139,6 +160,15 @@ func (w *Worker) refreshCycle(ctx context.Context) (time.Time, error) {
 	w.noteSuccess(ctx, started, snap)
 
 	return idx.RefreshedAt, nil
+}
+
+// snapshot takes a full Snapshot, or an incremental one built on w.last.
+func (w *Worker) snapshot(ctx context.Context, full bool) (cluster.Snapshot, error) {
+	if inc, ok := w.client.(cluster.IncrementalSnapshotter); ok && !full {
+		return inc.SnapshotFrom(ctx, w.last)
+	}
+
+	return w.client.Snapshot(ctx)
 }
 
 // noteFailure logs health transitions, not repetitions: Error on the first
@@ -174,26 +204,43 @@ func (w *Worker) noteSuccess(ctx context.Context, started time.Time, snap cluste
 		"durationMs", now.Sub(started).Milliseconds(), "vms", len(snap.VMs), "nodes", len(snap.Nodes))
 }
 
-// Refresh performs one refresh cycle. If a cycle is already in progress,
-// waits for it and returns its result instead of starting a second call
-// (edge case: manual vs. automatic in-flight dedup). A panic in refreshCycle
-// is recovered so the inFlight state is always cleared and future refreshes
-// are not permanently blocked.
-func (w *Worker) Refresh(ctx context.Context) (at time.Time, err error) {
+// Refresh performs one full refresh cycle: the post-write and manual path,
+// so it never reuses cached VM detail. If a full cycle is already running it
+// waits for it and returns its result (manual vs. automatic in-flight dedup);
+// if an incremental one is running it waits, then runs its own full cycle.
+func (w *Worker) Refresh(ctx context.Context) (time.Time, error) {
+	return w.refresh(ctx, true)
+}
+
+// refreshScheduled is the ticker's cycle: incremental when the client
+// supports it and a recent full snapshot exists, full otherwise.
+func (w *Worker) refreshScheduled(ctx context.Context) (time.Time, error) {
+	return w.refresh(ctx, false)
+}
+
+// refresh runs one cycle, deduplicating concurrent callers. A panic in
+// refreshCycle is recovered so the inFlight state is always cleared and
+// future refreshes are not permanently blocked.
+func (w *Worker) refresh(ctx context.Context, full bool) (at time.Time, err error) {
 	w.mu.Lock()
-	if w.inFlight != nil {
+	for w.inFlight != nil {
 		pending := w.inFlight
 		w.mu.Unlock()
 
 		select {
 		case <-pending.done:
-			return pending.at, pending.err
 		case <-ctx.Done():
 			return time.Time{}, ctx.Err()
 		}
+
+		if pending.full || !full {
+			return pending.at, pending.err
+		}
+
+		w.mu.Lock()
 	}
 
-	pending := &inFlightRefresh{done: make(chan struct{})}
+	pending := &inFlightRefresh{done: make(chan struct{}), full: full || !w.incrementalDue()}
 	w.inFlight = pending
 	w.mu.Unlock()
 
@@ -210,11 +257,21 @@ func (w *Worker) Refresh(ctx context.Context) (at time.Time, err error) {
 		close(pending.done)
 	}()
 
-	at, err = w.refreshCycle(ctx)
+	at, err = w.refreshCycle(ctx, pending.full)
 	pending.at = at
 	pending.err = err
 
 	return at, err
+}
+
+// incrementalDue reports whether a cycle may reuse the last snapshot: the
+// client supports it, the last cycle succeeded, and the last full one is
+// recent. Called with w.mu held, before the cycle starts, so it reads state
+// that only the previous (finished) cycle wrote.
+func (w *Worker) incrementalDue() bool {
+	_, ok := w.client.(cluster.IncrementalSnapshotter)
+
+	return ok && !w.lastFull.IsZero() && w.now().Sub(w.lastFull) < fullResyncInterval
 }
 
 // Run starts the automatic ticker loop. It performs an initial refresh
@@ -239,7 +296,7 @@ func (w *Worker) Run(ctx context.Context) {
 		case <-ctx.Done():
 			return
 		case <-ticker.C:
-			_, _ = w.Refresh(ctx)
+			_, _ = w.refreshScheduled(ctx)
 		}
 	}
 }
