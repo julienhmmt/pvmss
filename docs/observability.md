@@ -508,11 +508,13 @@ With a trace endpoint configured, `GET /api/v1/public/version` reports
 `browserTelemetry: true` and the SPA turns its instrumentation on:
 
 - every same-origin `/api/` call carries a `traceparent` header, so the
-  server span becomes a child of the page-view span and the whole browser
-  session reads as one trace;
-- on `pagehide` the SPA posts one `browser.pageview` span (OTLP/HTTP JSON) to
-  `POST /api/v1/traces`, carrying the page path and the web vitals as
-  `web_vitals.lcp`, `.inp`, `.cls`, `.fcp`, `.ttfb` attributes. The server
+  server span becomes a child of the current page-view span: one trace per
+  page, with a new one on each client-side navigation (noticed on the first
+  API call after the path changes);
+- when a page view ends (the next navigation, or `pagehide`) the SPA posts its
+  `browser.pageview` span (OTLP/HTTP JSON) to `POST /api/v1/traces`, carrying
+  the page path. The first page view of a document load also carries the web
+  vitals as `web_vitals.lcp`, `.inp`, `.cls`, `.fcp`, `.ttfb` attributes. The server
   proxies it to the collector verbatim, attaching
   `OTEL_EXPORTER_OTLP_HEADERS` server-side so collector credentials never
   reach the browser.
