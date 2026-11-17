@@ -336,6 +336,9 @@
     stroke-dasharray: 3 12;
     animation: pv-cinematic-flow 4s linear infinite;
   }
+  .pv-cinematic-busy {
+    animation-duration: 1.2s;
+  }
   .pv-cinematic-float {
     animation: pv-cinematic-float 6s ease-in-out infinite;
   }

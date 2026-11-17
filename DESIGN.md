@@ -136,11 +136,18 @@ in full on screens a user meets before or outside the workspace: `/login`,
 call to action. Elsewhere it appears only as a light echo
 (`CinematicBackdrop`: the same glow and dot grid toned down on a normal card,
 so every control keeps its usual tokens): the public home hero, every admin
-page header and the `/vms` header (`PageHeader cinematic`), the first-run
-empty state, and the provisioning card (`CinematicFlow`). The echo stays in
-the header band: never on tables, forms, cards inside a page or the other
-empty states. The classes live in
-`app.css` as `pv-cinematic-*`; motion stops under `prefers-reduced-motion`.
+page header and every workspace page header (`PageHeader cinematic`: VMs,
+create, VM detail, activity, docs, search, account), the first-run empty
+state, and the provisioning card (`CinematicFlow`). The header card is compact
+(16px / 20px vertical padding). On the VM detail header a `CinematicLine`
+along the bottom edge follows the machine: a calm flow while it runs, a fast
+flow while it starts, stops or is provisioned, a flat faint line when it is
+off. The same line in fast mode tops loading skeletons (`TableSkeleton`, the
+VM detail skeleton). The echo stays in the header band and loading states:
+never on tables, forms, cards inside a page or the other empty states. The
+classes live in `app.css` as `pv-cinematic-*`; motion stops under
+`prefers-reduced-motion` and under the footer's "Stop motion" link
+(`html[data-motion-off]`), which also skips scroll-in reveals.
 
 **Application direction (chosen concept: "Calm workspace"):** the signed-in app
 is a single, quiet workspace - a fixed sidebar, a sidebar that also holds search and notifications, and one
