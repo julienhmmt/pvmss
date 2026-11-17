@@ -90,6 +90,8 @@ func adminMux(handler *httpapi.AdminCatalog, auth *httpapi.Auth) *http.ServeMux 
 	mux.Handle("PUT /api/v1/admin/profiles/{id}", guard(http.HandlerFunc(handler.ServeProfileUpdate)))
 	mux.Handle("DELETE /api/v1/admin/profiles/{id}", guard(http.HandlerFunc(handler.ServeProfileDelete)))
 	mux.Handle("POST /api/v1/admin/profiles/{id}/toggle", guard(http.HandlerFunc(handler.ServeProfileToggle)))
+	mux.Handle("PUT /api/v1/admin/profiles/order", guard(http.HandlerFunc(handler.ServeProfileReorder)))
+	mux.Handle("POST /api/v1/admin/profiles/import", guard(http.HandlerFunc(handler.ServeProfileImport)))
 	mux.Handle("GET /api/v1/admin/tags", guard(http.HandlerFunc(handler.ServeTags)))
 	mux.Handle("POST /api/v1/admin/tags", guard(http.HandlerFunc(handler.ServeTagCreate)))
 	mux.Handle("PUT /api/v1/admin/tags/{name}/color", guard(http.HandlerFunc(handler.ServeTagColor)))

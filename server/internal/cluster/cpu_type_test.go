@@ -1,6 +1,7 @@
 package cluster
 
 import (
+	"context"
 	"strings"
 	"testing"
 )
@@ -43,5 +44,17 @@ func TestSelectCPUType(t *testing.T) {
 				t.Errorf("SelectCPUType() returned kvm64, which PVMSS must never create on")
 			}
 		})
+	}
+}
+
+//nolint:paralleltest // serial: shared fake dataset
+func TestFake_HostCPUFlags_SelectsV3(t *testing.T) {
+	flags, err := Fake{}.HostCPUFlags(context.Background())
+	if err != nil {
+		t.Fatalf("HostCPUFlags: %v", err)
+	}
+
+	if len(flags) == 0 || SelectCPUType(flags) != CPUTypeV3 {
+		t.Errorf("flags for %d nodes select %q, want %q", len(flags), SelectCPUType(flags), CPUTypeV3)
 	}
 }

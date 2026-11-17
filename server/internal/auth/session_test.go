@@ -556,3 +556,24 @@ func TestIdentity_Owner(t *testing.T) {
 		})
 	}
 }
+
+//nolint:paralleltest // serial: shared session repository fixture
+func TestSessionManager_CheckSession(t *testing.T) {
+	manager, err := auth.NewSessionManager(newSessionRepository(), "a-session-secret-with-at-least-thirty-two-bytes", false)
+	if err != nil {
+		t.Fatalf("NewSessionManager: %v", err)
+	}
+
+	recorder := httptest.NewRecorder()
+	if err := manager.SetCookie(context.Background(), recorder, auth.Identity{Username: "alice@pve"}); err != nil {
+		t.Fatalf("SetCookie: %v", err)
+	}
+
+	if err := manager.CheckSession(context.Background(), recorder.Result().Cookies()[0].Value); err != nil {
+		t.Errorf("CheckSession(valid) = %v, want nil", err)
+	}
+
+	if err := manager.CheckSession(context.Background(), "unknown"); err == nil {
+		t.Error("CheckSession(unknown) = nil, want error")
+	}
+}
