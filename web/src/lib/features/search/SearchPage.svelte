@@ -190,7 +190,7 @@
 </script>
 
 <section class="w-full">
-	<PageHeader eyebrow={m['chrome.context.workspace']()} title={m['search.heading']()} focusTarget />
+	<PageHeader cinematic eyebrow={m['chrome.context.workspace']()} title={m['search.heading']()} focusTarget />
 
 	<div class="mb-2 flex flex-col gap-3 sm:flex-row sm:items-center">
 		<div class="min-w-0 flex-1">
