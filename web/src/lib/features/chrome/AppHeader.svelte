@@ -1,9 +1,8 @@
 <script lang="ts">
 	/**
-	 * AppHeader - two render modes in one component:
+	 * AppHeader - the mobile top bar, plus shell effects:
 	 *  - below 900px, the bar that opens the sidebar drawer (menu + brand);
-	 *  - from 900px, a slim bar holding the bell and the palette button; the
-	 *    page's own cinematic PageHeader names the screen, so no breadcrumb.
+	 *  - from 900px, nothing: search and the bell live in the sidebar.
 	 * The task-tray toast mirroring effect lives here because AppHeader is
 	 * mounted on every viewport.
 	 */
@@ -44,8 +43,9 @@
 	$effect(() => {
 		if (notifications) void untrack(() => checkQuotaDecision());
 	});
-	// The palette shortcut as the user's keyboard writes it.
-	const paletteKeys = typeof navigator !== 'undefined' && /Mac|iPhone|iPad/.test(navigator.userAgent) ? '⌘K' : 'Ctrl K';
+	$effect(() => {
+		chrome.notifications = notifications;
+	});
 
 	let dismissTimer: ReturnType<typeof setTimeout> | null = null;
 	$effect(() => {
@@ -94,24 +94,3 @@
 	</button>
 </header>
 
-<header
-	class="sticky top-0 z-30 hidden h-[66px] items-center justify-end gap-4 border-b border-border/60 bg-background px-11 min-[900px]:flex"
-	aria-label={m['chrome.context.ariaLabel']()}
-	data-testid="context-header"
->
-	<div class="flex items-center gap-2">
-	{#if notifications}
-		<NotificationBell state={notifications} />
-	{/if}
-	<button
-		type="button"
-		class="inline-flex h-9 items-center gap-2 rounded-lg border border-border px-3 text-sm text-muted-foreground transition-colors hover:bg-accent hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-		onclick={() => chrome.openPalette()}
-		data-testid="palette-open"
-	>
-		<SearchIcon class="h-4 w-4" />
-		{m['palette.open']()}
-		<kbd class="rounded border border-border bg-muted px-1.5 font-mono text-2xs">{paletteKeys}</kbd>
-	</button>
-	</div>
-</header>

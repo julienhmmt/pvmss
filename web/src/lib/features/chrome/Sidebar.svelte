@@ -29,6 +29,8 @@
 	import SidebarIcon from './SidebarIcon.svelte';
 	import { accountInitials } from '#lib/shared/initials.js';
 	import Logo from '#lib/shared/ui/Logo.svelte';
+	import SearchIcon from '#lib/shared/ui/icons/SearchIcon.svelte';
+	import NotificationBell from '#lib/features/notifications/NotificationBell.svelte';
 	import LanguageSwitcher from './LanguageSwitcher.svelte';
 	import ThemeToggle from './ThemeToggle.svelte';
 	import { orderPinnedFirst, pinKey, readPins, togglePin } from './pinned-vms';
@@ -215,6 +217,8 @@
 		await session.logout();
 		await goto(resolve('/login'));
 	}
+	// The palette shortcut as the user's keyboard writes it.
+	const paletteKeys = typeof navigator !== 'undefined' && /Mac|iPhone|iPad/.test(navigator.userAgent) ? '⌘K' : 'Ctrl K';
 </script>
 
 <aside
@@ -223,7 +227,20 @@
 	data-testid="app-sidebar"
 >
 	<div class="flex flex-col gap-2 px-3 pt-5">
-		<div class="px-2"><Logo /></div>
+		<div class="flex items-center justify-between gap-2 px-2">
+			<Logo />
+			{#if chrome.notifications}<NotificationBell state={chrome.notifications} />{/if}
+		</div>
+		<button
+			type="button"
+			class="mt-1 inline-flex h-9 items-center gap-2 rounded-lg border border-sidebar-border bg-background/60 px-2.5 text-sm text-muted-foreground transition-colors hover:bg-accent hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+			onclick={() => chrome.openPalette()}
+			data-testid="palette-open"
+		>
+			<SearchIcon class="h-4 w-4 shrink-0" />
+			<span class="min-w-0 flex-1 truncate text-left">{m['chrome.sidebar.navSearch']()}</span>
+			<kbd class="rounded border border-border bg-muted px-1.5 font-mono text-2xs">{paletteKeys}</kbd>
+		</button>
 		{#if session.principal?.clusterDisplayName || session.principal?.cluster}
 			{@const clusterName = session.principal.clusterDisplayName || session.principal.cluster}
 			<p class="mx-2 flex min-w-0 items-center gap-1.5 text-xs text-muted-foreground" title={clusterName} data-testid="sidebar-cluster">

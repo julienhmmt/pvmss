@@ -143,7 +143,7 @@ empty states. The classes live in
 `app.css` as `pv-cinematic-*`; motion stops under `prefers-reduced-motion`.
 
 **Application direction (chosen concept: "Calm workspace"):** the signed-in app
-is a single, quiet workspace - a fixed sidebar, a slim top bar (search, notifications), and one
+is a single, quiet workspace - a fixed sidebar, a sidebar that also holds search and notifications, and one
 roomy content column. The machine list is the landing page, not a metrics
 dashboard. Creation is a single-page form with a live summary rail. The machine
 detail page is connection-first: state, SSH, and the browser console lead;
@@ -308,8 +308,8 @@ chosen concept ("Calm workspace") fixes three structural decisions:
 
 ```text
 ┌─────────┬──────────────────────────────────────────┐
-│         │ top bar  (slim: bell + search only)      │
-│ sidebar ├──────────────────────────────────────────┤
+│ sidebar │                                          │
+│ + search│                                          │
 │  236px  │                                          │
 │ fixed   │ main content  (max 100rem, centered)      │
 │         │                                          │
@@ -359,7 +359,7 @@ chosen concept ("Calm workspace") fixes three structural decisions:
 - **Below 900px:** the sidebar becomes a drawer, opened from the header's menu
   button. The workspace label and reassurance note hide.
 - **Below 700px:** the bar wraps to two rows - brand + preferences on row one,
-  full-width navigation on row two. The context header hides. Content padding
+  full-width navigation on row two. Content padding
   shrinks to `28px 20px`.
 - **Below 640px:** `.pv-responsive-table` turns every data table into stacked
   label/value cards.

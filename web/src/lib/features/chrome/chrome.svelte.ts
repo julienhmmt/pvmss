@@ -1,4 +1,5 @@
 import { getContext, setContext } from 'svelte';
+import type { NotificationsState } from '#lib/features/notifications/notifications.svelte.js';
 
 /**
  * ChromeState - owns the app-shell layout state: the sidebar drawer (open on
@@ -28,6 +29,9 @@ export class ChromeState {
 	closePalette(): void {
 		this.paletteOpen = false;
 	}
+
+	/** Pool users' notifications, owned by AppHeader (mounted on every viewport), shown by the sidebar too. */
+	notifications = $state.raw<NotificationsState | null>(null);
 }
 
 const CHROME_CONTEXT_KEY = Symbol('chrome-layout');

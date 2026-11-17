@@ -103,17 +103,16 @@ test.describe('Calm workspace', () => {
 		await expect(page.getByTestId('vm-create-submit')).toBeEnabled();
 	});
 
-	test('the shell collapses: context header on desktop, menu bar on mobile', async ({ page }) => {
+	test('the shell collapses: sidebar on desktop, menu bar on mobile', async ({ page }) => {
 		await useLocale(page, 'en');
 		await signInAlice(page.request);
 
 		await page.setViewportSize({ width: 1280, height: 800 });
 		await page.goto('/vms');
-		await expect(page.getByTestId('context-header')).toBeVisible();
+		await expect(page.getByTestId('app-sidebar').first()).toBeVisible();
 		await expect(page.getByTestId('sidebar-menu-button')).toBeHidden();
 
 		await page.setViewportSize({ width: 390, height: 800 });
-		await expect(page.getByTestId('context-header')).toBeHidden();
 		await expect(page.getByTestId('sidebar-menu-button')).toBeVisible();
 		// No horizontal page scroll at phone width.
 		const overflow = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
