@@ -135,7 +135,7 @@
 			</fieldset>
 			<label class="flex flex-col gap-1 text-sm">
 				<span>{m['vms.schedule.retainLabel']()}</span>
-				<input type="number" min="1" max={retainLimit ?? undefined} bind:value={scheduleRetain} disabled={scheduleFrequency === 'off'} class="w-24 rounded-md border border-border bg-background px-2 py-1" data-testid="schedule-retain" />
+				<input type="number" min="1" max={retainLimit ?? undefined} bind:value={scheduleRetain} disabled={scheduleFrequency === 'off'} class="w-24 rounded-[var(--radius-control)] border border-border bg-background px-2 py-1" data-testid="schedule-retain" />
 			</label>
 			<Button type="submit" disabled={snapshots.scheduleSaving || (scheduleFrequency !== 'off' && !retainValid)} data-testid="schedule-save">
 				{snapshots.scheduleSaving ? m['vms.schedule.saving']() : m['vms.schedule.save']()}

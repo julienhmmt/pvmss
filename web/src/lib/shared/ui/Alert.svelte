@@ -66,7 +66,7 @@
 <div
 	{role}
 	aria-live={role === 'alert' ? 'assertive' : 'polite'}
-	class="flex items-start gap-2.5 rounded-[var(--radius-control)] border {pad === 'lg'
+	class="flex items-start gap-2.5 rounded-xl border {pad === 'lg'
 		? 'p-5'
 		: 'px-3 py-2.5'} text-sm font-medium {tones[tone].wrap} {klass}"
 	{...rest}

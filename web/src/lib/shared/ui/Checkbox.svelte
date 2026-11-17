@@ -48,7 +48,7 @@
 
 	const rowClass = $derived(
 		variant === 'warning'
-			? 'rounded-lg border border-warning-soft-border bg-warning-soft/60 px-3 py-2.5'
+			? 'rounded-xl border border-warning-soft-border bg-warning-soft/60 px-3 py-2.5'
 			: ''
 	);
 </script>

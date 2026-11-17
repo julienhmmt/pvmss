@@ -101,7 +101,7 @@
 		<ul class="grid gap-4 sm:grid-cols-2" data-testid="home-capabilities-grid">
 			{#each modules as module, i (i)}
 				<li
-					class="pv-blade group relative flex overflow-hidden rounded-lg border border-border bg-card text-card-foreground"
+					class="pv-blade group relative flex overflow-hidden rounded-xl border border-border bg-card text-card-foreground"
 					style:transition-delay="{(i % 2) * 120}ms"
 					{@attach reveal(() => bringOnline(i))}
 				>

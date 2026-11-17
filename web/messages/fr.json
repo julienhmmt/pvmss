@@ -13,6 +13,8 @@
 	"shell.title": "Proxmox VM Self-Service (PVMSS)",
 	"shell.subtitle": "Une façon plus simple de gérer vos VM Proxmox",
 	"nav.language": "Langue",
+	"nav.motion.stop": "Arrêter les animations",
+	"nav.motion.play": "Relancer les animations",
 	"nav.theme": "Thème",
 	"nav.theme.light": "Clair",
 	"nav.theme.dark": "Sombre",

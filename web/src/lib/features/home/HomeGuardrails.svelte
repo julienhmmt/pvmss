@@ -18,7 +18,7 @@
 		</div>
 		<ul class="mt-10 grid gap-4 md:grid-cols-3">
 			{#each limits as limit, i (i)}
-				<li class="rounded-lg border border-border bg-card p-6" style:transition-delay="{i * 120}ms" {@attach reveal()}>
+				<li class="rounded-xl border border-border bg-card p-6" style:transition-delay="{i * 120}ms" {@attach reveal()}>
 					<h3 class="text-base font-semibold tracking-tight">{limit.title()}</h3>
 					<p class="mt-1.5 text-sm text-muted-foreground">{limit.description()}</p>
 					<div class="mt-5 h-1.5 overflow-hidden rounded-full bg-muted" aria-hidden="true">

@@ -82,7 +82,7 @@
 			{#if connectable && address}
 				{#if windows}
 					<p class="mt-1 text-sm text-muted-foreground">{m['vms.detail.connect.rdpBody']()}</p>
-					<div class="mt-4 flex items-center gap-2 rounded-lg border border-border bg-muted/50 py-1.5 pl-3 pr-1.5">
+					<div class="mt-4 flex items-center gap-2 rounded-[var(--radius-control)] border border-border bg-muted/50 py-1.5 pl-3 pr-1.5">
 						<code class="min-w-0 flex-1 overflow-x-auto whitespace-nowrap font-mono text-sm" data-testid="vm-rdp-address">
 							{address.address}
 						</code>
@@ -106,7 +106,7 @@
 					<p class="mt-5 border-t border-border pt-4 text-xs text-muted-foreground">{m['vms.detail.connect.rdpHelpNote']()}</p>
 				{:else}
 					<p class="mt-1 text-sm text-muted-foreground">{m['vms.detail.connect.body']()}</p>
-					<div class="mt-4 flex items-center gap-2 rounded-lg border border-border bg-muted/50 py-1.5 pl-3 pr-1.5">
+					<div class="mt-4 flex items-center gap-2 rounded-[var(--radius-control)] border border-border bg-muted/50 py-1.5 pl-3 pr-1.5">
 						<code class="min-w-0 flex-1 overflow-x-auto whitespace-nowrap font-mono text-sm" data-testid="vm-ssh-command">
 							<span class="select-none text-muted-foreground-subtle" aria-hidden="true">$&nbsp;</span>{#if sshUser === null}ssh <span class="rounded bg-primary/10 px-1 italic text-primary" data-testid="vm-ssh-user-placeholder">{userPlaceholder}</span>@{sshHost(address.address)}{:else}{command}{/if}
 						</code>

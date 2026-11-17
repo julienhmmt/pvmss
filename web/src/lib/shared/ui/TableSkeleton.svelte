@@ -3,7 +3,7 @@
 
 	/**
 	 * TableSkeleton - renders N skeleton rows × a configurable column count
-	 * inside a full table shell (the same `overflow-x-auto rounded-lg border`
+	 * inside a full table shell (the same `overflow-x-auto rounded-xl border`
 	 * wrapper the real admin tables use), so the table shape doesn't jump
 	 * when data arrives. Replaces the bare "Loading…" paragraph on
 	 * table-bearing admin pages. The pulse is zeroed by the global
@@ -17,7 +17,7 @@
 	let { rows = 5, columns }: Props = $props();
 </script>
 
-<div class="overflow-x-auto rounded-lg border border-border" aria-hidden="true">
+<div class="overflow-x-auto rounded-xl border border-border" aria-hidden="true">
 	<table class="w-full text-sm">
 		<thead class="bg-muted/50 text-left">
 			<tr>

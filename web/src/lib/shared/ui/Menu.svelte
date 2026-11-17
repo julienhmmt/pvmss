@@ -155,7 +155,7 @@
 		tabindex="-1"
 		aria-label={label}
 		onkeydown={handleMenuKeydown}
-		class="fixed z-[9999] min-w-40 rounded-lg border border-border bg-card p-1 text-card-foreground shadow-overlay"
+		class="fixed z-[9999] min-w-40 rounded-xl border border-border bg-card p-1 text-card-foreground shadow-overlay"
 		style="left: {left}px; top: {top}px;"
 	>
 		{#each items as item (item.id ?? item.label)}

@@ -53,13 +53,13 @@
 	{/if}
 
 	{#if store.confirmResult}
-		<p role="status" class="rounded-md bg-success-soft px-4 py-2 text-sm text-success-soft-foreground">
+		<p role="status" class="rounded-xl bg-success-soft px-4 py-2 text-sm text-success-soft-foreground">
 			{m['admin.db.importSuccess']({ tables: store.confirmResult.tables.map((t) => t.name).join(', ') })}
 		</p>
 	{/if}
 
 	<div class="flex flex-wrap items-center gap-3">
-		<label class="inline-flex cursor-pointer items-center rounded-md bg-primary-solid px-4 py-2 text-sm font-medium text-primary-foreground focus-within:ring-2 focus-within:ring-ring hover:opacity-90">
+		<label class="inline-flex cursor-pointer items-center rounded-[var(--radius-control)] bg-primary-solid px-4 py-2 text-sm font-medium text-primary-foreground focus-within:ring-2 focus-within:ring-ring hover:opacity-90">
 			{m['admin.db.chooseFile']()}
 			<input
 				type="file"
@@ -77,7 +77,7 @@
 	{/if}
 
 	{#if store.preview}
-		<div class="rounded-md border border-border p-4 space-y-3">
+		<div class="rounded-xl border border-border p-4 space-y-3">
 			<h3 class="font-medium">{m['admin.db.preview']()}</h3>
 			<p class="text-sm text-muted-foreground">
 				{m['admin.db.previewDescription']()}

@@ -31,7 +31,7 @@
 
 <button
 	type="button"
-	class="rounded-md border border-border bg-muted/40 px-2 py-0.5 font-mono text-xs hover:bg-muted"
+	class="rounded-[var(--radius-control)] border border-border bg-muted/40 px-2 py-0.5 font-mono text-xs hover:bg-muted"
 	onclick={() => void copy()}
 	data-testid={testId}
 >

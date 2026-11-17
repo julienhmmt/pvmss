@@ -21,7 +21,7 @@
 	let { toolbar, footer, children, class: extra = '' }: Props = $props();
 </script>
 
-<section class="overflow-hidden rounded-lg border border-border bg-card shadow-card {extra}">
+<section class="overflow-hidden rounded-xl border border-border bg-card shadow-card {extra}">
 	{#if toolbar}
 		<div class="flex flex-wrap items-center gap-3 border-b border-border px-4 py-3">
 			{@render toolbar()}

@@ -67,7 +67,7 @@
 >
 	<button
 		type="button"
-		class="inline-flex h-9 w-9 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-accent hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+		class="inline-flex h-9 w-9 items-center justify-center rounded-[var(--radius-control)] text-muted-foreground transition-colors hover:bg-accent hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
 		aria-label={m['chrome.sidebar.drawerOpen']()}
 		aria-expanded={chrome.sidebarOpen}
 		aria-controls="app-sidebar-drawer"
@@ -85,7 +85,7 @@
 	{/if}
 	<button
 		type="button"
-		class="inline-flex h-9 w-9 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-accent hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+		class="inline-flex h-9 w-9 items-center justify-center rounded-[var(--radius-control)] text-muted-foreground transition-colors hover:bg-accent hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
 		aria-label={m['palette.open']()}
 		onclick={() => chrome.openPalette()}
 		data-testid="palette-open-mobile"

@@ -101,7 +101,7 @@
 			{/if}
 
 			{#if mode === 'user' && form.pveDisabled}
-				<p class="mb-6 rounded-md bg-warning-soft p-3 text-sm text-warning-soft-foreground" role="status">
+				<p class="mb-6 rounded-xl bg-warning-soft p-3 text-sm text-warning-soft-foreground" role="status">
 					{m['login.clusterDownHint']()}
 				</p>
 			{/if}

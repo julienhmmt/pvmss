@@ -126,7 +126,7 @@
 	<div class="inline-flex w-fit rounded-lg border border-border bg-muted/40 p-0.5" role="group" aria-label={m['vms.console.modeLabel']()} data-testid="vm-console-mode-switcher">
 		<button
 			type="button"
-			class="rounded-md px-3 py-1.5 text-sm font-medium {mode === 'graphical'
+			class="rounded-[var(--radius-control)] px-3 py-1.5 text-sm font-medium {mode === 'graphical'
 				? 'bg-card text-foreground shadow-card'
 				: 'text-muted-foreground hover:text-foreground'}"
 			onclick={() => switchMode('graphical')}
@@ -137,7 +137,7 @@
 		</button>
 		<button
 			type="button"
-			class="rounded-md px-3 py-1.5 text-sm font-medium {mode === 'text'
+			class="rounded-[var(--radius-control)] px-3 py-1.5 text-sm font-medium {mode === 'text'
 				? 'bg-card text-foreground shadow-card'
 				: 'text-muted-foreground hover:text-foreground'}"
 			onclick={() => switchMode('text')}
@@ -181,7 +181,7 @@
 
 	{#if mode === 'text'}
 		{#if vmStore.entity && vmStore.entity.hasSerial === false}
-			<div class="flex flex-wrap items-center gap-3 rounded-md border border-border bg-muted/40 p-3 text-sm" data-testid="vm-serial-console-enable">
+			<div class="flex flex-wrap items-center gap-3 rounded-xl border border-border bg-muted/40 p-3 text-sm" data-testid="vm-serial-console-enable">
 				<p class="text-muted-foreground">{m['vms.console.serial.noSerial']()}</p>
 				<Button
 					size="sm"
@@ -213,14 +213,14 @@
 			{/if}
 			{#snippet failed(error)}
 				<div
-					class="flex h-full w-full flex-col items-center justify-center gap-2 rounded-md border border-border bg-destructive-soft p-4 text-sm text-destructive"
+					class="flex h-full w-full flex-col items-center justify-center gap-2 rounded-xl border border-border bg-destructive-soft p-4 text-sm text-destructive"
 					data-testid="vm-console-boundary-fallback"
 				>
 					<p>{m['vms.console.crashed']()}</p>
 					<p class="text-xs text-muted-foreground">{error instanceof Error ? error.message : String(error)}</p>
 					<button
 						type="button"
-						class="rounded-md border border-border bg-background px-3 py-1.5 text-sm text-foreground hover:bg-muted"
+						class="rounded-[var(--radius-control)] border border-border bg-background px-3 py-1.5 text-sm text-foreground hover:bg-muted"
 						onclick={() => window.location.reload()}
 					>
 						{m['common.reloadPage']()}

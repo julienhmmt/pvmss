@@ -7,6 +7,7 @@
 	 */
 	import LanguageSwitcher from './LanguageSwitcher.svelte';
 	import ThemeToggle from './ThemeToggle.svelte';
+	import MotionToggle from './MotionToggle.svelte';
 	import Logo from '#lib/shared/ui/Logo.svelte';
 	import ButtonLink from '#lib/shared/ui/ButtonLink.svelte';
 	import { page } from '$app/state';
@@ -42,6 +43,7 @@
 		</a>
 		<LanguageSwitcher />
 		<ThemeToggle />
+			<MotionToggle />
 		<!-- Not during first-run setup: there is nobody to sign in yet. -->
 		{#if page.route.id !== '/setup'}
 			<ButtonLink href={resolve('/login')} size="sm" class="max-sm:px-2">

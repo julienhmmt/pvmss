@@ -173,7 +173,7 @@
 {/if}
 
 {#if bulk.lastResult}
-	<div class="mb-4 rounded-md border border-border" data-testid="vm-bulk-result-panel">
+	<div class="mb-4 rounded-xl border border-border" data-testid="vm-bulk-result-panel">
 		<h2 class="border-b border-border px-3 py-2 text-sm font-medium">
 			{m['common.resultsTitle']({ ok: summary.ok, error: summary.error })}
 		</h2>

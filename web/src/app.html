@@ -15,6 +15,7 @@
 				if (stored === 'dark' || (stored !== 'light' && matchMedia('(prefers-color-scheme: dark)').matches)) {
 					document.documentElement.classList.add('dark');
 				}
+				if (localStorage.getItem('pvmss-motion-v1') === 'off') document.documentElement.setAttribute('data-motion-off', '');
 			} catch {
 				// localStorage or matchMedia may be unavailable in restricted contexts.
 			}

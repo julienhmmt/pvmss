@@ -212,7 +212,7 @@
 							role="tab"
 							aria-selected={current === step.id}
 							aria-current={current === step.id ? 'step' : undefined}
-							class="pv-focus inline-flex items-center gap-2 rounded-lg px-2 py-1.5 text-sm font-medium transition-colors {stepTabClass[
+							class="pv-focus inline-flex items-center gap-2 rounded-[var(--radius-control)] px-2 py-1.5 text-sm font-medium transition-colors {stepTabClass[
 								state
 							]}"
 							onclick={() => void goTo(step.id)}

@@ -29,7 +29,7 @@
 
 <button
 	type="button"
-	class="group -mx-1 inline-flex items-center gap-1 rounded px-1 py-0.5 font-semibold uppercase tracking-[0.04em] transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring {active
+	class="group -mx-1 inline-flex items-center gap-1 rounded-[var(--radius-control)] px-1 py-0.5 font-semibold uppercase tracking-[0.04em] transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring {active
 		? 'text-foreground'
 		: ''}"
 	{onclick}

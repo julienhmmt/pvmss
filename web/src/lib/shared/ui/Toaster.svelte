@@ -43,7 +43,7 @@
 	{#each region.items as toast (toast.id)}
 		<div
 			role={variantRole[toast.variant]}
-			class="toast-in pointer-events-auto flex w-full max-w-sm items-start gap-3 rounded-[var(--radius-control)] border px-4 py-3 text-sm shadow-overlay {variantStyles[
+			class="toast-in pointer-events-auto flex w-full max-w-sm items-start gap-3 rounded-xl border px-4 py-3 text-sm shadow-overlay {variantStyles[
 				toast.variant
 			]}"
 			data-testid="toast"
@@ -59,7 +59,7 @@
 			<p class="flex-1 break-words leading-snug">{toast.message}</p>
 			<button
 				type="button"
-				class="shrink-0 rounded p-0.5 opacity-70 hover:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+				class="shrink-0 rounded-[var(--radius-control)] p-0.5 opacity-70 hover:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
 				aria-label={m['toast.dismiss']()}
 				onclick={() => dismiss(toast.id)}
 				data-testid="toast-dismiss"

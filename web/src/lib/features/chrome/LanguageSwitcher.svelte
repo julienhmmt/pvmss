@@ -14,7 +14,7 @@
 </script>
 
 <div
-	class="relative inline-flex h-8 items-center gap-1.5 rounded-lg border border-border px-2 text-xs font-semibold tracking-wide text-muted-foreground transition-colors focus-within:ring-2 focus-within:ring-ring hover:text-foreground"
+	class="relative inline-flex h-8 items-center gap-1.5 rounded-[var(--radius-control)] border border-border px-2 text-xs font-semibold tracking-wide text-muted-foreground transition-colors focus-within:ring-2 focus-within:ring-ring hover:text-foreground"
 	title={m['nav.language']()}
 >
 	<GlobeIcon class="h-4 w-4" />

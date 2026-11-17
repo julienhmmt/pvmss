@@ -30,8 +30,33 @@ export class ChromeState {
 		this.paletteOpen = false;
 	}
 
+	/** "Stop motion": freezes every animation app-wide (`html[data-motion-off]`), remembered per browser. */
+	motionOff = $state(readMotionOff());
+
+	toggleMotion(): void {
+		this.motionOff = !this.motionOff;
+		document.documentElement.toggleAttribute('data-motion-off', this.motionOff);
+		try {
+			if (this.motionOff) localStorage.setItem(MOTION_STORAGE_KEY, 'off');
+			else localStorage.removeItem(MOTION_STORAGE_KEY);
+		} catch {
+			// Storage blocked: the choice still holds for this page view.
+		}
+	}
+
 	/** Pool users' notifications, owned by AppHeader (mounted on every viewport), shown by the sidebar too. */
 	notifications = $state.raw<NotificationsState | null>(null);
+}
+
+/** Also read by the first-paint script in app.html. */
+export const MOTION_STORAGE_KEY = 'pvmss-motion-v1';
+
+function readMotionOff(): boolean {
+	try {
+		return localStorage.getItem(MOTION_STORAGE_KEY) === 'off';
+	} catch {
+		return false;
+	}
 }
 
 const CHROME_CONTEXT_KEY = Symbol('chrome-layout');

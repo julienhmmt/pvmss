@@ -54,7 +54,7 @@
 </script>
 
 <label
-	class="relative flex cursor-pointer items-start {sizes[size].pad} {sizes[size].gap} rounded-lg border transition-colors
+	class="relative flex cursor-pointer items-start {sizes[size].pad} {sizes[size].gap} rounded-[var(--radius-control)] border transition-colors
 		{disabled
 		? 'cursor-not-allowed border-border bg-muted/40 opacity-60'
 		: selected

@@ -121,7 +121,7 @@
 				{#each TAG_COLOR_PRESETS as preset (preset)}
 					<button
 						type="button"
-						class="pv-focus h-8 rounded-md border-2 {preset === color.toLowerCase() ? 'border-foreground' : 'border-transparent'}"
+						class="pv-focus h-8 rounded-[var(--radius-control)] border-2 {preset === color.toLowerCase() ? 'border-foreground' : 'border-transparent'}"
 						style="background: {preset}"
 						aria-label={preset}
 						aria-pressed={preset === color.toLowerCase()}

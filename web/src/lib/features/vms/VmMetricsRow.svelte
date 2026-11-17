@@ -73,11 +73,11 @@
 			{/if}
 		</div>
 		{#if isRunning}
-		<div class="inline-flex rounded-lg border border-border" role="group" aria-label={m['vms.detail.metricsRangeLabel']()}>
+		<div class="inline-flex rounded-[var(--radius-control)] border border-border" role="group" aria-label={m['vms.detail.metricsRangeLabel']()}>
 			{#each ranges as r (r.value)}
 				<button
 					type="button"
-					class="px-2.5 py-1.5 text-xs font-semibold first:rounded-l-lg last:rounded-r-lg {store.range === r.value
+					class="px-2.5 py-1.5 text-xs font-semibold first:rounded-l-[var(--radius-control)] last:rounded-r-[var(--radius-control)] {store.range === r.value
 						? 'bg-primary-solid text-primary-foreground'
 						: 'hover:bg-muted'}"
 					aria-pressed={store.range === r.value}

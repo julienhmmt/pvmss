@@ -109,7 +109,7 @@
 			{#if fileError}<Alert>{fileError}</Alert>{/if}
 			<div class="text-sm font-medium">{m['policy.importFile']()}</div>
 			<div class="mt-1 flex flex-wrap items-center gap-3">
-				<label class="inline-flex cursor-pointer items-center rounded-md bg-primary-solid px-4 py-2 text-sm font-medium text-primary-foreground focus-within:ring-2 focus-within:ring-ring hover:opacity-90">
+				<label class="inline-flex cursor-pointer items-center rounded-[var(--radius-control)] bg-primary-solid px-4 py-2 text-sm font-medium text-primary-foreground focus-within:ring-2 focus-within:ring-ring hover:opacity-90">
 					{m['policy.importChooseFile']()}
 					<input
 						type="file"
