@@ -76,6 +76,7 @@
 
 <section class="mx-auto w-full max-w-6xl">
 	<PageHeader
+		cinematic
 		back={{ href: resolve('/vms'), label: m['vms.create.back']() }}
 		title={m['vms.create.heading']()}
 		focusTarget
