@@ -135,6 +135,37 @@ func TestStartMetricsServer_ServesOnlyGetMetrics(t *testing.T) {
 	}
 }
 
+func TestStartMetricsServer_PprofOnlyWhenEnabled(t *testing.T) {
+	t.Parallel()
+
+	for _, enabled := range []bool{false, true} {
+		port := freePort(t)
+		cfg := config.Configuration{Host: "127.0.0.1", MetricsPort: port, Pprof: enabled}
+
+		stop, err := startMetricsServer(cfg, http.NotFoundHandler(), slog.New(slog.DiscardHandler))
+		if err != nil {
+			t.Fatalf("startMetricsServer: %v", err)
+		}
+
+		resp, err := http.Get("http://127.0.0.1:" + strconv.Itoa(port) + "/debug/pprof/heap") //nolint:noctx // local test server
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		_ = resp.Body.Close()
+		_ = stop(context.Background())
+
+		want := http.StatusNotFound
+		if enabled {
+			want = http.StatusOK
+		}
+
+		if resp.StatusCode != want {
+			t.Errorf("pprof=%v: GET /debug/pprof/heap = %d, want %d", enabled, resp.StatusCode, want)
+		}
+	}
+}
+
 func TestStartMetricsServer_DisabledBindsNothing(t *testing.T) {
 	t.Parallel()
 

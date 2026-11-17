@@ -102,6 +102,15 @@ func loadCore(cfg *Configuration) error {
 
 	cfg.MetricsPort = metricsPort
 
+	cfg.Pprof, err = loadBool("PVMSS_PPROF", false)
+	if err != nil {
+		return err
+	}
+
+	if cfg.Pprof && metricsPort == 0 {
+		return errors.New("PVMSS_PPROF requires PVMSS_METRICS_PORT (pprof is only served on the metrics listener)")
+	}
+
 	cfg.DBPath = strings.TrimSpace(os.Getenv("PVMSS_DB_PATH"))
 	if cfg.DBPath == "" {
 		return errors.New("PVMSS_DB_PATH is required")

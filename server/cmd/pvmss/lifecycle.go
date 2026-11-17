@@ -7,12 +7,14 @@ import (
 	"log/slog"
 	"net"
 	"net/http"
+	"net/http/pprof"
 	"pvmss/server/internal/config"
 	"pvmss/server/internal/inventory"
 	"pvmss/server/internal/telemetry"
 	"runtime"
 	"runtime/debug"
 	"strconv"
+	"time"
 )
 
 // listenAddr is the address the HTTP server binds, shared by the banner and
@@ -83,8 +85,9 @@ func logTLSAdvice(logger *slog.Logger, cfg config.Configuration) {
 
 // startMetricsServer serves handler at GET /metrics on its own listener
 // (PVMSS_HOST:PVMSS_METRICS_PORT). It is a no-op when the port is 0. Only that
-// one route exists: the endpoint has no auth, so it must never share the main
-// port or grow other routes. The returned stop drains it with the main server.
+// one route exists unless PVMSS_PPROF adds /debug/pprof/*: the endpoint has no
+// auth, so it must never share the main port. The returned stop drains it with
+// the main server.
 func startMetricsServer(cfg config.Configuration, handler http.Handler, logger *slog.Logger) (func(context.Context) error, error) {
 	noop := func(context.Context) error { return nil }
 	if cfg.MetricsPort == 0 || handler == nil {
@@ -94,8 +97,16 @@ func startMetricsServer(cfg config.Configuration, handler http.Handler, logger *
 	mux := http.NewServeMux()
 	mux.Handle("GET /metrics", handler)
 
+	timeout := writeTimeout
+
+	if cfg.Pprof {
+		registerPprof(mux)
+
+		timeout = pprofWriteTimeout
+	}
+
 	addr := net.JoinHostPort(cfg.Host, strconv.Itoa(cfg.MetricsPort))
-	srv := &http.Server{Addr: addr, Handler: mux, ReadHeaderTimeout: readHeaderTimeout, WriteTimeout: writeTimeout}
+	srv := &http.Server{Addr: addr, Handler: mux, ReadHeaderTimeout: readHeaderTimeout, WriteTimeout: timeout}
 
 	ln, err := new(net.ListenConfig).Listen(context.Background(), "tcp", addr)
 	if err != nil {
@@ -108,7 +119,7 @@ func startMetricsServer(cfg config.Configuration, handler http.Handler, logger *
 		}
 	}()
 
-	logger.Info("metrics endpoint ready", "component", "main", "addr", addr)
+	logger.Info("metrics endpoint ready", "component", "main", "addr", addr, "pprof", cfg.Pprof)
 
 	return srv.Shutdown, nil
 }
@@ -135,4 +146,17 @@ func inventoryStats(reg *inventory.Registry) func() []telemetry.ClusterStat {
 
 		return stats
 	}
+}
+
+// pprofWriteTimeout lets a CPU profile or trace (?seconds=30 by default) finish:
+// net/http/pprof refuses a duration longer than the server's WriteTimeout.
+const pprofWriteTimeout = 2 * time.Minute
+
+// registerPprof mounts the net/http/pprof handlers on mux (not the default mux).
+func registerPprof(mux *http.ServeMux) {
+	mux.HandleFunc("GET /debug/pprof/", pprof.Index)
+	mux.HandleFunc("GET /debug/pprof/cmdline", pprof.Cmdline)
+	mux.HandleFunc("GET /debug/pprof/profile", pprof.Profile)
+	mux.HandleFunc("GET /debug/pprof/symbol", pprof.Symbol)
+	mux.HandleFunc("GET /debug/pprof/trace", pprof.Trace)
 }

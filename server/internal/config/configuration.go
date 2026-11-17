@@ -17,7 +17,10 @@ type Configuration struct {
 	Port int
 	// MetricsPort is the separate Prometheus listener port (PVMSS_METRICS_PORT);
 	// 0 disables it.
-	MetricsPort       int
+	MetricsPort int
+	// Pprof (PVMSS_PPROF) adds /debug/pprof/* to the metrics listener; it
+	// needs MetricsPort and is meant for diagnosis, not always-on production.
+	Pprof             bool
 	DBPath            string
 	LogLevel          string
 	LogFormat         string

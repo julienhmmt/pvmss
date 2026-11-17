@@ -12,6 +12,7 @@ code are in the "Logging and observability" section of `AGENTS.md`.
 | `LOG_FORMAT`                  | `json` for production (Loki, ELK, `jq`), `console` for a terminal. Required.                                                                            |
 | `LOG_OUTPUT`                  | `stdout`, `stderr` or a file path. Required.                                                                                                            |
 | `PVMSS_METRICS_PORT`          | Empty (default): no metrics listener. A port (1-65535, not `PVMSS_PORT`): serve `GET /metrics` on `PVMSS_HOST:<port>`.                                  |
+| `PVMSS_PPROF`                 | `true` adds Go `net/http/pprof` under `/debug/pprof/` on the metrics listener. Needs `PVMSS_METRICS_PORT`. No auth: diagnosis only.                     |
 | `OTEL_EXPORTER_OTLP_ENDPOINT` | Turns on OTLP/HTTP export of traces and metrics (for example `http://otel-collector:4318`). `OTEL_EXPORTER_OTLP_TRACES_ENDPOINT` also works for traces. |
 | `OTEL_SERVICE_NAME`           | Service name on spans and metrics. Default `pvmss`.                                                                                                     |
 | `OTEL_SDK_DISABLED`           | `true` forces telemetry export off even when an endpoint is set.                                                                                        |
@@ -545,6 +546,30 @@ service:
 Then run PVMSS with `OTEL_EXPORTER_OTLP_ENDPOINT=http://otel-collector:4318`.
 Logs are not exported over OTLP; see
 [Logs to an OpenTelemetry collector](#logs-to-an-opentelemetry-collector).
+
+## Profiling the dev stack
+
+`make up-perf` starts the dev stack with traces, metrics and pprof on, plus a
+Jaeger all-in-one (in-memory, profile `perf`):
+
+| What                                                   | Where                                   |
+| ------------------------------------------------------ | --------------------------------------- |
+| Traces (one per request, Proxmox calls as child spans) | http://127.0.0.1:16686, service `pvmss` |
+| Prometheus metrics                                     | http://127.0.0.1:9464/metrics           |
+| pprof index                                            | http://127.0.0.1:9464/debug/pprof/      |
+
+Start with a trace: sort by duration, open the slowest request, and look at
+which Proxmox spans it waited on and whether they ran in sequence or in
+parallel. Reach for pprof only when a trace shows time spent in PVMSS itself:
+
+```bash
+go tool pprof -http=:8081 'http://127.0.0.1:9464/debug/pprof/profile?seconds=30'
+go tool pprof -http=:8081 http://127.0.0.1:9464/debug/pprof/heap
+```
+
+The metrics listener allows two minutes per response when pprof is on, so
+profiles up to about 110 seconds work. `make up` (without `-perf`) turns it
+all off again.
 
 ## Metrics
 

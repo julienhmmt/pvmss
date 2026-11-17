@@ -28,10 +28,20 @@ services:
       # VictoriaLogs receiver; see docs/observability.md.
       PVMSS_SYSLOG_ADDR: ${PVMSS_SYSLOG_ADDR:-}
       PVMSS_SYSLOG_TLS_CA_FILE: ${PVMSS_SYSLOG_TLS_CA_FILE:-}
+      # Perf profiling (off unless set). `make up-perf` sets all four and
+      # starts Jaeger; see docs/observability.md "Profiling the dev stack".
+      PVMSS_METRICS_PORT: ${PVMSS_METRICS_PORT:-}
+      PVMSS_PPROF: ${PVMSS_PPROF:-false}
+      OTEL_EXPORTER_OTLP_ENDPOINT: ${OTEL_EXPORTER_OTLP_ENDPOINT:-}
+      OTEL_SERVICE_NAME: ${OTEL_SERVICE_NAME:-pvmss}
     # Not published: reach PVMSS through one of the reverse proxies below
     # (https://localhost:50000-50004), the way production does.
     expose:
       - "50000"
+    # Metrics + pprof listener (only bound when PVMSS_METRICS_PORT is set),
+    # loopback only: it has no auth.
+    ports:
+      - "127.0.0.1:9464:9464"
     volumes:
       - pvmss_dev_data:/data
       - ./dev/proxies/certs:/certs:ro
@@ -90,6 +100,23 @@ services:
     depends_on:
       victorialogs-certs:
         condition: service_completed_successfully
+
+  # --- Trace viewer (profile perf, not started by default) -----------------
+  # Jaeger all-in-one: OTLP/HTTP on 4318 (pvmss-dev exports there), UI on
+  # http://127.0.0.1:16686 (service "pvmss"). In-memory: traces vanish on restart.
+  jaeger:
+    image: jaegertracing/jaeger:2.9.0
+    profiles: [perf]
+    container_name: pvmss-jaeger
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:16686:16686"
+    expose:
+      - "4318"
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
 
   # --- Test IdP (profile oidc, not started by default) ----------------------
   # Zitadel for the Proxmox OpenID realm (issue #159). Proxmox nodes call the
