@@ -28,7 +28,7 @@ describe('contextLabel', () => {
 		['/admin/templates', 'Administration', 'VM templates'],
 		['/admin/bridges', 'Administration', 'Bridges'],
 		['/admin/docs', 'Administration', 'Documentation'],
-		['/admin/profiles', 'Administration', 'VM Profiles'],
+		['/admin/profiles', 'Administration', 'VM profiles'],
 		['/admin/tags', 'Administration', 'Tags'],
 		['/admin/policy', 'Administration', 'Limits'],
 		['/admin/policy/nodes', 'Administration', 'Node capacity'],
