@@ -21,7 +21,7 @@
      DESIGN.md's #d9742e). Side benefit: --primary is also used as link/accent
      text, and it now clears AA there too (4.56:1 on the paper ground, was
      3.09:1). */
-  --primary: oklch(56% 0.16 51deg);
+  --primary: oklch(53% 0.155 51deg); /* 53%: accent text also clears AA on the bg-primary/10 badge tint */
   /* The fill under a label, as opposed to the accent. Light mode happens to
      need the same value for both, but dark mode does not (see .dark below) - 
      so the two roles get their own token instead of sharing one and forcing
