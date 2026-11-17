@@ -19,10 +19,22 @@
 	const form = setVmCreateContext();
 	const session = getSessionContext();
 
-	/** The mode gate: null until a card is picked on the chooser. */
+	/** The mode gate: null until a card is picked; a returning user skips straight to their last mode. */
+	const MODE_KEY = 'pvmss-create-mode';
 	let chosen = $state<CreateMode | null>(null);
 
+	function readSavedMode(): CreateMode | null {
+		try {
+			const saved = localStorage.getItem(MODE_KEY);
+			return saved === 'simple' || saved === 'detailed' ? saved : null;
+		} catch {
+			return null;
+		}
+	}
+
 	onMount(() => {
+		const saved = readSavedMode();
+		if (saved) chooseMode(saved);
 		void form.loadClusters(session.principal).then(() => {
 			if (form.creationClosed) return;
 			void form.loadCatalog();
@@ -45,6 +57,11 @@
 	function chooseMode(mode: CreateMode): void {
 		form.mode = mode;
 		chosen = mode;
+		try {
+			localStorage.setItem(MODE_KEY, mode);
+		} catch {
+			// Storage blocked (private mode): the chooser simply shows again next visit.
+		}
 	}
 
 	/** Returns to the chooser, keeping every entered value. */

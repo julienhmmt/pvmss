@@ -38,6 +38,6 @@ export async function handleAccepted(accepted: VmCreateAccepted, deps: PostSubmi
 		cluster: accepted.cluster,
 		...(accepted.expectedStatus !== undefined && { expectedStatus: accepted.expectedStatus })
 	});
-	deps.toast.info(m['toast.vmCreateQueued']());
+	deps.toast.info(m['toast.vmCreateQueued']({ name: accepted.name }));
 	await goto(resolve('/vms'));
 }

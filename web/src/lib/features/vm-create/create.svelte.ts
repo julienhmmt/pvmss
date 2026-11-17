@@ -343,10 +343,14 @@ function translateNotApproved(message: string): string {
 	return m['vms.create.errorNotApprovedGeneric']();
 }
 
+const PLACEMENT_ERROR_CODES = new Set(['not_approved', 'capacity_exceeded', 'insufficient_disk_space', 'cluster_error']);
+
 /** Translates a VM-create submit failure - never shows the server's raw
  *  English message (constitution: UI text is always localized). */
-function translateSubmitError(error: unknown): string {
+function translateSubmitError(error: unknown, mode: CreateMode): string {
 	if (!(error instanceof ApiRequestError)) return m['vms.create.errorCreation']();
+	// Simple mode never shows nodes, storages or bridges, so placement failures get one plain sentence with a next step.
+	if (mode === 'simple' && PLACEMENT_ERROR_CODES.has(error.code)) return m['vms.create.errorPlacementSimple']();
 	if (error.code === 'not_approved') return translateNotApproved(error.serverMessage);
 	const dynamic = DYNAMIC_SUBMIT_ERRORS[error.code];
 	if (dynamic) return dynamic(error.serverMessage);
@@ -702,7 +706,7 @@ export class VmCreateStore {
 			const accepted: VmCreateAccepted = await post<VmCreateAccepted>('/api/v1/vms', request);
 			return { ...accepted, expectedStatus: request.startAfterCreate ? 'running' : 'stopped' };
 		} catch (error: unknown) {
-			this.submitError = translateSubmitError(error);
+			this.submitError = translateSubmitError(error, this.mode);
 			return null;
 		} finally {
 			this.submitting = false;

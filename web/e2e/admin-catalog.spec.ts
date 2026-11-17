@@ -180,7 +180,8 @@ test.describe('T11 admin catalog', () => {
 
 		await signInAlice(page.request);
 		await page.goto('/vms/create');
-		await page.getByRole('button', { name: /Simple/ }).click();
+		// The create page remembers the Simple mode picked above, so no chooser this time.
+		await expect(page.getByRole('radio').first()).toBeVisible();
 		await expect(page.getByRole('radio', { name: /XLarge/ })).toHaveCount(0);
 
 		// Re-enabling restores it (FR-011: no cascade, nothing else to verify).

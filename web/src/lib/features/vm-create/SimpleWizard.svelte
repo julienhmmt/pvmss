@@ -172,7 +172,7 @@
 		}
 		const accepted = await form.submit();
 		if (accepted === null) {
-			if (form.submitError) toast.error(m['toast.vmCreateFailed']({ error: form.submitError }));
+			// The inline Alert beside the submit button carries the error; no toast on top.
 			return;
 		}
 		await handleAccepted(accepted, { tray, toast, outcomeLedger });

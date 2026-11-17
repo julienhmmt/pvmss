@@ -1,6 +1,7 @@
 import { afterEach, describe, it, expect, vi } from 'vitest';
 import { ApiRequestError } from '#lib/shared/api/client.js';
-import { VmCreateStore, type VmCreateCatalog } from './create.svelte';
+import { VmCreateStore, type VmCreateCatalog, type CreateMode } from './create.svelte';
+import { m } from '#lib/paraglide/messages.js';
 
 
 describe('VmCreateStore.submit with a template disk minimum (issue 04)', () => {
@@ -185,9 +186,10 @@ describe('VmCreateStore.submit error translation', () => {
 	afterEach(() => vi.unstubAllGlobals());
 
 	/** Stubs fetch to reject with the given ApiRequestError and submits. */
-	async function submitWithError(err: ApiRequestError): Promise<string | null> {
+	async function submitWithError(err: ApiRequestError, mode: CreateMode = 'detailed'): Promise<string | null> {
 		vi.stubGlobal('fetch', vi.fn().mockRejectedValue(err));
 		const store = new VmCreateStore();
+		store.mode = mode;
 		store.name = 'web-04';
 		store.simpleSource = 'template';
 		store.templateId = 9000;
@@ -204,6 +206,21 @@ describe('VmCreateStore.submit error translation', () => {
 		await store.submit();
 		return store.submitError;
 	}
+
+	it('turns placement failures into one plain sentence in simple mode', async () => {
+		for (const err of [
+			new ApiRequestError(400, 'capacity_exceeded', 'node "miniquarium" disk capacity (48) would be exceeded'),
+			new ApiRequestError(400, 'not_approved', 'not approved for this cluster: storage "local-lvm" on node "pve-node-01"')
+		]) {
+			const msg = await submitWithError(err, 'simple');
+			expect(msg).toBe(m['vms.create.errorPlacementSimple']());
+		}
+	});
+
+	it('keeps name errors specific in simple mode', async () => {
+		const msg = await submitWithError(new ApiRequestError(409, 'name_taken', 'taken'), 'simple');
+		expect(msg).toBe(m['vms.create.errorNameTaken']());
+	});
 
 	it('parses capacity_exceeded into a localized message naming the node and dimension', async () => {
 		const err = new ApiRequestError(400, 'capacity_exceeded', 'node "miniquarium" disk capacity (48) would be exceeded');

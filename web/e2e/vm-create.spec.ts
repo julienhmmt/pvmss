@@ -200,7 +200,7 @@ test.describe('T06 VM creation', () => {
 
 		// Nothing is persisted, so the reload comes back empty.
 		await expect(page.getByText(/Draft saved|will be restored/)).toHaveCount(0);
-		await page.getByRole('button', { name: /Detailed/ }).click();
+		// The chosen mode is remembered, so the reload lands back in the detailed wizard.
 		await expect(page.getByLabel('Name')).toHaveValue('');
 	});
 
