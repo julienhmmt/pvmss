@@ -2,7 +2,20 @@ import { describe, it, expect, vi, afterEach } from 'vitest';
 import { reveal } from './reveal';
 
 describe('reveal', () => {
-	afterEach(() => vi.unstubAllGlobals());
+	afterEach(() => {
+		vi.unstubAllGlobals();
+		document.documentElement.removeAttribute('data-motion-off');
+	});
+
+	it('never hides content when the user stopped motion', () => {
+		vi.stubGlobal('IntersectionObserver', class { observe() {} disconnect() {} });
+		document.documentElement.setAttribute('data-motion-off', '');
+		const node = document.createElement('div');
+		const onShow = vi.fn();
+		reveal(onShow)(node);
+		expect(node.dataset.reveal).toBeUndefined();
+		expect(onShow).toHaveBeenCalledOnce();
+	});
 
 	it('leaves content visible and fires at once without IntersectionObserver', () => {
 		vi.stubGlobal('IntersectionObserver', undefined);
