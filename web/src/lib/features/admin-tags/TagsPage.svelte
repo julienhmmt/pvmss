@@ -209,7 +209,7 @@
 									<div class="flex items-center gap-2">
 										<span class="inline-block h-4 w-4 rounded-full border" style="background: {tag.color}"></span>
 										<span class="font-mono text-xs">{tag.color}</span>
-										<Button variant="ghost" size="sm" label={m['admin.tags.editColorLabel']({ name: tag.name })} onclick={() => startEdit(tag)}>{m['common.edit']()}</Button>
+										<Button variant="secondary" size="sm" label={m['admin.tags.editColorLabel']({ name: tag.name })} onclick={() => startEdit(tag)}>{m['common.edit']()}</Button>
 									</div>
 								{/if}
 							</td>

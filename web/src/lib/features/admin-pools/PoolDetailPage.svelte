@@ -304,7 +304,7 @@
 								{:else}
 									<dd class="mt-1 flex items-center gap-2">
 										<span>{detail.comment || m['admin.nodeDetails.notReported']()}</span>
-										<Button size="sm" variant="ghost" onclick={startCommentEdit}>
+										<Button size="sm" variant="secondary" onclick={startCommentEdit}>
 											{detail.comment ? m['common.edit']() : m['admin.poolDetail.addComment']()}
 										</Button>
 									</dd>
