@@ -166,7 +166,7 @@ func (h *Auth) Login(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	result, err := authenticatePVE(r.Context(), client, username, request.Password)
+	result, err := authenticatePVE(r.Context(), client, username, request.Password, h.ownsManagedPool(r.Context(), clusterName, username))
 	if err != nil {
 		SetErrorMsg(w, "pve authentication failed", err)
 		h.pveFailures.allow(pveKey, time.Now())
@@ -728,20 +728,51 @@ func decodeJSONLimit(w http.ResponseWriter, r *http.Request, dest any, maxBytes 
 	return nil
 }
 
-// authenticatePVE tries the typed username, then - on a not-found rejection -
-// retries once under the "pvmss-" pool prefix. Self-service pool users are
+// authenticatePVE tries the typed username and the "pvmss-" pool name, the
+// second only on a not-found rejection. Self-service pool users are
 // provisioned as "pvmss-{pool}@{realm}" (pools.CreateManaged) but only ever
 // told their pool name, so a bare "jho" must resolve to "pvmss-jho@pve"
 // without the user needing to know the internal naming convention.
-func authenticatePVE(ctx context.Context, client cluster.Client, username, password string) (cluster.Identity, error) {
-	result, err := client.Authenticate(ctx, username, password)
+// poolFirst flips the order: Proxmox delays every failed login (~3 s), so a
+// user known to own a managed pool goes straight to the prefixed name.
+func authenticatePVE(ctx context.Context, client cluster.Client, username, password string, poolFirst bool) (cluster.Identity, error) {
+	poolUsername, hasPoolForm := withPoolPrefix(username)
+	if !hasPoolForm {
+		return client.Authenticate(ctx, username, password)
+	}
+
+	first, second := username, poolUsername
+	if poolFirst {
+		first, second = poolUsername, username
+	}
+
+	result, err := client.Authenticate(ctx, first, password)
 	if err != nil && errors.Is(err, cluster.ErrNotFound) {
-		if poolUsername, ok := withPoolPrefix(username); ok {
-			result, err = client.Authenticate(ctx, poolUsername, password)
-		}
+		result, err = client.Authenticate(ctx, second, password)
 	}
 
 	return result, err
+}
+
+// ownsManagedPool reports whether username's "pvmss-" pool is managed by
+// PVMSS on clusterName. Only an ordering hint for authenticatePVE: a store
+// error is logged and answers false (the original typed-name-first order).
+func (h *Auth) ownsManagedPool(ctx context.Context, clusterName, username string) bool {
+	poolUsername, ok := withPoolPrefix(username)
+	if !ok || h.clusterStore == nil {
+		return false
+	}
+
+	pool, _, _ := strings.Cut(poolUsername, "@")
+
+	managed, err := h.clusterStore.IsPoolManaged(ctx, clusterName, pool)
+	if err != nil {
+		logctx.FromOr(ctx, h.log).WarnContext(ctx, "managed pool lookup failed", "component", "httpapi", "cluster", clusterName, "error", err)
+
+		return false
+	}
+
+	return managed
 }
 
 // normalizePVEUsername resolves the realm. An explicit "@realm" in the

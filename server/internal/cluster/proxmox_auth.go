@@ -9,6 +9,11 @@ import (
 	"pvmss/server/internal/logctx"
 	"slices"
 	"strings"
+
+	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/codes"
+	"go.opentelemetry.io/otel/trace"
 )
 
 // proxmoxFormPassword is the PVE form field carrying a user password.
@@ -63,11 +68,23 @@ func proxmoxTicketAuth(ctx context.Context, rest proxmoxRESTClient, username, pa
 
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 
+	// Same span shape as proxmoxRESTClient.attempt, so a slow login (Proxmox
+	// delays rejected credentials) shows up in traces. No username or body.
+	_, span := otel.Tracer(tracerName).Start(ctx, "POST /access/ticket",
+		trace.WithSpanKind(trace.SpanKindClient),
+		trace.WithAttributes(attribute.String("cluster", rest.cluster), attribute.String("http.request.method", http.MethodPost),
+			attribute.String("url.template", "/access/ticket")))
+	defer span.End()
+
 	resp, err := rest.http.Do(req)
 	if err != nil {
+		span.SetStatus(codes.Error, "unreachable")
+
 		return "", "", fmt.Errorf("%w: %w", ErrUnreachable, err)
 	}
 	defer func() { _ = resp.Body.Close() }()
+
+	span.SetAttributes(attribute.Int("http.response.status_code", resp.StatusCode))
 
 	if resp.StatusCode == http.StatusUnauthorized {
 		return "", "", ErrNotFound
