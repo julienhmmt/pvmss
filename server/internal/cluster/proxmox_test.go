@@ -65,7 +65,6 @@ func TestProxmox_NodeDetailReads(t *testing.T) {
 	}
 }
 
-//nolint:dupl // snapshot retains its separate aggregate-discovery contract
 func TestProxmox_Snapshot(t *testing.T) {
 	t.Parallel()
 
@@ -73,7 +72,7 @@ func TestProxmox_Snapshot(t *testing.T) {
 		mux.HandleFunc("GET /api2/json/cluster/resources", func(w http.ResponseWriter, _ *http.Request) {
 			writeJSONFixture(t, w, `{"data":[
 				{"type":"node","node":"pve1","status":"online","maxcpu":32,"cpu":0.1,"maxmem":1000,"mem":500,"maxdisk":2000,"disk":1000},
-				{"type":"qemu","node":"pve1","vmid":101,"name":"web-1","status":"running","pool":"alice","tags":"pvmss;prod","maxcpu":2,"maxmem":2147483648},
+				{"type":"qemu","node":"pve1","vmid":101,"name":"web-1","status":"running","uptime":3600,"pool":"alice","tags":"pvmss;prod","maxcpu":2,"maxmem":2147483648},
 				{"type":"storage","node":"pve1","storage":"local-lvm","plugintype":"lvmthin","content":"images,rootdir","maxdisk":500,"disk":100}
 			]}`)
 		})
@@ -85,9 +84,6 @@ func TestProxmox_Snapshot(t *testing.T) {
 				"sockets":1,"cores":2,"scsi0":"local-lvm:vm-101-disk-0,size=32G",
 				"net0":"virtio=AA:BB:CC:DD:EE:01,bridge=vmbr0","description":"demo box","tags":"pvmss;prod"
 			}}`)
-		})
-		mux.HandleFunc("GET /api2/json/nodes/pve1/qemu/101/status/current", func(w http.ResponseWriter, _ *http.Request) {
-			writeJSONFixture(t, w, `{"data":{"uptime":3600}}`)
 		})
 	})
 
@@ -102,14 +98,14 @@ func TestProxmox_Snapshot(t *testing.T) {
 }
 
 // proxmoxManyVMsServer serves vmCount running VMs (VMIDs 100..). Each config
-// and status read sleeps delay. The VM whose VMID equals gone answers 404 on
+// read sleeps delay. The VM whose VMID equals gone answers 404 on
 // its config read, as a VM deleted mid-refresh does (0 means none).
 func proxmoxManyVMsServer(t *testing.T, vmCount int, delay time.Duration, gone int) *httptest.Server {
 	t.Helper()
 
 	rows := make([]string, 0, vmCount)
 	for id := 100; id < 100+vmCount; id++ {
-		rows = append(rows, fmt.Sprintf(`{"type":"qemu","node":"pve1","vmid":%d,"name":"vm-%d","status":"running","maxcpu":1,"maxmem":1073741824}`, id, id))
+		rows = append(rows, fmt.Sprintf(`{"type":"qemu","node":"pve1","vmid":%d,"name":"vm-%d","status":"running","uptime":60,"maxcpu":1,"maxmem":1073741824}`, id, id))
 	}
 
 	resources := `{"data":[` + strings.Join(rows, ",") + `]}`
@@ -134,16 +130,12 @@ func proxmoxManyVMsServer(t *testing.T, vmCount int, delay time.Duration, gone i
 
 				writeJSONFixture(t, w, `{"data":{"sockets":1,"cores":1}}`)
 			})
-			mux.HandleFunc(fmt.Sprintf("GET /api2/json/nodes/pve1/qemu/%d/status/current", id), func(w http.ResponseWriter, _ *http.Request) {
-				time.Sleep(delay)
-				writeJSONFixture(t, w, `{"data":{"uptime":60}}`)
-			})
 		}
 	})
 }
 
-// Sequential hydration of 50 running VMs at 20 ms per read takes about 2 s;
-// bounded concurrency must finish well inside that.
+// Sequential hydration of 50 VMs at 20 ms per config read takes about 1 s;
+// bounded concurrency (8 in flight) takes about 130 ms.
 func TestProxmox_Snapshot_HydratesVMsConcurrently(t *testing.T) {
 	t.Parallel()
 
@@ -159,7 +151,7 @@ func TestProxmox_Snapshot_HydratesVMsConcurrently(t *testing.T) {
 		t.Fatalf("Snapshot: %v", err)
 	}
 
-	if elapsed := time.Since(start); elapsed > time.Second {
+	if elapsed := time.Since(start); elapsed > 500*time.Millisecond {
 		t.Fatalf("Snapshot took %v for %d VMs; hydration looks sequential", elapsed, vmCount)
 	}
 

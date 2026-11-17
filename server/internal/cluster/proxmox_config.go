@@ -375,7 +375,7 @@ func splitProxmoxTags(raw string) []string {
 
 // hydrateVM fills in the config-level fields Snapshot's /cluster/resources
 // call cannot provide (Sockets, Cores, Disks, CDROM, NetworkInterfaces,
-// BootOrder, Description) and, for a running VM, its live uptime.
+// BootOrder, Description). Uptime comes from the resources row itself.
 //
 // Called by hydrateVMs, at most hydrateConcurrency VMs at a time.
 func hydrateVM(ctx context.Context, rest proxmoxRESTClient, vm *VM) error {
@@ -405,17 +405,6 @@ func hydrateVM(ctx context.Context, rest proxmoxRESTClient, vm *VM) error {
 
 	applyConfigSummary(vm, cfg)
 
-	if vm.Status != VMRunning {
-		return nil
-	}
-
-	uptime, err := fetchUptime(ctx, rest, vm.Node, vm.VMID)
-	if err != nil {
-		return nil //nolint:nilerr // best-effort: a stale/racing status read should not fail the whole snapshot
-	}
-
-	vm.Uptime = uptime
-
 	return nil
 }
 
@@ -443,26 +432,9 @@ func applyConfigSummary(vm *VM, cfg proxmoxVMConfig) {
 	vm.Tags = splitProxmoxTags(cfg.str("tags"))
 }
 
-func fetchUptime(ctx context.Context, rest proxmoxRESTClient, node string, vmid int) (time.Duration, error) {
-	raw, err := rest.do(ctx, http.MethodGet, fmt.Sprintf("/nodes/%s/qemu/%d/status/current", url.PathEscape(node), vmid), nil)
-	if err != nil {
-		return 0, err
-	}
-
-	var status struct {
-		Uptime int64 `json:"uptime"`
-	}
-	if err := decodeData(raw, &status); err != nil {
-		return 0, fmt.Errorf("decode vm status: %w", err)
-	}
-
-	return time.Duration(status.Uptime) * time.Second, nil
-}
-
 // VMStatus implements VMStatusReader via GET /nodes/{node}/qemu/{vmid}/status/current.
-// It reads the live power state, lock, and uptime in a single call - the same
-// endpoint fetchUptime already used, now exposed as the domain-level live-status
-// read (ADR 0001).
+// It reads the live power state, lock, and uptime in a single call, the
+// domain-level live-status read (ADR 0001).
 func (p Proxmox) VMStatus(ctx context.Context, node string, vmid int) (VMLiveStatus, error) {
 	raw, err := p.rest().do(ctx, http.MethodGet,
 		fmt.Sprintf("/nodes/%s/qemu/%d/status/current", url.PathEscape(node), vmid), nil)

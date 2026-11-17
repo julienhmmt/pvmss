@@ -11,8 +11,6 @@ import (
 // while /config already holds the values just written. The snapshot must
 // carry the config values, otherwise every post-write refresh rebuilds the
 // projection with stale data.
-//
-//nolint:dupl // same fixture shape as TestProxmox_Snapshot by design
 func TestProxmox_Snapshot_ConfigWinsOverLaggingResources(t *testing.T) {
 	t.Parallel()
 
@@ -27,9 +25,6 @@ func TestProxmox_Snapshot_ConfigWinsOverLaggingResources(t *testing.T) {
 		})
 		mux.HandleFunc("GET /api2/json/nodes/pve1/qemu/101/config", func(w http.ResponseWriter, _ *http.Request) {
 			writeJSONFixture(t, w, `{"data":{"name":"t3","sockets":1,"cores":2,"memory":1536,"tags":"pvmss;lagcheck"}}`)
-		})
-		mux.HandleFunc("GET /api2/json/nodes/pve1/qemu/101/status/current", func(w http.ResponseWriter, _ *http.Request) {
-			writeJSONFixture(t, w, `{"data":{"uptime":60}}`)
 		})
 	})
 

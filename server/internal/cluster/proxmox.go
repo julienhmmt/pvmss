@@ -9,6 +9,7 @@ import (
 	"pvmss/server/internal/logctx"
 	"pvmss/server/internal/store"
 	"sync"
+	"time"
 )
 
 // Proxmox is the real cluster implementation, talking to the Proxmox VE REST
@@ -66,6 +67,7 @@ type proxmoxResourceRow struct {
 	Content    string  `json:"content"`
 	Shared     int     `json:"shared"`   // 1 when storage.cfg marks the storage shared
 	Template   int     `json:"template"` // 1 when the qemu VM is a template
+	Uptime     int64   `json:"uptime"`   // seconds, for node and qemu rows
 }
 
 // StorageSnapshotCapability reports whether a (storage plugin, disk format)
@@ -114,9 +116,8 @@ const proxmoxResourceTypeParam = "type"
 const proxmoxStorageType = "storage"
 
 // Snapshot implements Client: one /cluster/resources call for the node,
-// VM, and storage summary, then one /qemu/{vmid}/config (plus, for running
-// VMs, one /status/current) call per VM to hydrate what the summary omits
-// (see hydrateVM).
+// VM, and storage summary (uptime included), then one /qemu/{vmid}/config
+// call per VM to hydrate what the summary omits (see hydrateVM).
 func (p Proxmox) Snapshot(ctx context.Context) (Snapshot, error) {
 	rest := p.rest()
 
@@ -319,6 +320,7 @@ func proxmoxVMFromRow(row proxmoxResourceRow) VM {
 		Tags:        splitProxmoxTags(row.Tags),
 		CPUCores:    int(row.MaxCPU),
 		MemoryTotal: row.MaxMem,
+		Uptime:      time.Duration(row.Uptime) * time.Second,
 	}
 }
 
