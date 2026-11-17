@@ -182,9 +182,14 @@ export class AdminCatalogStore {
 	templateSortBy: TemplateSortColumn = $state('vmid');
 	templateSortDir: 'asc' | 'desc' = $state('asc');
 
+	// Items on a disabled node stay stored (re-enabling restores them) but are hidden from admin pages.
+	disabledNodeNames = $derived(new Set(this.nodes.filter((n) => !n.enabled).map((n) => n.name)));
+	#onEnabledNode = (node: string): boolean => !this.disabledNodeNames.has(node);
+
 	filteredIsos = $derived(
 		sortIsos(
 			this.isos.filter((iso) => {
+				if (!this.#onEnabledNode(iso.node)) return false;
 				const search = this.isoSearch.toLowerCase();
 				if (search && !iso.file.toLowerCase().includes(search)) return false;
 				if (this.isoStorageFilter && iso.storage !== this.isoStorageFilter) return false;
@@ -199,12 +204,13 @@ export class AdminCatalogStore {
 	);
 
 	isoStorageOptions = $derived([...new SvelteSet(this.isos.map((i) => i.storage))].sort());
-	isoNodeOptions = $derived([...new SvelteSet(this.isos.map((i) => i.node))].sort());
+	isoNodeOptions = $derived([...new SvelteSet(this.isos.filter((x) => this.#onEnabledNode(x.node)).map((i) => i.node))].sort());
 
 
 	filteredRealStorages = $derived.by(() => {
 		const search = this.storageSearch.toLowerCase();
 		return this.storages.filter((storage) => {
+			if (!this.#onEnabledNode(storage.node)) return false;
 			if (search) {
 				const match =
 					storage.name.toLowerCase().includes(search) ||
@@ -233,6 +239,7 @@ export class AdminCatalogStore {
 		} else {
 			selectedNodeNames = this.nodes.map((n) => n.name);
 		}
+		selectedNodeNames = selectedNodeNames.filter(this.#onEnabledNode);
 
 		const placeholders: AdminStorage[] = selectedNodeNames
 			.filter((node) => !hasShared && !storageNodes.has(node))
@@ -251,12 +258,13 @@ export class AdminCatalogStore {
 
 	filteredStorageCount = $derived(this.filteredRealStorages.length);
 
-	storageNodeOptions = $derived([...new SvelteSet(this.nodes.map((n) => n.name))].sort());
+	storageNodeOptions = $derived([...new SvelteSet(this.nodes.filter((n) => n.enabled).map((n) => n.name))].sort());
 	storageTypeOptions = $derived([...new SvelteSet(this.storages.map((s) => s.type))].sort());
 
 	filteredBridges = $derived(
 		sortBridges(
 			this.bridges.filter((bridge) => {
+				if (!this.#onEnabledNode(bridge.node)) return false;
 				const search = this.bridgeSearch.toLowerCase();
 				if (search) {
 					const match =
@@ -277,7 +285,7 @@ export class AdminCatalogStore {
 		)
 	);
 
-	bridgeNodeOptions = $derived([...new SvelteSet(this.bridges.map((b) => b.node))].sort());
+	bridgeNodeOptions = $derived([...new SvelteSet(this.bridges.filter((x) => this.#onEnabledNode(x.node)).map((b) => b.node))].sort());
 
 	filteredNodes = $derived(
 		sortNodes(
@@ -298,6 +306,7 @@ export class AdminCatalogStore {
 	filteredTemplates = $derived(
 		sortTemplates(
 			this.templates.filter((tmpl) => {
+				if (!this.#onEnabledNode(tmpl.node)) return false;
 				const search = this.templateSearch.toLowerCase();
 				if (search && !tmpl.name.toLowerCase().includes(search) && String(tmpl.vmid) !== search) return false;
 				if (this.templateStorageFilter && tmpl.diskStorage !== this.templateStorageFilter) return false;
@@ -314,7 +323,7 @@ export class AdminCatalogStore {
 	templateStorageOptions = $derived(
 		[...new SvelteSet(this.templates.map((t) => t.diskStorage).filter((storage) => storage !== ''))].sort()
 	);
-	templateNodeOptions = $derived([...new SvelteSet(this.templates.map((t) => t.node))].sort());
+	templateNodeOptions = $derived([...new SvelteSet(this.templates.filter((x) => this.#onEnabledNode(x.node)).map((t) => t.node))].sort());
 
 	setStorageSort(column: StorageSortColumn): void {
 		if (this.storageSortBy === column) {

@@ -101,6 +101,21 @@ const templates: AdminTemplate[] = [
 describe('AdminCatalogStore', () => {
 	afterEach(() => vi.unstubAllGlobals());
 
+	it('hides bridges of a disabled node but keeps them stored', () => {
+		const store = new AdminCatalogStore();
+		store.nodes = [
+			{ name: 'node-a', enabled: true },
+			{ name: 'node-b', enabled: false }
+		] as AdminNode[];
+		store.bridges = [
+			{ ...bridges[0]!, node: 'node-a' },
+			{ ...bridges[0]!, node: 'node-b' }
+		];
+		expect(store.filteredBridges.map((b) => b.node)).toEqual(['node-a']);
+		expect(store.bridgeNodeOptions).toEqual(['node-a']);
+		expect(store.bridges).toHaveLength(2);
+	});
+
 	it('toggles the exact bridge node and name pair', async () => {
 		const fetchMock = vi.fn().mockResolvedValue(
 			jsonResponse(200, { node: 'node-a', name: 'vmbr0', enabled: true })

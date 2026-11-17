@@ -87,6 +87,12 @@ describe('AdminPolicyNodesStore', () => {
 	});
 
 	describe('sortedNodes', () => {
+		it('hides nodes that are not approved', () => {
+			const store = new AdminPolicyNodesStore();
+			store.nodes = [fixture({ node: 'pve-node-01' }), fixture({ node: 'pve-node-02', approved: false })];
+			expect(store.sortedNodes.map((n) => n.node)).toEqual(['pve-node-01']);
+		});
+
 		// Saturation ratios: node-01 uncapped (0), node-02 at 50% vCPU,
 		// node-03 at 90% vCPU - usage numbers alone would rank them wrong.
 		const nodes = [

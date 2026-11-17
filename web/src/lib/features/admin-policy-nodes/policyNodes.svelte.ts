@@ -158,7 +158,8 @@ export class AdminPolicyNodesStore {
 	sortBy: NodeCapacitySortColumn = $state('node');
 	sortDir: 'asc' | 'desc' = $state('asc');
 
-	sortedNodes = $derived(sortNodeCapacities(this.nodes, this.sortBy, this.sortDir));
+	// Disabled nodes keep their stored limits but are hidden until re-enabled.
+	sortedNodes = $derived(sortNodeCapacities(this.nodes.filter((n) => n.approved), this.sortBy, this.sortDir));
 
 	setSort(column: NodeCapacitySortColumn): void {
 		if (this.sortBy === column) {
