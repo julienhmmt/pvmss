@@ -57,7 +57,8 @@ export const ADMIN_NAV_GROUPS: readonly AdminNavGroup[] = [
 			{ href: resolve('/admin/isos'), label: () => m['chrome.adminNav.isos']() },
 			// Cloud images (.img) are disabled for now: they do not work reliably yet.
 			// { href: resolve('/admin/images'), label: () => m['chrome.adminNav.images']() },
-			{ href: resolve('/admin/bridges'), label: () => m['chrome.adminNav.bridges']() }
+			{ href: resolve('/admin/bridges'), label: () => m['chrome.adminNav.bridges']() },
+			{ href: resolve('/admin/docs'), label: () => m['chrome.adminNav.documentation']() }
 		]
 	},
 	{
@@ -83,7 +84,6 @@ export const ADMIN_NAV_GROUPS: readonly AdminNavGroup[] = [
 		icon: 'system',
 		items: [
 			{ href: resolve('/admin/appinfo'), label: () => m['chrome.adminNav.appInfo']() },
-			{ href: resolve('/admin/docs'), label: () => m['chrome.adminNav.documentation']() },
 			{ href: resolve('/admin/recovery'), label: () => m['chrome.adminNav.recovery']() },
 			{ href: resolve('/admin/settings'), label: () => m['chrome.adminNav.settings']() }
 		]

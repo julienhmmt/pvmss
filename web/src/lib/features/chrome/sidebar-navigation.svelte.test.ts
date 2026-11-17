@@ -53,8 +53,8 @@ describe('SidebarNavigationState', () => {
 	it('groups admin navigation into Infrastructure, Resources, Provisioning, Policy and System', () => {
 		const headings = ADMIN_NAV_GROUPS.map((group) => group.heading());
 		expect(headings).toEqual(['Infrastructure', 'Resources', 'Provisioning', 'Policy', 'System']);
-		const systemItems = (ADMIN_NAV_GROUPS[4]?.items ?? []).map((item) => item.href);
-		expect(systemItems).toContain('/admin/docs');
+		const resourceItems = (ADMIN_NAV_GROUPS[1]?.items ?? []).map((item) => item.href);
+		expect(resourceItems).toContain('/admin/docs');
 	});
 
 	it('lets the user close and reopen the active group', () => {
