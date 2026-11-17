@@ -202,7 +202,7 @@
 								{#if editingTag === tag.name}
 									<div class="flex items-center gap-2">
 										<ColorPicker bind:value={editColor} class="h-8 w-12 p-1" />
-										<Button variant="ghost" size="sm" onclick={saveEdit}>{m['common.save']()}</Button>
+										<Button size="sm" onclick={saveEdit}>{m['common.save']()}</Button>
 										<Button variant="secondary" size="sm" onclick={() => (editingTag = null)}>{m['common.cancel']()}</Button>
 									</div>
 								{:else}
