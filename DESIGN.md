@@ -132,12 +132,14 @@ narrower exception (see **Cinematic surface** below).
 `primary-solid`, radial glow, masked dot grid, a line-art scene with slow
 packet / float / pulse motion) carries the product's threshold moments. Use it
 in full on screens a user meets before or outside the workspace: `/login`,
-`/admin/login`, `/setup`, error and 404 pages. Inside the workspace it appears
-only as a light echo (`CinematicBackdrop`: the same glow and dot grid toned
-down on a normal card, so every control keeps its usual tokens), and only on
-landing headers (`PageHeader cinematic`: `/vms`, `/admin`), the first-run
-empty state, and the provisioning card (`CinematicFlow`). Never on dense
-working pages, tables, forms or the other empty states. The classes live in
+`/admin/login`, `/setup`, error and 404 pages, and the public home's closing
+call to action. Elsewhere it appears only as a light echo
+(`CinematicBackdrop`: the same glow and dot grid toned down on a normal card,
+so every control keeps its usual tokens): the public home hero, every admin
+page header and the `/vms` header (`PageHeader cinematic`), the first-run
+empty state, and the provisioning card (`CinematicFlow`). The echo stays in
+the header band: never on tables, forms, cards inside a page or the other
+empty states. The classes live in
 `app.css` as `pv-cinematic-*`; motion stops under `prefers-reduced-motion`.
 
 **Application direction (chosen concept: "Calm workspace"):** the signed-in app

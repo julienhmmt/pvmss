@@ -89,7 +89,7 @@
 	<title>{m['admin.nodes.title']()}</title>
 </svelte:head>
 
-<PageHeader title={m['admin.nodes.heading']()} eyebrow={m['chrome.adminNav.infrastructure']()}>
+<PageHeader cinematic title={m['admin.nodes.heading']()} eyebrow={m['chrome.adminNav.infrastructure']()}>
 	{#snippet actions()}
 		<ClusterSelector
 			options={store.clusterOptions}

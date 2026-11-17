@@ -80,7 +80,7 @@
 </svelte:head>
 
 <section class="w-full">
-	<PageHeader
+	<PageHeader cinematic
 		title={m['admin.vms.heading']()}
 		eyebrow={m['chrome.adminNav.infrastructure']()}
 		description={m['admin.vms.description']()}

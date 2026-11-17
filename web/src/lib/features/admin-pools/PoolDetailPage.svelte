@@ -186,7 +186,7 @@
 	<title>{detail ? m['admin.poolDetail.pageTitle']({ name: detail.name }) : m['admin.poolDetail.title']()}</title>
 </svelte:head>
 
-<PageHeader
+<PageHeader cinematic
 	title={detail?.name ?? m['admin.poolDetail.title']()}
 	eyebrow={detail?.cluster ?? m['admin.pools.heading']()}
 	description={m['admin.poolDetail.description']()}

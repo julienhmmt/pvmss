@@ -228,7 +228,7 @@
 	<title>{m['admin.profiles.pageTitle']()}</title>
 </svelte:head>
 
-<PageHeader title={m['admin.profiles.title']()} eyebrow={m['chrome.adminNav.provisioning']()}>
+<PageHeader cinematic title={m['admin.profiles.title']()} eyebrow={m['chrome.adminNav.provisioning']()}>
 	{#snippet actions()}
 		<ClusterSelector options={clusterOptions} value={cluster} onChange={onClusterChange} id="profiles-cluster" />
 		<Button variant="secondary" onclick={() => { onClearSaveError(); showImport = true; }}>{m['admin.profiles.import']()}</Button>

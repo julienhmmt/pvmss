@@ -71,7 +71,7 @@
 	}
 </script>
 
-<PageHeader title={m['admin.clusters.heading']()} eyebrow={m['chrome.adminNav.infrastructure']()} description={m['admin.clusters.description']()}>
+<PageHeader cinematic title={m['admin.clusters.heading']()} eyebrow={m['chrome.adminNav.infrastructure']()} description={m['admin.clusters.description']()}>
 	{#snippet actions()}
 		<Button onclick={() => void openForm(null)}>{m['admin.clusters.addCluster']()}</Button>
 	{/snippet}

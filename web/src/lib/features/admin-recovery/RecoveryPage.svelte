@@ -122,7 +122,7 @@
 
 <div class="sr-only" role="status" aria-live="polite">{announce ?? ''}</div>
 
-<PageHeader title={m['admin.recovery.heading']()} eyebrow={m['chrome.adminNav.system']()} description={m['admin.recovery.description']()}>
+<PageHeader cinematic title={m['admin.recovery.heading']()} eyebrow={m['chrome.adminNav.system']()} description={m['admin.recovery.description']()}>
 	{#snippet actions()}
 		<ClusterSelector options={clusterOptions} value={cluster} onChange={onClusterChange} id="recovery-cluster" />
 		<Button variant="secondary" onclick={onRescan} disabled={loading || rescanning}>

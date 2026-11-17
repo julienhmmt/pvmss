@@ -334,7 +334,7 @@
 	<title>{detail ? m['admin.nodeDetails.pageTitle']({ name: detail.name }) : m['admin.nodeDetails.title']()}</title>
 </svelte:head>
 
-<PageHeader
+<PageHeader cinematic
 	title={detail?.name ?? m['admin.nodeDetails.title']()}
 	eyebrow={detail?.cluster ?? m['admin.nodeDetails.eyebrow']()}
 	description={m['admin.nodeDetails.description']()}

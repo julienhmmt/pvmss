@@ -84,7 +84,7 @@
 	<title>{m['admin.templates.title']()}</title>
 </svelte:head>
 
-<PageHeader title={m['admin.templates.heading']()} eyebrow={m['chrome.adminNav.resources']()} description={m['admin.templates.storageRule']()}>
+<PageHeader cinematic title={m['admin.templates.heading']()} eyebrow={m['chrome.adminNav.resources']()} description={m['admin.templates.storageRule']()}>
 	{#snippet actions()}
 		<ClusterSelector
 			options={store.clusterOptions}

@@ -4,7 +4,7 @@
 	import { m } from '#lib/paraglide/messages.js';
 </script>
 
-<PageHeader
+<PageHeader cinematic
 	title={m['admin.quotaRequests.title']()}
 	eyebrow={m['chrome.adminNav.policy']()}
 	description={m['admin.quotaRequests.description']()}

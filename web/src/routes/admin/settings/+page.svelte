@@ -75,7 +75,7 @@
 	<title>{m['admin.settings.title']()}</title>
 </svelte:head>
 
-<PageHeader title={m['admin.settings.heading']()} eyebrow={m['chrome.adminNav.system']()} />
+<PageHeader cinematic title={m['admin.settings.heading']()} eyebrow={m['chrome.adminNav.system']()} />
 
 <Tabs tabs={SETTINGS_TABS} look="folder" bind:active={() => activeTab, selectTab} />
 

@@ -159,7 +159,7 @@
 	}
 </script>
 
-<PageHeader
+<PageHeader cinematic
 	title={label}
 	eyebrow={m['admin.clusterDetail.eyebrow']()}
 	description={m['admin.clusterDetail.description']()}
