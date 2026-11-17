@@ -1,6 +1,7 @@
 <script lang="ts">
 	import CapacityCell from './CapacityCell.svelte';
 	import NodeCapacityForm from './NodeCapacityForm.svelte';
+	import NodeCapacityCopyDialog from './NodeCapacityCopyDialog.svelte';
 	import NodeCapacityImportDialog from './NodeCapacityImportDialog.svelte';
 	import NodeLoadCell from './NodeLoadCell.svelte';
 	import { resolve } from '$app/paths';
@@ -85,6 +86,7 @@
 
 	let expanded = $state<string | null>(null);
 	let showImport = $state(false);
+	let copySource = $state<NodeCapacity | null>(null);
 	let exportingAll = $state(false);
 
 	// suffix names a single-node export: the header button exports every
@@ -250,6 +252,15 @@
 										{m['policy.nodesExport']()}
 									</Button>
 									<Button
+										variant="secondary"
+										size="sm"
+										label={`${m['policy.nodesCopy']()} ${node.node}`}
+										disabled={cappedNodes([node]).length === 0 || nodes.length < 2}
+										onclick={() => (copySource = node)}
+									>
+										{m['policy.nodesCopy']()}
+									</Button>
+									<Button
 										class="whitespace-nowrap"
 										variant="secondary"
 										size="sm"
@@ -296,4 +307,13 @@
 	{saveError}
 	onImport={handleImport}
 	onClose={() => (showImport = false)}
+/>
+
+<NodeCapacityCopyDialog
+	source={copySource}
+	{nodes}
+	{saving}
+	{saveError}
+	onImport={handleImport}
+	onClose={() => (copySource = null)}
 />
