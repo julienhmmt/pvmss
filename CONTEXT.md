@@ -140,6 +140,13 @@ NFS or CephFS). Approved once per cluster rather than per node; enabled when any
 of its node rows is.
 _Avoid_: global storage, cluster storage
 
+**Node readiness**:
+Whether an approved node can receive a new VM: an approved storage, an approved
+bridge and an install source (an approved ISO or a template) on that node. One
+rule (`catalog.NodeReadiness`) drives the create form's node picker and the
+admin dashboard's node states (ready, incomplete).
+_Avoid_: usable node, valid node
+
 **Task (tâche)**:
 An asynchronous Proxmox operation tracked by UPID and polled by the task tray
 (create, snapshot, rollback, snapshot delete). Terminal states are
