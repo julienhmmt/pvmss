@@ -15,6 +15,7 @@
 	import Skeleton from '#lib/shared/ui/Skeleton.svelte';
 	import Tabs from '#lib/shared/ui/Tabs.svelte';
 	import DashboardAttention from '#lib/features/admin-dashboard/DashboardAttention.svelte';
+	import { hasActionableAlerts } from '#lib/features/admin-dashboard/dashboard-alerts.js';
 	import { usageTone } from '#lib/features/admin-dashboard/dashboard-alerts.js';
 	import ClusterFormDialog from './ClusterFormDialog.svelte';
 	import {
@@ -197,7 +198,7 @@
 					<Alert>{m['admin.clusterDetail.stale']()}</Alert>
 				{/if}
 
-				{#if inventory}
+				{#if inventory && hasActionableAlerts(inventory.alerts)}
 					<DashboardAttention alerts={inventory.alerts} />
 				{/if}
 

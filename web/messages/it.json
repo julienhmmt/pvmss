@@ -1769,7 +1769,6 @@
 	],
 	"admin.dashboard.vmOther": "Altro",
 	"admin.dashboard.attentionTitle": "Richiede attenzione",
-	"admin.dashboard.allClear": "Niente da segnalare. Ogni cluster, nodo e datastore è entro i limiti.",
 	"admin.dashboard.onboarding.title": "Completa la configurazione di PVMSS",
 	"admin.dashboard.onboarding.progress": "{done} di {total} completati",
 	"admin.dashboard.onboarding.optional": "Facoltativo",

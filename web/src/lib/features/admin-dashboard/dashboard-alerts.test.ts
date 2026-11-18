@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { alertHref, alertMessage, usageTone, type DashboardAlert } from './dashboard-alerts';
+import { alertHref, alertMessage, hasActionableAlerts, usageTone, type DashboardAlert } from './dashboard-alerts';
 
 const alert = (kind: DashboardAlert['kind'], extra: Partial<DashboardAlert> = {}): DashboardAlert => ({
 	kind,
@@ -9,6 +9,13 @@ const alert = (kind: DashboardAlert['kind'], extra: Partial<DashboardAlert> = {}
 });
 
 describe('dashboard alerts', () => {
+	it('counts only critical and warning alerts as actionable', () => {
+		expect(hasActionableAlerts([])).toBe(false);
+		expect(hasActionableAlerts([alert('node_offline_disabled', { severity: 'info' })])).toBe(false);
+		expect(hasActionableAlerts([alert('node_offline_disabled', { severity: 'info' }), alert('node_cpu')])).toBe(true);
+		expect(hasActionableAlerts([alert('cluster_unreachable', { severity: 'critical' })])).toBe(true);
+	});
+
 	it('sends each alert to the page where it is fixed', () => {
 		expect(alertHref(alert('cluster_unreachable'))).toBe('/admin/clusters/east?tab=connection');
 		// clusterKey wins over the display label when the server sends both.

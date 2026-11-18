@@ -1769,7 +1769,6 @@
 	],
 	"admin.dashboard.vmOther": "Other",
 	"admin.dashboard.attentionTitle": "Needs attention",
-	"admin.dashboard.allClear": "Nothing to report. Every cluster, node and datastore is within limits.",
 	"admin.dashboard.onboarding.title": "Finish setting up PVMSS",
 	"admin.dashboard.onboarding.progress": "{done} of {total} done",
 	"admin.dashboard.onboarding.optional": "Optional",

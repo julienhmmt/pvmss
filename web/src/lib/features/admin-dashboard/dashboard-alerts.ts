@@ -23,6 +23,11 @@ export interface DashboardAlert {
 }
 
 /** Appends non-empty params as a query string, or returns the path alone. */
+/** Whether any alert needs action; info-only lists hide the attention panel. */
+export function hasActionableAlerts(alerts: readonly DashboardAlert[]): boolean {
+	return alerts.some((alert) => alert.severity !== 'info');
+}
+
 export function withQuery(path: string, query: Record<string, string>): string {
 	const params = new URLSearchParams();
 	for (const [key, value] of Object.entries(query)) {

@@ -1769,7 +1769,6 @@
 	],
 	"admin.dashboard.vmOther": "Autres",
 	"admin.dashboard.attentionTitle": "À traiter",
-	"admin.dashboard.allClear": "Rien à signaler. Clusters, nœuds et stockages sont dans les limites.",
 	"admin.dashboard.onboarding.title": "Terminer la configuration de PVMSS",
 	"admin.dashboard.onboarding.progress": "{done} sur {total} terminées",
 	"admin.dashboard.onboarding.optional": "Facultatif",

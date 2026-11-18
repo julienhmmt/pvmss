@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { getDashboardContext, type NodeSummary } from './dashboard.svelte';
-	import { usageTone, withQuery } from './dashboard-alerts';
+	import { hasActionableAlerts, usageTone, withQuery } from './dashboard-alerts';
 	import DashboardAttention from './DashboardAttention.svelte';
 	import DashboardOnboarding from './DashboardOnboarding.svelte';
 	import { goto } from '$app/navigation';
@@ -158,7 +158,9 @@
 		{#if summary.onboarding}
 			<DashboardOnboarding steps={summary.onboarding.steps} onMarkDone={(keys) => store.completeOnboarding(keys)} />
 		{/if}
-		<DashboardAttention alerts={summary.alerts} />
+		{#if hasActionableAlerts(summary.alerts)}
+			<DashboardAttention alerts={summary.alerts} />
+		{/if}
 
 		<Card pad="none">
 			<div class="flex flex-wrap items-center gap-x-6 gap-y-3 px-5 py-4 text-sm" data-testid="dashboard-vm-status">
