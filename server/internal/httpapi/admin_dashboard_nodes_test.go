@@ -101,6 +101,7 @@ func getNodeStatesDashboard(t *testing.T, closeStore bool) dashNodesDTO {
 		},
 		Storages: []cluster.Storage{
 			{Name: dashLocal, Node: nodeReady, PluginType: "dir", Total: 100 * gib, Used: 10 * gib},
+			{Name: dashLocal, Node: nodeOther, PluginType: "dir", Total: 100 * gib, Used: 10 * gib},
 			{Name: "scratch", Node: nodeOther, PluginType: "dir", Total: 100 * gib, Used: 10 * gib},
 		},
 	})

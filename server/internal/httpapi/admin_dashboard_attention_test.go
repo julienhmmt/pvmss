@@ -99,14 +99,16 @@ func attentionIndex() *inventory.Index {
 	return &idx
 }
 
-// approveStorages approves each storage on n1: the dashboard only lists
-// storages approved in the catalog (or holding PVMSS disks).
+// approveStorages approves each storage on n1 and n2: the dashboard only
+// lists storages approved in the catalog on their node (or holding PVMSS disks).
 func approveStorages(t *testing.T, st *store.Store, names ...string) {
 	t.Helper()
 
 	for _, name := range names {
-		if err := st.SetStorageEnabled(context.Background(), dashCluster, name, "n1", true); err != nil {
-			t.Fatalf("SetStorageEnabled %s: %v", name, err)
+		for _, node := range []string{"n1", "n2"} {
+			if err := st.SetStorageEnabled(context.Background(), dashCluster, name, node, true); err != nil {
+				t.Fatalf("SetStorageEnabled %s on %s: %v", name, node, err)
+			}
 		}
 	}
 }

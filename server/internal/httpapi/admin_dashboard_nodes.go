@@ -154,14 +154,18 @@ func nodePolicyCaps(ctx context.Context, st *store.Store, log *slog.Logger, clus
 }
 
 // pvmssStorage reports whether the dashboard lists a datastore: approved in
-// the catalog on any node, or holding a disk of a PVMSS VM.
-func pvmssStorage(name string, cat nodeCatalog, idx *inventory.Index) bool {
-	if slices.ContainsFunc(cat.resources.Storages, func(s catalog.Storage) bool { return s.Name == name }) {
+// the catalog, or holding a disk of a PVMSS VM. A per-node storage must match
+// on its own node; a shared one (listed with no node) matches on any node.
+func pvmssStorage(s dashboardStorageDTO, cat nodeCatalog, idx *inventory.Index) bool {
+	onNode := func(node string) bool { return s.Node == "" || node == s.Node }
+
+	if slices.ContainsFunc(cat.resources.Storages, func(a catalog.Storage) bool { return a.Name == s.Name && onNode(a.Node) }) {
 		return true
 	}
 
 	for _, vm := range idx.ByVMID {
-		if slices.Contains(vm.Tags, catalog.ProtectedTagName) && slices.ContainsFunc(vm.Disks, func(d cluster.Disk) bool { return d.Storage == name }) {
+		if onNode(vm.Node) && slices.Contains(vm.Tags, catalog.ProtectedTagName) &&
+			slices.ContainsFunc(vm.Disks, func(d cluster.Disk) bool { return d.Storage == s.Name }) {
 			return true
 		}
 	}

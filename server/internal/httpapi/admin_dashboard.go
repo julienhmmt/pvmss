@@ -263,7 +263,7 @@ func foldClusterIntoDashboard(ctx context.Context, st *store.Store, log *slog.Lo
 	}
 
 	for _, s := range clusterStorages(label, idx) {
-		if nodeCatalogKnown && !pvmssStorage(s.Name, cat, idx) {
+		if nodeCatalogKnown && !pvmssStorage(s, cat, idx) {
 			continue
 		}
 
