@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { getDashboardContext, type NodeSummary } from './dashboard.svelte';
+	import { groupNodesByCluster } from './dashboard-nodes';
 	import { hasActionableAlerts, usageTone, withQuery } from './dashboard-alerts';
 	import DashboardAttention from './DashboardAttention.svelte';
 	import DashboardOnboarding from './DashboardOnboarding.svelte';
@@ -41,6 +42,36 @@
 	function goToNodeDetails(node: NodeSummary): void {
 		void goto(`${resolve('/admin/nodes/[cluster]/[node]', { cluster: node.clusterKey, node: node.name })}?from=dashboard`);
 	}
+
+	// Badge text and tone per node state; undefined state (catalog unreadable) gets none.
+	function nodeBadge(node: NodeSummary): { label: string; tone: string } | null {
+		switch (node.state) {
+			case 'offline':
+				return { label: m['admin.dashboard.nodeState.offline'](), tone: 'bg-destructive-soft text-destructive-soft-foreground' };
+			case 'incomplete':
+				return { label: m['admin.dashboard.nodeState.incomplete'](), tone: 'bg-warning-soft text-warning-soft-foreground' };
+			case 'disabled_with_vms':
+				return { label: m['admin.dashboard.nodeState.disabled_with_vms']({ count: node.vmCount }), tone: 'bg-warning-soft text-warning-soft-foreground' };
+			case 'ready':
+				return node.vmCount === 0
+					? { label: m['admin.dashboard.nodeNoVMs'](), tone: 'bg-muted text-muted-foreground' }
+					: { label: m['admin.dashboard.nodeState.ready'](), tone: 'bg-success-soft text-success-soft-foreground' };
+			default:
+				return null;
+		}
+	}
+
+	const MISSING_LABEL: Record<string, () => string> = {
+		storage: () => m['admin.dashboard.missing.storage'](),
+		bridge: () => m['admin.dashboard.missing.bridge'](),
+		iso_or_template: () => m['admin.dashboard.missing.iso_or_template']()
+	};
+
+	function missingText(missing: readonly string[]): string {
+		return m['admin.dashboard.nodeMissing']({ items: missing.map((code) => MISSING_LABEL[code]?.() ?? code).join(', ') });
+	}
+
+	const nodeGroups = $derived(groupNodesByCluster(store.summary?.nodes ?? []));
 
 	// Opens the pools page with its create dialog already up.
 	const createUserHref = `${resolve('/admin/pools')}?create=1`;
@@ -187,6 +218,10 @@
 			</div>
 		</Card>
 
+		{#if summary.catalogUnavailable}
+			<Alert tone="warning" role="status" data-testid="dashboard-catalog-unavailable">{m['admin.dashboard.catalogUnavailable']()}</Alert>
+		{/if}
+
 		{#if summary.nodes.length === 0}
 			<EmptyState title={m['admin.dashboard.emptyTitle']()} description={m['admin.dashboard.emptyBody']()} dataTestid="dashboard-empty">
 				{#snippet actions()}
@@ -196,10 +231,18 @@
 		{:else}
 			<div class="space-y-3">
 				<h2 class="text-sm font-semibold text-foreground">{m['admin.dashboard.nodesHeader']()}</h2>
+				{#each nodeGroups as group (group.clusterKey)}
+				{#if nodeGroups.length > 1}
+					<p class="flex items-baseline gap-2 text-xs" data-testid="dashboard-node-group">
+						<span class="font-semibold text-foreground">{group.label}</span>
+						<span class="text-muted-foreground tabular-nums">{m['admin.dashboard.clusterGroupCounts']({ nodes: group.nodes.length, vms: group.vmCount })}</span>
+					</p>
+				{/if}
 				<div class="grid grid-cols-1 gap-4 md:grid-cols-2 2xl:grid-cols-3" data-testid="dashboard-nodes-grid">
-					{#each summary.nodes as node (`${node.cluster}/${node.name}`)}
+					{#each group.nodes as node (`${node.cluster}/${node.name}`)}
 						{@const cpuPct = cpuPercent(node)}
 						{@const memPct = usagePercent(node.memoryUsedBytes, node.memoryTotalBytes)}
+						{@const badge = nodeBadge(node)}
 						<button
 							type="button"
 							class="flex flex-col gap-4 rounded-xl border border-border bg-card p-4 text-left shadow-card transition-[box-shadow,border-color] duration-150 hover:border-muted-foreground-subtle hover:shadow-raised pv-focus"
@@ -219,6 +262,16 @@
 									{m['admin.dashboard.nodeVmsRunning']({ running: node.vmRunningCount, total: node.vmCount })}
 								</span>
 							</div>
+							{#if badge || (node.missing?.length ?? 0) > 0}
+								<div class="flex flex-wrap items-center gap-2 text-xs">
+									{#if badge}
+										<span class="rounded-full px-2 py-0.5 font-medium {badge.tone}" data-testid="dashboard-node-state">{badge.label}</span>
+									{/if}
+									{#if node.missing?.length}
+										<span class="text-muted-foreground">{missingText(node.missing)}</span>
+									{/if}
+								</div>
+							{/if}
 							<div class="grid gap-3">
 								{#each [{ label: `${m['admin.dashboard.cpu']()} · ${node.cpuCores} ${m['common.coreCount']({ count: node.cpuCores })}`, value: `${cpuPct}%`, pct: cpuPct }, { label: m['admin.dashboard.memory'](), value: `${formatBytes(node.memoryUsedBytes)} / ${formatBytes(node.memoryTotalBytes)}`, pct: memPct }] as meter (meter.label)}
 									<div class="flex flex-col gap-1.5">
@@ -233,6 +286,12 @@
 						</button>
 					{/each}
 				</div>
+				{/each}
+				{#if summary.otherNodeCount > 0}
+					<a href={resolve('/admin/nodes')} class="inline-block text-xs text-muted-foreground hover:text-foreground hover:underline pv-focus" data-testid="dashboard-other-nodes">
+						{m['admin.dashboard.otherNodes']({ count: summary.otherNodeCount })}
+					</a>
+				{/if}
 			</div>
 		{/if}
 

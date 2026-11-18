@@ -16,7 +16,13 @@ export interface NodeSummary {
 	cpuUsage: number;
 	memoryTotalBytes: number;
 	memoryUsedBytes: number;
+	/** Absent when the catalog could not be read (readiness unknown). */
+	state?: NodeState;
+	/** catalog readiness codes, set when state is incomplete. */
+	missing?: string[];
 }
+
+export type NodeState = 'offline' | 'incomplete' | 'disabled_with_vms' | 'ready';
 
 export interface VMStatusCounts {
 	running: number;
@@ -57,6 +63,9 @@ export interface DashboardSummary {
 	pvmssVMCount: number;
 	pvmssVMStatusCounts: VMStatusCounts;
 	otherVMCount: number;
+	/** Reported nodes neither enabled nor hosting PVMSS VMs. */
+	otherNodeCount: number;
+	catalogUnavailable: boolean;
 	storages: DashboardStorage[];
 	recentChanges: DashboardChange[];
 	version: string;

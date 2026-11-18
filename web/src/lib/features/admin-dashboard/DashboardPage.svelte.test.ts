@@ -3,7 +3,7 @@ import { mount } from 'svelte';
 import { goto } from '$app/navigation';
 import { m } from '#lib/paraglide/messages.js';
 import DashboardPage from './DashboardPage.svelte';
-import { getDashboardContext } from './dashboard.svelte';
+import { getDashboardContext, type DashboardSummary } from './dashboard.svelte';
 import type { DashboardAlert } from './dashboard-alerts';
 
 vi.mock('$app/navigation', () => ({ goto: vi.fn() }));
@@ -36,6 +36,8 @@ const store = {
 		pvmssVMCount: 3,
 		pvmssVMStatusCounts: { running: 1, paused: 0, stopped: 2, other: 0 },
 		otherVMCount: 7,
+		otherNodeCount: 0,
+		catalogUnavailable: false,
 		storages: [],
 		recentChanges: [],
 		version: '0.4.0-test',
@@ -118,5 +120,48 @@ describe('DashboardPage VM summary', () => {
 
 		const names = [...document.querySelectorAll('[data-testid="dashboard-storage"]')].map((el) => el.textContent?.trim().split(/\s+/)[0]);
 		expect(names).toEqual(['s95', 's80', 's60', 's50', 's30']);
+	});
+});
+
+describe('DashboardPage node states', () => {
+	const base = store.summary.nodes[0]!;
+
+	function mountWith(summary: Partial<DashboardSummary>): void {
+		vi.mocked(getDashboardContext).mockReturnValue({ ...store, summary: { ...store.summary, ...summary } });
+		mount(DashboardPage, { target: document.body });
+	}
+
+	it('badges each state and lists what an incomplete node misses', () => {
+		mountWith({
+			nodes: [
+				{ ...base, name: 'down', state: 'offline' },
+				{ ...base, name: 'half', state: 'incomplete', missing: ['bridge', 'iso_or_template'] },
+				{ ...base, name: 'idle', state: 'ready', vmCount: 0 }
+			]
+		});
+
+		const states = [...document.querySelectorAll('[data-testid="dashboard-node-state"]')].map((el) => el.textContent?.trim());
+		expect(states).toEqual([m['admin.dashboard.nodeState.offline'](), m['admin.dashboard.nodeState.incomplete'](), m['admin.dashboard.nodeNoVMs']()]);
+		const half = document.querySelector('[data-node="half"]')?.textContent ?? '';
+		expect(half).toContain(m['admin.dashboard.missing.bridge']());
+		expect(half).toContain(m['admin.dashboard.missing.iso_or_template']());
+	});
+
+	it('shows cluster headers only with several clusters', () => {
+		mountWith({ nodes: [base] });
+		expect(document.querySelectorAll('[data-testid="dashboard-node-group"]')).toHaveLength(0);
+
+		document.body.innerHTML = '';
+		mountWith({ nodes: [base, { ...base, clusterKey: 'edge', cluster: 'Edge', name: 'pve-edge' }] });
+		expect(document.querySelectorAll('[data-testid="dashboard-node-group"]')).toHaveLength(2);
+	});
+
+	it('links the other nodes line to the nodes page and shows the catalog banner', () => {
+		mountWith({ otherNodeCount: 3, catalogUnavailable: true });
+
+		const other = document.querySelector('[data-testid="dashboard-other-nodes"]');
+		expect(other?.getAttribute('href')).toBe('/admin/nodes');
+		expect(other?.textContent).toContain('3');
+		expect(document.querySelector('[data-testid="dashboard-catalog-unavailable"]')).not.toBeNull();
 	});
 });

@@ -72,6 +72,10 @@ type nodeSummaryDTO struct {
 	CPUUsage         float64 `json:"cpuUsage"`
 	MemoryTotalBytes int64   `json:"memoryTotalBytes"`
 	MemoryUsedBytes  int64   `json:"memoryUsedBytes"`
+	// State is offline, incomplete, disabled_with_vms or ready; empty when
+	// the catalog could not be read. Missing lists catalog.NodeReadiness codes.
+	State   string   `json:"state,omitempty"`
+	Missing []string `json:"missing,omitempty"`
 }
 
 type vmStatusCountsDTO struct {
@@ -110,25 +114,30 @@ type dashboardStorageDTO struct {
 }
 
 type dashboardDTO struct {
-	Alerts              []dashboardAlertDTO   `json:"alerts"`
-	Nodes               []nodeSummaryDTO      `json:"nodes"`
-	NodeCount           int                   `json:"nodeCount"`
-	VMCount             int                   `json:"vmCount"`
-	VMStatusCounts      vmStatusCountsDTO     `json:"vmStatusCounts"`
-	PVMSSVMCount        int                   `json:"pvmssVMCount"`
-	PVMSSVMStatusCounts vmStatusCountsDTO     `json:"pvmssVMStatusCounts"`
-	OtherVMCount        int                   `json:"otherVMCount"`
-	Storages            []dashboardStorageDTO `json:"storages"`
-	RecentChanges       []auditEntryDTO       `json:"recentChanges"`
-	Version             string                `json:"version"`
-	RefreshedAt         string                `json:"refreshedAt"`
-	Onboarding          *onboardingDTO        `json:"onboarding,omitempty"`
+	Alerts              []dashboardAlertDTO `json:"alerts"`
+	Nodes               []nodeSummaryDTO    `json:"nodes"`
+	NodeCount           int                 `json:"nodeCount"`
+	VMCount             int                 `json:"vmCount"`
+	VMStatusCounts      vmStatusCountsDTO   `json:"vmStatusCounts"`
+	PVMSSVMCount        int                 `json:"pvmssVMCount"`
+	PVMSSVMStatusCounts vmStatusCountsDTO   `json:"pvmssVMStatusCounts"`
+	OtherVMCount        int                 `json:"otherVMCount"`
+	// OtherNodeCount counts reported nodes neither enabled nor hosting PVMSS VMs.
+	OtherNodeCount int `json:"otherNodeCount"`
+	// CatalogUnavailable is set when a cluster's catalog could not be read:
+	// node states are unknown and only nodes hosting PVMSS VMs are listed.
+	CatalogUnavailable bool                  `json:"catalogUnavailable"`
+	Storages           []dashboardStorageDTO `json:"storages"`
+	RecentChanges      []auditEntryDTO       `json:"recentChanges"`
+	Version            string                `json:"version"`
+	RefreshedAt        string                `json:"refreshedAt"`
+	Onboarding         *onboardingDTO        `json:"onboarding,omitempty"`
 }
 
 // ServeDashboard handles GET /api/v1/admin/dashboard.
 // Everything comes from the in-memory indexes and the store; no
-// cluster.Client call is made, satisfying the read/write separation. Only
-// nodes hosting at least one PVMSS-managed VM are listed, but alerts cover
+// cluster.Client call is made, satisfying the read/write separation. Nodes
+// enabled in the catalog or hosting PVMSS VMs are listed, but alerts cover
 // every node. Alerts are computed here so the page needs one request.
 func (h *AdminOps) ServeDashboard(w http.ResponseWriter, r *http.Request) {
 	indexes := h.inventory.All()
@@ -226,24 +235,13 @@ func foldClusterIntoDashboard(ctx context.Context, st *store.Store, log *slog.Lo
 		} else {
 			dash.Alerts = append(dash.Alerts, nodeAlerts(name, label, node)...)
 		}
-
-		if len(vms) == 0 {
-			continue
-		}
-
-		dash.Nodes = append(dash.Nodes, nodeSummaryDTO{
-			ClusterKey:       name,
-			Cluster:          label,
-			Name:             node.Name,
-			Status:           string(node.Status),
-			VMCount:          len(vms),
-			VMRunningCount:   countRunning(vms),
-			CPUCores:         node.CPUCores,
-			CPUUsage:         node.CPUUsage,
-			MemoryTotalBytes: node.MemoryTotal,
-			MemoryUsedBytes:  node.MemoryUsed,
-		})
 	}
+
+	cat, nodeCatalogKnown := loadNodeCatalog(ctx, st, log, name)
+	nodes, other := dashboardNodes(name, label, idx, cat, nodeCatalogKnown)
+	dash.Nodes = append(dash.Nodes, nodes...)
+	dash.OtherNodeCount += other
+	dash.CatalogUnavailable = dash.CatalogUnavailable || !nodeCatalogKnown
 
 	for _, vm := range idx.ByVMID {
 		dash.VMCount++

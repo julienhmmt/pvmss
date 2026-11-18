@@ -57,13 +57,15 @@ type dashboardStorageDTO struct {
 	Percent    int    `json:"percent"`
 }
 
+type attentionNodeDTO struct {
+	Cluster        string `json:"cluster"`
+	Name           string `json:"name"`
+	VMCount        int    `json:"vmCount"`
+	VMRunningCount int    `json:"vmRunningCount"`
+}
+
 type attentionDashboardDTO struct {
-	Nodes []struct {
-		Cluster        string `json:"cluster"`
-		Name           string `json:"name"`
-		VMCount        int    `json:"vmCount"`
-		VMRunningCount int    `json:"vmRunningCount"`
-	} `json:"nodes"`
+	Nodes         []attentionNodeDTO    `json:"nodes"`
 	VMCount       int                   `json:"vmCount"`
 	Alerts        []dashboardAlertDTO   `json:"alerts"`
 	Storages      []dashboardStorageDTO `json:"storages"`
@@ -272,8 +274,10 @@ func TestAdminDashboard_SharedFlagDedupesNonListedPlugin(t *testing.T) {
 func TestAdminDashboard_NodesCarryRunningCountAndRecentChanges(t *testing.T) {
 	dash := getAttentionDashboard(t)
 
-	if len(dash.Nodes) != 1 || dash.Nodes[0].Cluster != dashCluster || dash.Nodes[0].VMCount != 2 || dash.Nodes[0].VMRunningCount != 1 {
-		t.Errorf("nodes = %+v, want east/n1 with 1 of 2 running", dash.Nodes)
+	// n2 is enabled and offline, so it is listed too (state offline).
+	i := slices.IndexFunc(dash.Nodes, func(n attentionNodeDTO) bool { return n.Name == "n1" })
+	if len(dash.Nodes) != 2 || i < 0 || dash.Nodes[i].Cluster != dashCluster || dash.Nodes[i].VMCount != 2 || dash.Nodes[i].VMRunningCount != 1 {
+		t.Errorf("nodes = %+v, want east/n1 with 1 of 2 running plus offline n2", dash.Nodes)
 	}
 
 	if dash.VMCount != 2 {
