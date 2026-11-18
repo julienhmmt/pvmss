@@ -1821,6 +1821,7 @@
 	"admin.dashboard.busyCpuTitle": "Busiest by CPU",
 	"admin.dashboard.busyMemoryTitle": "Busiest by RAM",
 	"admin.dashboard.busyNone": "No running PVMSS VMs",
+	"admin.dashboard.vmAll": "View all VMs",
 	"admin.dashboard.nodeVmsRunning": "{running} of {total} VMs running",
 	"admin.dashboard.storageTitle": "Storage",
 	"admin.dashboard.storageShared": "Shared",

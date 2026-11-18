@@ -1821,6 +1821,7 @@
 	"admin.dashboard.busyCpuTitle": "Più cariche in CPU",
 	"admin.dashboard.busyMemoryTitle": "Più cariche in RAM",
 	"admin.dashboard.busyNone": "Nessuna VM PVMSS in esecuzione",
+	"admin.dashboard.vmAll": "Vedi tutte le VM",
 	"admin.dashboard.nodeVmsRunning": "{running} di {total} VM in esecuzione",
 	"admin.dashboard.storageTitle": "Storage",
 	"admin.dashboard.storageShared": "Condiviso",

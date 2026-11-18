@@ -216,6 +216,9 @@
 					<span class="font-mono font-semibold tabular-nums">{summary.otherVMCount}</span>
 					<span class="text-muted-foreground">{m['admin.dashboard.vmOtherDescription']()}</span>
 				</div>
+				<a href={resolve('/admin/vms')} class="text-xs font-medium text-primary hover:underline pv-focus" data-testid="dashboard-vm-all">
+					{m['admin.dashboard.vmAll']()}
+				</a>
 			</div>
 			<DashboardBusyVMs topCPU={summary.topCPU} topMemory={summary.topMemory} />
 		</Card>

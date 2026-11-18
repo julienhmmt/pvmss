@@ -1821,6 +1821,7 @@
 	"admin.dashboard.busyCpuTitle": "Höchste CPU-Last",
 	"admin.dashboard.busyMemoryTitle": "Höchste RAM-Nutzung",
 	"admin.dashboard.busyNone": "Keine laufende PVMSS-VM",
+	"admin.dashboard.vmAll": "Alle VMs anzeigen",
 	"admin.dashboard.nodeVmsRunning": "{running} von {total} VMs laufen",
 	"admin.dashboard.storageTitle": "Speicher",
 	"admin.dashboard.storageShared": "Gemeinsam",
