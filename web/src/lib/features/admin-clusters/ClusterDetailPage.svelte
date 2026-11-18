@@ -18,6 +18,7 @@
 	import { hasActionableAlerts } from '#lib/features/admin-dashboard/dashboard-alerts.js';
 	import { usageTone } from '#lib/features/admin-dashboard/dashboard-alerts.js';
 	import ClusterFormDialog from './ClusterFormDialog.svelte';
+	import ClusterTestHistory from './ClusterTestHistory.svelte';
 	import {
 		AdminClustersStore,
 		statusHint,
@@ -51,6 +52,7 @@
 	let announce = $state.raw<string | null>(null);
 	let testing = $state.raw(false);
 	let formOpen = $state.raw(false);
+	let history = $state.raw<ReturnType<typeof ClusterTestHistory> | null>(null);
 	const store = new AdminClustersStore();
 
 	// The active tab is local state pushed into the URL so ?tab= deep links,
@@ -123,6 +125,7 @@
 			announce =
 				tlsAnnouncement(label, result) ??
 				m['admin.clusters.tested']({ name: label, status: result.status });
+			if (result.entry) history?.prepend(result.entry);
 			detail = await fetchClusterDetail(name);
 			lastLoadedAt = Date.now();
 		} catch (err: unknown) {
@@ -220,6 +223,8 @@
 						</Button>
 					</div>
 				</Card>
+
+				<ClusterTestHistory {name} bind:this={history} />
 
 				{#if inventory}
 					<Card pad="none" title={m['admin.clusterDetail.inventory']()} titleId="cluster-inventory-section">

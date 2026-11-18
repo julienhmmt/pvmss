@@ -35,6 +35,7 @@ var clusterScopedSeeds = map[string]string{
 	"quota_requests":        `INSERT INTO quota_requests (requester, cluster, pool, current_quota, requested_quota, reason, status, created_at) VALUES ('alice@pve', ?, 'team-a', 1, 3, 'need more', 'pending', '2026-01-01T00:00:00Z')`,
 	"vm_leases":             `INSERT INTO vm_leases (cluster, vmid, expires_at) VALUES (?, 100, '2030-01-01T00:00:00Z')`,
 	"vm_snapshot_schedules": `INSERT INTO vm_snapshot_schedules (cluster, vmid, frequency, retain) VALUES (?, 100, 'daily', 2)`,
+	"cluster_test_results":  `INSERT INTO cluster_test_results (cluster, tested_at, status) VALUES (?, '2026-01-01T00:00:00Z', 'ok')`,
 	"pool_quota_overrides":  `INSERT INTO pool_quota_overrides (cluster, pool, max_vms, updated_by, updated_at) VALUES (?, 'team-a', 5, 'admin', '2026-01-01T00:00:00Z')`,
 }
 

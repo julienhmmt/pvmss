@@ -56,6 +56,7 @@ var clusterScopedTables = []string{
 	"vm_leases",
 	"vm_snapshot_schedules",
 	"pool_quota_overrides",
+	"cluster_test_results",
 }
 
 // ClusterRow is the in-memory representation of one managed cluster. TokenSecret
@@ -300,26 +301,10 @@ func (s *Store) SoftDeleteCluster(ctx context.Context, name string) error {
 	return nil
 }
 
-// SetClusterTestResult records the latest explicit connection test.
+// SetClusterTestResult records an explicit connection test with no actor or
+// duration (seed and legacy callers). See RecordClusterTest.
 func (s *Store) SetClusterTestResult(ctx context.Context, name, status, version, message string, testedAt time.Time) error {
-	var messageValue any
-	if message != "" {
-		messageValue = message
-	}
-	var versionValue any
-	if version != "" {
-		versionValue = version
-	}
-	result, err := s.db.ExecContext(ctx, `UPDATE clusters SET last_test_status = ?, last_test_at = ?, last_test_message = ?, proxmox_version = ? WHERE name = ? AND removed_at IS NULL`, status, testedAt.UTC().Format(time.RFC3339Nano), messageValue, versionValue, name)
-	if err != nil {
-		return fmt.Errorf("save cluster test result: %w", err)
-	}
-	if affected, err := result.RowsAffected(); err != nil {
-		return fmt.Errorf("count cluster test result: %w", err)
-	} else if affected != 1 {
-		return sql.ErrNoRows
-	}
-	return nil
+	return s.RecordClusterTest(ctx, ClusterTest{Cluster: name, Status: status, Version: version, Message: message, TestedAt: testedAt})
 }
 
 // SetDiscoveredClusterDisplayName fills the display name from /cluster/status
@@ -634,11 +619,5 @@ func (s *Store) ensureSeedClusters(ctx context.Context) error {
 			return err
 		}
 	}
-	if err := s.SetClusterTestResult(ctx, "default", "ok", "8.2.4", "", time.Now().UTC()); err != nil {
-		return err
-	}
-	if err := s.SetClusterTestResult(ctx, "secondary", "ok", "8.2.4", "", time.Now().UTC()); err != nil {
-		return err
-	}
-	return s.SetClusterTestResult(ctx, "offline-demo", "unreachable", "", "connection refused", time.Now().UTC())
+	return s.seedDemoClusterTests(ctx)
 }

@@ -316,4 +316,25 @@ type Migration struct {
 // Versions must be consecutive integers starting at 1.
 var Migrations = []Migration{
 	{Version: 1, DDL: schemaV1},
+	{Version: 2, DDL: schemaV2ClusterTestResults},
 }
+
+// schemaV2ClusterTestResults keeps the history of explicit connection tests
+// (newest 100 per cluster, pruned by RecordClusterTest) and backfills one row
+// per cluster from the last_test_* columns.
+const schemaV2ClusterTestResults = `
+CREATE TABLE cluster_test_results (
+	id          INTEGER PRIMARY KEY AUTOINCREMENT,
+	cluster     TEXT NOT NULL,
+	tested_at   TEXT NOT NULL,
+	status      TEXT NOT NULL,
+	message     TEXT,
+	version     TEXT,
+	actor       TEXT,
+	duration_ms INTEGER
+);
+CREATE INDEX cluster_test_results_cluster ON cluster_test_results (cluster, tested_at DESC, id DESC);
+INSERT INTO cluster_test_results (cluster, tested_at, status, message, version)
+	SELECT name, last_test_at, last_test_status, last_test_message, proxmox_version
+	FROM clusters WHERE last_test_at IS NOT NULL AND last_test_status IS NOT NULL;
+`

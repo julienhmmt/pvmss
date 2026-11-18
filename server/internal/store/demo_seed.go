@@ -3,6 +3,7 @@ package store
 import (
 	"context"
 	"fmt"
+	"time"
 )
 
 // demoCatalogSQL holds the demo catalog fixture rows for cluster "default":
@@ -49,6 +50,43 @@ INSERT OR IGNORE INTO vm_limits (
 func (s *Store) SeedDemoCatalog(ctx context.Context) error {
 	if _, err := s.db.ExecContext(ctx, demoCatalogSQL); err != nil {
 		return fmt.Errorf("seed demo catalog: %w", err)
+	}
+
+	return nil
+}
+
+// demoClusterTestPattern is the seeded test history per demo cluster, oldest
+// first; offline-demo always fails.
+var demoClusterTestPattern = []string{"ok", "ok", "unreachable", "ok", "ok", "ok"}
+
+// seedDemoClusterTests gives each fake cluster a short test history. It runs
+// at every startup, so it skips clusters that already have history.
+func (s *Store) seedDemoClusterTests(ctx context.Context) error {
+	now := time.Now().UTC()
+
+	for _, name := range []string{"default", "secondary", "offline-demo"} {
+		var count int
+		if err := s.db.QueryRowContext(ctx, `SELECT COUNT(*) FROM cluster_test_results WHERE cluster = ?`, name).Scan(&count); err != nil {
+			return fmt.Errorf("count demo cluster tests: %w", err)
+		}
+
+		if count > 0 {
+			continue
+		}
+
+		for i, status := range demoClusterTestPattern {
+			test := ClusterTest{Cluster: name, Status: status, Version: "8.2.4", Actor: "admin", TestedAt: now.Add(time.Duration(i-len(demoClusterTestPattern)+1) * 6 * time.Hour)}
+			if name == "offline-demo" || status != "ok" {
+				test.Status, test.Version, test.Message = "unreachable", "", "connection refused"
+			}
+
+			duration := int64(120 + 37*i)
+
+			test.DurationMs = &duration
+			if err := s.RecordClusterTest(ctx, test); err != nil {
+				return err
+			}
+		}
 	}
 
 	return nil

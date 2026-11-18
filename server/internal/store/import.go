@@ -55,6 +55,7 @@ var excludedImportTables = map[string]string{
 	"vm_leases":             "per-VM expiry runtime state; restored VMs come back without a lease",
 	"vm_snapshot_schedules": "per-VM runtime state keyed by cluster VMID; last_run_at is sweeper state",
 	"onboarding_done":       "UI checklist bookkeeping; re-mark steps after a restore",
+	"cluster_test_results":  "connection test history, not configuration",
 }
 
 // importTempPattern names staged upload copies next to the live database.

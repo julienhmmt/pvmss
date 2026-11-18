@@ -2,6 +2,7 @@ import { get, post, put, del, ApiRequestError } from '#lib/shared/api/client.js'
 import { getSavedAdminCluster, saveAdminCluster } from '#lib/shared/clusters.js';
 import { STALE_REFRESH_MS } from '#lib/shared/visibility-refresh.js';
 import { m } from '#lib/paraglide/messages.js';
+import type { ClusterTestEntry } from './cluster-detail.js';
 
 export interface ClusterTlsInfo {
 	caSet: boolean;
@@ -61,6 +62,8 @@ export interface ClusterTestResult {
 	nodeCount?: number;
 	vmCount?: number;
 	testedAt: string;
+	/** The history row the test appended (POST .../test only). */
+	entry?: ClusterTestEntry;
 }
 
 export function statusLabel(status: AdminCluster['lastTestStatus']): string {

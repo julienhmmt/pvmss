@@ -36,6 +36,9 @@ const detail: ClusterDetail = {
 				vmCount: 3,
 				vmRunningCount: 2,
 				pvmssVMCount: 3,
+				pvmssRamGB: 0,
+				policyMaxRamGB: 0,
+				policyMaxVMs: 0,
 				cpuCores: 8,
 				cpuUsage: 0.25,
 				memoryTotalBytes: 1024,
@@ -49,6 +52,9 @@ const detail: ClusterDetail = {
 				vmCount: 0,
 				vmRunningCount: 0,
 				pvmssVMCount: 0,
+				pvmssRamGB: 0,
+				policyMaxRamGB: 0,
+				policyMaxVMs: 0,
 				cpuCores: 4,
 				cpuUsage: 0,
 				memoryTotalBytes: 0,
@@ -69,7 +75,13 @@ const detail: ClusterDetail = {
 function stubDetail(body: unknown = detail, status = 200): void {
 	vi.stubGlobal(
 		'fetch',
-		vi.fn(() => Promise.resolve(jsonResponse(body, status)))
+		vi.fn((url: string) =>
+			Promise.resolve(
+				url.includes('/tests?')
+					? jsonResponse({ tests: [{ testedAt: '2026-11-18T10:00:00Z', status: 'unreachable', message: 'refused', actor: 'admin', durationMs: 42 }] }, 200)
+					: jsonResponse(body, status)
+			)
+		)
 	);
 }
 
@@ -95,6 +107,7 @@ describe('ClusterDetailPage', () => {
 		expect(text).toContain('dial tcp: timeout');
 		expect(text).toContain('pve-empty');
 		expect(document.querySelector('[data-testid="dashboard-alert"]')).not.toBeNull();
+		expect(document.querySelector('[data-testid="cluster-test-history"]')?.textContent).toContain('42 ms');
 	});
 
 	it('lists every node on the infrastructure tab, including zero-VM ones', async () => {

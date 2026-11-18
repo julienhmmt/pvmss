@@ -183,6 +183,7 @@ func registerAdminClusterRoutes(mux *http.ServeMux, adminProtect adminRouteProte
 	mux.Handle("PUT /api/v1/admin/clusters/{name}", adminProtect(http.MethodPut, http.HandlerFunc(h.ServeUpdate)))
 	mux.Handle("PUT /api/v1/admin/clusters/{name}/rename", adminProtect(http.MethodPut, http.HandlerFunc(h.ServeRename)))
 	mux.Handle("PUT /api/v1/admin/clusters/{name}/vm-creation", adminProtect(http.MethodPut, http.HandlerFunc(h.ServeVMCreation)))
+	mux.Handle("GET /api/v1/admin/clusters/{name}/tests", adminProtect(http.MethodGet, http.HandlerFunc(h.ServeTestHistory)))
 	mux.Handle("POST /api/v1/admin/clusters/{name}/test", adminProtect(http.MethodPost, http.HandlerFunc(h.ServeTest)))
 	mux.Handle("DELETE /api/v1/admin/clusters/{name}", adminProtect(http.MethodDelete, http.HandlerFunc(h.ServeDelete)))
 }

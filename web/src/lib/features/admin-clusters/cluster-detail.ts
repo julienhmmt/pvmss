@@ -48,3 +48,29 @@ export async function fetchClusterDetail(name: string): Promise<ClusterDetail> {
 export async function testClusterConnection(name: string): Promise<ClusterTestResult> {
 	return post<ClusterTestResult>(`/api/v1/admin/clusters/${encodeURIComponent(name)}/test`);
 }
+
+/** One persisted connection test, newest first in history listings. */
+export interface ClusterTestEntry {
+	testedAt: string;
+	status: 'ok' | 'unreachable' | 'error';
+	message?: string;
+	proxmoxVersion?: string;
+	/** Absent for rows backfilled from before history existed. */
+	actor?: string;
+	durationMs: number | null;
+}
+
+/** Page sizes the history filter offers; the server rejects any other. */
+export const TEST_HISTORY_LIMITS = [5, 10, 25, 50, 100] as const;
+export type TestHistoryLimit = (typeof TEST_HISTORY_LIMITS)[number];
+
+/** Maps the ?tests= query value to a limit; absent or unknown values give 5. */
+export function parseTestHistoryLimit(raw: string | null): TestHistoryLimit {
+	const parsed = Number(raw);
+	return TEST_HISTORY_LIMITS.find((limit) => limit === parsed) ?? 5;
+}
+
+export async function fetchClusterTests(name: string, limit: TestHistoryLimit): Promise<ClusterTestEntry[]> {
+	const body = await get<{ tests: ClusterTestEntry[] }>(`/api/v1/admin/clusters/${encodeURIComponent(name)}/tests?limit=${limit}`);
+	return body.tests;
+}

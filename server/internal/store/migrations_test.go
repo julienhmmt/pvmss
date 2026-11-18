@@ -309,6 +309,7 @@ var baselineTables = []string{
 	"pool_quota_overrides",
 	"onboarding_done",
 	"recovery_dismissals",
+	"cluster_test_results",
 }
 
 //nolint:paralleltest // serial: shared database fixture

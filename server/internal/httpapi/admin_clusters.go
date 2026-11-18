@@ -111,6 +111,8 @@ type testClusterResponse struct {
 	NodeCount      int    `json:"nodeCount,omitempty"`
 	VMCount        int    `json:"vmCount,omitempty"`
 	TestedAt       string `json:"testedAt"`
+	// Entry is the history row this test appended.
+	Entry *clusterTestEntry `json:"entry,omitempty"`
 }
 
 // ServeList handles GET /api/v1/admin/clusters.
@@ -536,7 +538,8 @@ func (handler *AdminClusters) ServeTest(w http.ResponseWriter, r *http.Request) 
 			logctx.FromOr(r.Context(), handler.log).WarnContext(r.Context(), "publish cluster test snapshot failed", "component", "httpapi", "cluster", name, "error", err)
 		}
 	}
-	if err := handler.store.SetClusterTestResult(r.Context(), name, "ok", snapshot.ProxmoxVersion, "", testedAt); err != nil {
+	entry, err := handler.recordTest(r, store.ClusterTest{Cluster: name, Status: "ok", Version: snapshot.ProxmoxVersion, TestedAt: testedAt})
+	if err != nil {
 		handler.writeFailure(w, err)
 		return
 	}
@@ -545,7 +548,7 @@ func (handler *AdminClusters) ServeTest(w http.ResponseWriter, r *http.Request) 
 	if stored.TLSInsecureSkipVerify {
 		tlsStatus = "skipped"
 	}
-	writeAdminJSON(w, http.StatusOK, testClusterResponse{Status: "ok", TLSStatus: tlsStatus, ProxmoxVersion: snapshot.ProxmoxVersion, NodeCount: len(snapshot.Nodes), VMCount: len(snapshot.VMs), TestedAt: testedAt.Format(time.RFC3339Nano)})
+	writeAdminJSON(w, http.StatusOK, testClusterResponse{Status: "ok", TLSStatus: tlsStatus, ProxmoxVersion: snapshot.ProxmoxVersion, NodeCount: len(snapshot.Nodes), VMCount: len(snapshot.VMs), TestedAt: testedAt.Format(time.RFC3339Nano), Entry: &entry})
 }
 
 // writeTestFailure records a failed probe outcome and writes its response;
@@ -561,11 +564,12 @@ func (handler *AdminClusters) writeTestFailure(w http.ResponseWriter, r *http.Re
 	if errors.Is(err, cluster.ErrTLSVerify) {
 		tlsStatus = "failed"
 	}
-	if saveErr := handler.store.SetClusterTestResult(r.Context(), name, status, "", message, testedAt); saveErr != nil {
+	entry, saveErr := handler.recordTest(r, store.ClusterTest{Cluster: name, Status: status, Message: message, TestedAt: testedAt})
+	if saveErr != nil {
 		handler.writeFailure(w, saveErr)
 		return
 	}
-	writeAdminJSON(w, http.StatusOK, testClusterResponse{Status: status, Message: message, TLSStatus: tlsStatus, TestedAt: testedAt.Format(time.RFC3339Nano)})
+	writeAdminJSON(w, http.StatusOK, testClusterResponse{Status: status, Message: message, TLSStatus: tlsStatus, TestedAt: testedAt.Format(time.RFC3339Nano), Entry: &entry})
 }
 
 // syncDisplayName best-effort persists the cluster's discovered display name;

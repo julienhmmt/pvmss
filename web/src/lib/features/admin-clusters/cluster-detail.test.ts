@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { clusterTabParam, parseClusterTab, testClusterConnection } from './cluster-detail.js';
+import { clusterTabParam, fetchClusterTests, parseClusterTab, parseTestHistoryLimit, testClusterConnection } from './cluster-detail.js';
 
 afterEach(() => vi.unstubAllGlobals());
 
@@ -41,5 +41,30 @@ describe('testClusterConnection', () => {
 		const [path, init] = (fetchMock.mock.calls[0] ?? []) as [string, RequestInit | undefined];
 		expect(path).toBe('/api/v1/admin/clusters/my%20cluster/test');
 		expect(init?.method).toBe('POST');
+	});
+});
+
+describe('parseTestHistoryLimit', () => {
+	it.each([
+		['25', 25],
+		['100', 100],
+		['7', 5],
+		['abc', 5],
+		[null, 5]
+	] as const)('maps %s to %s', (raw, want) => {
+		expect(parseTestHistoryLimit(raw)).toBe(want);
+	});
+});
+
+describe('fetchClusterTests', () => {
+	it('GETs the history endpoint with the limit and unwraps tests', async () => {
+		const fetchMock = vi.fn().mockResolvedValue(jsonResponse(200, { tests: [{ testedAt: 't', status: 'ok', durationMs: 12 }] }));
+		vi.stubGlobal('fetch', fetchMock);
+
+		const tests = await fetchClusterTests('my cluster', 25);
+
+		expect(tests).toHaveLength(1);
+		const [path] = (fetchMock.mock.calls[0] ?? []) as [string];
+		expect(path).toBe('/api/v1/admin/clusters/my%20cluster/tests?limit=25');
 	});
 });
