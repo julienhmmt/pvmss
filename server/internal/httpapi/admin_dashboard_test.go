@@ -195,6 +195,8 @@ func TestAdminDashboard_AlertsCarryClusterKey(t *testing.T) {
 		t.Fatalf("UpsertPolicyRow: %v", err)
 	}
 
+	approveStorages(t, st, dashSharedName, testStorageLocalLVM)
+
 	// n2 is offline; it must be catalog-enabled to keep the critical
 	// node_offline alert (a disabled or unapproved node is informational).
 	if err := st.SetNodeEnabled(ctx, dashCluster, "n2", true); err != nil {

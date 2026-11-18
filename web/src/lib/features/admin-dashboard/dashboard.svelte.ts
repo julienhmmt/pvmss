@@ -14,6 +14,11 @@ export interface NodeSummary {
 	vmRunningCount: number;
 	/** VMs carrying the PVMSS tag (adopted or not). */
 	pvmssVMCount: number;
+	/** RAM allocated to those VMs, in GB (the policy usage figure). */
+	pvmssRamGB: number;
+	/** Node capacity limits; 0 means none set. */
+	policyMaxRamGB: number;
+	policyMaxVMs: number;
 	cpuCores: number;
 	cpuUsage: number;
 	memoryTotalBytes: number;

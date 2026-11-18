@@ -69,7 +69,12 @@ type nodeSummaryDTO struct {
 	VMCount        int    `json:"vmCount"`
 	VMRunningCount int    `json:"vmRunningCount"`
 	// PVMSSVMCount counts the VMs carrying the PVMSS tag (adopted or not).
-	PVMSSVMCount     int     `json:"pvmssVMCount"`
+	PVMSSVMCount int `json:"pvmssVMCount"`
+	// PVMSSRAMGB is the RAM allocated to those VMs (policy usage figure).
+	PVMSSRAMGB int `json:"pvmssRamGB"`
+	// PolicyMaxRAMGB/PolicyMaxVMs are the node capacity limits; 0 = none.
+	PolicyMaxRAMGB   int     `json:"policyMaxRamGB"`
+	PolicyMaxVMs     int     `json:"policyMaxVMs"`
 	CPUCores         int     `json:"cpuCores"`
 	CPUUsage         float64 `json:"cpuUsage"`
 	MemoryTotalBytes int64   `json:"memoryTotalBytes"`
@@ -240,7 +245,7 @@ func foldClusterIntoDashboard(ctx context.Context, st *store.Store, log *slog.Lo
 	}
 
 	cat, nodeCatalogKnown := loadNodeCatalog(ctx, st, log, name)
-	nodes, other := dashboardNodes(name, label, idx, cat, nodeCatalogKnown)
+	nodes, other := dashboardNodes(name, label, idx, cat, nodeCatalogKnown, nodePolicyCaps(ctx, st, log, name))
 	dash.Nodes = append(dash.Nodes, nodes...)
 	dash.OtherNodeCount += other
 	dash.CatalogUnavailable = dash.CatalogUnavailable || !nodeCatalogKnown
@@ -258,6 +263,10 @@ func foldClusterIntoDashboard(ctx context.Context, st *store.Store, log *slog.Lo
 	}
 
 	for _, s := range clusterStorages(label, idx) {
+		if nodeCatalogKnown && !pvmssStorage(s.Name, cat, idx) {
+			continue
+		}
+
 		dash.Storages = append(dash.Storages, s)
 		dash.Alerts = appendStorageAlert(dash.Alerts, name, s)
 	}

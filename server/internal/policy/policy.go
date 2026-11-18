@@ -372,6 +372,12 @@ type nodeUsage struct {
 	ramBytes, diskBytes int64
 }
 
+// NodePVMSSRAMGB is the RAM, in GB, allocated to the pvmss-tagged VMs on node:
+// the same figure node capacity limits are checked against.
+func NodePVMSSRAMGB(index *inventory.Index, node string) int {
+	return int(pvmssUsage(index, node).ramBytes / bytesPerGB)
+}
+
 // pvmssUsage totals the pvmss-tagged VMs the index places on node.
 func pvmssUsage(index *inventory.Index, node string) nodeUsage {
 	var usage nodeUsage

@@ -272,6 +272,7 @@
 									{/if}
 								</div>
 							{/if}
+							{#if node.status === 'online'}
 							<div class="grid gap-3">
 								{#each [{ label: `${m['admin.dashboard.cpu']()} · ${node.cpuCores} ${m['common.coreCount']({ count: node.cpuCores })}`, value: `${cpuPct}%`, pct: cpuPct }, { label: m['admin.dashboard.memory'](), value: `${formatBytes(node.memoryUsedBytes)} / ${formatBytes(node.memoryTotalBytes)}`, pct: memPct }] as meter (meter.label)}
 									<div class="flex flex-col gap-1.5">
@@ -282,6 +283,18 @@
 										{@render bar(meter.pct)}
 									</div>
 								{/each}
+							</div>
+							{:else}
+								<p class="text-xs text-muted-foreground" data-testid="dashboard-node-capacity-unknown">{m['admin.dashboard.capacityUnknown']()}</p>
+							{/if}
+							<div class="grid gap-0.5 text-xs text-muted-foreground tabular-nums" data-testid="dashboard-node-share">
+								<span>{m['admin.dashboard.nodePvmssShare']({ count: node.pvmssVMCount, ram: node.pvmssRamGB })}</span>
+								{#if node.policyMaxVMs > 0}
+									<span>{m['admin.dashboard.nodePolicyVMs']({ used: node.pvmssVMCount, max: node.policyMaxVMs })}</span>
+								{/if}
+								{#if node.policyMaxRamGB > 0}
+									<span>{m['admin.dashboard.nodePolicyRAM']({ used: node.pvmssRamGB, max: node.policyMaxRamGB })}</span>
+								{/if}
 							</div>
 						</button>
 					{/each}

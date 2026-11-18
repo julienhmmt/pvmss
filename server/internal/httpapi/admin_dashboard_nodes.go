@@ -7,6 +7,7 @@ import (
 	"pvmss/server/internal/catalog"
 	"pvmss/server/internal/cluster"
 	"pvmss/server/internal/inventory"
+	"pvmss/server/internal/policy"
 	"pvmss/server/internal/store"
 	"slices"
 )
@@ -61,7 +62,7 @@ func loadNodeCatalog(ctx context.Context, st *store.Store, log *slog.Logger, clu
 //
 // shortcut: readiness uses approved ISO/template rows, not live discovery (the
 // dashboard makes no Proxmox call); upgrade if inventory starts carrying ISOs.
-func dashboardNodes(name, label string, idx *inventory.Index, cat nodeCatalog, catalogKnown bool) (nodes []nodeSummaryDTO, other int) {
+func dashboardNodes(name, label string, idx *inventory.Index, cat nodeCatalog, catalogKnown bool, caps map[string]store.NodePolicyRow) (nodes []nodeSummaryDTO, other int) {
 	seen := make(map[string]bool, len(idx.Nodes))
 
 	for _, node := range idx.Nodes {
@@ -77,6 +78,8 @@ func dashboardNodes(name, label string, idx *inventory.Index, cat nodeCatalog, c
 		summary := nodeSummaryDTO{
 			ClusterKey: name, Cluster: label, Name: node.Name, Status: string(node.Status),
 			VMCount: len(vms), VMRunningCount: countRunning(vms), PVMSSVMCount: countPVMSS(vms),
+			PVMSSRAMGB:     policy.NodePVMSSRAMGB(idx, node.Name),
+			PolicyMaxRAMGB: caps[node.Name].MaxRAMGB, PolicyMaxVMs: caps[node.Name].MaxVMs,
 			CPUCores: node.CPUCores, CPUUsage: node.CPUUsage,
 			MemoryTotalBytes: node.MemoryTotal, MemoryUsedBytes: node.MemoryUsed,
 		}
@@ -131,4 +134,37 @@ func countPVMSS(vms []cluster.VM) int {
 	}
 
 	return n
+}
+
+// nodePolicyCaps maps node names to their capacity limits. A read failure is
+// logged and yields no limits: the cards still show host usage.
+func nodePolicyCaps(ctx context.Context, st *store.Store, log *slog.Logger, clusterName string) map[string]store.NodePolicyRow {
+	rows, err := st.NodePolicyRows(ctx, clusterName)
+	if err != nil {
+		log.WarnContext(ctx, "dashboard node policy read failed", "component", "httpapi", "cluster", clusterName, "error", err)
+		return nil
+	}
+
+	caps := make(map[string]store.NodePolicyRow, len(rows))
+	for _, row := range rows {
+		caps[row.Node] = row
+	}
+
+	return caps
+}
+
+// pvmssStorage reports whether the dashboard lists a datastore: approved in
+// the catalog on any node, or holding a disk of a PVMSS VM.
+func pvmssStorage(name string, cat nodeCatalog, idx *inventory.Index) bool {
+	if slices.ContainsFunc(cat.resources.Storages, func(s catalog.Storage) bool { return s.Name == name }) {
+		return true
+	}
+
+	for _, vm := range idx.ByVMID {
+		if slices.Contains(vm.Tags, catalog.ProtectedTagName) && slices.ContainsFunc(vm.Disks, func(d cluster.Disk) bool { return d.Storage == name }) {
+			return true
+		}
+	}
+
+	return false
 }

@@ -99,11 +99,24 @@ func attentionIndex() *inventory.Index {
 	return &idx
 }
 
+// approveStorages approves each storage on n1: the dashboard only lists
+// storages approved in the catalog (or holding PVMSS disks).
+func approveStorages(t *testing.T, st *store.Store, names ...string) {
+	t.Helper()
+
+	for _, name := range names {
+		if err := st.SetStorageEnabled(context.Background(), dashCluster, name, "n1", true); err != nil {
+			t.Fatalf("SetStorageEnabled %s: %v", name, err)
+		}
+	}
+}
+
 func getAttentionDashboard(t *testing.T) attentionDashboardDTO {
 	t.Helper()
 
 	authHandler := newAuthHandler(t)
 	st := auditAdminStore(t)
+	approveStorages(t, st, dashSharedName, testStorageLocalLVM)
 
 	if err := st.UpsertPolicyRow(context.Background(), store.PolicyRow{Cluster: dashCluster, MaxVMPerUser: 2}); err != nil {
 		t.Fatalf("UpsertPolicyRow: %v", err)
@@ -227,6 +240,7 @@ func TestAdminDashboard_SharedFlagDedupesNonListedPlugin(t *testing.T) {
 	// `shared` flag (cluster.Storage.Shared) can mark it shared.
 	authHandler := newAuthHandler(t)
 	st := auditAdminStore(t)
+	approveStorages(t, st, "iso-share")
 
 	idx := inventory.BuildIndexForCluster(dashCluster, cluster.Snapshot{
 		Nodes: []cluster.Node{

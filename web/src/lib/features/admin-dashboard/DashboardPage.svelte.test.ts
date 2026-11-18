@@ -25,6 +25,9 @@ const store = {
 				vmCount: 2,
 				vmRunningCount: 1,
 				pvmssVMCount: 1,
+				pvmssRamGB: 4,
+				policyMaxRamGB: 0,
+				policyMaxVMs: 0,
 				cpuCores: 8,
 				cpuUsage: 0.25,
 				memoryTotalBytes: 8_000_000_000,
@@ -165,5 +168,30 @@ describe('DashboardPage node states', () => {
 		expect(other?.getAttribute('href')).toBe('/admin/nodes');
 		expect(other?.textContent).toContain('3');
 		expect(document.querySelector('[data-testid="dashboard-catalog-unavailable"]')).not.toBeNull();
+	});
+});
+
+describe('DashboardPage node capacity', () => {
+	const base = store.summary.nodes[0]!;
+
+	function mountWith(nodes: DashboardSummary['nodes']): void {
+		vi.mocked(getDashboardContext).mockReturnValue({ ...store, summary: { ...store.summary, nodes } });
+		mount(DashboardPage, { target: document.body });
+	}
+
+	it('shows the PVMSS share and the policy limits that are set', () => {
+		mountWith([{ ...base, policyMaxVMs: 5 }]);
+
+		const share = document.querySelector('[data-testid="dashboard-node-share"]')?.textContent ?? '';
+		expect(share).toContain(m['admin.dashboard.nodePvmssShare']({ count: 1, ram: 4 }));
+		expect(share).toContain(m['admin.dashboard.nodePolicyVMs']({ used: 1, max: 5 }));
+		expect(share).not.toContain(m['admin.dashboard.nodePolicyRAM']({ used: 4, max: 0 }));
+	});
+
+	it('replaces the bars with capacity unknown when the node is not online', () => {
+		mountWith([{ ...base, status: 'offline', state: 'offline' }]);
+
+		expect(document.querySelector('[data-testid="dashboard-node-capacity-unknown"]')).not.toBeNull();
+		expect(document.querySelector('[data-node="miniquarium"]')?.textContent).not.toContain(m['admin.dashboard.memory']());
 	});
 });

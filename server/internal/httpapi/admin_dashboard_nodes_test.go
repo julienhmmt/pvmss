@@ -21,6 +21,9 @@ type dashNodeStateDTO struct {
 	Missing []string `json:"missing"`
 	VMCount int      `json:"vmCount"`
 	PVMSS   int      `json:"pvmssVMCount"`
+	RAMGB   int      `json:"pvmssRamGB"`
+	MaxRAM  int      `json:"policyMaxRamGB"`
+	MaxVMs  int      `json:"policyMaxVMs"`
 }
 
 type dashNodesDTO struct {
@@ -28,6 +31,9 @@ type dashNodesDTO struct {
 	NodeCount          int                `json:"nodeCount"`
 	OtherNodeCount     int                `json:"otherNodeCount"`
 	CatalogUnavailable bool               `json:"catalogUnavailable"`
+	Storages           []struct {
+		Name string `json:"name"`
+	} `json:"storages"`
 }
 
 const (
@@ -38,6 +44,7 @@ const (
 	nodeLegacy     = "n-legacy"
 	nodeLegacyDown = "n-legacy-down"
 	nodeOther      = "n-other"
+	dashLocal      = "local"
 )
 
 // approveComplete enables node with a storage, a bridge and an ISO.
@@ -47,9 +54,9 @@ func approveComplete(t *testing.T, st *store.Store, node string) {
 	ctx := context.Background()
 	for _, err := range []error{
 		st.SetNodeEnabled(ctx, dashCluster, node, true),
-		st.SetStorageEnabled(ctx, dashCluster, "local", node, true),
+		st.SetStorageEnabled(ctx, dashCluster, dashLocal, node, true),
 		st.SetBridgeEnabled(ctx, dashCluster, node, "vmbr0", true),
-		st.SetISOEnabled(ctx, dashCluster, node, "local", "a.iso", true),
+		st.SetISOEnabled(ctx, dashCluster, node, dashLocal, "a.iso", true),
 	} {
 		if err != nil {
 			t.Fatalf("approve %s: %v", node, err)
@@ -72,7 +79,7 @@ func getNodeStatesDashboard(t *testing.T, closeStore bool) dashNodesDTO {
 		t.Fatal(err)
 	}
 
-	if err := st.SetStorageEnabled(ctx, dashCluster, "local", nodeIncomplete, true); err != nil {
+	if err := st.SetStorageEnabled(ctx, dashCluster, dashLocal, nodeIncomplete, true); err != nil {
 		t.Fatal(err)
 	}
 
@@ -87,13 +94,21 @@ func getNodeStatesDashboard(t *testing.T, closeStore bool) dashNodesDTO {
 			{Name: nodeLegacyDown, Status: cluster.NodeOffline, CPUCores: 8, MemoryTotal: 64 * gib},
 		},
 		VMs: []cluster.VM{
-			{VMID: 100, Name: "kept", Node: nodeLegacy, Status: cluster.VMRunning, Tags: []string{catalog.ProtectedTagName}},
+			{VMID: 100, Name: "kept", Node: nodeLegacy, Status: cluster.VMRunning, MemoryTotal: 4 * gib, Tags: []string{catalog.ProtectedTagName}},
 			{VMID: 101, Name: "infra", Node: nodeOther, Status: cluster.VMRunning},
 			{VMID: 102, Name: "infra-2", Node: nodeLegacy, Status: cluster.VMRunning},
 			{VMID: 103, Name: "kept-down", Node: nodeLegacyDown, Status: cluster.VMStopped, Tags: []string{catalog.ProtectedTagName}},
 		},
+		Storages: []cluster.Storage{
+			{Name: dashLocal, Node: nodeReady, PluginType: "dir", Total: 100 * gib, Used: 10 * gib},
+			{Name: "scratch", Node: nodeOther, PluginType: "dir", Total: 100 * gib, Used: 10 * gib},
+		},
 	})
 	idx.RefreshedAt = time.Now()
+
+	if err := st.UpsertNodePolicyRow(ctx, store.NodePolicyRow{Cluster: dashCluster, Node: nodeReady, MaxVMs: 5, MaxRAMGB: 32}); err != nil {
+		t.Fatal(err)
+	}
 
 	if closeStore {
 		if err := st.Close(); err != nil {
@@ -150,6 +165,26 @@ func TestAdminDashboard_NodeSetAndStates(t *testing.T) {
 
 	if dash.OtherNodeCount != 1 || dash.NodeCount != 6 || dash.CatalogUnavailable {
 		t.Errorf("otherNodeCount=%d nodeCount=%d catalogUnavailable=%v, want 1, 6, false", dash.OtherNodeCount, dash.NodeCount, dash.CatalogUnavailable)
+	}
+}
+
+// Each card carries the PVMSS RAM share and the node's policy limits; only
+// storages approved in the catalog (or holding PVMSS disks) are listed.
+//
+//nolint:paralleltest // serial: shared fake dataset
+func TestAdminDashboard_NodeCapacityAndStorages(t *testing.T) {
+	dash := getNodeStatesDashboard(t, false)
+
+	if legacy := dash.Nodes[4]; legacy.RAMGB != 4 {
+		t.Errorf("legacy pvmssRamGB = %d, want 4", legacy.RAMGB)
+	}
+
+	if ready := dash.Nodes[5]; ready.MaxRAM != 32 || ready.MaxVMs != 5 {
+		t.Errorf("ready policy caps = %d GB / %d VMs, want 32 / 5", ready.MaxRAM, ready.MaxVMs)
+	}
+
+	if len(dash.Storages) != 1 || dash.Storages[0].Name != dashLocal {
+		t.Errorf("storages = %+v, want only local", dash.Storages)
 	}
 }
 
