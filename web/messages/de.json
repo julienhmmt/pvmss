@@ -514,6 +514,7 @@
 	"vms.create.bridge": "Bridge",
 	"vms.create.chooseBridge": "Eine Bridge wählen",
 	"vms.create.chooseNode": "Einen Knoten wählen",
+	"vms.create.nodeUnavailable": "{node} (vorübergehend nicht verfügbar)",
 	"vms.create.chooseStorage": "Speicher wählen",
 	"vms.create.iso": "ISO",
 	"vms.create.os": "Betriebssystem",

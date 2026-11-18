@@ -221,17 +221,19 @@ type catalogNodeCapacityDTO struct {
 }
 
 type catalogDTO struct {
-	Cluster        string                   `json:"cluster"`
-	Nodes          []string                 `json:"nodes"`
-	Storages       []catalogStorageDTO      `json:"storages"`
-	Bridges        []catalogBridgeDTO       `json:"bridges"`
-	ISOs           []catalogISODTO          `json:"isos"`
-	Profiles       []catalogProfileDTO      `json:"profiles"`
-	Templates      []catalogTemplateDTO     `json:"templates"`
-	Tags           []catalogTagDTO          `json:"tags"`
-	Gabarit        *catalogGabaritDTO       `json:"gabarit,omitempty"`
-	Quota          *catalogQuotaDTO         `json:"quota,omitempty"`
-	NodeCapacities []catalogNodeCapacityDTO `json:"nodeCapacities,omitempty"`
+	Cluster string   `json:"cluster"`
+	Nodes   []string `json:"nodes"`
+	// UnavailableNodes are ready nodes the cluster does not report online.
+	UnavailableNodes []string                 `json:"unavailableNodes"`
+	Storages         []catalogStorageDTO      `json:"storages"`
+	Bridges          []catalogBridgeDTO       `json:"bridges"`
+	ISOs             []catalogISODTO          `json:"isos"`
+	Profiles         []catalogProfileDTO      `json:"profiles"`
+	Templates        []catalogTemplateDTO     `json:"templates"`
+	Tags             []catalogTagDTO          `json:"tags"`
+	Gabarit          *catalogGabaritDTO       `json:"gabarit,omitempty"`
+	Quota            *catalogQuotaDTO         `json:"quota,omitempty"`
+	NodeCapacities   []catalogNodeCapacityDTO `json:"nodeCapacities,omitempty"`
 }
 
 // ServeHTTP handles POST /api/v1/vms. Creation is asynchronous:

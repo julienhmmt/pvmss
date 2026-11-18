@@ -156,3 +156,16 @@ describe('StepBase ISO field', () => {
 		document.body.innerHTML = '';
 	});
 });
+
+describe('StepBase node picker', () => {
+	it('shows unavailable nodes as disabled options', () => {
+		storeInstance = new VmCreateStore();
+		storeInstance.catalog = { ...catalogWith([]), unavailableNodes: ['pve-node-03'] };
+		mount(StepBase, { target: document.body });
+		const option = document.querySelector<HTMLOptionElement>('option[value="pve-node-03"]');
+		expect(option).not.toBeNull();
+		expect(option?.disabled).toBe(true);
+		expect(document.querySelector<HTMLOptionElement>('option[value="pve-node-01"]')?.disabled).toBe(false);
+		document.body.innerHTML = '';
+	});
+});

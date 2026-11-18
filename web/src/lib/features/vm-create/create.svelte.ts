@@ -106,6 +106,8 @@ export interface CatalogNodeCapacity {
 export interface VmCreateCatalog {
 	cluster: string;
 	nodes: string[];
+	/** Ready nodes the cluster does not report online: shown, not selectable. */
+	unavailableNodes?: string[];
 	storages: CatalogStorage[];
 	bridges: CatalogBridge[];
 	isos: CatalogISO[];

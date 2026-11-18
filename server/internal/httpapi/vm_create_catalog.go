@@ -8,7 +8,6 @@ import (
 	"pvmss/server/internal/catalog"
 	"pvmss/server/internal/cluster"
 	"pvmss/server/internal/vm"
-	"slices"
 )
 
 // catalogData is the raw catalog payload loaded from the store and the live
@@ -106,15 +105,18 @@ func loadClusterDiscovery(ctx context.Context, client cluster.Client, data *cata
 // surfaces those orphans for manual cleanup, and enabled orphans are
 // auto-removed there).
 func buildCatalogDTO(clusterName string, data catalogData) catalogDTO {
+	nodes, unavailable := catalogNodeNames(data.resources, data.proxmoxTemplates, data.snap)
+
 	return catalogDTO{
-		Cluster:   clusterName,
-		Nodes:     catalogNodeNames(data.resources, data.snap),
-		Storages:  catalogStorageDTOs(data.resources.Storages, data.snap.Storages),
-		Bridges:   catalogBridgeDTOs(data.resources.Bridges, data.bridges),
-		ISOs:      catalogFileDTOs(data.resources.ISOs, catalogISOKey, liveISOKeys(data.isos), catalogISOView),
-		Profiles:  mapCatalogSlice(data.profiles, catalogProfileView),
-		Templates: mapCatalogSlice(data.proxmoxTemplates, catalogTemplateView),
-		Tags:      catalogTagDTOs(data.tags),
+		Cluster:          clusterName,
+		Nodes:            nodes,
+		UnavailableNodes: unavailable,
+		Storages:         catalogStorageDTOs(data.resources.Storages, data.snap.Storages),
+		Bridges:          catalogBridgeDTOs(data.resources.Bridges, data.bridges),
+		ISOs:             catalogFileDTOs(data.resources.ISOs, catalogISOKey, liveISOKeys(data.isos), catalogISOView),
+		Profiles:         mapCatalogSlice(data.profiles, catalogProfileView),
+		Templates:        mapCatalogSlice(data.proxmoxTemplates, catalogTemplateView),
+		Tags:             catalogTagDTOs(data.tags),
 	}
 }
 
@@ -129,29 +131,30 @@ func mapCatalogSlice[In, Out any](items []In, viewOf func(In) Out) []Out {
 	return out
 }
 
-// catalogNodeNames keeps only approved nodes the cluster still reports and
-// that can host a VM: at least one approved storage and bridge on the node.
-// Create validates again server-side; this only spares the user a dead end.
-func catalogNodeNames(resources catalog.Resources, snap cluster.Snapshot) []string {
-	discovered := make(map[string]bool, len(snap.Nodes))
+// catalogNodeNames splits approved nodes for the create picker. Nodes that
+// fail catalog.NodeReadiness are dropped. Ready nodes the cluster reports
+// online are offered; ready nodes it reports offline or not at all come back
+// as unavailable so the form can show them greyed out. Create validates again
+// server-side; this only spares the user a dead end.
+func catalogNodeNames(resources catalog.Resources, templates []catalog.Template, snap cluster.Snapshot) (nodes, unavailable []string) {
+	online := make(map[string]bool, len(snap.Nodes))
 	for _, n := range snap.Nodes {
-		discovered[n.Name] = true
+		online[n.Name] = n.Status == cluster.NodeOnline
 	}
 
-	names := make([]string, 0, len(resources.Nodes))
+	nodes, unavailable = []string{}, []string{}
+
 	for _, node := range resources.Nodes {
-		onNode := func(n string) bool { return n == node.Name }
-		usable := slices.ContainsFunc(resources.Storages, func(s catalog.Storage) bool { return onNode(s.Node) }) &&
-			slices.ContainsFunc(resources.Bridges, func(b catalog.Bridge) bool { return onNode(b.Node) })
-
-		if !discovered[node.Name] || !usable {
-			continue
+		switch {
+		case len(catalog.NodeReadiness(resources, templates, node.Name)) > 0:
+		case online[node.Name]:
+			nodes = append(nodes, node.Name)
+		default:
+			unavailable = append(unavailable, node.Name)
 		}
-
-		names = append(names, node.Name)
 	}
 
-	return names
+	return nodes, unavailable
 }
 
 // catalogTagDTOs maps tags, dropping admin-protected ones.

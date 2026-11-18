@@ -90,6 +90,15 @@
 			form.templateMinDiskGB = 0;
 		}
 	});
+
+	const nodeOptions = $derived([
+		...(form.catalog?.nodes ?? []),
+		...(form.catalog?.unavailableNodes ?? []).map((node) => ({
+			value: node,
+			label: m['vms.create.nodeUnavailable']({ node }),
+			disabled: true
+		}))
+	]);
 </script>
 
 <div class="grid gap-4">
@@ -132,7 +141,7 @@
 					bind:value={form.node}
 					onblur={() => (nodeTouched = true)}
 					placeholder={m['vms.create.chooseNode']()}
-					options={form.catalog?.nodes ?? []}
+					options={nodeOptions}
 				/>
 			{/snippet}
 		</FormField>
