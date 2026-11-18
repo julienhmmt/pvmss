@@ -96,6 +96,7 @@ func (fake Fake) Snapshot(_ context.Context) (Snapshot, error) {
 		vms[i].BootOrder = append([]string(nil), vm.BootOrder...)
 		vms[i].Disks = append([]Disk(nil), vm.Disks...)
 		vms[i].NetworkInterfaces = CloneNetworkInterfaces(vm.NetworkInterfaces)
+		vms[i].CPUUsage, vms[i].MemoryUsed = fakeUsage(vm)
 		for diskIndex := range vms[i].Disks {
 			vms[i].Disks[diskIndex].IsBoot = false
 		}
@@ -208,4 +209,18 @@ func (fake Fake) GetCloudInitConfig(_ context.Context, node string, vmid int) (C
 	}
 
 	return cloneCloudInitConfig(config), nil
+}
+
+// fakeUsage is a deterministic live load per VMID for running VMs, so the
+// dashboard's busiest-VM lists have something to rank in dev and tests.
+func fakeUsage(vm VM) (float64, int64) {
+	if vm.Status != VMRunning {
+		return 0, 0
+	}
+
+	const spread = 97
+
+	share := float64((vm.VMID*37)%spread+1) / 100
+
+	return share, int64(float64(vm.MemoryTotal) * (1 - share/2))
 }

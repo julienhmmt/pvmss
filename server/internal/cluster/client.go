@@ -348,6 +348,11 @@ type VM struct {
 	//  Uptime is how long the guest has been running. Zero when Status!= running
 	// (uptimeSeconds absent when not running).
 	Uptime time.Duration
+	// CPUUsage is the live CPU load as a fraction (0..1) of the VM's cores, and
+	// MemoryUsed the live RAM use in bytes, both from /cluster/resources. They
+	// are left out of ResourceDigest: a load change must not force rehydration.
+	CPUUsage   float64
+	MemoryUsed int64
 	// ResourceDigest fingerprints the /cluster/resources row the VM was built
 	// from (Proxmox only). SnapshotFrom reuses the previous config hydration
 	// while it is unchanged.

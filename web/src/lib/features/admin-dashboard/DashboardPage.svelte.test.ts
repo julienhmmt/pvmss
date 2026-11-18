@@ -41,6 +41,8 @@ const store = {
 		pvmssVMCount: 3,
 		pvmssVMStatusCounts: { running: 1, paused: 0, stopped: 2, other: 0 },
 		otherVMCount: 7,
+		topCPU: [],
+		topMemory: [],
 		otherNodeCount: 0,
 		catalogUnavailable: false,
 		storages: [],

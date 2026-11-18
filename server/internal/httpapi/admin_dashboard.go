@@ -133,6 +133,9 @@ type dashboardDTO struct {
 	PVMSSVMCount        int                 `json:"pvmssVMCount"`
 	PVMSSVMStatusCounts vmStatusCountsDTO   `json:"pvmssVMStatusCounts"`
 	OtherVMCount        int                 `json:"otherVMCount"`
+	// TopCPU and TopMemory rank the running PVMSS VMs by live load (5 each).
+	TopCPU    []busyVMDTO `json:"topCPU"`
+	TopMemory []busyVMDTO `json:"topMemory"`
 	// OtherNodeCount counts reported nodes neither enabled nor hosting PVMSS VMs.
 	OtherNodeCount int `json:"otherNodeCount"`
 	// CatalogUnavailable is set when a cluster's catalog could not be read:
@@ -200,6 +203,7 @@ func (h *AdminOps) ServeDashboard(w http.ResponseWriter, r *http.Request) {
 	}
 
 	dash.NodeCount = len(dash.Nodes)
+	dash.TopCPU, dash.TopMemory = rankBusyVMs(dash.TopCPU, byCPU), rankBusyVMs(dash.TopMemory, byMemory)
 	dash.RefreshedAt = newest.UTC().Format(time.RFC3339)
 	slices.SortStableFunc(dash.Alerts, compareAlerts)
 	writeAdminJSON(w, http.StatusOK, dash)
@@ -251,6 +255,7 @@ func foldClusterIntoDashboard(ctx context.Context, st *store.Store, log *slog.Lo
 		if slices.Contains(vm.Tags, catalog.ProtectedTagName) {
 			dash.PVMSSVMCount++
 			countVMStatus(&dash.PVMSSVMStatusCounts, vm.Status)
+			dash.TopCPU, dash.TopMemory = addBusyVM(dash.TopCPU, dash.TopMemory, name, label, vm)
 		} else {
 			dash.OtherVMCount++
 		}

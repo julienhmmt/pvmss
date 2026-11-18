@@ -63,6 +63,19 @@ export interface DashboardChange {
 	targetId: string;
 }
 
+export interface BusyVM {
+	clusterKey: string;
+	cluster: string;
+	node: string;
+	vmid: number;
+	name: string;
+	pool: string;
+	cpuPercent: number;
+	memoryPercent: number;
+	memoryUsedBytes: number;
+	memoryTotalBytes: number;
+}
+
 export interface DashboardSummary {
 	alerts: DashboardAlert[];
 	nodes: NodeSummary[];
@@ -72,6 +85,9 @@ export interface DashboardSummary {
 	pvmssVMCount: number;
 	pvmssVMStatusCounts: VMStatusCounts;
 	otherVMCount: number;
+	/** Running PVMSS VMs ranked by live CPU / RAM %, five each. */
+	topCPU: BusyVM[];
+	topMemory: BusyVM[];
 	/** Reported nodes neither enabled nor hosting PVMSS VMs. */
 	otherNodeCount: number;
 	catalogUnavailable: boolean;

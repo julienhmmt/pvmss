@@ -177,7 +177,7 @@ func hydrateChangedVMs(ctx context.Context, rest proxmoxRESTClient, vms, prev []
 			continue
 		}
 
-		old.Uptime = vm.Uptime
+		old.Uptime, old.CPUUsage, old.MemoryUsed = vm.Uptime, vm.CPUUsage, vm.MemoryUsed
 		vms[i], reused[i] = old, true
 	}
 
@@ -382,6 +382,8 @@ func proxmoxVMFromRow(row proxmoxResourceRow) VM {
 		CPUCores:    int(row.MaxCPU),
 		MemoryTotal: row.MaxMem,
 		Uptime:      time.Duration(row.Uptime) * time.Second,
+		CPUUsage:    row.CPU,
+		MemoryUsed:  row.Mem,
 		ResourceDigest: fmt.Sprintf("%s|%s|%s|%s|%s|%g|%d|%d|%d",
 			row.Node, row.Status, row.Name, row.Tags, row.Pool, row.MaxCPU, row.MaxMem, row.MaxDisk, row.Template),
 	}

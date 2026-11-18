@@ -4,6 +4,7 @@
 	import { hasActionableAlerts, usageTone, withQuery } from './dashboard-alerts';
 	import DashboardAttention from './DashboardAttention.svelte';
 	import DashboardOnboarding from './DashboardOnboarding.svelte';
+	import DashboardBusyVMs from './DashboardBusyVMs.svelte';
 	import { goto } from '$app/navigation';
 	import { resolve } from '$app/paths';
 	import Alert from '#lib/shared/ui/Alert.svelte';
@@ -216,6 +217,7 @@
 					<span class="text-muted-foreground">{m['admin.dashboard.vmOtherDescription']()}</span>
 				</div>
 			</div>
+			<DashboardBusyVMs topCPU={summary.topCPU} topMemory={summary.topMemory} />
 		</Card>
 
 		{#if summary.catalogUnavailable}
