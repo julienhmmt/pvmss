@@ -262,13 +262,16 @@
 									{m['admin.dashboard.nodeVmsRunning']({ running: node.vmRunningCount, total: node.vmCount })}
 								</span>
 							</div>
-							{#if badge || (node.missing?.length ?? 0) > 0}
+							{#if badge || (node.missing?.length ?? 0) > 0 || node.unadoptedVMCount > 0}
 								<div class="flex flex-wrap items-center gap-2 text-xs">
 									{#if badge}
 										<span class="rounded-full px-2 py-0.5 font-medium {badge.tone}" data-testid="dashboard-node-state">{badge.label}</span>
 									{/if}
 									{#if node.missing?.length}
 										<span class="text-muted-foreground">{missingText(node.missing)}</span>
+									{/if}
+									{#if node.unadoptedVMCount > 0}
+										<span class="rounded-full bg-warning-soft px-2 py-0.5 font-medium text-warning-soft-foreground" data-testid="dashboard-node-unadopted">{m['admin.dashboard.nodeUnadopted']({ count: node.unadoptedVMCount })}</span>
 									{/if}
 								</div>
 							{/if}

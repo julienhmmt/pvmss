@@ -10,6 +10,7 @@ import (
 	"pvmss/server/internal/policy"
 	"pvmss/server/internal/store"
 	"slices"
+	"strconv"
 )
 
 // Dashboard node states, worst first. An empty state means the catalog could
@@ -62,7 +63,7 @@ func loadNodeCatalog(ctx context.Context, st *store.Store, log *slog.Logger, clu
 //
 // shortcut: readiness uses approved ISO/template rows, not live discovery (the
 // dashboard makes no Proxmox call); upgrade if inventory starts carrying ISOs.
-func dashboardNodes(name, label string, idx *inventory.Index, cat nodeCatalog, catalogKnown bool, caps map[string]store.NodePolicyRow) (nodes []nodeSummaryDTO, other int) {
+func dashboardNodes(name, label string, idx *inventory.Index, cat nodeCatalog, catalogKnown bool, caps map[string]store.NodePolicyRow, unadopted map[string]int) (nodes []nodeSummaryDTO, other int) {
 	seen := make(map[string]bool, len(idx.Nodes))
 
 	for _, node := range idx.Nodes {
@@ -78,7 +79,7 @@ func dashboardNodes(name, label string, idx *inventory.Index, cat nodeCatalog, c
 		summary := nodeSummaryDTO{
 			ClusterKey: name, Cluster: label, Name: node.Name, Status: string(node.Status),
 			VMCount: len(vms), VMRunningCount: countRunning(vms), PVMSSVMCount: countPVMSS(vms),
-			PVMSSRAMGB:     policy.NodePVMSSRAMGB(idx, node.Name),
+			PVMSSRAMGB: policy.NodePVMSSRAMGB(idx, node.Name), UnadoptedVMCount: unadopted[node.Name],
 			PolicyMaxRAMGB: caps[node.Name].MaxRAMGB, PolicyMaxVMs: caps[node.Name].MaxVMs,
 			CPUCores: node.CPUCores, CPUUsage: node.CPUUsage,
 			MemoryTotalBytes: node.MemoryTotal, MemoryUsedBytes: node.MemoryUsed,
@@ -171,4 +172,96 @@ func pvmssStorage(s dashboardStorageDTO, cat nodeCatalog, idx *inventory.Index) 
 	}
 
 	return false
+}
+
+// dashboardNodeAlerts raises the node alerts for the listed nodes: offline
+// (critical, also for enabled nodes gone from inventory), CPU and memory
+// pressure, incomplete readiness and unadopted PVMSS VMs. When the catalog is
+// unreadable every reported node keeps its alerts and none is about readiness:
+// an unknown state must not silence an offline node.
+func dashboardNodeAlerts(name, label string, idx *inventory.Index, listed []nodeSummaryDTO, catalogKnown bool) []dashboardAlertDTO {
+	byName := make(map[string]nodeSummaryDTO, len(listed))
+	for _, n := range listed {
+		byName[n.Name] = n
+	}
+
+	alert := func(kind, severity, node string) dashboardAlertDTO {
+		return dashboardAlertDTO{Kind: kind, Severity: severity, Cluster: label, ClusterKey: name, Subject: node}
+	}
+
+	var alerts []dashboardAlertDTO
+
+	reported := make(map[string]bool, len(idx.Nodes))
+
+	for _, node := range idx.Nodes {
+		reported[node.Name] = true
+
+		if _, ok := byName[node.Name]; catalogKnown && !ok {
+			continue
+		}
+
+		if node.Status == cluster.NodeOffline {
+			alerts = append(alerts, alert("node_offline", alertCritical, node.Name))
+		} else {
+			alerts = append(alerts, nodeAlerts(name, label, node)...)
+		}
+	}
+
+	for _, n := range listed {
+		if !reported[n.Name] {
+			alerts = append(alerts, alert("node_offline", alertCritical, n.Name))
+		}
+
+		if n.State == nodeStateIncomplete && len(n.Missing) > 0 {
+			a := alert("node_incomplete", alertWarning, n.Name)
+			a.Detail = n.Missing[0]
+			alerts = append(alerts, a)
+		}
+
+		if n.UnadoptedVMCount > 0 {
+			a := alert("node_unadopted_vms", alertWarning, n.Name)
+			a.Used = n.UnadoptedVMCount
+			alerts = append(alerts, a)
+		}
+	}
+
+	return alerts
+}
+
+// unadoptedByNode counts, per node, the PVMSS-tagged VMs outside every managed
+// pool that the admin has not hidden on /admin/recovery (VM or its pool). A
+// read failure is logged and yields no counts.
+func unadoptedByNode(ctx context.Context, st *store.Store, log *slog.Logger, clusterName string, idx *inventory.Index) map[string]int {
+	managed, err := st.ManagedPoolNames(ctx, clusterName)
+	if err != nil {
+		log.WarnContext(ctx, "dashboard managed pool read failed", "component", "httpapi", "cluster", clusterName, "error", err)
+		return nil
+	}
+
+	dismissed, err := st.RecoveryDismissals(ctx, clusterName)
+	if err != nil {
+		log.WarnContext(ctx, "dashboard recovery dismissal read failed", "component", "httpapi", "cluster", clusterName, "error", err)
+		return nil
+	}
+
+	hidden := func(kind, item string) bool {
+		_, ok := dismissed[store.RecoveryDismissal{Kind: kind, Item: item}]
+		return ok
+	}
+
+	counts := map[string]int{}
+
+	for _, vm := range idx.ByVMID {
+		if _, ok := managed[vm.Pool]; ok || !slices.Contains(vm.Tags, catalog.ProtectedTagName) {
+			continue
+		}
+
+		if hidden(store.RecoveryDismissalVM, strconv.Itoa(vm.VMID)) || (vm.Pool != "" && hidden(store.RecoveryDismissalPool, vm.Pool)) {
+			continue
+		}
+
+		counts[vm.Node]++
+	}
+
+	return counts
 }

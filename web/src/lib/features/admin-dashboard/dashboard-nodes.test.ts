@@ -14,6 +14,7 @@ function node(clusterKey: string, name: string, vmCount: number): NodeSummary {
 		pvmssRamGB: 0,
 		policyMaxRamGB: 0,
 		policyMaxVMs: 0,
+		unadoptedVMCount: 0,
 		cpuCores: 4,
 		cpuUsage: 0,
 		memoryTotalBytes: 1,

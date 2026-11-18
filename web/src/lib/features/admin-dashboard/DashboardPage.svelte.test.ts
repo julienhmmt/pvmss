@@ -28,6 +28,7 @@ const store = {
 				pvmssRamGB: 4,
 				policyMaxRamGB: 0,
 				policyMaxVMs: 0,
+				unadoptedVMCount: 0,
 				cpuCores: 8,
 				cpuUsage: 0.25,
 				memoryTotalBytes: 8_000_000_000,
@@ -180,7 +181,8 @@ describe('DashboardPage node capacity', () => {
 	}
 
 	it('shows the PVMSS share and the policy limits that are set', () => {
-		mountWith([{ ...base, policyMaxVMs: 5 }]);
+		mountWith([{ ...base, policyMaxVMs: 5, unadoptedVMCount: 2 }]);
+		expect(document.querySelector('[data-testid="dashboard-node-unadopted"]')?.textContent).toContain('2');
 
 		const share = document.querySelector('[data-testid="dashboard-node-share"]')?.textContent ?? '';
 		expect(share).toContain(m['admin.dashboard.nodePvmssShare']({ count: 1, ram: 4 }));
@@ -192,6 +194,7 @@ describe('DashboardPage node capacity', () => {
 		mountWith([{ ...base, status: 'offline', state: 'offline' }]);
 
 		expect(document.querySelector('[data-testid="dashboard-node-capacity-unknown"]')).not.toBeNull();
+		expect(document.querySelector('[data-testid="dashboard-node-unadopted"]')).toBeNull();
 		expect(document.querySelector('[data-node="miniquarium"]')?.textContent).not.toContain(m['admin.dashboard.memory']());
 	});
 });

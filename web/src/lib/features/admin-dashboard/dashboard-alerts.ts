@@ -6,7 +6,8 @@ export interface DashboardAlert {
 	kind:
 		| 'cluster_unreachable'
 		| 'node_offline'
-		| 'node_offline_disabled'
+		| 'node_incomplete'
+		| 'node_unadopted_vms'
 		| 'node_cpu'
 		| 'node_memory'
 		| 'storage_full'
@@ -20,6 +21,8 @@ export interface DashboardAlert {
 	percent?: number;
 	used?: number;
 	limit?: number;
+	/** First missing readiness code of a node_incomplete alert. */
+	detail?: string;
 }
 
 /** Appends non-empty params as a query string, or returns the path alone. */
@@ -37,6 +40,13 @@ export function withQuery(path: string, query: Record<string, string>): string {
 	return qs === '' ? path : `${path}?${qs}`;
 }
 
+// Where each missing readiness item is approved.
+const INCOMPLETE_FIX_PAGE: Record<string, '/admin/storages' | '/admin/bridges' | '/admin/isos'> = {
+	storage: '/admin/storages',
+	bridge: '/admin/bridges',
+	iso_or_template: '/admin/isos'
+};
+
 /** The URL where the alert's cause is fixed. Node alerts deep-link to the
  * node detail page; storage and pool alerts land on the matching admin list
  * with a ?cluster (and ?search) hint so it opens already filtered. */
@@ -44,10 +54,13 @@ export function alertHref(alert: DashboardAlert): string {
 	const clusterKey = alert.clusterKey ?? alert.cluster;
 	switch (alert.kind) {
 		case 'node_offline':
-		case 'node_offline_disabled':
 		case 'node_cpu':
 		case 'node_memory':
 			return withQuery(resolve('/admin/nodes/[cluster]/[node]', { cluster: clusterKey, node: alert.subject ?? '' }), { from: 'dashboard' });
+		case 'node_incomplete':
+			return withQuery(resolve(INCOMPLETE_FIX_PAGE[alert.detail ?? ''] ?? '/admin/storages'), { cluster: clusterKey });
+		case 'node_unadopted_vms':
+			return withQuery(resolve('/admin/recovery'), { cluster: clusterKey });
 		case 'cluster_unreachable':
 			return withQuery(resolve('/admin/clusters/[name]', { name: clusterKey }), { tab: 'connection' });
 		case 'storage_full':
@@ -69,8 +82,10 @@ export function alertMessage(alert: DashboardAlert): string {
 			return m['admin.dashboard.alert.clusterUnreachable']({ cluster: alert.cluster });
 		case 'node_offline':
 			return m['admin.dashboard.alert.nodeOffline']({ subject });
-		case 'node_offline_disabled':
-			return m['admin.dashboard.alert.nodeOfflineDisabled']({ subject });
+		case 'node_incomplete':
+			return m['admin.dashboard.alert.nodeIncomplete']({ subject });
+		case 'node_unadopted_vms':
+			return m['admin.dashboard.alert.nodeUnadoptedVMs']({ subject, count: alert.used ?? 0 });
 		case 'node_cpu':
 			return m['admin.dashboard.alert.nodeCpu']({ subject, percent });
 		case 'node_memory':

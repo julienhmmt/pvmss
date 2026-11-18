@@ -4,7 +4,7 @@ import DashboardAttention from './DashboardAttention.svelte';
 import type { DashboardAlert } from './dashboard-alerts';
 
 const infoAlert: DashboardAlert = {
-	kind: 'node_offline_disabled',
+	kind: 'node_memory',
 	severity: 'info',
 	cluster: 'east',
 	clusterKey: 'east',
@@ -31,6 +31,6 @@ describe('DashboardAttention', () => {
 		const rows = document.querySelectorAll('[data-testid="dashboard-alert"]');
 		expect(rows).toHaveLength(2);
 		expect(rows.item(1)?.getAttribute('data-severity')).toBe('info');
-		expect(rows.item(1)?.getAttribute('data-kind')).toBe('node_offline_disabled');
+		expect(rows.item(1)?.getAttribute('data-kind')).toBe('node_memory');
 	});
 });

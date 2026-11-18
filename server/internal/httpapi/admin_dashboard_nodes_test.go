@@ -3,6 +3,7 @@ package httpapi_test
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"log/slog"
 	"net/http"
 	"pvmss/server/internal/catalog"
@@ -22,15 +23,17 @@ type dashNodeStateDTO struct {
 	VMCount int      `json:"vmCount"`
 	PVMSS   int      `json:"pvmssVMCount"`
 	RAMGB   int      `json:"pvmssRamGB"`
+	Loose   int      `json:"unadoptedVMCount"`
 	MaxRAM  int      `json:"policyMaxRamGB"`
 	MaxVMs  int      `json:"policyMaxVMs"`
 }
 
 type dashNodesDTO struct {
-	Nodes              []dashNodeStateDTO `json:"nodes"`
-	NodeCount          int                `json:"nodeCount"`
-	OtherNodeCount     int                `json:"otherNodeCount"`
-	CatalogUnavailable bool               `json:"catalogUnavailable"`
+	Nodes              []dashNodeStateDTO  `json:"nodes"`
+	NodeCount          int                 `json:"nodeCount"`
+	OtherNodeCount     int                 `json:"otherNodeCount"`
+	CatalogUnavailable bool                `json:"catalogUnavailable"`
+	Alerts             []dashboardAlertDTO `json:"alerts"`
 	Storages           []struct {
 		Name string `json:"name"`
 	} `json:"storages"`
@@ -89,7 +92,9 @@ func getNodeStatesDashboard(t *testing.T, closeStore bool) dashNodesDTO {
 
 	idx := inventory.BuildIndexForCluster(dashCluster, cluster.Snapshot{
 		Nodes: []cluster.Node{
-			online(nodeReady), online(nodeIncomplete), online(nodeLegacy), online(nodeOther),
+			online(nodeReady), online(nodeIncomplete), online(nodeLegacy),
+			// Unlisted: its CPU alert must be dropped.
+			{Name: nodeOther, Status: cluster.NodeOnline, CPUCores: 8, CPUUsage: 0.95, MemoryTotal: 64 * gib},
 			{Name: nodeOffline, Status: cluster.NodeOffline, CPUCores: 8, MemoryTotal: 64 * gib},
 			{Name: nodeLegacyDown, Status: cluster.NodeOffline, CPUCores: 8, MemoryTotal: 64 * gib},
 		},
@@ -97,6 +102,7 @@ func getNodeStatesDashboard(t *testing.T, closeStore bool) dashNodesDTO {
 			{VMID: 100, Name: "kept", Node: nodeLegacy, Status: cluster.VMRunning, MemoryTotal: 4 * gib, Tags: []string{catalog.ProtectedTagName}},
 			{VMID: 101, Name: "infra", Node: nodeOther, Status: cluster.VMRunning},
 			{VMID: 102, Name: "infra-2", Node: nodeLegacy, Status: cluster.VMRunning},
+			{VMID: 104, Name: "adopted", Node: nodeReady, Pool: "pvmss-alice", Status: cluster.VMRunning, Tags: []string{catalog.ProtectedTagName}},
 			{VMID: 103, Name: "kept-down", Node: nodeLegacyDown, Status: cluster.VMStopped, Tags: []string{catalog.ProtectedTagName}},
 		},
 		Storages: []cluster.Storage{
@@ -106,6 +112,15 @@ func getNodeStatesDashboard(t *testing.T, closeStore bool) dashNodesDTO {
 		},
 	})
 	idx.RefreshedAt = time.Now()
+
+	// 104 sits in a managed pool (adopted); 103 was hidden on /admin/recovery.
+	if err := st.RegisterManagedPool(ctx, dashCluster, "pvmss-alice"); err != nil {
+		t.Fatal(err)
+	}
+
+	if err := st.DismissRecoveryItems(ctx, dashCluster, store.RecoveryDismissalVM, []string{"103"}, "admin"); err != nil {
+		t.Fatal(err)
+	}
 
 	if err := st.UpsertNodePolicyRow(ctx, store.NodePolicyRow{Cluster: dashCluster, Node: nodeReady, MaxVMs: 5, MaxRAMGB: 32}); err != nil {
 		t.Fatal(err)
@@ -200,7 +215,68 @@ func TestAdminDashboard_NodeSetCatalogUnavailable(t *testing.T) {
 		t.Error("catalogUnavailable = false, want true")
 	}
 
-	if len(dash.Nodes) != 2 || dash.Nodes[0].Name != nodeLegacy || dash.Nodes[1].Name != nodeLegacyDown || dash.Nodes[0].State != "" {
-		t.Errorf("nodes = %+v, want only %s and %s without state", dash.Nodes, nodeLegacy, nodeLegacyDown)
+	names := make([]string, 0, len(dash.Nodes))
+	for _, n := range dash.Nodes {
+		names = append(names, n.Name+":"+n.State)
+	}
+
+	if want := []string{nodeLegacy + ":", nodeLegacyDown + ":", nodeReady + ":"}; !slices.Equal(names, want) {
+		t.Errorf("nodes = %v, want %v (PVMSS nodes only, no state)", names, want)
+	}
+}
+
+// Node alerts cover listed nodes only: offline (including enabled nodes gone
+// from inventory), incomplete with its first missing item, and unadopted
+// PVMSS VMs (outside managed pools, not hidden).
+//
+//nolint:paralleltest // serial: shared fake dataset
+func TestAdminDashboard_NodeAlerts(t *testing.T) {
+	dash := getNodeStatesDashboard(t, false)
+
+	got := make([]string, 0, len(dash.Alerts))
+	for _, a := range dash.Alerts {
+		got = append(got, fmt.Sprintf("%s/%s/%s/%s/%d", a.Kind, a.Severity, a.Subject, a.Detail, a.Used))
+	}
+
+	slices.Sort(got)
+
+	want := []string{
+		"node_incomplete/warning/" + nodeIncomplete + "/" + catalog.MissingBridge + "/0",
+		"node_offline/critical/" + nodeGone + "//0",
+		"node_offline/critical/" + nodeLegacyDown + "//0",
+		"node_offline/critical/" + nodeOffline + "//0",
+		"node_unadopted_vms/warning/" + nodeLegacy + "//1",
+	}
+	if !slices.Equal(got, want) {
+		t.Fatalf("alerts =\n%v\nwant\n%v", got, want)
+	}
+
+	counts := map[string]int{}
+	for _, n := range dash.Nodes {
+		counts[n.Name] = n.Loose
+	}
+
+	if counts[nodeLegacy] != 1 || counts[nodeLegacyDown] != 0 || counts[nodeReady] != 0 {
+		t.Errorf("unadopted counts = %v, want legacy 1, legacy-down 0 (hidden), ready 0 (managed pool)", counts)
+	}
+}
+
+// With the catalog unreadable, no readiness alert is raised and offline
+// nodes keep their critical alert: an unknown state must not silence it.
+//
+//nolint:paralleltest // serial: shared fake dataset
+func TestAdminDashboard_NodeAlertsCatalogUnavailable(t *testing.T) {
+	dash := getNodeStatesDashboard(t, true)
+
+	for _, a := range dash.Alerts {
+		if a.Kind == "node_incomplete" {
+			t.Errorf("unexpected readiness alert %+v", a)
+		}
+	}
+
+	if !slices.ContainsFunc(dash.Alerts, func(a dashboardAlertDTO) bool {
+		return a.Kind == "node_offline" && a.Severity == "critical" && a.Subject == nodeOffline
+	}) {
+		t.Errorf("alerts = %+v, want critical node_offline for %s", dash.Alerts, nodeOffline)
 	}
 }

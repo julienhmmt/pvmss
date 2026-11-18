@@ -33,7 +33,6 @@ const (
 const (
 	alertCritical = "critical"
 	alertWarning  = "warning"
-	alertInfo     = "info"
 )
 
 // sharedStoragePlugins are Proxmox storage types that every node of a cluster
@@ -73,8 +72,10 @@ type nodeSummaryDTO struct {
 	// PVMSSRAMGB is the RAM allocated to those VMs (policy usage figure).
 	PVMSSRAMGB int `json:"pvmssRamGB"`
 	// PolicyMaxRAMGB/PolicyMaxVMs are the node capacity limits; 0 = none.
-	PolicyMaxRAMGB   int     `json:"policyMaxRamGB"`
-	PolicyMaxVMs     int     `json:"policyMaxVMs"`
+	PolicyMaxRAMGB int `json:"policyMaxRamGB"`
+	PolicyMaxVMs   int `json:"policyMaxVMs"`
+	// UnadoptedVMCount counts PVMSS VMs outside managed pools, not hidden.
+	UnadoptedVMCount int     `json:"unadoptedVMCount"`
 	CPUCores         int     `json:"cpuCores"`
 	CPUUsage         float64 `json:"cpuUsage"`
 	MemoryTotalBytes int64   `json:"memoryTotalBytes"`
@@ -93,8 +94,9 @@ type vmStatusCountsDTO struct {
 }
 
 // dashboardAlertDTO is one thing an administrator should act on. Kind is
-// one of cluster_unreachable, node_offline, node_offline_disabled, node_cpu,
-// node_memory, storage_full, pool_at_quota, snapshot_schedule_failed; Subject
+// one of cluster_unreachable, node_offline, node_incomplete,
+// node_unadopted_vms, node_cpu, node_memory, storage_full, pool_at_quota,
+// snapshot_schedule_failed; Subject
 // names the node, storage, pool or VMID.
 // Cluster is the display label; ClusterKey is the registry key routes use.
 type dashboardAlertDTO struct {
@@ -106,6 +108,8 @@ type dashboardAlertDTO struct {
 	Percent    int    `json:"percent,omitempty"`
 	Used       int    `json:"used,omitempty"`
 	Limit      int    `json:"limit,omitempty"`
+	// Detail is the first missing readiness code of a node_incomplete alert.
+	Detail string `json:"detail,omitempty"`
 }
 
 // dashboardStorageDTO is one datastore. Node is empty for shared storage.
@@ -144,8 +148,8 @@ type dashboardDTO struct {
 // ServeDashboard handles GET /api/v1/admin/dashboard.
 // Everything comes from the in-memory indexes and the store; no
 // cluster.Client call is made, satisfying the read/write separation. Nodes
-// enabled in the catalog or hosting PVMSS VMs are listed, but alerts cover
-// every node. Alerts are computed here so the page needs one request.
+// enabled in the catalog or hosting PVMSS VMs are listed, and node alerts
+// cover those nodes only. Alerts are computed here so the page needs one request.
 func (h *AdminOps) ServeDashboard(w http.ResponseWriter, r *http.Request) {
 	indexes := h.inventory.All()
 	names := make([]string, 0, len(indexes))
@@ -232,23 +236,13 @@ func anyIndex(indexes map[string]*inventory.Index) bool {
 // (policy); label is what the administrator reads. Shared with the cluster
 // detail endpoint so both compute identical alerts.
 func foldClusterIntoDashboard(ctx context.Context, st *store.Store, log *slog.Logger, dash *dashboardDTO, name, label string, idx *inventory.Index) {
-	enabled, catalogKnown := enabledCatalogNodes(ctx, st, log, name)
-
-	for _, node := range idx.Nodes {
-		vms := idx.ByNode[node.Name]
-
-		if node.Status == cluster.NodeOffline {
-			dash.Alerts = append(dash.Alerts, offlineNodeAlert(name, label, node, vms, enabled, catalogKnown))
-		} else {
-			dash.Alerts = append(dash.Alerts, nodeAlerts(name, label, node)...)
-		}
-	}
-
 	cat, nodeCatalogKnown := loadNodeCatalog(ctx, st, log, name)
-	nodes, other := dashboardNodes(name, label, idx, cat, nodeCatalogKnown, nodePolicyCaps(ctx, st, log, name))
+	unadopted := unadoptedByNode(ctx, st, log, name, idx)
+	nodes, other := dashboardNodes(name, label, idx, cat, nodeCatalogKnown, nodePolicyCaps(ctx, st, log, name), unadopted)
 	dash.Nodes = append(dash.Nodes, nodes...)
 	dash.OtherNodeCount += other
 	dash.CatalogUnavailable = dash.CatalogUnavailable || !nodeCatalogKnown
+	dash.Alerts = append(dash.Alerts, dashboardNodeAlerts(name, label, idx, nodes, nodeCatalogKnown)...)
 
 	for _, vm := range idx.ByVMID {
 		dash.VMCount++
@@ -272,36 +266,6 @@ func foldClusterIntoDashboard(ctx context.Context, st *store.Store, log *slog.Lo
 	}
 
 	dash.Alerts = append(dash.Alerts, poolQuotaAlerts(ctx, st, log, name, label, idx)...)
-}
-
-// enabledCatalogNodes returns the set of node names enabled in the catalog.
-// A read failure is logged and reported as unknown so offline nodes keep
-// their critical alert - an unknown state must not silence it.
-func enabledCatalogNodes(ctx context.Context, st *store.Store, log *slog.Logger, clusterName string) (map[string]bool, bool) {
-	rows, err := st.CatalogNodesEnabled(ctx, clusterName)
-	if err != nil {
-		log.WarnContext(ctx, "dashboard catalog read failed", "component", "httpapi", "cluster", clusterName, "error", err)
-		return nil, false
-	}
-
-	enabled := make(map[string]bool, len(rows))
-	for _, row := range rows {
-		enabled[row.Name] = row.Enabled
-	}
-
-	return enabled, true
-}
-
-// offlineNodeAlert reports an offline node. A node disabled in the catalog
-// (or never approved) that hosts no PVMSS-managed VM is informational:
-// nothing in PVMSS depends on it. An enabled node, or one still hosting
-// PVMSS VMs, stays critical.
-func offlineNodeAlert(clusterKey, label string, node cluster.Node, vms []cluster.VM, enabled map[string]bool, catalogKnown bool) dashboardAlertDTO {
-	if catalogKnown && !enabled[node.Name] && !hasPVMSSVM(vms) {
-		return dashboardAlertDTO{Kind: "node_offline_disabled", Severity: alertInfo, Cluster: label, ClusterKey: clusterKey, Subject: node.Name}
-	}
-
-	return dashboardAlertDTO{Kind: "node_offline", Severity: alertCritical, Cluster: label, ClusterKey: clusterKey, Subject: node.Name}
 }
 
 func hasPVMSSVM(vms []cluster.VM) bool {

@@ -19,6 +19,8 @@ export interface NodeSummary {
 	/** Node capacity limits; 0 means none set. */
 	policyMaxRamGB: number;
 	policyMaxVMs: number;
+	/** PVMSS VMs outside managed pools and not hidden on /admin/recovery. */
+	unadoptedVMCount: number;
 	cpuCores: number;
 	cpuUsage: number;
 	memoryTotalBytes: number;

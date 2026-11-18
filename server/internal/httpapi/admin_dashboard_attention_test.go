@@ -28,12 +28,10 @@ const (
 const (
 	sevCritical = "critical"
 	sevWarning  = "warning"
-	sevInfo     = "info"
 )
 
 const (
-	kindNodeOffline         = "node_offline"
-	kindNodeOfflineDisabled = "node_offline_disabled"
+	kindNodeOffline = "node_offline"
 )
 
 type dashboardAlertDTO struct {
@@ -45,6 +43,7 @@ type dashboardAlertDTO struct {
 	Percent    int    `json:"percent"`
 	Used       int    `json:"used"`
 	Limit      int    `json:"limit"`
+	Detail     string `json:"detail"`
 }
 
 type dashboardStorageDTO struct {
@@ -157,6 +156,8 @@ func wantAttentionAlerts(clusterLabel string) []dashboardAlertDTO {
 		{Kind: kindNodeOffline, Severity: sevCritical, Cluster: clusterLabel, ClusterKey: dashCluster, Subject: "n2"},
 		{Kind: "storage_full", Severity: sevCritical, Cluster: clusterLabel, ClusterKey: dashCluster, Subject: dashSharedName, Percent: 96},
 		{Kind: "node_cpu", Severity: sevWarning, Cluster: clusterLabel, ClusterKey: dashCluster, Subject: "n1", Percent: 95},
+		// pvmss-p1 is not a registered managed pool, so its two VMs are unadopted.
+		{Kind: "node_unadopted_vms", Severity: sevWarning, Cluster: clusterLabel, ClusterKey: dashCluster, Subject: "n1", Used: 2},
 		{Kind: "pool_at_quota", Severity: sevWarning, Cluster: clusterLabel, ClusterKey: dashCluster, Subject: "pvmss-p1", Percent: 100, Used: 2, Limit: 2},
 		{Kind: "storage_full", Severity: sevWarning, Cluster: clusterLabel, ClusterKey: dashCluster, Subject: testStorageLocalLVM, Percent: 86},
 	}
@@ -356,18 +357,19 @@ func offlineSeverityOps(t *testing.T, tt offlineSeverityCase) (*httpapi.AdminOps
 	return ops, authHandler
 }
 
-// TestAdminDashboard_OfflineNodeSeverity pins the downgrade rule: an offline
-// node is informational only when it is disabled in the catalog (or never
-// approved) and hosts no PVMSS-managed VM. n1 runs at 95% CPU so a warning
-// alert is always present - info alerts must sort after it.
+// TestAdminDashboard_OfflineNodeSeverity pins the scoping rule: an offline
+// node raises a critical alert only when the dashboard lists it (enabled, or
+// hosting PVMSS VMs). An unlisted node raises nothing, n1's CPU alert
+// included, unless the catalog cannot be read: then every node keeps its
+// alerts, because an unknown state must not silence an offline node.
 //
 //nolint:paralleltest // serial: shared fake dataset
 func TestAdminDashboard_OfflineNodeSeverity(t *testing.T) {
 	tests := []offlineSeverityCase{
-		{name: "disabled row, no PVMSS VM", setCatalog: true, wantKind: kindNodeOfflineDisabled, wantSeverity: sevInfo},
-		{name: "no catalog row, no PVMSS VM", wantKind: kindNodeOfflineDisabled, wantSeverity: sevInfo},
+		{name: "disabled row, no PVMSS VM", setCatalog: true},
+		{name: "no catalog row, no PVMSS VM"},
 		{name: "disabled with a PVMSS VM", setCatalog: true, vmTags: []string{catalog.ProtectedTagName}, wantKind: kindNodeOffline, wantSeverity: sevCritical},
-		{name: "disabled with an untagged VM only", setCatalog: true, vmTags: []string{"legacy"}, wantKind: kindNodeOfflineDisabled, wantSeverity: sevInfo},
+		{name: "disabled with an untagged VM only", setCatalog: true, vmTags: []string{"legacy"}},
 		{name: "enabled", setCatalog: true, enabled: true, wantKind: kindNodeOffline, wantSeverity: sevCritical},
 		{name: "catalog read failure stays critical", closeStore: true, wantKind: kindNodeOffline, wantSeverity: sevCritical},
 	}
@@ -380,7 +382,8 @@ func TestAdminDashboard_OfflineNodeSeverity(t *testing.T) {
 }
 
 // assertOfflineSeverity GETs the dashboard for the case's cluster and checks
-// the n2 offline alert kind and severity.
+// the n2 offline alert (absent when wantKind is empty) and n1's CPU alert
+// (present only when the catalog read fails, n1 being unlisted).
 func assertOfflineSeverity(t *testing.T, tt offlineSeverityCase) {
 	t.Helper()
 
@@ -396,18 +399,24 @@ func assertOfflineSeverity(t *testing.T, tt offlineSeverityCase) {
 		t.Fatalf("decode: %v", err)
 	}
 
-	// The fixture only trips node_cpu (warning, n1) and the offline
-	// alert (n2): critical first, info last.
-	if len(dash.Alerts) != 2 {
-		t.Fatalf("alerts = %+v, want exactly 2", dash.Alerts)
+	var got []string
+
+	for _, a := range dash.Alerts {
+		if a.Kind != "node_unadopted_vms" {
+			got = append(got, a.Kind+"/"+a.Severity+"/"+a.Subject)
+		}
 	}
 
-	offline := dash.Alerts[0]
-	if tt.wantSeverity == sevInfo {
-		offline = dash.Alerts[1]
+	var want []string
+	if tt.wantKind != "" {
+		want = append(want, tt.wantKind+"/"+tt.wantSeverity+"/n2")
 	}
 
-	if offline.Subject != "n2" || offline.Kind != tt.wantKind || offline.Severity != tt.wantSeverity {
-		t.Errorf("offline alert = %+v, want n2 kind %s severity %s", offline, tt.wantKind, tt.wantSeverity)
+	if tt.closeStore {
+		want = append(want, "node_cpu/"+sevWarning+"/n1")
+	}
+
+	if !slices.Equal(got, want) {
+		t.Errorf("alerts = %v, want %v", got, want)
 	}
 }
