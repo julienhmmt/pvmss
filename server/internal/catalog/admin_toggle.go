@@ -96,9 +96,45 @@ type ISORef struct {
 	File    string
 }
 
-// SetISOEnabled upserts the enabled state for one ISO identified by ref.
-// See SetNodeEnabled for the discovery-error contract.
+// SetISOEnabled upserts the enabled state for one ISO identified by ref. An
+// ISO on shared storage is one cluster-wide approval: ref.Node is ignored and
+// every node that reports the file is written. See SetNodeEnabled for the
+// discovery-error contract.
 func SetISOEnabled(ctx context.Context, st *store.Store, client cluster.Client, clusterName string, ref ISORef, enabled bool) error {
+	shared, err := isSharedStorageName(ctx, client, ref.Storage)
+	if err != nil {
+		return err
+	}
+
+	if !shared {
+		return setLocalISOEnabled(ctx, st, client, clusterName, ref, enabled)
+	}
+
+	nodes, err := isoNodes(ctx, client, ref.Storage, ref.File)
+	if err != nil {
+		return err
+	}
+
+	if len(nodes) == 0 {
+		return cluster.ErrNotFound
+	}
+
+	// A shared revoke must also cover rows for nodes absent from this snapshot,
+	// otherwise the list path's OR merge would re-approve the ISO.
+	if !enabled {
+		return st.DisableISOAllNodes(ctx, clusterName, ref.Storage, ref.File)
+	}
+
+	for _, node := range nodes {
+		if err := st.SetISOEnabled(ctx, clusterName, node, ref.Storage, ref.File, true); err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+func setLocalISOEnabled(ctx context.Context, st *store.Store, client cluster.Client, clusterName string, ref ISORef, enabled bool) error {
 	discovered, err := isoDiscovered(ctx, client, ref.Node, ref.Storage, ref.File)
 	if err != nil {
 		return err
@@ -158,10 +194,21 @@ func DeleteBridge(ctx context.Context, st *store.Store, cluster, node, name stri
 	return err
 }
 
-// DeleteISO removes an ISO approval row. Returns ErrISONotFound when the
-// cluster has no approval for the (node, storage, file) triple.
-func DeleteISO(ctx context.Context, st *store.Store, cluster, node, storage, file string) error {
-	err := st.DeleteISO(ctx, cluster, node, storage, file)
+// DeleteISO removes an ISO approval row. An ISO on shared storage is one
+// cluster-wide approval, so every node row of (storage, file) goes. Returns
+// ErrISONotFound when the cluster has no matching approval.
+func DeleteISO(ctx context.Context, st *store.Store, client cluster.Client, clusterName string, ref ISORef) error {
+	shared, err := isSharedStorageName(ctx, client, ref.Storage)
+	if err != nil {
+		return err
+	}
+
+	if shared {
+		err = st.DeleteISOAllNodes(ctx, clusterName, ref.Storage, ref.File)
+	} else {
+		err = st.DeleteISO(ctx, clusterName, ref.Node, ref.Storage, ref.File)
+	}
+
 	if errors.Is(err, sql.ErrNoRows) {
 		return ErrISONotFound
 	}

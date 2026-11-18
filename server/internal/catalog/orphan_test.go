@@ -124,11 +124,11 @@ func TestDeleteISO_RemovesOrphan(t *testing.T) {
 		t.Fatalf("seed disabled ISO: %v", err)
 	}
 
-	if err := catalog.DeleteISO(ctx, st, "default", node01, storageLocal, debianGenericISO); err != nil {
+	if err := catalog.DeleteISO(ctx, st, cluster.Fake{}, "default", catalog.ISORef{Node: node01, Storage: storageLocal, File: debianGenericISO}); err != nil {
 		t.Fatalf("DeleteISO: %v", err)
 	}
 
-	if err := catalog.DeleteISO(ctx, st, "default", node01, storageLocal, debianGenericISO); !errors.Is(err, catalog.ErrISONotFound) {
+	if err := catalog.DeleteISO(ctx, st, cluster.Fake{}, "default", catalog.ISORef{Node: node01, Storage: storageLocal, File: debianGenericISO}); !errors.Is(err, catalog.ErrISONotFound) {
 		t.Fatalf("second DeleteISO: got %v, want ErrISONotFound", err)
 	}
 }

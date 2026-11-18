@@ -56,15 +56,23 @@
 							class="ml-2"
 							data-testid="iso-missing-badge"
 						/>
+					{/if}{#if file.shared}
+						<Pill
+							tone="info"
+							dot={false}
+							label={m['admin.storages.sharedBadge']({ count: file.nodeCount ?? 0 })}
+							class="ml-2"
+							data-testid="iso-shared-badge"
+						/>
 					{/if}
 				</td>
 				<td class="font-mono" data-label={m['common.storage']()}>{file.storage}</td>
-				<td class="font-mono" data-label={m['common.node']()}>{file.node}</td>
+				<td class="font-mono" data-label={m['common.node']()}>{file.shared ? m['admin.storages.allNodes']() : file.node}</td>
 				<td data-label={m['admin.catalog.size']()}>{formatBytes(file.sizeBytes)}</td>
 				<td data-label={m['admin.catalog.statusColumn']()}>
 					<ApprovalCell
 						enabled={file.enabled}
-						name={`${file.file} (${file.node})`}
+						name={file.shared ? file.file : `${file.file} (${file.node})`}
 						pending={toggling === key}
 						missing={file.missing}
 						onToggle={() => onToggle(file.node, file.storage, file.file, !file.enabled)}

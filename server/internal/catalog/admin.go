@@ -64,6 +64,10 @@ type ISOApproval struct {
 	SizeBytes int64
 	Enabled   bool
 	Missing   bool
+	// Shared marks one cluster-wide row for an ISO on shared storage: Node is
+	// one node that sees it (an address for toggle/delete), NodeCount all of them.
+	Shared    bool
+	NodeCount int
 }
 
 // TemplateApproval is one discovered Proxmox template with its admin approval
@@ -334,27 +338,6 @@ func AdminListBridges(ctx context.Context, st *store.Store, client cluster.Clien
 	}
 
 	return out, nil
-}
-
-// AdminListISOs returns every ISO the cluster reports, unioned with its stored
-// approval state keyed by (node, storage, file). Orphan approvals (ISO file
-// gone from Proxmox) are handled as in AdminListNodes: enabled orphans are
-// auto-removed (a vanished ISO cannot be used and would mislead users),
-// disabled orphans are surfaced with Missing=true for manual removal.
-func AdminListISOs(ctx context.Context, st *store.Store, client cluster.Client, clusterName string) ([]ISOApproval, error) {
-	discovered, err := client.ListISOs(ctx)
-	if err != nil {
-		return nil, err
-	}
-
-	return adminListFiles(ctx, st, clusterName, fileListing[store.CatalogISOEnabled, ISOApproval]{
-		discovered:   isoFileEntries(discovered),
-		listRows:     st.CatalogISOsEnabled,
-		toOrphanRow:  isoOrphanRow,
-		removeOrphan: removeISOOrphan,
-		viewOf:       isoApprovalView,
-		missing:      missingISOApproval,
-	})
 }
 
 // AdminListTemplates returns every Proxmox template the cluster reports,

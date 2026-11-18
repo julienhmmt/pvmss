@@ -20,8 +20,6 @@ type adminBridgeDTO struct {
 }
 
 // ServeBridges handles GET /api/v1/admin/bridges.
-//
-//nolint:dupl // intentionally parallel to ServeISOs (same shape, different resource)
 func (h *AdminCatalog) ServeBridges(w http.ResponseWriter, r *http.Request) {
 	clusterName, clusterErr := ResolveClusterParam(r, h.clusters)
 	if clusterErr != nil {

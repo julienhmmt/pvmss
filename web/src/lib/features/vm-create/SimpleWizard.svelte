@@ -65,7 +65,8 @@
 	// ISO and let the server restrict candidate nodes to those holding the
 	// selected one.
 	const isoOptions = $derived(
-		(form.catalog?.isos ?? []).map((iso) => ({ value: iso.file, label: iso.file }))
+		// A shared-storage ISO comes once per node: offer each file once.
+		[...new Set((form.catalog?.isos ?? []).map((iso) => iso.file))].map((file) => ({ value: file, label: file }))
 	);
 
 	const HOSTNAME_PATTERN = /^[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?$/;

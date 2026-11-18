@@ -141,6 +141,14 @@ describe('AdminCatalogStore', () => {
 	});
 
 	describe('filteredIsos', () => {
+		it('keeps a shared iso under any node filter and off the node options', () => {
+			const store = new AdminCatalogStore();
+			store.isos = [...isos, { node: 'node-a', storage: 'ceph', file: 'shared.iso', sizeBytes: 1, enabled: true, shared: true, nodeCount: 2 }];
+			store.isoNodeFilter = 'node-b';
+			expect(store.filteredIsos.map((i) => i.file)).toEqual(['rocky-9.iso', 'shared.iso']);
+			expect(store.isoNodeOptions).toEqual(['node-a', 'node-b']);
+		});
+
 		it('returns all isos when no filters are set', () => {
 			const store = new AdminCatalogStore();
 			store.isos = isos;

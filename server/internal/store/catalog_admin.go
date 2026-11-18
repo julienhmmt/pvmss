@@ -187,6 +187,24 @@ func (s *Store) SetISOEnabled(ctx context.Context, cluster, node, storage, file 
 	)
 }
 
+// DisableISOAllNodes revokes a shared-storage ISO on every node row, including
+// nodes absent from the current snapshot (the list path ORs per-node rows).
+func (s *Store) DisableISOAllNodes(ctx context.Context, cluster, storage, file string) error {
+	return execWrite(ctx, s.db,
+		`UPDATE catalog_isos SET enabled = 0 WHERE cluster = ? AND storage = ? AND file = ?`,
+		[]any{cluster, storage, file},
+	)
+}
+
+// DeleteISOAllNodes removes every node row of a shared-storage ISO. Returns
+// sql.ErrNoRows if none existed.
+func (s *Store) DeleteISOAllNodes(ctx context.Context, cluster, storage, file string) error {
+	return execUpdateOne(ctx, s.db,
+		`DELETE FROM catalog_isos WHERE cluster = ? AND storage = ? AND file = ?`,
+		[]any{cluster, storage, file},
+	)
+}
+
 // DeleteNode removes a node approval row. Returns sql.ErrNoRows if the node
 // did not exist - used to drop an orphan approval whose node Proxmox no longer
 // reports.

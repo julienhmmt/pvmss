@@ -354,9 +354,18 @@ func hardwareBridges(bridges []catalog.Bridge, node string) []hardwareBridgeDTO 
 
 func hardwareISOs(isos []catalog.ISO) []hardwareISODTO {
 	result := make([]hardwareISODTO, 0, len(isos))
+	seen := make(map[string]bool, len(isos))
+
 	for _, iso := range isos {
+		volID := iso.Storage + ":iso/" + iso.File
+		// A shared-storage ISO has one approval row per node: offer it once.
+		if seen[volID] {
+			continue
+		}
+
+		seen[volID] = true
 		result = append(result, hardwareISODTO{
-			VolID: iso.Storage + ":iso/" + iso.File,
+			VolID: volID,
 			Node:  iso.Node, Storage: iso.Storage, Name: iso.File,
 		})
 	}

@@ -17,11 +17,11 @@ type adminISODTO struct {
 	SizeBytes int64  `json:"sizeBytes"`
 	Enabled   bool   `json:"enabled"`
 	Missing   bool   `json:"missing"`
+	Shared    bool   `json:"shared,omitempty"`
+	NodeCount int    `json:"nodeCount,omitempty"`
 }
 
 // ServeISOs handles GET /api/v1/admin/isos.
-//
-//nolint:dupl // intentionally parallel to ServeBridges (same shape, different resource)
 func (h *AdminCatalog) ServeISOs(w http.ResponseWriter, r *http.Request) {
 	clusterName, clusterErr := ResolveClusterParam(r, h.clusters)
 	if clusterErr != nil {
@@ -47,6 +47,7 @@ func (h *AdminCatalog) ServeISOs(w http.ResponseWriter, r *http.Request) {
 		dto[i] = adminISODTO{
 			Storage: iso.Storage, Node: iso.Node, File: iso.File,
 			SizeBytes: iso.SizeBytes, Enabled: iso.Enabled, Missing: iso.Missing,
+			Shared: iso.Shared, NodeCount: iso.NodeCount,
 		}
 	}
 
@@ -68,7 +69,6 @@ type isoToggleResponse struct {
 	Enabled bool   `json:"enabled"`
 }
 
-// ServeISOToggle handles POST /api/v1/admin/isos/toggle.
 // ServeISOToggle handles POST /api/v1/admin/isos/toggle.
 func (h *AdminCatalog) ServeISOToggle(w http.ResponseWriter, r *http.Request) {
 	var req isoToggleRequest
@@ -122,7 +122,13 @@ func (h *AdminCatalog) ServeISODelete(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	err := catalog.DeleteISO(r.Context(), h.store, clusterName, node, storage, file)
+	client, err := h.clientFor(clusterName)
+	if err != nil {
+		writeAdminError(w, http.StatusNotFound, "not_found", msgClusterNotFound)
+		return
+	}
+
+	err = catalog.DeleteISO(r.Context(), h.store, client, clusterName, catalog.ISORef{Node: node, Storage: storage, File: file})
 	if errors.Is(err, catalog.ErrISONotFound) {
 		writeAdminError(w, http.StatusNotFound, "not_found", fmt.Sprintf("iso %q on storage %q node %q not found on cluster %q", file, storage, node, clusterName))
 		return

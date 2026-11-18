@@ -60,6 +60,9 @@ export interface AdminISO {
 	enabled: boolean;
 	/** True for a stored approval whose ISO file Proxmox no longer reports. */
 	missing?: boolean;
+	/** One row per cluster for an ISO on shared storage; node is one node that sees it. */
+	shared?: boolean;
+	nodeCount?: number;
 }
 
 export interface AdminTemplate {
@@ -189,11 +192,11 @@ export class AdminCatalogStore {
 	filteredIsos = $derived(
 		sortIsos(
 			this.isos.filter((iso) => {
-				if (!this.#onEnabledNode(iso.node)) return false;
+				if (!iso.shared && !this.#onEnabledNode(iso.node)) return false;
 				const search = this.isoSearch.toLowerCase();
 				if (search && !iso.file.toLowerCase().includes(search)) return false;
 				if (this.isoStorageFilter && iso.storage !== this.isoStorageFilter) return false;
-				if (this.isoNodeFilter && iso.node !== this.isoNodeFilter) return false;
+				if (this.isoNodeFilter && !iso.shared && iso.node !== this.isoNodeFilter) return false;
 				if (this.isoEnabledFilter === 'enabled' && !iso.enabled) return false;
 				if (this.isoEnabledFilter === 'disabled' && iso.enabled) return false;
 				return true;
@@ -204,7 +207,7 @@ export class AdminCatalogStore {
 	);
 
 	isoStorageOptions = $derived([...new SvelteSet(this.isos.map((i) => i.storage))].sort());
-	isoNodeOptions = $derived([...new SvelteSet(this.isos.filter((x) => this.#onEnabledNode(x.node)).map((i) => i.node))].sort());
+	isoNodeOptions = $derived([...new SvelteSet(this.isos.filter((x) => !x.shared && this.#onEnabledNode(x.node)).map((i) => i.node))].sort());
 
 
 	filteredRealStorages = $derived.by(() => {
