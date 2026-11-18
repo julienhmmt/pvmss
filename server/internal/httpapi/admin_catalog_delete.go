@@ -95,5 +95,3 @@ func (h *AdminCatalog) ServeBridgeDelete(w http.ResponseWriter, r *http.Request)
 		[]any{map[string]any{auditKeyCluster: clusterName, auditKeyName: name, auditKeyNode: node}})
 	w.WriteHeader(http.StatusNoContent)
 }
-
-//  - Images (cloud images) -

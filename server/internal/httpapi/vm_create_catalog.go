@@ -68,7 +68,7 @@ func (h *VMCreate) loadCatalogData(ctx context.Context, client cluster.Client, c
 }
 
 // loadClusterDiscovery fills the live-discovery half of the catalog: the
-// storage snapshot, bridges, ISOs, and cloud images the cluster reports.
+// storage snapshot, bridges and ISOs the cluster reports.
 func loadClusterDiscovery(ctx context.Context, client cluster.Client, data *catalogData) error {
 	snap, err := cluster.ReadTopology(ctx, client)
 	if err != nil {
@@ -191,7 +191,7 @@ func catalogStorageDTOs(storages []catalog.Storage, available []cluster.Storage)
 	return out
 }
 
-// catalogFileDTOs maps approved file resources (ISOs, cloud images) to DTOs,
+// catalogFileDTOs maps approved ISOs to DTOs,
 // dropping any the cluster no longer reports (the live discovery key set).
 func catalogFileDTOs[R, DTO any](resources []R, keyOf func(R) isoDiscoveryKey, live map[isoDiscoveryKey]bool, viewOf func(R) DTO) []DTO {
 	out := make([]DTO, 0, len(resources))
@@ -226,8 +226,6 @@ func catalogISOView(iso catalog.ISO) catalogISODTO {
 	return catalogISODTO{Storage: iso.Storage, Node: iso.Node, File: iso.File}
 }
 
-// catalogImageDTOs maps approved cloud images, dropping any the cluster no
-// longer reports (the live discovery key set).
 // catalogProfileView maps a profile row to its catalog DTO.
 func catalogProfileView(profile catalog.Profile) catalogProfileDTO {
 	return catalogProfileDTO{

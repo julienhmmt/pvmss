@@ -124,13 +124,6 @@ func (p Proxmox) listISOs(ctx context.Context) ([]ISOImage, error) {
 	return slices.Concat(perStorage...), nil
 }
 
-// ListCloudImages implements Client, enumerating cloud images on every
-// import-capable storage. Proxmox lists .qcow2, .raw, .vmdk and .ova files
-// under content=import; PVMSS keeps only the disk formats import-from takes
-// as a plain volid (.ova/.ovf need the nested <file>.ova/<disk> form and are
-// skipped). .img files are vtype 'iso' and rejected, and absolute filesystem
-// paths are root@pam-only. Node scoping matches ListISOs: one row per
-// (node, storage) pairing.
 // proxmoxStorageMayHold reports whether a storage's content list (e.g.
 // "images,iso,rootdir") allows the given type. An empty list is unknown, so
 // it is listed rather than skipped.
@@ -138,9 +131,8 @@ func proxmoxStorageMayHold(contentList, content string) bool {
 	return contentList == "" || slices.Contains(strings.Split(contentList, ","), content)
 }
 
-// proxmoxListContent lists files of a given content type on a storage. The
-// content parameter is "iso" or "import". For iso content, volids are
-// <storage>:iso/<file>; for import content, <storage>:import/<file>.
+// proxmoxListContent lists files of a given content type ("iso") on a
+// storage; volids are <storage>:iso/<file>.
 func proxmoxListContent(ctx context.Context, rest proxmoxRESTClient, node, storage, content string) ([]ISOImage, error) {
 	raw, err := rest.do(ctx, http.MethodGet,
 		fmt.Sprintf("/nodes/%s/storage/%s/content", url.PathEscape(node), url.PathEscape(storage)),

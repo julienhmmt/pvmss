@@ -16,7 +16,7 @@ type nameNodeKey struct {
 	Node string
 }
 
-// fileKey is a composite map key for file approvals (ISOs, cloud images)
+// fileKey is a composite map key for ISO approvals
 // keyed by (node, storage, file), avoiding string-concat collisions when a
 // storage or file contains ":".
 type fileKey struct {
@@ -161,7 +161,7 @@ func missingBridgeApproval(row orphanRow[nameNodeKey]) BridgeApproval {
 	return BridgeApproval{Name: row.key.Name, Node: row.key.Node, Missing: true}
 }
 
-// fileEntry is one discovered file resource (ISO or cloud image) normalized
+// fileEntry is one discovered ISO normalized
 // for the shared approval pipeline - both have the same fields.
 type fileEntry struct {
 	Storage   string
@@ -210,11 +210,10 @@ type fileListing[Row, A any] struct {
 	missing      func(orphanRow[fileKey]) A
 }
 
-// adminListFiles is the shared list-and-sweep pipeline for the two file
-// resources: ISOs and cloud images have identical shapes end to end (same
-// discovery fields, same (node, storage, file) approval key, same approval
-// view). Every discovered file gets an approval view with Enabled from the
-// stored row; stored rows whose file vanished are swept as orphans.
+// adminListFiles is the list-and-sweep pipeline for local-storage ISOs, keyed
+// by (node, storage, file). Every discovered file gets an approval view with
+// Enabled from the stored row; stored rows whose file vanished are swept as
+// orphans.
 func adminListFiles[Row, A any](
 	ctx context.Context,
 	st *store.Store,

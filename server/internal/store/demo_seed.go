@@ -8,8 +8,7 @@ import (
 
 // demoCatalogSQL holds the demo catalog fixture rows for cluster "default":
 // pre-approved nodes/storages/profiles, the mandatory pvmss tag, the shipped
-// vm_limits gabarit, and one approved cloud image so the create path works
-// out of the box. Demo mode only - a real deployment discovers and approves
+// vm_limits gabarit, so the create path works out of the box. Demo mode only - a real deployment discovers and approves
 // its own resources; seeding these on a Proxmox cluster would approve nodes
 // and files that do not exist there.
 //

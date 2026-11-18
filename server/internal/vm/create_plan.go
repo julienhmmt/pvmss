@@ -34,16 +34,8 @@ type nicPlan struct {
 }
 
 // resolveUEFI defaults UEFI to true when the request omits it (modern OSes expect UEFI boot).
-// An explicit false selects legacy SeaBIOS.
-//
-// Image mode is the exception: a cloud image
-// ships a stripped-down kernel (Debian's linux-image-cloud-amd64 has
-// # CONFIG_DRM is not set) that cannot drive the emulated VGA under UEFI, so
-// the graphical console renders as static. Defaulting image mode to SeaBIOS
-// makes the graphical tab show the guest's real text console from first boot.
-// The wizard's UEFI checkbox stays visible and re-tickable; a request that
-// sends UEFI=true explicitly still creates a UEFI VM (TPM/Secure Boot keep
-// their "requires UEFI" behaviour via checkUEFICompat).
+// An explicit false selects legacy SeaBIOS (TPM still requires UEFI, see
+// checkUEFICompat).
 func resolveUEFI(req CreateRequest) bool {
 	if req.UEFI != nil {
 		return *req.UEFI

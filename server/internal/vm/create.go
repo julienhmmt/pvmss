@@ -33,7 +33,7 @@ var (
 	// (mapped to 502 by the handler).
 	ErrClusterCreate = errors.New("cluster create failed")
 	// ErrInvalidSource - the request carries more than one VM source (ISO,
-	// template, cloud image) or none. Mapped to 400 by
+	// template) or none. Mapped to 400 by
 	// the handler.
 	ErrInvalidSource = errors.New("invalid vm source")
 	// ErrInvalidRequest - the request carries an impossible combination of
@@ -121,10 +121,8 @@ var allowedOSTypes = map[string]bool{
 // cannot tell and does not care which
 // wizard produced it).
 //
-// The VM source is exactly one of: an ISO (for OS without cloud images -
-// Windows, appliances), a Proxmox template (for cloud-init-capable images),
-// or a cloud image (imported as the primary disk, configured by cloud-init).
-// The three are mutually exclusive: a request carrying
+// The VM source is exactly one of: an ISO (Windows, appliances, any
+// installer) or a Proxmox template (cloned). The two are mutually exclusive: a request carrying
 // more than one is rejected with ErrInvalidSource before any VMID is
 // allocated.
 type CreateRequest struct {
