@@ -261,7 +261,7 @@
 					{m['admin.docs.resultCount']({ count: filteredPages.length })}
 				</span>
 				{#if filtersActive}
-					<Button variant="ghost" size="sm" onclick={onResetFilters}>
+					<Button variant="secondary" size="sm" onclick={onResetFilters}>
 						{m['admin.docs.resetFilters']()}
 					</Button>
 				{/if}

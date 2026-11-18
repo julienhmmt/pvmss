@@ -345,7 +345,7 @@
 {/each}
 {#if config.active(store)}
 	<Button
-		variant="ghost"
+		variant="secondary"
 		size="sm"
 		onclick={() => config.reset(store)}
 		data-testid={config.resetTestId}

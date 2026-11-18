@@ -224,7 +224,7 @@
 				{/snippet}
 			</TextField>
 			{#if hasFilters}
-				<Button variant="ghost" size="sm" onclick={resetFilters}>{m['admin.pools.resetFilters']()}</Button>
+				<Button variant="secondary" size="sm" onclick={resetFilters}>{m['admin.pools.resetFilters']()}</Button>
 			{/if}
 			<span class="ml-auto text-sm text-muted-foreground">{resultCountText}</span>
 		{/snippet}
