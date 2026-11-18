@@ -62,3 +62,33 @@ func TestCatalogNodeNames_ReadinessAndAvailability(t *testing.T) {
 		t.Errorf("unavailable = %v, want %v", unavailable, want)
 	}
 }
+
+// An approved ISO that Proxmox no longer reports does not make its node
+// ready: the form would have no install source to offer there.
+func TestBuildCatalogDTO_ReadinessUsesLiveISOs(t *testing.T) {
+	t.Parallel()
+
+	const (
+		node    = "pve1"
+		storage = "local"
+	)
+
+	data := catalogData{
+		resources: catalog.Resources{
+			Nodes:    []catalog.Node{{Name: node}},
+			Storages: []catalog.Storage{{Name: storage, Node: node}},
+			Bridges:  []catalog.Bridge{{Name: "vmbr0", Node: node}},
+			ISOs:     []catalog.ISO{{Storage: storage, Node: node, File: "deleted.iso"}},
+		},
+		snap: cluster.Snapshot{Nodes: []cluster.Node{{Name: node, Status: cluster.NodeOnline}}},
+	}
+
+	if dto := buildCatalogDTO("c", data); len(dto.Nodes) != 0 {
+		t.Errorf("nodes = %v, want none", dto.Nodes)
+	}
+
+	data.isos = []cluster.ISOImage{{Storage: storage, Node: node, File: "deleted.iso"}}
+	if dto := buildCatalogDTO("c", data); !slices.Equal(dto.Nodes, []string{node}) {
+		t.Errorf("nodes = %v, want [%s]", dto.Nodes, node)
+	}
+}

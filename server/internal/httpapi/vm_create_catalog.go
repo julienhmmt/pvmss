@@ -8,6 +8,7 @@ import (
 	"pvmss/server/internal/catalog"
 	"pvmss/server/internal/cluster"
 	"pvmss/server/internal/vm"
+	"slices"
 )
 
 // catalogData is the raw catalog payload loaded from the store and the live
@@ -105,7 +106,11 @@ func loadClusterDiscovery(ctx context.Context, client cluster.Client, data *cata
 // surfaces those orphans for manual cleanup, and enabled orphans are
 // auto-removed there).
 func buildCatalogDTO(clusterName string, data catalogData) catalogDTO {
-	nodes, unavailable := catalogNodeNames(data.resources, data.proxmoxTemplates, data.snap)
+	// Readiness must see the same ISOs the form offers: approved and still live.
+	live := liveISOKeys(data.isos)
+	ready := data.resources
+	ready.ISOs = slices.DeleteFunc(slices.Clone(ready.ISOs), func(iso catalog.ISO) bool { return !live[catalogISOKey(iso)] })
+	nodes, unavailable := catalogNodeNames(ready, data.proxmoxTemplates, data.snap)
 
 	return catalogDTO{
 		Cluster:          clusterName,
