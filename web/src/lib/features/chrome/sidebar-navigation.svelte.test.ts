@@ -1,6 +1,6 @@
 import { beforeAll, describe, expect, it, vi } from 'vitest';
 import { setLocale } from '#lib/paraglide/runtime.js';
-import { ADMIN_NAV_GROUPS } from './admin-nav-items.svelte';
+import { ADMIN_NAV_GROUPS, clusterDetail, nodeDetail } from './admin-nav-items.svelte';
 import { SidebarNavigationState } from './sidebar-navigation.svelte';
 
 vi.mock('$app/paths', () => ({ resolve: (path: string) => path }));
@@ -42,6 +42,25 @@ describe('SidebarNavigationState', () => {
 			href: poolsItem.href,
 			exact: poolsItem.exact ?? true
 		})).toBe(true);
+	});
+
+	it('derives the node detail level from the URL', () => {
+		expect(nodeDetail('/admin/nodes/default/pve%201')).toEqual({
+			href: '/admin/nodes/default/pve%201',
+			label: 'pve 1',
+			title: 'pve 1 · default'
+		});
+		expect(nodeDetail('/admin/nodes')).toBeNull();
+		expect(nodeDetail('/admin/nodes/default')).toBeNull();
+		expect(nodeDetail('/admin/nodes/default/pve1/extra')).toBeNull();
+		expect(nodeDetail('/admin/nodesx/a/b')).toBeNull();
+	});
+
+	it('derives the cluster detail level from the URL', () => {
+		expect(clusterDetail('/admin/clusters/lab')).toEqual({ href: '/admin/clusters/lab', label: 'lab' });
+		expect(clusterDetail('/admin/clusters')).toBeNull();
+		expect(clusterDetail('/admin/clusters/lab/x')).toBeNull();
+		expect(clusterDetail('/admin/clusters/%E0%A4%A')).toBeNull();
 	});
 
 	it('does not duplicate the Dashboard link inside an admin group', () => {

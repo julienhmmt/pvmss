@@ -403,14 +403,17 @@
 						{#if isGroupOpen(index)}
 							<ul id="admin-nav-group-{index}" class="ml-5 flex flex-col gap-0.5 border-l border-sidebar-border py-1 pl-2">
 								{#each group.items as item (item.href)}
-									{@const active = isActive(item.href, item.exact ?? true)}
+									{@const detail = item.detail?.(page.url.pathname) ?? null}
+									{@const active = detail === null && isActive(item.href, item.exact ?? true)}
 									<li>
 										<a
 											href={item.href}
 											aria-current={active ? 'page' : undefined}
 											class="flex items-center gap-2 rounded-lg px-2.5 py-1.5 text-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring {active
 												? 'bg-sidebar-accent font-medium text-sidebar-accent-foreground'
-												: 'text-muted-foreground hover:bg-sidebar-accent/50 hover:text-foreground'}"
+												: detail
+													? 'font-medium text-foreground hover:bg-sidebar-accent/50'
+													: 'text-muted-foreground hover:bg-sidebar-accent/50 hover:text-foreground'}"
 											onclick={closeDrawer}
 										>
 											<span class="flex-1">{item.label()}</span>
@@ -424,6 +427,22 @@
 												</span>
 											{/if}
 										</a>
+										{#if detail}
+											<ul class="ml-3 border-l border-sidebar-border pl-2">
+												<li>
+													<a
+														href={detail.href}
+														aria-current="page"
+														title={detail.title}
+														data-testid="sidebar-detail-item"
+														class="block truncate rounded-lg bg-sidebar-accent px-2.5 py-1 text-sm font-medium text-sidebar-accent-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+														onclick={closeDrawer}
+													>
+														{detail.label}
+													</a>
+												</li>
+											</ul>
+										{/if}
 									</li>
 								{/each}
 							</ul>

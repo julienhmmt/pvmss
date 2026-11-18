@@ -22,6 +22,45 @@ interface AdminNavItem {
 	href: string;
 	label: () => string;
 	exact?: boolean;
+	/** Third sidebar level: the detail page the admin is on, if any. */
+	detail?: (pathname: string) => AdminNavDetail | null;
+}
+
+export interface AdminNavDetail {
+	href: string;
+	label: string;
+	title?: string;
+}
+
+/**
+ * Reads `<base>/<seg1>/.../<segN>` (exactly `depth` segments after `base`) and
+ * returns the decoded segments, or null when the path is not a detail route.
+ */
+function detailSegments(pathname: string, base: string, depth: number): string[] | null {
+	if (!pathname.startsWith(`${base}/`)) return null;
+	const raw = pathname.slice(base.length + 1).split('/');
+	if (raw.length !== depth || raw.some((seg) => seg === '')) return null;
+	try {
+		return raw.map((seg) => decodeURIComponent(seg));
+	} catch {
+		return null;
+	}
+}
+
+export function nodeDetail(pathname: string): AdminNavDetail | null {
+	const base = resolve('/admin/nodes');
+	const segs = detailSegments(pathname, base, 2);
+	if (!segs) return null;
+	const [cluster = '', node = ''] = segs;
+	return { href: pathname, label: node, title: `${node} · ${cluster}` };
+}
+
+export function clusterDetail(pathname: string): AdminNavDetail | null {
+	const base = resolve('/admin/clusters');
+	const segs = detailSegments(pathname, base, 1);
+	if (!segs) return null;
+	const [name = ''] = segs;
+	return { href: pathname, label: name };
 }
 
 interface AdminNavGroup {
@@ -43,8 +82,8 @@ export const ADMIN_NAV_GROUPS: readonly AdminNavGroup[] = [
 		heading: () => m['chrome.adminNav.infrastructure'](),
 		icon: 'infrastructure',
 		items: [
-			{ href: resolve('/admin/nodes'), label: () => m['chrome.adminNav.nodes'](), exact: false },
-			{ href: resolve('/admin/clusters'), label: () => m['chrome.adminNav.clusters']() },
+			{ href: resolve('/admin/nodes'), label: () => m['chrome.adminNav.nodes'](), exact: false, detail: nodeDetail },
+			{ href: resolve('/admin/clusters'), label: () => m['chrome.adminNav.clusters'](), exact: false, detail: clusterDetail },
 			{ href: resolve('/admin/pools'), label: () => m['chrome.adminNav.pools'](), exact: false },
 			{ href: resolve('/admin/vms'), label: () => m['chrome.adminNav.vms'](), exact: false }
 		]
