@@ -12,6 +12,7 @@
 	import { onVisibleRefresh } from '#lib/shared/visibility-refresh.js';
 	import VmDetail from '#lib/features/vms/VmDetail.svelte';
 	import { m } from '#lib/paraglide/messages.js';
+	import { publishVmDetailName } from '#lib/features/chrome/admin-nav-items.svelte.js';
 
 	const cluster = page.params.cluster ?? '';
 	const vmid = Number(page.params.vmid);
@@ -23,6 +24,8 @@
 			void goto(resolve('/admin/vms'));
 		}
 	});
+
+	$effect(() => publishVmDetailName(page.url.pathname, store.entity?.name ?? ''));
 
 	onMount(() => {
 		// The projection can be ~30s stale (VM just stopped from the console):

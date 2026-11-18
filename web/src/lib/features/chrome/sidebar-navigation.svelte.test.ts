@@ -1,6 +1,6 @@
 import { beforeAll, describe, expect, it, vi } from 'vitest';
 import { setLocale } from '#lib/paraglide/runtime.js';
-import { ADMIN_NAV_GROUPS, clusterDetail, nodeDetail } from './admin-nav-items.svelte';
+import { ADMIN_NAV_GROUPS, clusterDetail, nodeDetail, poolDetail, publishVmDetailName, vmDetail } from './admin-nav-items.svelte';
 import { SidebarNavigationState } from './sidebar-navigation.svelte';
 
 vi.mock('$app/paths', () => ({ resolve: (path: string) => path }));
@@ -61,6 +61,22 @@ describe('SidebarNavigationState', () => {
 		expect(clusterDetail('/admin/clusters')).toBeNull();
 		expect(clusterDetail('/admin/clusters/lab/x')).toBeNull();
 		expect(clusterDetail('/admin/clusters/%E0%A4%A')).toBeNull();
+	});
+
+	it('derives the pool detail level from the URL', () => {
+		expect(poolDetail('/admin/pools/alice')).toEqual({ href: '/admin/pools/alice', label: 'alice' });
+		expect(poolDetail('/admin/pools')).toBeNull();
+	});
+
+	it('labels the VM detail level with the published name, falling back to the vmid', () => {
+		const path = '/admin/vms/default/100';
+		expect(vmDetail(path)?.label).toBe('VM 100');
+		const clear = publishVmDetailName(path, 'web-01');
+		expect(vmDetail(path)).toEqual({ href: path, label: 'web-01', title: 'web-01 (100) · default' });
+		expect(vmDetail('/admin/vms/default/101')?.label).toBe('VM 101');
+		clear();
+		expect(vmDetail(path)?.label).toBe('VM 100');
+		expect(vmDetail('/admin/vms/default')).toBeNull();
 	});
 
 	it('does not duplicate the Dashboard link inside an admin group', () => {

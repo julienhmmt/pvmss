@@ -55,6 +55,34 @@ export function nodeDetail(pathname: string): AdminNavDetail | null {
 	return { href: pathname, label: node, title: `${node} · ${cluster}` };
 }
 
+export function poolDetail(pathname: string): AdminNavDetail | null {
+	const segs = detailSegments(pathname, resolve('/admin/pools'), 1);
+	if (!segs) return null;
+	const [name = ''] = segs;
+	return { href: pathname, label: name };
+}
+
+// The VM URL only carries the vmid: the detail page publishes the loaded name here.
+const vmDetailName = $state({ pathname: '', name: '' });
+
+/** Called by the admin VM page; returns a cleanup that clears the name. */
+export function publishVmDetailName(pathname: string, name: string): () => void {
+	vmDetailName.pathname = pathname;
+	vmDetailName.name = name;
+	return () => {
+		if (vmDetailName.pathname === pathname) vmDetailName.name = '';
+	};
+}
+
+export function vmDetail(pathname: string): AdminNavDetail | null {
+	const segs = detailSegments(pathname, resolve('/admin/vms'), 2);
+	if (!segs) return null;
+	const [cluster = '', vmid = ''] = segs;
+	const fallback = `VM ${vmid}`;
+	const name = vmDetailName.pathname === pathname && vmDetailName.name ? vmDetailName.name : fallback;
+	return { href: pathname, label: name, title: `${name} (${vmid}) · ${cluster}` };
+}
+
 export function clusterDetail(pathname: string): AdminNavDetail | null {
 	const base = resolve('/admin/clusters');
 	const segs = detailSegments(pathname, base, 1);
@@ -84,8 +112,8 @@ export const ADMIN_NAV_GROUPS: readonly AdminNavGroup[] = [
 		items: [
 			{ href: resolve('/admin/nodes'), label: () => m['chrome.adminNav.nodes'](), exact: false, detail: nodeDetail },
 			{ href: resolve('/admin/clusters'), label: () => m['chrome.adminNav.clusters'](), exact: false, detail: clusterDetail },
-			{ href: resolve('/admin/pools'), label: () => m['chrome.adminNav.pools'](), exact: false },
-			{ href: resolve('/admin/vms'), label: () => m['chrome.adminNav.vms'](), exact: false }
+			{ href: resolve('/admin/pools'), label: () => m['chrome.adminNav.pools'](), exact: false, detail: poolDetail },
+			{ href: resolve('/admin/vms'), label: () => m['chrome.adminNav.vms'](), exact: false, detail: vmDetail }
 		]
 	},
 	{
