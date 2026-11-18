@@ -76,7 +76,7 @@ func dashboardNodes(name, label string, idx *inventory.Index, cat nodeCatalog, c
 
 		summary := nodeSummaryDTO{
 			ClusterKey: name, Cluster: label, Name: node.Name, Status: string(node.Status),
-			VMCount: len(vms), VMRunningCount: countRunning(vms),
+			VMCount: len(vms), VMRunningCount: countRunning(vms), PVMSSVMCount: countPVMSS(vms),
 			CPUCores: node.CPUCores, CPUUsage: node.CPUUsage,
 			MemoryTotalBytes: node.MemoryTotal, MemoryUsedBytes: node.MemoryUsed,
 		}
@@ -103,14 +103,15 @@ func dashboardNodes(name, label string, idx *inventory.Index, cat nodeCatalog, c
 	return nodes, other
 }
 
-// nodeState places one listed node. A node not enabled is only listed because
-// it still hosts PVMSS VMs.
+// nodeState places one listed node. Offline wins over everything: a node that
+// is down needs attention whether enabled or not. A node not enabled is only
+// listed because it still hosts PVMSS VMs.
 func nodeState(offline, enabled bool, cat nodeCatalog, node string) (string, []string) {
 	switch {
-	case !enabled:
-		return nodeStateDisabledWithVMs, nil
 	case offline:
 		return nodeStateOffline, nil
+	case !enabled:
+		return nodeStateDisabledWithVMs, nil
 	}
 
 	if missing := catalog.NodeReadiness(cat.resources, cat.templates, node); len(missing) > 0 {
@@ -118,4 +119,16 @@ func nodeState(offline, enabled bool, cat nodeCatalog, node string) (string, []s
 	}
 
 	return nodeStateReady, nil
+}
+
+func countPVMSS(vms []cluster.VM) int {
+	n := 0
+
+	for _, vm := range vms {
+		if slices.Contains(vm.Tags, catalog.ProtectedTagName) {
+			n++
+		}
+	}
+
+	return n
 }

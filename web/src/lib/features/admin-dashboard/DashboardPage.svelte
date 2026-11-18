@@ -51,7 +51,7 @@
 			case 'incomplete':
 				return { label: m['admin.dashboard.nodeState.incomplete'](), tone: 'bg-warning-soft text-warning-soft-foreground' };
 			case 'disabled_with_vms':
-				return { label: m['admin.dashboard.nodeState.disabled_with_vms']({ count: node.vmCount }), tone: 'bg-warning-soft text-warning-soft-foreground' };
+				return { label: m['admin.dashboard.nodeState.disabled_with_vms']({ count: node.pvmssVMCount }), tone: 'bg-warning-soft text-warning-soft-foreground' };
 			case 'ready':
 				return node.vmCount === 0
 					? { label: m['admin.dashboard.nodeNoVMs'](), tone: 'bg-muted text-muted-foreground' }

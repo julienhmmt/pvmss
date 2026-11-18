@@ -24,6 +24,7 @@ const store = {
 				status: 'online',
 				vmCount: 2,
 				vmRunningCount: 1,
+				pvmssVMCount: 1,
 				cpuCores: 8,
 				cpuUsage: 0.25,
 				memoryTotalBytes: 8_000_000_000,
@@ -136,12 +137,13 @@ describe('DashboardPage node states', () => {
 			nodes: [
 				{ ...base, name: 'down', state: 'offline' },
 				{ ...base, name: 'half', state: 'incomplete', missing: ['bridge', 'iso_or_template'] },
-				{ ...base, name: 'idle', state: 'ready', vmCount: 0 }
+				{ ...base, name: 'idle', state: 'ready', vmCount: 0 },
+				{ ...base, name: 'old', state: 'disabled_with_vms', vmCount: 10, pvmssVMCount: 1 }
 			]
 		});
 
 		const states = [...document.querySelectorAll('[data-testid="dashboard-node-state"]')].map((el) => el.textContent?.trim());
-		expect(states).toEqual([m['admin.dashboard.nodeState.offline'](), m['admin.dashboard.nodeState.incomplete'](), m['admin.dashboard.nodeNoVMs']()]);
+		expect(states).toEqual([m['admin.dashboard.nodeState.offline'](), m['admin.dashboard.nodeState.incomplete'](), m['admin.dashboard.nodeNoVMs'](), m['admin.dashboard.nodeState.disabled_with_vms']({ count: 1 })]);
 		const half = document.querySelector('[data-node="half"]')?.textContent ?? '';
 		expect(half).toContain(m['admin.dashboard.missing.bridge']());
 		expect(half).toContain(m['admin.dashboard.missing.iso_or_template']());

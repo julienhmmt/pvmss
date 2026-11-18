@@ -10,6 +10,7 @@ function node(clusterKey: string, name: string, vmCount: number): NodeSummary {
 		status: 'online',
 		vmCount,
 		vmRunningCount: 0,
+		pvmssVMCount: 0,
 		cpuCores: 4,
 		cpuUsage: 0,
 		memoryTotalBytes: 1,

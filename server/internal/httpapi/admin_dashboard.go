@@ -62,12 +62,14 @@ func (h *AdminOps) SetInventorySource(src dashboardInventory, staleAfter time.Du
 }
 
 type nodeSummaryDTO struct {
-	ClusterKey       string  `json:"clusterKey"`
-	Cluster          string  `json:"cluster"`
-	Name             string  `json:"name"`
-	Status           string  `json:"status"`
-	VMCount          int     `json:"vmCount"`
-	VMRunningCount   int     `json:"vmRunningCount"`
+	ClusterKey     string `json:"clusterKey"`
+	Cluster        string `json:"cluster"`
+	Name           string `json:"name"`
+	Status         string `json:"status"`
+	VMCount        int    `json:"vmCount"`
+	VMRunningCount int    `json:"vmRunningCount"`
+	// PVMSSVMCount counts the VMs carrying the PVMSS tag (adopted or not).
+	PVMSSVMCount     int     `json:"pvmssVMCount"`
 	CPUCores         int     `json:"cpuCores"`
 	CPUUsage         float64 `json:"cpuUsage"`
 	MemoryTotalBytes int64   `json:"memoryTotalBytes"`

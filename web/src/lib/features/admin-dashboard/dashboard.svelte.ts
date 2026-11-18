@@ -12,6 +12,8 @@ export interface NodeSummary {
 	status: string;
 	vmCount: number;
 	vmRunningCount: number;
+	/** VMs carrying the PVMSS tag (adopted or not). */
+	pvmssVMCount: number;
 	cpuCores: number;
 	cpuUsage: number;
 	memoryTotalBytes: number;
