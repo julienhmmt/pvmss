@@ -28,11 +28,6 @@ documented here so the next reader does not reopen them.
   SSRF vector) nor guest-agent `guest-exec` (Linux-only, intrusive, exec
   perms). The card already shows the agent-reported address and user
   honestly without claiming liveness - that is the final design.
-- **e2e wants `CI=1` locally.** Specs share one fake cluster; `fullyParallel`
-  makes VM-creating specs change the row counts `vm-list.spec.ts` expects.
-  `CI=1 bunx playwright test` runs one worker, as CI does, and is green.
-  `bun run test:e2e` rebuilds `web/build` first: Playwright serves that
-  directory, and a stale build fails against a newer server.
 - **Pool password reset recreates the Proxmox user** (2026-11-02).
   `PUT /access/password` refuses API tokens (403), so `SetUserPassword`
   deletes and recreates the pool user with the new password and re-grants
