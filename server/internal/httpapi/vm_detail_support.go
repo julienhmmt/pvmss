@@ -131,11 +131,14 @@ func (h *VMDetail) fillGuestAgent(ctx context.Context, entity vm.Entity, dto *vm
 // mergeGuestIPs copies each guest-reported IP list onto the configured NIC
 // with the same MAC. The agent reports lowercase addresses while the Proxmox
 // config stores them uppercase, so the correlation is case-insensitive.
-// Guest interfaces with no matching NIC (lo, hot-plugged) are dropped.
+// Guest interfaces sharing a MAC are merged. Guest interfaces with no
+// matching NIC (lo, hot-plugged) are dropped.
 func mergeGuestIPs(nics []cluster.NetworkInterface, guests []cluster.GuestInterface) {
 	byMAC := make(map[string][]string, len(guests))
 	for _, guest := range guests {
-		byMAC[strings.ToLower(guest.MAC)] = guest.IPAddresses
+		// A guest bridge/bond/VLAN can share the NIC's MAC: keep every address.
+		key := strings.ToLower(guest.MAC)
+		byMAC[key] = append(byMAC[key], guest.IPAddresses...)
 	}
 
 	for i := range nics {

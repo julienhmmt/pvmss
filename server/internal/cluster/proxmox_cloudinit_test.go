@@ -191,6 +191,9 @@ func TestAgentEnabled(t *testing.T) {
 		{name: "1 is enabled", raw: "1", want: true},
 		{name: "1 with frozen is enabled", raw: "1,frozen=1", want: true},
 		{name: "0 with frozen is disabled", raw: "0,frozen=1", want: false},
+		{name: "enabled=1 key form is enabled", raw: "enabled=1", want: true},
+		{name: "enabled=1 with type is enabled", raw: "enabled=1,type=virtio", want: true},
+		{name: "enabled=0 key form is disabled", raw: "enabled=0", want: false},
 	}
 
 	for _, tc := range tests {
