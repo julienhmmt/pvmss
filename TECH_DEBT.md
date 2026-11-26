@@ -13,7 +13,6 @@ history keeps the old narrative.
 | SSO behind a multi-node cluster URL is unverified | `docs/oidc.md` warns that Proxmox may keep the OIDC `state` on the node that issued it; this still needs a real multi-node/LB check | Test against a real multi-node PVE cluster and document the required URL or stickiness |
 | SSO first-login pool provisioning is process-local | `server/internal/pools/sso.go` serializes list-create-grant with `ssoMu`; correct for the single-replica deployment | Use an atomic create/upsert or shared locking if PVMSS ever runs several replicas |
 | VM name reservations live in process memory | `server/internal/policy/reserve.go` uses a 15-minute in-process map; correct for one replica. A VM deleted or renamed outside the app can hold its name until the TTL | Move coordination to SQLite if replicas > 1; sweep on inventory refresh if outside renames matter |
-| Dead guest-agent cloud-init surface remains | `cluster.Writer` still requires `SetCloudInitPassword`, `PingGuestAgent` and `AddSSHKey`; implementations and tests exist, but no production caller remains after the cloud-init and console-password removals | Delete the dead surface, or keep it only when a new VM-access feature wires it |
 
 ## Accepted limitations
 

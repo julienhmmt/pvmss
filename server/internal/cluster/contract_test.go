@@ -165,24 +165,6 @@ func runChangePasswordCase(t *testing.T, impl cluster.Client) {
 	}
 }
 
-// TestContract_SetCloudInitPasswordCarriesUser - the contract: the
-// password apply records the target user, which the caller resolves from the
-// VM's ciuser (never a hardcoded root).
-//
-//nolint:paralleltest // serial: shared fake cloud-init fixture
-func TestContract_SetCloudInitPasswordCarriesUser(t *testing.T) {
-	cluster.ResetFake()
-
-	if err := (cluster.Fake{}).SetCloudInitPassword(context.Background(), cluster.FakeNode01, 101, "debian", "s3cret"); err != nil {
-		t.Fatalf("SetCloudInitPassword: %v", err)
-	}
-
-	calls := cluster.FakeCallsFor(101)
-	if len(calls) != 1 || calls[0].Action != "set_cloudinit_password" || calls[0].Name != "debian" {
-		t.Fatalf("calls = %+v, want one set_cloudinit_password for debian", calls)
-	}
-}
-
 //nolint:paralleltest // serial: shared fake identity fixture
 func TestContract_Snapshot_StableAcrossCalls(t *testing.T) {
 	impls := map[string]cluster.Client{

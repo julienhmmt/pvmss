@@ -79,7 +79,7 @@ func (p Proxmox) CreateVM(ctx context.Context, spec VMSpec) (string, error) {
 
 	// Enable the QEMU guest agent. Without agent=1 in the config, every
 	// /agent/* endpoint returns an error - which silently disables
-	// SetCloudInitPassword and AddSSHKey on every VM PVMSS creates - and
+	// guest network discovery on every VM PVMSS creates - and
 	// shutdown/reboot fall back to ACPI alone.
 	form.Set("agent", "1")
 

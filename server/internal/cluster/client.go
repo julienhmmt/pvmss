@@ -47,14 +47,6 @@ var (
 	// path is testable without a live cluster. Callers that want to delete a
 	// running VM must stop it first (see vm.Delete's Force flag).
 	ErrVMRunning = errors.New("vm is running")
-	// ErrSSHKeyUserUnknown is returned by Writer.AddSSHKey when the guest user
-	// named in the request does not exist on the guest (guest-agent exit code 3).
-	ErrSSHKeyUserUnknown = errors.New("ssh key user not found on guest")
-	// ErrGuestUserUnknown is returned by Writer.SetCloudInitPassword when the
-	// guest agent reports that the target user does not exist yet - cloud-init
-	// creates the account mid-boot, so an early attempt is retryable, not
-	// fatal (see vm.applyCloudInitPassword's bounded retry loop).
-	ErrGuestUserUnknown = errors.New("guest user does not exist")
 	// ErrVMIDTaken is returned by CreateVM/CloneVM when Proxmox rejects the
 	// VMID because it already exists. GET /cluster/nextid
 	// returns the smallest free ID at call time without reserving it, so two
@@ -166,30 +158,6 @@ type Writer interface {
 	// existing VM so the PVMSS Text/serial console works for VMs created
 	// before serial0 was added at create time.
 	EnableSerial(ctx context.Context, node string, vmid int) error
-	// SetCloudInitPassword applies the VM's cloud-init password post-boot via
-	// the QEMU guest agent, writing it only to /etc/shadow on the guest. It
-	// never uses the cipassword config key, whose crypt hash Proxmox stores on
-	// the cloud-init seed drive and cloud-init caches under /var/lib/cloud -
-	// both readable by any tenant root for the VM's lifetime.
-	// user is the VM's own ciuser: a cloud image's account is debian/ubuntu
-	// and root is locked, so a hardcoded "root" writes the password onto an
-	// account nobody can log into. The guest account is created by cloud-init
-	// mid-boot, so a user-unknown response is reported as ErrGuestUserUnknown
-	// for the caller's bounded retry.
-	SetCloudInitPassword(ctx context.Context, node string, vmid int, user, password string) error
-	// PingGuestAgent probes the QEMU guest agent on a running guest. It uses
-	// a short per-attempt timeout and no retry: an agent configured but not
-	// yet up hangs until timeout, and retrying only multiplies the wait -
-	// the caller polls instead.
-	PingGuestAgent(ctx context.Context, node string, vmid int) error
-	// AddSSHKey injects a single public key into the running guest's
-	// authorized_keys via the QEMU guest agent, without a reboot. The key is
-	// passed as a positional argv to a fixed script (no shell interpolation),
-	// so a multi-line paste cannot smuggle extra keys. The cloud-init config
-	// is synchronized best-effort so later duplicate/rebuild flows see the
-	// truthful key set, but the key is live in the guest regardless of that
-	// sync.
-	AddSSHKey(ctx context.Context, node string, vmid int, user, key string) error
 	// ReadFirmwareConfig reads the live firmware-related config of a VM
 	// (bios, machine, efidisk, tpm, secure boot). Used by the SeaBIOS
 	// retrofit to refuse VMs whose boot
