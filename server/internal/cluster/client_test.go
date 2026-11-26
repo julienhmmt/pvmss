@@ -114,10 +114,10 @@ func TestIsVMCapableStorage_ExactImagesTokenAndPBSExclusion(t *testing.T) {
 		want    bool
 	}{
 		{name: "images only", storage: Storage{PluginType: storagePluginDir, Content: storageContentImages}, want: true},
-		{name: "images among capabilities", storage: Storage{PluginType: "lvmthin", Content: "rootdir,images"}, want: true},
-		{name: "vm-vol only", storage: Storage{PluginType: "lvmthin", Content: "vm-vol"}, want: true},
-		{name: "vm-vol among capabilities", storage: Storage{PluginType: "lvmthin", Content: "ct-vol,vm-vol"}, want: true},
-		{name: "ct-vol only", storage: Storage{PluginType: "lvmthin", Content: "ct-vol,rootdir"}, want: false},
+		{name: "images among capabilities", storage: Storage{PluginType: storagePluginLVMThin, Content: "rootdir,images"}, want: true},
+		{name: "vm-vol only", storage: Storage{PluginType: storagePluginLVMThin, Content: "vm-vol"}, want: true},
+		{name: "vm-vol among capabilities", storage: Storage{PluginType: storagePluginLVMThin, Content: "ct-vol,vm-vol"}, want: true},
+		{name: "ct-vol only", storage: Storage{PluginType: storagePluginLVMThin, Content: "ct-vol,rootdir"}, want: false},
 		{name: "non-VM content only", storage: Storage{PluginType: storagePluginDir, Content: "iso,vztmpl,snippets,import"}, want: false},
 		{name: "PBS rejected despite vm-vol", storage: Storage{PluginType: storagePluginPBS, Content: "vm-vol"}, want: false},
 		{name: "backup only", storage: Storage{PluginType: "nfs", Content: "backup"}, want: false},
