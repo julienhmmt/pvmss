@@ -1,7 +1,10 @@
-# Build stage - Go
-FROM golang:1.27.4-alpine AS builder
+# Build stage - Go. Runs on the build host platform: cross-compiling Go is
+# free, and this keeps multi-arch builds off QEMU/Rosetta emulation.
+FROM --platform=$BUILDPLATFORM golang:1.27.4-alpine AS builder
 
 WORKDIR /app
+
+ARG TARGETARCH
 
 # Copy server dependency files first for better layer caching.
 # The module is pvmss/server (server/go.mod), so go.mod must sit at /app/
@@ -18,7 +21,7 @@ COPY server/ ./
 # Build the server binary (static, CGO disabled - no C toolchain needed)
 RUN --mount=type=cache,target=/root/.cache/go-build \
     --mount=type=cache,target=/go/pkg/mod \
-    CGO_ENABLED=0 GOOS=linux \
+    CGO_ENABLED=0 GOOS=linux GOARCH=$TARGETARCH \
     go build -trimpath -ldflags='-w -s' -tags netgo -o pvmss ./cmd/pvmss
 
 # Empty /data directory carried into the final image. Without it the image has
@@ -26,8 +29,10 @@ RUN --mount=type=cache,target=/root/.cache/go-build \
 # root:root 0755 - unwritable by the nonroot runtime uid (SQLITE_CANTOPEN).
 RUN mkdir /data
 
-# Build SvelteKit SPA
-FROM oven/bun:1.4.5-alpine AS svelte-builder
+# Build SvelteKit SPA. Also on the build host platform: the output is static
+# files with no arch, and emulation breaks the build (Rosetta has no AVX2, so
+# Bun disables wasm-simd and the vite/rolldown wasm fails to parse).
+FROM --platform=$BUILDPLATFORM oven/bun:1.4.5-alpine AS svelte-builder
 WORKDIR /app/web
 
 # Copy lockfile first for better layer caching
