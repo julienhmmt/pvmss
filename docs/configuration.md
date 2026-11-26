@@ -43,7 +43,7 @@ first cluster there. A partial set still fails startup.
 | `PVMSS_MAX_LOCAL_ADMINS`                      | `5` (range 1-50; excludes the bootstrap admin)                                                   |
 | `PVMSS_DB_RESET_ON_INCOMPATIBLE`              | `false` (dev compose: `true`; old DB is renamed, never deleted)                                  |
 | `PVMSS_TRUSTED_PROXY_HOPS`                    | `0`                                                                                              |
-| `PVMSS_RATE_LIMIT_MAX`                        | `0` (built-in ceilings; positive raises them, used by e2e)                                       |
+| `PVMSS_RATE_LIMIT_MAX`                        | `0` (built-in ceilings; positive raises them, used by local e2e)                                 |
 | `PVMSS_METRICS_PORT`                          | empty (off); a port != `PVMSS_PORT` enables `GET /metrics`                                       |
 | `PVMSS_PPROF`                                 | `false`; `true` adds `/debug/pprof/*` to the metrics listener (needs `PVMSS_METRICS_PORT`)       |
 | `PVMSS_TLS_CERT_FILE` / `PVMSS_TLS_KEY_FILE`  | empty (plain HTTP); both set = HTTPS listener                                                    |

@@ -15,7 +15,6 @@ type fakeState struct {
 	callMu   sync.Mutex
 	createMu sync.Mutex
 	identMu  sync.RWMutex
-	sshMu    sync.RWMutex
 	pingMu   sync.Mutex
 
 	vms           []VM
@@ -27,16 +26,10 @@ type fakeState struct {
 	roleCallLog   []RoleCall
 	acls          []ACLEntry
 	errDeleteUser error
-	sshErr        error
-	// agentPingFailures, when positive, makes the next n PingGuestAgent calls
+	// agentPingFailures, when positive, makes the next n guest-agent calls
 	// return ErrUnreachable before succeeding (exercises the caller's bounded ping loop without a
 	// real guest).
 	agentPingFailures int
-	// guestPasswordErr, when set, is returned by the next
-	// guestPasswordErrLeft SetCloudInitPassword calls instead of succeeding
-	// (inject cluster.ErrGuestUserUnknown to exercise the retry-on-missing-account loop).
-	guestPasswordErr     error
-	guestPasswordErrLeft int
 	// snapshotWriteErr, when set, is returned by every snapshot write
 	// (create/rollback/delete) instead of dispatching (tests inject a cluster rejection to
 	// exercise the handler's error mapping).

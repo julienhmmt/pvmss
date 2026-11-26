@@ -8,7 +8,7 @@ import (
 	"time"
 )
 
-// guestNetworkTimeout is shorter than agentPingTimeout: a working agent answers
+// guestNetworkTimeout is short: a working agent answers
 // in well under 100 ms, and a silent one (VM booting, agent not installed)
 // otherwise cost the VM page 3 s on every load.
 const guestNetworkTimeout = time.Second

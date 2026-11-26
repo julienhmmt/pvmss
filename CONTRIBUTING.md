@@ -43,6 +43,10 @@ If you'd like to contribute, here's how:
   once. Details in [docs/tls.md](docs/tls.md).
 - `make proxy-e2e` checks the VNC console WebSocket through each proxy
   (Playwright, fake cluster source, its own database).
+- `make web-e2e-install` installs Chromium once. `make web-e2e` then runs the
+  full Playwright suite locally against the fake cluster; `make web-e2e-pve`
+  runs a read-only smoke test against the real Proxmox endpoint configured in
+  `.env`. Neither suite runs in CI.
 - `make sonar` scans `pvmss-server` and `pvmss-web` into the shared local
   SonarQube (`~/git/gh/sonarqube`); results at `http://localhost:9000/projects`,
   stop it with `make sonar-down`.

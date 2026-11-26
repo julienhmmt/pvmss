@@ -272,15 +272,6 @@ func TestFake_GetCloudInitConfig_NotFound(t *testing.T) {
 	}
 }
 
-func TestFake_SetCloudInitPassword_NotFound(t *testing.T) {
-	t.Parallel()
-
-	fake := cluster.NewFake("test-ci-pw-notfound")
-	if err := fake.SetCloudInitPassword(context.Background(), cluster.FakeNode01, 99999, "debian", "newpass"); !errors.Is(err, cluster.ErrNotFound) {
-		t.Fatalf("SetCloudInitPassword(not found) error = %v, want ErrNotFound", err)
-	}
-}
-
 func TestFake_Action_NotFound(t *testing.T) {
 	t.Parallel()
 
@@ -1257,49 +1248,6 @@ func TestFake_StorageFreeSpace(t *testing.T) {
 
 	if _, err := offline.StorageFreeSpace(ctx, cluster.FakeNode01, cluster.FakeStorageLocal); !errors.Is(err, cluster.ErrUnreachable) {
 		t.Errorf("StorageFreeSpace(offline) = %v, want ErrUnreachable", err)
-	}
-}
-
-//nolint:paralleltest // serial: shared default fake state
-//nolint:paralleltest // serial: shared default fake state
-func TestFake_SetCloudInitPassword_Countdown(t *testing.T) {
-	cluster.ResetFake()
-	defer cluster.ResetFake()
-
-	ctx := context.Background()
-	fake := cluster.Fake{}
-
-	injected := errors.New("guest user unknown")
-	cluster.SetFakeGuestPasswordError(injected, 1)
-
-	defer cluster.SetFakeGuestPasswordError(nil, 0)
-
-	if err := fake.SetCloudInitPassword(ctx, cluster.FakeNode01, 100, "debian", "pw"); !errors.Is(err, injected) {
-		t.Fatalf("SetCloudInitPassword(first) = %v, want injected error", err)
-	}
-
-	if err := fake.SetCloudInitPassword(ctx, cluster.FakeNode01, 100, "debian", "pw"); err != nil {
-		t.Errorf("SetCloudInitPassword(second) = %v, want nil (countdown cleared)", err)
-	}
-}
-
-//nolint:paralleltest // serial: shared default fake state
-func TestFake_PingGuestAgent_Countdown(t *testing.T) {
-	cluster.ResetFake()
-	defer cluster.ResetFake()
-
-	ctx := context.Background()
-	fake := cluster.Fake{}
-
-	cluster.SetFakeGuestAgentPingFailures(1)
-	defer cluster.SetFakeGuestAgentPingFailures(0)
-
-	if err := fake.PingGuestAgent(ctx, cluster.FakeNode01, 100); !errors.Is(err, cluster.ErrUnreachable) {
-		t.Fatalf("PingGuestAgent(first) = %v, want ErrUnreachable", err)
-	}
-
-	if err := fake.PingGuestAgent(ctx, cluster.FakeNode01, 100); err != nil {
-		t.Errorf("PingGuestAgent(second) = %v, want nil (countdown cleared)", err)
 	}
 }
 

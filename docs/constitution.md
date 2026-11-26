@@ -216,13 +216,14 @@ produit une nouvelle valeur.
 **Tests de bout en bout (E2E)** :
 
 - **Playwright**, exécuté contre le binaire réel servant la SPA réelle, avec le client
-  Proxmox **factice** (principe XI). Aucun Proxmox, aucun identifiant réel, aucune donnée
-  préparée à la main.
+  Proxmox **factice** (principe XI). La suite complète n'utilise aucun Proxmox, aucun
+  identifiant réel, aucune donnée préparée à la main.
 - La suite E2E est mise en place à la **première tranche produisant un parcours cliquable**
   et grandit ensuite d'une tranche à l'autre : **chaque tranche ajoute le scénario E2E de
   sa propre démonstration**. Une tranche qui n'ajoute aucun scénario E2E n'est pas terminée.
-- Les E2E tournent en intégration continue à chaque changement. Ils sont la preuve
-  exécutable de ce que la démonstration manuelle du principe IX montre à l'œil.
+- Les E2E ne tournent pas en intégration continue : ils se lancent localement contre le
+  client factice. Un smoke test distinct, en lecture seule, peut vérifier le raccordement
+  à l'hôte Proxmox réel sans remplacer la suite factice.
 - Portée : les parcours réels d'un utilisateur, pas la couverture exhaustive. Les cas
   limites appartiennent aux tests unitaires, qui sont moins chers et plus rapides.
 
