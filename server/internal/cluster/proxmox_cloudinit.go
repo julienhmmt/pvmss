@@ -76,7 +76,8 @@ func parseCloudInitConfig(cfg proxmoxVMConfig) CloudInitConfig {
 func agentEnabled(raw string) bool {
 	first, _, _ := strings.Cut(raw, ",")
 
-	return first == "1"
+	// Proxmox accepts both "1,..." and the keyed "enabled=1,..." form.
+	return strings.TrimPrefix(first, "enabled=") == "1"
 }
 
 // parseIPConfig reads Proxmox's ipconfigN grammar ("ip=dhcp" or
