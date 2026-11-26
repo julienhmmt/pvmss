@@ -20,6 +20,8 @@ const (
 	storageContentImages = "images"
 	// storageContentVMVol is the VM-disk content type newer Proxmox reports (#210).
 	storageContentVMVol = "vm-vol"
+	// storageContentVMState is the RAM-state content type; legacy images covers it too.
+	storageContentVMState = "vm-state"
 )
 
 // Sentinel errors so callers can distinguish failure modes without string matching.
@@ -425,6 +427,18 @@ func IsVMCapableStorage(storage Storage) bool {
 
 	for capability := range strings.SplitSeq(storage.Content, ",") {
 		if capability == storageContentImages || capability == storageContentVMVol {
+			return true
+		}
+	}
+
+	return false
+}
+
+// StorageAllowsVMState reports whether a storage's content list lets Proxmox
+// write RAM state there: the legacy images token covers vm-state, vm-vol does not.
+func StorageAllowsVMState(content string) bool {
+	for capability := range strings.SplitSeq(content, ",") {
+		if capability == storageContentImages || capability == storageContentVMState {
 			return true
 		}
 	}

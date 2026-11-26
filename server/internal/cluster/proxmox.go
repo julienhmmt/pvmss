@@ -398,7 +398,7 @@ func proxmoxStorageFromRow(row proxmoxResourceRow) Storage {
 		Content:         row.Content,
 		Total:           row.MaxDisk,
 		Used:            row.Disk,
-		SupportsVMState: pluginSupportsVMState(row.PluginType),
+		SupportsVMState: pluginSupportsVMState(row.PluginType) && StorageAllowsVMState(row.Content),
 		Shared:          row.Shared == 1,
 	}
 }
