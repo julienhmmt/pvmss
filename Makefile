@@ -42,6 +42,7 @@ PVMSS_TAG ?= latest
         server-lint server-fmt server-vet server-test server-go-update \
         server-deps-update server-update server-reset \
         web-install web-deps-update web-lint web-lint-fix web-check web-test \
+        web-e2e-install web-e2e web-e2e-pve \
         lint \
         sonar sonar-up sonar-down sonar-coverage sonar-lint sonar-scan sonar-scan-server sonar-scan-web sonar-query
 
@@ -54,7 +55,7 @@ PVMSS_TAG ?= latest
 help: ## Show this help
 	@echo "$(BLUE)PVMSS - Commandes disponibles:$(NC)"
 	@echo ""
-	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | sort | awk 'BEGIN {FS = ":.*?## "}; {printf "  $(GREEN)%-18s$(NC) %s\n", $$1, $$2}'
+	@grep -E '^[a-zA-Z0-9_-]+:.*?## .*$$' $(MAKEFILE_LIST) | sort | awk 'BEGIN {FS = ":.*?## "}; {printf "  $(GREEN)%-18s$(NC) %s\n", $$1, $$2}'
 	@echo ""
 
 dev: build up ## Build and start the app (http://localhost:50000)
@@ -259,6 +260,19 @@ web-test: ## Run web/ unit tests (vitest)
 	@echo "$(BLUE)Tests unitaires $(WEB_DIR)/ (vitest)...$(NC)"
 	cd $(WEB_DIR) && bun run test
 	@echo "$(GREEN)✓ Web tests done$(NC)"
+
+web-e2e-install: ## Install Playwright Chromium for local e2e (run once)
+	@echo "$(BLUE)Installing Playwright Chromium...$(NC)"
+	cd $(WEB_DIR) && bun run test:e2e:install
+	@echo "$(GREEN)✓ Playwright Chromium installed$(NC)"
+
+web-e2e: ## Run the full e2e suite locally against the fake cluster (mock)
+	@[ -d $(WEB_DIR)/node_modules ] || $(MAKE) web-install
+	cd $(WEB_DIR) && bun run test:e2e
+
+web-e2e-pve: ## Run the read-only e2e smoke test against the real Proxmox host from .env
+	@[ -d $(WEB_DIR)/node_modules ] || $(MAKE) web-install
+	cd $(WEB_DIR) && bun run build && bunx playwright test -c playwright.pve.config.ts
 
 # --- Combined lint (server + web) ---
 

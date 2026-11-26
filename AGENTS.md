@@ -67,9 +67,10 @@ make web-lint         # eslint (web-lint-fix to fix)
 
 make lint             # server-lint + web-lint
 
-# e2e (from web/)
-cd web && bun run test:e2e:install  # once
-cd web && bun run test:e2e
+# e2e (local only; CI does not run Playwright)
+make web-e2e-install  # once
+make web-e2e          # full fake-cluster suite (mock)
+make web-e2e-pve      # read-only smoke against PROXMOX_* in .env
 
 # Images / deploy
 make docker-build     # multi-arch build + push, tag via PVMSS_TAG

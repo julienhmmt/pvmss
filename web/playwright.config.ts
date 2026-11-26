@@ -38,7 +38,7 @@ export default defineConfig({
 	webServer: {
 		// The suite assumes a fresh database (admin-catalog expects an unapproved
 		// bridge, the others rely on what it approves), so start from none.
-		command: 'rm -f ../tmp/e2e-pvmss.db ../tmp/e2e-pvmss.db-wal ../tmp/e2e-pvmss.db-shm && cd ../server && go run ./cmd/pvmss',
+		command: 'mkdir -p ../tmp && rm -f ../tmp/e2e-pvmss.db ../tmp/e2e-pvmss.db-wal ../tmp/e2e-pvmss.db-shm && cd ../server && go run ./cmd/pvmss',
 		cwd: '.',
 		env: {
 			PVMSS_PORT: '50101',
