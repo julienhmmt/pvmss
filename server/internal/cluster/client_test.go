@@ -137,6 +137,34 @@ func TestIsVMCapableStorage_ExactImagesTokenAndPBSExclusion(t *testing.T) {
 	}
 }
 
+func TestStorageAllowsVMState(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		content string
+		want    bool
+	}{
+		{content: "images", want: true},
+		{content: "rootdir,images", want: true},
+		{content: "vm-vol,vm-state", want: true},
+		{content: "vm-state", want: true},
+		{content: "vm-vol", want: false},
+		{content: "vm-vol,ct-vol", want: false},
+		{content: "iso,backup", want: false},
+		{content: "", want: false},
+	}
+
+	for _, test := range tests {
+		t.Run(test.content, func(t *testing.T) {
+			t.Parallel()
+
+			if got := StorageAllowsVMState(test.content); got != test.want {
+				t.Errorf("StorageAllowsVMState(%q) = %t, want %t", test.content, got, test.want)
+			}
+		})
+	}
+}
+
 // TestProxmoxGetVNCTicket_Success parses the ticket and port from a 200 response.
 func TestProxmoxGetVNCTicket_Success(t *testing.T) {
 	t.Parallel()

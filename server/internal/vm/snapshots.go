@@ -369,7 +369,9 @@ func diskStorageCapability(index *inventory.Index, node string, disk cluster.Dis
 
 	for _, storage := range index.StoragesByNode[node] {
 		if storage.Name == disk.Storage {
-			return cluster.StorageSnapshotCapability(storage.PluginType, disk.Format)
+			canSnapshot, canVMState = cluster.StorageSnapshotCapability(storage.PluginType, disk.Format)
+
+			return canSnapshot, canVMState && cluster.StorageAllowsVMState(storage.Content)
 		}
 	}
 
