@@ -18,6 +18,8 @@ const (
 	storagePluginLVMThin = "lvmthin"
 	storagePluginPBS     = "pbs"
 	storageContentImages = "images"
+	// storageContentVMVol is the VM-disk content type newer Proxmox reports (#210).
+	storageContentVMVol = "vm-vol"
 )
 
 // Sentinel errors so callers can distinguish failure modes without string matching.
@@ -422,7 +424,7 @@ func IsVMCapableStorage(storage Storage) bool {
 	}
 
 	for capability := range strings.SplitSeq(storage.Content, ",") {
-		if capability == storageContentImages {
+		if capability == storageContentImages || capability == storageContentVMVol {
 			return true
 		}
 	}
